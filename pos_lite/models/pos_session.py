@@ -17,6 +17,12 @@ class PosLiteSession(models.Model):
         domain="[('company_id', '=', company_id)]",
         check_company=True,
     )
+    location_id = fields.Many2one(
+        'stock.location', related='config_id.location_id',
+        store=True, readonly=True, string='Location',
+        help='Stock location this session operates from, inherited from its '
+             'configuration. Drives product availability and picking source.',
+    )
     state = fields.Selection([
         ('opened', 'Opened'),
         ('closed', 'Closed'),
@@ -148,22 +154,30 @@ class PosLiteSession(models.Model):
         return sessions
 
     def _check_single_open_session(self):
-        """At most one opened session per (company, config) — prevents ambiguous
-        sales attribution when two shifts run simultaneously on the same config."""
+        """At most one opened session per (company, location) — prevents ambiguous
+        sales attribution when two shifts run simultaneously on the same location.
+
+        Falls back to config_id when location_id is unset (legacy configs without
+        a bound location) so the invariant still holds for those records."""
         for session in self:
             if session.state != 'opened':
                 continue
-            existing = self.search([
+            domain = [
                 ('id', '!=', session.id),
                 ('company_id', '=', session.company_id.id),
-                ('config_id', '=', session.config_id.id),
                 ('state', '=', 'opened'),
-            ], limit=1)
+            ]
+            if session.location_id:
+                domain.append(('location_id', '=', session.location_id.id))
+            else:
+                domain.append(('config_id', '=', session.config_id.id))
+            existing = self.search(domain, limit=1)
             if existing:
+                loc_label = session.location_id.display_name or session.config_id.display_name
                 raise UserError(_(
-                    'Session %s is already open for this company/config. '
+                    'Session %s is already open for this location (%s). '
                     'Close it before opening a new one.'
-                ) % existing.name)
+                ) % (existing.name, loc_label))
 
     def action_close_session(self):
         for session in self:
@@ -186,14 +200,22 @@ class PosLiteSession(models.Model):
         for session in self:
             if session.state != 'closed':
                 raise UserError(_('Only closed sessions can be reopened.'))
-            # Check if there's already an open session for this company
-            existing = self.search([
+            # Check if there's already an open session for this location
+            # (or config, for legacy configs without a bound location).
+            domain = [
                 ('company_id', '=', session.company_id.id),
                 ('state', '=', 'opened'),
-            ], limit=1)
+            ]
+            if session.location_id:
+                domain.append(('location_id', '=', session.location_id.id))
+            else:
+                domain.append(('config_id', '=', session.config_id.id))
+            existing = self.search(domain, limit=1)
             if existing:
+                loc_label = session.location_id.display_name or session.config_id.display_name
                 raise UserError(
-                    _('Session %s is already open. Close it first before reopening.') % existing.name
+                    _('Session %s is already open for this location (%s). '
+                      'Close it first before reopening.') % (existing.name, loc_label)
                 )
             session.write({
                 'state': 'opened',

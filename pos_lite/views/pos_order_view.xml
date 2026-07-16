@@ -13,6 +13,7 @@
                 <field name="partner_id"/>
                 <field name="partner_shipping_id" optional="hide" string="Delivery"/>
                 <field name="warehouse_id"/>
+                <field name="location_id" optional="show"/>
                 <field name="amount_total" sum="Total" widget="monetary"/>
                 <field name="amount_paid" sum="Paid" widget="monetary"/>
                 <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0"/>
@@ -38,6 +39,7 @@
                 <field name="partner_id" context="{'pos_lite_partner_search': 1}"/>
                 <field name="partner_phone"/>
                 <field name="warehouse_id"/>
+                <field name="location_id"/>
                 <field name="channel"/>
                 <field name="trade_channel"/>
                 <field name="session_id"/>
@@ -63,6 +65,7 @@
                     <filter string="Channel" name="group_channel" context="{'group_by': 'channel'}"/>
                     <filter string="Trade Channel" name="group_trade_channel" context="{'group_by': 'trade_channel'}"/>
                     <filter string="Warehouse" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter string="Location" name="group_location" context="{'group_by': 'location_id'}"/>
                     <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Session" name="group_session" context="{'group_by': 'session_id'}"/>
                     <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
@@ -157,6 +160,7 @@
                             <field name="trade_channel"/>
                             <field name="date_order" readonly="state != 'draft'"/>
                             <field name="warehouse_id" options="{'no_create': True}"/>
+                            <field name="location_id" options="{'no_create': True}"/>
                             <field name="pricelist_id"/>
                         </group>
                         <group string="Session">

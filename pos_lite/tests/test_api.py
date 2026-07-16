@@ -49,10 +49,17 @@ class TestApiBase(common.TransactionCase):
             'name': 'Test Emp API 2',
             'company_id': cls.company.id,
         })
+        cls.stock_location = cls.env['stock.location'].create({
+            'name': 'Test Stock Location - API',
+            'location_id': cls.warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': cls.company.id,
+        })
         cls.config = cls.env['pos.lite.config'].create({
             'name': 'Test Config API',
             'company_id': cls.company.id,
             'warehouse_id': cls.warehouse.id,
+            'location_id': cls.stock_location.id,
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
@@ -113,6 +120,12 @@ class TestSessionInfoApi(TestApiBase):
         session = self.session
         self.assertTrue(session.config_id.warehouse_id)
         self.assertEqual(session.config_id.warehouse_id.id, self.warehouse.id)
+
+    def test_session_info_returns_default_location(self):
+        """session_info ต้อง return default location จาก config (per-location)"""
+        session = self.session
+        self.assertTrue(session.config_id.location_id)
+        self.assertEqual(session.location_id, self.stock_location)
 
     def test_session_info_returns_pricelist(self):
         """session_info ต้อง return default pricelist จาก config"""

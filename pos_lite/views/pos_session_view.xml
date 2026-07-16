@@ -9,6 +9,7 @@
                   expand="1">
                 <field name="name"/>
                 <field name="config_id"/>
+                <field name="location_id" optional="show"/>
                 <field name="employee_ids" string="Employees" widget="many2many_tags"/>
                 <field name="current_employee_id" string="พนักงานขายปัจจุบัน" optional="show"/>
                 <field name="current_channel" string="ช่องทาง" optional="show"/>
@@ -205,6 +206,12 @@
                                             </div>
                                         </div>
                                         <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">Location</span>
+                                            <div>
+                                                <field name="location_id" options="{'no_create': True}"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
                                             <span class="o_form_label text-muted small">ผู้เปิด</span>
                                             <div>
                                                 <field name="user_id"/>
@@ -342,12 +349,14 @@
             <search>
                 <field name="name"/>
                 <field name="config_id"/>
+                <field name="location_id"/>
                 <field name="user_id"/>
                 <field name="employee_ids"/>
                 <filter string="Open" name="open" domain="[('state', '=', 'opened')]"/>
                 <filter string="Closed" name="closed" domain="[('state', '=', 'closed')]"/>
                 <filter string="Today" name="today" domain="[('date_open', '&gt;=', (context_today()).strftime('%Y-%m-%d 00:00:00'))]"/>
                 <group expand="0" string="Group By">
+                    <filter string="Location" name="group_location" context="{'group_by': 'location_id'}"/>
                     <filter string="Config" name="group_config" context="{'group_by': 'config_id'}"/>
                     <filter string="Cashier" name="group_user" context="{'group_by': 'user_id'}"/>
                     <filter string="Employee" name="group_employee" context="{'group_by': 'employee_ids'}"/>

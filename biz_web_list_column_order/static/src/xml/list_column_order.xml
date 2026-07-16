@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_web_list_column_order.ListRenderer"
+       t-inherit="web.ListRenderer"
+       t-inherit-mode="extension">
+        <xpath expr="//Dropdown" position="inside">
+            <div role="separator" class="dropdown-divider"/>
+            <DropdownItem onSelected="() => this._colLayoutReset()">
+                <span class="d-flex align-items-center">
+                    <i class="fa fa-fw fa-undo me-1"/>Reset column layout
+                </span>
+            </DropdownItem>
+        </xpath>
+    </t>
+
+</templates>

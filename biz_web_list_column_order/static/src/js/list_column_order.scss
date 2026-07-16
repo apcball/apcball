@@ -1,0 +1,19 @@
+.o_list_table {
+    th.o_col_order_draggable {
+        cursor: grab;
+
+        &:active {
+            cursor: grabbing;
+        }
+    }
+
+    th.o_col_order_dragging {
+        opacity: 0.4;
+    }
+
+    // Drop indicator: a vertical bar on the left edge of the target header,
+    // showing the dragged column will land before it.
+    th.o_col_order_drop_target {
+        box-shadow: inset 3px 0 0 0 var(--primary, #714b67);
+    }
+}

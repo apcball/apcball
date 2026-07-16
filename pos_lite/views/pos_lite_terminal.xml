@@ -114,12 +114,14 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 }
 .pos-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; }
 .pos-topbar-emp {
-    display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
-    color: var(--primary); background: var(--primary-light);
-    padding: 6px 14px; border-radius: 999px; cursor: pointer; border: none;
+    display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600;
+    color: var(--text); background: var(--white);
+    padding: 7px 16px; border-radius: 999px; cursor: pointer;
+    border: 1.5px solid var(--border);
     transition: all 0.15s; white-space: nowrap;
 }
-.pos-topbar-emp:hover { background: var(--primary); color: var(--white); }
+.pos-topbar-emp:hover { border-color: var(--primary); color: var(--primary); }
+.pos-topbar-emp .emp-caret { font-size: 9px; color: var(--text-secondary); }
 .pos-topbar-actions { display: flex; gap: 4px; }
 .pos-topbar-actions button {
     border: none; background: none; cursor: pointer; padding: 8px 10px;
@@ -153,14 +155,22 @@ input, select, textarea { font-family: inherit; color: var(--text); }
     font-size: 10.5px; color: var(--text-secondary); background: var(--white);
     border: 1px solid var(--border); border-radius: 5px; padding: 2px 6px; pointer-events: none;
 }
-.pos-warehouse-select select {
-    padding: 10px 12px; border: 1.5px solid var(--border);
-    border-radius: 12px; font-size: 13px; background: var(--primary-bg);
-    outline: none; cursor: pointer; max-width: 220px;
+.pos-location-chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+    color: var(--text-secondary); background: var(--primary-bg);
+    padding: 9px 14px; border-radius: 12px; white-space: nowrap;
+    border: 1.5px solid var(--border); max-width: 240px;
 }
-.pos-warehouse-select select:focus { border-color: var(--primary); }
+.pos-location-chip .plc-label { font-size: 14px; }
+.pos-location-chip #posLocationName {
+    overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text);
+}
+.pos-cats-row {
+    display: flex; align-items: center; gap: 6px; padding: 10px 14px 4px;
+    flex-shrink: 0; position: relative;
+}
 .pos-cats {
-    display: flex; gap: 6px; padding: 10px 14px 4px; overflow-x: auto; flex-shrink: 0;
+    display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0;
     scrollbar-width: none;
 }
 .pos-cats::-webkit-scrollbar { display: none; }
@@ -171,13 +181,55 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 }
 .pos-cat-chip:hover { border-color: var(--primary); color: var(--primary); }
 .pos-cat-chip.active { background: var(--primary); border-color: var(--primary); color: var(--white); }
-.pos-products {
-    flex: 1; overflow-y: auto; padding: 10px 14px 18px;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
-    gap: 10px; align-content: start;
+.pos-cat-more { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; }
+.pos-cat-menu {
+    position: absolute; top: calc(100% + 4px); right: 14px; z-index: 60;
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-lg); min-width: 220px; max-width: 320px;
+    max-height: 300px; overflow-y: auto; padding: 6px; display: none;
 }
-.pos-products::-webkit-scrollbar { width: 5px; }
-.pos-products::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.pos-cat-menu.open { display: block; }
+.pos-cat-menu button {
+    display: block; width: 100%; text-align: left; border: none; background: none;
+    font-size: 13px; font-weight: 600; color: var(--text); padding: 9px 12px;
+    border-radius: 9px; cursor: pointer;
+}
+.pos-cat-menu button:hover { background: var(--primary-bg); color: var(--primary); }
+.pos-cat-menu button.active { background: var(--primary-light); color: var(--primary); }
+.pos-products {
+    flex: 1; overflow-y: auto; padding: 10px 14px 14px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px; align-content: start;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin; scrollbar-color: #C4B5FD transparent;
+}
+.pos-products::-webkit-scrollbar { width: 8px; }
+.pos-products::-webkit-scrollbar-thumb { background: #C4B5FD; border-radius: 10px; }
+.pos-products::-webkit-scrollbar-thumb:hover { background: #A78BFA; }
+.pos-products.list-view { display: flex; flex-direction: column; gap: 7px; }
+.pos-product-row {
+    display: flex; align-items: center; gap: 11px; padding: 8px 12px;
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 12px;
+    cursor: pointer; transition: all 0.13s;
+}
+.pos-product-row:hover { border-color: var(--primary); background: var(--primary-bg); }
+.pos-product-row.out-of-stock { opacity: 0.55; cursor: not-allowed; filter: grayscale(0.5); }
+.pos-product-row.out-of-stock:hover { border-color: var(--border); background: var(--white); }
+.pos-product-row .pr-img {
+    width: 44px; height: 44px; border-radius: 9px; object-fit: contain;
+    background: #FAFAFC; border: 1px solid var(--border); flex-shrink: 0;
+}
+.pos-product-row .pr-img-placeholder {
+    width: 44px; height: 44px; border-radius: 9px; flex-shrink: 0;
+    background: linear-gradient(160deg, #F5F3FF, #EDE9FE); color: #C4B5FD;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.pos-product-row .pr-info { flex: 1; min-width: 0; }
+.pos-product-row .pr-name {
+    font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pos-product-row .pr-code { font-size: 10.5px; color: var(--text-secondary); margin-top: 1px; }
+.pos-product-row .pr-price { font-size: 14.5px; font-weight: 800; color: var(--primary); white-space: nowrap; }
 .pos-product-card {
     background: var(--white); border: 1.5px solid var(--border); border-radius: 14px;
     cursor: pointer; transition: all 0.15s ease; overflow: hidden; position: relative;
@@ -191,12 +243,12 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 .pos-product-card.out-of-stock { opacity: 0.55; cursor: not-allowed; filter: grayscale(0.5); }
 .pos-product-card.out-of-stock:hover { transform: none; box-shadow: none; border-color: var(--border); }
 .pos-product-img {
-    width: 100%; height: 104px; object-fit: contain; display: block;
+    width: 100%; height: 96px; object-fit: contain; display: block;
     background: #FAFAFC; padding: 8px;
 }
 .pos-product-img-placeholder {
-    width: 100%; height: 104px; display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(160deg, #F5F3FF, #EDE9FE); color: #C4B5FD; font-size: 34px;
+    width: 100%; height: 96px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #F5F3FF, #EDE9FE); color: #C4B5FD; font-size: 32px;
 }
 .pos-product-info { padding: 8px 10px 10px; flex: 1; display: flex; flex-direction: column; }
 .pos-product-name {
@@ -211,6 +263,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
     font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
     backdrop-filter: blur(4px);
 }
+.pos-stock-badge.static { position: static; flex-shrink: 0; font-size: 11px; }
 .pos-stock-badge.in-stock { color: #047857; background: rgba(209,250,229,0.92); }
 .pos-stock-badge.low-stock { color: #B45309; background: rgba(254,243,199,0.95); }
 .pos-stock-badge.no-stock { color: #B91C1C; background: rgba(254,226,226,0.95); }
@@ -222,6 +275,36 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 }
 .pos-no-products { grid-column: 1 / -1; text-align: center; padding: 60px 16px; color: var(--text-secondary); font-size: 14px; }
 .pos-no-products svg { display: block; margin: 0 auto 12px; opacity: 0.3; }
+
+/* ── Pagination bar ── */
+.pos-pagination {
+    display: flex; align-items: center; gap: 5px; padding: 10px 14px;
+    border-top: 1px solid var(--border); flex-shrink: 0; background: var(--white);
+}
+.pos-page-btn {
+    min-width: 34px; height: 34px; padding: 0 8px;
+    border: 1.5px solid var(--border); background: var(--white); border-radius: 10px;
+    cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-secondary);
+    display: inline-flex; align-items: center; justify-content: center; transition: all 0.12s;
+}
+.pos-page-btn:hover:not(:disabled):not(.active) { border-color: var(--primary); color: var(--primary); }
+.pos-page-btn.active { background: var(--primary); border-color: var(--primary); color: var(--white); }
+.pos-page-btn:disabled { opacity: 0.35; cursor: default; }
+.pos-page-ellipsis { color: var(--text-secondary); font-size: 13px; padding: 0 3px; }
+.pos-page-spacer { flex: 1; }
+.pos-perpage { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.pos-perpage select {
+    padding: 6px 8px; border: 1.5px solid var(--border); border-radius: 9px;
+    font-size: 12.5px; font-weight: 600; outline: none; background: var(--white); cursor: pointer;
+}
+.pos-perpage select:focus { border-color: var(--primary); }
+.pos-view-toggle { display: flex; gap: 3px; border: 1.5px solid var(--border); border-radius: 10px; padding: 3px; }
+.pos-view-toggle button {
+    border: none; background: none; padding: 5px 9px; border-radius: 7px;
+    cursor: pointer; color: var(--text-secondary); line-height: 0; transition: all 0.12s;
+}
+.pos-view-toggle button:hover { color: var(--primary); }
+.pos-view-toggle button.active { background: var(--primary); color: var(--white); }
 
 /* ── Right: cart ── */
 .pos-right {
@@ -260,6 +343,31 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 .pos-customer-section input:focus, .pos-customer-section textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
 .pos-customer-section textarea { resize: none; min-height: 38px; }
 .pos-toggle-link { background: none; border: none; color: var(--primary); font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.pos-new-cust-btn {
+    border: 1.5px solid var(--primary); color: var(--primary); background: var(--white);
+    font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px;
+    cursor: pointer; transition: all 0.13s; white-space: nowrap;
+}
+.pos-new-cust-btn:hover { background: var(--primary); color: var(--white); }
+.pos-cust-search { position: relative; margin-bottom: 6px; }
+.pos-cust-search input {
+    width: 100%; padding: 9px 11px 9px 33px; border: 1.5px solid var(--border);
+    border-radius: 10px; font-size: 13px; outline: none; margin-bottom: 0;
+}
+.pos-cust-search input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+.pos-cust-search > svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+.pos-cust-results {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 120;
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow-lg); max-height: 250px; overflow-y: auto; display: none;
+}
+.pos-cust-results.open { display: block; }
+.pos-cust-result { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #F3F4F6; }
+.pos-cust-result:last-child { border-bottom: none; }
+.pos-cust-result:hover { background: var(--primary-bg); }
+.pos-cust-result .cr-name { font-size: 13px; font-weight: 600; }
+.pos-cust-result .cr-sub { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+.pos-cust-empty { padding: 12px; font-size: 12px; color: var(--text-secondary); text-align: center; }
 
 .pos-order-lines { margin-bottom: 12px; }
 .pos-order-line {
@@ -320,15 +428,29 @@ input, select, textarea { font-family: inherit; color: var(--text); }
     padding: 8px 16px 10px; margin-top: 4px; align-items: center;
 }
 .pos-total-row.grand span:last-child { color: var(--primary); font-size: 22px; }
+.pos-footer-btns { display: flex; gap: 10px; padding: 10px 14px 14px; flex-shrink: 0; background: var(--white); }
+.pos-cancel-bill-btn {
+    flex: 1; padding: 14px 8px; border: 1.5px solid var(--danger); border-radius: 14px;
+    background: var(--white); color: var(--danger); font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all 0.14s;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.pos-cancel-bill-btn:hover { background: var(--danger-bg); }
+.pos-cancel-bill-btn:disabled { border-color: var(--border); color: #D1D5DB; cursor: not-allowed; background: var(--white); }
 .pos-pay-btn {
-    width: 100%; padding: 16px; border: none;
+    flex: 1.7; padding: 14px 8px; border: none; border-radius: 14px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: var(--white); font-size: 16.5px; font-weight: 800; letter-spacing: 0.2px;
-    cursor: pointer; transition: all 0.15s; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
+    color: var(--white); font-size: 15.5px; font-weight: 800; letter-spacing: 0.2px;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
 }
 .pos-pay-btn:hover { filter: brightness(1.07); }
 .pos-pay-btn:disabled { background: #D1D5DB; cursor: not-allowed; filter: none; }
+.pos-key-chip {
+    font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+    background: rgba(255,255,255,0.22);
+}
+.pos-pay-btn:disabled .pos-key-chip { background: rgba(255,255,255,0.4); }
 
 /* ── Modal ── */
 .pos-modal-overlay {
@@ -522,6 +644,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                         </div>
                         <button class="pos-topbar-emp" id="posEmployeeBadge" onclick="showEmployeeSwitch()">
                             <span id="posEmployeeName">👤 —</span>
+                            <span class="emp-caret">▼</span>
                         </button>
                         <div class="pos-topbar-actions">
                             <button onclick="showHistoryOrders()" title="ประวัติ / คืนสินค้า">
@@ -546,42 +669,75 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                     <input type="text" id="posSearch" placeholder="ค้นหาสินค้า / สแกนบาร์โค้ด แล้วกด Enter" oninput="filterProducts()" onkeydown="onSearchKey(event)"/>
                                     <span class="search-hint">F2</span>
                                 </div>
-                                <div class="pos-warehouse-select">
-                                    <select id="posWarehouse" onchange="selectWarehouse(this.value)">
-                                        <option value="">คลังสินค้า...</option>
-                                    </select>
+                                <div class="pos-location-chip" id="posLocationChip">
+                                    <span class="plc-label">📍</span><span id="posLocationName">Location</span>
                                 </div>
                             </div>
-                            <div class="pos-cats" id="posCats"></div>
+                            <div class="pos-cats-row" id="posCatsRow" style="display:none;">
+                                <div class="pos-cats" id="posCats"></div>
+                                <button type="button" class="pos-cat-chip pos-cat-more" id="posCatMoreBtn" style="display:none;" onclick="toggleCatMenu(event)">เพิ่มเติม <span style="font-size:9px;">▼</span></button>
+                                <div class="pos-cat-menu" id="posCatMenu"></div>
+                            </div>
                             <div class="pos-products" id="posProducts">
                                 <div class="pos-no-products"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>กำลังโหลดสินค้า...</div>
+                            </div>
+                            <div class="pos-pagination" id="posPagination" style="display:none;">
+                                <button type="button" class="pos-page-btn" id="pgPrev" onclick="gotoPage(state.page - 1)" title="หน้าก่อนหน้า">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                                </button>
+                                <span id="pgNumbers" style="display:inline-flex;gap:5px;align-items:center;"></span>
+                                <button type="button" class="pos-page-btn" id="pgNext" onclick="gotoPage(state.page + 1)" title="หน้าถัดไป">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                                <span class="pos-page-spacer"></span>
+                                <span class="pos-perpage">แสดง
+                                    <select id="pgPerPage" onchange="setPerPage(this.value)">
+                                        <option value="12" selected="selected">12</option>
+                                        <option value="24">24</option>
+                                        <option value="48">48</option>
+                                        <option value="96">96</option>
+                                    </select> ต่อหน้า
+                                </span>
+                                <div class="pos-view-toggle">
+                                    <button type="button" id="viewGridBtn" class="active" onclick="setViewMode('grid')" title="มุมมองตาราง">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                                    </button>
+                                    <button type="button" id="viewListBtn" onclick="setViewMode('list')" title="มุมมองรายการ">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="pos-right">
                             <div class="pos-right-scroll">
-                                <div class="pos-section-title"><span>📡 ช่องทางขาย</span></div>
                                 <div class="pos-channel-row" id="posChannelRow">
                                     <button type="button" class="pos-channel-btn active" data-channel="walkin" onclick="selectChannel('walkin')">🏪 หน้าร้าน</button>
                                     <button type="button" class="pos-channel-btn" data-channel="phone" onclick="selectChannel('phone')">📞 โทร</button>
                                     <button type="button" class="pos-channel-btn" data-channel="line" onclick="selectChannel('line')">💬 LINE</button>
                                     <button type="button" class="pos-channel-btn" data-channel="other" onclick="selectChannel('other')">📦 อื่นๆ</button>
                                 </div>
+                                <div class="pos-section-title"><span>📡 ช่องทางขาย</span></div>
                                 <select id="posTradeChannel" class="pos-trade-select" title="Trade Channel">
                                     <option value="">Trade Channel (อัตโนมัติ)</option>
                                 </select>
                                 <div class="pos-customer-section">
                                     <div class="pos-section-title">
                                         <span>👤 ลูกค้า</span>
-                                        <span>
-                                            <button type="button" class="pos-toggle-link" onclick="openNewCustomer()">➕ ลูกค้าใหม่</button>
+                                        <span style="display:inline-flex;align-items:center;gap:8px;">
+                                            <button type="button" class="pos-new-cust-btn" onclick="openNewCustomer()">＋ ลูกค้าใหม่</button>
                                             <button type="button" class="pos-toggle-link" id="custToggle" onclick="toggleCustomer()">ซ่อน</button>
                                         </span>
                                     </div>
+                                    <div class="pos-partner-badge" id="custPartnerBadge" style="display:none;">
+                                        <span id="custPartnerBadgeName"></span>
+                                        <button type="button" onclick="clearSelectedPartner(true)" title="ยกเลิกการเลือกลูกค้า">✕</button>
+                                    </div>
+                                    <div class="pos-cust-search">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <input type="text" id="custSearch" placeholder="ค้นหาลูกค้า / เบอร์โทร" autocomplete="off" oninput="onCustSearchInput()" onkeydown="if(event.key==='Escape')closeCustResults()"/>
+                                        <div class="pos-cust-results" id="custResults"></div>
+                                    </div>
                                     <div id="custFields">
-                                        <div class="pos-partner-badge" id="custPartnerBadge" style="display:none;">
-                                            <span id="custPartnerBadgeName"></span>
-                                            <button type="button" onclick="clearSelectedPartner(true)" title="ยกเลิกการเลือกลูกค้า">✕</button>
-                                        </div>
                                         <input type="text" id="custName" placeholder="ชื่อลูกค้า (เว้นว่าง = Walk-in Customer)" oninput="clearSelectedPartner()"/>
                                         <input type="tel" id="custPhone" placeholder="เบอร์โทร"/>
                                         <textarea id="custAddress" placeholder="ที่อยู่" rows="1"></textarea>
@@ -597,13 +753,19 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                             </div>
                             <div class="pos-totals">
                                 <div class="pos-total-row"><span>ยอดก่อนภาษี</span><span id="posSubtotal">฿0.00</span></div>
-                                <div class="pos-total-row"><span>ภาษี</span><span id="posTax">฿0.00</span></div>
+                                <div class="pos-total-row"><span>ภาษีมูลค่าเพิ่ม</span><span id="posTax">฿0.00</span></div>
                                 <div class="pos-total-row grand"><span>รวมสุทธิ</span><span id="posTotal">฿0.00</span></div>
                             </div>
-                            <button class="pos-pay-btn" id="posPayBtn" disabled="disabled" onclick="openProcessModal()">
-                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
-                                <span id="posPayBtnText">ดำเนินการ</span>
-                            </button>
+                            <div class="pos-footer-btns">
+                                <button type="button" class="pos-cancel-bill-btn" id="posCancelBillBtn" disabled="disabled" onclick="cancelBill()">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    ยกเลิกบิล
+                                </button>
+                                <button type="button" class="pos-pay-btn" id="posPayBtn" disabled="disabled" onclick="openProcessModal()">
+                                    <span id="posPayBtnText">ชำระเงิน</span>
+                                    <span class="pos-key-chip">F9</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -811,12 +973,14 @@ async function jsonRpc(url, params) {
 
 // ─── State ──────────────────────────────────────────────────
 const state = {
-    products: [], allProducts: [], warehouses: [], categories: [],
+    products: [], allProducts: [], categories: [],
     selectedCategoryId: 0,
-    selectedWarehouseId: 0, orderLines: [],
+    page: 1, perPage: 12, viewMode: 'grid',
+    custResults: [],
+    orderLines: [],
     employees: [], selectedEmployeeId: null, selectedEmployeeName: '',
     channel: 'walkin', tradeChannelOptions: [], defaultTradeChannel: '',
-    defaultWarehouseId: null, sessionName: '',
+    defaultWarehouseId: null, locationId: null, locationName: '', sessionName: '',
     lastOrderData: null,
     returnOrderId: null, historyOrders: [],
     submitting: false, returnSubmitting: false,
@@ -862,12 +1026,16 @@ async function loadSessionInfo() {
         if (data.success) {
             state.employees = data.employees || [];
             state.defaultWarehouseId = data.default_warehouse_id;
+            state.locationId = data.default_location_id || null;
+            state.locationName = data.default_location_name || '';
             state.sessionName = data.session_name || ('#' + CURRENT_SESSION_ID);
             state.tradeChannelOptions = data.trade_channel_options || [];
             state.defaultTradeChannel = data.default_trade_channel || '';
             const si = document.getElementById('sessionInfo');
             if (si) si.textContent = 'Session: ' + state.sessionName + '  ·  พนักงาน ' + state.employees.length + ' คน';
             document.getElementById('posSessionName').textContent = state.sessionName;
+            const locEl = document.getElementById('posLocationName');
+            if (locEl) locEl.textContent = state.locationName || '—';
             renderTradeChannels();
         } else {
             showToast('โหลดข้อมูล session ไม่สำเร็จ: ' + (data.error || ''), 'error');
@@ -998,6 +1166,56 @@ function clearSelectedPartner(clearFields) {
         document.getElementById('custAddress').value = '';
     }
 }
+// ─── Customer Search ───────────────────────────────────────
+let custSearchTimer = null;
+function onCustSearchInput() {
+    if (custSearchTimer) clearTimeout(custSearchTimer);
+    custSearchTimer = setTimeout(doCustSearch, 250);
+}
+
+async function doCustSearch() {
+    const term = document.getElementById('custSearch').value.trim();
+    if (term.length < 2) { closeCustResults(); return; }
+    try {
+        const data = await jsonRpc('/pos_lite/api/customer_search', { term: term });
+        if (!data.success) return;
+        state.custResults = data.customers || [];
+        const box = document.getElementById('custResults');
+        if (!state.custResults.length) {
+            box.innerHTML = '<div class="pos-cust-empty">ไม่พบลูกค้า "' + escapeHtml(term) + '"</div>';
+        } else {
+            let html = '';
+            state.custResults.forEach(function (c, idx) {
+                html += '<div class="pos-cust-result" data-cust-idx="' + idx + '">'
+                    + '<div class="cr-name">' + escapeHtml(c.name) + '</div>'
+                    + '<div class="cr-sub">' + escapeHtml([c.phone, c.vat].filter(Boolean).join(' · ') || '—') + '</div></div>';
+            });
+            box.innerHTML = html;
+            box.querySelectorAll('[data-cust-idx]').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    pickCustomer(state.custResults[parseInt(this.getAttribute('data-cust-idx'))]);
+                });
+            });
+        }
+        box.classList.add('open');
+    } catch (e) { /* silent — autocomplete only */ }
+}
+
+function pickCustomer(c) {
+    if (!c) return;
+    document.getElementById('custName').value = c.name;
+    document.getElementById('custPhone').value = c.phone || '';
+    document.getElementById('custAddress').value = c.address || '';
+    setSelectedPartner(c);
+    document.getElementById('custSearch').value = '';
+    closeCustResults();
+    showToast('เลือกลูกค้า ' + c.name, 'success');
+}
+
+function closeCustResults() {
+    document.getElementById('custResults').classList.remove('open');
+}
+
 async function saveNewCustomer() {
     if (state.creatingCustomer) return;
     const name = document.getElementById('ncName').value.trim();
@@ -1042,53 +1260,21 @@ async function saveNewCustomer() {
 }
 
 // ─── Terminal Start ────────────────────────────────────────
-async function startTerminal() { await loadWarehouses(); }
-
-async function loadWarehouses() {
-    try {
-        const data = await jsonRpc('/pos_lite/api/warehouses', {});
-        if (data.success) {
-            state.warehouses = data.warehouses;
-            const sel = document.getElementById('posWarehouse');
-            let html = '';
-            data.warehouses.forEach(function (w) {
-                html += '<option value="' + w.id + '">🏭 ' + escapeHtml(w.name) + (w.code ? ' (' + escapeHtml(w.code) + ')' : '') + '</option>';
-            });
-            sel.innerHTML = html;
-            let defaultId = state.defaultWarehouseId;
-            if (!(defaultId && data.warehouses.some(function (w) { return w.id == defaultId; }))) {
-                defaultId = data.warehouses.length ? data.warehouses[0].id : 0;
-            }
-            if (defaultId) {
-                sel.value = defaultId;
-                state.selectedWarehouseId = parseInt(defaultId);
-                await loadProducts(defaultId);
-            }
-        }
-    } catch (e) { showToast('โหลดคลังสินค้าไม่สำเร็จ', 'error'); }
-}
-
-function selectWarehouse(whId) {
-    state.selectedWarehouseId = parseInt(whId) || 0;
-    if (state.orderLines.length) {
-        state.orderLines = [];
-        renderOrder(); updateTotals();
-        showToast('เปลี่ยนคลังสินค้า — ล้างตะกร้าแล้ว', 'warning');
-    }
-    loadProducts(whId);
+async function startTerminal() {
+    // Location is locked to the session's config (per-location POS). The server
+    // resolves the stock location from the session, so we just load products.
+    await loadProducts();
 }
 
 function reloadProducts() {
-    if (state.selectedWarehouseId) {
-        loadProducts(state.selectedWarehouseId);
-        showToast('โหลดสินค้าใหม่แล้ว', 'success');
-    }
+    loadProducts();
+    showToast('โหลดสินค้าใหม่แล้ว', 'success');
 }
 
-async function loadProducts(warehouseId) {
+async function loadProducts() {
     try {
         const data = await jsonRpc('/pos_lite/api/products', {
-            session_id: CURRENT_SESSION_ID, warehouse_id: parseInt(warehouseId) || null,
+            session_id: CURRENT_SESSION_ID,
         });
         if (data.success) {
             state.allProducts = data.products || [];
@@ -1099,6 +1285,8 @@ async function loadProducts(warehouseId) {
         }
     } catch (e) { showToast('โหลดสินค้าไม่สำเร็จ', 'error'); }
 }
+
+const INLINE_CATS = 4; // chips shown inline; the rest go into the "เพิ่มเติม" menu
 
 function buildCategories() {
     const seen = {};
@@ -1111,22 +1299,71 @@ function buildCategories() {
     });
     cats.sort(function (a, b) { return a.name.localeCompare(b.name); });
     state.categories = cats;
+    if (cats.length && !cats.some(function (c) { return c.id === state.selectedCategoryId; })) {
+        state.selectedCategoryId = 0;
+    }
+    renderCategories();
+}
+
+function renderCategories() {
+    const row = document.getElementById('posCatsRow');
     const el = document.getElementById('posCats');
-    if (cats.length < 2) { el.innerHTML = ''; state.selectedCategoryId = 0; return; }
+    const moreBtn = document.getElementById('posCatMoreBtn');
+    const menu = document.getElementById('posCatMenu');
+    const cats = state.categories;
+    if (cats.length < 2) {
+        row.style.display = 'none';
+        el.innerHTML = ''; menu.innerHTML = '';
+        state.selectedCategoryId = 0;
+        return;
+    }
+    row.style.display = '';
+    const inline = cats.slice(0, INLINE_CATS);
+    const overflow = cats.slice(INLINE_CATS);
+
     let html = '<button type="button" class="pos-cat-chip' + (state.selectedCategoryId === 0 ? ' active' : '') + '" data-cat="0">ทั้งหมด</button>';
-    cats.forEach(function (c) {
+    inline.forEach(function (c) {
         html += '<button type="button" class="pos-cat-chip' + (state.selectedCategoryId === c.id ? ' active' : '') + '" data-cat="' + c.id + '">' + escapeHtml(c.name) + '</button>';
     });
     el.innerHTML = html;
     el.querySelectorAll('.pos-cat-chip').forEach(function (chip) {
         chip.addEventListener('click', function () {
-            state.selectedCategoryId = parseInt(this.getAttribute('data-cat')) || 0;
-            el.querySelectorAll('.pos-cat-chip').forEach(function (c) { c.classList.remove('active'); });
-            this.classList.add('active');
-            filterProducts();
+            selectCategory(parseInt(this.getAttribute('data-cat')) || 0);
+        });
+    });
+
+    if (!overflow.length) {
+        moreBtn.style.display = 'none';
+        menu.innerHTML = '';
+        return;
+    }
+    moreBtn.style.display = '';
+    const overflowActive = overflow.some(function (c) { return c.id === state.selectedCategoryId; });
+    moreBtn.classList.toggle('active', overflowActive);
+    let mhtml = '';
+    overflow.forEach(function (c) {
+        mhtml += '<button type="button" class="' + (state.selectedCategoryId === c.id ? 'active' : '') + '" data-cat="' + c.id + '">' + escapeHtml(c.name) + '</button>';
+    });
+    menu.innerHTML = mhtml;
+    menu.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            selectCategory(parseInt(this.getAttribute('data-cat')) || 0);
         });
     });
 }
+
+function selectCategory(catId) {
+    state.selectedCategoryId = catId;
+    closeCatMenu();
+    renderCategories();
+    filterProducts();
+}
+
+function toggleCatMenu(ev) {
+    if (ev) ev.stopPropagation();
+    document.getElementById('posCatMenu').classList.toggle('open');
+}
+function closeCatMenu() { document.getElementById('posCatMenu').classList.remove('open'); }
 
 function filterProducts() {
     const term = document.getElementById('posSearch').value.toLowerCase().trim();
@@ -1142,6 +1379,7 @@ function filterProducts() {
         });
     }
     state.products = filtered;
+    state.page = 1;
     renderProducts();
 }
 
@@ -1165,41 +1403,131 @@ function onSearchKey(ev) {
     }
 }
 
+function stockBadgeHtml(p, isStatic) {
+    const qty = typeof p.qty_available === 'number' ? p.qty_available : 0;
+    const isService = p.type === 'service';
+    const cls = 'pos-stock-badge' + (isStatic ? ' static' : '');
+    if (isService) return '<span class="' + cls + ' in-stock">บริการ</span>';
+    if (qty <= 0) return '<span class="' + cls + ' no-stock">หมด</span>';
+    if (qty < 5) return '<span class="' + cls + ' low-stock">เหลือ ' + qty + '</span>';
+    return '<span class="' + cls + ' in-stock">' + qty + '</span>';
+}
+
 function renderProducts() {
     const el = document.getElementById('posProducts');
+    const totalPages = Math.max(1, Math.ceil(state.products.length / state.perPage));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
     if (!state.products.length) {
+        el.classList.remove('list-view');
         el.innerHTML = '<div class="pos-no-products"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>ไม่พบสินค้า</div>';
+        renderPagination(0);
         return;
     }
+
     const cartQty = {};
     state.orderLines.forEach(function (l) { cartQty[l.productId] = l.qty; });
+    const start = (state.page - 1) * state.perPage;
+    const pageItems = state.products.slice(start, start + state.perPage);
+    const listMode = state.viewMode === 'list';
+    el.classList.toggle('list-view', listMode);
+
     let html = '';
-    state.products.forEach(function (p, idx) {
+    pageItems.forEach(function (p) {
         const qty = typeof p.qty_available === 'number' ? p.qty_available : 0;
-        const outOfStock = qty <= 0;
+        const isService = p.type === 'service';
+        const outOfStock = !isService && qty <= 0;
         const inCart = cartQty[p.id] || 0;
-        const imageHtml = p.image_256
-            ? '<img class="pos-product-img" loading="lazy" src="data:image/png;base64,' + p.image_256 + '" alt=""/>'
-            : '<div class="pos-product-img-placeholder">📦</div>';
-        const badge = outOfStock
-            ? '<span class="pos-stock-badge no-stock">หมด</span>'
-            : (qty < 5 ? '<span class="pos-stock-badge low-stock">เหลือ ' + qty + '</span>'
-                       : '<span class="pos-stock-badge in-stock">' + qty + '</span>');
-        const cartBadge = inCart ? '<span class="pos-cart-count-badge">' + inCart + '</span>' : '';
-        html += '<div class="pos-product-card' + (outOfStock ? ' out-of-stock' : '') + '"'
-            + (outOfStock ? '' : ' data-prod-idx="' + idx + '"') + '>'
-            + imageHtml + badge + cartBadge
-            + '<div class="pos-product-info"><div class="pos-product-name">' + escapeHtml(p.name) + '</div>'
-            + (p.default_code ? '<div class="pos-product-code">' + escapeHtml(p.default_code) + '</div>' : '')
-            + '<div class="pos-product-price">' + fmt(p.list_price) + '</div></div></div>';
+        if (listMode) {
+            const imgHtml = p.image_128
+                ? '<img class="pr-img" loading="lazy" src="data:image/png;base64,' + p.image_128 + '" alt=""/>'
+                : '<div class="pr-img-placeholder">📦</div>';
+            html += '<div class="pos-product-row' + (outOfStock ? ' out-of-stock' : '') + '"'
+                + (outOfStock ? '' : ' data-prod-id="' + p.id + '"') + '>'
+                + imgHtml
+                + '<div class="pr-info"><div class="pr-name">' + escapeHtml(p.name) + '</div>'
+                + (p.default_code ? '<div class="pr-code">' + escapeHtml(p.default_code) + '</div>' : '')
+                + '</div>'
+                + (inCart ? '<span class="pos-cart-count-badge" style="position:static;">' + inCart + '</span>' : '')
+                + stockBadgeHtml(p, true)
+                + '<span class="pr-price">' + fmt(p.list_price) + '</span></div>';
+        } else {
+            const imageHtml = p.image_256
+                ? '<img class="pos-product-img" loading="lazy" src="data:image/png;base64,' + p.image_256 + '" alt=""/>'
+                : '<div class="pos-product-img-placeholder">📦</div>';
+            const cartBadge = inCart ? '<span class="pos-cart-count-badge">' + inCart + '</span>' : '';
+            html += '<div class="pos-product-card' + (outOfStock ? ' out-of-stock' : '') + '"'
+                + (outOfStock ? '' : ' data-prod-id="' + p.id + '"') + '>'
+                + imageHtml + stockBadgeHtml(p, false) + cartBadge
+                + '<div class="pos-product-info"><div class="pos-product-name">' + escapeHtml(p.name) + '</div>'
+                + (p.default_code ? '<div class="pos-product-code">' + escapeHtml(p.default_code) + '</div>' : '')
+                + '<div class="pos-product-price">' + fmt(p.list_price) + '</div></div></div>';
+        }
     });
     el.innerHTML = html;
-    el.querySelectorAll('.pos-product-card[data-prod-idx]').forEach(function (card) {
+    el.querySelectorAll('[data-prod-id]').forEach(function (card) {
         card.addEventListener('click', function () {
-            const p = state.products[parseInt(this.getAttribute('data-prod-idx'))];
-            if (p) addProduct(p.id);
+            addProduct(parseInt(this.getAttribute('data-prod-id')));
         });
     });
+    renderPagination(totalPages);
+}
+
+// ─── Pagination ────────────────────────────────────────────
+function pageWindow(current, total) {
+    // Mirrors the mockup: 1 2 3 4 5 … 12 with a sliding window around the
+    // current page. Returns page numbers with 0 as the ellipsis marker.
+    if (total <= 7) {
+        const all = [];
+        for (let i = 1; i <= total; i++) all.push(i);
+        return all;
+    }
+    if (current <= 4) return [1, 2, 3, 4, 5, 0, total];
+    if (current >= total - 3) return [1, 0, total - 4, total - 3, total - 2, total - 1, total];
+    return [1, 0, current - 1, current, current + 1, 0, total];
+}
+
+function renderPagination(totalPages) {
+    const bar = document.getElementById('posPagination');
+    if (!totalPages) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    document.getElementById('pgPrev').disabled = state.page <= 1;
+    document.getElementById('pgNext').disabled = state.page >= totalPages;
+    const numbers = document.getElementById('pgNumbers');
+    let html = '';
+    pageWindow(state.page, totalPages).forEach(function (n) {
+        if (n === 0) { html += '<span class="pos-page-ellipsis">…</span>'; return; }
+        html += '<button type="button" class="pos-page-btn' + (n === state.page ? ' active' : '') + '" data-page="' + n + '">' + n + '</button>';
+    });
+    numbers.innerHTML = html;
+    numbers.querySelectorAll('[data-page]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            gotoPage(parseInt(this.getAttribute('data-page')));
+        });
+    });
+}
+
+function gotoPage(n) {
+    const totalPages = Math.max(1, Math.ceil(state.products.length / state.perPage));
+    n = Math.min(Math.max(1, n), totalPages);
+    if (n === state.page) return;
+    state.page = n;
+    renderProducts();
+    document.getElementById('posProducts').scrollTop = 0;
+}
+
+function setPerPage(v) {
+    state.perPage = parseInt(v) || 12;
+    state.page = 1;
+    renderProducts();
+}
+
+function setViewMode(mode) {
+    state.viewMode = mode === 'list' ? 'list' : 'grid';
+    document.getElementById('viewGridBtn').classList.toggle('active', state.viewMode === 'grid');
+    document.getElementById('viewListBtn').classList.toggle('active', state.viewMode === 'list');
+    renderProducts();
 }
 
 // ─── Cart ──────────────────────────────────────────────────
@@ -1207,9 +1535,10 @@ function addProduct(id) {
     const prod = state.allProducts.find(function (p) { return p.id === id; });
     if (!prod) return;
     const qtyAvailable = typeof prod.qty_available === 'number' ? prod.qty_available : 0;
+    const isService = prod.type === 'service';
     const existing = state.orderLines.find(function (l) { return l.productId === id; });
     const currentQty = existing ? existing.qty : 0;
-    if (currentQty + 1 > qtyAvailable) { showToast('สต๊อกไม่พอ: ' + prod.name + ' (เหลือ ' + qtyAvailable + ')', 'error'); return; }
+    if (!isService && currentQty + 1 > qtyAvailable) { showToast('สต๊อกไม่พอ: ' + prod.name + ' (เหลือ ' + qtyAvailable + ')', 'error'); return; }
     if (existing) { existing.qty += 1; }
     else {
         state.orderLines.push({
@@ -1217,7 +1546,7 @@ function addProduct(id) {
             code: prod.default_code || '', qty: 1, discount: 0,
             image: prod.image_128 || null,
             tax_rate: typeof prod.tax_rate === 'number' ? prod.tax_rate : 0,
-            maxQty: qtyAvailable,
+            maxQty: isService ? null : qtyAvailable,
         });
     }
     renderOrder(); updateTotals(); renderProducts();
@@ -1238,7 +1567,7 @@ function setQty(id, newQty) {
     } else {
         const prod = state.allProducts.find(function (p) { return p.id === id; });
         const maxQty = prod && typeof prod.qty_available === 'number' ? prod.qty_available : line.maxQty;
-        if (newQty > maxQty) {
+        if (prod && prod.type !== 'service' && newQty > maxQty) {
             showToast('สต๊อกไม่พอ: ' + line.name + ' (เหลือ ' + maxQty + ')', 'error');
             newQty = Math.max(Math.floor(maxQty), 1);
         }
@@ -1268,6 +1597,20 @@ function clearCart() {
     if (!state.orderLines.length) return;
     state.orderLines = [];
     renderOrder(); updateTotals(); renderProducts();
+}
+
+function cancelBill() {
+    if (!state.orderLines.length) return;
+    if (!window.confirm('ยกเลิกบิลนี้ทั้งหมด?')) return;
+    state.orderLines = [];
+    document.getElementById('custName').value = '';
+    document.getElementById('custPhone').value = '';
+    document.getElementById('custAddress').value = '';
+    document.getElementById('custSearch').value = '';
+    setSelectedPartner(null);
+    closeCustResults();
+    renderOrder(); updateTotals(); renderProducts();
+    showToast('ยกเลิกบิลแล้ว', 'warning');
 }
 
 function lineTotal(l) {
@@ -1324,12 +1667,15 @@ function updateTotals() {
     document.getElementById('posTotal').textContent = fmt(t.total);
     const btn = document.getElementById('posPayBtn');
     const txt = document.getElementById('posPayBtnText');
+    const cancelBtn = document.getElementById('posCancelBillBtn');
     if (state.orderLines.length) {
         btn.disabled = false;
-        txt.textContent = 'ดำเนินการ ' + fmt(t.total);
+        cancelBtn.disabled = false;
+        txt.textContent = 'ชำระเงิน ' + fmt(t.total);
     } else {
         btn.disabled = true;
-        txt.textContent = 'ดำเนินการ';
+        cancelBtn.disabled = true;
+        txt.textContent = 'ชำระเงิน';
     }
 }
 
@@ -1372,7 +1718,6 @@ async function confirmProcess() {
         note: document.getElementById('orderNote').value.trim(),
         session_id: CURRENT_SESSION_ID,
         employee_id: state.selectedEmployeeId,
-        warehouse_id: state.selectedWarehouseId || null,
         line_ids: state.orderLines.map(function (l) {
             return {
                 product_id: l.productId, qty: l.qty, price_unit: l.price,
@@ -1394,7 +1739,7 @@ async function confirmProcess() {
             closeProcessModalForce();
             showToast('บันทึกออเดอร์ ' + data.name + ' สำเร็จ', 'success');
             await loadAndShowPrintDetail(data.order_id, data.name);
-            loadProducts(state.selectedWarehouseId); // refresh stock badges
+            loadProducts(); // refresh stock badges
         } else {
             showToast('เกิดข้อผิดพลาด: ' + (data.error || 'ไม่ทราบสาเหตุ'), 'error');
         }
@@ -1628,7 +1973,7 @@ async function confirmReturn() {
         if (data.success) {
             showToast('คืนสินค้าสำเร็จ — ' + data.name, 'success');
             closeReturnWizard();
-            loadProducts(state.selectedWarehouseId); // returned stock comes back
+            loadProducts(); // returned stock comes back
         } else {
             showToast('เกิดข้อผิดพลาด: ' + (data.error || 'ไม่ทราบสาเหตุ'), 'error');
         }
@@ -1651,13 +1996,20 @@ function closeReturnWizard() {
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         closeProcessModal(); closeEmployeeSwitch(); closePrintDetail(); closeReturnWizard(); closeHistoryOrders();
+        closeCatMenu(); closeCustResults();
     }
     if (e.key === 'F2') { e.preventDefault(); const s = document.getElementById('posSearch'); if (s) s.focus(); }
-    if (e.key === 'F4') {
+    if (e.key === 'F4' || e.key === 'F9') {
         e.preventDefault();
         const btn = document.getElementById('posPayBtn');
         if (btn && !btn.disabled && !document.getElementById('posProcessModal').classList.contains('open')) openProcessModal();
     }
+});
+
+// Close floating menus on outside click
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('#posCatMenu') && !e.target.closest('#posCatMoreBtn')) closeCatMenu();
+    if (!e.target.closest('.pos-cust-search')) closeCustResults();
 });
 
 // ─── Bootstrap ──────────────────────────────────────────────

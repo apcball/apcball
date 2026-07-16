@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class PosLiteConfig(models.Model):
@@ -14,6 +15,16 @@ class PosLiteConfig(models.Model):
         required=True,
         domain="[('company_id', '=', company_id)]",
         check_company=True,
+    )
+    location_id = fields.Many2one(
+        'stock.location',
+        string='Product Stock Location',
+        domain="[('usage', '=', 'internal'), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        check_company=True,
+        help='Location driven by this configuration: the POS Lite terminal reads '
+             'product stock from here, and pickings source/return to this location. '
+             'One config per (company, location). Leave empty only for legacy '
+             'records — new/edited configs must set a location.',
     )
     pricelist_id = fields.Many2one(
         'product.pricelist',
@@ -88,3 +99,61 @@ class PosLiteConfig(models.Model):
             ('company_id', '=', company.id),
             ('active', '=', True),
         ], order='id desc', limit=1)
+
+    @api.model
+    def get_config_for_location(self, location_id, company=None):
+        """Return the active config bound to a given stock.location.
+
+        With per-location configuration, the location is the primary key of a
+        config; this helper resolves it for sessions/orders that already know
+        which location they operate from.
+        """
+        if not location_id:
+            return self.env['pos.lite.config']
+        company = company or self.env.company
+        return self.search([
+            ('company_id', '=', company.id),
+            ('location_id', '=', location_id),
+            ('active', '=', True),
+        ], order='id desc', limit=1)
+
+    @api.constrains('company_id', 'location_id')
+    def _check_location_required(self):
+        """A config must be bound to exactly one stock.location.
+
+        Enforced at the application layer (not as a NOT NULL column) so legacy
+        rows without a location keep loading until they are edited/backfilled.
+        """
+        for config in self:
+            if not config.location_id:
+                raise ValidationError(_(
+                    'POS Lite Configuration "%(name)s" must specify a Product Stock '
+                    'Location. Each location requires its own configuration.'
+                ) % {'name': config.name or config.display_name})
+
+    @api.constrains('company_id', 'location_id')
+    def _check_location_unique(self):
+        """At most one config per (company, location).
+
+        Enforced in Python (rather than via `_sql_constraints`) so the failure
+        surfaces as a clean, translated ValidationError instead of a raw
+        psycopg2 UniqueViolation. Runs after the INSERT but before commit, so
+        the duplicate create still rolls back.
+        """
+        for config in self:
+            if not config.location_id:
+                continue
+            duplicate = self.sudo().search([
+                ('id', '!=', config.id),
+                ('company_id', '=', config.company_id.id),
+                ('location_id', '=', config.location_id.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'A POS Lite Configuration already exists for location '
+                    '"%(location)s" in company %(company)s. '
+                    'Each location may have only one configuration.'
+                ) % {
+                    'location': config.location_id.display_name,
+                    'company': config.company_id.display_name,
+                })

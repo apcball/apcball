@@ -57,10 +57,17 @@ class TestAdditionalBase(common.TransactionCase):
             'name': 'Emp Extra',
             'company_id': cls.company.id,
         })
+        cls.stock_location = cls.env['stock.location'].create({
+            'name': 'Test Stock Location - Extra',
+            'location_id': cls.warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': cls.company.id,
+        })
         cls.config = cls.env['pos.lite.config'].create({
             'name': 'Cfg Extra',
             'company_id': cls.company.id,
             'warehouse_id': cls.warehouse.id,
+            'location_id': cls.stock_location.id,
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
@@ -73,10 +80,11 @@ class TestAdditionalBase(common.TransactionCase):
             'employee_id': cls.employee.id,
             'company_id': cls.company.id,
         })
-        # Stock quant for storable product
+        # Stock quant for storable product — must sit at the config's location,
+        # since pickings now source from order.location_id (= session location).
         cls.env['stock.quant'].create({
             'product_id': cls.product_storable.id,
-            'location_id': cls.warehouse.lot_stock_id.id,
+            'location_id': cls.stock_location.id,
             'quantity': 50.0,
         })
 

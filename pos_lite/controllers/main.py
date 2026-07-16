@@ -12,6 +12,36 @@ _HANDLED_EXCEPTIONS = (UserError, ValidationError, MissingError, AccessError)
 _ORDER_LINE_FIELDS = ('product_id', 'description', 'qty', 'price_unit', 'discount', 'discount_type')
 
 
+def _terminal_product_domain(product_ids_in_stock):
+    """Return the products that can be selected by the terminal.
+
+    Stockable products must have stock in the selected warehouse. Service
+    products do not use stock quants, so they remain available when the stock
+    list is empty.
+    """
+    return [
+        ('sale_ok', '=', True),
+        ('can_be_pos', '=', True),
+        '|',
+        ('type', '=', 'service'),
+        ('id', 'in', product_ids_in_stock),
+    ]
+
+
+def _get_terminal_location(config):
+    """Resolve the stock location the terminal reads product stock from.
+
+    With per-location configuration, every active config is bound to a
+    stock.location, so the location IS the config's identity. The warehouse
+    fallback is kept only for legacy configs that predate the constraint.
+    """
+    if config and config.location_id:
+        return config.location_id
+    if config and config.warehouse_id:
+        return config.warehouse_id.lot_stock_id
+    return False
+
+
 def _sanitize_o2m_payload(raw, allowed_fields):
     """Convert a list of dicts (or [0,0,{...}] commands) into whitelist-only
     create commands. Drops any key not in allowed_fields."""
@@ -109,6 +139,8 @@ class PosLiteController(http.Controller):
                 'employees': [],
                 'default_warehouse_id': False,
                 'default_warehouse_name': '',
+                'default_location_id': False,
+                'default_location_name': '',
                 'default_pricelist_id': False,
                 'default_pricelist_name': '',
             }
@@ -125,6 +157,10 @@ class PosLiteController(http.Controller):
                         w = session.config_id.warehouse_id
                         result['default_warehouse_id'] = w.id
                         result['default_warehouse_name'] = w.name
+                    if session.config_id.location_id:
+                        loc = session.config_id.location_id
+                        result['default_location_id'] = loc.id
+                        result['default_location_name'] = loc.display_name
                     if session.config_id.pricelist_id:
                         p = session.config_id.pricelist_id
                         result['default_pricelist_id'] = p.id
@@ -168,18 +204,24 @@ class PosLiteController(http.Controller):
             session_id = data.get('session_id')
             warehouse_id = data.get('warehouse_id')
             warehouse = False
+            config = False
             cid = self._get_company_id()
 
-            if warehouse_id:
+            # When a session is provided, the location is locked to the session's
+            # config — ignore any client-supplied warehouse_id (per-location
+            # terminal contract). The warehouse_id param is honoured only for
+            # legacy callers that hit the endpoint without a session.
+            if session_id:
+                session = request.env['pos.lite.session'].sudo().browse(int(session_id))
+                if session.exists() and session.company_id.id in request.env.companies.ids:
+                    config = session.config_id
+                    if session.config_id.warehouse_id:
+                        warehouse = session.config_id.warehouse_id
+            elif warehouse_id:
                 warehouse = request.env['stock.warehouse'].sudo().search([
                     ('id', '=', int(warehouse_id)),
                     ('company_id', '=', cid),
                 ], limit=1)
-            elif session_id:
-                session = request.env['pos.lite.session'].sudo().browse(int(session_id))
-                if session.exists() and session.company_id.id in request.env.companies.ids:
-                    if session.config_id.warehouse_id:
-                        warehouse = session.config_id.warehouse_id
             if not warehouse:
                 config = request.env['pos.lite.config'].get_default_config()
                 if config and config.warehouse_id:
@@ -189,54 +231,51 @@ class PosLiteController(http.Controller):
                     ('company_id', '=', cid),
                 ], limit=1)
 
-            location = warehouse.lot_stock_id if warehouse else False
+            location = _get_terminal_location(config) if config else (warehouse.lot_stock_id if warehouse else False)
 
+            product_ids_in_stock = []
+            qty_map = {}
             if location:
                 quant_data = request.env['stock.quant'].read_group(
                     domain=[('location_id', '=', location.id)],
-                    fields=['product_id', 'quantity:sum'],
+                    fields=['product_id', 'quantity:sum', 'reserved_quantity:sum'],
                     groupby=['product_id'],
                     lazy=False,
                 )
-                product_ids_in_stock = []
-                qty_map = {}
                 for q in quant_data:
                     pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
-                    qty = q['quantity']
+                    # Free to Use (same definition as buz_stock_current_report):
+                    # on-hand minus reserved, never negative. Reserved stock is
+                    # promised to delivery orders and must not be sellable here.
+                    qty = max((q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0), 0.0)
                     product_ids_in_stock.append(pid)
                     qty_map[pid] = qty
 
-                products = request.env['product.product'].search_read(
-                    [
-                        ('id', 'in', product_ids_in_stock),
-                        ('sale_ok', '=', True),
-                        ('can_be_pos', '=', True),
-                    ],
-                    ['name', 'list_price', 'default_code', 'categ_id', 'barcode',
-                     'taxes_id', 'image_128', 'image_256']
-                )
-                # Pre-fetch tax rates for all products
-                tax_ids_set = set()
-                for p in products:
-                    for tid in (p.get('taxes_id') or []):
-                        tax_ids_set.add(tid)
-                tax_rate_map = {}
-                if tax_ids_set:
-                    for tax in request.env['account.tax'].sudo().browse(tax_ids_set):
-                        tax_rate_map[tax.id] = tax.amount
-                for p in products:
-                    p['qty_available'] = qty_map.get(p['id'], 0.0)
-                    # Compute effective tax rate for this product
-                    tax_rate = 0.0
-                    for tid in (p.get('taxes_id') or []):
-                        tax_rate += tax_rate_map.get(tid, 0.0)
-                    p['tax_rate'] = tax_rate
-                    if p.get('image_128'):
-                        p['image_128'] = p['image_128'].decode() if isinstance(p['image_128'], bytes) else p['image_128']
-                    if p.get('image_256'):
-                        p['image_256'] = p['image_256'].decode() if isinstance(p['image_256'], bytes) else p['image_256']
-            else:
-                products = []
+            products = request.env['product.product'].search_read(
+                _terminal_product_domain(product_ids_in_stock),
+                ['name', 'type', 'list_price', 'default_code', 'categ_id', 'barcode',
+                 'taxes_id', 'image_128', 'image_256']
+            )
+            # Pre-fetch tax rates for all products
+            tax_ids_set = set()
+            for p in products:
+                for tid in (p.get('taxes_id') or []):
+                    tax_ids_set.add(tid)
+            tax_rate_map = {}
+            if tax_ids_set:
+                for tax in request.env['account.tax'].sudo().browse(tax_ids_set):
+                    tax_rate_map[tax.id] = tax.amount
+            for p in products:
+                p['qty_available'] = qty_map.get(p['id'], 0.0)
+                # Compute effective tax rate for this product
+                tax_rate = 0.0
+                for tid in (p.get('taxes_id') or []):
+                    tax_rate += tax_rate_map.get(tid, 0.0)
+                p['tax_rate'] = tax_rate
+                if p.get('image_128'):
+                    p['image_128'] = p['image_128'].decode() if isinstance(p['image_128'], bytes) else p['image_128']
+                if p.get('image_256'):
+                    p['image_256'] = p['image_256'].decode() if isinstance(p['image_256'], bytes) else p['image_256']
 
             return {'success': True, 'products': products}
         except _HANDLED_EXCEPTIONS as e:
@@ -336,6 +375,42 @@ class PosLiteController(http.Controller):
                     'address': address,
                 },
             }
+        except _HANDLED_EXCEPTIONS as e:
+            return {'success': False, 'error': str(e)}
+
+    @http.route('/pos_lite/api/customer_search', type='json', auth='user', methods=['POST'], csrf=False)
+    def customer_search(self, **kwargs):
+        """Autocomplete customers by name / phone / tax id for the terminal.
+
+        Runs as sudo for the same reason as create_customer: cashiers are not
+        partner managers. Read-only, returns a whitelisted subset of fields.
+        """
+        try:
+            data = self._get_json_data()
+            term = (data.get('term') or '').strip()
+            if len(term) < 2:
+                return {'success': True, 'customers': []}
+            cid = self._get_company_id()
+            partners = request.env['res.partner'].sudo().search([
+                '|', '|', '|',
+                ('name', 'ilike', term),
+                ('phone', 'ilike', term),
+                ('mobile', 'ilike', term),
+                ('vat', 'ilike', term),
+                ('active', '=', True),
+                '|', ('company_id', '=', False), ('company_id', '=', cid),
+            ], limit=10, order='name')
+            customers = []
+            for p in partners:
+                address = ' '.join(filter(None, [p.street, p.city, p.zip]))
+                customers.append({
+                    'id': p.id,
+                    'name': p.name,
+                    'phone': p.phone or p.mobile or '',
+                    'vat': p.vat or '',
+                    'address': address,
+                })
+            return {'success': True, 'customers': customers}
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
@@ -540,18 +615,21 @@ class PosLiteController(http.Controller):
             ], limit=20)
             # Batch qty_available via read_group on stock.quant instead of
             # touching p.qty_available per product (N+1 on big catalogs).
+            # Reports Free to Use (on-hand minus reserved), same definition
+            # as buz_stock_current_report.
             qty_map = {}
             if products:
                 quants = request.env['stock.quant'].read_group(
                     domain=[('product_id', 'in', products.ids),
                             ('location_id.usage', '=', 'internal')],
-                    fields=['product_id', 'quantity:sum'],
+                    fields=['product_id', 'quantity:sum', 'reserved_quantity:sum'],
                     groupby=['product_id'],
                     lazy=False,
                 )
                 for q in quants:
                     pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
-                    qty_map[pid] = qty_map.get(pid, 0.0) + q['quantity']
+                    free = (q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0)
+                    qty_map[pid] = qty_map.get(pid, 0.0) + free
             result = []
             for p in products:
                 result.append({
@@ -559,7 +637,7 @@ class PosLiteController(http.Controller):
                     'name': p.display_name,
                     'default_code': p.default_code or '',
                     'list_price': p.list_price,
-                    'qty_available': qty_map.get(p.id, 0.0),
+                    'qty_available': max(qty_map.get(p.id, 0.0), 0.0),
                 })
             return {'success': True, 'products': result}
         except _HANDLED_EXCEPTIONS as e:

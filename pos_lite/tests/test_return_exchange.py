@@ -71,11 +71,20 @@ class TestReturnExchangeBase(common.TransactionCase):
             'company_id': cls.company.id,
         })
 
+        # Dedicated stock location so tests never collide with a real config.
+        cls.stock_location = cls.env['stock.location'].create({
+            'name': 'Test Stock Location - Return',
+            'location_id': cls.warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': cls.company.id,
+        })
+
         # Config
         cls.config = cls.env['pos.lite.config'].create({
             'name': 'Test Config',
             'company_id': cls.company.id,
             'warehouse_id': cls.warehouse.id,
+            'location_id': cls.stock_location.id,
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
