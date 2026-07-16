@@ -41,6 +41,12 @@ class ReportInvoiceExcel(models.AbstractModel):
 
                 pos_line = getattr(line, "pos_lite_order_line_id", False)
                 pos_order = pos_line.order_id if pos_line else self.env["pos.lite.order"]
+                # Fallback: if no pos_line link, check if invoice itself is from a POS order
+                if not pos_order and invoice.id:
+                    pos_order_search = self.env["pos.lite.order"].search(
+                        [("invoice_id", "=", invoice.id)], limit=1
+                    )
+                    pos_order = pos_order_search if pos_order_search else self.env["pos.lite.order"]
 
                 pickings = self.env["stock.picking"]
                 has_bom_line = False
