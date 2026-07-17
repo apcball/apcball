@@ -73,14 +73,15 @@
                                 border-right: none !important;
                             }
                         </style>
-                        <t t-set="items_per_page" t-value="15"/>
+                        <t t-set="items_per_page" t-value="10"/>
                         <t t-set="total_items" t-value="len(doc.order_line)"/>
-                        <t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
+                        <!-- Always render at least one page, including orders without lines. -->
+                        <t t-set="total_pages" t-value="max(1, (total_items + items_per_page - 1) // items_per_page)"/>
 
 
-                        <t t-set="groups_of_10" t-value="[doc.order_line[i:i+10] for i in range(0, len(doc.order_line), 10)]"/>
                         <t t-set="page_num" t-value="0"/>
-                        <t t-foreach="groups_of_10" t-as="group">
+                        <t t-foreach="range(total_pages)" t-as="page_num">
+                           <t t-set="group" t-value="doc.order_line[page_num * items_per_page:(page_num + 1) * items_per_page]"/>
                            <div t-attf-style="#{page_num != 0 and 'page-break-before: always;' or ''}">
 
                         <!-- Company Info Section -->
@@ -167,7 +168,7 @@
                                     <th style="width: 15%;" class="text-right">จำนวน</th>
                                     <th style="width: 12%;" class="text-right">ราคา/หน่วย</th>
                                     <th style="width: 8%;" class="text-right">ส่วนลด(%)</th>
-                                    <th style="width: 15%;" class="text-right">จำนวนเงิน</th>
+                                    <th style="width: 10%;" class="text-right">จำนวนเงิน</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -179,17 +180,17 @@
                                     </td>
                                     <td><span t-field="line.product_id.name"/></td>
                                     <td class="text-right">
-                                        <span t-field="line.product_uom_qty"/>
+                                        <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 2}'/>
                                         <span t-field="line.product_uom"/>
                                     </td>
                                     <td class="text-right">
-                                        <span t-field="line.price_unit"/>
+                                        <span t-field="line.price_unit" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td class="text-right">
-                                        <span t-field="line.discount"/>%
+                                        <span t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/>%
                                     </td>
                                     <td class="text-right">
-                                        <span t-field="line.price_subtotal"/>
+                                        <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                 </tr>
                             </t>
@@ -206,35 +207,32 @@
                             </tbody>
                         </table>
                     </div>
-                    <t t-set="page_num" t-value="page_num + 1"/>
-                          
-                     
                     </t>
 
                         <!-- Summary Section -->
                         <div class="row">
                             <div class="col-7">
                                 <strong>หมายเหตุ :</strong>
-                                <p t-field="doc.note"/>
+                                <!-- <p t-field="doc.note"/> -->
                             </div>
                             <div class="col-5">
                                 <table class="table table-sm">
                                     <tr>
                                         <td>รวมเงิน</td>
                                         <td class="text-right">
-                                            <span t-field="doc.amount_untaxed"/>
+                                            <span t-field="doc.amount_untaxed" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>ภาษีมูลค่าเพิ่ม 7%</td>
                                         <td class="text-right">
-                                            <span t-field="doc.amount_tax"/>
+                                            <span t-field="doc.amount_tax" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td><strong>รวมทั้งสิ้น</strong></td>
                                         <td class="text-right">
-                                            <strong t-field="doc.amount_total"/>
+                                            <strong t-field="doc.amount_total" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                     </tr>
                                 </table>
