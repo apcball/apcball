@@ -277,9 +277,7 @@
                             <thead>
                                 <tr>
                                     <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">ลำดับ<br/><span style="font-size: 16px;">(No)</span></th>
-                                    <th style="width: 12%; text-align: center; border: 1px solid black; padding: 4px;">รหัสสินค้า<br/><span style="font-size: 16px;">(Item No)</span></th>
                                     <th style="width: 25%; text-align: center; border: 1px solid black; padding: 4px;">รายการ<br/><span style="font-size: 16px;">(Description)</span></th>
-                                    <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">จำนวน<br/><span style="font-size: 16px;">(Qty)</span></th>
                                     <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">หน่วย<br/><span style="font-size: 16px;">(Unit)</span></th>
                                     <th style="width: 12%; text-align: center; border: 1px solid black; padding: 4px;">ราคา/หน่วย<br/><span style="font-size: 16px;">(Unit Price)</span></th>
                                     <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">ส่วนลด<br/><span style="font-size: 16px;">(Discount)</span></th>
@@ -296,9 +294,6 @@
                                         <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
                                             <span t-esc="current_line_number"/>
                                         </td>
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
-                                            <span t-field="line.product_id.default_code"/>
-                                        </td>
                                         <td style="border: 1px solid black; text-align: left; vertical-align: middle; padding-left: 4px;">
                                             <div style="
                                                 display: -webkit-box;
@@ -311,9 +306,6 @@
                                                 max-height: 2.6em;">
                                                 <span t-field="line.name"/>
                                             </div>
-                                        </td>
-                                        <td style="border: 1px solid black; text-align: right; vertical-align: middle;">
-                                            <span t-field="line.quantity"/>
                                         </td>
                                         <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
                                             <span t-field="line.product_uom_id.name"/>
@@ -338,7 +330,7 @@
                                 <!-- Totals -->
                                 <tfoot>
                                     <tr>
-                                        <td colspan="4" style="text-align: left; border-top: 1px solid #000; line-height: 1;  vertical-align: top; padding: 0;">
+                                        <td colspan="2" style="text-align: left; border-top: 1px solid #000; line-height: 1;  vertical-align: top; padding: 0;">
                                             <!-- ส่วนบน -->
                                             <div style="min-height: 145px; height: 145px; margin-top: 10px; padding: 8px 10px; box-sizing: border-box; border-bottom: 1.5px solid #000;">
                                                 <div style="line-height: 1.25; font-size: 12px;">
