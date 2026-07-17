@@ -164,7 +164,7 @@
                             <thead>
                                 <tr class="table-header">
                                     <th style="width: 5%;">ลำดับ</th>
-                                    <th style="width: 45%;">รายการ</th>
+                                    <th style="width: 45%; text-align: center;">รายการ</th>
                                     <th style="width: 15%;" class="text-right">จำนวน</th>
                                     <th style="width: 12%;" class="text-right">ราคา/หน่วย</th>
                                     <th style="width: 8%;" class="text-right">ส่วนลด(%)</th>
@@ -180,14 +180,14 @@
                                     </td>
                                     <td><span t-field="line.product_id.name"/></td>
                                     <td class="text-right">
-                                        <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 0}'/>
                                         <span t-field="line.product_uom"/>
                                     </td>
                                     <td class="text-right">
                                         <span t-field="line.price_unit" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td class="text-right">
-                                        <span t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/>%
+                                        <span t-field="line.discount" t-options='{"widget": "float", "precision": 0}'/>%
                                     </td>
                                     <td class="text-right">
                                         <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/>
