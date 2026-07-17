@@ -274,25 +274,25 @@
                         </div>
 
                           <!-- Product Lines and -->
-                         <div class="product-section font-size-18">
-                          <table class="product-table" style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 5px;">
+                         <div class="product-section" style="font-size: 12px;">
+                          <table class="product-table" style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 5px; font-size: 12px;">
                             <thead>
                                 <tr>
-                                    <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">ลำดับ<br/><span style="font-size: 16px;">(No)</span></th>
-                                    <th style="width: 25%; text-align: center; border: 1px solid black; padding: 4px;">รายการ<br/><span style="font-size: 16px;">(Description)</span></th>
-                                    <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">หน่วย<br/><span style="font-size: 16px;">(Unit)</span></th>
-                                    <th style="width: 12%; text-align: center; border: 1px solid black; padding: 4px;">ราคา/หน่วย<br/><span style="font-size: 16px;">(Unit Price)</span></th>
-                                    <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">ส่วนลด<br/><span style="font-size: 16px;">(Discount)</span></th>
-                                    <th style="width: 12%; text-align: center; border: 1px solid black; padding: 4px;">จำนวนเงิน<br/><span style="font-size: 16px;">(Amount)</span></th>
+                                    <th style="width: 6%; text-align: center; border: 1px solid black; padding: 2px;">ลำดับ<br/><span style="font-size: 10px;">(No)</span></th>
+                                    <th style="width: 62%; text-align: center; border: 1px solid black; padding: 2px;">รายการ<br/><span style="font-size: 10px;">(Description)</span></th>
+                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">หน่วย<br/><span style="font-size: 10px;">(Unit)</span></th>
+                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">ราคา/หน่วย<br/><span style="font-size: 10px;">(Unit Price)</span></th>
+                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">ส่วนลด<br/><span style="font-size: 10px;">(Discount)</span></th>
+                                    <th style="width: 12%; text-align: center; border: 1px solid black; padding: 2px;">จำนวนเงิน<br/><span style="font-size: 10px;">(Amount)</span></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody style="height: 240px;">
                                 <t t-set="max_lines" t-value="7"/>
                                 <t t-set="line_number" t-value="((page_number - 1) * max_lines) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
 
                                 <t t-foreach="group" t-as="line">
-                                    <tr style="font-size: 18px; height: 30px;">
+                                    <tr style="font-size: 12px; height: 30px;">
                                         <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
                                             <span t-esc="current_line_number"/>
                                         </td>
@@ -304,8 +304,8 @@
                                                 overflow: hidden;
                                                 text-overflow: ellipsis;
                                                 white-space: normal;
-                                                line-height: 1.6em;
-                                                max-height: 2.6em;">
+                                                line-height: 1.25em;
+                                                max-height: 2.5em;">
                                                 <span t-field="line.name"/>
                                             </div>
                                         </td>
@@ -333,20 +333,20 @@
                                 <tfoot>
                                     <tr>
                                         <td colspan="2" style="text-align: left; border-top: 1px solid #000; line-height: 1;  vertical-align: top; padding: 0;">
-                                            <div style="min-height: 35px; height: 35px; padding: 5px 10px; box-sizing: border-box; font-size: 18px; line-height: 1.2;">
+                                            <div style="min-height: 35px; height: 35px; padding: 5px 10px; box-sizing: border-box; font-size: 12px; line-height: 1.2;">
                                                 <strong>จำนวนเงิน (ตัวอักษร):</strong>
                                                 <span t-esc="doc.amount_total_text_th"/>
                                             </div>
 
                                         </td>
-                                        <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 19px; vertical-align: top;">
+                                        <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 12px; vertical-align: top;">
                                             <div style="font-weight: bold; text-align: left;">
                                                 รวมเป็นเงิน / Total Amount<br/>
                                                 ภาษีมูลค่าเพิ่ม 7% / VAT 7%<br/>
                                                 จำนวนเงินรวมทั้งสิ้น / Grand Total
                                             </div>
                                         </td>
-                                        <td style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 18px; vertical-align: top;">
+                                        <td style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 12px; vertical-align: top;">
                                             <div>
                                                 <t t-set="amount_total" t-value="doc.amount_untaxed or 0.0"/>
                                                 <t t-set="amount_tax" t-value="doc.amount_tax or 0.0"/>
