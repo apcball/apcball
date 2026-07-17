@@ -222,17 +222,17 @@
                                 <!-- ซ้าย -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
-                                        <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
-                                        <div><strong>เลขประจำตัวผู้เสียภาษี:</strong> <span t-field="doc.partner_id.vat"/></div>
+                                        <div><strong style="display: inline-block; width: 150px; margin-right: 10px;">ชื่อลูกค้า:</strong><span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
+                                        <div><strong style="display: inline-block; width: 150px; margin-right: 10px;">เลขประจำตัวผู้เสียภาษี:</strong><span t-field="doc.partner_id.vat"/></div>
                                         <div>
-                                            <strong>ที่อยู่:</strong>
+                                            <strong style="display: inline-block; width: 150px; margin-right: 10px;">ที่อยู่:</strong>
                                             <span t-field="doc.partner_id.street"/>
                                             <span t-field="doc.partner_id.street2"/>
                                             <span t-field="doc.partner_id.city"/>
                                             <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </div>
-                                        <div><strong>โทรศัพท์:</strong> <span t-field="doc.partner_id.phone"/></div>
+                                        <div><strong style="display: inline-block; width: 150px; margin-right: 10px;">โทรศัพท์:</strong><span t-field="doc.partner_id.phone"/></div>
                                     </div>
                                 </div>
 
