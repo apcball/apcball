@@ -481,7 +481,13 @@ class ArSettlement(models.Model):
             self._adjust_payment_move(payment, shortfall)
 
         # ── 3. Reconcile invoices ──────────────────────────────────────────
-        for line in inv_selected:
+        # Sort: same-partner invoices FIRST to avoid exhausting payment AR
+        # before they can be reconciled directly (different-partner invoices
+        # create clearing entries that consume the payment AR credit).
+        inv_sorted = inv_selected.sorted(
+            lambda l: (l.invoice_id.partner_id != self.partner_id, l.invoice_id.name)
+        )
+        for line in inv_sorted:
             self._reconcile_invoice(payment, line)
 
         # ── 4. Apply credit notes ──────────────────────────────────────────
