@@ -222,60 +222,46 @@
                                 <!-- ซ้าย -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
-                                        <div><strong style="display: inline-block; width: 140px; margin-right: 10px;">ชื่อลูกค้า:</strong><span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
-                                        <div><strong style="display: inline-block; width: 140px; margin-right: 10px;">เลขประจำตัวผู้เสียภาษี:</strong><span t-field="doc.partner_id.vat"/></div>
+                                        <div><strong style="display: inline-block; width: 100px; margin-right: 10px;">ชื่อลูกค้า:</strong><span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
+                                        <div><strong style="display: inline-block; width: 100px; margin-right: 10px;">เลขประจำตัวผู้เสียภาษี:</strong><span t-field="doc.partner_id.vat"/></div>
                                         <div>
-                                            <strong style="display: inline-block; width: 140px; margin-right: 10px;">ที่อยู่:</strong>
+                                            <strong style="display: inline-block; width: 100px; margin-right: 10px;">ที่อยู่:</strong>
                                             <span t-field="doc.partner_id.street"/>
                                             <span t-field="doc.partner_id.street2"/>
                                             <span t-field="doc.partner_id.city"/>
                                             <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </div>
-                                        <div><strong style="display: inline-block; width: 140px; margin-right: 10px;">โทรศัพท์:</strong><span t-field="doc.partner_id.phone"/></div>
+                                        <div><strong style="display: inline-block; width: 100px; margin-right: 10px;">โทรศัพท์:</strong><span t-field="doc.partner_id.phone"/></div>
                                     </div>
                                 </div>
 
                                 <!-- ขวา -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
-                                        <div style="margin-bottom:2px;">สถานที่ส่ง:
-                                            <span t-field="doc.partner_shipping_id.name"/>
-                                            <span t-field="doc.partner_shipping_id.street"/>
-                                            <span t-field="doc.partner_shipping_id.street2"/>
-                                            <span t-field="doc.partner_shipping_id.city"/>
-                                            <span t-field="doc.partner_shipping_id.state_id.name"/>
-                                            <span t-field="doc.partner_shipping_id.zip"/>
-                                        </div>
-
                                         <div style="display: flex; margin-bottom: 2px;">
                                             <div style="width: 50%;">
-                                              <strong>ผู้ติดต่อ:</strong>
-                                              <span t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/>
-                                            </div>
-                                            <div style="width: 50%;">
-                                              <strong>เลขที่ใบสั่งขาย:</strong>
+                                              <strong style="display: inline-block; width: 130px; margin-right: 10px;">เลขที่ใบสั่งขาย:</strong>
                                               <t t-set="so" t-value="doc.invoice_line_ids and doc.invoice_line_ids[0].sale_line_ids and doc.invoice_line_ids[0].sale_line_ids[0].order_id"/>
                                               <span t-esc="(so and so.client_order_ref) or (so and so.name) or ''"/>
                                             </div>
                                           </div>
-
-                                        <div style="display: flex; justify-content: space-between; margin-top: 2px; margin-bottom:2px;">
+                                        <div style="display: block; margin-top: 2px; margin-bottom:2px;">
                                             <div style="width: 65%;">
-                                                <strong>พนักงานขาย:</strong>
+                                                <strong style="display: inline-block; width: 130px; margin-right: 10px;">พนักงานขาย:</strong>
                                                 <span t-field="doc.invoice_user_id.employee_id.name"/>
                                             </div>
                                             <div style="width: 35%;">
-                                                <strong>เงื่อนไข:</strong>
+                                                <strong style="display: inline-block; width: 130px; margin-right: 10px;">เงื่อนไข:</strong>
                                             </div>
                                         </div>
-                                        <div style="display: flex; justify-content: space-between; margin-top: 2px; margin-bottom:2px;">
+                                        <div style="display: block; margin-top: 2px; margin-bottom:2px;">
                                             <div style="width: 65%;">
-                                                <strong>วันครบกำหนด:</strong>
+                                                <strong style="display: inline-block; width: 130px; margin-right: 10px;">วันครบกำหนด:</strong>
                                                 <span t-field="doc.invoice_date_due" t-options='{"format": "dd/MM/yyyy"}'/>
                                             </div>
                                             <div style="width: 35%;">
-                                                <strong>Credit:</strong>
+                                                <strong style="display: inline-block; width: 130px; margin-right: 10px;">Credit:</strong>
                                                 <span t-esc="doc.invoice_payment_term_id.name or ''"/>
                                             </div>
                                         </div>
