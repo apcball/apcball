@@ -60,6 +60,18 @@
                             .delivery-address > div {
                                 min-height: 1.2em;
                             }
+                            .product-table {
+                                border: 1px solid #000 !important;
+                            }
+                            .product-table th,
+                            .product-table td {
+                                border: none !important;
+                                border-right: 1px solid #8B9B7C !important;
+                            }
+                            .product-table th:last-child,
+                            .product-table td:last-child {
+                                border-right: none !important;
+                            }
                         </style>
                         <t t-set="items_per_page" t-value="15"/>
                         <t t-set="total_items" t-value="len(doc.order_line)"/>
@@ -97,11 +109,11 @@
                             <div class="col-6">
                                 <div class="info-box" style="height: 250px; overflow: hidden;">
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">นามผู้ซื้อ:</strong>
+                                        <strong style="width: 35%; display: inline-block; margin-right: 10px;">นามผู้ซื้อ :</strong>
                                         <span t-field="doc.partner_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">สถานที่จัดส่ง:</strong>
+                                        <strong style="width: 35%; display: inline-block; margin-right: 10px;">สถานที่จัดส่ง :</strong>
                                         <div class="delivery-address">
                                             <div t-if="doc.partner_shipping_id.name" t-field="doc.partner_shipping_id.name"/>
                                             <div>
@@ -115,7 +127,7 @@
                                         </div>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
+                                        <strong style="width: 35%; display: inline-block; margin-right: 10px;">เลขประจำตัวผู้เสียภาษี :</strong>
                                         <span t-field="doc.partner_id.vat"/>
                                     </div>
                                     </div>
@@ -123,23 +135,23 @@
                             <div class="col-6">
                                 <div class="info-box" style="min-height: 250px;">
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">เลขที่:</strong>
+                                        <strong style="width: 35%; display: inline-block;">เลขที่ :</strong>
                                         <span t-field="doc.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">วันที่:</strong>
+                                        <strong style="width: 35%; display: inline-block;">วันที่ :</strong>
                                         <span t-field="doc.date_order" t-options='{"widget": "date"}'/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">พนักงานขาย:</strong>
+                                        <strong style="width: 35%; display: inline-block;">พนักงานขาย :</strong>
                                         <span t-field="doc.user_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">Customer PO:</strong>
+                                        <strong style="width: 35%; display: inline-block;">Customer PO :</strong>
                                         <span t-field="doc.client_order_ref"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">เครดิต:</strong>
+                                        <strong style="width: 35%; display: inline-block;">เครดิต :</strong>
                                         <span t-field="doc.payment_term_id.name"/>
                                     </div>
                                 </div>
@@ -147,12 +159,12 @@
                         </div>
 
                         <!-- Product Table -->
-                        <table class="table table-sm" style="border: 1px solid #000;">
+                        <table class="table table-sm product-table" style="border: 1px solid #000; border-collapse: collapse;">
                             <thead>
                                 <tr class="table-header">
                                     <th style="width: 5%;">ลำดับ</th>
-                                    <th style="width: 50%;">รายการ</th>
-                                    <th style="width: 10%;" class="text-right">จำนวน</th>
+                                    <th style="width: 45%;">รายการ</th>
+                                    <th style="width: 15%;" class="text-right">จำนวน</th>
                                     <th style="width: 12%;" class="text-right">ราคา/หน่วย</th>
                                     <th style="width: 8%;" class="text-right">ส่วนลด(%)</th>
                                     <th style="width: 15%;" class="text-right">จำนวนเงิน</th>
@@ -161,7 +173,7 @@
                             <tbody>
                                 <t t-set="start_index" t-value="page_num * 10"/>
                                 <t t-foreach="group" t-as="line" t-index="line_index">
-                                <tr style="border-bottom: 1px solid #8B9B7C;">
+                                <tr>
                                     <td class="text-center">
                                         <span t-esc="start_index + line_index + 1"/>
                                     </td>
@@ -181,6 +193,16 @@
                                     </td>
                                 </tr>
                             </t>
+                            <t t-foreach='range(10 - len(group))' t-as='empty_index'>
+                                <tr>
+                                    <td>&#160;</td>
+                                    <td>&#160;</td>
+                                    <td>&#160;</td>
+                                    <td>&#160;</td>
+                                    <td>&#160;</td>
+                                    <td>&#160;</td>
+                                </tr>
+                            </t>
                             </tbody>
                         </table>
                     </div>
@@ -192,7 +214,7 @@
                         <!-- Summary Section -->
                         <div class="row">
                             <div class="col-7">
-                                <strong>หมายเหตุ:</strong>
+                                <strong>หมายเหตุ :</strong>
                                 <p t-field="doc.note"/>
                             </div>
                             <div class="col-5">
@@ -223,14 +245,14 @@
                         <div class="row" style="margin-top: 10px;">
                             <div class="col-12">
                                 <div style="border-bottom: 1px solid black;">
-                                    <span>จำนวนเงินตัวอักษร: </span>
+                                    <span>จำนวนเงินตัวอักษร :</span>
                                     <span t-esc="doc.amount_to_text_th()"/>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Signatures -->
-                        <div class="row mt-4">
+                        <div class="row" style="margin-top: 60px;">
                             <div class="col-4">
                                 <div class="text-center">
                                     <p>____________________</p>
