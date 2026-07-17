@@ -179,7 +179,7 @@
                          <!-- Document Title -->
                          <div class="row mb-2">
                             <div class="col-12 text-center">
-                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบแจ้งหนี้ / Invoice</h2>
+                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 50px;">ใบแจ้งหนี้ / Invoice</h2>
                                 <!-- <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Invoice</p> -->
                             </div>
                         </div>
