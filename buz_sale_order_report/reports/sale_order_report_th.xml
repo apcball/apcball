@@ -164,9 +164,9 @@
                             <thead>
                                 <tr class="table-header">
                                     <th style="width: 5%;">ลำดับ</th>
-                                    <th style="width: 45%; text-align: center;">รายการ</th>
-                                    <th style="width: 15%;" class="text-right">จำนวน</th>
-                                    <th style="width: 12%;" class="text-right">ราคา/หน่วย</th>
+                                    <th style="width: 59%; text-align: center;">รายการ</th>
+                                    <th style="width: 8%;" class="text-right">จำนวน</th>
+                                    <th style="width: 10%;" class="text-right">ราคา/หน่วย</th>
                                     <th style="width: 8%;" class="text-right">ส่วนลด(%)</th>
                                     <th style="width: 10%;" class="text-right">จำนวนเงิน</th>
                                 </tr>
