@@ -1,12 +1,12 @@
 {
     'name': 'Warranty Management',
-    'version': '17.0.1.3.0',
+    'version': '17.0.1.4.0',
     'category': 'Sales/Warranty',
     'summary': 'Warranty cards linked to Service Receipt claims',
     'description': """
         Warranty Management System
         ===========================
-        * Product-level warranty configuration
+        * Category-level warranty configuration (applies to all products in category)
         * Manual warranty card creation from Sale Order
         * Service Receipt claim integration (under & out-of-warranty)
         * RMA workflows with stock operations
@@ -44,6 +44,7 @@
         'security/ir.model.access.csv',
         'data/sequence.xml',
         'views/product_template_views.xml',
+        'views/product_category_views.xml',
         'views/sale_order_views.xml',
         'views/warranty_card_views.xml',
         'views/warranty_dashboard_views.xml',

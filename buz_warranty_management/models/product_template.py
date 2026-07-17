@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields
 
 
 class ProductTemplate(models.Model):
@@ -6,32 +6,33 @@ class ProductTemplate(models.Model):
 
     warranty_duration = fields.Integer(
         string='Warranty Duration',
-        default=0,
-        help='Warranty period from delivery date'
+        related='categ_id.warranty_duration',
+        readonly=True
     )
     warranty_period_unit = fields.Selection([
         ('month', 'Month(s)'),
         ('year', 'Year(s)'),
-    ], string='Period Unit', default='month', help='Unit for warranty duration')
+    ], string='Period Unit', related='categ_id.warranty_period_unit', readonly=True)
     warranty_condition = fields.Text(
         string='Warranty Terms & Conditions',
-        help='Terms and conditions applicable to this warranty'
+        related='categ_id.warranty_condition',
+        readonly=True
     )
     warranty_type = fields.Selection([
         ('replacement', 'Replacement'),
         ('repair', 'Repair'),
         ('refund', 'Refund'),
-    ], string='Warranty Type', default='repair')
+    ], string='Warranty Type', related='categ_id.warranty_type', readonly=True)
     service_product_id = fields.Many2one(
         'product.product',
         string='Service Product',
-        domain=[('type', '=', 'service')],
-        help='Service product used for out-of-warranty repairs'
+        related='categ_id.service_product_id',
+        readonly=True
     )
     allow_out_of_warranty = fields.Boolean(
         string='Allow Out-of-Warranty Service',
-        default=True,
-        help='Allow creating quotations for expired warranty claims'
+        related='categ_id.allow_out_of_warranty',
+        readonly=True
     )
     warranty_card_count = fields.Integer(
         string='Warranty Cards',

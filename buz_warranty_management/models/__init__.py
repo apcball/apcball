@@ -1,5 +1,6 @@
 from . import product_template
 from . import product
+from . import product_category
 from . import res_partner
 from . import warranty_card
 from . import warranty_dashboard
