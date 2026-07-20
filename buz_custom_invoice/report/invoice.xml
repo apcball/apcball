@@ -169,7 +169,7 @@
                         <!-- Title Section -->
                         <div class="row mb-2 justify-content-end" style="padding-right: 9.4px;">
                             <div
-                            style="display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 0; border-radius: 3.76px; border: 0.94px solid #888; padding: 1.88px 16px; font-size: 16.92px; line-height: 1; text-align: center; margin-top: -56.4px; white-space: nowrap;">
+                            style="display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 0; border-radius: 3.76px; border: 0.94px solid #888; padding: 1.88px 16px; font-size: 18px; line-height: 1; text-align: center; margin-top: -56.4px; white-space: nowrap;">
                             <t t-if="doc_type == 'original'">
                                 <strong>ต้นฉบับ</strong>
                             </t>
@@ -401,7 +401,7 @@
 
                                       <!-- Footer Section -->
                                      <div class="footer-section">
-                                         <div class="footer-box" style="font-size: 18px;">
+                                         <!-- <div class="footer-box" style="font-size: 18px;">
                                              <div style="text-align: left;">
                                                  สินค้าตามรายการข้างต้น แม้จะได้ส่งมอบให้แก่ผู้ซื้อแล้วแต่ยังเป็นกรรมสิทธิ์ของผู้ขาย จนกว่า ผู้ซื้อจะได้รับชำระเงินให้แก่ บริษัทฯ ดังกล่าวแล้วเท่านั้น
                                              </div>
@@ -411,7 +411,7 @@
                                                  <br/>
                                                  *บริษัท โมเก้น จำกัด* และชีดฆ่าหรือผู้ถือ
                                              </div>
-                                         </div>
+                                         </div> -->
                                          <div class="footer-box" style="text-align: center; font-size: 18px;">
                                              ได้รับสินค้าดังกล่าวใว้ถูกต้องในสภาพเรียบร้อยแล้ว
                                              <br/>
