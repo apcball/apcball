@@ -72,6 +72,10 @@
                             .product-table td:last-child {
                                 border-right: none !important;
                             }
+                            .note-line { display: table !important; width: 100%; line-height: 1.0; }
+                            .note-line > strong { display: table-cell; width: 70px; white-space: nowrap; vertical-align: top; padding-right: 10px; }
+                            .note-line > span { display: table-cell; vertical-align: top; line-height: 1.0; }
+                            .note-line p { margin: 0; padding: 0; line-height: 1.0; }
                         </style>
                         <t t-set="items_per_page" t-value="10"/>
                         <t t-set="total_items" t-value="len(doc.order_line)"/>
@@ -165,7 +169,7 @@
                                 <tr class="table-header">
                                     <th style="width: 5%;">ลำดับ</th>
                                     <th style="width: 59%; text-align: center;">รายการ</th>
-                                    <th style="width: 8%;" class="text-right">จำนวน</th>
+                                    <th style="width: 12%;" class="text-right">จำนวน</th>
                                     <th style="width: 10%;" class="text-right">ราคา/หน่วย</th>
                                     <th style="width: 8%;" class="text-right">ส่วนลด(%)</th>
                                     <th style="width: 10%;" class="text-right">จำนวนเงิน</th>
@@ -211,9 +215,9 @@
 
                         <!-- Summary Section -->
                         <div class="row">
-                            <div class="col-7">
-                                <strong style="margin-right: 10px;">หมายเหตุ :</strong>
-                                <span t-field="doc.note"/>
+                            <div class="col-7"><div class="note-line">
+                                <strong>หมายเหตุ :</strong>
+                                <span t-field="doc.note"/></div>
                             </div>
                             <div class="col-5">
                                 <table class="table table-sm">
