@@ -337,8 +337,8 @@
                                 <!-- Totals -->
                                 <tfoot>
                                     <tr>
-                                        <td colspan="2" style="text-align: left; border-top: 1px solid #000; line-height: 1;  vertical-align: top; padding: 0;">
-                                            <div style="min-height: 35px; height: 35px; padding: 5px 10px; box-sizing: border-box; font-size: 12px; line-height: 1.2;">
+                                        <td colspan="2" style="text-align: left; border-top: 1px solid #000; line-height: 1; vertical-align: bottom; padding: 0;">
+                                            <div style="min-height: 66px; height: 66px; display: flex; align-items: flex-end; padding: 5px 10px; box-sizing: border-box; font-size: 12px; line-height: 1.2;">
                                                 <strong>จำนวนเงิน (ตัวอักษร):</strong>
                                                 <span t-esc="doc.amount_total_text_th"/>
                                             </div>
