@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_production_form_view_inherit_analytic_access" model="ir.ui.view">
+        <field name="name">mrp.production.form.inherit.analytic.access</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp_account.mrp_production_form_view_inherited"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='miscellaneous']//t[field[@name='analytic_distribution']]" position="attributes">
+                <attribute name="groups">stock.group_stock_manager,buz_mrp_analytic_access.group_mrp_analytic_distribution_user</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
