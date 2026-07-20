@@ -344,22 +344,22 @@
                                             </div>
 
                                         </td>
-                                        <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 16px; vertical-align: top;">
-                                            <div style="font-weight: bold; text-align: left;">
+                                        <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 22px; font-size: 16px; vertical-align: top; white-space: nowrap;">
+                                            <div style="font-weight: bold; text-align: left; line-height: 22px;">
                                                 รวมเป็นเงิน / Total Amount<br/>
                                                 ภาษีมูลค่าเพิ่ม 7% / VAT 7%<br/>
                                                 จำนวนเงินรวมทั้งสิ้น / Grand Total
                                             </div>
                                         </td>
-                                        <td style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 16px; vertical-align: top;">
+                                        <td style="text-align: right; border-top: 1px solid #000; line-height: 22px; font-size: 16px; vertical-align: top; white-space: nowrap;">
                                             <div>
                                                 <t t-set="amount_total" t-value="doc.amount_untaxed or 0.0"/>
                                                 <t t-set="amount_tax" t-value="doc.amount_tax or 0.0"/>
                                                 <t t-set="grand_total" t-value="doc.amount_total or 0.0"/>
 
-                                                <div><span t-esc="'{:,.2f}'.format(amount_total)"/></div>
-                                                <div><span t-esc="'{:,.2f}'.format(amount_tax)"/></div>
-                                                <div><span t-esc="'{:,.2f}'.format(grand_total)"/></div>
+                                                <div style="height: 22px; line-height: 22px;"><span t-esc="'{:,.2f}'.format(amount_total)"/></div>
+                                                <div style="height: 22px; line-height: 22px;"><span t-esc="'{:,.2f}'.format(amount_tax)"/></div>
+                                                <div style="height: 22px; line-height: 22px;"><span t-esc="'{:,.2f}'.format(grand_total)"/></div>
                                             </div>
                                         </td>
 
