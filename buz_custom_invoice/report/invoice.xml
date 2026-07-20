@@ -400,7 +400,7 @@
 
 
                                       <!-- Footer Section -->
-                                     <div class="footer-section">
+                                     <div class="footer-section" style="display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%;">
                                          <!-- <div class="footer-box" style="font-size: 18px;">
                                              <div style="text-align: left;">
                                                  สินค้าตามรายการข้างต้น แม้จะได้ส่งมอบให้แก่ผู้ซื้อแล้วแต่ยังเป็นกรรมสิทธิ์ของผู้ขาย จนกว่า ผู้ซื้อจะได้รับชำระเงินให้แก่ บริษัทฯ ดังกล่าวแล้วเท่านั้น
@@ -412,7 +412,7 @@
                                                  *บริษัท โมเก้น จำกัด* และชีดฆ่าหรือผู้ถือ
                                              </div>
                                          </div> -->
-                                         <div class="footer-box" style="text-align: center; font-size: 18px;">
+                                         <div class="footer-box" style="width: 40%; height: 3cm; box-sizing: border-box; border-radius: 18px; padding: 8px; margin: 0 auto; text-align: center; font-size: 12px; overflow: hidden;">
                                              ได้รับสินค้าดังกล่าวใว้ถูกต้องในสภาพเรียบร้อยแล้ว
                                              <br/>
                                              ผู้รับของ___________________________
@@ -423,7 +423,7 @@
                                              <br/>
                                              วันที่___/___/___
                                          </div>
-                                         <div class="footer-box" style="text-align: center; font-size: 18px;">
+                                         <div class="footer-box" style="width: 40%; height: 3cm; box-sizing: border-box; border-radius: 18px; padding: 8px; margin: 0 auto; text-align: center; font-size: 12px; overflow: hidden;">
                                              ในนาม
                                              <br/>
                                              บริษัท โมเก้น จำกัด
