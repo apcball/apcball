@@ -1,0 +1,47 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#   * mogen_landed_cost_mo_filter
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Language: th_TH\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "Analytic Account"
+msgstr "บัญชีวิเคราะห์"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "MO Date From"
+msgstr "วันที่ MO ตั้งแต่"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "MO Date To"
+msgstr "วันที่ MO ถึง"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "MO Status"
+msgstr "สถานะ MO"
+
+#. module: mogen_landed_cost_mo_filter
+#. module: mogen_landed_cost_mo_filter
+msgid "Selection Mode"
+msgstr "โหมดการเลือก"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "Manufacturing Order Filter"
+msgstr "ตัวกรองใบสั่งผลิต"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "Search Manufacturing Orders"
+msgstr "ค้นหาใบสั่งผลิต"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "Replace Existing MOs"
+msgstr "แทนที่ใบสั่งผลิตเดิม"
+
+#. module: mogen_landed_cost_mo_filter
+msgid "Add to Existing MOs"
+msgstr "เพิ่มในใบสั่งผลิตเดิม"

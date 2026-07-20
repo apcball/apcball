@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_landed_costs_form_inherit_mo_filter" model="ir.ui.view">
+        <field name="name">stock.landed.cost.form.inherit.mogen.mo.filter</field>
+        <field name="model">stock.landed.cost</field>
+        <field name="inherit_id" ref="mrp_landed_costs.view_mrp_landed_costs_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group[1]" position="after">
+                <div class="o_mo_filter"
+                     invisible="state != 'draft' or target_model != 'manufacturing'">
+                    <h2 class="o_horizontal_separator">Manufacturing Order Filter</h2>
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-6">
+                            <label for="mo_filter_analytic_account_id" class="o_form_label"/>
+                            <field name="mo_filter_analytic_account_id" nolabel="1"/>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="mo_filter_state" class="o_form_label"/>
+                            <field name="mo_filter_state" nolabel="1"/>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="mo_filter_date_from" class="o_form_label"/>
+                            <field name="mo_filter_date_from" nolabel="1"/>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="mo_filter_date_to" class="o_form_label"/>
+                            <field name="mo_filter_date_to" nolabel="1"/>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="mo_filter_mode" class="o_form_label"/>
+                            <field name="mo_filter_mode" nolabel="1"/>
+                        </div>
+                        <div class="col-12 col-lg-6 d-flex align-items-end justify-content-end">
+                            <button name="action_search_manufacturing_orders"
+                                    type="object"
+                                    string="Search Manufacturing Orders"
+                                    icon="fa-search"
+                                    class="btn btn-primary"/>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
