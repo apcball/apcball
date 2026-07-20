@@ -226,9 +226,10 @@
                                         <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">เลขประจำตัวผู้เสียภาษี :</strong><span t-field="doc.partner_id.vat"/></div>
                                         <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">ที่อยู่ :</strong>
                                             <span style="display: table-cell;"><span t-field="doc.partner_id.street"/>
-                                            <span t-field="doc.partner_id.street2"/>
                                         </span></div>
-                                        <div style="display: table-row;"><span style="display: table-cell; width: 140px;"></span><span style="display: table-cell;"><span t-field="doc.partner_id.city"/>
+                                        <div style="display: table-row;"><span style="display: table-cell; width: 140px;"></span><span style="display: table-cell;">
+                                                <span t-field="doc.partner_id.street2"/>
+                                                <span t-field="doc.partner_id.city"/>
                                             <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </span></div>
