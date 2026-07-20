@@ -171,7 +171,12 @@
                             <div
                             style="display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 0; border-radius: 3.76px; border: 0.94px solid #888; padding: 1.88px 16px; font-size: 18px; line-height: 1; text-align: center; margin-top: -56.4px; white-space: nowrap;">
                             <t t-if="doc_type == 'original'">
-                                <strong>ต้นฉบับ</strong>
+                                <strong>ต้นฉบับ / ORIGINAL</strong><br/>
+                                ลูกค้า
+                            </t>
+                            <t t-if="doc_type == 'copy'">
+                                <strong>สำเนา / COPY</strong><br/>
+                                บัญชี
                             </t>
                         </div>
                     </div>
