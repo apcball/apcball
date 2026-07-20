@@ -383,7 +383,7 @@
                                                 <div style="line-height: 1.25; font-size: 16px;">
                                                     <strong style="display: inline-block; width: 70px; font-size: 14px;">หมายเหตุ</strong><span style="display: inline-block; margin-bottom: 1.7px;"><span style="display: inline-block; width: 24px;">1.</span>ได้ระบทราบกำหนดเวลาชำระเงินตามทีระบุไว้ข้างต้นแล้ว</span>
                                                     <div style="margin-left: 70px; margin-bottom: 1.7px;"><span style="display: inline-block; width: 24px; vertical-align: top;">2.</span><span style="display: inline-block; vertical-align: top;">กรุณาสั่งจ่ายเช็คขีดคร่อมสั่งจ่าย บจ.โมเก้น<br/>หรือโอนเข้าบัญชี Kasikorn Bank ( KBANK =กสิกรไทย ) MOGEN CO., LTD   Account number  464-1-00774-4</span></div>
-                                                    <div style="margin-left: 70px; margin-bottom: 1.7px;"><span style="display: inline-block; width: 24px;">3.</span>นกรณีผิดนัดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย 1.25 ต่อเดือน ของยอดหนี้ค่าสินค้า</div>
+                                                    <div style="margin-left: 70px; margin-bottom: 1.7px;"><span style="display: inline-block; width: 24px;">3.</span>ในกรณีผิดนัดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย 1.25 ต่อเดือน ของยอดหนี้ค่าสินค้า</div>
                                                 </div>
                                             </div>
                         </div>
@@ -412,27 +412,30 @@
                                                  *บริษัท โมเก้น จำกัด* และชีดฆ่าหรือผู้ถือ
                                              </div>
                                          </div> -->
-                                         <div class="footer-box" style="width: 40%; height: 3cm; box-sizing: border-box; border-radius: 18px; padding: 8px; margin: 0 auto; text-align: center; font-size: 12px; overflow: hidden;">
+                                         <div class="footer-box" style="width: 35%; height: 3cm; box-sizing: border-box; border-radius: 18px; padding: 8px; margin: 0 auto; text-align: center; font-size: 16px; overflow: hidden;">
                                              ได้รับสินค้าดังกล่าวใว้ถูกต้องในสภาพเรียบร้อยแล้ว
                                              <br/>
+
                                              ผู้รับของ___________________________
                                              <br/>
-                                             วันที่___/___/___
+                                             
+                                             วันที่_____/_____/_____
                                              <br/>
-                                             ผู้ส่งของ___________________________
+                                             <!-- ผู้ส่งของ___________________________
                                              <br/>
-                                             วันที่___/___/___
+                                             วันที่___/___/___ -->
                                          </div>
-                                         <div class="footer-box" style="width: 40%; height: 3cm; box-sizing: border-box; border-radius: 18px; padding: 8px; margin: 0 auto; text-align: center; font-size: 12px; overflow: hidden;">
+                                         <div class="footer-box" style="width: 35%; height: 3cm; box-sizing: border-box; border-radius: 18px; padding: 8px; margin: 0 auto; text-align: center; font-size: 16px; overflow: hidden;">
                                              ในนาม
                                              <br/>
-                                             บริษัท โมเก้น จำกัด
+                                             บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
                                              <br/>
-                                             ___________________________
+                                             
+
                                              <br/>
-                                             ผู้มีอำนาจลงนาม
+                                             วันที่_____/_____/_____
                                              <br/>
-                                             AUTHORIZED
+                                             <!-- AUTHORIZED -->
                                          </div>
                                      </div>
 
