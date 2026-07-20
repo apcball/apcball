@@ -233,7 +233,7 @@
                                             <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </span></div>
-                                        <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">โทรศัพท์ :</strong><span t-field="doc.partner_id.phone"/></div>
+                                        <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">โทรศัพท์ :</strong><span t-esc="(doc.partner_id.phone or '').replace('+66', '0', 1).replace(' ', '')"/></div>
                                     </div>
                                 </div>
 
