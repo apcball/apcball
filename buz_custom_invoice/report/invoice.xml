@@ -169,13 +169,13 @@
                         <!-- Title Section -->
                         <div class="row mb-2 justify-content-end" style="padding-right: 9.4px;">
                             <div
-                            style="display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 0; border-radius: 3.76px; border: 0.94px solid #888; padding: 1.88px 16px; font-size: 18px; line-height: 1; text-align: center; margin-top: -56.4px; white-space: nowrap;">
+                            style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 110px; height: 42px; box-sizing: border-box; border-radius: 4px; border: 1px solid #888; padding: 0 8px; font-size: 12px; line-height: 1.35; text-align: center; margin-top: -56.4px; white-space: nowrap;">
                             <t t-if="doc_type == 'original'">
-                                <strong>ต้นฉบับ / ORIGINAL</strong><br/>
+                                <strong>ต้นฉบับ / ORIGINAL</strong>
                                 ลูกค้า
                             </t>
                             <t t-if="doc_type == 'copy'">
-                                <strong>สำเนา / COPY</strong><br/>
+                                <strong>สำเนา / COPY</strong>
                                 บัญชี
                             </t>
                         </div>
@@ -422,7 +422,7 @@
                                              <br/>
                                              ผู้รับของ___________________________
                                              <br/>
-                                             <div style="margin-top: 10px;">วันที่_____/_____/_____ </div>
+                                             <div style="margin-top: 13px;">วันที่_____/_____/_____ </div>
                                              <br/>
                                              <!-- ผู้ส่งของ___________________________
                                              <br/>
@@ -435,7 +435,7 @@
                                              <br/>
 
                                              <br/>
-                                             <div style="margin-top: 20px;">วันที่_____/_____/_____ </div>
+                                             <div style="margin-top: 23px;">วันที่_____/_____/_____ </div>
                                              <br/>
                                              <!-- AUTHORIZED -->
                                          </div>
