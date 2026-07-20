@@ -140,7 +140,7 @@
 
 
                         <t t-set="line_list" t-value="doc.invoice_line_ids"/>
-                        <t t-set="groups_of_7" t-value="[line_list[i:i+5] for i in range(0, len(line_list), 5)]"/>
+                        <t t-set="groups_of_7" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
                         <t t-set="page_number" t-value="1"/>
                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
 
@@ -292,16 +292,16 @@
                                 </tr>
                             </thead>
                             <tbody style="height: 240px;">
-                                <t t-set="max_lines" t-value="5"/>
+                                <t t-set="max_lines" t-value="10"/>
                                 <t t-set="line_number" t-value="((page_number - 1) * max_lines) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
 
                                 <t t-foreach="group" t-as="line">
                                     <tr style="font-size: 12px; height: 30px;">
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                                        <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; text-align: center; vertical-align: middle;">
                                             <span t-esc="current_line_number"/>
                                         </td>
-                                        <td style="border: 1px solid black; text-align: left; vertical-align: middle; padding-left: 4px;">
+                                        <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; text-align: left; vertical-align: middle; padding-left: 4px;">
                                             <div style="
                                                 display: -webkit-box;
                                                 -webkit-box-orient: vertical;
@@ -314,18 +314,18 @@
                                                 <span t-field="line.name"/>
                                             </div>
                                         </td>
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                                        <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; text-align: center; vertical-align: middle;">
                                             <span t-field="line.product_uom_id.name"/>
                                         </td>
-                                        <td style="border: 1px solid black; text-align: right; vertical-align: middle;">
+                                        <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; text-align: right; vertical-align: middle;">
                                             <span t-field="line.price_unit" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
-                                        <td style="border: 1px solid black; text-align: right; vertical-align: middle;">
+                                        <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; text-align: right; vertical-align: middle;">
                                             <t t-if="line.discount_fixed">
                                                 <span t-field="line.discount_fixed" t-options='{"widget": "float", "precision": 2}'/> ฿
                                             </t>
                                         </td>
-                                        <td style="border: 1px solid black; text-align: right; vertical-align: middle;">
+                                        <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; text-align: right; vertical-align: middle;">
                                             <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                     </tr>
@@ -335,12 +335,12 @@
 
                                                                  <t t-foreach="range(len(group), max_lines)" t-as="empty_line">
                                          <tr style="font-size: 12px; height: 30px;">
-                                             <td style="border: 1px solid black; height: 30px;">&#160;</td>
-                                             <td style="border: 1px solid black; height: 30px;">&#160;</td>
-                                             <td style="border: 1px solid black; height: 30px;">&#160;</td>
-                                             <td style="border: 1px solid black; height: 30px;">&#160;</td>
-                                             <td style="border: 1px solid black; height: 30px;">&#160;</td>
-                                             <td style="border: 1px solid black; height: 30px;">&#160;</td>
+                                             <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; height: 30px;">&#160;</td>
+                                             <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; height: 30px;">&#160;</td>
+                                             <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; height: 30px;">&#160;</td>
+                                             <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; height: 30px;">&#160;</td>
+                                             <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; height: 30px;">&#160;</td>
+                                             <td style="border-left: 1px solid black; border-right: 1px solid black; border-top: none; border-bottom: none; height: 30px;">&#160;</td>
                                          </tr>
                                      </t>
 </tbody>
