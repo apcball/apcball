@@ -16,24 +16,25 @@
                     <field name="warranty_card_count" widget="statinfo" string="Warranties"/>
                 </button>
             </xpath>
-            <xpath expr="//sheet" position="inside">
-                <group string="Warranty Configuration" name="warranty">
-                    <field name="warranty_period_override"/>
-                    <group invisible="not warranty_period_override">
-                        <label for="warranty_duration_override" string="Warranty Period"/>
-                        <div>
-                            <field name="warranty_duration_override" class="oe_inline" style="width: 60px;"/>
-                            <field name="warranty_period_unit_override" class="oe_inline" style="width: 120px;"/>
-                        </div>
+            <xpath expr="//notebook" position="inside">
+                <page name="warranty_information" string="Warranty information">
+                    <group name="warranty">
+                        <group>
+                            <label for="warranty_duration_override" string="Warranty Period"/>
+                            <div>
+                                <field name="warranty_duration_override" class="oe_inline" style="width: 60px;"/>
+                                <field name="warranty_period_unit_override" class="oe_inline" style="width: 120px;"/>
+                            </div>
+                        </group>
+                        <group invisible="warranty_duration_override">
+                            <label for="warranty_duration" string="Category Warranty Period"/>
+                            <div>
+                                <field name="warranty_duration" class="oe_inline" style="width: 60px;" readonly="1"/>
+                                <field name="warranty_period_unit" class="oe_inline" style="width: 120px;" readonly="1"/>
+                            </div>
+                        </group>
                     </group>
-                    <group invisible="warranty_period_override">
-                        <label for="warranty_duration" string="Category Warranty Period"/>
-                        <div>
-                            <field name="warranty_duration" class="oe_inline" style="width: 60px;" readonly="1"/>
-                            <field name="warranty_period_unit" class="oe_inline" style="width: 120px;" readonly="1"/>
-                        </div>
-                    </group>
-                </group>
+                </page>
             </xpath>
         </field>
     </record>

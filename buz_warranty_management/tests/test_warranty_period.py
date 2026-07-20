@@ -19,13 +19,12 @@ class TestWarrantyPeriod(TransactionCase):
         })
 
     def test_product_inherits_category_period_without_override(self):
-        self.assertFalse(self.product.warranty_period_override)
+        self.assertFalse(self.product.warranty_duration_override)
         self.assertEqual(self.product.warranty_duration, 18)
         self.assertEqual(self.product.warranty_period_unit, 'month')
 
     def test_product_override_takes_precedence_over_category(self):
         self.product.write({
-            'warranty_period_override': True,
             'warranty_duration_override': 2,
             'warranty_period_unit_override': 'year',
         })
@@ -39,11 +38,10 @@ class TestWarrantyPeriod(TransactionCase):
 
     def test_disabling_product_override_restores_category_period(self):
         self.product.write({
-            'warranty_period_override': True,
             'warranty_duration_override': 2,
             'warranty_period_unit_override': 'year',
         })
-        self.product.write({'warranty_period_override': False})
+        self.product.write({'warranty_duration_override': 0})
 
         self.assertEqual(self.product.warranty_duration, 18)
         self.assertEqual(self.product.warranty_period_unit, 'month')
@@ -58,7 +56,6 @@ class TestWarrantyPeriod(TransactionCase):
 
         self.category.write({'warranty_duration': 6, 'warranty_period_unit': 'year'})
         self.product.write({
-            'warranty_period_override': True,
             'warranty_duration_override': 3,
             'warranty_period_unit_override': 'year',
         })
@@ -70,7 +67,6 @@ class TestWarrantyPeriod(TransactionCase):
 
     def test_card_snapshots_year_period(self):
         self.product.write({
-            'warranty_period_override': True,
             'warranty_duration_override': 2,
             'warranty_period_unit_override': 'year',
         })

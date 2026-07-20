@@ -4,10 +4,6 @@ from odoo import api, fields, models
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
-    warranty_period_override = fields.Boolean(
-        string='Override Category Warranty Period',
-        help='Use this product\'s warranty period instead of its category setting.',
-    )
     warranty_duration_override = fields.Integer(
         string='Product Warranty Duration',
         default=0,
@@ -54,7 +50,6 @@ class ProductTemplate(models.Model):
     )
 
     @api.depends(
-        'warranty_period_override',
         'warranty_duration_override',
         'warranty_period_unit_override',
         'categ_id.warranty_duration',
@@ -62,7 +57,7 @@ class ProductTemplate(models.Model):
     )
     def _compute_warranty_period(self):
         for record in self:
-            if record.warranty_period_override:
+            if record.warranty_duration_override:
                 record.warranty_duration = record.warranty_duration_override
                 record.warranty_period_unit = record.warranty_period_unit_override
             else:
