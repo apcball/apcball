@@ -203,7 +203,7 @@
                             <div style="width: 50%; text-align: right;">
                                 <div class="info-box">
                                     <div class="mb-2">
-                                        <strong style="width: auto; display: inline-block;">เลขที่เอกสาร/No:</strong>
+                                        <strong style="width: auto; display: inline-block;">เลขที่เอกสาร/No :</strong>
                                         <span t-field="doc.name"/>
                                     </div>
                                     <div class="mb-2">
@@ -338,8 +338,8 @@
                                 <tfoot>
                                     <tr>
                                         <td colspan="2" style="text-align: left; border-top: 1px solid #000; line-height: 1; vertical-align: bottom; padding: 0;">
-                                            <div style="min-height: 66px; height: 66px; display: flex; align-items: flex-end; padding: 5px 10px; box-sizing: border-box; font-size: 12px; line-height: 1.2;">
-                                                <strong>จำนวนเงิน (ตัวอักษร):</strong>
+                                            <div style="min-height: 66px; height: 66px; display: flex; align-items: flex-end; padding: 5px 10px; box-sizing: border-box; font-size: 16px; line-height: 1.2;">
+                                                <strong style="margin-right: 10px;">จำนวนเงิน (ตัวอักษร) :</strong>
                                                 <span t-esc="doc.amount_total_text_th"/>
                                             </div>
 
