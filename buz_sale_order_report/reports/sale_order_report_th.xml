@@ -212,8 +212,8 @@
                         <!-- Summary Section -->
                         <div class="row">
                             <div class="col-7">
-                                <strong>หมายเหตุ :</strong>
-                                <!-- <p t-field="doc.note"/> -->
+                                <strong style="margin-right: 10px;">หมายเหตุ :</strong>
+                                <span t-field="doc.note"/>
                             </div>
                             <div class="col-5">
                                 <table class="table table-sm">
