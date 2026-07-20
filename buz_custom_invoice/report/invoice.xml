@@ -413,13 +413,11 @@
                                              </div>
                                          </div> -->
                                          <div class="footer-box" style="width: 35%; height: 3cm; box-sizing: border-box; border-radius: 18px; padding: 8px; margin: 0 auto; text-align: center; font-size: 16px; overflow: hidden;">
-                                             <div style="margin-bottom: 20px;">ได้รับสินค้าดังกล่าวใว้ถูกต้องในสภาพเรียบร้อยแล้ว</div>
+                                             <div style="margin-bottom: 10px;">ได้รับสินค้าดังกล่าวใว้ถูกต้องในสภาพเรียบร้อยแล้ว</div>
                                              <br/>
-
                                              ผู้รับของ___________________________
                                              <br/>
-                                             
-                                             วันที่_____/_____/_____
+                                             <div style="margin-top: 10px;">วันที่_____/_____/_____ </div>
                                              <br/>
                                              <!-- ผู้ส่งของ___________________________
                                              <br/>
@@ -430,10 +428,9 @@
                                              <br/>
                                              บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
                                              <br/>
-                                             
 
                                              <br/>
-                                             วันที่_____/_____/_____
+                                             <div style="margin-top: 15px;">วันที่_____/_____/_____ </div>
                                              <br/>
                                              <!-- AUTHORIZED -->
                                          </div>
