@@ -72,16 +72,11 @@ class WarrantyCard(models.Model):
         related='product_id.product_tmpl_id.warranty_type',
         readonly=True
     )
-    warranty_duration = fields.Integer(
-        string='Duration',
-        related='product_id.product_tmpl_id.warranty_duration',
-        readonly=True
-    )
-    warranty_period_unit = fields.Selection(
-        string='Period Unit',
-        related='product_id.product_tmpl_id.warranty_period_unit',
-        readonly=True
-    )
+    warranty_duration = fields.Integer(string='Duration', readonly=True)
+    warranty_period_unit = fields.Selection([
+        ('month', 'Month(s)'),
+        ('year', 'Year(s)'),
+    ], string='Period Unit', readonly=True)
     is_expired = fields.Boolean(
         string='Is Expired',
         compute='_compute_is_expired',
@@ -137,13 +132,13 @@ class WarrantyCard(models.Model):
     partner_address = fields.Char(related='partner_id.contact_address', string='Address', readonly=True)
     product_image = fields.Image(related='product_id.image_1024', string='Product Image', readonly=True)
 
-    @api.depends('start_date', 'product_id.product_tmpl_id.warranty_duration', 'product_id.product_tmpl_id.warranty_period_unit')
+    @api.depends('start_date', 'warranty_duration', 'warranty_period_unit')
     def _compute_end_date(self):
         for record in self:
             if record.start_date:
-                if record.product_id and record.product_id.product_tmpl_id.warranty_duration:
-                    duration = record.product_id.product_tmpl_id.warranty_duration
-                    unit = record.product_id.product_tmpl_id.warranty_period_unit or 'month'
+                if record.warranty_duration:
+                    duration = record.warranty_duration
+                    unit = record.warranty_period_unit or 'month'
                     
                     if unit == 'year':
                         record.end_date = record.start_date + relativedelta(years=duration)
@@ -154,6 +149,28 @@ class WarrantyCard(models.Model):
                     record.end_date = record.start_date + relativedelta(months=12)
             else:
                 record.end_date = False
+
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        if self.product_id:
+            product_template = self.product_id.product_tmpl_id
+            self.warranty_duration = product_template.warranty_duration
+            self.warranty_period_unit = product_template.warranty_period_unit
+        else:
+            self.warranty_duration = False
+            self.warranty_period_unit = False
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            product_id = vals.get('product_id')
+            if product_id:
+                product_template = self.env['product.product'].browse(
+                    product_id
+                ).product_tmpl_id
+                vals['warranty_duration'] = product_template.warranty_duration
+                vals['warranty_period_unit'] = product_template.warranty_period_unit
+        return super().create(vals_list)
 
     @api.depends('end_date')
     def _compute_is_expired(self):

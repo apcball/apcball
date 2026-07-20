@@ -1,18 +1,32 @@
-from odoo import models, fields
+from odoo import api, fields, models
 
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
+    warranty_period_override = fields.Boolean(
+        string='Override Category Warranty Period',
+        help='Use this product\'s warranty period instead of its category setting.',
+    )
+    warranty_duration_override = fields.Integer(
+        string='Product Warranty Duration',
+        default=0,
+        help='Warranty duration used when overriding the category setting.',
+    )
+    warranty_period_unit_override = fields.Selection([
+        ('month', 'Month(s)'),
+        ('year', 'Year(s)'),
+    ], string='Product Warranty Period Unit', default='month')
     warranty_duration = fields.Integer(
         string='Warranty Duration',
-        related='categ_id.warranty_duration',
-        readonly=True
+        compute='_compute_warranty_period',
+        store=True,
+        readonly=True,
     )
     warranty_period_unit = fields.Selection([
         ('month', 'Month(s)'),
         ('year', 'Year(s)'),
-    ], string='Period Unit', related='categ_id.warranty_period_unit', readonly=True)
+    ], string='Period Unit', compute='_compute_warranty_period', store=True, readonly=True)
     warranty_condition = fields.Text(
         string='Warranty Terms & Conditions',
         related='categ_id.warranty_condition',
@@ -38,6 +52,22 @@ class ProductTemplate(models.Model):
         string='Warranty Cards',
         compute='_compute_warranty_card_count'
     )
+
+    @api.depends(
+        'warranty_period_override',
+        'warranty_duration_override',
+        'warranty_period_unit_override',
+        'categ_id.warranty_duration',
+        'categ_id.warranty_period_unit',
+    )
+    def _compute_warranty_period(self):
+        for record in self:
+            if record.warranty_period_override:
+                record.warranty_duration = record.warranty_duration_override
+                record.warranty_period_unit = record.warranty_period_unit_override
+            else:
+                record.warranty_duration = record.categ_id.warranty_duration
+                record.warranty_period_unit = record.categ_id.warranty_period_unit
 
     def _compute_warranty_card_count(self):
         for record in self:
