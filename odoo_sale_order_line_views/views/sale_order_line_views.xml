@@ -172,6 +172,23 @@
             </calendar>
         </field>
     </record>
+    <record id="pending_delivery_pivot_view" model="ir.ui.view">
+        <field name="name">sale.order.line.pending.delivery.pivot</field>
+        <field name="model">sale.order.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Pending Delivery Pivot Analysis" sample="1">
+                <field name="order_id" type="row"/>
+                <field name="team_id" type="row"/>
+                <field name="product_id" type="row"/>
+                <field name="product_uom_qty" type="measure" string="Ordered Qty"/>
+                <field name="qty_delivered" type="measure"/>
+                <field name="qty_to_deliver_stored" type="measure"/>
+                <field name="pending_amount" type="measure"/>
+                <field name="price_subtotal" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
     <record id="view_sales_order_line_search_filter" model="ir.ui.view">
         <field name="name">sale.order.line.search</field>
         <field name="model">sale.order.line</field>
@@ -267,6 +284,7 @@
                        groups="uom.group_uom"/>
                 <field name="project_name" optional="show"/>
                 <field name="partner_shipping_id" optional="show"/>
+                <field name="forecast_expected_date_only" optional="show"/>
                 <field name="picking_scheduled_date" string="Scheduled Date" optional="show"/>
                 <field name="price_subtotal" sum="Total" widget="monetary"/>
                 <field name="state" string="Status"
@@ -275,7 +293,6 @@
                        widget="badge" optional="show"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="create_date_only" optional="hide"/>
-                <field name="forecast_expected_date_only" optional="hide"/>
             </tree>
         </field>
     </record>
@@ -288,7 +305,7 @@
         <field name="view_ids" eval="[(5, 0, 0),
                             (0, 0, {'view_mode': 'tree', 'view_id': ref('pending_delivery_tree_view')}),
                             (0, 0, {'view_mode': 'kanban', 'view_id': ref('sale_order_line_kanban_view')}),
-                            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sale_order_line_view_pivot')}),
+                            (0, 0, {'view_mode': 'pivot', 'view_id': ref('pending_delivery_pivot_view')}),
                             (0, 0, {'view_mode': 'graph', 'view_id': ref('sale_order_line_view_graph_view')}),
                             (0, 0, {'view_mode': 'calendar', 'view_id': ref('sale_order_line_calender_view')}),
                             ]"/>

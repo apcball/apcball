@@ -99,6 +99,13 @@ class SaleOrderLine(models.Model):
         store=True,
     )
 
+    qty_to_deliver_stored = fields.Float(
+        string="Pending Qty",
+        compute='_compute_qty_to_deliver_stored',
+        store=True,
+        help='Quantity that is still pending to be delivered',
+    )
+
     @api.depends('create_date')
     def _compute_create_date_only(self):
         for line in self:
@@ -145,6 +152,11 @@ class SaleOrderLine(models.Model):
                 line.state == 'sale'
                 and line.product_uom_qty > line.qty_delivered
             )
+
+    @api.depends('qty_to_deliver')
+    def _compute_qty_to_deliver_stored(self):
+        for line in self:
+            line.qty_to_deliver_stored = line.qty_to_deliver
 
     @api.depends('qty_to_deliver', 'product_uom_qty', 'price_subtotal')
     def _compute_pending_amount(self):
