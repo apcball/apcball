@@ -133,14 +133,42 @@
                                 height: 15cm;
                                 overflow-y: auto;
                             }
+                            .invoice-copy-page {
+                                position: relative;
+                                box-sizing: border-box;
+                                min-height: 277mm;
+                                font-size: 94%;
+                            }
+                            .invoice-copy-label {
+                                display: inline-flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                width: 110px;
+                                height: 42px;
+                                box-sizing: border-box;
+                                border-radius: 4px;
+                                border: 1px solid #888;
+                                padding: 0 8px;
+                                font-size: 14px;
+                                line-height: 18px;
+                                text-align: center;
+                                margin-top: -56.4px;
+                                white-space: nowrap;
+                            }
+                            .invoice-copy-label strong {
+                                display: block;
+                                line-height: 18px;
+                            }
                         </style>
 
                         <t t-foreach="['original', 'copy']" t-as="doc_type">
-                            <div t-attf-style="#{doc_type == 'copy' and 'page-break-before: always;' or ''}; font-size: 94%;">
+                            <div class="invoice-copy-page" t-attf-style="#{doc_type == 'copy' and 'page-break-before: always;' or ''}">
 
 
                         <t t-set="line_list" t-value="doc.invoice_line_ids"/>
-                        <t t-set="groups_of_7" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
+                        <t t-set="items_per_page" t-value="10"/>
+                        <t t-set="groups_of_7" t-value="[line_list[i:i+items_per_page] for i in range(0, len(line_list), items_per_page)]"/>
                         <t t-set="page_number" t-value="1"/>
                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
 
@@ -169,12 +197,12 @@
                         <!-- Title Section -->
                         <div class="row mb-2 justify-content-end" style="padding-right: 9.4px;">
                             <div
-                            style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 110px; height: 42px; box-sizing: border-box; border-radius: 4px; border: 1px solid #888; padding: 0 8px; font-size: 14px; line-height: 1.35; text-align: center; margin-top: -56.4px; white-space: nowrap;">
+                            class="invoice-copy-label">
                             <t t-if="doc_type == 'original'">
                                 <strong>ต้นฉบับ / ORIGINAL</strong>
                                 ลูกค้า
                             </t>
-                            <t t-if="doc_type == 'copy'">
+                            <t t-else="">
                                 <strong>สำเนา / COPY</strong>
                                 บัญชี
                             </t>
@@ -297,7 +325,7 @@
                                 </tr>
                             </thead>
                             <tbody style="height: 240px;">
-                                <t t-set="max_lines" t-value="10"/>
+                                <t t-set="max_lines" t-value="items_per_page"/>
                                 <t t-set="line_number" t-value="((page_number - 1) * max_lines) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
 
