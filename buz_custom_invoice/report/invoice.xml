@@ -222,19 +222,17 @@
                                 <!-- ซ้าย -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
-                                        <div><strong style="display: inline-block; width: 130px; margin-right: 10px;">ชื่อลูกค้า :</strong><span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
-                                        <div><strong style="display: inline-block; width: 130px; margin-right: 10px;">เลขประจำตัวผู้เสียภาษี :</strong><span t-field="doc.partner_id.vat"/></div>
-                                        <div>
-                                            <strong style="display: inline-block; width: 130px; margin-right: 10px;">ที่อยู่ :</strong>
-                                            <span t-field="doc.partner_id.street"/>
+                                        <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">ชื่อลูกค้า :</strong><span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
+                                        <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">เลขประจำตัวผู้เสียภาษี :</strong><span t-field="doc.partner_id.vat"/></div>
+                                        <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">ที่อยู่ :</strong>
+                                            <span style="display: table-cell;"><span t-field="doc.partner_id.street"/>
                                             <span t-field="doc.partner_id.street2"/>
-                                        </div>
-                                        <div style="margin-left: 140px;">
-                                            <span t-field="doc.partner_id.city"/>
+                                        </span></div>
+                                        <div style="display: table-row;"><span style="display: table-cell; width: 140px;"></span><span style="display: table-cell;"><span t-field="doc.partner_id.city"/>
                                             <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
-                                        </div>
-                                        <div><strong style="display: inline-block; width: 130px; margin-right: 10px;">โทรศัพท์ :</strong><span t-field="doc.partner_id.phone"/></div>
+                                        </span></div>
+                                        <div style="display: table-row;"><strong style="display: table-cell; width: 140px; padding-right: 10px;">โทรศัพท์ :</strong><span t-field="doc.partner_id.phone"/></div>
                                     </div>
                                 </div>
 
@@ -278,12 +276,18 @@
                           <table class="product-table" style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 5px; font-size: 12px;">
                             <thead>
                                 <tr>
-                                    <th style="width: 6%; text-align: center; border: 1px solid black; padding: 2px;">ลำดับ<br/><span style="font-size: 10px;">(No)</span></th>
-                                    <th style="width: 62%; text-align: center; border: 1px solid black; padding: 2px;">รายการ<br/><span style="font-size: 10px;">(Description)</span></th>
-                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">หน่วย<br/><span style="font-size: 10px;">(Unit)</span></th>
-                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">ราคา/หน่วย<br/><span style="font-size: 10px;">(Unit Price)</span></th>
-                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">ส่วนลด<br/><span style="font-size: 10px;">(Discount)</span></th>
-                                    <th style="width: 12%; text-align: center; border: 1px solid black; padding: 2px;">จำนวนเงิน<br/><span style="font-size: 10px;">(Amount)</span></th>
+                                    <th style="width: 6%; text-align: center; border: 1px solid black; padding: 2px;">ลำดับ<br/>
+                                        <span style="font-size: 12px;">(No)</span></th>
+                                    <th style="width: 62%; text-align: center; border: 1px solid black; padding: 2px;">รายการ<br/>
+                                        <span style="font-size: 12px;">(Description)</span></th>
+                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">หน่วย<br/>
+                                        <span style="font-size: 12px;">(Unit)</span></th>
+                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">ราคา/หน่วย<br/>
+                                        <span style="font-size: 12px;">(Unit Price)</span></th>
+                                    <th style="width: 7%; text-align: center; border: 1px solid black; padding: 2px;">ส่วนลด<br/>
+                                        <span style="font-size: 12px;">(Discount)</span></th>
+                                    <th style="width: 12%; text-align: center; border: 1px solid black; padding: 2px;">จำนวนเงิน<br/>
+                                        <span style="font-size: 12px;">(Amount)</span></th>
                                 </tr>
                             </thead>
                             <tbody style="height: 240px;">
@@ -339,14 +343,14 @@
                                             </div>
 
                                         </td>
-                                        <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 12px; vertical-align: top;">
+                                        <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 16px; vertical-align: top;">
                                             <div style="font-weight: bold; text-align: left;">
                                                 รวมเป็นเงิน / Total Amount<br/>
                                                 ภาษีมูลค่าเพิ่ม 7% / VAT 7%<br/>
                                                 จำนวนเงินรวมทั้งสิ้น / Grand Total
                                             </div>
                                         </td>
-                                        <td style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 12px; vertical-align: top;">
+                                        <td style="text-align: right; border-top: 1px solid #000; line-height: 1.2; font-size: 16px; vertical-align: top;">
                                             <div>
                                                 <t t-set="amount_total" t-value="doc.amount_untaxed or 0.0"/>
                                                 <t t-set="amount_tax" t-value="doc.amount_tax or 0.0"/>
@@ -365,7 +369,7 @@
                             </table>
 
                                             <div style="min-height: 145px; height: 145px; margin-top: 10px; padding: 8px 10px; box-sizing: border-box; border-bottom: 1.5px solid #000;">
-                                                <div style="line-height: 1.25; font-size: 12px;">
+                                                <div style="line-height: 1.25; font-size: 16px;">
                                                     <strong style="font-size: 14px;">หมายเหตุ ผิด ตก ยกเว้น E. &amp; O.E.</strong>
                                                     <div style="margin-bottom: 1.7px;">* หากพ้นกำหนดเป็นเวลา 7 วัน นับจากวันที่ในเอกสารฉบับนี้ ทางบริษัทฯ ขอสงวนสิทธิ์ในการเปลี่นแปลงหรือแก้ไข</div>
                                                     <div style="margin-bottom: 1.7px;">* กรุณาตรวจสอบสินค้าที่ได้รับอยู่ในสภาพเรียบร้อยและมีจำนวนถูกต้องตามรายการข้างต้น ก่อนลงมือชื่อ เพื่อรับสินค้า</div>
