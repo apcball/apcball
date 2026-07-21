@@ -203,10 +203,10 @@
                                                      style="height: 73px; max-width: 205px; object-fit: contain;"
                                                      alt="Approval Signature"/>
                                             </div>
-                                            <div t-if="o.approval_date" style="position: absolute; left: 0; right: 0; bottom: 36px; line-height: 1.7; text-align: center; width: 100%; white-space: nowrap;">
+                                            <div t-if="o.approval_date" style="position: absolute; left: 0; right: 0; bottom: 11px; line-height: 1.7; text-align: center; width: 100%; white-space: nowrap;">
                                                 <span t-field="o.approval_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
                                             </div>
-                                             <div style="position: absolute; left: 0; right: 0; bottom: 10px; white-space: nowrap;">วันที่..................................</div>
+                                             <div style="position: absolute; left: 0; right: 0; bottom: 10px; white-space: nowrap;">วันที่.......................................</div>
                                         </div>
                                     </div>
                                 </div>
