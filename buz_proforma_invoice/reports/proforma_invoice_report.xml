@@ -203,6 +203,9 @@
                                                      style="height: 73px; max-width: 205px; object-fit: contain;"
                                                      alt="Approval Signature"/>
                                             </div>
+                                            <div t-if="o.approval_date" style="line-height: 1.7; margin-top: -4px; text-align: center; width: 100%;">
+                                                <span t-field="o.approval_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                            </div>
                                              <div style="position: absolute; left: 0; right: 0; bottom: 10px; white-space: nowrap;">วันที่..................................</div>
                                         </div>
                                     </div>
