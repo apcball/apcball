@@ -185,6 +185,12 @@
                                             </td>
                                         </tr>
                                     </table>
+                                    <!-- Signature Section -->
+                                    <div class="signature-section" style="margin-top: 40px;">
+                                        <div style="height: 45px; border-bottom: 1px solid black;"></div>
+                                        <div style="margin-top: 5px;">Authorized Signature</div>
+                                        <div style="margin-top: 12px;">Date: ____________________</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
