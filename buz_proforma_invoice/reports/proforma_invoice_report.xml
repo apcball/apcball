@@ -187,9 +187,13 @@
                                     </table>
                                     <!-- Signature Section -->
                                     <div class="signature-section" style="margin-top: 40px;">
-                                        <div style="height: 45px; border-bottom: 1px solid black;"></div>
+                                        <div style="height: 45px; border-bottom: 1px solid black; position: relative;">
+                                            <img t-if="o.approval_signature"
+                                                 t-att-src="image_data_uri(o.approval_signature)"
+                                                 style="position: absolute; bottom: 0; left: 0; max-width: 205px; height: 45px; object-fit: contain; object-position: bottom left;"/>
+                                        </div>
                                         <div style="margin-top: 5px;">Authorized Signature</div>
-                                        <div style="margin-top: 12px;">Date: ____________________</div>
+                                        <div style="margin-top: 12px;">Date:<span style="display: inline-block; position: relative; width: 157px; height: 16px; margin-left: 10px; border-bottom: 1px solid black; vertical-align: baseline;"><span t-if="o.approval_date" t-field="o.approval_date" style="position: absolute; bottom: 0; left: 0;"/></span></div>
                                     </div>
                                 </div>
                             </div>
