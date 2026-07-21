@@ -8,7 +8,7 @@
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',
-    'depends': ['base', 'sale', 'account', 'buz_customize_sale'],
+    'depends': ['base', 'sale', 'account'],
     'data': [
         'security/ir.model.access.csv',
         'reports/proforma_invoice_report.xml',

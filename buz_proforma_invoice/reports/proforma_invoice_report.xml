@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <data>
        <!-- Paper Format -->
@@ -186,14 +186,10 @@
                                         </tr>
                                     </table>
                                     <!-- Signature Section -->
-                                    <div class="signature-section" style="margin-top: 40px; height: 260px; border: 1px solid #000; border-radius: 30px; position: relative; text-align: center; padding: 24px 20px 20px; box-sizing: border-box;">
-                                        <div style="line-height: 1.7;">ในนาม</div>
-                                        <div style="line-height: 1.7;">บริษัท โมเก้น จำกัด สำนักงานใหญ่</div>
-                                        <div t-if="o.approval_signature" style="position: absolute; top: 92px; left: 50%; transform: translateX(-50%); width: 205px; height: 73px;">
-                                            <img t-att-src="image_data_uri(o.approval_signature)"
-                                                 style="width: 205px; height: 73px; object-fit: contain;"/>
-                                        </div>
-                                                                                    <div style="position: absolute; left: 0; right: 0; bottom: 40px; white-space: nowrap;">วันที่<span style="display: inline-block; width: 250px; margin-left: 4px; border-bottom: 1px solid #000; line-height: 1; padding-bottom: 1px; text-align: center; vertical-align: baseline;"><span t-if="o.approval_date" t-esc="o.approval_date.day"/>&#160;/&#160;<span t-if="o.approval_date" t-esc="o.approval_date.month"/>&#160;/&#160;<span t-if="o.approval_date" t-esc="o.approval_date.year"/></span></div>
+                                    <div class="signature-section" style="margin-top: 40px;">
+                                        <div style="height: 45px; border-bottom: 1px solid black;"></div>
+                                        <div style="margin-top: 5px;">Authorized Signature</div>
+                                        <div style="margin-top: 12px;">Date: ____________________</div>
                                     </div>
                                 </div>
                             </div>
