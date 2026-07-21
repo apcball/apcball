@@ -203,7 +203,7 @@
                                                      style="height: 73px; max-width: 205px; object-fit: contain;"
                                                      alt="Approval Signature"/>
                                             </div>
-                                             <div style="position: absolute; left: 0; right: 0; bottom: 18px; white-space: nowrap;">วันที่.........../.........../............</div>
+                                             <div style="position: absolute; left: 0; right: 0; bottom: 10px; white-space: nowrap;">วันที่..................................</div>
                                         </div>
                                     </div>
                                 </div>
