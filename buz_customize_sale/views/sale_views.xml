@@ -11,6 +11,10 @@
                            options="{'no_create': True}" 
                            groups="stock.group_stock_multi_warehouses"/>
                 </xpath>
+                <xpath expr="//page[@name='customer_signature']" position="after">
+                    <page name="signature_approved_sale_order"
+                          string="Signature Approved Sale Order"/>
+                </xpath>
             </field>
         </record>
 </odoo>
