@@ -161,9 +161,14 @@
                                     <!-- Notes Section -->
                                     <div style="margin-bottom: 10px;">
                                         <strong>Remarks:</strong>
+                                        <div style="display: inline-block; margin-left: 10px; vertical-align: top;">
+                                            1. ได้รับทราบกำหนดเวลาชำระเงินตามที่ระบุไว้ข้างต้นแล้ว<br/>
+                                            2. กรุณาสั่งจ่ายเช็คขีดคร่อมสั่งจ่าย บจ.โมเก้น หรือโอนเข้าบัญชี Kasikorn Bank (KBANK = กสิกรไทย) MOGEN CO., LTD Account number 464-1-00774-4<br/>
+                                            3. ในกรณีผิดนัดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย 1.25 ต่อเดือน ของยอดหนี้ค่าสินค้า
+                                        </div>
                                     </div>
                                     <div style="margin-left: 10px;">
-                                        <span t-field="o.note"/>
+                                        <!-- <span t-field="o.note"/> -->
                                     </div>
                                 </div>
                                 <div class="col-5">
