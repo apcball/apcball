@@ -65,6 +65,22 @@ class TestLandedCostMOFilter(TransactionCase):
         landed_cost.action_search_manufacturing_orders()
         self.assertEqual(landed_cost.mrp_production_ids, selected)
 
+    def test_search_reloads_form_to_display_selected_orders(self):
+        self._production('MO reload', self.analytic_a)
+        landed_cost = self._landed_cost()
+        landed_cost.write({
+            'mo_filter_analytic_account_id': self.analytic_a.id,
+            'mo_filter_date_from': '2026-07-01',
+            'mo_filter_date_to': '2026-07-31',
+        })
+
+        result = landed_cost.action_search_manufacturing_orders()
+
+        self.assertEqual(result, {
+            'type': 'ir.actions.client',
+            'tag': 'reload',
+        })
+
     def test_filter_excludes_other_dates_state_and_company(self):
         selected = self._production('MO in range', self.analytic_a, state='done')
         self._production('MO before range', self.analytic_a, finished='2026-06-30 08:00:00')

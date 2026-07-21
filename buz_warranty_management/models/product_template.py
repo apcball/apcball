@@ -29,7 +29,7 @@ class ProductTemplate(models.Model):
         readonly=True
     )
     warranty_type = fields.Selection([
-        ('replacement', 'Replacement'),
+        ('replacement', 'Replace'),
         ('repair', 'Repair'),
         ('refund', 'Refund'),
     ], string='Warranty Type', related='categ_id.warranty_type', readonly=True)

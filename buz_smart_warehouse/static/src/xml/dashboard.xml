@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="buz_smart_warehouse.Dashboard">
+    <div class="swh-dashboard" style="height:100%; overflow-y:auto; overflow-x:hidden;">
+        <!-- Header -->
+        <div class="swh-header d-flex align-items-center gap-3">
+            <h4 class="mb-0 text-nowrap">Smart Warehouse <small class="text-muted" t-esc="state.company"/></h4>
+            <div class="swh-search flex-grow-1">
+                <i class="fa fa-search swh-search-icon"/>
+                <!-- uncontrolled input: OWL re-patching value while typing
+                     breaks input on some browsers; cleared via ref instead -->
+                <input type="text" class="form-control swh-search-input"
+                       t-ref="searchInput"
+                       placeholder="Search by SKU, Product, Lot, Serial, Location, Order..."
+                       t-on-input="onSearchInput"
+                       t-on-focus="onSearchFocus"
+                       t-on-blur="onSearchBlur"
+                       t-on-keydown="onSearchKeydown"/>
+                <button t-if="state.searchTerm or state.highlightIds.length"
+                        class="btn btn-sm swh-search-clear" title="Clear"
+                        t-on-click="clearSearchHighlight">
+                    <i class="fa fa-times"/>
+                </button>
+                <div t-if="state.searchOpen" class="swh-search-dropdown">
+                    <t t-if="!state.searchResults.length">
+                        <div class="swh-search-empty text-muted small">ไม่พบผลลัพธ์</div>
+                    </t>
+                    <t t-foreach="state.searchResults" t-as="result" t-key="result.type + '_' + result.id">
+                        <!-- pointerdown fires before the input blur, so the
+                             selection never races the dropdown closing -->
+                        <div class="swh-search-item"
+                             t-on-pointerdown.prevent="() => this.selectSearchResult(result)">
+                            <i t-att-class="'fa ' + result.icon + ' swh-search-item-icon'"/>
+                            <div class="flex-grow-1">
+                                <div class="small fw-bold" t-esc="result.label"/>
+                                <div class="small text-muted" t-esc="result.sublabel"/>
+                            </div>
+                            <span t-if="result.location_ids.length" class="badge text-bg-light">
+                                <t t-esc="result.location_ids.length"/> loc
+                            </span>
+                        </div>
+                    </t>
+                </div>
+            </div>
+            <select t-if="state.filters.length > 1" class="form-select form-select-sm w-auto"
+                    t-on-change="onWarehouseChange">
+                <option value="">ทุกคลัง</option>
+                <t t-foreach="state.filters" t-as="wh" t-key="wh.id">
+                    <option t-att-value="wh.id" t-att-selected="wh.id === state.warehouseId ? 'selected' : undefined" t-esc="wh.name"/>
+                </t>
+            </select>
+            <button class="btn btn-sm btn-outline-dark text-nowrap" t-on-click="openAudit"
+                    title="ตรวจสอบคุณภาพข้อมูลคลัง">
+                <i class="fa fa-stethoscope me-1"/>Audit
+            </button>
+            <button class="btn btn-sm btn-secondary text-nowrap" t-on-click="refresh">
+                <i class="fa fa-refresh me-1"/>Refresh
+            </button>
+        </div>
+
+        <t t-if="state.loading">
+            <div class="swh-loading text-center p-5">
+                <i class="fa fa-spinner fa-spin fa-2x"/>
+            </div>
+        </t>
+
+        <t t-else="">
+            <!-- KPI row -->
+            <div class="swh-kpi-row">
+                <div class="swh-kpi-card">
+                    <div class="swh-kpi-title text-primary">Receiving Today</div>
+                    <div class="swh-kpi-value"><i class="fa fa-truck text-primary"/> <t t-esc="state.kpis.receiving ? state.kpis.receiving.value : 0"/></div>
+                    <div class="swh-kpi-unit">POs</div>
+                </div>
+                <div class="swh-kpi-card">
+                    <div class="swh-kpi-title">Put Away</div>
+                    <div class="swh-kpi-value"><i class="fa fa-cube text-success"/> <t t-esc="state.kpis.put_away ? state.kpis.put_away.value : 0"/></div>
+                    <div class="swh-kpi-unit">Tasks</div>
+                </div>
+                <div class="swh-kpi-card">
+                    <div class="swh-kpi-title">Picking</div>
+                    <div class="swh-kpi-value"><i class="fa fa-shopping-cart text-warning"/> <t t-esc="state.kpis.picking ? state.kpis.picking.value : 0"/></div>
+                    <div class="swh-kpi-unit">Tasks</div>
+                </div>
+                <div class="swh-kpi-card">
+                    <div class="swh-kpi-title">Packing</div>
+                    <div class="swh-kpi-value"><i class="fa fa-archive text-purple"/> <t t-esc="state.kpis.packing ? state.kpis.packing.value : 0"/></div>
+                    <div class="swh-kpi-unit">Tasks</div>
+                </div>
+                <div class="swh-kpi-card">
+                    <div class="swh-kpi-title">Ready to Ship</div>
+                    <div class="swh-kpi-value"><i class="fa fa-truck text-info"/> <t t-esc="state.kpis.ready_to_ship ? state.kpis.ready_to_ship.value : 0"/></div>
+                    <div class="swh-kpi-unit">DOs</div>
+                </div>
+                <div class="swh-kpi-card">
+                    <div class="swh-kpi-title">Inventory Accuracy</div>
+                    <div class="swh-kpi-value"><i class="fa fa-bullseye text-success"/> <t t-esc="state.kpis.accuracy ? state.kpis.accuracy.value : 0"/>%</div>
+                </div>
+                <div class="swh-kpi-card">
+                    <div class="swh-kpi-title text-primary">Warehouse Utilization</div>
+                    <div class="swh-kpi-value"><i class="fa fa-pie-chart text-primary"/> <t t-esc="state.kpis.utilization ? state.kpis.utilization.value : 0"/>%</div>
+                </div>
+            </div>
+
+            <!-- Main row: map + right column -->
+            <div class="swh-main-row">
+                <!-- Warehouse map -->
+                <div class="swh-panel swh-map-panel">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn"
+                                    t-att-class="state.view3d ? 'btn-outline-primary' : 'btn-primary'"
+                                    t-on-click="() => this.toggleView(false)">2D View</button>
+                            <button class="btn"
+                                    t-att-class="state.view3d ? 'btn-primary' : 'btn-outline-primary'"
+                                    t-on-click="() => this.toggleView(true)">3D View</button>
+                        </div>
+                        <t t-if="state.is_manager and state.view3d">
+                            <button class="btn btn-sm"
+                                    t-att-class="state.editMode ? 'btn-warning' : 'btn-outline-secondary'"
+                                    t-on-click="toggleEditMode"
+                                    title="Move racks to match the real factory floor">
+                                <i class="fa fa-arrows me-1"/><t t-esc="state.editMode ? 'กำลังจัด Layout' : 'จัด Layout'"/>
+                            </button>
+                            <button t-if="state.editMode" class="btn btn-sm btn-success"
+                                    t-att-disabled="!state.layoutDirty or state.savingLayout"
+                                    t-on-click="saveLayout">
+                                <i t-att-class="state.savingLayout ? 'fa fa-spinner fa-spin me-1' : 'fa fa-floppy-o me-1'"/>Save Layout
+                            </button>
+                        </t>
+                        <select t-if="state.warehouseId and zones.length" class="form-select form-select-sm w-auto"
+                                t-on-change="onZoneChange">
+                            <option value="">ทุกโซน</option>
+                            <t t-foreach="zones" t-as="zone" t-key="zone.id">
+                                <option t-att-value="zone.id" t-att-selected="zone.id === state.zoneId ? 'selected' : undefined" t-esc="zone.name"/>
+                            </t>
+                        </select>
+                        <button t-if="state.view3d" class="btn btn-sm"
+                                t-att-class="state.heatmap ? 'btn-danger' : 'btn-outline-danger'"
+                                t-on-click="toggleHeatmap" title="ระบายสี Rack ตาม % Capacity">
+                            <i class="fa fa-fire me-1"/>Heatmap
+                        </button>
+                        <span class="ms-auto text-muted small">
+                            Utilization <t t-esc="state.map.utilization.pct or 0"/>%
+                        </span>
+                    </div>
+                    <t t-if="!state.map.racks.length">
+                        <div class="text-muted p-4 text-center">
+                            No storage locations found.<br/>
+                            Set <b>Max Capacity</b> on internal locations to enable the occupancy map.
+                        </div>
+                    </t>
+                    <t t-elif="state.view3d">
+                        <div class="swh-map3d-wrap">
+                            <div class="swh-map3d" t-ref="map3d"/>
+                            <div class="swh-map3d-controls">
+                                <button class="btn swh-ctrl-btn" title="Zoom in" t-on-click="zoomIn">
+                                    <i class="fa fa-plus"/>
+                                </button>
+                                <button class="btn swh-ctrl-btn" title="Zoom out" t-on-click="zoomOut">
+                                    <i class="fa fa-minus"/>
+                                </button>
+                                <button class="btn swh-ctrl-btn" title="Reset camera" t-on-click="reset3dView">
+                                    <i class="fa fa-crosshairs"/>
+                                </button>
+                            </div>
+                            <div t-if="state.editMode" class="swh-edit-banner">
+                                <i class="fa fa-arrows me-1"/>ลาก Rack เพื่อจัดตามผังโรงงานจริง แล้วกด Save Layout
+                            </div>
+                        </div>
+                        <div class="text-muted small mt-1">
+                            🖱️ ลากซ้าย = หมุน · Scroll / ปุ่ม +− = ซูม · ลากขวา = เลื่อน · คลิกกล่อง = เปิด Location
+                        </div>
+                    </t>
+                    <div t-elif="hasPositionedLayout" class="swh-map2d-wrap">
+                        <WarehouseMap2D map="state.map"
+                                        highlightIds="state.highlightIds"
+                                        onLocationClick.bind="openLocation"/>
+                        <div class="text-muted small mt-1">
+                            ผังตาม Layout Designer · สี Rack = % การใช้งาน · คลิก Rack เพื่อเปิด Location
+                        </div>
+                    </div>
+                    <div t-else="" class="swh-map">
+                        <t t-foreach="state.map.racks" t-as="rack" t-key="rack.name">
+                            <div class="swh-rack">
+                                <div class="swh-rack-label" t-esc="rack.name"/>
+                                <div class="swh-rack-tiles">
+                                    <t t-foreach="rack.locations" t-as="loc" t-key="loc.id">
+                                        <div class="swh-tile"
+                                             t-att-class="occupancyClass(loc.pct) + (isHighlighted(loc.id) ? ' swh-tile-hit' : '') + (isDimmed(loc.id) ? ' swh-tile-dim' : '')"
+                                             t-on-click="() => this.openLocation(loc.id, loc.name)"
+                                             t-att-title="loc.qty + (loc.capacity ? (' / ' + loc.capacity) : '') + ' units'">
+                                            <span class="swh-tile-name" t-esc="loc.name"/>
+                                            <span class="swh-tile-pct">
+                                                <t t-if="loc.pct !== null and loc.pct !== undefined"><t t-esc="Math.round(loc.pct)"/>%</t>
+                                                <t t-else="">—</t>
+                                            </span>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- Right column -->
+                <div class="swh-right-col">
+                    <div class="swh-panel">
+                        <div class="swh-panel-title">AI RECOMMENDATION</div>
+                        <t t-if="!state.recommendations.length">
+                            <div class="text-muted small">ไม่มีคำแนะนำตอนนี้ 👍</div>
+                        </t>
+                        <t t-foreach="state.recommendations" t-as="rec" t-key="rec_index">
+                            <div class="swh-rec d-flex align-items-center gap-2">
+                                <span class="swh-rec-icon" t-att-class="'swh-rec-' + rec.severity">
+                                    <i t-att-class="'fa ' + {receive: 'fa-download', pick: 'fa-shopping-cart', shelf: 'fa-th-large', count: 'fa-list-ol', backorder: 'fa-clock-o'}[rec.icon]"/>
+                                </span>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold small" t-esc="rec.title"/>
+                                    <div class="text-muted small" t-esc="rec.subtitle"/>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary text-nowrap"
+                                        t-on-click="() => this.doRecommendation(rec)"
+                                        t-esc="rec.action_label"/>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="swh-panel">
+                        <div class="swh-panel-title">TODAY'S TASK</div>
+                        <t t-if="!state.tasks.length">
+                            <div class="text-muted small">No tasks scheduled today.</div>
+                        </t>
+                        <t t-foreach="state.tasks" t-as="task" t-key="task.label">
+                            <div class="swh-task d-flex align-items-center gap-2">
+                                <span class="swh-task-label" t-esc="task.label"/>
+                                <div class="progress flex-grow-1" style="height: 6px;">
+                                    <div class="progress-bar"
+                                         t-att-class="taskPct(task) >= 100 ? 'bg-success' : 'bg-warning'"
+                                         t-attf-style="width: {{ taskPct(task) }}%"/>
+                                </div>
+                                <span class="small text-muted text-nowrap">
+                                    <t t-esc="task.done"/> / <t t-esc="task.total"/>
+                                </span>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="swh-panel">
+                        <div class="swh-panel-title swh-collapsible d-flex align-items-center mb-0"
+                             role="button" t-on-click="togglePickQueue">
+                            <span>PICK QUEUE</span>
+                            <span t-if="state.pick_queue.length" class="badge text-bg-primary ms-2"
+                                  t-esc="state.pick_queue.length"/>
+                            <i class="fa ms-auto text-muted"
+                               t-att-class="state.pickQueueOpen ? 'fa-chevron-up' : 'fa-chevron-down'"/>
+                        </div>
+                        <t t-if="!state.pickQueueOpen">
+                            <div class="text-muted small mt-1">
+                                <t t-if="!state.pick_queue.length">ไม่มีงาน Pick ค้าง 👍</t>
+                                <t t-else="">คลิกเพื่อดูรายละเอียด</t>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <t t-if="!state.pick_queue.length">
+                                <div class="text-muted small mt-1">ไม่มีงาน Pick ค้าง 👍</div>
+                            </t>
+                            <t t-foreach="state.pick_queue" t-as="pick" t-key="pick.id">
+                                <div class="swh-pick d-flex align-items-center gap-2"
+                                     t-on-click="() => this.openReceipt(pick.id)">
+                                    <span class="swh-pick-rank fw-bold text-muted" t-esc="pick_index + 1"/>
+                                    <div class="flex-grow-1">
+                                        <div class="small fw-bold">
+                                            <i t-if="pick.priority" class="fa fa-star text-warning me-1"/>
+                                            <t t-esc="pick.name"/>
+                                        </div>
+                                        <div class="small text-muted" t-esc="pick.partner || pick.origin"/>
+                                    </div>
+                                    <span class="small text-nowrap"
+                                          t-att-class="pick.late ? 'text-danger fw-bold' : 'text-muted'"
+                                          t-esc="pick.deadline"/>
+                                </div>
+                            </t>
+                        </t>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom row -->
+            <div class="swh-bottom-row">
+                <div class="swh-panel">
+                    <div class="swh-panel-title">WAREHOUSE STATUS</div>
+                    <div class="swh-util-big">
+                        <div class="swh-util-circle">
+                            <span class="swh-util-pct"><t t-esc="state.map.utilization.pct or 0"/>%</span>
+                            <span class="small text-muted">Utilization</span>
+                        </div>
+                        <div class="small">
+                            <div><span class="swh-dot swh-dot-primary"/> Used <t t-esc="state.map.utilization.pct or 0"/>%</div>
+                            <div><span class="swh-dot swh-dot-success"/> Available <t t-esc="Math.round(100 - (state.map.utilization.pct or 0))"/>%</div>
+                            <div class="mt-1 text-muted">Capacity <t t-esc="state.map.utilization.capacity or 0"/> units</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="swh-panel">
+                    <div class="swh-panel-title">RECEIVING TODAY</div>
+                    <t t-if="!state.receiving_today.length">
+                        <div class="text-muted small">No receipts scheduled today.</div>
+                    </t>
+                    <table class="table table-sm mb-0 small" t-if="state.receiving_today.length">
+                        <thead>
+                            <tr><th>PO / Ref</th><th>Vendor</th><th>ETA</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="state.receiving_today" t-as="row" t-key="row.id">
+                                <tr>
+                                    <td><a href="#" t-on-click.prevent="() => this.openReceipt(row.id)" t-esc="row.ref"/></td>
+                                    <td t-esc="row.vendor"/>
+                                    <td t-esc="row.eta"/>
+                                    <td><span class="badge" t-att-class="statusClass(row.status)" t-esc="row.status"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="swh-panel">
+                    <div class="swh-panel-title">PICKING PROGRESS</div>
+                    <div class="swh-picking-progress">
+                        <div class="swh-donut-wrap">
+                            <canvas t-ref="pickingChart"/>
+                            <div class="swh-donut-center">
+                                <span class="fw-bold"><t t-esc="pickingPct()"/>%</span>
+                                <span class="small text-muted">Completed</span>
+                            </div>
+                        </div>
+                        <div class="small">
+                            <div><span class="swh-dot swh-dot-primary"/> Completed (<t t-esc="state.picking_progress.completed"/>)</div>
+                            <div><span class="swh-dot swh-dot-warning"/> In Progress (<t t-esc="state.picking_progress.in_progress"/>)</div>
+                            <div><span class="swh-dot swh-dot-muted"/> Pending (<t t-esc="state.picking_progress.pending"/>)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="swh-panel">
+                    <div class="swh-panel-title">ALERT</div>
+                    <t t-if="!state.alerts.length">
+                        <div class="text-muted small">No active alerts 🎉</div>
+                    </t>
+                    <t t-foreach="state.alerts" t-as="alert" t-key="alert.label">
+                        <div class="swh-alert d-flex align-items-center gap-2"
+                             t-on-click="() => this.openAction(alert.action)">
+                            <i class="fa fa-exclamation-triangle"
+                               t-att-class="alert.severity === 'danger' ? 'text-danger' : 'text-warning'"/>
+                            <span class="flex-grow-1 small" t-esc="alert.label"/>
+                            <span class="fw-bold" t-esc="alert.count"/>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+
+        <!-- Audit modal -->
+        <t t-if="state.auditOpen">
+            <div class="swh-audit-backdrop" t-on-click="closeAudit"/>
+            <div class="swh-audit-modal">
+                <div class="d-flex align-items-center mb-2">
+                    <h5 class="mb-0"><i class="fa fa-stethoscope me-2"/>Warehouse Data Audit</h5>
+                    <span t-if="state.audit" class="ms-2 text-muted small" t-esc="state.audit.generated_at"/>
+                    <button class="btn btn-sm btn-link ms-auto text-dark" t-on-click="closeAudit">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+                <t t-if="state.auditLoading">
+                    <div class="text-center p-4"><i class="fa fa-spinner fa-spin fa-2x"/></div>
+                </t>
+                <t t-elif="state.audit and !state.audit.findings.length">
+                    <div class="alert alert-success mb-0">
+                        <i class="fa fa-check-circle me-1"/>ข้อมูลคลังสะอาด ไม่พบปัญหา 🎉
+                    </div>
+                </t>
+                <t t-elif="state.audit">
+                    <t t-foreach="state.audit.findings" t-as="finding" t-key="finding.category">
+                        <div class="swh-audit-row d-flex align-items-center gap-2">
+                            <span class="badge" t-att-class="auditSeverityClass(finding.severity)"
+                                  t-esc="finding.count"/>
+                            <div class="flex-grow-1">
+                                <div class="small fw-bold" t-esc="finding.category"/>
+                                <div class="small text-muted" t-esc="finding.description"/>
+                            </div>
+                            <button t-if="finding.action" class="btn btn-sm btn-outline-primary text-nowrap"
+                                    t-on-click="() => this.openAction(finding.action)">
+                                ดูรายการ
+                            </button>
+                        </div>
+                    </t>
+                </t>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

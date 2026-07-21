@@ -74,7 +74,7 @@
                     <notebook>
                         <page string="Documents">
                             <field name="invoice_ids" readonly="state != 'draft'">
-                                <tree>
+                                <tree delete="1">
                                     <field name="name"/>
                                     <field name="invoice_date"/>
                                     <field name="invoice_date_due"/>

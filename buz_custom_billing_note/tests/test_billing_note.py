@@ -291,6 +291,12 @@ class TestBillingNote(TransactionCase):
         wizard.action_add_invoices()
         self.assertIn(self.invoice2.id, bn.invoice_ids.ids)
 
+    def test_documents_tree_allows_removing_rows(self):
+        view = self.env.ref('buz_custom_billing_note.view_billing_note_form')
+        arch = view.arch_db
+        self.assertIn('<field name="invoice_ids"', arch)
+        self.assertIn('<tree delete="1">', arch)
+
     # ── Delete + cascade ──
 
     def test_delete_billing_note_cascade_invoices(self):

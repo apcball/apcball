@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="buz_smart_warehouse.Map2D">
+    <div class="swh-map2d">
+        <svg t-attf-viewBox="0 0 {{ floor.w }} {{ floor.h }}"
+             preserveAspectRatio="xMidYMid meet"
+             style="width:100%; height:100%; background:#f8fafc;">
+            <defs>
+                <pattern id="swhGrid2d" width="5" height="5" patternUnits="userSpaceOnUse">
+                    <path d="M 5 0 L 0 0 0 5" fill="none" stroke="#dbe3ee" stroke-width="0.08"/>
+                </pattern>
+                <marker id="swhArrow2d" viewBox="0 0 10 10" refX="8" refY="5"
+                        markerUnits="userSpaceOnUse" markerWidth="1.6" markerHeight="1.6"
+                        orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+                </marker>
+            </defs>
+            <rect x="0" y="0" t-att-width="floor.w" t-att-height="floor.h" fill="url(#swhGrid2d)"/>
+
+            <!-- Zones -->
+            <t t-foreach="elementsOf('zone')" t-as="el" t-key="'z' + el.id">
+                <g t-attf-transform="rotate({{ el.rotation }}, {{ el.x + el.width / 2 }}, {{ el.y + el.height / 2 }})">
+                    <rect t-att-x="el.x" t-att-y="el.y"
+                          t-att-width="el.width" t-att-height="el.height" rx="0.5"
+                          t-att-fill="zoneColor(el)" fill-opacity="0.12"
+                          t-att-stroke="zoneColor(el)" stroke-dasharray="1.2 0.8" stroke-width="0.2"/>
+                    <text t-att-x="el.x + el.width / 2" t-att-y="el.y + 1.8"
+                          text-anchor="middle" t-att-fill="zoneColor(el)"
+                          style="font-size:1.6px; font-weight:bold; letter-spacing:0.15px;">
+                        <t t-esc="el.name.toUpperCase()"/>
+                    </text>
+                </g>
+            </t>
+
+            <!-- Aisles -->
+            <t t-foreach="elementsOf('aisle')" t-as="el" t-key="'a' + el.id">
+                <g t-attf-transform="rotate({{ el.rotation }}, {{ el.x + el.width / 2 }}, {{ el.y + el.height / 2 }})">
+                    <rect t-att-x="el.x" t-att-y="el.y"
+                          t-att-width="el.width" t-att-height="el.height" rx="0.3"
+                          fill="#e2e8f0" fill-opacity="0.6"
+                          stroke="#64748b" stroke-dasharray="1 0.7" stroke-width="0.15"/>
+                    <line t-att-x1="el.x + 1.4" t-att-y1="el.y + el.height / 2"
+                          t-att-x2="el.x + el.width - 1.4" t-att-y2="el.y + el.height / 2"
+                          stroke="#94a3b8" stroke-width="0.12" stroke-dasharray="1.5 1"
+                          marker-start="url(#swhArrow2d)" marker-end="url(#swhArrow2d)"/>
+                    <text t-att-x="el.x + el.width / 2" t-att-y="el.y + el.height / 2 - 0.5"
+                          text-anchor="middle" fill="#64748b" style="font-size:1.1px;">
+                        <t t-esc="el.name"/>
+                    </text>
+                </g>
+            </t>
+
+            <!-- Obstacles -->
+            <t t-foreach="elementsOf('obstacle')" t-as="el" t-key="'o' + el.id">
+                <g t-attf-transform="rotate({{ el.rotation }}, {{ el.x + el.width / 2 }}, {{ el.y + el.height / 2 }})">
+                    <rect t-att-x="el.x" t-att-y="el.y"
+                          t-att-width="el.width" t-att-height="el.height" rx="0.3"
+                          fill="#94a3b8" fill-opacity="0.55" stroke="#475569" stroke-width="0.15"/>
+                    <text t-att-x="el.x + el.width / 2" t-att-y="el.y + el.height / 2"
+                          text-anchor="middle" dominant-baseline="central" fill="#1e293b"
+                          style="font-size:1.1px;">
+                        <t t-esc="el.name"/>
+                    </text>
+                </g>
+            </t>
+
+            <!-- Forklifts -->
+            <t t-foreach="elementsOf('forklift')" t-as="el" t-key="'f' + el.id">
+                <g t-attf-transform="rotate({{ el.rotation }}, {{ el.x + el.width / 2 }}, {{ el.y + el.height / 2 }})">
+                    <rect t-att-x="el.x" t-att-y="el.y + el.height * 0.22"
+                          t-att-width="el.width" t-att-height="el.height * 0.55" rx="0.12"
+                          fill="#f59e0b" stroke="#b45309" stroke-width="0.08"/>
+                    <rect t-att-x="el.x + el.width * 0.2" t-att-y="el.y"
+                          t-att-width="el.width * 0.6" t-att-height="el.height * 0.2"
+                          fill="#78716c" stroke="#57534e" stroke-width="0.06"/>
+                    <circle t-att-cx="el.x + el.width * 0.25" t-att-cy="el.y + el.height * 0.87"
+                            t-att-r="el.height * 0.12" fill="#1f2937"/>
+                    <circle t-att-cx="el.x + el.width * 0.75" t-att-cy="el.y + el.height * 0.87"
+                            t-att-r="el.height * 0.12" fill="#1f2937"/>
+                </g>
+            </t>
+
+            <!-- Text labels -->
+            <t t-foreach="elementsOf('text')" t-as="el" t-key="'t' + el.id">
+                <text t-att-x="el.x" t-att-y="el.y" fill="#334155"
+                      t-attf-transform="rotate({{ el.rotation }}, {{ el.x }}, {{ el.y }})"
+                      style="font-size:1.8px; font-weight:bold;">
+                    <t t-esc="el.name"/>
+                </text>
+            </t>
+
+            <!-- Racks (occupancy colored, clickable) -->
+            <t t-foreach="racks" t-as="rack" t-key="'r' + (rack.id || rack.name)">
+                <g t-attf-transform="translate({{ rack.layout.x }}, {{ rack.layout.y }}) rotate({{ rack.layout.rotation }}, {{ rack.layout.width / 2 }}, {{ rack.layout.depth / 2 }})"
+                   t-att-opacity="isDimmed(rack) ? 0.18 : 1"
+                   style="cursor:pointer;"
+                   t-on-click="() => this.onRackClick(rack)">
+                    <rect t-att-width="rack.layout.width" t-att-height="rack.layout.depth" rx="0.15"
+                          t-att-fill="rackFill(rack)"
+                          t-att-stroke="isHit(rack) ? '#2b7fff' : rackStroke(rack)"
+                          t-att-stroke-width="isHit(rack) ? 0.35 : 0.15"/>
+                    <t t-foreach="bayLines(rack)" t-as="bx" t-key="'b' + bx_index">
+                        <line t-att-x1="bx" y1="0" t-att-x2="bx" t-att-y2="rack.layout.depth"
+                              t-att-stroke="rackStroke(rack)" stroke-opacity="0.4" stroke-width="0.06"/>
+                    </t>
+                    <line x1="0" t-att-y1="rack.layout.depth / 2"
+                          t-att-x2="rack.layout.width" t-att-y2="rack.layout.depth / 2"
+                          t-att-stroke="rackStroke(rack)" stroke-opacity="0.4" stroke-width="0.06"/>
+                    <text t-att-x="rack.layout.width / 2" t-att-y="rack.layout.depth / 2"
+                          text-anchor="middle" dominant-baseline="central"
+                          fill="#1f2937" style="font-size:1.1px; font-weight:bold; pointer-events:none;">
+                        <t t-esc="rack.name"/>
+                    </text>
+                    <text t-att-x="rack.layout.width / 2" t-att-y="rack.layout.depth + 1.1"
+                          text-anchor="middle" fill="#64748b" style="font-size:0.9px; pointer-events:none;">
+                        <t t-esc="rack.layout.rack_code || ''"/>
+                        <t t-if="rackPctLabel(rack)"> · <t t-esc="rackPctLabel(rack)"/></t>
+                    </text>
+                </g>
+            </t>
+
+            <!-- Docks -->
+            <t t-foreach="docks" t-as="dock" t-key="'d' + dock.id">
+                <g t-attf-transform="translate({{ dock.x }}, {{ dock.y }}) rotate({{ dock.rotation }}, {{ dockLayout(dock).width / 2 }}, {{ dockLayout(dock).depth / 2 }})">
+                    <rect t-att-width="dockLayout(dock).width" t-att-height="dockLayout(dock).depth" rx="0.4"
+                          fill="#2b7fff" fill-opacity="0.15"
+                          stroke="#3b6ea5" stroke-dasharray="1 0.7" stroke-width="0.2"/>
+                    <text t-att-x="dockLayout(dock).width / 2" y="1.4"
+                          text-anchor="middle" dominant-baseline="central" fill="#3b6ea5"
+                          style="font-size:1.1px; font-weight:bold;">
+                        <t t-esc="dock.name"/>
+                    </text>
+                    <g style="pointer-events:none;">
+                        <rect t-att-x="dockLayout(dock).width * 0.22" t-att-y="dockLayout(dock).depth * 0.24"
+                              t-att-width="dockLayout(dock).width * 0.56" t-att-height="dockLayout(dock).depth * 0.42" rx="0.15"
+                              fill="#e5e7eb" stroke="#94a3b8" stroke-width="0.06"/>
+                        <rect t-att-x="dockLayout(dock).width * 0.27" t-att-y="dockLayout(dock).depth * 0.68"
+                              t-att-width="dockLayout(dock).width * 0.46" t-att-height="dockLayout(dock).depth * 0.14" rx="0.12"
+                              fill="#3b82f6" stroke="#1d4ed8" stroke-width="0.06"/>
+                        <circle t-att-cx="dockLayout(dock).width * 0.3" t-att-cy="dockLayout(dock).depth * 0.86"
+                                t-att-r="Math.min(0.3, dockLayout(dock).width * 0.07)" fill="#1f2937"/>
+                        <circle t-att-cx="dockLayout(dock).width * 0.7" t-att-cy="dockLayout(dock).depth * 0.86"
+                                t-att-r="Math.min(0.3, dockLayout(dock).width * 0.07)" fill="#1f2937"/>
+                    </g>
+                </g>
+            </t>
+        </svg>
+    </div>
+</t>
+
+</templates>

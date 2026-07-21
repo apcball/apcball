@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_smart_warehouse_dashboard_user,buz.smart.warehouse.dashboard user,model_buz_smart_warehouse_dashboard,group_smart_warehouse_user,1,1,1,0
+access_smart_warehouse_dashboard_manager,buz.smart.warehouse.dashboard manager,model_buz_smart_warehouse_dashboard,group_smart_warehouse_manager,1,1,1,1
+access_warehouse_layout_element_user,buz.warehouse.layout.element user,model_buz_warehouse_layout_element,group_smart_warehouse_user,1,0,0,0
+access_warehouse_layout_element_manager,buz.warehouse.layout.element manager,model_buz_warehouse_layout_element,group_smart_warehouse_manager,1,1,1,1

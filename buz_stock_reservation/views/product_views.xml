@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_availability_tree_view" model="ir.ui.view">
+        <field name="name">product.product.tree.buz.availability</field>
+        <field name="model">product.product</field>
+        <field name="arch" type="xml">
+            <tree string="Product Availability" create="false" edit="false"
+                  decoration-danger="buz_available_qty &lt; 0">
+                <field name="default_code" optional="show"/>
+                <field name="name"/>
+                <field name="uom_id" groups="uom.group_uom"/>
+                <field name="qty_available" string="On Hand"/>
+                <field name="free_qty" string="Free (Odoo)"/>
+                <field name="buz_reserved_qty"/>
+                <field name="buz_available_qty"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_product_availability" model="ir.actions.act_window">
+        <field name="name">Product Availability</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="product_availability_tree_view"/>
+        <field name="domain">[('type', '=', 'product')]</field>
+        <field name="context">{'search_default_filter_to_sell': 1}</field>
+    </record>
+</odoo>

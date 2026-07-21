@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_location_form_smart_warehouse" model="ir.ui.view">
+        <field name="name">stock.location.form.smart.warehouse</field>
+        <field name="model">stock.location</field>
+        <field name="inherit_id" ref="stock.view_location_form"/>
+        <field name="arch" type="xml">
+            <field name="usage" position="after">
+                <field name="max_capacity"/>
+                <field name="occupancy_pct" readonly="1"/>
+                <field name="is_loading_dock"/>
+                <field name="layout_positioned"/>
+                <field name="layout_x" invisible="not layout_positioned"/>
+                <field name="layout_y" invisible="not layout_positioned"/>
+                <field name="layout_rotation" invisible="not layout_positioned"/>
+                <field name="layout_levels"/>
+                <field name="rack_code"/>
+                <field name="rack_type"/>
+                <field name="layout_width"/>
+                <field name="layout_depth"/>
+                <field name="layout_height"/>
+                <field name="layout_bays"/>
+                <field name="capacity_per_level"/>
+                <field name="capacity_uom"/>
+                <field name="layout_zone_element_id"/>
+                <field name="layout_notes"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_location_tree_smart_warehouse" model="ir.ui.view">
+        <field name="name">stock.location.tree.smart.warehouse</field>
+        <field name="model">stock.location</field>
+        <field name="inherit_id" ref="stock.view_location_tree2"/>
+        <field name="arch" type="xml">
+            <field name="usage" position="after">
+                <field name="max_capacity" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Rack layout configuration: editable list of rack locations -->
+    <record id="view_location_layout_tree" model="ir.ui.view">
+        <field name="name">stock.location.layout.tree</field>
+        <field name="model">stock.location</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" default_order="complete_name">
+                <field name="company_id" column_invisible="1"/>
+                <field name="complete_name" readonly="1"/>
+                <field name="name"/>
+                <field name="location_id"/>
+                <field name="is_loading_dock"/>
+                <field name="layout_positioned"/>
+                <field name="layout_x"/>
+                <field name="layout_y"/>
+                <field name="layout_rotation"/>
+                <field name="layout_levels"/>
+                <field name="rack_code" optional="show"/>
+                <field name="rack_type" optional="show"/>
+                <field name="layout_zone_element_id" optional="hide"/>
+                <field name="max_capacity"/>
+                <field name="occupancy_pct" readonly="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_warehouse_layout_config" model="ir.actions.act_window">
+        <field name="name">Warehouse Layout</field>
+        <field name="res_model">stock.location</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_location_layout_tree"/>
+        <field name="domain">[("usage", "=", "internal")]</field>
+        <field name="context">{"default_usage": "internal"}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Configure your warehouse layout</p>
+            <p>
+                A <b>rack</b> is an internal location that contains shelf
+                locations. Tick <b>Manual Position</b> on a rack and set
+                Layout X/Y (meters) to place it on the 3D floor. Create new
+                shelf locations here by adding rows with the rack as parent.
+            </p>
+        </field>
+    </record>
+
+    <menuitem
+        id="menu_smart_warehouse_layout"
+        name="Warehouse Layout"
+        parent="menu_smart_warehouse_root"
+        action="action_warehouse_layout_config"
+        sequence="20"
+        groups="buz_smart_warehouse.group_smart_warehouse_manager"
+    />
+</odoo>

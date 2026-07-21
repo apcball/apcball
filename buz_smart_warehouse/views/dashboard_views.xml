@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_smart_warehouse_dashboard" model="ir.actions.client">
+        <field name="name">Smart Warehouse</field>
+        <field name="tag">buz_smart_warehouse</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem
+        id="menu_smart_warehouse_root"
+        name="Smart Warehouse"
+        web_icon="buz_smart_warehouse,static/description/icon.png"
+        sequence="16"
+        groups="buz_smart_warehouse.group_smart_warehouse_user"
+    />
+
+    <menuitem
+        id="menu_smart_warehouse_dashboard"
+        name="Dashboard"
+        parent="menu_smart_warehouse_root"
+        action="action_smart_warehouse_dashboard"
+        sequence="1"
+        groups="buz_smart_warehouse.group_smart_warehouse_user"
+    />
+
+    <record id="action_smart_warehouse_layout_designer" model="ir.actions.client">
+        <field name="name">Layout Designer</field>
+        <field name="tag">buz_smart_warehouse_layout_designer</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem
+        id="menu_smart_warehouse_layout_designer"
+        name="Layout Designer"
+        parent="menu_smart_warehouse_root"
+        action="action_smart_warehouse_layout_designer"
+        sequence="15"
+        groups="buz_smart_warehouse.group_smart_warehouse_manager"
+    />
+</odoo>

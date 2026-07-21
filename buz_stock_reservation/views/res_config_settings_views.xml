@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.form.buz.reservation</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="stock.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='stock']" position="inside">
+                <block title="Product Reservations" name="buz_reservation_settings">
+                    <setting string="Default Expiry"
+                             help="Days before a new reservation expires by default.">
+                        <field name="buz_reservation_default_expiry_days"/>
+                    </setting>
+                    <setting string="Expiring Soon Threshold"
+                             help="Reservations expiring within this many days are flagged as Expiring Soon.">
+                        <field name="buz_reservation_expiring_soon_days"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_buz_reservation_settings" model="ir.actions.act_window">
+        <field name="name">Reservation Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'stock'}</field>
+    </record>
+</odoo>

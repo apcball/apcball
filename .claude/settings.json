@@ -1,6 +1,6 @@
 {
   "enabledPlugins": {
-    "superpowers@claude-plugins-official": false,
+    "superpowers@claude-plugins-official": ture,
     "context7@claude-plugins-official": true
   }
 }

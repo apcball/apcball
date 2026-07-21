@@ -18,10 +18,10 @@ class ProductCategory(models.Model):
         help='Terms and conditions applicable to this warranty'
     )
     warranty_type = fields.Selection([
-        ('replacement', 'Replacement'),
+        ('replacement', 'Replace'),
         ('repair', 'Repair'),
         ('refund', 'Refund'),
-    ], string='Warranty Type', default='repair')
+    ], string='Warranty Type', default='replacement')
     service_product_id = fields.Many2one(
         'product.product',
         string='Service Product',

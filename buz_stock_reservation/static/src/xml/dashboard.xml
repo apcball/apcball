@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="buz_stock_reservation.Dashboard">
+    <div class="o_buz_rsv_dashboard h-100 overflow-auto">
+        <div class="o_buz_rsv_header d-flex align-items-center justify-content-between px-4 pt-4 pb-2">
+            <div>
+                <h2 class="mb-0">Reservation Dashboard</h2>
+                <span class="text-muted">Overview of stock reservations</span>
+            </div>
+            <div class="d-flex gap-2">
+                <select class="form-select form-select-sm" t-on-change="onPeriodChange">
+                    <option value="week" t-att-selected="state.period === 'week'">This Week</option>
+                    <option value="month" t-att-selected="state.period === 'month'">This Month</option>
+                </select>
+                <button class="btn btn-sm btn-secondary" t-on-click="refresh" title="Refresh">
+                    <i class="fa fa-refresh"/>
+                </button>
+            </div>
+        </div>
+
+        <t t-if="state.data">
+            <!-- KPI cards -->
+            <div class="row g-3 px-4 py-2">
+                <div class="col-6 col-xl">
+                    <div class="o_buz_rsv_kpi card p-3" role="button"
+                         t-on-click="() => this.openAction('buz_stock_reservation.action_stock_reservation')">
+                        <div class="o_buz_rsv_kpi_icon bg-primary-subtle text-primary"><i class="fa fa-calendar-check-o"/></div>
+                        <div class="text-muted">Active Reservations</div>
+                        <div class="o_buz_rsv_kpi_value" t-esc="state.data.kpi.active_count"/>
+                        <small t-if="state.data.kpi.active_delta &gt;= 0" class="text-success">
+                            <i class="fa fa-arrow-up"/> <t t-esc="state.data.kpi.active_delta"/> from yesterday
+                        </small>
+                        <small t-else="" class="text-danger">
+                            <i class="fa fa-arrow-down"/> <t t-esc="-state.data.kpi.active_delta"/> from yesterday
+                        </small>
+                    </div>
+                </div>
+                <div class="col-6 col-xl">
+                    <div class="o_buz_rsv_kpi card p-3">
+                        <div class="o_buz_rsv_kpi_icon bg-success-subtle text-success"><i class="fa fa-cube"/></div>
+                        <div class="text-muted">Reserved Quantity</div>
+                        <div class="o_buz_rsv_kpi_value" t-esc="formatQty(state.data.kpi.reserved_units)"/>
+                        <small class="text-muted">Units</small>
+                    </div>
+                </div>
+                <div class="col-6 col-xl">
+                    <div class="o_buz_rsv_kpi card p-3" role="button"
+                         t-on-click="() => this.openAction('buz_stock_reservation.action_stock_reservation_expiring')">
+                        <div class="o_buz_rsv_kpi_icon bg-warning-subtle text-warning"><i class="fa fa-clock-o"/></div>
+                        <div class="text-muted">Expiring Today</div>
+                        <div class="o_buz_rsv_kpi_value" t-esc="state.data.kpi.expiring_today"/>
+                        <small class="text-warning"><t t-esc="state.data.kpi.expiring_today"/> Reservations</small>
+                    </div>
+                </div>
+                <div class="col-6 col-xl">
+                    <div class="o_buz_rsv_kpi card p-3" role="button"
+                         t-on-click="() => this.openAction('buz_stock_reservation.action_stock_reservation_expired')">
+                        <div class="o_buz_rsv_kpi_icon bg-danger-subtle text-danger"><i class="fa fa-exclamation-triangle"/></div>
+                        <div class="text-muted">Expired Reservations</div>
+                        <div class="o_buz_rsv_kpi_value" t-esc="state.data.kpi.expired_count"/>
+                        <small class="text-danger"><t t-esc="state.data.kpi.expired_count"/> Reservations</small>
+                    </div>
+                </div>
+                <div class="col-6 col-xl">
+                    <div class="o_buz_rsv_kpi card p-3" role="button"
+                         t-on-click="() => this.openAction('buz_stock_reservation.action_product_availability')">
+                        <div class="o_buz_rsv_kpi_icon bg-info-subtle text-info"><i class="fa fa-cubes"/></div>
+                        <div class="text-muted">Products Reserved</div>
+                        <div class="o_buz_rsv_kpi_value" t-esc="state.data.kpi.products_reserved"/>
+                        <small class="text-muted">SKU</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts + expiring soon -->
+            <div class="row g-3 px-4 py-2">
+                <div class="col-12 col-xl-5">
+                    <div class="card p-3 h-100">
+                        <h5>Reservations Trend</h5>
+                        <div class="o_buz_rsv_chart"><canvas t-ref="trendChart"/></div>
+                    </div>
+                </div>
+                <div class="col-12 col-xl-4">
+                    <div class="card p-3 h-100">
+                        <h5>Reservations by Status</h5>
+                        <div class="o_buz_rsv_chart"><canvas t-ref="statusChart"/></div>
+                    </div>
+                </div>
+                <div class="col-12 col-xl-3">
+                    <div class="card p-3 h-100">
+                        <div class="d-flex justify-content-between">
+                            <h5>Expiring Soon</h5>
+                            <a href="#" t-on-click.prevent="() => this.openAction('buz_stock_reservation.action_stock_reservation_expiring')">View All</a>
+                        </div>
+                        <t t-if="state.data.expiring_soon.length">
+                            <div t-foreach="state.data.expiring_soon" t-as="rsv" t-key="rsv.id"
+                                 class="o_buz_rsv_expiring d-flex justify-content-between py-2 border-bottom"
+                                 role="button" t-on-click="() => this.openReservation(rsv.id)">
+                                <div>
+                                    <div class="fw-bold" t-esc="rsv.name"/>
+                                    <small class="text-muted">
+                                        <t t-esc="rsv.customer"/> <t t-if="rsv.reference">· <t t-esc="rsv.reference"/></t>
+                                    </small>
+                                </div>
+                                <span class="text-warning fw-bold text-nowrap">
+                                    <t t-if="rsv.days_to_expiry &lt;= 0">Today</t>
+                                    <t t-else=""><t t-esc="rsv.days_to_expiry"/> day<t t-if="rsv.days_to_expiry &gt; 1">s</t></t>
+                                </span>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="text-muted py-3">Nothing expiring soon.</div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent reservations -->
+            <div class="px-4 py-2">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between">
+                        <h5>Recent Reservations</h5>
+                        <a href="#" t-on-click.prevent="() => this.openAction('buz_stock_reservation.action_stock_reservation')">View All</a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr class="text-muted">
+                                    <th>Reservation No.</th>
+                                    <th>Customer</th>
+                                    <th>Reference</th>
+                                    <th>Warehouse</th>
+                                    <th>Reserved Date</th>
+                                    <th>Expiry Date</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Reserved Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.data.recent" t-as="rsv" t-key="rsv.id"
+                                    role="button" t-on-click="() => this.openReservation(rsv.id)">
+                                    <td class="fw-bold" t-esc="rsv.name"/>
+                                    <td t-esc="rsv.customer"/>
+                                    <td t-esc="rsv.reference"/>
+                                    <td t-esc="rsv.warehouse"/>
+                                    <td t-esc="formatDate(rsv.reserved_date)"/>
+                                    <td t-esc="formatDate(rsv.expiry_date)"/>
+                                    <td>
+                                        <span t-attf-class="badge o_buz_rsv_badge_{{ rsv.state }}"
+                                              t-esc="rsv.state_label"/>
+                                    </td>
+                                    <td class="text-end" t-esc="formatQty(rsv.reserved_qty)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick actions -->
+            <div class="d-flex flex-wrap gap-3 px-4 py-3">
+                <button class="btn btn-light o_buz_rsv_quick" t-on-click="newReservation">
+                    <i class="fa fa-plus text-primary me-2"/>New Reservation
+                </button>
+                <button class="btn btn-light o_buz_rsv_quick"
+                        t-on-click="() => this.openAction('buz_stock_reservation.action_stock_reservation')">
+                    <i class="fa fa-unlock text-warning me-2"/>Release Reservation
+                </button>
+                <button class="btn btn-light o_buz_rsv_quick"
+                        t-on-click="() => this.openAction('buz_stock_reservation.action_stock_reservation_expiring')">
+                    <i class="fa fa-calendar text-success me-2"/>Extend Reservation
+                </button>
+                <button class="btn btn-light o_buz_rsv_quick"
+                        t-on-click="() => this.openAction('buz_stock_reservation.action_product_availability')">
+                    <i class="fa fa-cube text-info me-2"/>Product Availability
+                </button>
+                <button class="btn btn-light o_buz_rsv_quick"
+                        t-on-click="() => this.openAction('buz_stock_reservation.action_stock_reservation_expired')">
+                    <i class="fa fa-history text-danger me-2"/>View Expired
+                </button>
+            </div>
+        </t>
+        <t t-elif="state.loading">
+            <div class="d-flex justify-content-center py-5">
+                <i class="fa fa-spinner fa-spin fa-2x"/>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

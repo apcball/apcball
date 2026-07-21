@@ -99,23 +99,13 @@ class StockLandedCost(models.Model):
                 },
             }
 
-        found_count = len(productions)
         if self.mo_filter_mode == 'add':
             productions |= self.mrp_production_ids
         self.mrp_production_ids = [fields.Command.set(productions.ids)]
+        # The object method updates the record on the server, but the form view
+        # still holds the old one2many cache. Reload it so selected MOs appear
+        # immediately after clicking Search.
         return {
             'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Manufacturing Orders Found'),
-                'message': _(
-                    'Found %(count)s manufacturing orders for %(account)s between %(date_from)s and %(date_to)s.',
-                    count=found_count,
-                    account=self.mo_filter_analytic_account_id.display_name,
-                    date_from=fields.Date.to_string(self.mo_filter_date_from),
-                    date_to=fields.Date.to_string(self.mo_filter_date_to),
-                ),
-                'type': 'success',
-                'sticky': False,
-            },
+            'tag': 'reload',
         }

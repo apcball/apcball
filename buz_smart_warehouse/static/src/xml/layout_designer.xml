@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="buz_smart_warehouse.LayoutDesigner">
+    <div class="swh-designer d-flex flex-column" style="height:100%;">
+        <!-- Toolbar -->
+        <div class="swh-header d-flex align-items-center gap-2 flex-wrap">
+            <h4 class="mb-0 text-nowrap"><i class="fa fa-object-group me-2"/>Layout Designer</h4>
+            <select class="form-select form-select-sm w-auto" t-on-change="onWarehouseChange">
+                <t t-foreach="state.warehouses" t-as="wh" t-key="wh.id">
+                    <option t-att-value="wh.id" t-att-selected="wh.id === state.warehouseId ? 'selected' : undefined" t-esc="wh.name"/>
+                </t>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary" t-att-disabled="!selectedItem"
+                    t-on-click="rotateSelected" title="หมุนรายการที่เลือกทีละ 90°">
+                <i class="fa fa-rotate-right me-1"/>หมุน 90°
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" t-on-click="expandFloor"
+                    title="ขยายพื้นที่วาง (+20 × +10 เมตร)">
+                <i class="fa fa-expand me-1"/>ขยายพื้นที่
+            </button>
+            <div class="ms-auto d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" t-att-disabled="!state.dirty"
+                        t-on-click="discard">ยกเลิก</button>
+                <button class="btn btn-sm btn-success" t-att-disabled="!state.dirty or state.saving or !state.isManager"
+                        t-on-click="save">
+                    <i t-att-class="state.saving ? 'fa fa-spinner fa-spin me-1' : 'fa fa-floppy-o me-1'"/>Save Layout
+                </button>
+            </div>
+        </div>
+        <div class="text-muted small px-2 pb-1">
+            เลือกเครื่องมือแล้วคลิกบนผังเพื่อวาง · ลากเพื่อย้าย (snap 0.5 ม.) · คลิกเลือกแล้วกดหมุน 90° · คลิกพื้นว่างเพื่อยกเลิกเลือก / ลากเพื่อเลื่อนมุมมอง · ตาราง = 5 ม.
+        </div>
+
+        <t t-if="state.loading">
+            <div class="text-center p-5"><i class="fa fa-spinner fa-spin fa-2x"/></div>
+        </t>
+        <div t-else="" class="d-flex flex-grow-1 overflow-hidden">
+            <!-- Left sidebar -->
+            <div class="swh-designer-sidebar overflow-auto">
+                <div class="swh-side-title">TOOLS</div>
+                <t t-foreach="tools" t-as="tool" t-key="tool.id">
+                    <button t-attf-class="swh-tool-btn {{ state.tool === tool.id ? 'active' : '' }}"
+                            t-on-click="() => this.setTool(tool.id)">
+                        <i t-attf-class="fa {{ tool.icon }} me-2"/><t t-esc="tool.label"/>
+                    </button>
+                </t>
+                <div class="swh-side-title mt-3">RACK TYPES</div>
+                <t t-foreach="rackTypes" t-as="rt" t-key="rt.id">
+                    <button t-attf-class="swh-tool-btn {{ state.activeRackType === rt.id ? 'active' : '' }}"
+                            t-on-click="() => this.setRackType(rt.id)">
+                        <i t-attf-class="fa {{ rt.icon }} me-2"/><t t-esc="rt.label"/>
+                    </button>
+                </t>
+                <div class="swh-side-title mt-3">ZONES</div>
+                <t t-foreach="zoneTypes" t-as="zt" t-key="zt.id">
+                    <button t-attf-class="swh-tool-btn {{ state.activeZoneType === zt.id ? 'active' : '' }}"
+                            t-on-click="() => this.setZoneType(zt.id)">
+                        <span class="swh-zone-swatch me-2" t-attf-style="background:{{ zt.color }};"/>
+                        <t t-esc="zt.label"/>
+                    </button>
+                </t>
+            </div>
+
+            <!-- Canvas -->
+            <div class="swh-designer-canvas flex-grow-1 position-relative" t-ref="canvas">
+                <svg t-ref="svg"
+                     t-att-viewBox="viewBox"
+                     preserveAspectRatio="xMidYMid meet"
+                     t-attf-style="width:100%; height:100%; touch-action:none; background:#f8fafc; cursor:{{ state.tool === 'select' ? 'default' : 'crosshair' }};"
+                     t-on-pointerdown="onSvgPointerDown"
+                     t-on-pointermove="onPointerMove"
+                     t-on-pointerup="onPointerUp"
+                     t-on-pointercancel="onPointerUp">
+                    <defs>
+                        <pattern id="swhGrid" width="5" height="5" patternUnits="userSpaceOnUse">
+                            <path d="M 5 0 L 0 0 0 5" fill="none" stroke="#dbe3ee" stroke-width="0.08"/>
+                        </pattern>
+                        <marker id="swhArrow" viewBox="0 0 10 10" refX="8" refY="5"
+                                markerUnits="userSpaceOnUse" markerWidth="1.6" markerHeight="1.6"
+                                orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+                        </marker>
+                    </defs>
+                    <rect x="0" y="0" t-att-width="state.floorW" t-att-height="state.floorH" fill="url(#swhGrid)"/>
+
+                    <!-- Rulers -->
+                    <t t-foreach="xTicks" t-as="tx" t-key="'tx_' + tx">
+                        <line t-att-x1="tx" y1="0" t-att-x2="tx" y2="1" stroke="#94a3b8" stroke-width="0.1"/>
+                        <text t-att-x="tx + 0.3" y="1.6" fill="#94a3b8" style="font-size:1.1px;"><t t-esc="tx"/></text>
+                    </t>
+                    <t t-foreach="yTicks" t-as="ty" t-key="'ty_' + ty">
+                        <line x1="0" t-att-y1="ty" x2="1" t-att-y2="ty" stroke="#94a3b8" stroke-width="0.1"/>
+                        <text x="0.3" t-att-y="ty + 1.5" fill="#94a3b8" style="font-size:1.1px;"><t t-esc="ty"/></text>
+                    </t>
+
+                    <!-- Zones -->
+                    <t t-foreach="itemsOfKind('zone')" t-as="item" t-key="item.key">
+                        <g t-attf-transform="rotate({{ item.rotation }}, {{ item.x + item.width / 2 }}, {{ item.y + item.depth / 2 }})"
+                           style="cursor:move;"
+                           t-on-pointerdown="(ev) => this.onItemPointerDown(item, ev)">
+                            <rect t-att-x="item.x" t-att-y="item.y"
+                                  t-att-width="item.width" t-att-height="item.depth" rx="0.5"
+                                  t-att-fill="zoneColor(item)" fill-opacity="0.12"
+                                  t-att-stroke="item.key === state.selectedKey ? '#22c55e' : zoneColor(item)"
+                                  stroke-dasharray="1.2 0.8"
+                                  t-att-stroke-width="item.key === state.selectedKey ? 0.3 : 0.2"/>
+                            <text t-att-x="item.x + item.width / 2" t-att-y="item.y + 1.8"
+                                  text-anchor="middle" t-att-fill="zoneColor(item)"
+                                  style="font-size:1.6px; font-weight:bold; letter-spacing:0.15px; pointer-events:none;">
+                                <t t-esc="item.name.toUpperCase()"/>
+                            </text>
+                        </g>
+                        <t t-call="buz_smart_warehouse.SelectionHandles"/>
+                    </t>
+
+                    <!-- Aisles -->
+                    <t t-foreach="itemsOfKind('aisle')" t-as="item" t-key="item.key">
+                        <g t-attf-transform="rotate({{ item.rotation }}, {{ item.x + item.width / 2 }}, {{ item.y + item.depth / 2 }})"
+                           style="cursor:move;"
+                           t-on-pointerdown="(ev) => this.onItemPointerDown(item, ev)">
+                            <rect t-att-x="item.x" t-att-y="item.y"
+                                  t-att-width="item.width" t-att-height="item.depth" rx="0.3"
+                                  fill="#e2e8f0" fill-opacity="0.6"
+                                  t-att-stroke="item.key === state.selectedKey ? '#22c55e' : '#64748b'"
+                                  stroke-dasharray="1 0.7"
+                                  t-att-stroke-width="item.key === state.selectedKey ? 0.3 : 0.15"/>
+                            <line t-att-x1="item.x + 1.4" t-att-y1="item.y + item.depth / 2"
+                                  t-att-x2="item.x + item.width - 1.4" t-att-y2="item.y + item.depth / 2"
+                                  stroke="#94a3b8" stroke-width="0.12" stroke-dasharray="1.5 1"
+                                  marker-start="url(#swhArrow)" marker-end="url(#swhArrow)"/>
+                            <text t-att-x="item.x + item.width / 2" t-att-y="item.y + item.depth / 2 - 0.5"
+                                  text-anchor="middle" fill="#64748b"
+                                  style="font-size:1.1px; pointer-events:none;">
+                                <t t-esc="item.name"/>
+                            </text>
+                        </g>
+                        <t t-call="buz_smart_warehouse.SelectionHandles"/>
+                    </t>
+
+                    <!-- Obstacles -->
+                    <t t-foreach="itemsOfKind('obstacle')" t-as="item" t-key="item.key">
+                        <g t-attf-transform="rotate({{ item.rotation }}, {{ item.x + item.width / 2 }}, {{ item.y + item.depth / 2 }})"
+                           style="cursor:move;"
+                           t-on-pointerdown="(ev) => this.onItemPointerDown(item, ev)">
+                            <rect t-att-x="item.x" t-att-y="item.y"
+                                  t-att-width="item.width" t-att-height="item.depth" rx="0.3"
+                                  fill="#94a3b8" fill-opacity="0.55"
+                                  t-att-stroke="item.key === state.selectedKey ? '#22c55e' : '#475569'"
+                                  t-att-stroke-width="item.key === state.selectedKey ? 0.3 : 0.15"/>
+                            <text t-att-x="item.x + item.width / 2" t-att-y="item.y + item.depth / 2"
+                                  text-anchor="middle" dominant-baseline="central" fill="#1e293b"
+                                  style="font-size:1.1px; pointer-events:none;">
+                                <t t-esc="item.name"/>
+                            </text>
+                        </g>
+                        <t t-call="buz_smart_warehouse.SelectionHandles"/>
+                    </t>
+
+                    <!-- Forklifts (decorative) -->
+                    <t t-foreach="itemsOfKind('forklift')" t-as="item" t-key="item.key">
+                        <g t-attf-transform="rotate({{ item.rotation }}, {{ item.x + item.width / 2 }}, {{ item.y + item.depth / 2 }})"
+                           style="cursor:move;"
+                           t-on-pointerdown="(ev) => this.onItemPointerDown(item, ev)">
+                            <rect t-att-x="item.x" t-att-y="item.y + item.depth * 0.22"
+                                  t-att-width="item.width" t-att-height="item.depth * 0.55" rx="0.12"
+                                  fill="#f59e0b" stroke="#b45309" stroke-width="0.08"/>
+                            <rect t-att-x="item.x + item.width * 0.2" t-att-y="item.y"
+                                  t-att-width="item.width * 0.6" t-att-height="item.depth * 0.2"
+                                  fill="#78716c" stroke="#57534e" stroke-width="0.06"/>
+                            <circle t-att-cx="item.x + item.width * 0.25"
+                                    t-att-cy="item.y + item.depth * 0.87"
+                                    t-att-r="item.depth * 0.12" fill="#1f2937"/>
+                            <circle t-att-cx="item.x + item.width * 0.75"
+                                    t-att-cy="item.y + item.depth * 0.87"
+                                    t-att-r="item.depth * 0.12" fill="#1f2937"/>
+                        </g>
+                        <t t-call="buz_smart_warehouse.SelectionHandles"/>
+                    </t>
+
+                    <!-- Racks -->
+                    <t t-foreach="itemsOfKind('rack')" t-as="item" t-key="item.key">
+                        <g t-attf-transform="translate({{ item.x }}, {{ item.y }}) rotate({{ item.rotation }}, {{ item.width / 2 }}, {{ item.depth / 2 }})"
+                           style="cursor:move;"
+                           t-on-pointerdown="(ev) => this.onItemPointerDown(item, ev)">
+                            <rect t-att-width="item.width" t-att-height="item.depth" rx="0.15"
+                                  t-att-fill="rackFill(item)"
+                                  t-att-stroke="item.key === state.selectedKey ? '#22c55e' : rackStroke(item)"
+                                  t-att-stroke-width="item.key === state.selectedKey ? 0.3 : 0.15"/>
+                            <t t-foreach="bayLines(item)" t-as="bx" t-key="'b' + bx_index">
+                                <line t-att-x1="bx" y1="0" t-att-x2="bx" t-att-y2="item.depth"
+                                      t-att-stroke="rackStroke(item)" stroke-opacity="0.5" stroke-width="0.06"/>
+                            </t>
+                            <line x1="0" t-att-y1="item.depth / 2" t-att-x2="item.width" t-att-y2="item.depth / 2"
+                                  t-att-stroke="rackStroke(item)" stroke-opacity="0.5" stroke-width="0.06"/>
+                            <line x1="0" t-att-y1="item.depth / 4" t-att-x2="item.width" t-att-y2="item.depth / 4"
+                                  t-att-stroke="rackStroke(item)" stroke-opacity="0.25" stroke-width="0.04"/>
+                            <line x1="0" t-att-y1="item.depth * 3 / 4" t-att-x2="item.width" t-att-y2="item.depth * 3 / 4"
+                                  t-att-stroke="rackStroke(item)" stroke-opacity="0.25" stroke-width="0.04"/>
+                            <text t-att-x="item.width / 2" t-att-y="item.depth / 2"
+                                  text-anchor="middle" dominant-baseline="central"
+                                  fill="#1f2937" style="font-size:1.1px; font-weight:bold; pointer-events:none;">
+                                <t t-esc="item.name"/>
+                            </text>
+                            <text t-att-x="item.width / 2" t-att-y="item.depth + 1.1"
+                                  text-anchor="middle" fill="#64748b" style="font-size:0.9px; pointer-events:none;">
+                                <t t-esc="item.rack_code || ''"/><t t-if="item.pct !== null and item.pct !== undefined"> · <t t-esc="Math.round(item.pct)"/>%</t>
+                            </text>
+                        </g>
+                        <t t-call="buz_smart_warehouse.SelectionHandles"/>
+                    </t>
+
+                    <!-- Docks -->
+                    <t t-foreach="itemsOfKind('dock')" t-as="item" t-key="item.key">
+                        <g t-attf-transform="translate({{ item.x }}, {{ item.y }}) rotate({{ item.rotation }}, {{ item.width / 2 }}, {{ item.depth / 2 }})"
+                           style="cursor:move;"
+                           t-on-pointerdown="(ev) => this.onItemPointerDown(item, ev)">
+                            <rect t-att-width="item.width" t-att-height="item.depth" rx="0.4"
+                                  fill="#2b7fff" fill-opacity="0.15"
+                                  stroke-dasharray="1 0.7"
+                                  t-att-stroke="item.key === state.selectedKey ? '#22c55e' : '#3b6ea5'"
+                                  t-att-stroke-width="item.key === state.selectedKey ? 0.3 : 0.2"/>
+                            <text t-att-x="item.width / 2" y="1.4"
+                                  text-anchor="middle" dominant-baseline="central" fill="#3b6ea5"
+                                  style="font-size:1.1px; font-weight:bold; pointer-events:none;">
+                                <t t-esc="item.name"/>
+                            </text>
+                            <!-- truck: trailer on top, cab at the bottom (backing in) -->
+                            <g style="pointer-events:none;">
+                                <rect t-att-x="item.width * 0.22" t-att-y="item.depth * 0.24"
+                                      t-att-width="item.width * 0.56" t-att-height="item.depth * 0.42" rx="0.15"
+                                      fill="#e5e7eb" stroke="#94a3b8" stroke-width="0.06"/>
+                                <rect t-att-x="item.width * 0.27" t-att-y="item.depth * 0.68"
+                                      t-att-width="item.width * 0.46" t-att-height="item.depth * 0.14" rx="0.12"
+                                      fill="#3b82f6" stroke="#1d4ed8" stroke-width="0.06"/>
+                                <circle t-att-cx="item.width * 0.3" t-att-cy="item.depth * 0.86"
+                                        t-att-r="Math.min(0.3, item.width * 0.07)" fill="#1f2937"/>
+                                <circle t-att-cx="item.width * 0.7" t-att-cy="item.depth * 0.86"
+                                        t-att-r="Math.min(0.3, item.width * 0.07)" fill="#1f2937"/>
+                            </g>
+                        </g>
+                        <t t-call="buz_smart_warehouse.SelectionHandles"/>
+                    </t>
+
+                    <!-- Text labels -->
+                    <t t-foreach="itemsOfKind('text')" t-as="item" t-key="item.key">
+                        <g t-attf-transform="rotate({{ item.rotation }}, {{ item.x }}, {{ item.y }})"
+                           style="cursor:move;"
+                           t-on-pointerdown="(ev) => this.onItemPointerDown(item, ev)">
+                            <rect t-att-x="item.x - 0.5" t-att-y="item.y - 1.6"
+                                  t-att-width="Math.max(4, item.name.length * 1.1)" height="2.4"
+                                  fill="#ffffff" fill-opacity="0.01"
+                                  t-att-stroke="item.key === state.selectedKey ? '#2b7fff' : 'none'"
+                                  stroke-width="0.2" stroke-dasharray="0.6 0.4"/>
+                            <text t-att-x="item.x" t-att-y="item.y" fill="#334155"
+                                  style="font-size:1.8px; font-weight:bold;">
+                                <t t-esc="item.name"/>
+                            </text>
+                        </g>
+                    </t>
+                </svg>
+
+                <!-- Zoom bar -->
+                <div class="swh-zoombar d-flex align-items-center gap-1">
+                    <button class="btn btn-sm btn-light border" t-on-click="zoomIn" title="ซูมเข้า"><i class="fa fa-plus"/></button>
+                    <button class="btn btn-sm btn-light border px-2" t-on-click="zoomReset"><t t-esc="Math.round(state.zoom * 100)"/>%</button>
+                    <button class="btn btn-sm btn-light border" t-on-click="zoomOut" title="ซูมออก"><i class="fa fa-minus"/></button>
+                    <button class="btn btn-sm btn-light border" t-on-click="toggleFullscreen" title="เต็มจอ"><i class="fa fa-arrows-alt"/></button>
+                </div>
+
+                <!-- Minimap -->
+                <div class="swh-minimap">
+                    <svg t-attf-viewBox="0 0 {{ state.floorW }} {{ state.floorH }}" style="width:160px; display:block;">
+                        <rect x="0" y="0" t-att-width="state.floorW" t-att-height="state.floorH" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="0.4"/>
+                        <t t-foreach="state.items" t-as="item" t-key="'mm_' + item.key">
+                            <rect t-if="item.kind !== 'text'"
+                                  t-att-x="item.x" t-att-y="item.y"
+                                  t-att-width="item.width" t-att-height="item.depth"
+                                  t-att-fill="item.kind === 'zone' ? zoneColor(item) : (item.kind === 'dock' ? '#2b7fff' : (item.kind === 'forklift' ? '#f59e0b' : '#64748b'))"
+                                  t-att-fill-opacity="item.kind === 'zone' ? 0.3 : 0.8"/>
+                        </t>
+                        <rect t-att-x="state.panX" t-att-y="state.panY"
+                              t-att-width="state.floorW / state.zoom" t-att-height="state.floorH / state.zoom"
+                              fill="none" stroke="#2b7fff" stroke-width="0.8"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Properties panel -->
+            <div t-if="selectedItem" class="swh-designer-props overflow-auto">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="swh-side-title mb-0 flex-grow-1">
+                        <t t-if="selectedItem.kind === 'rack'">RACK PROPERTIES</t>
+                        <t t-elif="selectedItem.kind === 'dock'">DOCK PROPERTIES</t>
+                        <t t-elif="selectedItem.kind === 'zone'">ZONE PROPERTIES</t>
+                        <t t-else="">PROPERTIES</t>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" t-on-click="deleteSelected" title="ลบ">
+                        <i class="fa fa-trash"/>
+                    </button>
+                </div>
+
+                <label class="swh-prop-label">Name</label>
+                <input class="form-control form-control-sm" t-att-value="selectedItem.name"
+                       t-on-change="(ev) => this.updateSelected('name', ev)"/>
+
+                <t t-if="selectedItem.kind === 'rack'">
+                    <label class="swh-prop-label">Rack Code</label>
+                    <input class="form-control form-control-sm" t-att-value="selectedItem.rack_code"
+                           placeholder="RA-01"
+                           t-on-change="(ev) => this.updateSelected('rack_code', ev)"/>
+                    <label class="swh-prop-label">Rack Type</label>
+                    <select class="form-select form-select-sm"
+                            t-on-change="(ev) => this.updateSelected('rack_type', ev)">
+                        <t t-foreach="rackTypes" t-as="rt" t-key="rt.id">
+                            <option t-att-value="rt.id" t-att-selected="selectedItem.rack_type === rt.id ? 'selected' : undefined" t-esc="rt.label"/>
+                        </t>
+                        <option value="shelf" t-att-selected="selectedItem.rack_type === 'shelf' ? 'selected' : undefined">Shelf</option>
+                    </select>
+                    <label class="swh-prop-label">Zone
+                        <span class="swh-zone-swatch ms-1"
+                              t-attf-style="background:{{ rackStroke(selectedItem) }};"/>
+                    </label>
+                    <select class="form-select form-select-sm"
+                            t-on-change="(ev) => this.updateSelected('zone_element_id', ev)">
+                        <option value="">—</option>
+                        <t t-foreach="zones" t-as="zone" t-key="zone.key">
+                            <option t-att-value="zone.id || zone.tmpKey"
+                                    t-att-selected="(selectedItem.zone_element_id === zone.id or selectedItem.zone_element_id === zone.tmpKey) ? 'selected' : undefined"
+                                    t-esc="zone.name"/>
+                        </t>
+                    </select>
+                </t>
+
+                <t t-if="selectedItem.kind === 'zone'">
+                    <label class="swh-prop-label">Zone Type</label>
+                    <select class="form-select form-select-sm"
+                            t-on-change="(ev) => this.updateSelected('zone_type', ev)">
+                        <t t-foreach="zoneTypes" t-as="zt" t-key="zt.id">
+                            <option t-att-value="zt.id" t-att-selected="selectedItem.zone_type === zt.id ? 'selected' : undefined" t-esc="zt.label"/>
+                        </t>
+                    </select>
+                </t>
+
+                <label class="swh-prop-label">Position (ม.)</label>
+                <div class="d-flex gap-2">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">X</span>
+                        <input type="number" step="0.5" class="form-control" t-att-value="selectedItem.x"
+                               t-on-change="(ev) => this.updateSelected('x', ev)"/>
+                    </div>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">Y</span>
+                        <input type="number" step="0.5" class="form-control" t-att-value="selectedItem.y"
+                               t-on-change="(ev) => this.updateSelected('y', ev)"/>
+                    </div>
+                </div>
+
+                <t t-if="selectedItem.kind !== 'text'">
+                    <label class="swh-prop-label">Size (ม.)</label>
+                    <div class="d-flex gap-2">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">W</span>
+                            <input type="number" step="0.5" class="form-control" t-att-value="selectedItem.width"
+                                   t-on-change="(ev) => this.updateSelected('width', ev)"/>
+                        </div>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">D</span>
+                            <input type="number" step="0.5" class="form-control" t-att-value="selectedItem.depth"
+                                   t-on-change="(ev) => this.updateSelected('depth', ev)"/>
+                        </div>
+                        <div t-if="selectedItem.kind === 'rack'" class="input-group input-group-sm">
+                            <span class="input-group-text">H</span>
+                            <input type="number" step="0.5" class="form-control" t-att-value="selectedItem.heightM"
+                                   t-on-change="(ev) => this.updateSelected('heightM', ev)"/>
+                        </div>
+                    </div>
+                </t>
+
+                <t t-if="selectedItem.kind === 'rack'">
+                    <div class="d-flex gap-2">
+                        <div class="flex-fill">
+                            <label class="swh-prop-label">Levels</label>
+                            <input type="number" min="1" class="form-control form-control-sm"
+                                   t-att-value="selectedItem.levels"
+                                   t-on-change="(ev) => this.updateSelected('levels', ev)"/>
+                        </div>
+                        <div class="flex-fill">
+                            <label class="swh-prop-label">Bay / Level</label>
+                            <input type="number" min="1" class="form-control form-control-sm"
+                                   t-att-value="selectedItem.bays"
+                                   t-on-change="(ev) => this.updateSelected('bays', ev)"/>
+                        </div>
+                    </div>
+                    <label class="swh-prop-label">Capacity / Level</label>
+                    <div class="d-flex gap-2">
+                        <input type="number" min="0" class="form-control form-control-sm"
+                               t-att-value="selectedItem.capacity_per_level"
+                               t-on-change="(ev) => this.updateSelected('capacity_per_level', ev)"/>
+                        <select class="form-select form-select-sm w-auto"
+                                t-on-change="(ev) => this.updateSelected('capacity_uom', ev)">
+                            <option value="pallet" t-att-selected="selectedItem.capacity_uom === 'pallet' ? 'selected' : undefined">พาเลท</option>
+                            <option value="box" t-att-selected="selectedItem.capacity_uom === 'box' ? 'selected' : undefined">กล่อง</option>
+                            <option value="unit" t-att-selected="selectedItem.capacity_uom === 'unit' ? 'selected' : undefined">ชิ้น</option>
+                        </select>
+                    </div>
+                </t>
+
+                <div class="form-check mt-2">
+                    <input type="checkbox" class="form-check-input" id="swhPropActive"
+                           t-att-checked="selectedItem.active !== false ? 'checked' : undefined"
+                           t-on-change="(ev) => this.updateSelected('active', ev)"/>
+                    <label class="form-check-label swh-prop-label mt-0" for="swhPropActive">Active</label>
+                </div>
+
+                <label class="swh-prop-label">Notes</label>
+                <textarea class="form-control form-control-sm" rows="3"
+                          t-on-change="(ev) => this.updateSelected('notes', ev)"><t t-esc="selectedItem.notes"/></textarea>
+
+                <div t-if="selectedItem.bins" class="text-muted small mt-2">
+                    <i class="fa fa-cubes me-1"/><t t-esc="selectedItem.bins"/> bins
+                    <t t-if="selectedItem.pct !== null and selectedItem.pct !== undefined"> · ใช้งาน <t t-esc="Math.round(selectedItem.pct)"/>%</t>
+                </div>
+            </div>
+        </div>
+    </div>
+</t>
+
+<!-- Green selection outline + circular handles (mock style). Expects `item` in scope. -->
+<t t-name="buz_smart_warehouse.SelectionHandles">
+    <g t-if="item.key === state.selectedKey">
+        <rect t-att-x="item.x - 0.4" t-att-y="item.y - 0.4"
+              t-att-width="item.width + 0.8" t-att-height="item.depth + 0.8"
+              fill="none" stroke="#22c55e" stroke-width="0.15" stroke-dasharray="0.8 0.5"/>
+        <circle t-att-cx="item.x" t-att-cy="item.y" r="0.4"
+                fill="#ffffff" stroke="#22c55e" stroke-width="0.15"/>
+        <circle t-att-cx="item.x + item.width" t-att-cy="item.y" r="0.4"
+                fill="#ffffff" stroke="#22c55e" stroke-width="0.15"/>
+        <circle t-att-cx="item.x" t-att-cy="item.y + item.depth" r="0.4"
+                fill="#ffffff" stroke="#22c55e" stroke-width="0.15"/>
+        <circle t-att-cx="item.x + item.width / 2" t-att-cy="item.y" r="0.3"
+                fill="#ffffff" stroke="#22c55e" stroke-width="0.12"/>
+        <circle t-att-cx="item.x + item.width / 2" t-att-cy="item.y + item.depth" r="0.3"
+                fill="#ffffff" stroke="#22c55e" stroke-width="0.12"/>
+        <circle t-att-cx="item.x" t-att-cy="item.y + item.depth / 2" r="0.3"
+                fill="#ffffff" stroke="#22c55e" stroke-width="0.12"/>
+        <circle t-att-cx="item.x + item.width" t-att-cy="item.y + item.depth / 2" r="0.3"
+                fill="#ffffff" stroke="#22c55e" stroke-width="0.12"/>
+        <circle t-att-cx="item.x + item.width" t-att-cy="item.y + item.depth" r="0.5"
+                fill="#22c55e" stroke="#ffffff" stroke-width="0.12"
+                style="cursor:nwse-resize;"
+                t-on-pointerdown="(ev) => this.onResizePointerDown(item, ev)"/>
+    </g>
+</t>
+
+</templates>

@@ -1,0 +1,50 @@
+.o_buz_rsv_dashboard {
+    background-color: var(--o-webclient-background-color, #f8f9fa);
+
+    .o_buz_rsv_kpi {
+        min-height: 130px;
+        border: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+        .o_buz_rsv_kpi_icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .o_buz_rsv_kpi_value {
+            font-size: 1.7rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+    }
+
+    .o_buz_rsv_chart {
+        position: relative;
+        height: 260px;
+    }
+
+    .o_buz_rsv_expiring:last-child {
+        border-bottom: none !important;
+    }
+
+    .o_buz_rsv_quick {
+        border: 1px solid #dee2e6;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        padding: 0.6rem 1.1rem;
+    }
+
+    .o_buz_rsv_badge_draft { background-color: #82868b; }
+    .o_buz_rsv_badge_reserved { background-color: #7367f0; }
+    .o_buz_rsv_badge_partially_released { background-color: #ff9f43; }
+    .o_buz_rsv_badge_expiring_soon { background-color: #ffc107; color: #212529; }
+    .o_buz_rsv_badge_released { background-color: #28c76f; }
+    .o_buz_rsv_badge_delivered { background-color: #00cfe8; }
+    .o_buz_rsv_badge_expired { background-color: #ea5455; }
+    .o_buz_rsv_badge_cancel { background-color: #4b4b4b; }
+}

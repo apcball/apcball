@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Root ─────────────────────────────────────────────────── -->
+    <menuitem id="menu_buz_reservation_root"
+              name="Reservations"
+              parent="stock.menu_stock_root"
+              sequence="8"
+              groups="buz_stock_reservation.group_buz_reservation_user"/>
+
+    <menuitem id="menu_buz_reservation_dashboard"
+              name="Dashboard"
+              parent="menu_buz_reservation_root"
+              action="action_buz_reservation_dashboard"
+              sequence="5"/>
+
+    <menuitem id="menu_buz_reservation_all"
+              name="Reservations"
+              parent="menu_buz_reservation_root"
+              action="action_stock_reservation"
+              sequence="10"/>
+
+    <menuitem id="menu_buz_reservation_my"
+              name="My Reservations"
+              parent="menu_buz_reservation_root"
+              action="action_stock_reservation_my"
+              sequence="20"/>
+
+    <menuitem id="menu_buz_reservation_expiring"
+              name="Expiring Soon"
+              parent="menu_buz_reservation_root"
+              action="action_stock_reservation_expiring"
+              sequence="30"/>
+
+    <menuitem id="menu_buz_reservation_expired"
+              name="Expired"
+              parent="menu_buz_reservation_root"
+              action="action_stock_reservation_expired"
+              sequence="40"/>
+
+    <menuitem id="menu_buz_product_availability"
+              name="Product Availability"
+              parent="menu_buz_reservation_root"
+              action="action_product_availability"
+              sequence="50"/>
+
+    <menuitem id="menu_buz_reservation_history"
+              name="Reservation History"
+              parent="menu_buz_reservation_root"
+              action="action_stock_reservation_history"
+              sequence="60"/>
+
+    <!-- ── Reporting ────────────────────────────────────────────── -->
+    <menuitem id="menu_buz_reservation_reporting"
+              name="Reporting"
+              parent="menu_buz_reservation_root"
+              sequence="70"/>
+
+    <menuitem id="menu_buz_reservation_analysis"
+              name="Reservation Analysis"
+              parent="menu_buz_reservation_reporting"
+              action="action_reservation_analysis"
+              sequence="10"/>
+
+    <menuitem id="menu_buz_reserved_by_customer"
+              name="Reserved by Customer"
+              parent="menu_buz_reservation_reporting"
+              action="action_reserved_by_customer"
+              sequence="20"/>
+
+    <menuitem id="menu_buz_reserved_by_product"
+              name="Reserved by Product"
+              parent="menu_buz_reservation_reporting"
+              action="action_reserved_by_product"
+              sequence="30"/>
+
+    <menuitem id="menu_buz_expiry_analysis"
+              name="Expiry Analysis"
+              parent="menu_buz_reservation_reporting"
+              action="action_expiry_analysis"
+              sequence="40"/>
+
+    <!-- ── Configuration ────────────────────────────────────────── -->
+    <menuitem id="menu_buz_reservation_config"
+              name="Configuration"
+              parent="menu_buz_reservation_root"
+              sequence="99"
+              groups="buz_stock_reservation.group_buz_reservation_manager"/>
+
+    <menuitem id="menu_buz_reservation_settings"
+              name="Reservation Settings"
+              parent="menu_buz_reservation_config"
+              action="action_buz_reservation_settings"
+              sequence="10"/>
+
+    <menuitem id="menu_buz_release_reasons"
+              name="Release Reasons"
+              parent="menu_buz_reservation_config"
+              action="action_release_reason"
+              sequence="20"/>
+</odoo>

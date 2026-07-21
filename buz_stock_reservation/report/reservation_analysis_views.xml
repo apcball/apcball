@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Line-level analysis views ────────────────────────────── -->
+    <record id="reservation_line_pivot_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.line.pivot</field>
+        <field name="model">buz.stock.reservation.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Reservation Analysis" sample="1">
+                <field name="product_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="reserved_qty" type="measure"/>
+                <field name="released_qty" type="measure"/>
+                <field name="remaining_qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="reservation_line_graph_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.line.graph</field>
+        <field name="model">buz.stock.reservation.line</field>
+        <field name="arch" type="xml">
+            <graph string="Reservation Analysis" sample="1">
+                <field name="reserved_date" interval="day"/>
+                <field name="reserved_qty" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="reservation_line_search_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.line.search</field>
+        <field name="model">buz.stock.reservation.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="partner_id"/>
+                <field name="reservation_id"/>
+                <filter name="filter_active" string="Active"
+                        domain="[('state', 'in', ('reserved', 'partially_released'))]"/>
+                <filter name="filter_expired" string="Expired" domain="[('state', '=', 'expired')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_product" string="Product" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_customer" string="Customer" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_expiry_week" string="Expiry Week" context="{'group_by': 'expiry_date:week'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="reservation_line_tree_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.line.tree</field>
+        <field name="model">buz.stock.reservation.line</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false">
+                <field name="reservation_id"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="warehouse_id"/>
+                <field name="expiry_date"/>
+                <field name="state" widget="badge"/>
+                <field name="reserved_qty" sum="Total"/>
+                <field name="remaining_qty" sum="Total"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ── Report actions ───────────────────────────────────────── -->
+    <record id="action_reservation_analysis" model="ir.actions.act_window">
+        <field name="name">Reservation Analysis</field>
+        <field name="res_model">buz.stock.reservation.line</field>
+        <field name="view_mode">graph,pivot,tree</field>
+        <field name="search_view_id" ref="reservation_line_search_view"/>
+        <field name="context">{'search_default_filter_active': 1}</field>
+    </record>
+
+    <record id="action_reserved_by_customer" model="ir.actions.act_window">
+        <field name="name">Reserved by Customer</field>
+        <field name="res_model">buz.stock.reservation.line</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="search_view_id" ref="reservation_line_search_view"/>
+        <field name="context">{'search_default_filter_active': 1, 'search_default_group_customer': 1}</field>
+    </record>
+
+    <record id="action_reserved_by_product" model="ir.actions.act_window">
+        <field name="name">Reserved by Product</field>
+        <field name="res_model">buz.stock.reservation.line</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="search_view_id" ref="reservation_line_search_view"/>
+        <field name="context">{'search_default_filter_active': 1, 'search_default_group_product': 1}</field>
+    </record>
+
+    <record id="action_expiry_analysis" model="ir.actions.act_window">
+        <field name="name">Expiry Analysis</field>
+        <field name="res_model">buz.stock.reservation.line</field>
+        <field name="view_mode">graph,pivot,tree</field>
+        <field name="search_view_id" ref="reservation_line_search_view"/>
+        <field name="context">{'search_default_group_expiry_week': 1, 'search_default_group_state': 1}</field>
+    </record>
+</odoo>

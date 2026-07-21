@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="release_reason_tree_view" model="ir.ui.view">
+        <field name="name">buz.reservation.release.reason.tree</field>
+        <field name="model">buz.reservation.release.reason</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_release_reason" model="ir.actions.act_window">
+        <field name="name">Release Reasons</field>
+        <field name="res_model">buz.reservation.release.reason</field>
+        <field name="view_mode">tree</field>
+    </record>
+</odoo>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="extend_expiry_wizard_form_view" model="ir.ui.view">
+        <field name="name">buz.reservation.extend.wizard.form</field>
+        <field name="model">buz.reservation.extend.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Extend Expiry Date">
+                <group>
+                    <field name="reservation_id" invisible="1"/>
+                    <field name="current_expiry_date"/>
+                    <field name="new_expiry_date"/>
+                    <field name="note"/>
+                </group>
+                <footer>
+                    <button name="action_extend" string="Extend" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

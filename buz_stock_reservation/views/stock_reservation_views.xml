@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Tree ─────────────────────────────────────────────────── -->
+    <record id="stock_reservation_tree_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.tree</field>
+        <field name="model">buz.stock.reservation</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="state == 'reserved' and not expiring_soon"
+                  decoration-warning="expiring_soon or state == 'partially_released'"
+                  decoration-danger="state == 'expired'"
+                  decoration-muted="state in ('cancel', 'released', 'delivered')"
+                  sample="1">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="reference" optional="show"/>
+                <field name="warehouse_id" optional="show"/>
+                <field name="reserved_date"/>
+                <field name="expiry_date"/>
+                <field name="expiring_soon" column_invisible="1"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'reserved'"
+                       decoration-warning="state == 'partially_released'"
+                       decoration-danger="state == 'expired'"
+                       decoration-success="state == 'delivered'"/>
+                <field name="total_reserved_qty" sum="Total"/>
+                <field name="remaining_qty" sum="Total" optional="show"/>
+                <field name="user_id" optional="hide" widget="many2one_avatar_user"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ── Form ─────────────────────────────────────────────────── -->
+    <record id="stock_reservation_form_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.form</field>
+        <field name="model">buz.stock.reservation</field>
+        <field name="arch" type="xml">
+            <form string="Stock Reservation">
+                <header>
+                    <button name="action_reserve" string="Reserve" type="object"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_open_release_wizard" string="Release Reservation"
+                            type="object"
+                            invisible="state not in ('reserved', 'partially_released', 'expired')"/>
+                    <button name="action_open_extend_wizard" string="Extend Expiry Date"
+                            type="object"
+                            invisible="state not in ('reserved', 'partially_released', 'expired')"/>
+                    <button name="action_create_delivery" string="Create Delivery"
+                            type="object"
+                            invisible="state not in ('reserved', 'partially_released')"/>
+                    <button name="action_cancel" string="Cancel Reservation" type="object"
+                            invisible="state in ('released', 'delivered', 'cancel')"
+                            confirm="Cancel this reservation? Reserved quantities will be returned to available stock."/>
+                    <button name="action_draft" string="Reset to Draft" type="object"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,reserved,partially_released,released,delivered"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_deliveries" type="object"
+                                class="oe_stat_button" icon="fa-truck"
+                                invisible="delivery_count == 0">
+                            <field name="delivery_count" widget="statinfo" string="Deliveries"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Expiring Soon" bg_color="text-bg-warning"
+                            invisible="not expiring_soon"/>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="sale_order_id" readonly="state != 'draft'"/>
+                            <field name="reference"/>
+                            <field name="warehouse_id" readonly="state != 'draft'"/>
+                            <field name="expiring_soon" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group name="right">
+                            <field name="reserved_date" readonly="state != 'draft'"/>
+                            <field name="expiry_date" readonly="state != 'draft'"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="release_reason_id" readonly="1"
+                                   invisible="not release_reason_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Products" name="lines">
+                            <field name="line_ids" readonly="state not in ('draft', 'reserved', 'partially_released')">
+                                <tree editable="bottom">
+                                    <field name="company_id" column_invisible="1"/>
+                                    <field name="product_id"/>
+                                    <field name="product_uom_id" groups="uom.group_uom"/>
+                                    <field name="available_qty"/>
+                                    <field name="reserved_qty"/>
+                                    <field name="released_qty" readonly="1"/>
+                                    <field name="remaining_qty"/>
+                                </tree>
+                            </field>
+                            <group class="oe_subtotal_footer oe_right">
+                                <field name="total_reserved_qty"/>
+                                <field name="total_released_qty"/>
+                                <field name="remaining_qty" class="oe_subtotal_footer_separator"/>
+                            </group>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Search ───────────────────────────────────────────────── -->
+    <record id="stock_reservation_search_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.search</field>
+        <field name="model">buz.stock.reservation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="reference"/>
+                <field name="line_ids" string="Product"
+                       filter_domain="[('line_ids.product_id', 'ilike', self)]"/>
+                <filter name="filter_my" string="My Reservations"
+                        domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="filter_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_reserved" string="Reserved" domain="[('state', '=', 'reserved')]"/>
+                <filter name="filter_partially_released" string="Partially Released"
+                        domain="[('state', '=', 'partially_released')]"/>
+                <filter name="filter_expiring_soon" string="Expiring Soon"
+                        domain="[('expiring_soon', '=', True)]"/>
+                <filter name="filter_expired" string="Expired" domain="[('state', '=', 'expired')]"/>
+                <separator/>
+                <filter name="filter_reserved_date" string="Reserved Date" date="reserved_date"/>
+                <filter name="filter_expiry_date" string="Expiry Date" date="expiry_date"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_customer" string="Customer" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_expiry" string="Expiry Date" context="{'group_by': 'expiry_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Kanban ───────────────────────────────────────────────── -->
+    <record id="stock_reservation_kanban_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.kanban</field>
+        <field name="model">buz.stock.reservation</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" quick_create="false" sample="1">
+                <field name="expiring_soon"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="d-flex justify-content-between">
+                                <strong><field name="name"/></strong>
+                                <span t-if="record.expiring_soon.raw_value"
+                                      class="badge text-bg-warning">Expiring Soon</span>
+                            </div>
+                            <div><field name="partner_id"/></div>
+                            <div class="text-muted">
+                                <field name="reference"/> · <field name="warehouse_id"/>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <span>Exp: <field name="expiry_date" widget="date"/></span>
+                                <span><field name="total_reserved_qty"/> Units</span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ── Calendar ─────────────────────────────────────────────── -->
+    <record id="stock_reservation_calendar_view" model="ir.ui.view">
+        <field name="name">buz.stock.reservation.calendar</field>
+        <field name="model">buz.stock.reservation</field>
+        <field name="arch" type="xml">
+            <calendar date_start="reserved_date" date_stop="expiry_date" color="partner_id"
+                      event_open_popup="1" quick_create="0">
+                <field name="partner_id"/>
+                <field name="state"/>
+                <field name="total_reserved_qty"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- ── Actions ──────────────────────────────────────────────── -->
+    <record id="action_stock_reservation" model="ir.actions.act_window">
+        <field name="name">Reservations</field>
+        <field name="res_model">buz.stock.reservation</field>
+        <field name="view_mode">tree,kanban,form,calendar,activity</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first stock reservation</p>
+            <p>Reserve product quantities for customers with expiry tracking.</p>
+        </field>
+    </record>
+
+    <record id="action_stock_reservation_my" model="ir.actions.act_window">
+        <field name="name">My Reservations</field>
+        <field name="res_model">buz.stock.reservation</field>
+        <field name="view_mode">tree,kanban,form,calendar,activity</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="domain">[('user_id', '=', uid)]</field>
+    </record>
+
+    <record id="action_stock_reservation_expiring" model="ir.actions.act_window">
+        <field name="name">Expiring Soon</field>
+        <field name="res_model">buz.stock.reservation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="domain">[('expiring_soon', '=', True)]</field>
+    </record>
+
+    <record id="action_stock_reservation_expired" model="ir.actions.act_window">
+        <field name="name">Expired Reservations</field>
+        <field name="res_model">buz.stock.reservation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="domain">[('state', '=', 'expired')]</field>
+    </record>
+
+    <record id="action_stock_reservation_history" model="ir.actions.act_window">
+        <field name="name">Reservation History</field>
+        <field name="res_model">buz.stock.reservation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="domain">[('state', 'in', ('released', 'delivered', 'expired', 'cancel'))]</field>
+    </record>
+</odoo>
