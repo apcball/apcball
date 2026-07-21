@@ -22,7 +22,7 @@
                             <field name="approval_signature"
                                    widget="signature"
                                    class="oe_inline"
-                                   style="width: 200px; height: 70px;"
+                                   style="width: 150px; height: 50px;"
                                    readonly="1"/>
                         </group>
                     </page>
