@@ -21,8 +21,9 @@
                             <field name="approval_date" readonly="1"/>
                             <field name="approval_signature"
                                    widget="signature"
+                                   options="{'size': [205, 73]}"
                                    class="oe_inline"
-                                   style="width: 150px; height: 50px;"
+                                   style="width: 205px !important; height: 73px !important; min-width: 205px; min-height: 73px;"
                                    readonly="1"/>
                         </group>
                     </page>
