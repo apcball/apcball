@@ -13,7 +13,15 @@
                 </xpath>
                 <xpath expr="//page[@name='customer_signature']" position="after">
                     <page name="signature_approved_sale_order"
-                          string="Signature Approved Sale Order"/>
+                          string="Signature Approved Sale Order">
+                        <group string="APPROVED BY (เธเธนเนเธญเธเธธเธกเธฑเธ•เธด)">
+                            <field name="approver_id" readonly="1"/>
+                            <field name="approval_date" readonly="1"/>
+                            <field name="approval_signature"
+                                   widget="signature"
+                                   readonly="1"/>
+                        </group>
+                    </page>
                 </xpath>
             </field>
         </record>
