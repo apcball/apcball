@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <data>
        <!-- Paper Format -->
@@ -38,7 +38,15 @@
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
-                                src: url('/buz_sale_order_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                src: url('/buz_proforma_invoice/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                font-weight: 400;
+                                font-style: normal;
+                            }
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_proforma_invoice/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: 700;
+                                font-style: normal;
                             }
                             .page {
                                 font-family: 'Sarabun', sans-serif;
@@ -188,9 +196,14 @@
                                     <!-- Footer Section -->
                                     <div class="footer-section" style="display: flex; flex-direction: row; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px;">
                                         <div class="footer-box" style="width: 100%; height: 4cm; box-sizing: border-box; border: 1px solid #000; border-radius: 18px; padding: 12px 8px; margin: 0 auto; position: relative; text-align: center; font-size: 16px; overflow: hidden;">
-                                            <div style="line-height: 1.7;">ในนาม</div>
-                                            <div style="line-height: 1.7;">บริษัท โมเก้น จำกัด สำนักงานใหญ่</div>
-                                            <div style="position: absolute; left: 0; right: 0; bottom: 18px; white-space: nowrap;">วันที่.........../.........../............</div>
+                                             <div style="line-height: 1.7;">ในนาม</div>
+                                             <div style="line-height: 1.7;">บริษัท โมเก้น จำกัด สำนักงานใหญ่</div>
+                                            <div t-if="o.approval_signature" style="line-height: 1.7; margin-top: 4px;">
+                                                <img t-att-src="image_data_uri(o.approval_signature)"
+                                                     style="height: 73px; max-width: 205px; object-fit: contain;"
+                                                     alt="Approval Signature"/>
+                                            </div>
+                                             <div style="position: absolute; left: 0; right: 0; bottom: 18px; white-space: nowrap;">วันที่.........../.........../............</div>
                                         </div>
                                     </div>
                                 </div>
