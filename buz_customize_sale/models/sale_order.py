@@ -13,7 +13,7 @@ class SaleOrder(models.Model):
         copy=False,
     )
     approval_signature = fields.Binary(
+        related="approver_id.employee_id.signature_image",
         string="Signature",
-        copy=False,
-        attachment=True,
+        readonly=True,
     )

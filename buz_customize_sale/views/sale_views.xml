@@ -15,12 +15,12 @@
                     <page name="signature_approved_sale_order"
                           string="Signature Approved Sale Order">
                         <group string="Signatures Used BY Proforma Invoice">
-                            <field name="approver_id" readonly="1"/>
+                            <field name="approver_id"/>
                             <field name="approval_date" readonly="1"/>
                             <field name="approval_signature"
                                    widget="signature"
                                    class="oe_inline"
-                                   style="width: 100px; height: 50px;"
+                                   style="width: 200px; height: 70px;"
                                    readonly="1"/>
                         </group>
                     </page>
