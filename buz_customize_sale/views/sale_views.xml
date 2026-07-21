@@ -14,11 +14,13 @@
                 <xpath expr="//page[@name='customer_signature']" position="after">
                     <page name="signature_approved_sale_order"
                           string="Signature Approved Sale Order">
-                        <group string="APPROVED BY (เธเธนเนเธญเธเธธเธกเธฑเธ•เธด)">
+                        <group string="APPROVED BY (เน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธเธ‘เน€เธโ€ขเน€เธเธ”)">
                             <field name="approver_id" readonly="1"/>
                             <field name="approval_date" readonly="1"/>
                             <field name="approval_signature"
                                    widget="signature"
+                                   class="oe_inline"
+                                   style="width: 300px; height: 120px;"
                                    readonly="1"/>
                         </group>
                     </page>
