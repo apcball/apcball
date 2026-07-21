@@ -14,13 +14,13 @@
                 <xpath expr="//page[@name='customer_signature']" position="after">
                     <page name="signature_approved_sale_order"
                           string="Signature Approved Sale Order">
-                        <group string="Signatures User BY Proforma Invoice">
+                        <group string="Signatures Used BY Proforma Invoice">
                             <field name="approver_id" readonly="1"/>
                             <field name="approval_date" readonly="1"/>
                             <field name="approval_signature"
                                    widget="signature"
                                    class="oe_inline"
-                                   style="width: 200px; height: 70px;"
+                                   style="width: 100px; height: 50px;"
                                    readonly="1"/>
                         </group>
                     </page>
