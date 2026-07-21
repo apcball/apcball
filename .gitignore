@@ -11,6 +11,7 @@ uploads/
 .codewhale/
 .deepseek/
 .playwright-mcp/
+.worktrees/
 internal_consume_request/*.md
 .omp/
 .wystack.json
