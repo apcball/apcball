@@ -18,7 +18,7 @@
                             <field name="approver_id"
                                    class="oe_inline"
                                    style="width: 150px;"/>
-                            <field name="approval_date" 
+                            <field name="approval_date" widget="date"
                                     class="oe_inline" 
                                     style="width: 150px;"/>
                             <field name="approval_signature"

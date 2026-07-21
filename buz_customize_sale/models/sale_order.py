@@ -8,7 +8,7 @@ class SaleOrder(models.Model):
         "res.users",
         string="Manager Approver",
     )
-    approval_date = fields.Datetime(
+    approval_date = fields.Date(
         string="Approval Date",
         copy=False,
     )
