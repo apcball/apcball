@@ -41,6 +41,11 @@
                     <field name="company_id" invisible="1"/>
                     <field name="active" invisible="1"/>
                     <widget name="web_ribbon" text="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <widget name="web_ribbon" text="Available" bg_color="text-bg-success" invisible="status != 'available'"/>
+                    <widget name="web_ribbon" text="In Use" bg_color="text-bg-primary" invisible="status != 'in_use'"/>
+                    <widget name="web_ribbon" text="Under Repair" bg_color="text-bg-warning" invisible="status != 'repair'"/>
+                    <widget name="web_ribbon" text="Lost" bg_color="text-bg-danger" invisible="status != 'lost'"/>
+                    <widget name="web_ribbon" text="Retired" bg_color="text-bg-secondary" invisible="status != 'retired'"/>
                     <div class="oe_title"><label for="asset_name"/><h1><field name="asset_name" placeholder="e.g. FIN-PC-001"/></h1></div>
                     <group>
                         <group>
