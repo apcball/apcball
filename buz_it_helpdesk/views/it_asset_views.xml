@@ -57,7 +57,7 @@
                             <field name="software_ids" string="Installed Software" widget="many2many_tags"/>
                         </group>
                         <group>
-                            <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_1920', 'zoom': true, 'zoom_delay': 0}"/>
+                            <field name="image_1920" widget="image" options="{'preview_image': 'image_1920', 'zoom': true, 'zoom_delay': 0, 'size': [90, 90]}"/>
                             <field name="brand"/>
                             <field name="model_name" string="Series"/>
                             <field name="model_code" string="Model"/>
