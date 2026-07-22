@@ -111,7 +111,8 @@ class PurchaseRequisition(models.Model):
         help='Destination location of requisition.')
     delivery_type_id = fields.Many2one(
         comodel_name='stock.picking.type', string='Delivery To',
-        help='Type of delivery.')
+        domain=[('code', '=', 'incoming')],
+        help='Type of delivery (inbound operations only).')
     internal_picking_id = fields.Many2one(
         comodel_name='stock.picking.type', string="Internal Picking")
 
