@@ -94,10 +94,10 @@ class ImexInventoryDetailsReport(models.Model):
                     SUM(CASE WHEN move.location_id IN %s
                         THEN move.quantity / uom_move.factor * uom_prod.factor ELSE 0 END)) AS initial,
                     (SUM(CASE WHEN move.location_dest_id IN %s
-                        THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost ELSE 0 END)
+                        THEN move.quantity / uom_move.factor * uom_prod.factor * COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) ELSE 0 END)
                     -
                     SUM(CASE WHEN move.location_id IN %s
-                        THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost ELSE 0 END)) AS initial_amount,
+                        THEN move.quantity / uom_move.factor * uom_prod.factor * COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) ELSE 0 END)) AS initial_amount,
                     null AS date, 
                     null AS product_id, 
                     null AS product_qty, 
@@ -122,29 +122,40 @@ class ImexInventoryDetailsReport(models.Model):
                         WHERE quantity != 0
                         GROUP BY stock_move_id
                     ) svl on move.id = svl.stock_move_id
+                    LEFT JOIN stock_location location_i on move.location_id = location_i.id
+                    LEFT JOIN stock_location location_d on move.location_dest_id = location_d.id
                     LEFT JOIN product_product product on move.product_id = product.id
                         LEFT JOIN product_template template on product.product_tmpl_id = template.id
                     LEFT JOIN uom_uom uom_move on move.product_uom = uom_move.id
                     LEFT JOIN uom_uom uom_prod on template.uom_id = uom_prod.id
+                    LEFT JOIN LATERAL (
+                        SELECT CASE WHEN SUM(ABS(svl2.quantity)) > 0
+                                    THEN SUM(ABS(svl2.value)) / SUM(ABS(svl2.quantity))
+                                    ELSE NULL END as wh_unit_cost
+                        FROM stock_valuation_layer svl2
+                        WHERE svl2.product_id = move.product_id
+                            AND svl2.warehouse_id = COALESCE(location_d.warehouse_id, location_i.warehouse_id)
+                            AND svl2.create_date <= move.date
+                    ) wh_fallback ON true
                 WHERE
                     (move.location_id in %s or move.location_dest_id in %s)
                     and move.state = 'done'
                     and move.product_id in %s
-                    and CAST(move.date AS date) < %s
-                    and CAST(move.date AS date) >= %s
+                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) < %s
+                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) >= %s
                 UNION ALL
                 SELECT
                     null as initial, null as initial_amount,
-                    move.date, 
-                    move.product_id, 
+                    (move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date,
+                    move.product_id,
                     move.quantity,
                     move.product_uom, 
                     template.categ_id as product_category,
-                    svl.unit_cost,
-                    move.reference, 
-                    move.partner_id, 
-                    move.origin,                
-                    move.location_id, 
+                    COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) as unit_cost,
+                    move.reference,
+                    move.partner_id,
+                    move.origin,
+                    move.location_id,
                     move.location_dest_id,
                     case when move.location_dest_id in %s
                         then move.quantity end as product_in,
@@ -161,14 +172,25 @@ class ImexInventoryDetailsReport(models.Model):
                         WHERE quantity != 0
                         GROUP BY stock_move_id
                     ) svl on move.id = svl.stock_move_id
+                    LEFT JOIN stock_location location_i on move.location_id = location_i.id
+                    LEFT JOIN stock_location location_d on move.location_dest_id = location_d.id
                     LEFT JOIN product_product product on move.product_id = product.id
                         LEFT JOIN product_template template on product.product_tmpl_id = template.id
-                WHERE 
+                    LEFT JOIN LATERAL (
+                        SELECT CASE WHEN SUM(ABS(svl2.quantity)) > 0
+                                    THEN SUM(ABS(svl2.value)) / SUM(ABS(svl2.quantity))
+                                    ELSE NULL END as wh_unit_cost
+                        FROM stock_valuation_layer svl2
+                        WHERE svl2.product_id = move.product_id
+                            AND svl2.warehouse_id = COALESCE(location_d.warehouse_id, location_i.warehouse_id)
+                            AND svl2.create_date <= move.date
+                    ) wh_fallback ON true
+                WHERE
                     (move.location_id in %s or move.location_dest_id in %s)
                     and move.state = 'done'
                     and move.product_id in %s
-                    and CAST(move.date AS date) >= %s 
-                    and CAST(move.date AS date) <= %s) AS a          
+                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) >= %s
+                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) <= %s) AS a
             ORDER BY a.date, a.reference
             """
         params = (locations,
