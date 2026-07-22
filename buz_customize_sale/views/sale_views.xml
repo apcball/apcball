@@ -13,7 +13,8 @@
                 </xpath>
                 <xpath expr="//page[@name='customer_signature']" position="after">
                     <page name="signature_approved_sale_order"
-                          string="Signature Approved Sale Order">
+                          string="Signature Approved Sale Order"
+                          groups="buz_customize_sale.group_sale_signature_approved_page">
                         <group string="Signatures Used BY Proforma Invoice">
                             <field name="approver_id"
                                    class="oe_inline"

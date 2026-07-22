@@ -9,6 +9,7 @@
     """,
     'depends': ['sale_stock', 'sale_management', 'buz_po_portal'],
     'data': [
+        'security/security.xml',
         'views/sale_views.xml',
     ],
     'installable': True,
