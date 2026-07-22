@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_buz_it_asset" model="ir.sequence">
+        <field name="name">IT Asset</field>
+        <field name="code">buz.it.asset</field>
+        <field name="prefix">ITA/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="asset_category_laptop" model="buz.it.asset.category"><field name="name">Laptop</field><field name="company_id" eval="False"/></record>
+    <record id="asset_category_desktop" model="buz.it.asset.category"><field name="name">Desktop</field><field name="company_id" eval="False"/></record>
+    <record id="asset_category_monitor" model="buz.it.asset.category"><field name="name">Monitor</field><field name="company_id" eval="False"/></record>
+    <record id="asset_category_printer" model="buz.it.asset.category"><field name="name">Printer</field><field name="company_id" eval="False"/></record>
+    <record id="asset_category_network" model="buz.it.asset.category"><field name="name">Network Equipment</field><field name="company_id" eval="False"/></record>
+    <record id="asset_category_peripheral" model="buz.it.asset.category"><field name="name">Peripheral</field><field name="company_id" eval="False"/></record>
+    <record id="asset_category_other" model="buz.it.asset.category"><field name="name">Other</field><field name="company_id" eval="False"/></record>
+    <record id="asset_spec_category_cpu" model="buz.it.asset.spec.category"><field name="name">CPU</field><field name="company_id" eval="False"/></record>
+    <record id="asset_spec_category_ram" model="buz.it.asset.spec.category"><field name="name">RAM</field><field name="company_id" eval="False"/></record>
+    <record id="asset_spec_category_gpu" model="buz.it.asset.spec.category"><field name="name">GPU</field><field name="company_id" eval="False"/></record>
+    <record id="asset_spec_category_storage" model="buz.it.asset.spec.category"><field name="name">Storage</field><field name="company_id" eval="False"/></record>
+    <record id="asset_spec_category_os" model="buz.it.asset.spec.category"><field name="name">Operating System</field><field name="company_id" eval="False"/></record>
+    <record id="asset_spec_category_network" model="buz.it.asset.spec.category"><field name="name">Network</field><field name="company_id" eval="False"/></record></odoo>

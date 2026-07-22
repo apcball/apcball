@@ -1,6 +1,6 @@
 {
     "name": "BUZ IT Helpdesk",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.3.0",
     "category": "Services/Helpdesk",
     "summary": "Standalone IT Helpdesk for BUZ IT Management Phase 1",
     "author": "Mogen Co.",
@@ -9,11 +9,14 @@
     "data": [
         "security/security.xml",
         "security/helpdesk_extra_security.xml",
+        "security/it_asset_security.xml",
         "security/ir.model.access.csv",
         "data/sequence.xml",
         "data/helpdesk_data.xml",
         'data/helpdesk_migration.xml',
+        "data/it_asset_data.xml",
         "views/helpdesk_views.xml",
+        "views/it_asset_views.xml",
         "views/helpdesk_menus.xml",
         "views/helpdesk_team_views.xml",
         "views/helpdesk_report_views.xml",
