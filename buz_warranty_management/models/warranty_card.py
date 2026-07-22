@@ -145,32 +145,31 @@ class WarrantyCard(models.Model):
                     else:  # month
                         record.end_date = record.start_date + relativedelta(months=duration)
                 else:
-                    # Default to 12 months if no duration specified
-                    record.end_date = record.start_date + relativedelta(months=12)
+                    record.end_date = False
             else:
                 record.end_date = False
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
-        if self.product_id:
-            product_template = self.product_id.product_tmpl_id
-            self.warranty_duration = product_template.warranty_duration
-            self.warranty_period_unit = product_template.warranty_period_unit
-        else:
-            self.warranty_duration = False
-            self.warranty_period_unit = False
+        values = self._get_product_warranty_values(self.product_id)
+        self.update(values)
+
+    def _get_product_warranty_values(self, product):
+        """Read the effective product warranty for a card snapshot."""
+        if not product:
+            return {'warranty_duration': False, 'warranty_period_unit': False}
+        return product.product_tmpl_id._get_effective_warranty_period()
 
     @api.model_create_multi
     def create(self, vals_list):
+        """Snapshot effective product warranty values and update dashboard cache."""
         for vals in vals_list:
             product_id = vals.get('product_id')
-            if product_id:
-                product_template = self.env['product.product'].browse(
-                    product_id
-                ).product_tmpl_id
-                vals['warranty_duration'] = product_template.warranty_duration
-                vals['warranty_period_unit'] = product_template.warranty_period_unit
-        return super().create(vals_list)
+            product = self.env['product.product'].browse(product_id) if product_id else False
+            vals.update(self._get_product_warranty_values(product))
+        records = super().create(vals_list)
+        self.env['warranty.dashboard.cache']._trigger_update('warranty_card_created', records)
+        return records
 
     @api.depends('end_date')
     def _compute_is_expired(self):
@@ -265,16 +264,12 @@ class WarrantyCard(models.Model):
         self.ensure_one()
         return self.env.ref('buz_warranty_management.action_report_warranty_certificate').report_action(self)
 
-    @api.model
-    def create(self, vals):
-        """Trigger cache update on new warranty card"""
-        record = super().create(vals)
-        # Trigger cache update
-        self.env['warranty.dashboard.cache']._trigger_update('warranty_card_created', record)
-        return record
-    
     def write(self, vals):
         """Trigger cache update on warranty card changes"""
+        if 'product_id' in vals:
+            product = self.env['product.product'].browse(vals['product_id']) if vals['product_id'] else False
+            vals = dict(vals, **self._get_product_warranty_values(product))
+
         # Check if critical fields changed
         critical_fields = ['state', 'end_date', 'partner_id', 'product_id']
         has_critical_change = any(field in vals for field in critical_fields)

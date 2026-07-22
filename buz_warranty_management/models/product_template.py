@@ -64,6 +64,16 @@ class ProductTemplate(models.Model):
                 record.warranty_duration = record.categ_id.warranty_duration
                 record.warranty_period_unit = record.categ_id.warranty_period_unit
 
+    def _get_effective_warranty_period(self):
+        """Return the warranty values to snapshot on a warranty card."""
+        self.ensure_one()
+        if self.warranty_duration <= 0:
+            return {'warranty_duration': 0, 'warranty_period_unit': False}
+        return {
+            'warranty_duration': self.warranty_duration,
+            'warranty_period_unit': self.warranty_period_unit,
+        }
+
     def _compute_warranty_card_count(self):
         for record in self:
             record.warranty_card_count = self.env['warranty.card'].search_count([

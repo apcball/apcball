@@ -86,7 +86,7 @@ class ImexInventoryDetailsReport(models.Model):
         product_ids = tuple(filter_fields.product_ids.ids)
 
         query_ = """
-            SELECT row_number() OVER () AS id,* FROM(
+            SELECT row_number() OVER (ORDER BY a.date, a.reference) AS id,* FROM(
                 SELECT
                     (SUM(CASE WHEN move.location_dest_id IN %s
                         THEN move.quantity / uom_move.factor * uom_prod.factor ELSE 0 END)

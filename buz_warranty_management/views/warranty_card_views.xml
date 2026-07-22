@@ -116,10 +116,10 @@
                                     </group>
                                     <div class="row mb-2">
                                         <div class="col-md-8">
-                                            <label for="warranty_duration" string="Duration"/>
+                                            <label for="warranty_duration" string="Product Warranty Duration"/>
                                             <div class="input-group">
-                                                <field name="warranty_duration" class="form-control"/>
-                                                <field name="warranty_period_unit" class="form-control"/>
+                                                <field name="warranty_duration" class="form-control" readonly="1"/>
+                                                <field name="warranty_period_unit" class="form-control" readonly="1"/>
                                             </div>
                                         </div>
                                     </div>
