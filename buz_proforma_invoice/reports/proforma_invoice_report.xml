@@ -160,17 +160,23 @@
                                 <div class="col-7">
                                     <!-- Notes Section -->
                                     <div style="margin-bottom: 10px;">
-                                        <strong>Remarks:</strong>
-                                        <div style="display: inline-block; margin-left: 10px; vertical-align: top;">
-                                            1. ได้รับทราบกำหนดเวลาชำระเงินตามที่ระบุไว้ข้างต้นแล้ว<br/>
-                                            2. กรุณาสั่งจ่ายเช็คขีดคร่อมสั่งจ่าย บจ.โมเก้น <br/>
-                                               หรือโอนเข้าบัญชี Kasikorn Bank (KBANK = กสิกรไทย) MOGEN CO., LTD Account number 464-1-00774-4<br/>
-                                            3. ในกรณีผิดนัดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย 1.25 ต่อเดือน ของยอดหนี้ค่าสินค้า
-                                        </div>
+                                        <table style="width: 100%; border: none; font-size: 18px; line-height: 1.5;">
+                                            <tr>
+                                                <td style="width: 70px; padding: 0; vertical-align: top; border: none;">
+                                                    <strong>Remarks:</strong>
+                                                </td>
+                                                <td style="padding: 0; vertical-align: top; border: none;">
+                                                    1. ได้รับทราบกำหนดเวลาชำระเงินตามที่ระบุไว้ข้างต้นแล้ว<br/>
+                                                    2. กรุณาสั่งจ่ายเช็คขีดคร่อมสั่งจ่าย บจ.โมเก้น<br/>
+                                                    <span style="display: inline-block; margin-left: 13px;">หรือโอนเข้าบัญชี Kasikorn Bank (KBANK = กสิกรไทย) MOGEN CO., LTD Account number 464-1-00774-4</span><br/>
+                                                    3. ในกรณีผิดนัดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย 1.25 ต่อเดือน ของยอดหนี้ค่าสินค้า
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </div>
-                                    <div style="margin-left: 10px;">
+                                    <!-- <div style="margin-left: 10px;"> -->
                                         <!-- <span t-field="o.note"/> -->
-                                    </div>
+                                    <!-- </div> -->
                                 </div>
                                 <div class="col-5">
                                     <table class="table table-sm" style="margin-bottom: 0;">
@@ -200,7 +206,7 @@
                                         </tr>
                                     </table>
                                     <!-- Footer Section -->
-                                    <div class="footer-section" style="display: flex; flex-direction: row; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px;">
+                                    <div class="footer-section" style="display: flex; flex-direction: row; justify-content: center; align-items: flex-start; width: 100%; margin-top: 30px;">
                                         <div class="footer-box" style="width: 100%; height: 4cm; box-sizing: border-box; border: 1px solid #000; border-radius: 18px; padding: 12px 8px; margin: 0 auto; position: relative; text-align: center; font-size: 16px; overflow: hidden;">
                                              <div style="line-height: 1.7;">ในนาม</div>
                                              <div style="line-height: 1.7;">บริษัท โมเก้น จำกัด สำนักงานใหญ่</div>
