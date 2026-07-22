@@ -178,6 +178,18 @@ class ItAsset(models.Model):
         ("serial_company_uniq", "unique(serial_number, company_id)", "Serial Number must be unique per company."),
     ]
 
+    def action_set_under_repair(self):
+        self.write({"status": "repair"})
+        return True
+
+    def action_set_damaged(self):
+        self.write({"status": "lost"})
+        return True
+
+    def action_set_retired(self):
+        self.with_context(skip_status_sync=True).write({"assigned_user_id": False, "status": "retired"})
+        return True
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -190,7 +202,7 @@ class ItAsset(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        if "assigned_user_id" in vals:
+        if "assigned_user_id" in vals and not self.env.context.get("skip_status_sync"):
             vals = dict(vals)
             if vals.get("assigned_user_id"):
                 vals["status"] = "in_use"

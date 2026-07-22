@@ -36,13 +36,13 @@
         <field name="name">buz.it.asset.form</field>
         <field name="model">buz.it.asset</field>
         <field name="arch" type="xml">
-            <form string="IT Asset"><header><field name="status" string="Status" widget="statusbar" options="{'clickable': true}"/><button name="#" type="button" string="Under Repair" class="btn-warning"/><button name="#" type="button" string="Damaged" class="btn-danger"/><button name="#" type="button" string="Retired" class="btn-secondary"/></header>
+            <form string="IT Asset"><header><button name="action_set_under_repair" type="object" string="Under Repair" class="btn-warning" invisible="status == 'repair'"/><button name="action_set_damaged" type="object" string="Lost" class="btn-danger" invisible="status == 'lost'"/><button name="action_set_retired" type="object" string="Retired" class="btn-secondary" invisible="status == 'retired'"/></header>
                 <sheet>
-                    <field name="company_id" invisible="1"/>
+                    <field name="status" invisible="1"/><field name="company_id" invisible="1"/>
                     <field name="active" invisible="1"/>
                     <widget name="web_ribbon" text="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <widget name="web_ribbon" text="Available" bg_color="text-bg-success" invisible="status != 'available'"/>
-                    <widget name="web_ribbon" text="In Use" bg_color="text-bg-primary" invisible="status != 'in_use'"/>
+                    <widget name="web_ribbon" text="In Use" bg_color="text-bg-success" invisible="status != 'in_use'"/>
                     <widget name="web_ribbon" text="Under Repair" bg_color="text-bg-warning" invisible="status != 'repair'"/>
                     <widget name="web_ribbon" text="Lost" bg_color="text-bg-danger" invisible="status != 'lost'"/>
                     <widget name="web_ribbon" text="Retired" bg_color="text-bg-secondary" invisible="status != 'retired'"/>
