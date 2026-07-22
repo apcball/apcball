@@ -110,7 +110,7 @@ class ItAsset(models.Model):
         tracking=True,
     )
     name = fields.Char(string="Asset Number", required=True, copy=False, readonly=True, default="New", index=True)
-    asset_name = fields.Char(string="Asset Name", required=True, tracking=True)
+    asset_name = fields.Char(string="Asset Name", tracking=True)
     category_id = fields.Many2one("buz.it.asset.category", string="Equipment Type", tracking=True, check_company=True)
     brand = fields.Char(tracking=True)
     model_name = fields.Char(string="Series", tracking=True)
@@ -217,6 +217,12 @@ class ItAsset(models.Model):
                 asset.status = "in_use"
             elif not asset.assigned_user_id:
                 asset.status = "available"
+
+    @api.constrains("asset_type", "asset_name")
+    def _check_asset_name(self):
+        for asset in self:
+            if asset.asset_type != "printer" and not asset.asset_name:
+                raise ValidationError("Asset Name is required for non-printer assets.")
 
     @api.constrains("status", "assigned_user_id")
     def _check_status_assignment(self):
