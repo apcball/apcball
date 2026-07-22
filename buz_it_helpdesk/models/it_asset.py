@@ -178,6 +178,11 @@ class ItAsset(models.Model):
         ("serial_company_uniq", "unique(serial_number, company_id)", "Serial Number must be unique per company."),
     ]
 
+    def action_assign_to_me(self):
+        self.ensure_one()
+        self.assigned_user_id = self.env.user
+        return True
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
