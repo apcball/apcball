@@ -36,7 +36,7 @@
         <field name="name">buz.it.asset.form</field>
         <field name="model">buz.it.asset</field>
         <field name="arch" type="xml">
-            <form string="IT Asset"><header><field name="status" string="Status" widget="statusbar" options="{'clickable': true}"/></header>
+            <form string="IT Asset"><header><field name="status" string="Status" widget="statusbar" options="{'clickable': true}"/><button name="#" type="button" string="Under Repair" class="btn-warning"/><button name="#" type="button" string="Damaged" class="btn-danger"/><button name="#" type="button" string="Retired" class="btn-secondary"/></header>
                 <sheet>
                     <field name="company_id" invisible="1"/>
                     <field name="active" invisible="1"/>
