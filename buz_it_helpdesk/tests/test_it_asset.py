@@ -41,6 +41,21 @@ class TestItAsset(TransactionCase):
         self.assertEqual(asset.user_nickname, "Jo")
         self.assertEqual(asset.computer_username, "jdoe")
 
+    def test_asset_types_and_assignment_clearing(self):
+        model = self.env["buz.it.asset"].with_user(self.agent)
+        asset = model.create({
+            "asset_name": "Email account",
+            "asset_type": "email",
+            "service_name": "Microsoft 365",
+            "account_email": "user@example.com",
+            "assigned_user_id": self.requester.id,
+        })
+        self.assertEqual(asset.asset_type, "email")
+        self.assertEqual(asset.status, "in_use")
+        asset.write({"assigned_user_id": False})
+        self.assertFalse(asset.assigned_user_id)
+        self.assertEqual(asset.status, "available")
+
     def test_asset_specification_values(self):
         categories = {
             "CPU": self.env.ref("buz_it_helpdesk.asset_spec_category_cpu"),
@@ -98,11 +113,11 @@ class TestItAsset(TransactionCase):
             model.create({"asset_name": "Device B", "category_id": self.category.id, "serial_number": "SERIAL-1"})
         model.sudo().with_company(self.other_company).create({"asset_name": "Device Other Company", "category_id": self.category.id, "serial_number": "SERIAL-1", "company_id": self.other_company.id})
 
-    def test_requester_only_sees_own_assets_and_cannot_write(self):
-        own = self.env["buz.it.asset"].sudo().create({"asset_name": "Own", "category_id": self.category.id, "assigned_user_id": self.requester.id})
-        other = self.env["buz.it.asset"].sudo().create({"asset_name": "Other", "category_id": self.category.id, "assigned_user_id": self.agent.id})
-        assets = self.env["buz.it.asset"].with_user(self.requester).search([("id", "in", [own.id, other.id])])
-        self.assertEqual(assets.ids, [own.id])
+    def test_requester_cannot_access_assets(self):
+        self.env["buz.it.asset"].sudo().create({
+            "asset_name": "Restricted Asset",
+            "category_id": self.category.id,
+            "assigned_user_id": self.requester.id,
+        })
         with self.assertRaises(AccessError):
-            own.with_user(self.requester).write({"notes": "not allowed"})
-
+            self.env["buz.it.asset"].with_user(self.requester).search([])

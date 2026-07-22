@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="rule_it_asset_requester" model="ir.rule">
-        <field name="name">Requester: own IT assets</field>
-        <field name="model_id" ref="model_buz_it_asset"/>
-        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_requester'))]"/>
-        <field name="domain_force">[('company_id', 'in', company_ids), ('assigned_user_id', '=', user.id)]</field>
-    </record>
     <record id="rule_it_asset_agent" model="ir.rule">
         <field name="name">Agent: company IT assets</field>
         <field name="model_id" ref="model_buz_it_asset"/>
@@ -18,22 +12,10 @@
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
-    <record id="rule_it_asset_category_user" model="ir.rule">
-        <field name="name">IT asset categories: allowed companies</field>
-        <field name="model_id" ref="model_buz_it_asset_category"/>
-        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_requester')), (4, ref('buz_it_helpdesk.group_it_helpdesk_agent'))]"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-    </record>
     <record id="rule_it_asset_category_manager" model="ir.rule">
         <field name="name">Manager: IT asset categories</field>
         <field name="model_id" ref="model_buz_it_asset_category"/>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_it_asset_spec_category_user" model="ir.rule">
-        <field name="name">IT asset specification categories: allowed companies</field>
-        <field name="model_id" ref="model_buz_it_asset_spec_category"/>
-        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_requester')), (4, ref('buz_it_helpdesk.group_it_helpdesk_agent'))]"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
     <record id="rule_it_asset_spec_category_manager" model="ir.rule">
@@ -41,12 +23,6 @@
         <field name="model_id" ref="model_buz_it_asset_spec_category"/>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_it_asset_spec_line_requester" model="ir.rule">
-        <field name="name">Requester: own IT asset specifications</field>
-        <field name="model_id" ref="model_buz_it_asset_spec_line"/>
-        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_requester'))]"/>
-        <field name="domain_force">[('asset_id.company_id', 'in', company_ids), ('asset_id.assigned_user_id', '=', user.id)]</field>
     </record>
     <record id="rule_it_asset_spec_line_agent" model="ir.rule">
         <field name="name">Agent: company IT asset specifications</field>
@@ -59,12 +35,6 @@
         <field name="model_id" ref="model_buz_it_asset_spec_line"/>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
         <field name="domain_force">[('asset_id.company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_it_asset_software_user" model="ir.rule">
-        <field name="name">IT asset software: allowed companies</field>
-        <field name="model_id" ref="model_buz_it_asset_software"/>
-        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_helpdesk_requester')), (4, ref('buz_it_helpdesk.group_it_helpdesk_agent'))]"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
     <record id="rule_it_asset_software_manager" model="ir.rule">
         <field name="name">Manager: IT asset software</field>

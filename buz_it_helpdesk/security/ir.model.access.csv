@@ -22,19 +22,14 @@ access_team_manager,team manager,model_it_helpdesk_team,buz_it_helpdesk.group_it
 access_report_agent,report agent,model_it_helpdesk_ticket_report,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
 access_report_manager,report manager,model_it_helpdesk_ticket_report,buz_it_helpdesk.group_it_helpdesk_manager,1,0,0,0
 
-access_it_asset_requester,it asset requester,model_buz_it_asset,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_it_asset_agent,it asset agent,model_buz_it_asset,buz_it_helpdesk.group_it_helpdesk_agent,1,1,1,0
 access_it_asset_manager,it asset manager,model_buz_it_asset,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
-access_it_asset_category_requester,it asset category requester,model_buz_it_asset_category,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_it_asset_category_agent,it asset category agent,model_buz_it_asset_category,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
 access_it_asset_category_manager,it asset category manager,model_buz_it_asset_category,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 
-access_it_asset_spec_category_requester,it asset spec category requester,model_buz_it_asset_spec_category,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_it_asset_spec_category_agent,it asset spec category agent,model_buz_it_asset_spec_category,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
 access_it_asset_spec_category_manager,it asset spec category manager,model_buz_it_asset_spec_category,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
-access_it_asset_spec_line_requester,it asset spec line requester,model_buz_it_asset_spec_line,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_it_asset_spec_line_agent,it asset spec line agent,model_buz_it_asset_spec_line,buz_it_helpdesk.group_it_helpdesk_agent,1,1,1,1
 access_it_asset_spec_line_manager,it asset spec line manager,model_buz_it_asset_spec_line,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
-access_it_asset_software_requester,it asset software requester,model_buz_it_asset_software,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_it_asset_software_agent,it asset software agent,model_buz_it_asset_software,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
 access_it_asset_software_manager,it asset software manager,model_buz_it_asset_software,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1

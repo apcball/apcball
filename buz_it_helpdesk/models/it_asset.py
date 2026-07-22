@@ -96,14 +96,43 @@ class ItAsset(models.Model):
     _check_company_auto = True
     _order = "name desc"
 
+    asset_type = fields.Selection(
+        [
+            ("computer", "Computer"),
+            ("printer", "Printer"),
+            ("software_license", "Software License"),
+            ("email", "Email"),
+            ("system_account", "System Account"),
+        ],
+        string="Asset Type",
+        default="computer",
+        required=True,
+        tracking=True,
+    )
     name = fields.Char(string="Asset Number", required=True, copy=False, readonly=True, default="New", index=True)
-    asset_name = fields.Char(string="Computer Name", required=True, tracking=True)
-    category_id = fields.Many2one("buz.it.asset.category", string="Equipment Type", required=True, tracking=True, check_company=True)
+    asset_name = fields.Char(string="Asset Name", required=True, tracking=True)
+    category_id = fields.Many2one("buz.it.asset.category", string="Equipment Type", tracking=True, check_company=True)
     brand = fields.Char(tracking=True)
     model_name = fields.Char(string="Series", tracking=True)
     model_code = fields.Char(string="Model", tracking=True)
     serial_number = fields.Char(string="Serial Number", index=True, tracking=True)
-    password = fields.Char(string="Password", copy=False, groups="buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager")
+    password = fields.Char(
+        string="Password",
+        copy=False,
+        groups="buz_it_helpdesk.group_it_helpdesk_manager",
+    )
+    license_product = fields.Char(string="Licensed Product", tracking=True)
+    license_key = fields.Char(
+        string="License Key",
+        copy=False,
+        groups="buz_it_helpdesk.group_it_helpdesk_manager",
+    )
+    license_expiry_date = fields.Date(string="License Expiry", tracking=True)
+    license_seats = fields.Integer(string="License Seats", default=1, tracking=True)
+    service_name = fields.Char(string="Platform / Service", tracking=True)
+    account_username = fields.Char(string="Account Username", tracking=True)
+    account_email = fields.Char(string="Account Email", tracking=True)
+    account_url = fields.Char(string="Account URL", tracking=True)
     spec_line_ids = fields.One2many(
         "buz.it.asset.spec.line",
         "asset_id",
