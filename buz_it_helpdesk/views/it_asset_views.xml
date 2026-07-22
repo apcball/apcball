@@ -57,7 +57,7 @@
                             <field name="model_name" string="Series"/>
                             <field name="model_code" string="Model"/>
                             <field name="category_id" string="Equipment Type"/>
-                            <field name="status" string="Usage Status" widget="statusbar" options="{'clickable': true}"/>
+                            <field name="status" string="Usage Status"/>
                         </group>
                     </group>
                     <group string="Computer Specifications" col="1">
