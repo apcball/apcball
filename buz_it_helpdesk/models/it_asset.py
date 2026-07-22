@@ -140,7 +140,7 @@ class ItAsset(models.Model):
         copy=True,
     )
     software_ids = fields.Many2many("buz.it.asset.software", relation="buz_it_asset_software_rel", column1="asset_id", column2="software_id", string="Installed Software", check_company=True)
-    assigned_user_id = fields.Many2one("res.users", string="User", tracking=True)
+    assigned_user_id = fields.Many2one("res.users", string="Responsible User", tracking=True)
     user_nickname = fields.Char(string="Nickname", tracking=True)
     computer_username = fields.Char(string="User Name", tracking=True)
     location = fields.Char(string="Location", tracking=True)
@@ -178,26 +178,23 @@ class ItAsset(models.Model):
         ("serial_company_uniq", "unique(serial_number, company_id)", "Serial Number must be unique per company."),
     ]
 
-    def action_assign_to_me(self):
-        self.ensure_one()
-        self.assigned_user_id = self.env.user
-        return True
-
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get("name", "New") == "New":
                 vals["name"] = self.env["ir.sequence"].next_by_code("buz.it.asset") or "New"
-            if vals.get("assigned_user_id") and vals.get("status", "available") == "available":
+            if vals.get("assigned_user_id"):
                 vals["status"] = "in_use"
+            else:
+                vals["status"] = "available"
         return super().create(vals_list)
 
     def write(self, vals):
-        if "assigned_user_id" in vals and "status" not in vals:
+        if "assigned_user_id" in vals:
             vals = dict(vals)
             if vals.get("assigned_user_id"):
                 vals["status"] = "in_use"
-            elif any(asset.status == "in_use" for asset in self):
+            else:
                 vals["status"] = "available"
         return super().write(vals)
 
@@ -206,7 +203,7 @@ class ItAsset(models.Model):
         for asset in self:
             if asset.assigned_user_id and asset.status == "available":
                 asset.status = "in_use"
-            elif not asset.assigned_user_id and asset.status == "in_use":
+            elif not asset.assigned_user_id:
                 asset.status = "available"
 
     @api.constrains("status", "assigned_user_id")
