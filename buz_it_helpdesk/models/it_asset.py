@@ -140,7 +140,7 @@ class ItAsset(models.Model):
         copy=True,
     )
     software_ids = fields.Many2many("buz.it.asset.software", relation="buz_it_asset_software_rel", column1="asset_id", column2="software_id", string="Installed Software", check_company=True)
-    department = fields.Char(string="Department", tracking=True)
+    department_id = fields.Many2one("hr.department", string="Department", tracking=True, check_company=True)
     assigned_user_id = fields.Many2one("res.users", string="Responsible User", tracking=True)
     user_nickname = fields.Char(string="Nickname", tracking=True)
     computer_username = fields.Char(string="User Name", tracking=True)

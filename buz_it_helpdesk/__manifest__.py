@@ -5,7 +5,7 @@
     "summary": "Standalone IT Helpdesk for BUZ IT Management Phase 1",
     "author": "Mogen Co.",
     "license": "LGPL-3",
-    "depends": ["base", "mail", "portal", "website"],
+    "depends": ["base", "mail", "portal", "website", "hr"],
     "data": [
         "security/security.xml",
         "security/helpdesk_extra_security.xml",
