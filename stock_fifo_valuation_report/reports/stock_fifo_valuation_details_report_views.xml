@@ -1,0 +1,172 @@
+<odoo>
+    <record id="action_stock_fifo_valuation_details_report_html" model="ir.actions.report">
+        <field name="name">Stock FIFO Valuation Details Report</field>
+        <field name="model">stock.fifo.valuation.details.report</field>
+        <field name="report_type">qweb-html</field>
+        <field name="report_name">stock_fifo_valuation_report.stock_fifo_valuation_details_report_html</field>
+        <field name="report_file">stock_fifo_valuation_report.stock_fifo_valuation_details_report_html</field>
+    </record>
+    <template id="stock_fifo_valuation_details_report_html">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <t t-set="docs" t-value="env['stock.fifo.valuation.details.report'].browse(detail_ids)"/>
+                <div class="o_inventory_reports_page">
+                    <link href="/stock_fifo_valuation_report/static/src/css/report.css" rel="stylesheet"/>
+                    <t t-call="stock_fifo_valuation_report.report_stock_fifo_valuation_details_report_base"/>
+                </div>
+            </t>
+        </t>
+    </template>
+    <template id="report_stock_fifo_valuation_details_report_base">
+        <div class="page">
+            <div class="row">
+                <h4 class="mt0" style="text-align: center;">
+                    <span>Stock FIFO Valuation Report - </span>
+                    <t t-out="product_default_code"/>
+                    <span> - </span>
+                    <t t-out="product_name"/>
+                </h4>
+            </div>
+            <t t-call="stock_fifo_valuation_report.report_stock_fifo_valuation_details_report_filters"/>
+            <div class="act_as_table data_table mt4" style="width: 100%;">
+                <t t-call="stock_fifo_valuation_report.report_stock_fifo_valuation_details_lines_header"/>
+                <t t-if="docs">
+                    <t t-set="line_opening" t-value="docs.filtered(lambda l: not l.layer_id)"/>
+                    <t t-set="lines" t-value="docs.filtered(lambda l: l.layer_id)"/>
+                    <t t-if="line_opening">
+                        <div class="act_as_row lines">
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell">Opening</div>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell right">
+                                <t t-esc="line_opening[0].opening_qty" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+                            </div>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell right">
+                                <t t-esc="line_opening[0].opening_value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+                            </div>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                        </div>
+                        <t t-set="running_qty" t-value="line_opening[0].opening_qty"/>
+                        <t t-set="running_value" t-value="line_opening[0].opening_value"/>
+                        <t t-if="lines">
+                            <t t-foreach="lines" t-as="layer">
+                                <t t-set="running_qty" t-value="running_qty + layer.quantity"/>
+                                <t t-set="running_value" t-value="running_value + layer.value"/>
+                                <t t-call="stock_fifo_valuation_report.report_stock_fifo_valuation_details_lines"/>
+                            </t>
+                        </t>
+                    </t>
+                </t>
+            </div>
+            <p style="page-break-before:always;"/>
+        </div>
+    </template>
+
+    <template id="report_stock_fifo_valuation_details_report_filters">
+        <div class="act_as_table data_table" style="width: 100%;">
+            <div class="act_as_row labels">
+                <div class="act_as_cell">Date From</div>
+                <div class="act_as_cell">Date To</div>
+                <div class="act_as_cell">Warehouse</div>
+                <div class="act_as_cell">Category</div>
+            </div>
+            <div class="act_as_row">
+                <div class="act_as_cell">
+                    <span t-out="date_from"/>
+                </div>
+                <div class="act_as_cell">
+                    <span t-out="date_to"/>
+                </div>
+                <div class="act_as_cell">
+                    <span t-if="warehouse" t-esc="', '.join(warehouse)"/>
+                    <span t-else="">All warehouses</span>
+                </div>
+                <div class="act_as_cell">
+                    <span t-if="category" t-esc="', '.join(category)"/>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="report_stock_fifo_valuation_details_lines_header">
+        <div class="act_as_thead">
+            <div class="act_as_row labels">
+                <div class="act_as_cell">Date</div>
+                <div class="act_as_cell">Reference</div>
+                <div class="act_as_cell">Warehouse</div>
+                <div class="act_as_cell">Source Loc</div>
+                <div class="act_as_cell">Dest Loc</div>
+                <div class="act_as_cell">Unit Cost</div>
+                <div class="act_as_cell">All-in Unit Cost</div>
+                <div class="act_as_cell">Qty</div>
+                <div class="act_as_cell">Value</div>
+                <div class="act_as_cell">Origin Layer</div>
+                <div class="act_as_cell">Origin Remain Qty</div>
+                <div class="act_as_cell">Running Qty</div>
+                <div class="act_as_cell">Running Value</div>
+                <div class="act_as_cell">MO</div>
+                <div class="act_as_cell">Landed Cost Doc</div>
+            </div>
+        </div>
+    </template>
+
+    <template id="report_stock_fifo_valuation_details_lines">
+        <div class="act_as_row lines">
+            <div class="act_as_cell left">
+                <t t-esc="layer.create_date" t-options="{&quot;widget&quot;: &quot;datetime&quot;}"/>
+            </div>
+            <div class="act_as_cell left">
+                <t t-out="layer.display_name"/>
+            </div>
+            <div class="act_as_cell left">
+                <t t-out="layer.warehouse_id.name"/>
+            </div>
+            <div class="act_as_cell left">
+                <t t-out="layer.location_id.complete_name"/>
+            </div>
+            <div class="act_as_cell left">
+                <t t-out="layer.location_dest_id.complete_name"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-esc="layer.unit_cost" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 4}"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-if="layer.all_in_unit_cost" t-esc="layer.all_in_unit_cost" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 4}"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-esc="layer.quantity" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-esc="layer.value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+            </div>
+            <div class="act_as_cell left">
+                <t t-if="layer.origin_valuation_layer_id" t-out="layer.origin_valuation_layer_id.id"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-esc="layer.origin_remaining_qty" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-esc="running_qty" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-esc="running_value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+            </div>
+            <div class="act_as_cell left">
+                <t t-if="layer.production_id" t-out="layer.production_id.name"/>
+            </div>
+            <div class="act_as_cell left">
+                <t t-if="layer.stock_landed_cost_id" t-out="layer.stock_landed_cost_id.name"/>
+                <t t-if="layer.lc_line_count > 1"> (x<t t-esc="layer.lc_line_count"/>)</t>
+            </div>
+        </div>
+    </template>
+</odoo>

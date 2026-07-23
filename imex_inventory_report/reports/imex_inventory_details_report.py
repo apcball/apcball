@@ -1,5 +1,9 @@
+from datetime import datetime, time, timedelta
 
 from odoo import api, fields, models, tools
+
+# Thailand has no DST, so Bangkok is always a fixed UTC+7 offset.
+BANGKOK_UTC_OFFSET = timedelta(hours=7)
 
 
 class ImexInventoryDetailsReport(models.Model):
@@ -73,6 +77,12 @@ class ImexInventoryDetailsReport(models.Model):
                 locations = (-1,)
         return locations
 
+    def _bangkok_day_start_to_utc(self, day):
+        """UTC instant of 00:00 Bangkok time on `day`, for a sargable
+        comparison against move.date (stored as naive UTC) instead of
+        wrapping move.date in AT TIME ZONE/CAST."""
+        return datetime.combine(day, time.min) - BANGKOK_UTC_OFFSET
+
     def init_results(self, filter_fields):
         cutoff_date = self.env["imex.inventory.report"]._get_cutoff_date()
         date_from = filter_fields.date_from or fields.Date.to_date("1900-01-01")
@@ -84,6 +94,11 @@ class ImexInventoryDetailsReport(models.Model):
         locations = self._get_locations(
             filter_fields.location_id, is_groupby_location)
         product_ids = tuple(filter_fields.product_ids.ids)
+
+        utc_cutoff = self._bangkok_day_start_to_utc(cutoff_date)
+        utc_date_from = self._bangkok_day_start_to_utc(date_from)
+        utc_date_to_excl = self._bangkok_day_start_to_utc(
+            date_to + timedelta(days=1))
 
         query_ = """
             SELECT row_number() OVER (ORDER BY a.date, a.reference) AS id,* FROM(
@@ -141,8 +156,8 @@ class ImexInventoryDetailsReport(models.Model):
                     (move.location_id in %s or move.location_dest_id in %s)
                     and move.state = 'done'
                     and move.product_id in %s
-                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) < %s
-                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) >= %s
+                    and move.date >= %s
+                    and move.date < %s
                 UNION ALL
                 SELECT
                     null as initial, null as initial_amount,
@@ -189,8 +204,8 @@ class ImexInventoryDetailsReport(models.Model):
                     (move.location_id in %s or move.location_dest_id in %s)
                     and move.state = 'done'
                     and move.product_id in %s
-                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) >= %s
-                    and CAST((move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date) <= %s) AS a
+                    and move.date >= %s
+                    and move.date < %s) AS a
             ORDER BY a.date, a.reference
             """
         params = (locations,
@@ -200,15 +215,15 @@ class ImexInventoryDetailsReport(models.Model):
                   locations,
                   locations,
                   product_ids,
-                  date_from,
-                  cutoff_date,
+                  utc_cutoff,
+                  utc_date_from,
                   locations,
                   locations,
                   locations,
                   locations,
                   product_ids,
-                  date_from,
-                  date_to)
+                  utc_date_from,
+                  utc_date_to_excl)
 
         tools.drop_view_if_exists(self._cr, self._table)
         res = self._cr.execute(

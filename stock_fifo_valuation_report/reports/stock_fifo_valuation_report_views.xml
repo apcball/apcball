@@ -1,0 +1,50 @@
+<odoo>
+    <record id="view_stock_fifo_valuation_report_search" model="ir.ui.view">
+        <field name="name">stock.fifo.valuation.report.search</field>
+        <field name="model">stock.fifo.valuation.report</field>
+        <field name="arch" type="xml">
+            <search string="Stock FIFO Valuation Report Search">
+                <field name="default_code" string="Default Code"/>
+                <field name="product_id" string="Product"/>
+                <field name="product_category" string="Category"/>
+                <field name="warehouse_id" string="Warehouse"/>
+                <separator/>
+                <filter name="in_stock" string="In stock" domain="[('ending_qty','!=',0)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Product" name="product_id" domain="[]" context="{'group_by': 'product_id'}"/>
+                    <filter string="Category" name="product_category" domain="[]" context="{'group_by': 'product_category'}"/>
+                    <filter string="Warehouse" name="warehouse_id" domain="[]" context="{'group_by': 'warehouse_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="view_stock_fifo_valuation_report_tree" model="ir.ui.view">
+        <field name="name">stock.fifo.valuation.report.tree</field>
+        <field name="model">stock.fifo.valuation.report</field>
+        <field name="arch" type="xml">
+            <tree create="false" string="Stock FIFO Valuation Report">
+                <field name="default_code" string="Default Code" optional="show"/>
+                <field name="product_id" string="Product"/>
+                <field name="product_uom" string="UoM" optional="show"/>
+                <field name="product_category" string="Category" optional="show"/>
+                <field name="warehouse_id" string="Warehouse" optional="show"/>
+                <field name="opening_qty" string="Opening Qty" optional="show"/>
+                <field name="opening_value" string="Opening Value" optional="show"/>
+                <field name="in_qty" string="In Qty" optional="show"/>
+                <field name="in_value" string="In Value" optional="show"/>
+                <field name="out_qty" string="Out Qty" optional="show"/>
+                <field name="out_value" string="Out Value" optional="show"/>
+                <field name="ending_qty" string="Ending Qty" optional="show"/>
+                <field name="ending_value" string="Ending Value" optional="show"/>
+                <field name="remaining_value_check" string="Remaining Check" optional="show"/>
+                <button name="report_details" type="object" title="View Detail" class="fa fa-search"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_stock_fifo_valuation_report_tree_view" model="ir.actions.act_window">
+        <field name="name">Stock FIFO Valuation Report</field>
+        <field name="res_model">stock.fifo.valuation.report</field>
+        <field name="search_view_id" ref="view_stock_fifo_valuation_report_search"/>
+        <field name="view_mode">tree</field>
+    </record>
+</odoo>

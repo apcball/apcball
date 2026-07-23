@@ -1,0 +1,39 @@
+<odoo>
+    <record id="view_stock_fifo_valuation_report_wizard_form" model="ir.ui.view">
+        <field name="name">stock.fifo.valuation.report.wizard.form</field>
+        <field name="model">stock.fifo.valuation.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Stock FIFO Valuation Report">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="warehouse_ids" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <field name="product_category_ids" widget="many2many_tags"/>
+                        <field name="product_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="button_view" string="View Report" type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stock_fifo_valuation_report_wizard" model="ir.actions.act_window">
+        <field name="name">Stock FIFO Valuation Report</field>
+        <field name="res_model">stock.fifo.valuation.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_stock_fifo_valuation_report_root"
+              name="FIFO Valuation Report"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_fifo_valuation_report_wizard"
+              sequence="50"/>
+</odoo>

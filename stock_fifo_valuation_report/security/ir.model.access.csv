@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_fifo_valuation_report_wizard,access.stock.fifo.valuation.report.wizard,model_stock_fifo_valuation_report_wizard,base.group_user,1,1,1,0
+access_stock_fifo_valuation_report,access.stock.fifo.valuation.report,model_stock_fifo_valuation_report,base.group_user,1,1,1,0
+access_stock_fifo_valuation_details_report,access.stock.fifo.valuation.details.report,model_stock_fifo_valuation_details_report,base.group_user,1,1,1,0
