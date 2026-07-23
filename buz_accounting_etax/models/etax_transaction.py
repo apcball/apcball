@@ -17,6 +17,7 @@ class EtaxTransaction(models.Model):
     document_id = fields.Char('เลขที่เอกสาร', required=False)
     document_type = fields.Selection([
         ('T03', 'ใบแจ้งหนี้/ใบกำกับภาษี'),
+        ('T04', 'ใบกำกับภาษีอย่างย่อ'),
         ('81', 'ใบลดหนี้'),
         ('80', 'ใบเพิ่มหนี้'),
     ], 'ประเภทเอกสาร', default='T03', required=True)
@@ -584,14 +585,14 @@ class EtaxTransaction(models.Model):
                 "F48-TAX_TOTAL_AMOUNT": 
                 (
                     f"{abs(self.amount_tax):.2f}" if self.document_type in ['80', '81']
-                    else f"{abs(self.amount_vat):.2f}" if self.document_type == 'T03'
+                    else f"{abs(self.amount_vat):.2f}" if self.document_type in ('T03', 'T04')
                     else "0.00"
                 ), # รวมจำนวนเงิน [T03, CN, DN]
                 "F49-TAX_TOTAL_CURRENCY_CODE": currency_code,
                 "F50-GRAND_TOTAL_AMOUNT":
                 (
                     f"{abs(self.amount_total):.2f}" if self.document_type in ['80', '81']
-                    else f"{abs(self.net_amount_total):.2f}" if self.document_type == 'T03'
+                    else f"{abs(self.net_amount_total):.2f}" if self.document_type in ('T03', 'T04')
                     else "0.00"
                 ), # รวมจำนวนเงิน [T03, CN, DN]
                 "F51-GRAND_TOTAL_CURRENCY_CODE": currency_code,
@@ -800,8 +801,11 @@ class EtaxTransaction(models.Model):
     def _compute_amount_untaxed(self):
         for record in self:
             total = 0.0
-            if record.document_type in ['T03']:
-                total = sum(line.price_subtotal for line in record.line_ids)
+            if record.document_type in ('T03', 'T04'):
+                if record.invoice_id:
+                    total = record.invoice_id.amount_untaxed
+                else:
+                    total = sum(line.price_subtotal for line in record.line_ids)
             elif record.document_type in ['81']:
                 total = abs((record.original_amount or 0.0) - (record.difference_amount or 0.0))
             elif record.document_type in ['80']: # เพิ่มหนี้
@@ -819,26 +823,20 @@ class EtaxTransaction(models.Model):
             if record.invoice_id and record.document_type in ('80', '81'):
                 record.amount_tax = record.invoice_id.amount_tax
             else:
-                total_tax = sum(line.price_tax for line in record.line_ids)
-                if total_tax:
-                    total_tax = abs(record.difference_amount or 0.0) * 7 / 100
-                record.amount_tax = total_tax
+                record.amount_tax = sum(line.price_tax for line in record.line_ids)
 
     @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed', 'invoice_id')
     def _compute_net_amount_tax(self):
         for record in self:
-            if record.invoice_id and record.document_type == 'T03':
+            if record.invoice_id and record.document_type in ('T03', 'T04'):
                 record.amount_vat = record.invoice_id.amount_tax
             else:
-                total_tax = sum(line.price_tax for line in record.line_ids)
-                if total_tax:
-                    total_tax = abs(record.total_after_deposit or 0.0) * 7 / 100
-                record.amount_vat = total_tax
+                record.amount_vat = sum(line.price_tax for line in record.line_ids)
 
     @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed', 'amount_tax')
     def _compute_amount_total(self):
         for record in self:
-            if record.document_type in ['T03']:
+            if record.document_type in ('T03', 'T04'):
                 total = abs((record.original_amount or 0.0) - (record.amount_untaxed or 0.0))
             elif record.document_type in ['81', '80']:
                 total = sum(line.price_subtotal for line in record.line_ids)
@@ -887,7 +885,7 @@ class EtaxTransaction(models.Model):
         for record in self:
             if record.document_type in ['81', '80']:
                 record.invoice_total = record.amount_total
-            elif record.document_type in ['T03']:
+            elif record.document_type in ('T03', 'T04'):
                 record.invoice_total = record.net_amount_total
             else:
                 record.invoice_total = 0.0
