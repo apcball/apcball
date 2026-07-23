@@ -5,18 +5,62 @@
         <field name="name">billing.note.tree</field>
         <field name="model">billing.note</field>
         <field name="arch" type="xml">
-            <tree string="Billing Notes">
+            <tree string="Billing Notes" decoration-danger="is_payment_overdue">
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date"/>
-                <field name="due_date" widget="remaining_days" decoration-success="due_date &gt; context_today()" 
+                <field name="due_date" widget="remaining_days" decoration-success="due_date &gt; context_today()"
                                      decoration-warning="due_date &gt;= context_today() and due_date &lt;= context_today() + relativedelta(days=7)"
                                      decoration-danger="due_date &lt; context_today()"/>
+                <field name="expected_payment_date" optional="show"/>
                 <field name="amount_total" sum="Total"/>
                 <field name="amount_residual" sum="Due"/>
                 <field name="payment_state" widget="badge" decoration-danger="payment_state == 'not_paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-success="payment_state == 'paid'"/>
+                <field name="tracking_status" widget="badge" decoration-muted="tracking_status == 'pending'" decoration-info="tracking_status in ('messenger_sent', 'messenger_received')" decoration-warning="tracking_status == 'ar_sent'" decoration-success="tracking_status == 'ar_received'"/>
                 <field name="state" widget="badge" decoration-primary="state == 'draft'" decoration-warning="state == 'confirm'" decoration-success="state == 'done'" decoration-danger="state == 'cancel'"/>
+                <field name="is_payment_overdue" invisible="1"/>
             </tree>
+        </field>
+    </record>
+
+    <!-- Kanban View -->
+    <record id="view_billing_note_kanban" model="ir.ui.view">
+        <field name="name">billing.note.kanban</field>
+        <field name="model">billing.note</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="tracking_status" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="amount_total"/>
+                <field name="currency_id"/>
+                <field name="expected_payment_date"/>
+                <field name="is_payment_overdue"/>
+                <field name="payment_state"/>
+                <field name="tracking_status"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.is_payment_overdue.raw_value ? 'oe_kanban_color_2' : ''}">
+                            <div class="o_kanban_record_top">
+                                <strong><field name="name"/></strong>
+                            </div>
+                            <div>
+                                <field name="partner_id"/>
+                            </div>
+                            <div>
+                                <field name="amount_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            </div>
+                            <div t-if="record.expected_payment_date.raw_value">
+                                คาดว่าจะได้รับเงิน: <field name="expected_payment_date"/>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="payment_state" widget="badge" decoration-danger="payment_state == 'not_paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-success="payment_state == 'paid'"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
         </field>
     </record>
 
@@ -141,10 +185,16 @@
                 <filter string="Not Paid" name="not_paid" domain="[('payment_state','=','not_paid')]"/>
                 <filter string="Partially Paid" name="partial" domain="[('payment_state','=','partial')]"/>
                 <filter string="Paid" name="paid" domain="[('payment_state','=','paid')]"/>
+                <separator/>
+                <filter string="Pending Messenger" name="tracking_pending" domain="[('tracking_status','=','pending')]"/>
+                <filter string="Awaiting AR" name="tracking_awaiting_ar" domain="[('tracking_status','in',('messenger_sent','messenger_received'))]"/>
+                <filter string="With AR" name="tracking_with_ar" domain="[('tracking_status','in',('ar_sent','ar_received'))]"/>
+                <filter string="Payment Overdue" name="payment_overdue" domain="[('is_payment_overdue','=',True)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Partner" name="partner" context="{'group_by':'partner_id'}"/>
                     <filter string="Status" name="status" context="{'group_by':'state'}"/>
                     <filter string="Payment Status" name="payment_status" context="{'group_by':'payment_state'}"/>
+                    <filter string="Tracking Status" name="tracking_status_group" context="{'group_by':'tracking_status'}"/>
                     <filter string="Month" name="month" context="{'group_by':'date:month'}"/>
                 </group>
             </search>
@@ -155,7 +205,21 @@
     <record id="action_billing_note" model="ir.actions.act_window">
         <field name="name">Billing Notes</field>
         <field name="res_model">billing.note</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first billing note!
+            </p>
+        </field>
+    </record>
+
+    <!-- Action: Tracking Dashboard (kanban excludes Done docs) -->
+    <record id="action_billing_note_tracking" model="ir.actions.act_window">
+        <field name="name">Tracking Dashboard</field>
+        <field name="res_model">billing.note</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('state', '!=', 'done')]</field>
         <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -165,14 +229,20 @@
     </record>
 
     <!-- Menu -->
-    <menuitem id="menu_billing_note_main" 
+    <menuitem id="menu_billing_note_main"
         name="Billing Notes"
-        parent="account.menu_finance" 
+        parent="account.menu_finance"
         sequence="5"/>
 
-    <menuitem id="menu_billing_note" 
-        name="Billing Notes"
-        parent="menu_billing_note_main" 
-        action="action_billing_note" 
+    <menuitem id="menu_billing_note_tracking"
+        name="Tracking Dashboard"
+        parent="menu_billing_note_main"
+        action="action_billing_note_tracking"
         sequence="1"/>
+
+    <menuitem id="menu_billing_note"
+        name="Billing Notes"
+        parent="menu_billing_note_main"
+        action="action_billing_note"
+        sequence="2"/>
 </odoo>

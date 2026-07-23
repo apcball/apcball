@@ -75,6 +75,39 @@ class BillingNote(models.Model):
     expected_payment_date = fields.Date(string='วันที่คาดว่าจะได้รับเงิน', tracking=True)
     note = fields.Text(string='หมายเหตุ', tracking=True)
 
+    tracking_status = fields.Selection([
+        ('pending', 'รอส่งแมสเซนเจอร์'),
+        ('messenger_sent', 'ส่งแมสเซนเจอร์แล้ว'),
+        ('messenger_received', 'รับจากแมสเซนเจอร์แล้ว'),
+        ('ar_sent', 'ส่งบัญชีลูกหนี้แล้ว'),
+        ('ar_received', 'บัญชีลูกหนี้รับแล้ว'),
+    ], string='สถานะติดตาม', compute='_compute_tracking_status', store=True)
+    is_payment_overdue = fields.Boolean(string='Payment Overdue', compute='_compute_is_payment_overdue', store=True)
+
+    @api.depends('messenger_sent_date', 'messenger_received_date', 'ar_sent_date', 'ar_received_date')
+    def _compute_tracking_status(self):
+        for rec in self:
+            if rec.ar_received_date:
+                rec.tracking_status = 'ar_received'
+            elif rec.ar_sent_date:
+                rec.tracking_status = 'ar_sent'
+            elif rec.messenger_received_date:
+                rec.tracking_status = 'messenger_received'
+            elif rec.messenger_sent_date:
+                rec.tracking_status = 'messenger_sent'
+            else:
+                rec.tracking_status = 'pending'
+
+    @api.depends('expected_payment_date', 'payment_state')
+    def _compute_is_payment_overdue(self):
+        today = fields.Date.context_today(self)
+        for rec in self:
+            rec.is_payment_overdue = bool(
+                rec.expected_payment_date
+                and rec.expected_payment_date < today
+                and rec.payment_state not in ('paid', 'in_payment')
+            )
+
     partner_vat = fields.Char(string='Tax ID', related='partner_id.vat', readonly=True)
     partner_address = fields.Char(string='Full Address', compute='_compute_partner_address', store=True, readonly=True)
     partner_phone = fields.Char(string='Phone', related='partner_id.phone', readonly=True)
