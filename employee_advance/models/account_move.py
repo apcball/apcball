@@ -764,6 +764,13 @@ class AccountMove(models.Model):
                             advance_boxes |= box
         return advance_boxes
 
+    def action_post(self):
+        advance_boxes = self._find_related_advance_boxes()
+        result = super().action_post()
+        for box in advance_boxes:
+            box._refresh_balance_simple()
+        return result
+
     def button_draft(self):
         # Find affected advance boxes BEFORE changing state
         advance_boxes = self._find_related_advance_boxes()
