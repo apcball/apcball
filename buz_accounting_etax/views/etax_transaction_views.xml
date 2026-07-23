@@ -7,14 +7,16 @@
         <field name="arch" type="xml">
             <form string="ธุรกรรม E-Tax" >
                 <header>
-                    <button name="send_to_etax" type="object" string="ส่งไป E-Tax" 
-                            class="oe_highlight" 
+                    <button name="send_to_etax" type="object" string="ส่งไป E-Tax"
+                            class="oe_highlight"
                             invisible="state not in ['draft', 'error']"/>
-                    <button name="action_download_pdf" type="object" string="ดาวน์โหลด PDF" 
+                    <button name="action_add_to_queue" type="object" string="เพิ่มเข้าคิว"
+                            invisible="state not in ['draft', 'error']"/>
+                    <button name="action_download_pdf" type="object" string="ดาวน์โหลด PDF"
                             invisible="not pdf_url"/>
-                    <button name="action_download_xml" type="object" string="ดาวน์โหลด XML" 
+                    <button name="action_download_xml" type="object" string="ดาวน์โหลด XML"
                             invisible="not xml_url"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,sending,pending,sent"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,queued,sending,pending,sent"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -124,6 +126,8 @@
                                 <group>
                                     <field name="pdf_url" readonly="1"/>
                                     <field name="xml_url" readonly="1"/>
+                                    <field name="queued_date" readonly="1" invisible="not queued_date"/>
+                                    <field name="sent_date" readonly="1" invisible="not sent_date"/>
                                 </group>
                             </group>
                         </page>
@@ -173,6 +177,9 @@
         <field name="arch" type="xml">
             <!-- <tree string="ธุรกรรม E-Tax" decoration-success="state=='sent'" decoration-danger="state=='error'"> -->
             <tree string="ธุรกรรม E-Tax">
+                <header>
+                    <button name="action_add_to_queue" type="object" string="เพิ่มเข้าคิว"/>
+                </header>
                 <!-- <field name="document_id"/> -->
                 <field name="document_type"/>
                 <field name="invoice_id"/>
@@ -203,6 +210,7 @@
                 <field name="transaction_code"/>
                 <separator/>
                 <filter name="draft" string="ร่าง" domain="[('state','=','draft')]"/>
+                <filter name="queued" string="อยู่ในคิว" domain="[('state','=','queued')]"/>
                 <filter name="sent" string="ส่งแล้ว" domain="[('state','=','sent')]"/>
                 <filter name="pending" string="กำลังประมวลผล" domain="[('state','=','pending')]"/>
                 <filter name="error" string="ข้อผิดพลาด" domain="[('state','=','error')]"/>
@@ -232,15 +240,15 @@
         </field>
     </record>
 
-    <!-- Menu หลักสำหรับ E-Tax -->
-    <!-- <menuitem id="menu_etax_root"
-              name="E-Tax"
-              parent="account.menu_finance"
-              sequence="20"/> -->
-
-    <menuitem id="menu_etax_transaction"
+    <!-- Menu หลักสำหรับ E-Tax (group header, ไม่มี action ของตัวเอง) -->
+    <menuitem id="menu_etax_root"
               name="E-Tax"
               parent="account.menu_finance_receivables"
+              sequence="1"/>
+
+    <menuitem id="menu_etax_transaction"
+              name="รายการธุรกรรม E-Tax"
+              parent="menu_etax_root"
               action="action_etax_transaction"
               sequence="1"/>
 

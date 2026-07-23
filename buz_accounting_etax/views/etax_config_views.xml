@@ -59,6 +59,12 @@
                                 <field name="send_mail_ind"/>
                             </group>
                         </page>
+                        <page string="การตั้งค่าคิว">
+                            <group>
+                                <field name="queue_batch_size"/>
+                                <field name="queue_delay_seconds"/>
+                            </group>
+                        </page>
                     </notebook>
                 </sheet>
             </form>

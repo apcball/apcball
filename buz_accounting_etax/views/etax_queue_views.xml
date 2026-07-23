@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View สำหรับคิวส่ง E-Tax -->
+    <record id="view_etax_queue_tree" model="ir.ui.view">
+        <field name="name">etax.transaction.queue.tree</field>
+        <field name="model">etax.transaction</field>
+        <field name="arch" type="xml">
+            <tree string="คิว E-Tax">
+                <header>
+                    <button name="action_process_queue_now" type="object"
+                            string="ประมวลผลคิวตอนนี้" class="btn-primary"/>
+                    <button name="action_add_to_queue" type="object" string="เพิ่มเข้าคิว"/>
+                </header>
+                <field name="document_type"/>
+                <field name="invoice_id"/>
+                <field name="partner_id"/>
+                <field name="document_date"/>
+                <field name="invoice_total"/>
+                <field name="queued_date"/>
+                <field name="sent_date"/>
+                <field name="transaction_code"/>
+                <field name="error_message" optional="show"/>
+                <field name="state" widget="badge"
+                    decoration-muted="state=='draft'"
+                    decoration-info="state=='queued'"
+                    decoration-warning="state=='sending'"
+                    decoration-primary="state=='pending'"
+                    decoration-success="state=='sent'"
+                    decoration-danger="state=='error'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action สำหรับหน้าคิว E-Tax -->
+    <record id="action_etax_queue" model="ir.actions.act_window">
+        <field name="name">คิว E-Tax</field>
+        <field name="res_model">etax.transaction</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_etax_queue_tree"/>
+        <field name="search_view_id" ref="view_etax_transaction_search"/>
+        <field name="domain">[('state', 'in', ['queued', 'sending', 'pending', 'error'])]</field>
+        <field name="context">{'search_default_queued': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ไม่มีเอกสารในคิว
+            </p>
+            <p>
+                เพิ่มเอกสารเข้าคิวจากหน้ารายการธุรกรรม E-Tax แล้วกลับมาประมวลผลที่นี่
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_etax_queue"
+              name="คิว E-Tax"
+              parent="menu_etax_root"
+              action="action_etax_queue"
+              sequence="2"/>
+</odoo>

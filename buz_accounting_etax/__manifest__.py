@@ -1,6 +1,6 @@
 {
     'name': 'BUZ Accounting E-Tax Integration',
-    'version': '17.0.1.0.5',
+    'version': '17.0.1.0.6',
     'category': 'Accounting',
     'summary': 'การเชื่อมต่อระบบ E-Tax สำหรับส่งใบกำกับภาษี',
     'description': '''
@@ -16,8 +16,10 @@
     'data': [
         'security/ir.model.access.csv',
         'data/etax_data.xml',
+        'data/etax_queue_cron.xml',
         'views/etax_config_views.xml',
         'views/etax_transaction_views.xml',
+        'views/etax_queue_views.xml',
         'views/partner_views.xml',
     ],
     'demo': [],
