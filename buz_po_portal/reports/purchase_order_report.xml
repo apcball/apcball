@@ -26,6 +26,12 @@
                             <style>
                                 @font-face {
                                     font-family: 'Sarabun';
+                                    src: url('/buz_po_portal/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                    font-weight: normal;
+                                    font-style: normal;
+                                }
+                                @font-face {
+                                    font-family: 'Sarabun';
                                     src: url('/buz_po_portal/static/fonts/Sarabun-Bold.ttf') format('truetype');
                                     font-weight: bold;
                                     font-style: normal;
@@ -136,14 +142,56 @@
                                     overflow: hidden;
                                     text-overflow: ellipsis;
                                 }
-                                .footer-fixed {
-                                    position: absolute;
+                                 .footer-fixed {
+                                     position: absolute;
                                     bottom: 0;
                                     width: 100%;
                                     font-size: 16px;
                                     display: flex;
+                                     justify-content: space-between;
+                                 }
+                                .report-footer {
+                                    font-size: 14px;
+                                    margin-left: 0;
+                                    margin-right: 0;
+                                    margin-top: 20px;
+                                }
+                                .report-footer > .col-12 {
+                                    padding-left: 0;
+                                    padding-right: 0;
+                                }
+                                .report-footer > .col-12 > div {
+                                    border: 1px solid #000;
+                                    padding: 4px;
+                                    margin: 0;
+                                }
+                                .report-footer .row {
+                                    margin-left: 0;
+                                    margin-right: 0;
+                                }
+                                .report-footer .col-6 {
+                                    padding-left: 2px;
+                                    padding-right: 2px;
+                                }
+                                .report-footer strong {
+                                    font-size: 14px;
+                                }
+                                .report-footer ol {
+                                    font-size: 14px;
+                                    margin-bottom: 0;
+                                    padding-left: 14px;
+                                }
+                                .report-footer-meta {
+                                    position: absolute;
+                                    bottom: 0;
+                                    left: 0;
+                                    right: 0;
+                                    width: 100%;
+                                    margin: 0;
+                                    display: flex;
                                     justify-content: space-between;
-                                  }
+                                    font-size: 8px;
+                                }
                             </style>
         <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
         <t t-set="line_count" t-value="len(o.order_line)"/>
@@ -453,27 +501,53 @@
 
 
                             <!-- Signature Section -->
-                            <div class="row mt-5" style="margin-top: 0px;">
+                            <div class="row mt-5">
                                 <!-- Common styles for signature boxes -->
                                 <style>
-                                    .signature-box {
-                                        font-size: 12px;
-                                        text-align: center;
-                                        width: 100%;
+                                    .signature-row {
+                                        margin-top: 100px;
+                                        display: flex;
+                                        flex-direction: row;
+                                        align-items: flex-start;
+                                        justify-content: space-between;
                                     }
-                                    .signature-content {
-                                        height: 120px;
+                                    .signature-column {
+                                        width: 33%;
+                                        box-sizing: border-box;
+                                        padding-right: 10px;
                                         display: flex;
                                         flex-direction: column;
-                                        justify-content: flex-end;
-                                        align-items: center;
-                                        margin-bottom: 10px;
+                                        justify-content: flex-start;
+                                    }
+                                    .signature-column:last-child {
+                                        padding-right: 0;
+                                    }
+                                    .signature-content {
+                                        text-align: center;
+                                        font-size: 18px;
+                                    }
+                                    .signature-spacer {
+                                        height: 24px;
+                                    }
+                                    .signature-image {
+                                        height: 40px;
+                                        max-width: 120px;
+                                        display: block;
+                                        margin: 0 auto;
+                                    }
+                                    .signature-placeholder {
+                                        height: 40px;
                                     }
                                     .signature-line {
-                                        border-top: 1px solid #000;
-                                        margin: 0 auto;
+                                        border-bottom: 1px solid #000;
                                         width: 80%;
-                                        padding-top: 5px;
+                                        margin: 0 auto;
+                                    }
+                                    .signature-name {
+                                        display: inline;
+                                        margin: 0;
+                                        padding: 0;
+                                        line-height: 1.5;
                                     }
                                     .signature-title {
                                         margin: 5px 0;
@@ -482,28 +556,18 @@
                                     .signature-date {
                                         margin: 5px 0;
                                     }
-                                    .signature-image {
-                                        width: 100px;
-                                        height: 60px;
-                                        object-fit: contain;
-                                        margin-bottom: 5px;
-                                    }
-                                    .signature-name {
-                                        margin: 0;
-                                        line-height: 1.5;
-                                    }
                                 </style>
                                 <!-- ผู้จัดทำ -->
-                                <div class="row" style="margin-top: 100px; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;">
+                                <div class="row signature-row">
                                     <!-- ส่วนที่ 1: ผู้จัดทำ -->
-                                    <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
-                                        <div style="text-align: center; font-size: 18px;">
-                                            <div style="height:24px;"></div>
+                                    <div class="col signature-column">
+                                        <div class="signature-content">
+                                            <div class="signature-spacer"></div>
                                             <t t-if="o.prepared_signature and o.state in ['purchase', 'done']">
-                                                <img t-att-src="image_data_uri(o.prepared_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
-                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
+                                                <img class="signature-image" t-att-src="image_data_uri(o.prepared_signature)"/>
+                                                <div class="signature-line"></div>
                                                 <div>
-                                                    (<span t-field="o.create_uid.name" style="display:inline; margin:0; padding:0;"/>)
+                                                    (<span class="signature-name" t-field="o.create_uid.name"/>)
                                                 </div>
                                                 <div> ผู้จัดทำ </div>
                                                 <div>
@@ -512,8 +576,8 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div style="height: 40px;"></div>
-                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
+                                                <div class="signature-placeholder"></div>
+                                                <div class="signature-line"></div>
                                                 <div>
                                                     (<span t-esc="o.create_uid.name or ''"/>)
                                                 </div>
@@ -528,14 +592,14 @@
                                     </div>
 
                                     <!-- ส่วนที่ 2: ผู้ตรวจสอบ -->
-                                    <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
-                                        <div style="text-align: center; font-size: 18px;">
-                                            <div style="height:24px;"></div>
+                                    <div class="col signature-column">
+                                        <div class="signature-content">
+                                            <div class="signature-spacer"></div>
                                             <t t-if="o.reviewed_signature and o.state in ['purchase', 'done']">
-                                                <img t-att-src="image_data_uri(o.reviewed_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
-                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
+                                                <img class="signature-image" t-att-src="image_data_uri(o.reviewed_signature)"/>
+                                                <div class="signature-line"></div>
                                                 <div>
-                                                    (<span t-field="o.reviewer_id.name" style="display:inline; margin:0; padding:0;"/>)
+                                                    (<span class="signature-name" t-field="o.reviewer_id.name"/>)
                                                 </div>
                                                 <div> ผู้ตรวจสอบ </div>
                                                 <div>
@@ -544,8 +608,8 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div style="height: 40px;"></div>
-                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
+                                                <div class="signature-placeholder"></div>
+                                                <div class="signature-line"></div>
                                                 <div>
                                                     (....................................)
                                                 </div>
@@ -560,14 +624,14 @@
                                     </div>
 
                                     <!-- ส่วนที่ 3: ผู้อนุมัติ -->
-                                    <div class="col" style="width: 33%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-start;">
-                                        <div style="text-align: center; font-size: 18px;">
-                                            <div style="height:24px;"></div>
+                                    <div class="col signature-column">
+                                        <div class="signature-content">
+                                            <div class="signature-spacer"></div>
                                             <t t-if="o.approval_signature and o.state in ['purchase', 'done']">
-                                                <img t-att-src="image_data_uri(o.approval_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
-                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
+                                                <img class="signature-image" t-att-src="image_data_uri(o.approval_signature)"/>
+                                                <div class="signature-line"></div>
                                                 <div>
-                                                    (<span t-field="o.approver_id.name" style="display:inline; margin:0; padding:0;"/>)
+                                                    (<span class="signature-name" t-field="o.approver_id.name"/>)
                                                 </div>
                                                 <div> ผู้อนุมัติ </div>
                                                 <div>
@@ -576,10 +640,10 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div style="height: 40px;"></div>
-                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
+                                                <div class="signature-placeholder"></div>
+                                                <div class="signature-line"></div>
                                                 <div>
-                                                        (<span style="display:inline; margin:0; padding:0;">
+                                                        (<span class="signature-name">
                                                             นภัคสรณ์ วชิรพันธ์วิชาญ
                                                         </span>)
                                                 </div>
@@ -597,13 +661,13 @@
                             </div>
 
                             <!-- Footer Section -->
-                            <div class="row mt-3" style="font-size: 14px; margin-left:0; margin-right:0; margin-top: 20;">
-                                <div class="col-12" style="padding-left:0; padding-right:0;">
-                                    <div style="border: 1px solid #000; padding: 4px; margin:0;">
-                                        <div class="row" style="margin-left: 0; margin-right: 0;">
-                                            <div class="col-6" style="padding-left: 2px; padding-right: 2px;">
-                                                <strong style="font-size: 14px;">เงื่อนไขและการส่งมอบ</strong>
-                                                <ol style="font-size: 14px; margin-bottom: 0px; padding-left: 14px;">
+                            <div class="row mt-3 report-footer">
+                                <div class="col-12">
+                                    <div>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>เงื่อนไขและการส่งมอบ</strong>
+                                                <ol>
                                                     <li>สินค้าที่ส่งมอบต้องให้มีคุณภาพ ขนาด ปริมาณ และจัดส่งตามกำหนด</li>
                                                     <li>ถ้าไม่เป็นไปตามเงื่อนไขข้างต้นนี้ขอมีสิทธิ์ยกเลิกในสั่งซื้อ และไม่ต้องรับผิดชอบใดๆ ทั้งสิ้น</li>
                                                     <li>ใบส่งของทุกฉบับต้องมีสำเนา 2 ฉบับ พร้อมระบุเลขที่ในสั่งซื้อ</li>
@@ -611,9 +675,9 @@
                                                     <li>บริษัทฯ จะไม่รับผิดชอบในการชำระเงินใดๆ ทั้งสิ้นสำหรับสินค้าที่ผู้ขายส่งมอบเกินจำนวนที่ได้ระบุไว้ในใบสั่งซื้อ</li>
                                                 </ol>
                                             </div>
-                                            <div class="col-6" style="padding-left: 2px; padding-right: 2px;">
-                                                <strong style="font-size: 14px;">CONDITION:</strong>
-                                                <ol style="font-size: 14px; margin-bottom: 0px; padding-left: 14px;">
+                                            <div class="col-6">
+                                                <strong>CONDITION:</strong>
+                                                <ol>
                                                     <li>ALL SUPPLIES ARE TO BE MADE STRICTLY IN ACCORDANCE WITH OUR SPECIFICATION</li>
                                                     <li>THIS ORDER SHALL BE CANCELLED IF DELIVERY IS NOT MADE WITH TIME STATED</li>
                                                     <li>ALL SUPPLIES SHOULD BE COVERED BY YOUR INVOICE IN TRIPLICATION</li>
@@ -633,7 +697,7 @@
                             </t>
                             <!-- Footer Section -->
 
-                        <div style="position: absolute; bottom: 0; left: 0; right: 0; width: 100%; margin: 0; display: flex; justify-content: space-between; font-size: 8px;">
+                        <div class="report-footer-meta">
                             <span>อนุมัติใช้วันที่ 14/09/2563</span>
                             <span>FM-PUR-08.REV.01</span>
                         </div>
