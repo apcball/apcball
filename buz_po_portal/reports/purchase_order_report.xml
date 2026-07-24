@@ -160,6 +160,11 @@
                                     font-size: 10px;
                                     line-height: 1.2;
                                     page-break-inside: avoid;
+                                }
+                                .po-final-page .po-page-footer {
+                                    position: static;
+                                    margin-top: 0;
+                                }
                                 }</style>
         <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
         <t t-set="line_count" t-value="len(o.order_line)"/>
@@ -624,22 +629,7 @@
                 </t>
                             <t t-call="buz_po_portal.po_page_footer"/>
                         </div>
-<t t-call="buz_po_portal.po_legacy_page_break">
-                        <!-- Conditional page break based on number of items -->
-                            <t t-if="len(o.order_line) &gt; 4">
-                                <div style="page-break-before: always; margin-top:0px !important; padding-top:0px !important;"/>
-                            </t>
-                            <!-- Footer Section -->
-    
-                            <!-- Conditional page break based on number of items -->
-                            <t t-if="len(o.order_line) &gt; 4">
-                                <div style="page-break-before: always;"/>
-                            </t>               </t>
-
-    
-                       
-
-                       </div>  
+</div>
                       </t>   
                     </t></t>
                   </t>
