@@ -99,39 +99,40 @@
                                     overflow: hidden;
                                     text-overflow: ellipsis;
                                 }
-                                .footer-fixed {
+                                .po-report-page {
+                                    position: relative;
+                                    box-sizing: border-box;
+                                    min-height: 277mm;
+                                    padding-bottom: 18mm;
+                                    page-break-inside: avoid;
+                                }
+                                .po-report-header {
+                                    box-sizing: border-box;
+                                }
+                                .po-report-footer {
                                     position: absolute;
                                     bottom: 0;
+                                    left: 0;
                                     width: 100%;
-                                    font-size: 16px;
+                                    box-sizing: border-box;
                                     display: flex;
                                     justify-content: space-between;
-                                  }
-                                  @page {
-                                    margin: 10mm 10mm 20mm 10mm; /* ซ้าย ขวา บน ล่าง */
-                                    @bottom-left {
-                                        content: "อนุมัติใช้วันที่ 14/09/2563";
-                                        font-size: 14px;
-                                    }
-                                    @bottom-right {
-                                        content: "FM-PUR-08.REV.01";
-                                        font-size: 14px;
-                                    }
-                                    }
-                                    
-                           
-                     
-                            </style>
+                                    padding: 0 4mm;
+                                    font-size: 10px;
+                                    line-height: 1.2;
+                                    page-break-inside: avoid;
+                                }</style>
         <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
         <t t-set="line_count" t-value="len(o.order_line)"/>
         <t t-set="lines_per_page" t-value="10"/>
         <t t-set="total_pages" t-value="int((line_count + lines_per_page - 1) / lines_per_page)"/>
         <t t-foreach="range(total_pages)" t-as="page_num">
-            <div t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
+            <div class="po-report-page" t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
     
                 
     
                 <!-- ส่วนหัว (Header) -->
+                <div class="po-report-header">
                 <div class="row mb-2">
                     <div class="col-8">
                         <div style="font-size: 18px;">
@@ -153,6 +154,8 @@
                     </div>
                 </div>
     
+                </div>
+
                 <!-- Document Info -->
                 <div class="row mb-2">
                     <div class="col-8">
@@ -315,38 +318,8 @@
                      </tr>
                  </t>
              </tbody>
-         </table>
-         
-                  
-                <t t-if="page_num != total_pages - 1">
-                    <div style="position: relative; min-height: 25mm; padding-bottom: 80mm;">
-                      <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
-                  
-                      <!-- Footer fixed bottom -->
-                      <div style="
-                        position: absolute;
-                        bottom: 0; left: 0; width: 100%;
-                        display: flex; justify-content: space-between;
-                        font-size: 10px;
-                        padding-left: 4mm; padding-right: 4mm;
-                        line-height: 1.2;
-                        page-break-inside: avoid;
-                        ">
-                        <div>
-                          <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
-                        </div>
-                        <div>
-                          <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
-                        </div>
-                      </div>
-                    </div>
-                  </t>
-                  
-                  
-          </div>
-       </t>     
-            
-      <!-- กล่องรวม หมายเหตุ + ผลรวม -->
+         </table>      <!-- กล่องรวม หมายเหตุ + ผลรวม -->
+       <t t-if="page_num == total_pages - 1">
        <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
     
         <!-- ฝั่งซ้าย -->
@@ -589,31 +562,17 @@
                                     </div>
                                 </div>
                             </div>
-
-                       
-
-                            <div style="margin: 0; display: flex; justify-content: space-between; font-size: 8px;">
-                              <span>อนุมัติใช้วันที่ 14/09/2563</span>
-                              <span>FM-PUR-08.REV.01</span>
-                            </div>
-                  
-                        <!-- Conditional page break based on number of items -->
-                            <t t-if="len(o.order_line) &gt; 4">
-                                <div style="page-break-before: always; margin-top:0px !important; padding-top:0px !important;"/>
-                            </t>
-                            <!-- Footer Section -->
-    
-                            <!-- Conditional page break based on number of items -->
-                            <t t-if="len(o.order_line) &gt; 4">
-                                <div style="page-break-before: always;"/>
-                            </t>
-    
-                       
-
-                       </div>  
-                      </t>   
-                    </t></t>
-                  </t>
+                        </t>
+                        <div class="po-report-footer">
+                            <span>อนุมัติใช้วันที่ 14/09/2563</span>
+                            <span>FM-PUR-08.REV.01</span>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </t>
+    </t>
+        </t></t>
               </template>   
     <!-- Report Action -->
     <record id="action_report_purchase_order_custom" model="ir.actions.report">
