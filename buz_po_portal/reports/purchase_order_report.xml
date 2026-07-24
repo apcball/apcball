@@ -15,6 +15,34 @@
         <field name="dpi">90</field>
     </record>
 
+    <!--
+        Layout fragments render their caller body unchanged through QWeb body
+        variable 0, keeping the existing PDF geometry under the original markup.
+    -->
+    <template id="po_header">
+        <t t-name="buz_po_portal.po_header"><t t-out="0"/></t>
+    </template>
+    <template id="po_title">
+        <t t-name="buz_po_portal.po_title"><t t-out="0"/></t>
+    </template>
+    <template id="po_info">
+        <t t-name="buz_po_portal.po_info"><t t-out="0"/></t>
+    </template>
+    <template id="po_order_lines">
+        <t t-name="buz_po_portal.po_order_lines"><t t-out="0"/></t>
+    </template>
+    <template id="po_totals_notes">
+        <t t-name="buz_po_portal.po_totals_notes"><t t-out="0"/></t>
+    </template>
+    <template id="po_signatures">
+        <t t-name="buz_po_portal.po_signatures"><t t-out="0"/></t>
+    </template>
+    <template id="po_footer">
+        <t t-name="buz_po_portal.po_footer"><t t-out="0"/></t>
+    </template>
+    <template id="po_legacy_page_break">
+        <t t-name="buz_po_portal.po_legacy_page_break"><t t-out="0"/></t>
+    </template>
     <!-- Report Template -->
     <template id="report_purchaseorder_document_custom">
         <t t-name="buz_po_portal.report_purchaseorder_document_custom">
@@ -132,7 +160,8 @@
                 
     
                 <!-- ส่วนหัว (Header) -->
-                <div class="row mb-2">
+                <t t-call="buz_po_portal.po_header">
+                <div class="row mb-2 po-header">
                     <div class="col-8">
                         <div style="font-size: 18px;">
                             <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
@@ -145,16 +174,20 @@
                         <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                     </div>
                 </div>
+                </t>
     
                 <!-- Document Title -->
-                <div class="row mb-2">
+                <t t-call="buz_po_portal.po_title">
+                <div class="row mb-2 po-title">
                     <div class="col-12 text-center">
                         <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
                     </div>
                 </div>
+                </t>
     
                 <!-- Document Info -->
-                <div class="row mb-2">
+                <t t-call="buz_po_portal.po_info">
+                <div class="row mb-2 po-info">
                     <div class="col-8">
                         <p style="margin-bottom: 0; margin-top: -20px; font-size: 20px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
                     </div>
@@ -168,7 +201,7 @@
                 </div>
 
                 <!-- กล่องนอก -->
-                <div style="width: 100%; padding: 0; font-size: 16px; margin-bottom: -40px; margin-top: -10px;">
+                <div class="po-vendor-info" style="width: 100%; padding: 0; font-size: 16px; margin-bottom: -40px; margin-top: -10px;">
                     <table style="width: 100%; border-collapse: collapse; margin: 0; border: 1px solid #000;">
                         <tbody>
                             <!-- บรรทัดที่ 1 -->
@@ -259,7 +292,9 @@
                         </tbody>
                     </table>
                 </div>
+                </t>
 
+                <t t-call="buz_po_portal.po_order_lines">
                 <div style="height:16px;"></div>
                 <table class="table table-sm mt-4 order-line-table"
             style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
@@ -316,7 +351,7 @@
                  </t>
              </tbody>
          </table>
-         
+                </t>
                   
                 <t t-if="page_num != total_pages - 1">
                     <div style="position: relative; min-height: 25mm; padding-bottom: 80mm;">
@@ -347,7 +382,8 @@
        </t>     
             
       <!-- กล่องรวม หมายเหตุ + ผลรวม -->
-       <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
+       <t t-call="buz_po_portal.po_totals_notes">
+<div class="po-totals-notes" style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
     
         <!-- ฝั่งซ้าย -->
         <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box; height: 100%;">
@@ -414,10 +450,12 @@
             </table>
         </div>
     </div>
+                </t>
                         
     
                             <!-- Signature Section -->
-                            <div class="row mt-5" style="margin-top: 0px;">
+                            <t t-call="buz_po_portal.po_signatures">
+<div class="row mt-5 po-signatures" style="margin-top: 0px;">
                                 <!-- Common styles for signature boxes -->
                                 <style>
                                     .signature-box {
@@ -559,9 +597,11 @@
                                 </div>
 
                             </div>
+                </t>
                             
                             <!-- Footer Section -->
-                            <div class="row mt-3" style="font-size: 14px; margin-left:0; margin-right:0; margin-top: 20;">
+                            <t t-call="buz_po_portal.po_footer">
+<div class="row mt-3 po-footer" style="font-size: 14px; margin-left:0; margin-right:0; margin-top: 20;">
                                 <div class="col-12" style="padding-left:0; padding-right:0;">
                                     <div style="border: 1px solid #000; padding: 4px; margin:0;">
                                         <div class="row" style="margin-left: 0; margin-right: 0;">
@@ -589,6 +629,7 @@
                                     </div>
                                 </div>
                             </div>
+                </t>
 
                        
 
@@ -597,6 +638,7 @@
                               <span>FM-PUR-08.REV.01</span>
                             </div>
                   
+<t t-call="buz_po_portal.po_legacy_page_break">
                         <!-- Conditional page break based on number of items -->
                             <t t-if="len(o.order_line) &gt; 4">
                                 <div style="page-break-before: always; margin-top:0px !important; padding-top:0px !important;"/>
@@ -606,7 +648,8 @@
                             <!-- Conditional page break based on number of items -->
                             <t t-if="len(o.order_line) &gt; 4">
                                 <div style="page-break-before: always;"/>
-                            </t>
+                            </t>               </t>
+
     
                        
 
