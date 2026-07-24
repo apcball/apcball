@@ -77,7 +77,10 @@ class EtaxTransaction(models.Model):
     # ข้อมูล API
     etax_config_id = fields.Many2one('etax.config', 'การตั้งค่า E-Tax', required=False)
     transaction_code = fields.Char('รหัสธุรกรรม E-Tax', readonly=True)
-    
+    invoice_user_id = fields.Many2one(
+        'res.users', string='Salesperson',
+        related='invoice_id.invoice_user_id', store=True, readonly=True)
+
     # ข้อมูลลูกค้า
     partner_id = fields.Many2one('res.partner', 'ลูกค้า', required=True)
     partner_tax_id = fields.Char('เลขประจำตัวผู้เสียภาษีลูกค้า')

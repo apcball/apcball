@@ -67,6 +67,7 @@
                             <field name="partner_tax_id" readonly="state == 'sent'"/>
                             <field name="partner_branch_id" readonly="state == 'sent'"/>
                             <field name="transaction_code" readonly="1"/>
+                            <field name="invoice_user_id"/>
                         </group>
                     </group>
 
