@@ -1,0 +1,27 @@
+{
+    "name": "Mogen Smart S&OP Production Planning",
+    "summary": "Master production planning for approved S&OP demand",
+    "version": "17.0.1.0.0",
+    "category": "Operations/Planning",
+    "author": "Mogen Co., Ltd.",
+    "license": "LGPL-3",
+    "depends": [
+        "mogen_sop_core",
+        "mogen_sop_demand",
+        "mogen_sop_supply",
+        "mogen_sop_inventory",
+        "mrp",
+        "stock",
+        "maintenance",
+        "mail",
+    ],
+    "data": [
+        "security/production_security.xml",
+        "security/ir.model.access.csv",
+        "data/production_sequence.xml",
+        "views/production_plan_views.xml",
+        "views/production_menu.xml",
+    ],
+    "application": False,
+    "installable": True,
+}

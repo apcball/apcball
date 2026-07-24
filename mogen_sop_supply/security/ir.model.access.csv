@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sop_purchase_plan_supply,mogen.sop.purchase.plan supply,model_mogen_sop_purchase_plan,mogen_sop_core.group_sop_supply_planner,1,1,1,0
+access_sop_purchase_line_supply,mogen.sop.purchase.line supply,model_mogen_sop_purchase_line,mogen_sop_core.group_sop_supply_planner,1,0,0,0
+access_sop_transfer_plan_supply,mogen.sop.transfer.plan supply,model_mogen_sop_transfer_plan,mogen_sop_core.group_sop_supply_planner,1,1,1,0
+access_sop_transfer_line_supply,mogen.sop.transfer.line supply,model_mogen_sop_transfer_line,mogen_sop_core.group_sop_supply_planner,1,0,0,0
+access_sop_purchase_plan_manager,mogen.sop.purchase.plan manager,model_mogen_sop_purchase_plan,mogen_sop_core.group_sop_manager,1,1,1,1
+access_sop_purchase_line_manager,mogen.sop.purchase.line manager,model_mogen_sop_purchase_line,mogen_sop_core.group_sop_manager,1,0,0,0
+access_sop_transfer_plan_manager,mogen.sop.transfer.plan manager,model_mogen_sop_transfer_plan,mogen_sop_core.group_sop_manager,1,1,1,1
+access_sop_transfer_line_manager,mogen.sop.transfer.line manager,model_mogen_sop_transfer_line,mogen_sop_core.group_sop_manager,1,0,0,0

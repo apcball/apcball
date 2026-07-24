@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_mogen_sop" model="ir.module.category">
+        <field name="name">Smart S&amp;OP</field>
+        <field name="sequence">35</field>
+    </record>
+
+    <record id="group_sop_viewer" model="res.groups">
+        <field name="name">S&amp;OP Viewer</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+    </record>
+    <record id="group_sop_demand_planner" model="res.groups">
+        <field name="name">S&amp;OP Demand Planner</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+    <record id="group_sop_supply_planner" model="res.groups">
+        <field name="name">S&amp;OP Supply Planner</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+    <record id="group_sop_manager" model="res.groups">
+        <field name="name">S&amp;OP Manager</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_core.group_sop_demand_planner')), (4, ref('mogen_sop_core.group_sop_supply_planner'))]"/>
+    </record>
+    <record id="group_sop_admin" model="res.groups">
+        <field name="name">S&amp;OP Administrator</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_core.group_sop_manager'))]"/>
+    </record>
+
+    <record id="rule_sop_plan_company" model="ir.rule">
+        <field name="name">S&amp;OP Plan: company</field>
+        <field name="model_id" ref="model_mogen_sop_plan"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_plan_viewer_state" model="ir.rule">
+        <field name="name">S&amp;OP Plan: viewer approved plans</field>
+        <field name="model_id" ref="model_mogen_sop_plan"/>
+        <field name="domain_force">[('state', 'in', ('approved', 'locked'))]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+    <record id="rule_sop_plan_demand_planner" model="ir.rule">
+        <field name="name">S&amp;OP Plan: demand planner</field>
+        <field name="model_id" ref="model_mogen_sop_plan"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_demand_planner'))]"/>
+    </record>
+    <record id="rule_sop_plan_supply_planner" model="ir.rule">
+        <field name="name">S&amp;OP Plan: supply planner</field>
+        <field name="model_id" ref="model_mogen_sop_plan"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_supply_planner'))]"/>
+    </record>
+
+    <record id="rule_sop_version_company" model="ir.rule">
+        <field name="name">S&amp;OP Version: company</field>
+        <field name="model_id" ref="model_mogen_sop_plan_version"/>
+        <field name="domain_force">[('plan_id.company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_version_viewer_state" model="ir.rule">
+        <field name="name">S&amp;OP Version: viewer approved plans</field>
+        <field name="model_id" ref="model_mogen_sop_plan_version"/>
+        <field name="domain_force">[('plan_id.state', 'in', ('approved', 'locked'))]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+    <record id="rule_sop_version_planner_scope" model="ir.rule">
+        <field name="name">S&amp;OP Version: planner scope</field>
+        <field name="model_id" ref="model_mogen_sop_plan_version"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_demand_planner')), (4, ref('mogen_sop_core.group_sop_supply_planner'))]"/>
+    </record>
+    <record id="rule_sop_scenario_company" model="ir.rule">
+        <field name="name">S&amp;OP Scenario: company</field>
+        <field name="model_id" ref="model_mogen_sop_scenario"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_recommendation_company" model="ir.rule">
+        <field name="name">S&amp;OP Recommendation: company</field>
+        <field name="model_id" ref="model_mogen_sop_recommendation"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_recommendation_viewer_state" model="ir.rule">
+        <field name="name">S&amp;OP Recommendation: viewer approved plans</field>
+        <field name="model_id" ref="model_mogen_sop_recommendation"/>
+        <field name="domain_force">[('plan_id.state', 'in', ('approved', 'locked'))]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+    <record id="rule_sop_recommendation_planner_scope" model="ir.rule">
+        <field name="name">S&amp;OP Recommendation: planner scope</field>
+        <field name="model_id" ref="model_mogen_sop_recommendation"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_demand_planner')), (4, ref('mogen_sop_core.group_sop_supply_planner'))]"/>
+    </record>
+    <record id="rule_sop_alert_company" model="ir.rule">
+        <field name="name">S&amp;OP Alert: company</field>
+        <field name="model_id" ref="model_mogen_sop_alert"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_alert_viewer_state" model="ir.rule">
+        <field name="name">S&amp;OP Alert: viewer approved plans</field>
+        <field name="model_id" ref="model_mogen_sop_alert"/>
+        <field name="domain_force">[('plan_id.state', 'in', ('approved', 'locked'))]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+    <record id="rule_sop_alert_planner_scope" model="ir.rule">
+        <field name="name">S&amp;OP Alert: planner scope</field>
+        <field name="model_id" ref="model_mogen_sop_alert"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('mogen_sop_core.group_sop_demand_planner')), (4, ref('mogen_sop_core.group_sop_supply_planner'))]"/>
+    </record>
+</odoo>

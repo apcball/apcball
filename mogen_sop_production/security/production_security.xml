@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_sop_production_planner" model="res.groups">
+        <field name="name">S&amp;OP Production Planner</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+
+    <record id="rule_sop_production_plan_company" model="ir.rule">
+        <field name="name">S&amp;OP Production Plan: company</field>
+        <field name="model_id" ref="model_mogen_sop_production_plan"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_production_line_company" model="ir.rule">
+        <field name="name">S&amp;OP Production Line: company</field>
+        <field name="model_id" ref="model_mogen_sop_production_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_material_requirement_company" model="ir.rule">
+        <field name="name">S&amp;OP Material Requirement: company</field>
+        <field name="model_id" ref="model_mogen_sop_material_requirement"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+    <record id="rule_sop_workcenter_capacity_company" model="ir.rule">
+        <field name="name">S&amp;OP Workcenter Capacity: company</field>
+        <field name="model_id" ref="model_mogen_sop_workcenter_capacity"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="global" eval="True"/>
+    </record>
+</odoo>

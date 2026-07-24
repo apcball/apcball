@@ -1,0 +1,23 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sop_plan_viewer,S&OP plan viewer,model_mogen_sop_plan,mogen_sop_core.group_sop_viewer,1,0,0,0
+access_sop_version_viewer,S&OP version viewer,model_mogen_sop_plan_version,mogen_sop_core.group_sop_viewer,1,0,0,0
+access_sop_scenario_viewer,S&OP scenario viewer,model_mogen_sop_scenario,mogen_sop_core.group_sop_viewer,1,0,0,0
+access_sop_recommendation_viewer,S&OP recommendation viewer,model_mogen_sop_recommendation,mogen_sop_core.group_sop_viewer,1,0,0,0
+access_sop_alert_viewer,S&OP alert viewer,model_mogen_sop_alert,mogen_sop_core.group_sop_viewer,1,0,0,0
+access_sop_plan_demand_planner,S&OP plan demand planner,model_mogen_sop_plan,mogen_sop_core.group_sop_demand_planner,1,1,1,0
+access_sop_version_demand_planner,S&OP version demand planner,model_mogen_sop_plan_version,mogen_sop_core.group_sop_demand_planner,1,1,1,0
+access_sop_recommendation_demand_planner,S&OP recommendation demand planner,model_mogen_sop_recommendation,mogen_sop_core.group_sop_demand_planner,1,1,1,0
+access_sop_alert_demand_planner,S&OP alert demand planner,model_mogen_sop_alert,mogen_sop_core.group_sop_demand_planner,1,1,1,0
+access_sop_plan_supply_planner,S&OP plan supply planner,model_mogen_sop_plan,mogen_sop_core.group_sop_supply_planner,1,1,1,0
+access_sop_version_supply_planner,S&OP version supply planner,model_mogen_sop_plan_version,mogen_sop_core.group_sop_supply_planner,1,1,1,0
+access_sop_recommendation_supply_planner,S&OP recommendation supply planner,model_mogen_sop_recommendation,mogen_sop_core.group_sop_supply_planner,1,1,1,0
+access_sop_alert_supply_planner,S&OP alert supply planner,model_mogen_sop_alert,mogen_sop_core.group_sop_supply_planner,1,1,1,0
+access_sop_plan_manager,S&OP plan manager,model_mogen_sop_plan,mogen_sop_core.group_sop_manager,1,1,1,1
+access_sop_version_manager,S&OP version manager,model_mogen_sop_plan_version,mogen_sop_core.group_sop_manager,1,1,1,1
+access_sop_recommendation_manager,S&OP recommendation manager,model_mogen_sop_recommendation,mogen_sop_core.group_sop_manager,1,1,1,1
+access_sop_alert_manager,S&OP alert manager,model_mogen_sop_alert,mogen_sop_core.group_sop_manager,1,1,1,1
+access_sop_scenario_admin,S&OP scenario administrator,model_mogen_sop_scenario,mogen_sop_core.group_sop_admin,1,1,1,1
+access_sop_plan_admin,S&OP plan administrator,model_mogen_sop_plan,mogen_sop_core.group_sop_admin,1,1,1,1
+access_sop_version_admin,S&OP version administrator,model_mogen_sop_plan_version,mogen_sop_core.group_sop_admin,1,1,1,1
+access_sop_recommendation_admin,S&OP recommendation administrator,model_mogen_sop_recommendation,mogen_sop_core.group_sop_admin,1,1,1,1
+access_sop_alert_admin,S&OP alert administrator,model_mogen_sop_alert,mogen_sop_core.group_sop_admin,1,1,1,1

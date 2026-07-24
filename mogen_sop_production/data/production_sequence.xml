@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="sequence_sop_production_plan" model="ir.sequence">
+        <field name="name">S&amp;OP Production Plan</field>
+        <field name="code">mogen.sop.production.plan</field>
+        <field name="prefix">SOP-PROD/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

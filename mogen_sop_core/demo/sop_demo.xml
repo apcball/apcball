@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="scenario_demo_base" model="mogen.sop.scenario">
+        <field name="name">Base Plan</field>
+        <field name="code">SCN/BASE</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="scenario_type">base</field>
+        <field name="description">Expected demand and standard operating assumptions.</field>
+        <field name="sales_factor">1.0</field>
+        <field name="lead_time_factor">1.0</field>
+        <field name="purchase_cost_factor">1.0</field>
+        <field name="production_capacity_factor">1.0</field>
+    </record>
+    <record id="scenario_demo_optimistic" model="mogen.sop.scenario">
+        <field name="name">Optimistic Growth</field>
+        <field name="code">SCN/OPT</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="scenario_type">optimistic</field>
+        <field name="description">Higher sales with improved lead times and capacity.</field>
+        <field name="sales_factor">1.15</field>
+        <field name="lead_time_factor">0.9</field>
+        <field name="purchase_cost_factor">1.02</field>
+        <field name="production_capacity_factor">1.1</field>
+    </record>
+    <record id="scenario_demo_pessimistic" model="mogen.sop.scenario">
+        <field name="name">Pessimistic Constraint</field>
+        <field name="code">SCN/PESS</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="scenario_type">pessimistic</field>
+        <field name="description">Lower sales with longer lead times and reduced capacity.</field>
+        <field name="sales_factor">0.85</field>
+        <field name="lead_time_factor">1.2</field>
+        <field name="purchase_cost_factor">1.08</field>
+        <field name="production_capacity_factor">0.9</field>
+    </record>
+    <record id="plan_demo_annual" model="mogen.sop.plan">
+        <field name="name">Annual S&amp;OP Plan 2026</field>
+        <field name="code">SOP/2026/DEMO</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="date_start">2026-01-01</field>
+        <field name="date_end">2026-12-31</field>
+        <field name="planning_granularity">month</field>
+        <field name="scenario_id" ref="mogen_sop_core.scenario_demo_base"/>
+        <field name="user_id" ref="base.user_admin"/>
+        <field name="note">Demonstration planning cycle for workflow and scenario review.</field>
+    </record>
+</odoo>

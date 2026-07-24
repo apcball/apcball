@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sop_production_plan_tree" model="ir.ui.view">
+        <field name="name">mogen.sop.production.plan.tree</field>
+        <field name="model">mogen.sop.production.plan</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="sop_plan_id"/>
+                <field name="warehouse_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="total_required_qty"/>
+                <field name="total_planned_qty"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_sop_production_plan_form" model="ir.ui.view">
+        <field name="name">mogen.sop.production.plan.form</field>
+        <field name="model">mogen.sop.production.plan</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_calculate_production" type="object" string="Calculate" class="btn-primary" invisible="state not in ('draft', 'calculated')"/>
+                    <button name="action_calculate_material_requirements" type="object" string="Calculate Materials" class="btn-primary" invisible="state != 'calculated'"/>
+                    <button name="action_calculate_capacity" type="object" string="Calculate Capacity" class="btn-primary" invisible="state != 'calculated'"/>
+                    <button name="action_generate_material_recommendations" type="object" string="Create Material Recommendations" groups="mogen_sop_core.group_sop_manager" invisible="state not in ('calculated', 'review')"/>
+                    <button name="action_review" type="object" string="Submit for Review" invisible="state != 'calculated'"/>
+                    <button name="action_approve" type="object" string="Approve" groups="mogen_sop_core.group_sop_manager" invisible="state != 'review'"/>
+                    <button name="action_execute" type="object" string="Mark Executed" groups="mogen_sop_core.group_sop_manager" invisible="state != 'approved'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ('cancelled', 'executed')"/>
+                    <button name="action_reset_draft" type="object" string="Reset to Draft" invisible="state not in ('calculated', 'review', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,calculated,review,approved,executed,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_capacity" type="object" class="oe_stat_button" icon="fa-tachometer">
+                            <field name="capacity_line_count" widget="statinfo" string="Capacity"/>
+                        </button>
+                        <button name="action_view_capacity_alerts" type="object" class="oe_stat_button" icon="fa-exclamation-triangle">
+                            <field name="overload_alert_count" widget="statinfo" string="Capacity Alerts"/>
+                        </button>
+                    </div>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="sop_plan_id" readonly="state != 'draft'"/>
+                            <field name="version_id" readonly="state != 'draft'"/>
+                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="warehouse_id" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="date_start" readonly="state != 'draft'"/>
+                            <field name="date_end" readonly="state != 'draft'"/>
+                            <field name="user_id"/>
+                            <field name="manager_id"/>
+                            <field name="capacity_warning_threshold" readonly="state != 'draft'"/>
+                            <field name="capacity_overload_threshold" readonly="state != 'draft'"/>
+                            <field name="approved_by_id" invisible="not approved_by_id"/>
+                            <field name="approved_date" invisible="not approved_date"/>
+                        </group>
+                    </group>
+                    <group string="Totals" col="4">
+                        <field name="total_required_qty"/>
+                        <field name="total_planned_qty"/>
+                        <field name="total_completed_qty"/>
+                        <field name="total_shortage_qty"/>
+                        <field name="average_capacity_load"/>
+                    </group>
+                    <notebook>
+                        <page string="Production Lines">
+                            <field name="line_ids" readonly="1">
+                                <tree create="0" delete="0">
+                                    <field name="period_date"/>
+                                    <field name="product_id"/>
+                                    <field name="bom_id"/>
+                                    <field name="demand_qty"/>
+                                    <field name="safety_stock_qty"/>
+                                    <field name="free_stock_qty"/>
+                                    <field name="incoming_mo_qty"/>
+                                    <field name="required_production_qty"/>
+                                    <field name="batch_size"/>
+                                    <field name="planned_production_qty"/>
+                                    <field name="remaining_qty"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Material Requirements">
+                            <field name="material_line_ids" readonly="1">
+                                <tree create="0" delete="0">
+                                    <field name="required_date"/>
+                                    <field name="component_id"/>
+                                    <field name="parent_product_id"/>
+                                    <field name="required_qty"/>
+                                    <field name="on_hand_qty"/>
+                                    <field name="free_qty"/>
+                                    <field name="incoming_qty"/>
+                                    <field name="shortage_qty"/>
+                                    <field name="procurement_route"/>
+                                    <field name="status" widget="badge"/>
+                                    <field name="recommendation_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Workcenter Capacity">
+                            <field name="capacity_line_ids" readonly="1">
+                                <tree create="0" delete="0">
+                                    <field name="period_date"/>
+                                    <field name="workcenter_id"/>
+                                    <field name="available_hours"/>
+                                    <field name="maintenance_hours"/>
+                                    <field name="effective_available_hours"/>
+                                    <field name="planned_hours"/>
+                                    <field name="capacity_load_percent"/>
+                                    <field name="overload_hours"/>
+                                    <field name="status" widget="badge"/>
+                                    <field name="recommendation" optional="hide"/>
+                                    <field name="alert_id" optional="hide"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes"><field name="note" placeholder="Planning assumptions and review notes..."/></page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_sop_production_plan_search" model="ir.ui.view">
+        <field name="name">mogen.sop.production.plan.search</field>
+        <field name="model">mogen.sop.production.plan</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/><field name="code"/><field name="sop_plan_id"/><field name="warehouse_id"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Calculated" name="calculated" domain="[('state', '=', 'calculated')]"/>
+                <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Warehouse" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter string="S&amp;OP Plan" name="group_sop_plan" context="{'group_by': 'sop_plan_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="view_sop_production_plan_pivot" model="ir.ui.view">
+        <field name="name">mogen.sop.production.plan.pivot</field>
+        <field name="model">mogen.sop.production.plan</field>
+        <field name="arch" type="xml"><pivot><field name="warehouse_id" type="row"/><field name="total_required_qty" type="measure"/><field name="total_planned_qty" type="measure"/></pivot></field>
+    </record>
+    <record id="view_sop_production_plan_graph" model="ir.ui.view">
+        <field name="name">mogen.sop.production.plan.graph</field>
+        <field name="model">mogen.sop.production.plan</field>
+        <field name="arch" type="xml"><graph type="bar"><field name="warehouse_id"/><field name="total_required_qty" type="measure"/><field name="total_planned_qty" type="measure"/></graph></field>
+    </record>
+    <record id="action_sop_production_plan" model="ir.actions.act_window">
+        <field name="name">Production Plans</field>
+        <field name="res_model">mogen.sop.production.plan</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_sop_production_plan_search"/>
+    </record>
+    <record id="view_sop_workcenter_capacity_tree" model="ir.ui.view">
+        <field name="name">mogen.sop.workcenter.capacity.tree</field>
+        <field name="model">mogen.sop.workcenter.capacity</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="production_plan_id"/>
+                <field name="period_date"/>
+                <field name="workcenter_id"/>
+                <field name="available_hours"/>
+                <field name="maintenance_hours"/>
+                <field name="effective_available_hours"/>
+                <field name="planned_hours"/>
+                <field name="capacity_load_percent"/>
+                <field name="overload_hours"/>
+                <field name="status" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_sop_workcenter_capacity_search" model="ir.ui.view">
+        <field name="name">mogen.sop.workcenter.capacity.search</field>
+        <field name="model">mogen.sop.workcenter.capacity</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="production_plan_id"/><field name="workcenter_id"/><field name="period_date"/>
+                <filter string="Overloaded" name="overloaded" domain="[('status', '=', 'overloaded')]"/>
+                <filter string="Warning" name="warning" domain="[('status', '=', 'warning')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Workcenter" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>
+                    <filter string="Period" name="group_period" context="{'group_by': 'period_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="view_sop_workcenter_capacity_pivot" model="ir.ui.view">
+        <field name="name">mogen.sop.workcenter.capacity.pivot</field>
+        <field name="model">mogen.sop.workcenter.capacity</field>
+        <field name="arch" type="xml">
+            <pivot string="Capacity Heatmap Data">
+                <field name="workcenter_id" type="row"/>
+                <field name="period_date" type="col" interval="day"/>
+                <field name="planned_hours" type="measure"/>
+                <field name="effective_available_hours" type="measure"/>
+                <field name="capacity_load_percent" type="measure"/>
+                <field name="overload_hours" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_sop_workcenter_capacity_graph" model="ir.ui.view">
+        <field name="name">mogen.sop.workcenter.capacity.graph</field>
+        <field name="model">mogen.sop.workcenter.capacity</field>
+        <field name="arch" type="xml">
+            <graph string="Workcenter Capacity" type="bar">
+                <field name="workcenter_id"/>
+                <field name="planned_hours" type="measure"/>
+                <field name="effective_available_hours" type="measure"/>
+            </graph>
+        </field>
+    </record>
+</odoo>

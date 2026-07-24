@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_sop_production_root" name="Production Planning" parent="mogen_sop_core.menu_mogen_sop_root" sequence="35" groups="mogen_sop_production.group_sop_production_planner,mogen_sop_core.group_sop_manager,mogen_sop_core.group_sop_admin"/>
+    <menuitem id="menu_sop_production_plan" name="Production Plans" parent="menu_sop_production_root" action="action_sop_production_plan" sequence="10" groups="mogen_sop_production.group_sop_production_planner,mogen_sop_core.group_sop_manager,mogen_sop_core.group_sop_admin"/>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_mogen_sop_root" name="Smart S&amp;OP" sequence="10" groups="mogen_sop_core.group_sop_viewer"/>
+    <menuitem id="menu_mogen_sop_workspace" name="Workspace" parent="menu_mogen_sop_root" sequence="10" groups="mogen_sop_core.group_sop_viewer"/>
+    <menuitem id="menu_mogen_sop_planning_cycles" name="Planning Cycles" parent="menu_mogen_sop_root" action="mogen_sop_core.action_sop_plan" sequence="20" groups="mogen_sop_core.group_sop_viewer"/>
+    <menuitem id="menu_mogen_sop_demand" name="Demand Planning" parent="menu_mogen_sop_root" sequence="30" groups="mogen_sop_core.group_sop_demand_planner"/>
+    <menuitem id="menu_mogen_sop_supply" name="Supply Planning" parent="menu_mogen_sop_root" sequence="40" groups="mogen_sop_core.group_sop_supply_planner"/>
+    <menuitem id="menu_mogen_sop_inventory" name="Inventory Planning" parent="menu_mogen_sop_root" sequence="50" groups="mogen_sop_core.group_sop_supply_planner"/>
+    <menuitem id="menu_mogen_sop_recommendations" name="Recommendations" parent="menu_mogen_sop_root" action="mogen_sop_core.action_sop_recommendation" sequence="60" groups="mogen_sop_core.group_sop_supply_planner"/>
+    <menuitem id="menu_mogen_sop_alerts" name="Alerts" parent="menu_mogen_sop_root" action="mogen_sop_core.action_sop_alert" sequence="70" groups="mogen_sop_core.group_sop_viewer"/>
+    <menuitem id="menu_mogen_sop_configuration" name="Configuration" parent="menu_mogen_sop_root" sequence="90" groups="mogen_sop_core.group_sop_admin"/>
+    <menuitem id="menu_mogen_sop_scenarios" name="Scenarios" parent="menu_mogen_sop_configuration" action="mogen_sop_core.action_sop_scenario" sequence="10" groups="mogen_sop_core.group_sop_admin"/>
+</odoo>

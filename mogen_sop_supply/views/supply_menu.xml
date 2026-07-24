@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo><menuitem id="menu_sop_purchase_plan" name="Purchase Plans" parent="mogen_sop_core.menu_mogen_sop_root" action="action_sop_purchase_plan" sequence="40"/><menuitem id="menu_sop_transfer_plan" name="Transfer Plans" parent="mogen_sop_core.menu_mogen_sop_root" action="action_sop_transfer_plan" sequence="41"/></odoo>
