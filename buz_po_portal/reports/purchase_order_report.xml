@@ -6,7 +6,7 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">2</field>
+        <field name="margin_top">15</field>
         <field name="margin_bottom">2</field>
         <field name="margin_left">4</field>
         <field name="margin_right">4</field>
@@ -20,8 +20,8 @@
         <t t-name="buz_po_portal.report_purchaseorder_document_custom">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
-                    <t t-call="web.external_layout">
-                       <div class="page">
+                    <t t-call="web.basic_layout">
+                       <div class="page po-page">
 
                             <style>
                                 @font-face {
@@ -36,19 +36,17 @@
                                     font-weight: bold;
                                     font-style: normal;
                                 }
-                                @page {
-                                    margin-top: 0mm;
-                                    margin-bottom: 10mm;
-                                    margin-left: 10mm;
-                                    margin-right: 10mm;
-                                }
-
                                  .page {
                                      position: relative;
                                      min-height: 277mm;
                                  }
+                                 .po-page {
+                                     --header-top-gap: 15mm;
+                                     padding-top: var(--header-top-gap);
+                                     box-sizing: border-box;
+                                 }
 
-                                body, .page, .row {
+                                body, .row {
                                     margin-top: 0 !important;
                                     padding-top: 0 !important;
                                 }
@@ -125,7 +123,69 @@
                                     page-break-after: always;
                                 }
                                 .page:last-child {
-                                    page-break-after: auto;
+                                     page-break-after: auto;
+                                 }
+
+                                .po-header {
+                                    height: 250px;
+                                    margin: 0 0 16px;
+                                    overflow: visible;
+                                }
+                                .po-header > .row {
+                                    margin-left: 0;
+                                    margin-right: 0;
+                                }
+                                .po-header-company {
+                                    font-size: 18px;
+                                }
+                                .po-header-company-detail {
+                                    font-size: 16px;
+                                }
+                                .po-header-logo {
+                                    width: 180px;
+                                    height: auto;
+                                    object-fit: contain;
+                                }
+                                .po-header-title {
+                                    margin: 10px 0 0;
+                                    padding: 0;
+                                    font-weight: bold;
+                                    font-size: 26px;
+                                }
+                                .po-header-notice {
+                                    margin-bottom: 0;
+                                    margin-top: 0;
+                                    font-size: 20px;
+                                }
+                                .po-header-doc-info {
+                                    font-size: 14px;
+                                    margin-top: 0;
+                                    line-height: 1;
+                                }
+                                .po-header-doc-line {
+                                    margin-top: 0;
+                                }
+                                .po-header-doc-number {
+                                    margin-top: 0;
+                                }
+                                .po-header-doc-page {
+                                    margin-top: 0;
+                                }
+                                .po-header-box {
+                                    width: 100%;
+                                    padding: 0;
+                                    font-size: 16px;
+                                    margin-bottom: 0;
+                                    margin-top: 0;
+                                }
+                                .po-header-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    margin: 0;
+                                    border: 1px solid #000;
+                                }
+                                .po-header-spacer {
+                                    height: 16px;
                                 }
 
                                 .page-break {
@@ -202,45 +262,46 @@
 
 
 
+                <div class="po-header">
                 <!-- ส่วนหัว (Header) -->
                 <div class="row mb-2">
-                    <div class="col-8">
-                        <div style="font-size: 18px;">
-                            <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                            <div style="font-size: 16px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
-                            <div style="font-size: 16px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
-                            <div style="font-size: 16px;">โทร 02 1509710 E-mail: contact@mogen.co.th</div>
+                     <div class="col-8">
+                         <div class="po-header-company">
+                             <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
+                             <div class="po-header-company-detail">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                             <div class="po-header-company-detail">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
+                             <div class="po-header-company-detail">โทร 02 1509710 E-mail: contact@mogen.co.th</div>
                         </div>
                     </div>
                     <div class="col-4 text-end">
-                        <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                         <img class="po-header-logo" t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" alt="Company Logo"/>
                     </div>
                 </div>
 
                 <!-- Document Title -->
                 <div class="row mb-2">
                     <div class="col-12 text-center">
-                        <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                         <h2 class="po-header-title">ใบสั่งซื้อ / PURCHASE ORDER</h2>
                     </div>
                 </div>
 
                 <!-- Document Info -->
                 <div class="row mb-2">
                     <div class="col-8">
-                        <p style="margin-bottom: 0; margin-top: -20px; font-size: 20px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
+                         <p class="po-header-notice">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
                     </div>
                     <div class="col-4">
-                        <div class="text-end" style="font-size: 14px;margin-top: -60px; line-height: 1; ">
-                            <div style="margin-top: -10px;">เลขที่/NO: <strong style="margin-top: -40px;"><span t-field="o.name"/></strong></div>
-                            <div style="margin-top: -10px;">วันที่/DATE: <strong><span t-field="o.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;, &quot;format&quot;: &quot;dd/MM/yyyy&quot;}"/></strong></div>
-                            <div style="margin-top: -8px;">หน้า/PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
+                         <div class="text-end po-header-doc-info">
+                             <div class="po-header-doc-line">เลขที่/NO: <strong class="po-header-doc-number"><span t-field="o.name"/></strong></div>
+                             <div class="po-header-doc-line">วันที่/DATE: <strong><span t-field="o.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;, &quot;format&quot;: &quot;dd/MM/yyyy&quot;}"/></strong></div>
+                             <div class="po-header-doc-page">หน้า/PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- กล่องนอก -->
-                <div style="width: 100%; padding: 0; font-size: 16px; margin-bottom: -40px; margin-top: -10px;">
-                    <table style="width: 100%; border-collapse: collapse; margin: 0; border: 1px solid #000;">
+                 <div class="po-header-box">
+                     <table class="po-header-table">
                         <tbody>
                             <!-- บรรทัดที่ 1 -->
                             <tr>
@@ -331,7 +392,8 @@
                     </table>
                 </div>
 
-                <div style="height:16px;"></div>
+                <div class="po-header-spacer"></div>
+                </div>
                 <table class="table table-sm mt-4 order-line-table"
             style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
              <thead>
