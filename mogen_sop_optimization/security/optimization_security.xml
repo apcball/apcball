@@ -1,0 +1,31 @@
+<odoo>
+    <record id="group_sop_optimization_planner" model="res.groups">
+        <field name="name">S&amp;OP Optimization Planner</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_scenario.group_sop_scenario_planner'))]"/>
+    </record>
+    <record id="rule_sop_optimization_run_company" model="ir.rule">
+        <field name="name">Optimization run multi-company</field>
+        <field name="model_id" ref="model_mogen_sop_optimization_run"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_sop_optimization_planner'))]"/>
+    </record>
+    <record id="rule_sop_optimization_constraint_company" model="ir.rule">
+        <field name="name">Optimization constraint multi-company</field>
+        <field name="model_id" ref="model_mogen_sop_optimization_constraint"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_sop_optimization_planner'))]"/>
+    </record>
+    <record id="rule_sop_optimization_result_company" model="ir.rule">
+        <field name="name">Optimization result multi-company</field>
+        <field name="model_id" ref="model_mogen_sop_optimization_result"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_sop_optimization_planner'))]"/>
+    </record>
+    <record id="rule_sop_inventory_segment_company" model="ir.rule">
+        <field name="name">Inventory segment multi-company</field>
+        <field name="model_id" ref="model_mogen_sop_inventory_segment"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_sop_optimization_planner'))]"/>
+    </record>
+</odoo>

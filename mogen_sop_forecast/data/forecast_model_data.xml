@@ -1,0 +1,8 @@
+<odoo noupdate="1">
+    <record id="forecast_model_moving_average" model="mogen.sop.forecast.model">
+        <field name="name">Moving Average</field><field name="code">moving_average</field><field name="model_type">moving_average</field><field name="history_periods">6</field>
+    </record>
+    <record id="forecast_model_exponential_smoothing" model="mogen.sop.forecast.model">
+        <field name="name">Exponential Smoothing</field><field name="code">exponential_smoothing</field><field name="model_type">exponential_smoothing</field><field name="alpha">0.2</field>
+    </record>
+</odoo>

@@ -1,0 +1,184 @@
+<odoo>
+    <record id="view_sop_optimization_run_tree" model="ir.ui.view">
+        <field name="name">mogen.sop.optimization.run.tree</field>
+        <field name="model">mogen.sop.optimization.run</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="company_id" invisible="1"/>
+                <field name="optimization_type"/>
+                <field name="objective"/>
+                <field name="state"/>
+                <field name="processed_product_count"/>
+                <field name="scheduled_at"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_sop_optimization_run_form" model="ir.ui.view">
+        <field name="name">mogen.sop.optimization.run.form</field>
+        <field name="model">mogen.sop.optimization.run</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_queue" type="object" string="Queue" class="btn-primary" invisible="state not in ('draft', 'failed')"/>
+                    <button name="action_run" type="object" string="Calculate" class="btn-primary" invisible="state != 'queued'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,queued,running,completed,failed,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="sop_plan_id"/>
+                            <field name="version_id"/>
+                            <field name="scenario_plan_id"/>
+                            <field name="warehouse_ids" widget="many2many_tags"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                        <group>
+                            <field name="optimization_type"/>
+                            <field name="objective"/>
+                            <field name="solver_type"/>
+                            <field name="scheduled_at"/>
+                            <field name="chunk_size"/>
+                            <field name="algorithm_version" readonly="1"/>
+                            <field name="data_snapshot_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Inventory Policy">
+                            <group>
+                                <group>
+                                    <field name="safety_stock_method"/>
+                                    <field name="fixed_safety_stock_qty" invisible="safety_stock_method != 'fixed'"/>
+                                    <field name="coverage_days" invisible="safety_stock_method != 'days_of_demand'"/>
+                                    <field name="target_service_level" invisible="safety_stock_method != 'statistical'"/>
+                                    <field name="default_lead_time_days"/>
+                                    <field name="default_lead_time_standard_deviation"/>
+                                </group>
+                                <group>
+                                    <field name="default_ordering_cost"/>
+                                    <field name="default_holding_cost_per_unit"/>
+                                    <field name="abc_a_threshold"/>
+                                    <field name="abc_b_threshold"/>
+                                    <field name="xyz_x_threshold"/>
+                                    <field name="xyz_y_threshold"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Constraints">
+                            <field name="constraint_ids">
+                                <tree editable="bottom">
+                                    <field name="company_id" column_invisible="1"/>
+                                    <field name="constraint_type"/>
+                                    <field name="product_id"/>
+                                    <field name="warehouse_id"/>
+                                    <field name="numeric_value"/>
+                                    <field name="percentage_value"/>
+                                    <field name="hard_constraint"/>
+                                    <field name="penalty_weight"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Results">
+                            <field name="result_ids" readonly="1">
+                                <tree>
+                                    <field name="warehouse_id"/>
+                                    <field name="product_id"/>
+                                    <field name="current_value"/>
+                                    <field name="optimized_value"/>
+                                    <field name="policy_state"/>
+                                    <field name="feasibility_status"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Audit">
+                            <group><field name="calculation_log" readonly="1"/><field name="error_message" readonly="1"/></group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_sop_optimization_run" model="ir.actions.act_window">
+        <field name="name">Optimization Runs</field>
+        <field name="res_model">mogen.sop.optimization.run</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_sop_optimization_result_tree" model="ir.ui.view">
+        <field name="name">mogen.sop.optimization.result.tree</field>
+        <field name="model">mogen.sop.optimization.result</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="optimization_run_id"/>
+                <field name="company_id" invisible="1"/>
+                <field name="warehouse_id"/>
+                <field name="product_id"/>
+                <field name="current_value"/>
+                <field name="optimized_value"/>
+                <field name="expected_service_impact"/>
+                <field name="policy_state"/>
+                <field name="feasibility_status"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_sop_optimization_result_form" model="ir.ui.view">
+        <field name="name">mogen.sop.optimization.result.form</field>
+        <field name="model">mogen.sop.optimization.result</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_approve_policy" type="object" string="Approve Proposal" class="btn-primary" invisible="policy_state != 'proposed'" groups="mogen_sop_core.group_sop_manager"/>
+                    <button name="action_reject_policy" type="object" string="Reject Proposal" invisible="policy_state != 'proposed'" groups="mogen_sop_core.group_sop_manager"/>
+                    <field name="policy_state" widget="statusbar" statusbar_visible="proposed,approved,rejected"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group><field name="optimization_run_id"/><field name="company_id" invisible="1"/><field name="warehouse_id"/><field name="product_id"/><field name="recommended_action"/><field name="feasibility_status"/></group>
+                        <group><field name="current_value"/><field name="optimized_value"/><field name="improvement_value"/><field name="expected_service_impact"/><field name="expected_inventory_impact"/><field name="approved_by_id" readonly="1"/><field name="approved_at" readonly="1"/></group>
+                    </group>
+                    <notebook><page string="Reason"><field name="reason" readonly="1"/></page><page string="Policy Evidence"><field name="old_policy_values" readonly="1"/><field name="proposed_policy_values" readonly="1"/><field name="algorithm_version" readonly="1"/></page></notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_sop_optimization_result_pivot" model="ir.ui.view">
+        <field name="name">mogen.sop.optimization.result.pivot</field>
+        <field name="model">mogen.sop.optimization.result</field>
+        <field name="arch" type="xml"><pivot><field name="warehouse_id" type="row"/><field name="policy_state" type="col"/><field name="optimized_value" type="measure"/><field name="expected_inventory_impact" type="measure"/></pivot></field>
+    </record>
+    <record id="view_sop_optimization_result_graph" model="ir.ui.view">
+        <field name="name">mogen.sop.optimization.result.graph</field>
+        <field name="model">mogen.sop.optimization.result</field>
+        <field name="arch" type="xml"><graph type="bar"><field name="warehouse_id"/><field name="optimized_value" type="measure"/></graph></field>
+    </record>
+    <record id="action_sop_optimization_result" model="ir.actions.act_window">
+        <field name="name">Policy Recommendations</field>
+        <field name="res_model">mogen.sop.optimization.result</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+    </record>
+
+    <record id="view_sop_inventory_segment_tree" model="ir.ui.view">
+        <field name="name">mogen.sop.inventory.segment.tree</field>
+        <field name="model">mogen.sop.inventory.segment</field>
+        <field name="arch" type="xml"><tree><field name="company_id" invisible="1"/><field name="warehouse_id"/><field name="product_id"/><field name="abc_class"/><field name="xyz_class"/><field name="annual_consumption_value"/><field name="proposed_safety_stock_qty"/><field name="proposed_reorder_point_qty"/><field name="proposed_eoq_qty"/></tree></field>
+    </record>
+    <record id="view_sop_inventory_segment_pivot" model="ir.ui.view">
+        <field name="name">mogen.sop.inventory.segment.pivot</field>
+        <field name="model">mogen.sop.inventory.segment</field>
+        <field name="arch" type="xml"><pivot><field name="abc_class" type="row"/><field name="xyz_class" type="col"/><field name="annual_consumption_value" type="measure"/><field name="proposed_reorder_point_qty" type="measure"/></pivot></field>
+    </record>
+    <record id="view_sop_inventory_segment_graph" model="ir.ui.view">
+        <field name="name">mogen.sop.inventory.segment.graph</field>
+        <field name="model">mogen.sop.inventory.segment</field>
+        <field name="arch" type="xml"><graph type="bar"><field name="abc_class"/><field name="annual_consumption_value" type="measure"/></graph></field>
+    </record>
+    <record id="action_sop_inventory_segment" model="ir.actions.act_window">
+        <field name="name">Inventory Segments</field>
+        <field name="res_model">mogen.sop.inventory.segment</field>
+        <field name="view_mode">tree,pivot,graph</field>
+    </record>
+</odoo>

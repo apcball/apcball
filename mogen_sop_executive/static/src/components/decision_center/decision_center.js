@@ -1,0 +1,12 @@
+/** @odoo-module **/
+import { Component, onWillStart, useState } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+export class SopExecutiveDecisionCenter extends Component {
+    static template = "mogen_sop_executive.DecisionCenter";
+    setup() { this.orm = useService("orm"); this.state = useState({loading:true, error:false, kpis:[], queue:[], scenarios:[], risks:[], forecast:[], readiness:[], summary:{}}); onWillStart(() => this.refresh()); }
+    get context() { return this.props.action?.context || {}; }
+    async refresh() { this.state.loading = true; this.state.error = false; try { const [kpis, queue, scenarios, risks, forecast, readiness, summary] = await Promise.all([this.orm.call("mogen.sop.executive.service", "get_executive_kpis", [this.context.sop_plan_id || false, this.context.scenario_id || false, this.context.dashboard_filters || {}]), this.orm.call("mogen.sop.executive.service", "get_decision_queue", [this.context.sop_plan_id || false, this.context.scenario_id || false, this.context.dashboard_filters || {}]), this.orm.call("mogen.sop.executive.service", "get_scenario_comparison", [this.context.sop_plan_id || false, this.context.scenario_ids || []]), this.orm.call("mogen.sop.executive.service", "get_risk_heatmap", [this.context.sop_plan_id || false, this.context.scenario_id || false, this.context.dashboard_filters || {}]), this.orm.call("mogen.sop.executive.service", "get_forecast_performance", [this.context.sop_plan_id || false, this.context.dashboard_filters || {}]), this.orm.call("mogen.sop.executive.service", "get_operational_readiness", [this.context.sop_plan_id || false, this.context.dashboard_filters || {}]), this.orm.call("mogen.sop.executive.service", "get_ai_executive_summary", [this.context.sop_plan_id || false, this.context.scenario_id || false])]); Object.assign(this.state, {kpis:kpis.kpis, queue:queue.items, scenarios:scenarios.rows, risks:risks.cells, forecast:forecast.rows, readiness:readiness.items, summary}); } catch (error) { this.state.error = error.message || "Unable to load Decision Center."; } finally { this.state.loading = false; } }
+    async generateSummary() { await this.orm.call("mogen.sop.executive.service", "request_ai_executive_summary", [this.context.sop_plan_id || false, this.context.scenario_id || false, this.context.dashboard_filters || {}]); await this.refresh(); }
+}
+registry.category("actions").add("mogen_sop_executive.decision_center", SopExecutiveDecisionCenter);

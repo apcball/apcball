@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sop_executive_summary_cache,mogen.sop.executive.summary.cache,model_mogen_sop_executive_summary_cache,mogen_sop_executive.group_sop_executive,1,1,1,0

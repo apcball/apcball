@@ -1,0 +1,1 @@
+<odoo><menuitem id="menu_sop_executive_decision_center" name="Executive Decision Center" parent="mogen_sop_core.menu_mogen_sop_root" action="action_sop_executive_decision_center" sequence="85" groups="mogen_sop_executive.group_sop_executive"/></odoo>

@@ -1,0 +1,7 @@
+<odoo>
+    <record id="group_sop_risk_manager" model="res.groups">
+        <field name="name">S&amp;OP Risk Manager</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_core.group_sop_viewer'))]"/>
+    </record>
+</odoo>

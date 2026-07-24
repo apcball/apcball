@@ -1,0 +1,6 @@
+<odoo>
+    <menuitem id="menu_sop_optimization" name="Optimization" parent="mogen_sop_core.menu_mogen_sop_root" sequence="55" groups="mogen_sop_optimization.group_sop_optimization_planner"/>
+    <menuitem id="menu_sop_optimization_runs" name="Runs" parent="menu_sop_optimization" action="action_sop_optimization_run" sequence="10" groups="mogen_sop_optimization.group_sop_optimization_planner"/>
+    <menuitem id="menu_sop_optimization_policies" name="Policy Recommendations" parent="menu_sop_optimization" action="action_sop_optimization_result" sequence="20" groups="mogen_sop_optimization.group_sop_optimization_planner"/>
+    <menuitem id="menu_sop_inventory_segments" name="Inventory Segments" parent="menu_sop_optimization" action="action_sop_inventory_segment" sequence="30" groups="mogen_sop_optimization.group_sop_optimization_planner"/>
+</odoo>

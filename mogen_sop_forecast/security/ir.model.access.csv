@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sop_forecast_model_analyst,mogen.sop.forecast.model analyst,model_mogen_sop_forecast_model,mogen_sop_forecast.group_sop_forecast_analyst,1,1,1,0
+access_sop_forecast_run_analyst,mogen.sop.forecast.run analyst,model_mogen_sop_forecast_run,mogen_sop_forecast.group_sop_forecast_analyst,1,1,1,0
+access_sop_forecast_result_analyst,mogen.sop.forecast.result analyst,model_mogen_sop_forecast_result,mogen_sop_forecast.group_sop_forecast_analyst,1,0,0,0

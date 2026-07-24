@@ -1,0 +1,10 @@
+<odoo noupdate="1">
+    <record id="ir_cron_sop_ai_process_queued_analyses" model="ir.cron">
+        <field name="name">S&amp;OP AI: Process Queued Analyses</field>
+        <field name="model_id" ref="model_mogen_sop_ai_analysis"/>
+        <field name="state">code</field><field name="code">model.cron_process_queued_analyses()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">5</field><field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field><field name="active">True</field>
+    </record>
+</odoo>

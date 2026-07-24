@@ -1,0 +1,6 @@
+<odoo>
+    <menuitem id="menu_sop_forecast_root" name="Forecast" parent="mogen_sop_core.menu_mogen_sop_root" sequence="50" groups="mogen_sop_forecast.group_sop_forecast_analyst"/>
+    <menuitem id="menu_sop_forecast_runs" name="Forecast Runs" parent="menu_sop_forecast_root" action="action_sop_forecast_run" sequence="10"/>
+    <menuitem id="menu_sop_forecast_results" name="Forecast Results" parent="menu_sop_forecast_root" action="action_sop_forecast_result" sequence="20"/>
+    <menuitem id="menu_sop_forecast_models" name="Forecast Models" parent="menu_sop_forecast_root" action="action_sop_forecast_model" sequence="30"/>
+</odoo>

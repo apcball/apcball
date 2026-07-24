@@ -1,0 +1,1 @@
+<odoo><record id="action_sop_executive_decision_center" model="ir.actions.client"><field name="name">S&amp;OP Executive Decision Center</field><field name="tag">mogen_sop_executive.decision_center</field></record></odoo>

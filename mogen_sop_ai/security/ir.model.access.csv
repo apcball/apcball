@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sop_ai_provider_user,mogen.sop.ai.provider user,model_mogen_sop_ai_provider,mogen_sop_ai.group_sop_ai_user,1,0,0,0
+access_sop_ai_prompt_user,mogen.sop.ai.prompt.template user,model_mogen_sop_ai_prompt_template,mogen_sop_ai.group_sop_ai_user,1,0,0,0
+access_sop_ai_analysis_user,mogen.sop.ai.analysis user,model_mogen_sop_ai_analysis,mogen_sop_ai.group_sop_ai_user,1,1,1,0
+access_sop_ai_recommendation_user,mogen.sop.ai.recommendation user,model_mogen_sop_ai_recommendation,mogen_sop_ai.group_sop_ai_user,1,0,0,0
+access_sop_ai_provider_manager,mogen.sop.ai.provider manager,model_mogen_sop_ai_provider,mogen_sop_ai.group_sop_ai_manager,1,1,1,1
+access_sop_ai_prompt_manager,mogen.sop.ai.prompt.template manager,model_mogen_sop_ai_prompt_template,mogen_sop_ai.group_sop_ai_manager,1,1,1,1
+access_sop_ai_analysis_manager,mogen.sop.ai.analysis manager,model_mogen_sop_ai_analysis,mogen_sop_ai.group_sop_ai_manager,1,1,1,1
+access_sop_ai_recommendation_manager,mogen.sop.ai.recommendation manager,model_mogen_sop_ai_recommendation,mogen_sop_ai.group_sop_ai_manager,1,1,1,1
+access_sop_ai_conversation_user,mogen.sop.ai.conversation user,model_mogen_sop_ai_conversation,mogen_sop_ai.group_sop_ai_user,1,1,1,1
+access_sop_ai_message_user,mogen.sop.ai.message user,model_mogen_sop_ai_message,mogen_sop_ai.group_sop_ai_user,1,0,1,0

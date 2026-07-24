@@ -1,0 +1,25 @@
+<odoo>
+    <record id="group_sop_forecast_analyst" model="res.groups">
+        <field name="name">S&amp;OP Forecast Analyst</field>
+        <field name="category_id" ref="mogen_sop_core.module_category_mogen_sop"/>
+        <field name="implied_ids" eval="[(4, ref('mogen_sop_core.group_sop_viewer')), (4, ref('mogen_sop_core.group_sop_demand_planner'))]"/>
+    </record>
+    <record id="rule_sop_forecast_model_company" model="ir.rule">
+        <field name="name">S&amp;OP Forecast Model multi-company</field>
+        <field name="model_id" ref="model_mogen_sop_forecast_model"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_sop_forecast_analyst'))]"/>
+    </record>
+    <record id="rule_sop_forecast_run_company" model="ir.rule">
+        <field name="name">S&amp;OP Forecast Run multi-company</field>
+        <field name="model_id" ref="model_mogen_sop_forecast_run"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_sop_forecast_analyst'))]"/>
+    </record>
+    <record id="rule_sop_forecast_result_company" model="ir.rule">
+        <field name="name">S&amp;OP Forecast Result multi-company</field>
+        <field name="model_id" ref="model_mogen_sop_forecast_result"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_sop_forecast_analyst'))]"/>
+    </record>
+</odoo>

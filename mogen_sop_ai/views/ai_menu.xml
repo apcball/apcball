@@ -1,0 +1,9 @@
+<odoo>
+    <menuitem id="menu_sop_ai" name="AI Analysis" parent="mogen_sop_core.menu_mogen_sop_root" sequence="80" groups="mogen_sop_ai.group_sop_ai_user"/>
+    <menuitem id="menu_sop_ai_copilot" name="Smart S&amp;OP Copilot" parent="menu_sop_ai" action="action_sop_ai_copilot" sequence="5" groups="mogen_sop_ai.group_sop_ai_user"/>
+    <menuitem id="menu_sop_ai_analysis" name="Analyses" parent="menu_sop_ai" action="action_sop_ai_analysis" sequence="10" groups="mogen_sop_ai.group_sop_ai_user"/>
+    <menuitem id="menu_sop_ai_recommendation" name="Recommendations" parent="menu_sop_ai" action="action_sop_ai_recommendation" sequence="20" groups="mogen_sop_ai.group_sop_ai_user"/>
+    <menuitem id="menu_sop_ai_configuration" name="Configuration" parent="menu_sop_ai" sequence="90" groups="mogen_sop_ai.group_sop_ai_manager"/>
+    <menuitem id="menu_sop_ai_provider" name="Gateway Providers" parent="menu_sop_ai_configuration" action="action_sop_ai_provider" sequence="10" groups="mogen_sop_ai.group_sop_ai_manager"/>
+    <menuitem id="menu_sop_ai_prompt" name="Prompt Templates" parent="menu_sop_ai_configuration" action="action_sop_ai_prompt" sequence="20" groups="mogen_sop_ai.group_sop_ai_manager"/>
+</odoo>
