@@ -65,74 +65,45 @@
                                     padding:  1px 1px;
                                 }
 
-                                .order-line-table th,
+                                .order-line-table {
+                                    table-layout: fixed !important;
+                                    border: 1px solid #000 !important;
+                                }
+                                .order-line-table th {
+                                    padding-top: 10px !important;
+                                    padding-bottom: 10px !important;
+                                    line-height: 1.1 !important;
+                                    border: 1px solid #000 !important;
+                                }
                                 .order-line-table td {
                                     padding-top: 10px !important;
                                     padding-bottom: 10px !important;
-                                   line-height: 1.1 !important;
+                                    line-height: 1.1 !important;
                                 }
-                                 .order-line-table {
-                                     table-layout: fixed !important;
-                                 }
-                                 .order-line-table tbody tr {
-                                     height: 25px !important;
-                                     max-height: 25px !important;
-                                 }
-                                 .order-line-table tbody td {
-                                     height: 25px !important;
-                                     max-height: 25px !important;
-                                     padding: 2px !important;
-                                     overflow: hidden !important;
-                                     white-space: nowrap;
-                                 }
-                                 .order-line-table tbody td {
-                                     border-left: 1px solid #000 !important;
-                                     border-right: 1px solid #000 !important;
-                                     border-top: none !important;
-                                     border-bottom: none !important;
-                                 }
-                                 .order-line-table tbody td span {
-                                     display: block;
-                                     max-height: 21px;
-                                     overflow: hidden;
-                                     text-overflow: ellipsis;
-                                     white-space: nowrap;
-                                 }
-                                 .order-line-table {
-                                     border: 1px solid #000 !important;
-                                 }
-                                 .order-line-table thead th {
-                                     border: 1px solid #000 !important;
-                                 }
-                                 .order-line-table tbody td {
-                                     border: none !important;
-                                 }
-                                 .order-line-table tbody tr {
-                                     height: auto !important;
-                                     max-height: none !important;
-                                 }
-                                 .order-line-table tbody td {
-                                     height: auto !important;
-                                     max-height: none !important;
-                                     overflow: visible !important;
-                                     white-space: normal;
-                                     word-break: break-word;
-                                 }
-                                 .order-line-table tbody td span {
-                                     display: inline;
-                                     max-height: none;
-                                     overflow: visible;
-                                     text-overflow: clip;
-                                     white-space: normal;
-                                     word-break: break-word;
-                                 }
-
-                                 .order-line-table tbody td {
-                                     border-left: 1px solid #000 !important;
-                                     border-right: 1px solid #000 !important;
-                                     border-top: none !important;
-                                     border-bottom: none !important;
-                                 }
+                                .order-line-table tbody tr {
+                                    height: auto !important;
+                                    max-height: none !important;
+                                }
+                                .order-line-table tbody td {
+                                    height: auto !important;
+                                    max-height: none !important;
+                                    padding: 2px !important;
+                                    overflow: visible !important;
+                                    white-space: normal;
+                                    word-break: break-word;
+                                    border-left: 1px solid #000 !important;
+                                    border-right: 1px solid #000 !important;
+                                    border-top: none !important;
+                                    border-bottom: none !important;
+                                }
+                                .order-line-table tbody td span {
+                                    display: inline;
+                                    max-height: none;
+                                    overflow: visible;
+                                    text-overflow: clip;
+                                    white-space: normal;
+                                    word-break: break-word;
+                                }
                                 .no-inner-borders td,
                                 .no-inner-borders th {
                                     border: none !important;
