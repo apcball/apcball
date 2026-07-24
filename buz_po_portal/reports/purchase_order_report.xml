@@ -375,7 +375,7 @@
       <!-- กล่องรวม หมายเหตุ + ผลรวม -->
        <div class="po-page-content po-final-page">
        <t t-call="buz_po_portal.po_totals_notes">
-<div class="po-totals-notes" style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
+<div class="po-totals-notes" style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: -180px; min-height: 174px; height: 174px;">
     
         <!-- ฝั่งซ้าย -->
         <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box; height: 100%;">
