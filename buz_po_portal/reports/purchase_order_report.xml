@@ -292,8 +292,11 @@
                              <span t-field="line_tuple[1].product_id.default_code"/>
                          </td>
                          <td style="border: 1px solid black; vertical-align: top; padding-left: 2px;">
-                             <span t-field="line_tuple[1].name"/>
-                         </td>
+                              <t t-set="description" t-value="line_tuple[1].name or ''"/>
+                              <t t-set="product_code" t-value="line_tuple[1].product_id.default_code or ''"/>
+                              <t t-set="description_prefix" t-value="'[' + product_code + ']' if product_code else ''"/>
+                              <span t-esc="description[len(description_prefix):].lstrip() if description_prefix and description.startswith(description_prefix) else description"/>
+                          </td>
                          <td style="border: 1px solid black; text-align: center; vertical-align: top;">
                              <span t-esc="line_tuple[1].date_planned.strftime('%d/%m/%Y') if line_tuple[1].date_planned else ''"/>
                          </td>
