@@ -128,7 +128,10 @@
 
                                 .po-header {
                                     height: 250px;
-                                    margin: 0 0 16px;
+                                    margin-top: 12mm;
+                                    margin-right: 0;
+                                    margin-bottom: 16px;
+                                    margin-left: 0;
                                     overflow: visible;
                                 }
                                 .po-header > .row {
@@ -147,8 +150,9 @@
                                     object-fit: contain;
                                 }
                                 .po-header-title {
-                                    margin: 10px 0 0;
+                                    margin: 0;
                                     padding: 0;
+                                    line-height: 1.1;
                                     font-weight: bold;
                                     font-size: 26px;
                                 }
@@ -279,7 +283,7 @@
                 </div>
 
                 <!-- Document Title -->
-                <div class="row mb-2">
+                <div class="row mb-0">
                     <div class="col-12 text-center">
                          <h2 class="po-header-title">ใบสั่งซื้อ / PURCHASE ORDER</h2>
                     </div>
