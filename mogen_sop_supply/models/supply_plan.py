@@ -46,22 +46,40 @@ class MogenSopPurchasePlan(models.Model):
         if any(plan.date_start > plan.date_end for plan in self):
             raise ValidationError(_("The purchase-plan end date must not precede its start date."))
 
-    def _supplierinfo_for(self, product, explicit_supplier=False):
+    def _supplierinfo_for(self, product, quantity, explicit_supplier=False):
         infos = self.env["product.supplierinfo"].sudo().search([
             ("product_tmpl_id", "=", product.product_tmpl_id.id),
+            ("product_id", "in", (False, product.id)),
             ("company_id", "in", (False, self.company_id.id)),
         ], order="sequence, min_qty, id")
         if explicit_supplier:
             infos = infos.filtered(lambda info: info.partner_id == explicit_supplier)
         if not infos:
             return self.env["product.supplierinfo"]
+
+        supplier_infos = self.env["product.supplierinfo"]
+        for supplier in infos.mapped("partner_id"):
+            supplier_rows = infos.filtered(lambda info: info.partner_id == supplier)
+            applicable_rows = supplier_rows.filtered(
+                lambda info: info.product_uom._compute_quantity(
+                    info.min_qty, product.uom_id, round=False
+                ) <= quantity
+                if info.product_uom
+                else info.min_qty <= quantity
+            )
+            supplier_infos |= (
+                applicable_rows.sorted(key=lambda info: (info.min_qty, info.id))[-1]
+                if applicable_rows
+                else supplier_rows.sorted(key=lambda info: (info.min_qty, info.id))[0]
+            )
+
         if self.supplier_strategy == "lowest_price":
-            return infos.sorted(key=lambda info: (info.price, info.sequence, info.id))[0]
+            return supplier_infos.sorted(key=lambda info: (info.price, info.sequence, info.id))[0]
         if self.supplier_strategy == "shortest_lead_time":
-            return infos.sorted(key=lambda info: (info.delay, info.sequence, info.id))[0]
+            return supplier_infos.sorted(key=lambda info: (info.delay, info.sequence, info.id))[0]
         if self.supplier_strategy == "balanced":
-            return infos.sorted(key=lambda info: (info.delay, info.price, info.sequence, info.id))[0]
-        return infos[0]
+            return supplier_infos.sorted(key=lambda info: (info.delay, info.price, info.sequence, info.id))[0]
+        return supplier_infos.sorted(key=lambda info: (info.sequence, info.id))[0]
 
     def _round_purchase_qty(self, quantity, supplierinfo, product):
         supplier_uom = supplierinfo.product_uom or product.uom_id
@@ -81,7 +99,11 @@ class MogenSopPurchasePlan(models.Model):
             ])
             values = []
             for recommendation in recommendations:
-                info = plan._supplierinfo_for(recommendation.product_id, recommendation.sop_supplier_id)
+                info = plan._supplierinfo_for(
+                    recommendation.product_id,
+                    recommendation.quantity,
+                    recommendation.sop_supplier_id,
+                )
                 if not info:
                     continue
                 proposed = plan._round_purchase_qty(recommendation.quantity, info, recommendation.product_id)
@@ -164,6 +186,7 @@ class MogenSopTransferPlan(models.Model):
                 if not choices: continue
                 surplus, source=max(choices,key=lambda item:(item[0],-item[1].id)); qty=min(surplus,rec.quantity)
                 values.append({"transfer_plan_id":plan.id,"recommendation_id":rec.id,"company_id":plan.company_id.id,"product_id":rec.product_id.id,"source_warehouse_id":source.id,"destination_warehouse_id":plan.destination_warehouse_id.id,"source_free_qty":free.get((rec.product_id.id,source.lot_stock_id.id),0.0),"destination_shortage_qty":rec.quantity,"safety_stock_after_transfer":safety[(source.id,rec.product_id.id)],"proposed_qty":qty,"required_date":rec.required_date})
+                free[(rec.product_id.id, source.lot_stock_id.id)] -= qty
             plan.line_ids.sudo().unlink(); self.env["mogen.sop.transfer.line"].sudo().create(values); plan.state="calculated"
         return True
     def action_create_draft_pickings(self):
