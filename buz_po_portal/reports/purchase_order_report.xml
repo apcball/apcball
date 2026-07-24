@@ -20,47 +20,38 @@
         <t t-name="buz_po_portal.report_purchaseorder_document_custom">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
-                    <t t-call="web.basic_layout">
-                       <div class="page po-page">
-
+                    <t t-call="web.external_layout">
+                       <div class="page">
+    
                             <style>
-                                @font-face {
-                                    font-family: 'Sarabun';
-                                    src: url('/buz_po_portal/static/fonts/Sarabun-Regular.ttf') format('truetype');
-                                    font-weight: normal;
-                                    font-style: normal;
-                                }
                                 @font-face {
                                     font-family: 'Sarabun';
                                     src: url('/buz_po_portal/static/fonts/Sarabun-Bold.ttf') format('truetype');
                                     font-weight: bold;
                                     font-style: normal;
                                 }
-                                 .page {
-                                     position: relative;
-                                     min-height: 277mm;
-                                 }
-                                 .po-page {
-                                     --header-top-gap: 10mm;
-                                     padding-top: var(--header-top-gap);
-                                     box-sizing: border-box;
-                                 }
-
-                                body, .row {
+                                @page {
+                                    margin-top: 0mm;
+                                    margin-bottom: 10mm;
+                                    margin-left: 10mm;
+                                    margin-right: 10mm;
+                                }
+                                
+                                body, .page, .row {
                                     margin-top: 0 !important;
                                     padding-top: 0 !important;
                                 }
-
+                                
                                 html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
                                     font-family: 'Sarabun', sans-serif !important;
                                     font-size: 18px;
                                 }
-
+                                
                                 .table {
                                     border-collapse: collapse !important;
                                     width: 100%;
                                 }
-
+                                
                                 .table td,
                                 .table th {
                                     border-width: 0.5px !important;
@@ -68,244 +59,117 @@
                                     border-color: #000 !important;
                                     padding:  1px 1px;
                                 }
-
-                                .order-line-table {
-                                    table-layout: fixed !important;
-                                    border: 1px solid #000 !important;
-                                }
-                                .order-line-table th {
-                                    padding-top: 10px !important;
-                                    padding-bottom: 10px !important;
-                                    line-height: 1.1 !important;
-                                    border: 1px solid #000 !important;
-                                }
+    
+                                .order-line-table th,
                                 .order-line-table td {
                                     padding-top: 10px !important;
                                     padding-bottom: 10px !important;
-                                    line-height: 1.1 !important;
+                                   line-height: 1.1 !important;
                                 }
-                                .order-line-table tbody tr {
-                                    height: auto !important;
-                                    max-height: none !important;
-                                }
-                                .order-line-table tbody td {
-                                    height: auto !important;
-                                    max-height: none !important;
-                                    padding: 2px !important;
-                                    overflow: visible !important;
-                                    white-space: normal;
-                                    word-break: break-word;
-                                    border-left: 1px solid #000 !important;
-                                    border-right: 1px solid #000 !important;
-                                    border-top: none !important;
-                                    border-bottom: none !important;
-                                }
-                                .order-line-table tbody td span {
-                                    display: inline;
-                                    max-height: none;
-                                    overflow: visible;
-                                    text-overflow: clip;
-                                    white-space: normal;
-                                    word-break: break-word;
-                                }
+                                
                                 .no-inner-borders td,
                                 .no-inner-borders th {
                                     border: none !important;
                                 }
-
+                                
                                 .table-bordered,
                                 .table-bordered td,
                                 .table-bordered th {
                                     border: none !important;
                                 }
-
+    
                                 .page {
                                     page-break-after: always;
                                 }
                                 .page:last-child {
-                                     page-break-after: auto;
-                                 }
-
-                                .po-header {
-                                    height: 250px;
-                                    margin-top: 12mm;
-                                    margin-right: 0;
-                                    margin-bottom: 16px;
-                                    margin-left: 0;
-                                    overflow: visible;
+                                    page-break-after: auto;
                                 }
-                                .po-header > .row {
-                                    margin-left: 0;
-                                    margin-right: 0;
-                                }
-                                .po-header-company {
-                                    font-size: 18px;
-                                }
-                                .po-header-company-detail {
-                                    font-size: 16px;
-                                }
-                                .po-header-logo {
-                                    width: 180px;
-                                    height: auto;
-                                    object-fit: contain;
-                                }
-                                .po-header-title {
-                                    margin: 0;
-                                    padding: 0;
-                                    line-height: 1.1;
-                                    font-weight: bold;
-                                    font-size: 26px;
-                                }
-                                .po-header-notice {
-                                    margin-bottom: 0;
-                                    margin-top: 0;
-                                    font-size: 20px;
-                                }
-                                .po-header-doc-info {
-                                    font-size: 14px;
-                                    margin-top: 0;
-                                    line-height: 1;
-                                }
-                                .po-header-doc-line {
-                                    margin-top: 0;
-                                }
-                                .po-header-doc-number {
-                                    margin-top: 0;
-                                }
-                                .po-header-doc-page {
-                                    margin-top: 0;
-                                }
-                                .po-header-box {
-                                    width: 100%;
-                                    padding: 0;
-                                    font-size: 16px;
-                                    margin-bottom: 0;
-                                    margin-top: 0;
-                                }
-                                .po-header-table {
-                                    width: 100%;
-                                    border-collapse: collapse;
-                                    margin: 0;
-                                    border: 1px solid #000;
-                                }
-                                .po-header-spacer {
-                                    height: 16px;
-                                }
-
+    
                                 .page-break {
                                     page-break-after: always;
                                   }
-
+    
                                 .vendor-info, .delivery-info {
                                     font-size: 14px;
                                 }
-
+                    
                                 .line.name{
                                     max-width: 100px;
                                     white-space: nowrap;
                                     overflow: hidden;
                                     text-overflow: ellipsis;
                                 }
-                                 .footer-fixed {
-                                     position: absolute;
+                                .footer-fixed {
+                                    position: absolute;
                                     bottom: 0;
                                     width: 100%;
                                     font-size: 16px;
                                     display: flex;
-                                     justify-content: space-between;
-                                 }
-                                .report-footer {
-                                    font-size: 14px;
-                                    margin-left: 0;
-                                    margin-right: 0;
-                                    margin-top: 20px;
-                                }
-                                .report-footer > .col-12 {
-                                    padding-left: 0;
-                                    padding-right: 0;
-                                }
-                                .report-footer > .col-12 > div {
-                                    border: 1px solid #000;
-                                    padding: 4px;
-                                    margin: 0;
-                                }
-                                .report-footer .row {
-                                    margin-left: 0;
-                                    margin-right: 0;
-                                }
-                                .report-footer .col-6 {
-                                    padding-left: 2px;
-                                    padding-right: 2px;
-                                }
-                                .report-footer strong {
-                                    font-size: 14px;
-                                }
-                                .report-footer ol {
-                                    font-size: 14px;
-                                    margin-bottom: 0;
-                                    padding-left: 14px;
-                                }
-                                .report-footer-meta {
-                                    position: absolute;
-                                    bottom: 0;
-                                    left: 0;
-                                    right: 0;
-                                    width: 100%;
-                                    margin: 0;
-                                    display: flex;
                                     justify-content: space-between;
-                                    font-size: 8px;
-                                }
+                                  }
+                                  @page {
+                                    margin: 10mm 10mm 20mm 10mm; /* ซ้าย ขวา บน ล่าง */
+                                    @bottom-left {
+                                        content: "อนุมัติใช้วันที่ 14/09/2563";
+                                        font-size: 14px;
+                                    }
+                                    @bottom-right {
+                                        content: "FM-PUR-08.REV.01";
+                                        font-size: 14px;
+                                    }
+                                    }
+                                    
+                           
+                     
                             </style>
         <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
         <t t-set="line_count" t-value="len(o.order_line)"/>
-        <t t-set="lines_per_page" t-value="6"/>
-        <t t-set="total_pages" t-value="max(1, int((line_count + lines_per_page - 1) / lines_per_page))"/>
+        <t t-set="lines_per_page" t-value="10"/>
+        <t t-set="total_pages" t-value="int((line_count + lines_per_page - 1) / lines_per_page)"/>
         <t t-foreach="range(total_pages)" t-as="page_num">
             <div t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
-
-
-
-                <div class="po-header">
+    
+                
+    
                 <!-- ส่วนหัว (Header) -->
                 <div class="row mb-2">
-                     <div class="col-8">
-                         <div class="po-header-company">
-                             <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                             <div class="po-header-company-detail">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
-                             <div class="po-header-company-detail">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
-                             <div class="po-header-company-detail">โทร 02 1509710 E-mail: contact@mogen.co.th</div>
+                    <div class="col-8">
+                        <div style="font-size: 18px;">
+                            <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
+                            <div style="font-size: 16px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                            <div style="font-size: 16px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
+                            <div style="font-size: 16px;">โทร 02 1509710 E-mail: contact@mogen.co.th</div>
                         </div>
                     </div>
                     <div class="col-4 text-end">
-                         <img class="po-header-logo" t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" alt="Company Logo"/>
+                        <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                     </div>
                 </div>
-
+    
                 <!-- Document Title -->
-                <div class="row mb-0">
+                <div class="row mb-2">
                     <div class="col-12 text-center">
-                         <h2 class="po-header-title">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                        <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
                     </div>
                 </div>
-
+    
                 <!-- Document Info -->
                 <div class="row mb-2">
                     <div class="col-8">
-                         <p class="po-header-notice">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
+                        <p style="margin-bottom: 0; margin-top: -20px; font-size: 20px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
                     </div>
                     <div class="col-4">
-                         <div class="text-end po-header-doc-info">
-                             <div class="po-header-doc-line">เลขที่/NO: <strong class="po-header-doc-number"><span t-field="o.name"/></strong></div>
-                             <div class="po-header-doc-line">วันที่/DATE: <strong><span t-field="o.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;, &quot;format&quot;: &quot;dd/MM/yyyy&quot;}"/></strong></div>
-                             <div class="po-header-doc-page">หน้า/PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
+                        <div class="text-end" style="font-size: 14px;margin-top: -60px; line-height: 1; ">
+                            <div style="margin-top: -10px;">เลขที่/NO: <strong style="margin-top: -40px;"><span t-field="o.name"/></strong></div>
+                            <div style="margin-top: -10px;">วันที่/DATE: <strong><span t-field="o.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;, &quot;format&quot;: &quot;dd/MM/yyyy&quot;}"/></strong></div>
+                            <div style="margin-top: -8px;">หน้า/PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- กล่องนอก -->
-                 <div class="po-header-box">
-                     <table class="po-header-table">
+                <div style="width: 100%; padding: 0; font-size: 16px; margin-bottom: -40px; margin-top: -10px;">
+                    <table style="width: 100%; border-collapse: collapse; margin: 0; border: 1px solid #000;">
                         <tbody>
                             <!-- บรรทัดที่ 1 -->
                             <tr>
@@ -357,7 +221,7 @@
                                     </div>
                                 </td>
                             </tr>
-
+                            
                             <!-- ฝั่งขวา - บรรทัดที่ 2 -->
                             <tr>
                                 <td style="border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;" colspan="3">
@@ -367,7 +231,7 @@
                                     </t>
                                 </td>
                             </tr>
-
+                            
                             <!-- ฝั่งขวา - บรรทัดที่ 3 -->
                             <tr>
                                 <td style="width: 18.9%; padding: 2px; line-height: 1.1;">
@@ -396,8 +260,7 @@
                     </table>
                 </div>
 
-                <div class="po-header-spacer"></div>
-                </div>
+                <div style="height:16px;"></div>
                 <table class="table table-sm mt-4 order-line-table"
             style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
              <thead>
@@ -451,27 +314,14 @@
                          </td>
                      </tr>
                  </t>
-                              <t t-foreach="range(end_idx - start_idx, lines_per_page)" t-as="empty_row">
-                     <tr style="font-size: 18px; height: 25px;">
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                         <td style="border: 1px solid black;">&#160;</td>
-                     </tr>
-                 </t>
-</tbody>
+             </tbody>
          </table>
-
-
+         
+                  
                 <t t-if="page_num != total_pages - 1">
                     <div style="position: relative; min-height: 25mm; padding-bottom: 80mm;">
                       <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
-
+                  
                       <!-- Footer fixed bottom -->
                       <div style="
                         position: absolute;
@@ -491,14 +341,14 @@
                       </div>
                     </div>
                   </t>
-
-
+                  
+                  
           </div>
        </t>     
-
+            
       <!-- กล่องรวม หมายเหตุ + ผลรวม -->
        <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
-
+    
         <!-- ฝั่งซ้าย -->
         <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box; height: 100%;">
             <table style="width: 100%; border-collapse: collapse; font-size: 12px; height: 100%;">
@@ -521,20 +371,20 @@
                 </tr>
             </table>
         </div>
-
+    
         <!-- ฝั่งขวา -->
         <div style="width: 40%; padding: 0 0 0 2px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column;">
-            <t t-set="amount_untaxed" t-value="o.amount_untaxed or 0.0"/>
+            <t t-set="total_gross" t-value="sum([(line.product_qty * line.price_unit) for line in o.order_line])"/>
             <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * (line.discount or 0.0)/100.0) for line in o.order_line])"/>
-            <t t-set="amount_after_discount" t-value="(amount_untaxed or 0.0) - (total_discount or 0.0)"/>
+            <t t-set="amount_untaxed" t-value="o.amount_untaxed or 0.0"/>
             <t t-set="amount_tax" t-value="o.has_vat and o.amount_tax or 0.0"/>
-            <t t-set="amount_total" t-value="(o.has_vat and amount_after_discount + amount_tax) or amount_after_discount"/>
-
+            <t t-set="amount_total" t-value="(o.has_vat and amount_untaxed + amount_tax) or amount_untaxed"/>
+    
             <table style="width: 100%; border-collapse: collapse; font-size: 20px; border: 1px solid #000; margin: 0; height: 100%;">
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ราคารวม/Total:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
+                        <span t-esc="'{:,.2f}'.format(total_gross)"/>
                     </td>
                 </tr>
                 <tr>
@@ -546,7 +396,7 @@
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">คงเหลือ/Remaining:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(amount_after_discount)"/>
+                        <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
                     </td>
                 </tr>
                 <tr>
@@ -564,56 +414,30 @@
             </table>
         </div>
     </div>
-
-
+                        
+    
                             <!-- Signature Section -->
-                            <div class="row mt-5">
+                            <div class="row mt-5" style="margin-top: 0px;">
                                 <!-- Common styles for signature boxes -->
                                 <style>
-                                    .signature-row {
-                                        margin-top: 100px;
-                                        display: flex;
-                                        flex-direction: row;
-                                        align-items: flex-start;
-                                        justify-content: space-between;
-                                    }
-                                    .signature-column {
-                                        width: 33%;
-                                        box-sizing: border-box;
-                                        padding-right: 10px;
-                                        display: flex;
-                                        flex-direction: column;
-                                        justify-content: flex-start;
-                                    }
-                                    .signature-column:last-child {
-                                        padding-right: 0;
+                                    .signature-box {
+                                        font-size: 12px;
+                                        text-align: center;
+                                        width: 100%;
                                     }
                                     .signature-content {
-                                        text-align: center;
-                                        font-size: 18px;
-                                    }
-                                    .signature-spacer {
-                                        height: 24px;
-                                    }
-                                    .signature-image {
-                                        height: 40px;
-                                        max-width: 120px;
-                                        display: block;
-                                        margin: 0 auto;
-                                    }
-                                    .signature-placeholder {
-                                        height: 40px;
+                                        height: 120px;
+                                        display: flex;
+                                        flex-direction: column;
+                                        justify-content: flex-end;
+                                        align-items: center;
+                                        margin-bottom: 10px;
                                     }
                                     .signature-line {
-                                        border-bottom: 1px solid #000;
-                                        width: 80%;
+                                        border-top: 1px solid #000;
                                         margin: 0 auto;
-                                    }
-                                    .signature-name {
-                                        display: inline;
-                                        margin: 0;
-                                        padding: 0;
-                                        line-height: 1.5;
+                                        width: 80%;
+                                        padding-top: 5px;
                                     }
                                     .signature-title {
                                         margin: 5px 0;
@@ -622,18 +446,28 @@
                                     .signature-date {
                                         margin: 5px 0;
                                     }
+                                    .signature-image {
+                                        width: 100px;
+                                        height: 60px;
+                                        object-fit: contain;
+                                        margin-bottom: 5px;
+                                    }
+                                    .signature-name {
+                                        margin: 0;
+                                        line-height: 1.5;
+                                    }
                                 </style>
                                 <!-- ผู้จัดทำ -->
-                                <div class="row signature-row">
+                                <div class="row" style="margin-top: 100px; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;">
                                     <!-- ส่วนที่ 1: ผู้จัดทำ -->
-                                    <div class="col signature-column">
-                                        <div class="signature-content">
-                                            <div class="signature-spacer"></div>
+                                    <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
+                                        <div style="text-align: center; font-size: 18px;">
+                                            <div style="height:24px;"></div>
                                             <t t-if="o.prepared_signature and o.state in ['purchase', 'done']">
-                                                <img class="signature-image" t-att-src="image_data_uri(o.prepared_signature)"/>
-                                                <div class="signature-line"></div>
+                                                <img t-att-src="image_data_uri(o.prepared_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
+                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
-                                                    (<span class="signature-name" t-field="o.create_uid.name"/>)
+                                                    (<span t-field="o.create_uid.name" style="display:inline; margin:0; padding:0;"/>)
                                                 </div>
                                                 <div> ผู้จัดทำ </div>
                                                 <div>
@@ -642,8 +476,8 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div class="signature-placeholder"></div>
-                                                <div class="signature-line"></div>
+                                                <div style="height: 40px;"></div>
+                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                     (<span t-esc="o.create_uid.name or ''"/>)
                                                 </div>
@@ -658,14 +492,14 @@
                                     </div>
 
                                     <!-- ส่วนที่ 2: ผู้ตรวจสอบ -->
-                                    <div class="col signature-column">
-                                        <div class="signature-content">
-                                            <div class="signature-spacer"></div>
+                                    <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
+                                        <div style="text-align: center; font-size: 18px;">
+                                            <div style="height:24px;"></div>
                                             <t t-if="o.reviewed_signature and o.state in ['purchase', 'done']">
-                                                <img class="signature-image" t-att-src="image_data_uri(o.reviewed_signature)"/>
-                                                <div class="signature-line"></div>
+                                                <img t-att-src="image_data_uri(o.reviewed_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
+                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
-                                                    (<span class="signature-name" t-field="o.reviewer_id.name"/>)
+                                                    (<span t-field="o.reviewer_id.name" style="display:inline; margin:0; padding:0;"/>)
                                                 </div>
                                                 <div> ผู้ตรวจสอบ </div>
                                                 <div>
@@ -674,8 +508,8 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div class="signature-placeholder"></div>
-                                                <div class="signature-line"></div>
+                                                <div style="height: 40px;"></div>
+                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                     (....................................)
                                                 </div>
@@ -690,14 +524,14 @@
                                     </div>
 
                                     <!-- ส่วนที่ 3: ผู้อนุมัติ -->
-                                    <div class="col signature-column">
-                                        <div class="signature-content">
-                                            <div class="signature-spacer"></div>
+                                    <div class="col" style="width: 33%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-start;">
+                                        <div style="text-align: center; font-size: 18px;">
+                                            <div style="height:24px;"></div>
                                             <t t-if="o.approval_signature and o.state in ['purchase', 'done']">
-                                                <img class="signature-image" t-att-src="image_data_uri(o.approval_signature)"/>
-                                                <div class="signature-line"></div>
+                                                <img t-att-src="image_data_uri(o.approval_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
+                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
-                                                    (<span class="signature-name" t-field="o.approver_id.name"/>)
+                                                    (<span t-field="o.approver_id.name" style="display:inline; margin:0; padding:0;"/>)
                                                 </div>
                                                 <div> ผู้อนุมัติ </div>
                                                 <div>
@@ -706,10 +540,10 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div class="signature-placeholder"></div>
-                                                <div class="signature-line"></div>
+                                                <div style="height: 40px;"></div>
+                                                <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
-                                                        (<span class="signature-name">
+                                                        (<span style="display:inline; margin:0; padding:0;">
                                                             นภัคสรณ์ วชิรพันธ์วิชาญ
                                                         </span>)
                                                 </div>
@@ -725,15 +559,15 @@
                                 </div>
 
                             </div>
-
+                            
                             <!-- Footer Section -->
-                            <div class="row mt-3 report-footer">
-                                <div class="col-12">
-                                    <div>
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <strong>เงื่อนไขและการส่งมอบ</strong>
-                                                <ol>
+                            <div class="row mt-3" style="font-size: 14px; margin-left:0; margin-right:0; margin-top: 20;">
+                                <div class="col-12" style="padding-left:0; padding-right:0;">
+                                    <div style="border: 1px solid #000; padding: 4px; margin:0;">
+                                        <div class="row" style="margin-left: 0; margin-right: 0;">
+                                            <div class="col-6" style="padding-left: 2px; padding-right: 2px;">
+                                                <strong style="font-size: 14px;">เงื่อนไขและการส่งมอบ</strong>
+                                                <ol style="font-size: 14px; margin-bottom: 0px; padding-left: 14px;">
                                                     <li>สินค้าที่ส่งมอบต้องให้มีคุณภาพ ขนาด ปริมาณ และจัดส่งตามกำหนด</li>
                                                     <li>ถ้าไม่เป็นไปตามเงื่อนไขข้างต้นนี้ขอมีสิทธิ์ยกเลิกในสั่งซื้อ และไม่ต้องรับผิดชอบใดๆ ทั้งสิ้น</li>
                                                     <li>ใบส่งของทุกฉบับต้องมีสำเนา 2 ฉบับ พร้อมระบุเลขที่ในสั่งซื้อ</li>
@@ -741,9 +575,9 @@
                                                     <li>บริษัทฯ จะไม่รับผิดชอบในการชำระเงินใดๆ ทั้งสิ้นสำหรับสินค้าที่ผู้ขายส่งมอบเกินจำนวนที่ได้ระบุไว้ในใบสั่งซื้อ</li>
                                                 </ol>
                                             </div>
-                                            <div class="col-6">
-                                                <strong>CONDITION:</strong>
-                                                <ol>
+                                            <div class="col-6" style="padding-left: 2px; padding-right: 2px;">
+                                                <strong style="font-size: 14px;">CONDITION:</strong>
+                                                <ol style="font-size: 14px; margin-bottom: 0px; padding-left: 14px;">
                                                     <li>ALL SUPPLIES ARE TO BE MADE STRICTLY IN ACCORDANCE WITH OUR SPECIFICATION</li>
                                                     <li>THIS ORDER SHALL BE CANCELLED IF DELIVERY IS NOT MADE WITH TIME STATED</li>
                                                     <li>ALL SUPPLIES SHOULD BE COVERED BY YOUR INVOICE IN TRIPLICATION</li>
@@ -756,19 +590,28 @@
                                 </div>
                             </div>
 
+                       
 
+                            <div style="margin: 0; display: flex; justify-content: space-between; font-size: 8px;">
+                              <span>อนุมัติใช้วันที่ 14/09/2563</span>
+                              <span>FM-PUR-08.REV.01</span>
+                            </div>
+                  
                         <!-- Conditional page break based on number of items -->
                             <t t-if="len(o.order_line) &gt; 4">
                                 <div style="page-break-before: always; margin-top:0px !important; padding-top:0px !important;"/>
                             </t>
                             <!-- Footer Section -->
+    
+                            <!-- Conditional page break based on number of items -->
+                            <t t-if="len(o.order_line) &gt; 4">
+                                <div style="page-break-before: always;"/>
+                            </t>
+    
+                       
 
-                        <div class="report-footer-meta">
-                            <span>อนุมัติใช้วันที่ 14/09/2563</span>
-                            <span>FM-PUR-08.REV.01</span>
-                        </div>
-                       </div>
-                      </t>
+                       </div>  
+                      </t>   
                     </t></t>
                   </t>
               </template>   
