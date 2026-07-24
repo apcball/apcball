@@ -15,46 +15,6 @@
         <field name="dpi">90</field>
     </record>
 
-    <!--
-        Layout fragments render their caller body unchanged through QWeb body
-        variable 0, keeping the existing PDF geometry under the original markup.
-    -->
-    <template id="po_header">
-        <t t-name="buz_po_portal.po_header"><t t-out="0"/></t>
-    </template>
-    <template id="po_title">
-        <t t-name="buz_po_portal.po_title"><t t-out="0"/></t>
-    </template>
-    <template id="po_info">
-        <t t-name="buz_po_portal.po_info"><t t-out="0"/></t>
-    </template>
-    <template id="po_order_lines">
-        <t t-name="buz_po_portal.po_order_lines"><t t-out="0"/></t>
-    </template>
-    <template id="po_totals_notes">
-        <t t-name="buz_po_portal.po_totals_notes"><t t-out="0"/></t>
-    </template>
-    <template id="po_signatures">
-        <t t-name="buz_po_portal.po_signatures"><t t-out="0"/></t>
-    </template>
-        <template id="po_page_footer">
-        <t t-name="buz_po_portal.po_page_footer">
-            <div class="po-page-footer">
-                <div>
-                    <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
-                </div>
-                <div>
-                    <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
-                </div>
-            </div>
-        </t>
-    </template>
-    <template id="po_footer">
-        <t t-name="buz_po_portal.po_footer"><t t-out="0"/></t>
-    </template>
-    <template id="po_legacy_page_break">
-        <t t-name="buz_po_portal.po_legacy_page_break"><t t-out="0"/></t>
-    </template>
     <!-- Report Template -->
     <template id="report_purchaseorder_document_custom">
         <t t-name="buz_po_portal.report_purchaseorder_document_custom">
@@ -62,7 +22,7 @@
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
                        <div class="page">
-    
+
                             <style>
                                 @font-face {
                                     font-family: 'Sarabun';
@@ -76,22 +36,22 @@
                                     margin-left: 10mm;
                                     margin-right: 10mm;
                                 }
-                                
+
                                 body, .page, .row {
                                     margin-top: 0 !important;
                                     padding-top: 0 !important;
                                 }
-                                
+
                                 html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
                                     font-family: 'Sarabun', sans-serif !important;
                                     font-size: 18px;
                                 }
-                                
+
                                 .table {
                                     border-collapse: collapse !important;
                                     width: 100%;
                                 }
-                                
+
                                 .table td,
                                 .table th {
                                     border-width: 0.5px !important;
@@ -99,85 +59,80 @@
                                     border-color: #000 !important;
                                     padding:  1px 1px;
                                 }
-    
+
                                 .order-line-table th,
                                 .order-line-table td {
                                     padding-top: 10px !important;
                                     padding-bottom: 10px !important;
                                    line-height: 1.1 !important;
                                 }
-                                
+
                                 .no-inner-borders td,
                                 .no-inner-borders th {
                                     border: none !important;
                                 }
-                                
+
                                 .table-bordered,
                                 .table-bordered td,
                                 .table-bordered th {
                                     border: none !important;
                                 }
-    
+
                                 .page {
                                     page-break-after: always;
                                 }
                                 .page:last-child {
                                     page-break-after: auto;
                                 }
-    
+
                                 .page-break {
                                     page-break-after: always;
                                   }
-    
+
                                 .vendor-info, .delivery-info {
                                     font-size: 14px;
                                 }
-                    
+
                                 .line.name{
                                     max-width: 100px;
                                     white-space: nowrap;
                                     overflow: hidden;
                                     text-overflow: ellipsis;
                                 }
-                                .po-page-content {
-                                    position: relative;
-                                    min-height: 257mm;
-                                    box-sizing: border-box;
-                                    padding-bottom: 12mm;
-                                }
-
-                                .po-page-footer {
+                                .footer-fixed {
                                     position: absolute;
-                                    right: 0;
                                     bottom: 0;
-                                    left: 0;
+                                    width: 100%;
+                                    font-size: 16px;
                                     display: flex;
                                     justify-content: space-between;
-                                    box-sizing: border-box;
-                                    width: 100%;
-                                    padding-left: 4mm;
-                                    padding-right: 4mm;
-                                    font-size: 10px;
-                                    line-height: 1.2;
-                                    page-break-inside: avoid;
-                                }
-                                .po-final-page .po-page-footer {
-                                    position: static;
-                                    margin-top: 0;
-                                }
-                                }</style>
+                                  }
+                                  @page {
+                                    margin: 10mm 10mm 20mm 10mm; /* ซ้าย ขวา บน ล่าง */
+                                    @bottom-left {
+                                        content: "อนุมัติใช้วันที่ 14/09/2563";
+                                        font-size: 14px;
+                                    }
+                                    @bottom-right {
+                                        content: "FM-PUR-08.REV.01";
+                                        font-size: 14px;
+                                    }
+                                    }
+
+
+
+                            </style>
         <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
         <t t-set="line_count" t-value="len(o.order_line)"/>
         <t t-set="lines_per_page" t-value="10"/>
         <t t-set="total_pages" t-value="int((line_count + lines_per_page - 1) / lines_per_page)"/>
         <t t-foreach="range(total_pages)" t-as="page_num">
-            <div class="po-page-content" t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
-    
-                
-    
+            <div t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
+
+
+
                 <!-- ส่วนหัว (Header) -->
-                <t t-call="buz_po_portal.po_header">
-                <div class="row mb-2 po-header">
+                <div class="row mb-2">
                     <div class="col-8">
                         <div style="font-size: 18px;">
                             <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
@@ -190,20 +145,16 @@
                         <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                     </div>
                 </div>
-                </t>
-    
+
                 <!-- Document Title -->
-                <t t-call="buz_po_portal.po_title">
-                <div class="row mb-2 po-title">
+                <div class="row mb-2">
                     <div class="col-12 text-center">
                         <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
                     </div>
                 </div>
-                </t>
-    
+
                 <!-- Document Info -->
-                <t t-call="buz_po_portal.po_info">
-                <div class="row mb-2 po-info">
+                <div class="row mb-2">
                     <div class="col-8">
                         <p style="margin-bottom: 0; margin-top: -20px; font-size: 20px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
                     </div>
@@ -217,7 +168,7 @@
                 </div>
 
                 <!-- กล่องนอก -->
-                <div class="po-vendor-info" style="width: 100%; padding: 0; font-size: 16px; margin-bottom: -40px; margin-top: -10px;">
+                <div style="width: 100%; padding: 0; font-size: 16px; margin-bottom: -40px; margin-top: -10px;">
                     <table style="width: 100%; border-collapse: collapse; margin: 0; border: 1px solid #000;">
                         <tbody>
                             <!-- บรรทัดที่ 1 -->
@@ -270,7 +221,7 @@
                                     </div>
                                 </td>
                             </tr>
-                            
+
                             <!-- ฝั่งขวา - บรรทัดที่ 2 -->
                             <tr>
                                 <td style="border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;" colspan="3">
@@ -280,7 +231,7 @@
                                     </t>
                                 </td>
                             </tr>
-                            
+
                             <!-- ฝั่งขวา - บรรทัดที่ 3 -->
                             <tr>
                                 <td style="width: 18.9%; padding: 2px; line-height: 1.1;">
@@ -308,9 +259,7 @@
                         </tbody>
                     </table>
                 </div>
-                </t>
 
-                <t t-call="buz_po_portal.po_order_lines">
                 <div style="height:16px;"></div>
                 <table class="table table-sm mt-4 order-line-table"
             style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
@@ -367,21 +316,39 @@
                  </t>
              </tbody>
          </table>
-                </t>
-                  
+
+
                 <t t-if="page_num != total_pages - 1">
-                    <t t-call="buz_po_portal.po_page_footer"/>
-                </t>
-                  
-                  
+                    <div style="position: relative; min-height: 25mm; padding-bottom: 80mm;">
+                      <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
+
+                      <!-- Footer fixed bottom -->
+                      <div style="
+                        position: absolute;
+                        bottom: 0; left: 0; width: 100%;
+                        display: flex; justify-content: space-between;
+                        font-size: 10px;
+                        padding-left: 4mm; padding-right: 4mm;
+                        line-height: 1.2;
+                        page-break-inside: avoid;
+                        ">
+                        <div>
+                          <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
+                        </div>
+                        <div>
+                          <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
+                        </div>
+                      </div>
+                    </div>
+                  </t>
+
+
           </div>
-       </t>     
-            
+       </t>
+
       <!-- กล่องรวม หมายเหตุ + ผลรวม -->
-       <div class="po-page-content po-final-page">
-       <t t-call="buz_po_portal.po_totals_notes">
-<div class="po-totals-notes" style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: -180px; min-height: 174px; height: 174px;">
-    
+       <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
+
         <!-- ฝั่งซ้าย -->
         <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box; height: 100%;">
             <table style="width: 100%; border-collapse: collapse; font-size: 12px; height: 100%;">
@@ -404,7 +371,7 @@
                 </tr>
             </table>
         </div>
-    
+
         <!-- ฝั่งขวา -->
         <div style="width: 40%; padding: 0 0 0 2px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column;">
             <t t-set="total_gross" t-value="sum([(line.product_qty * line.price_unit) for line in o.order_line])"/>
@@ -412,7 +379,7 @@
             <t t-set="amount_untaxed" t-value="o.amount_untaxed or 0.0"/>
             <t t-set="amount_tax" t-value="o.has_vat and o.amount_tax or 0.0"/>
             <t t-set="amount_total" t-value="(o.has_vat and amount_untaxed + amount_tax) or amount_untaxed"/>
-    
+
             <table style="width: 100%; border-collapse: collapse; font-size: 20px; border: 1px solid #000; margin: 0; height: 100%;">
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ราคารวม/Total:</td>
@@ -447,12 +414,10 @@
             </table>
         </div>
     </div>
-                </t>
-                        
-    
+
+
                             <!-- Signature Section -->
-                            <t t-call="buz_po_portal.po_signatures">
-<div class="row mt-5 po-signatures" style="margin-top: 0px;">
+                            <div class="row mt-5" style="margin-top: 0px;">
                                 <!-- Common styles for signature boxes -->
                                 <style>
                                     .signature-box {
@@ -594,11 +559,9 @@
                                 </div>
 
                             </div>
-                </t>
-                            
+
                             <!-- Footer Section -->
-                            <t t-call="buz_po_portal.po_footer">
-<div class="row mt-3 po-footer" style="font-size: 14px; margin-left:0; margin-right:0; margin-top: 20;">
+                            <div class="row mt-3" style="font-size: 14px; margin-left:0; margin-right:0; margin-top: 20;">
                                 <div class="col-12" style="padding-left:0; padding-right:0;">
                                     <div style="border: 1px solid #000; padding: 4px; margin:0;">
                                         <div class="row" style="margin-left: 0; margin-right: 0;">
@@ -626,14 +589,32 @@
                                     </div>
                                 </div>
                             </div>
-                </t>
-                            <t t-call="buz_po_portal.po_page_footer"/>
-                        </div>
-</div>
-                      </t>   
+
+
+
+                            <div style="margin: 0; display: flex; justify-content: space-between; font-size: 8px;">
+                              <span>อนุมัติใช้วันที่ 14/09/2563</span>
+                              <span>FM-PUR-08.REV.01</span>
+                            </div>
+
+                        <!-- Conditional page break based on number of items -->
+                            <t t-if="len(o.order_line) &gt; 4">
+                                <div style="page-break-before: always; margin-top:0px !important; padding-top:0px !important;"/>
+                            </t>
+                            <!-- Footer Section -->
+
+                            <!-- Conditional page break based on number of items -->
+                            <t t-if="len(o.order_line) &gt; 4">
+                                <div style="page-break-before: always;"/>
+                            </t>
+
+
+
+                       </div>
+                      </t>
                     </t></t>
                   </t>
-              </template>   
+              </template>
     <!-- Report Action -->
     <record id="action_report_purchase_order_custom" model="ir.actions.report">
         <field name="name">Custom Purchase Order</field>
