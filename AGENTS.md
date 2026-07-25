@@ -21,7 +21,7 @@ Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service
 ```bash
 # Configure passwordless SSH from Windows PowerShell (run once)
 # Press Enter for an empty passphrase if unattended deploys must not prompt.
-ssh-keygen -t ed25519 -C odoo-dev -f $env:USERPROFILE\.ssh\id_ed25519
+ssh-keygen -t ed25519 -C odoo-dev -f $env:USERPROFILE\.ssh\id_ed25519id_dev_nopass
 Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@217.216.32.33 'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys'
 ssh -o PasswordAuthentication=no root@217.216.32.33 'echo SSH_KEY_OK'
 
