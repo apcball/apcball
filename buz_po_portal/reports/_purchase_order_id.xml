@@ -124,7 +124,7 @@
 
                <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
         <t t-set="line_count" t-value="len(o.order_line)"/>
-        <t t-set="lines_per_page" t-value="10"/>
+        <t t-set="lines_per_page" t-value="8"/>
         <t t-set="total_pages" t-value="int((line_count + lines_per_page - 1) / lines_per_page)"/>
         <t t-foreach="range(total_pages)" t-as="page_num">
             <div t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
