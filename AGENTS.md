@@ -21,11 +21,18 @@ Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service
 Requires SSH aliases in `~/.ssh/config`:
 - `dev` — DEV server (Docker `odoo:17.0`)
 
+
+
 ```bash
 # Deploy to DEV server from Windows PowerShell (when rsync is unavailable)
 ssh root@217.216.32.33 "rm -rf /srv/docker/odoo/custom-addons/<module>"
 scp -r .\<module> root@217.216.32.33:/srv/docker/odoo/custom-addons/
 ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
+
+# Deploy to DEV server using the passwordless SSH key configured for Dev-Server
+ssh Dev-Server "rm -rf /srv/docker/odoo/custom-addons/<module>"
+scp -r .\<module> Dev-Server:/srv/docker/odoo/custom-addons/
+ssh Dev-Server "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
 
 
 # Test on live DB (DEV only) — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.
