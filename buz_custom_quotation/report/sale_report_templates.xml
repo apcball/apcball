@@ -88,14 +88,14 @@
 
 
 <!-- Page 2: Page -->
-<t t-set="items_per_page" t-value="6"/>
+<t t-set="items_per_page" t-value="7"/>
 <t t-set="total_items" t-value="len(doc.order_line)"/>
 <t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
 
 
-<t t-set="groups_of_6" t-value="[doc.order_line[i:i+6] for i in range(0, len(doc.order_line), 6)]"/>
+<t t-set="groups_of_7" t-value="[doc.order_line[i:i+7] for i in range(0, len(doc.order_line), 7)]"/>
 <t t-set="item_counter" t-value="0"/>
-<t t-foreach="groups_of_6" t-as="group" t-index="group_idx">
+<t t-foreach="groups_of_7" t-as="group" t-index="group_idx">
    <div t-attf-style="#{group_idx != 0 and 'page-break-before: always;' or ''}">
 
 
@@ -220,6 +220,9 @@
                     <span t-field="line.price_subtotal"
                           t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                 </td>
+            </tr>
+            <tr t-foreach="range(len(group), items_per_page)" t-as="blank_row">
+                <td colspan="8" style="height: 52px; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"></td>
             </tr>
         </tbody>
     </table>

@@ -51,12 +51,19 @@
                                     padding:  1px 1px;
                                 }
     
-                                .order-line-table th,
-                                .order-line-table td {
-                                    padding-top: 10px !important;
-                                    padding-bottom: 10px !important;
-                                   line-height: 1.1 !important;
-                                }
+                                 .order-line-table th,
+                                 .order-line-table td {
+                                     padding-top: 10px !important;
+                                     padding-bottom: 10px !important;
+                                    line-height: 1.1 !important;
+                                 }
+
+                                 /* Keep data rows and filler rows the same height. */
+                                 .order-line-table tbody tr,
+                                 .order-line-table tbody td {
+                                     height: 40px !important;
+                                     box-sizing: border-box;
+                                 }
                                 
                                 .no-inner-borders td,
                                 .no-inner-borders th {
@@ -273,8 +280,8 @@
                  <t t-set="start_idx" t-value="page_num * lines_per_page"/>
                  <t t-set="end_idx" t-value="min((page_num + 1) * lines_per_page, line_count)"/>
                  <t t-set="current_line_number" t-value="start_idx + 1"/>
-                 <t t-foreach="enumerate(o.order_line[start_idx:end_idx])" t-as="line_tuple">
-                     <tr style="font-size: 18px; height: 25px;">
+                  <t t-foreach="enumerate(o.order_line[start_idx:end_idx])" t-as="line_tuple">
+                      <tr style="font-size: 18px; height: 25px;">
                          <td style="border: 1px solid black; text-align: center; vertical-align: top;">
                              <span t-esc="current_line_number + line_tuple[0]"/>
                          </td>
@@ -307,10 +314,22 @@
                          <td style="border: 1px solid black; text-align: right; vertical-align: top; padding-right: 2px;">
                              <t t-set="subtotal" t-value="line_tuple[1].product_uom_qty * line_tuple[1].price_unit * (1 - (line_tuple[1].discount or 0.0)/100)"/>
                              <span t-esc="'{:,.2f}'.format(subtotal or 0.0)"/>
-                         </td>
-                     </tr>
-                 </t>
-             </tbody>
+                          </td>
+                      </tr>
+                  </t>
+                  <!-- Fill every page to the configured number of rows. -->
+                  <tr t-foreach="range(end_idx - start_idx, lines_per_page)" t-as="blank_row" style="font-size: 18px; height: 25px;">
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                      <td style="border: 1px solid black; height: 25px;"></td>
+                  </tr>
+              </tbody>
          </table>      <!-- กล่องรวม หมายเหตุ + ผลรวม -->
        <t t-if="page_num == total_pages - 1">
        <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
