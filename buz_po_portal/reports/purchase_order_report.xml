@@ -557,7 +557,7 @@
                                 </div>
                             </div>
                         </t>
-                        <div class="po-report-footer">
+                        <div class="po-report-footer" t-if="page_num == total_pages - 1">
                             <span>อนุมัติใช้วันที่ 14/09/2563</span>
                             <span>FM-PUR-08.REV.01</span>
                         </div>
