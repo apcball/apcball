@@ -31,6 +31,8 @@ export class ItManagementDashboard extends Component {
         this.selectSection = this.selectSection.bind(this);
         this.onFilterChange = this.onFilterChange.bind(this);
         this.openSource = this.openSource.bind(this);
+        this.openChartSource = this.openChartSource.bind(this);
+        this.onChartKeydown = this.onChartKeydown.bind(this);
         this.openNavigation = this.openNavigation.bind(this);
         onWillStart(this.load);
     }
