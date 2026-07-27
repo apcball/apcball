@@ -108,18 +108,22 @@ class ItManagementDashboard(models.Model):
     @api.model
     def _renewals_due(self, filters):
         Renewal = self.env["buz.it.asset.renewal"]
+        filters = filters or {}
         domain = self._company_domain({key: value for key, value in filters.items() if key not in ("date_from", "date_to")}) + [("status", "not in", ("renewed", "cancelled", "not_required"))]
-        records = Renewal.search(domain, order="new_expiry_date asc, id asc")
         limit = self._bounded_limit(filters, "renewal_limit")
+        records = Renewal.search(domain, order="new_expiry_date asc, id asc", limit=limit)
         date_from = fields.Date.to_date(filters["date_from"]) if filters.get("date_from") else False
         date_to = fields.Date.to_date(filters["date_to"]) if filters.get("date_to") else False
         labels = dict(Renewal._fields["status"].selection)
+        today_by_company = {}
         rows = []
         for renewal in records:
             expiry = renewal.new_expiry_date or renewal.asset_id.license_expiry_date
             if not expiry or (date_from and expiry < date_from) or (date_to and expiry > date_to):
                 continue
-            days = (expiry - self._company_today(renewal.company_id)).days
+            if renewal.company_id.id not in today_by_company:
+                today_by_company[renewal.company_id.id] = self._company_today(renewal.company_id)
+            days = (expiry - today_by_company[renewal.company_id.id]).days
             rows.append({
                 "id": renewal.id, "asset_id": renewal.asset_id.id,
                 "product": renewal.asset_id.license_product or renewal.asset_id.asset_name or renewal.asset_id.name,
@@ -133,6 +137,7 @@ class ItManagementDashboard(models.Model):
         rows.sort(key=lambda row: (row["expiry"], row["id"]))
         return {"rows": rows[:limit], "limit": limit, "domain": domain,
                 "res_model": "buz.it.asset.renewal", "action_xml_id": "buz_it_helpdesk.action_buz_it_asset_renewals"}
+
     @api.model
     def _previous_period_filters(self, filters):
         """Return a non-overlapping period with the same duration."""

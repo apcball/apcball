@@ -46,19 +46,23 @@ export class ItManagementDashboard extends Component {
                 "it.management.dashboard", "get_dashboard_data",
                 [section, filters]
             );
-            if (sequence === this.loadSequence && section === this.state.section) {
+            if (this.isCurrentRequest(sequence, section)) {
                 this.state.data = data;
                 this.state.lastUpdated = new Date();
             }
         } catch (error) {
-            if (sequence === this.loadSequence) {
+            if (this.isCurrentRequest(sequence, section)) {
                 this.state.error = true;
             }
         } finally {
-            if (sequence === this.loadSequence) {
+            if (this.isCurrentRequest(sequence, section)) {
                 this.state.loading = false;
             }
         }
+    }
+
+    isCurrentRequest(sequence, section) {
+        return sequence === this.loadSequence && section === this.state.section;
     }
 
     async openNavigation(item) {
@@ -124,6 +128,14 @@ export class ItManagementDashboard extends Component {
             context: { create: false, edit: false, delete: false },
             target: "current",
         });
+    }
+
+    async onRowKeydown(event, item, title) {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+        event.preventDefault();
+        await this.openSource(item, title);
     }
 
     get recentTickets() {

@@ -1,6 +1,6 @@
 .o_it_management_dashboard {
     --it-color-ink: #172033;
-    --it-color-muted: #667085;
+    --it-color-muted: #475467;
     --it-color-subtle: #98a2b3;
     --it-color-primary: #175cd3;
     --it-color-primary-soft: #eff4ff;
@@ -8,6 +8,11 @@
     --it-color-surface: #ffffff;
     --it-color-canvas: #f8fafc;
     --it-color-danger: #b42318;
+    --it-color-success: #067647;
+    --it-color-warning: #b54708;
+    --it-color-secondary: #6941c6;
+    --it-color-text: #172033;
+    --it-muted: #475467;
     --it-space-1: .25rem;
     --it-space-2: .5rem;
     --it-space-3: .75rem;
@@ -319,7 +324,7 @@
 .o_it_management_table_wrap { overflow-x: auto; }
 .o_it_management_table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .o_it_management_table th, .o_it_management_table td { padding: 10px 8px; border-bottom: 1px solid #F0F2F5; text-align: left; white-space: nowrap; }
-.o_it_management_table th { color: #667085; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.o_it_management_table th { color: #475467; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 .o_it_management_clickable_row { cursor: pointer; }
 .o_it_management_clickable_row:hover, .o_it_management_clickable_row:focus { background: #F7F8FA; outline: 2px solid #3157D5; outline-offset: -2px; }
 .o_it_management_badge { display: inline-block; border-radius: 999px; padding: 3px 8px; font-size: 11px; font-weight: 600; background: #F2F4F7; color: #344054; }
@@ -327,3 +332,56 @@
 .o_it_management_badge.severity-warning { background: #FEF0C7; color: #B54708; }
 .o_it_management_badge.severity-attention { background: #E9D7FE; color: #6941C6; }
 @media (max-width: 900px) { .o_it_management_ui4_grid { grid-template-columns: 1fr; } }
+
+/* UI-6 accessibility and responsive QA */
+.o_it_management_dashboard :focus-visible {
+    outline: 3px solid #84adff;
+    outline-offset: 2px;
+}
+.o_it_management_dashboard button, .o_it_management_dashboard select, .o_it_management_dashboard input {
+    min-height: 2.5rem;
+}
+.o_it_management_table caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+.o_it_management_table th {
+    background: #f8fafc;
+}
+.o_it_management_table_wrap {
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+}
+@media (max-width: 1200px) {
+    .o_it_management_dashboard { grid-template-columns: 13rem minmax(0, 1fr); }
+    .o_it_management_main { padding: 1.25rem; }
+}
+@media (max-width: 900px) {
+    .o_it_management_dashboard, .o_it_management_dashboard.is-collapsed { display: block; min-height: auto; }
+    .o_it_management_sidebar { flex-direction: row; align-items: center; overflow-x: auto; padding: .5rem; border-right: 0; border-bottom: 1px solid var(--it-color-border); }
+    .o_it_management_sidebar_toggle { display: none; }
+    .o_it_management_nav_group { flex-direction: row; min-width: max-content; }
+    .o_it_management_nav { width: auto; }
+    .o_it_management_brand_text, .is-collapsed .o_it_management_brand_text, .is-collapsed .o_it_management_nav span { display: inline; }
+    .o_it_management_main { padding: 1rem; }
+    .o_it_management_kpis, .o_it_management_charts, .o_it_management_ui4_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_it_management_chart_panel_trend { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+    .o_it_management_main { padding: .75rem; }
+    .o_it_management_header { gap: 1rem; }
+    .o_it_management_filter_bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .o_it_management_control select, .o_it_management_control input { min-width: 0; width: 100%; }
+    .o_it_management_refresh { width: 100%; }
+    .o_it_management_kpis, .o_it_management_charts, .o_it_management_ui4_grid, .o_it_management_cards { grid-template-columns: minmax(0, 1fr); }
+    .o_it_management_chart_panel_trend { grid-column: auto; }
+    .o_it_management_meta { align-items: flex-start; flex-direction: column; }
+    .o_it_management_table th, .o_it_management_table td { padding: .6rem .5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}

@@ -13,18 +13,18 @@
                     </t>
                 </nav>
             </aside>
-            <main class="o_it_management_main">
+            <main class="o_it_management_main" aria-labelledby="it-management-title">
                 <header class="o_it_management_header">
-                    <div class="o_it_management_heading"><p class="o_it_management_eyebrow">IT MANAGEMENT</p><h1>IT Management</h1><p>Operational overview</p></div>
+                    <div class="o_it_management_heading"><p class="o_it_management_eyebrow">IT MANAGEMENT</p><h1 id="it-management-title">IT Management</h1><p>Operational overview</p></div>
                     <div class="o_it_management_filter_bar" role="group" aria-label="Dashboard filters">
-                        <label class="o_it_management_control"><span>Company</span><select name="company_id" t-on-change="onFilterChange" t-att-disabled="state.loading"><option value="">All companies</option><t t-foreach="state.data?.options?.companies || []" t-as="company" t-key="company.id"><option t-att-value="company.id" t-att-selected="isCompanySelected(company.id)"><t t-esc="company.label"/></option></t></select></label>
-                        <label class="o_it_management_control"><span>From</span><input type="date" name="date_from" t-att-value="state.filters.date_from" t-on-change="onFilterChange" t-att-disabled="state.loading"/></label>
-                        <label class="o_it_management_control"><span>To</span><input type="date" name="date_to" t-att-value="state.filters.date_to" t-on-change="onFilterChange" t-att-disabled="state.loading"/></label>
+                        <label class="o_it_management_control" for="it-management-company"><span>Company</span><select id="it-management-company" name="company_id" t-on-change="onFilterChange" t-att-disabled="state.loading"><option value="">All companies</option><t t-foreach="state.data?.options?.companies || []" t-as="company" t-key="company.id"><option t-att-value="company.id" t-att-selected="isCompanySelected(company.id)"><t t-esc="company.label"/></option></t></select></label>
+                        <label class="o_it_management_control" for="it-management-date-from"><span>From</span><input id="it-management-date-from" type="date" name="date_from" t-att-value="state.filters.date_from" t-on-change="onFilterChange" t-att-disabled="state.loading"/></label>
+                        <label class="o_it_management_control" for="it-management-date-to"><span>To</span><input id="it-management-date-to" type="date" name="date_to" t-att-value="state.filters.date_to" t-on-change="onFilterChange" t-att-disabled="state.loading"/></label>
                         <button type="button" class="btn btn-outline-secondary o_it_management_refresh" t-on-click="refresh" t-att-disabled="state.loading"><i class="fa fa-refresh"/> <span>Refresh</span></button>
                     </div>
                 </header>
                 <div class="o_it_management_meta"><span>Last updated: <strong><t t-esc="lastUpdatedLabel"/></strong></span><span class="o_it_management_section_label"><t t-esc="state.section"/></span></div>
-                <div t-if="state.loading" class="o_it_management_state o_it_management_loading" role="status" aria-live="polite"><div class="o_it_management_skeleton o_it_management_skeleton_kpi"/><div class="o_it_management_skeleton o_it_management_skeleton_kpi"/><div class="o_it_management_skeleton o_it_management_skeleton_kpi"/><div class="o_it_management_skeleton o_it_management_skeleton_panel"/><strong>Loading selected dashboard</strong></div>
+                <div t-if="state.loading" class="o_it_management_state o_it_management_loading" role="status" aria-live="polite" aria-busy="true"><div class="o_it_management_skeleton o_it_management_skeleton_kpi"/><div class="o_it_management_skeleton o_it_management_skeleton_kpi"/><div class="o_it_management_skeleton o_it_management_skeleton_kpi"/><div class="o_it_management_skeleton o_it_management_skeleton_panel"/><strong>Loading selected dashboard</strong></div>
                 <div t-elif="state.error" class="o_it_management_state o_it_management_error" role="alert"><i class="fa fa-exclamation-triangle"/><strong>Dashboard data could not be loaded</strong><span>Check your filters and try again.</span><button type="button" class="btn btn-outline-danger" t-on-click="refresh">Try again</button></div>
                 <t t-elif="state.section == 'helpdesk'"><HelpdeskDashboard t-key="filterKey" t-props="{ embedded: true, filters: state.filters }"/></t>
                 <section t-elif="state.section == 'overview'" class="o_it_management_section">
