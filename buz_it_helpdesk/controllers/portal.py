@@ -1,6 +1,8 @@
 from odoo import http
+from odoo.exceptions import ValidationError
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal
+from werkzeug.exceptions import BadRequest
 
 
 class HelpdeskPortal(CustomerPortal):
@@ -19,22 +21,29 @@ class HelpdeskPortal(CustomerPortal):
     @http.route("/my/helpdesk/new", type="http", auth="user", website=True, methods=["GET", "POST"])
     def portal_helpdesk_new(self, **post):
         if request.httprequest.method == "POST":
+            ticket_model = request.env["it.helpdesk.ticket"]
+            try:
+                category_id, priority_id = ticket_model._validate_portal_selection(
+                    post.get("category_id"), post.get("priority_id")
+                )
+            except ValidationError as error:
+                raise BadRequest(str(error)) from error
             vals = {
                 "subject": post.get("subject"),
                 "description": post.get("description"),
                 "requester_id": request.env.user.id,
                 "source": "web",
-                "category_id": int(post["category_id"]),
-                "priority_id": int(post["priority_id"]),
+                "category_id": category_id,
+                "priority_id": priority_id,
             }
-            ticket = request.env["it.helpdesk.ticket"].create(vals)
+            ticket = ticket_model.create(vals)
             ticket.sudo()._add_uploaded_attachments(request.httprequest.files.getlist("attachments"))
             return request.redirect("/my/helpdesk")
         return request.render(
             "buz_it_helpdesk.portal_helpdesk_new",
             {
-                "categories": request.env["it.helpdesk.category"].search([]),
-                "priorities": request.env["it.helpdesk.priority"].search([]),
+                "categories": request.env["it.helpdesk.category"].search([("company_id", "=", request.env.company.id), ("active", "=", True)]),
+                "priorities": request.env["it.helpdesk.priority"].search([("company_id", "=", request.env.company.id), ("active", "=", True)]),
             },
         )
 

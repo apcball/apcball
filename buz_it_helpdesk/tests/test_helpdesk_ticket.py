@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from odoo import fields
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -187,3 +188,35 @@ class TestHelpdeskTicket(TransactionCase):
         self.assertNotIn(draft_ticket.id, agent_ids)
         self.assertIn(new_ticket.id, agent_ids)
         self.assertNotIn(other_ticket.id, agent_ids)
+
+    def test_backend_and_email_creation_use_company_defaults(self):
+        model = self.env["it.helpdesk.ticket"].with_user(self.agent)
+        ticket = model.create({"subject": "Backend defaults"})
+        self.assertEqual(ticket.source, "manual")
+        self.assertTrue(ticket.category_id)
+        self.assertTrue(ticket.priority_id)
+        self.assertTrue(ticket.team_id)
+        self.assertEqual(ticket.category_id.company_id, self.company)
+        self.assertEqual(ticket.priority_id.company_id, self.company)
+        self.assertEqual(ticket.team_id.company_id, self.company)
+
+        email_ticket_id = model.message_new(
+            {"subject": "Email defaults", "body": "<p>Email body</p>"}
+        )
+        email_ticket = model.browse(email_ticket_id)
+        self.assertEqual(email_ticket.source, "email")
+        self.assertEqual(email_ticket.subject, "Email defaults")
+        self.assertEqual(email_ticket.description, "<p>Email body</p>")
+        self.assertEqual(email_ticket.category_id, ticket.category_id)
+        self.assertEqual(email_ticket.priority_id, ticket.priority_id)
+
+    def test_portal_selection_rejects_invalid_and_cross_company_values(self):
+        model = self.env["it.helpdesk.ticket"]
+        self.assertEqual(
+            model._validate_portal_selection(self.category.id, self.priority.id),
+            (self.category.id, self.priority.id),
+        )
+        with self.assertRaises(ValidationError):
+            model._validate_portal_selection("not-an-id", self.priority.id)
+        with self.assertRaises(ValidationError):
+            model._validate_portal_selection(self.other_category.id, self.other_priority.id)

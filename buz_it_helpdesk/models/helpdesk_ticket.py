@@ -160,6 +160,47 @@ class HelpdeskTicket(models.Model):
     def _default_stage_id(self):
         stage = self._get_stage_for_company(self.env.company, "Draft")
         return stage.id if stage else False
+
+    @api.model
+    def _default_category_id(self, company=None):
+        company = company or self.env.company
+        category = self.env["it.helpdesk.category"].search(
+            [("company_id", "=", company.id), ("active", "=", True)],
+            order="sequence, name, id",
+            limit=1,
+        )
+        return category.id if category else False
+
+    @api.model
+    def _validate_portal_selection(self, category_id, priority_id):
+        try:
+            category_id = int(category_id)
+            priority_id = int(priority_id)
+        except (TypeError, ValueError):
+            raise ValidationError("Category and priority must be valid selections.")
+
+        company = self.env.company
+        category = self.env["it.helpdesk.category"].search(
+            [("id", "=", category_id), ("company_id", "=", company.id), ("active", "=", True)],
+            limit=1,
+        )
+        priority = self.env["it.helpdesk.priority"].search(
+            [("id", "=", priority_id), ("company_id", "=", company.id), ("active", "=", True)],
+            limit=1,
+        )
+        if not category or not priority:
+            raise ValidationError("Category and priority must belong to the current company.")
+        return category.id, priority.id
+
+    @api.model
+    def message_new(self, msg_dict, custom_values=None):
+        vals = dict(custom_values or {})
+        vals.setdefault("subject", msg_dict.get("subject") or "Email Helpdesk Ticket")
+        vals.setdefault("description", msg_dict.get("body") or msg_dict.get("body_html") or False)
+        vals.setdefault("source", "email")
+        vals.setdefault("category_id", self._default_category_id())
+        return self.create(vals).id
+
     @api.model
     def _get_requester_department_name(self, user):
         employee = user.employee_id
@@ -174,7 +215,6 @@ class HelpdeskTicket(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        priority = self.env["it.helpdesk.priority"].search([("company_id", "=", self.env.company.id)], order="sequence", limit=1)
         requester_mode = not self.env.su and not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         for vals in vals_list:
             if requester_mode:
@@ -184,6 +224,13 @@ class HelpdeskTicket(models.Model):
             if vals.get("name", "New") == "New":
                 vals["name"] = self.env["ir.sequence"].next_by_code("it.helpdesk.ticket") or "New"
             vals.setdefault("stage_id", self._default_stage_id())
+            company = self.env["res.company"].browse(vals.get("company_id") or self.env.company.id)
+            priority = self.env["it.helpdesk.priority"].search(
+                [("company_id", "=", company.id), ("active", "=", True)],
+                order="sequence, id",
+                limit=1,
+            )
+            vals.setdefault("category_id", self._default_category_id(company))
             vals.setdefault("priority_id", priority.id)
             vals.setdefault("requester_id", requester_id)
             vals.setdefault("department", self._get_requester_department_name(requester))
