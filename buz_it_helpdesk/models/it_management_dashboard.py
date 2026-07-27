@@ -47,6 +47,57 @@ class ItManagementDashboard(models.Model):
         }
 
     @api.model
+    def _previous_period_filters(self, filters):
+        """Return a non-overlapping period with the same duration."""
+        filters = filters or {}
+        date_from = filters.get("date_from")
+        date_to = filters.get("date_to")
+        if not date_from or not date_to:
+            return None
+        try:
+            current_from = datetime.strptime(date_from, "%Y-%m-%d").date()
+            current_to = datetime.strptime(date_to, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return None
+        if current_to < current_from:
+            return None
+        duration = (current_to - current_from).days + 1
+        previous_to = current_from - timedelta(days=1)
+        previous_from = previous_to - timedelta(days=duration - 1)
+        previous = dict(filters)
+        previous["date_from"] = fields.Date.to_string(previous_from)
+        previous["date_to"] = fields.Date.to_string(previous_to)
+        return previous
+
+    @api.model
+    def _comparison(self, count, previous_count):
+        delta = count - previous_count
+        if not previous_count:
+            return {"delta": delta, "delta_percent": None, "direction": "up" if delta > 0 else "flat"}
+        percentage = (delta * 100.0) / previous_count
+        return {
+            "delta": delta,
+            "delta_percent": round(percentage, 2),
+            "direction": "up" if delta > 0 else "down" if delta < 0 else "flat",
+        }
+
+    @api.model
+    def _add_comparison(self, current_kpis, previous_kpis):
+        previous_by_code = {item["code"]: item["count"] for item in previous_kpis}
+        result = []
+        for item in current_kpis:
+            current = dict(item)
+            previous_count = previous_by_code.get(item["code"])
+            current["previous_count"] = previous_count
+            current.update(
+                self._comparison(item["count"], previous_count)
+                if previous_count is not None
+                else {"delta": None, "delta_percent": None, "direction": "na"}
+            )
+            result.append(current)
+        return result
+
+    @api.model
     def _asset_data(self, filters):
         domain = self._company_domain(filters)
         Asset = self.env["buz.it.asset"]
@@ -102,12 +153,27 @@ class ItManagementDashboard(models.Model):
         assets = self._asset_data(filters)
         ticket_map = {item["code"]: item for item in tickets.get("kpis", [])}
         asset_map = {item["code"]: item for item in assets["kpis"]}
+        current_kpis = [
+            ticket_map.get("open", {"code": "open", "label": "Open Tickets", "count": 0, "domain": []}),
+            ticket_map.get("sla_overdue", {"code": "sla_overdue", "label": "SLA Overdue", "count": 0, "domain": []}),
+            asset_map["in_use"], asset_map["repair"], asset_map["license_expiring"],
+        ]
+        previous_filters = self._previous_period_filters(filters)
+        if previous_filters:
+            previous_tickets = self.env["it.helpdesk.ticket"].get_dashboard_data(previous_filters)
+            previous_assets = self._asset_data(previous_filters)
+            previous_kpis = [
+                {"code": "open", "count": next((item["count"] for item in previous_tickets["kpis"] if item["code"] == "open"), 0)},
+                {"code": "sla_overdue", "count": next((item["count"] for item in previous_tickets["kpis"] if item["code"] == "sla_overdue"), 0)},
+                next(item for item in previous_assets["kpis"] if item["code"] == "in_use"),
+                next(item for item in previous_assets["kpis"] if item["code"] == "repair"),
+                next(item for item in previous_assets["kpis"] if item["code"] == "license_expiring"),
+            ]
+            current_kpis = self._add_comparison(current_kpis, previous_kpis)
+        else:
+            current_kpis = self._add_comparison(current_kpis, [])
         return {
-            "kpis": [
-                ticket_map.get("open", {"code": "open", "label": "Open Tickets", "count": 0, "domain": []}),
-                ticket_map.get("sla_overdue", {"code": "sla_overdue", "label": "SLA Overdue", "count": 0, "domain": []}),
-                asset_map["in_use"], asset_map["repair"], asset_map["license_expiring"],
-            ],
+            "kpis": current_kpis,
             "tickets": tickets.get("status_overview", []),
             "assets": assets["status"],
             "options": assets["options"],

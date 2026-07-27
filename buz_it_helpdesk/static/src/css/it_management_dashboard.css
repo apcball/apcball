@@ -82,3 +82,31 @@
 @media (max-width: 1100px) { .o_it_management_kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .o_it_management_header { align-items: flex-start; flex-direction: column; } .o_it_management_filter_bar { justify-content: flex-start; } }
 @media (max-width: 760px) { .o_it_management_dashboard, .o_it_management_dashboard.is-collapsed { display: block; min-height: auto; } .o_it_management_sidebar { display: flex; flex-direction: row; align-items: center; overflow-x: auto; padding: var(--it-space-2); border-right: 0; border-bottom: 1px solid var(--it-color-border); } .o_it_management_sidebar_toggle { display: none; } .o_it_management_nav_group { flex-direction: row; min-width: max-content; } .o_it_management_nav { width: auto; } .o_it_management_brand_text, .is-collapsed .o_it_management_brand_text, .is-collapsed .o_it_management_nav span { display: inline; } .o_it_management_main { padding: var(--it-space-4); } .o_it_management_filter_bar { width: 100%; } .o_it_management_control { flex: 1 1 8rem; } .o_it_management_refresh { flex: 0 0 auto; } .o_it_management_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .o_it_management_header { gap: var(--it-space-4); } .o_it_management_filter_bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .o_it_management_control select, .o_it_management_control input { min-width: 0; width: 100%; } .o_it_management_refresh { width: 100%; } .o_it_management_kpis, .o_it_management_cards { grid-template-columns: minmax(0, 1fr); } .o_it_management_cards article:last-child:nth-child(3) { grid-column: auto; } .o_it_management_meta { align-items: flex-start; flex-direction: column; } }
+.o_it_management_kpi {
+    position: relative;
+    align-items: flex-start;
+    text-align: left;
+}
+.o_it_management_kpi_previous,
+.o_it_management_kpi_delta {
+    display: block;
+    margin-top: var(--it-space-1);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.o_it_management_kpi_previous {
+    color: var(--it-muted);
+}
+.o_it_management_kpi_delta {
+    color: var(--it-muted);
+}
+.o_it_management_kpi.direction-up .o_it_management_kpi_delta {
+    color: var(--it-warning);
+}
+.o_it_management_kpi.direction-down .o_it_management_kpi_delta {
+    color: var(--it-success);
+}
+.o_it_management_kpi.direction-flat .o_it_management_kpi_delta,
+.o_it_management_kpi.direction-na .o_it_management_kpi_delta {
+    color: var(--it-muted);
+}

@@ -74,3 +74,61 @@ class TestItManagementDashboard(TransactionCase):
         helpdesk = dashboard.get_dashboard_data("helpdesk", {"date_from": "2026-01-01", "date_to": "2026-12-31"})
         self.assertIn("kpis", helpdesk)
         self.assertIn("status_overview", helpdesk)
+
+    def test_ui2_previous_period_is_adjacent_and_comparison_handles_zero(self):
+        dashboard = self.env["it.management.dashboard"].with_user(self.agent)
+        previous = dashboard._previous_period_filters({
+            "company_id": self.env.company.id,
+            "date_from": "2026-01-01",
+            "date_to": "2026-01-31",
+        })
+        self.assertEqual(previous["date_from"], "2025-12-01")
+        self.assertEqual(previous["date_to"], "2025-12-31")
+        self.assertLess(previous["date_to"], "2026-01-01")
+        self.assertEqual(dashboard._comparison(12, 8), {
+            "delta": 4, "delta_percent": 50.0, "direction": "up",
+        })
+        self.assertEqual(dashboard._comparison(3, 0), {
+            "delta": 3, "delta_percent": None, "direction": "up",
+        })
+
+    def test_ui2_five_kpis_match_source_record_counts_and_domains(self):
+        dashboard = self.env["it.management.dashboard"].with_user(self.agent)
+        filters = {
+            "company_id": self.env.company.id,
+            "date_from": "2026-01-01",
+            "date_to": "2026-12-31",
+        }
+        data = dashboard.get_dashboard_data("overview", filters)
+        self.assertEqual(
+            {item["code"] for item in data["kpis"]},
+            {"open", "sla_overdue", "in_use", "repair", "license_expiring"},
+        )
+        for item in data["kpis"]:
+            model_name = (
+                "it.helpdesk.ticket"
+                if item["code"] in {"open", "sla_overdue"}
+                else "buz.it.asset"
+            )
+            self.assertEqual(
+                item["count"],
+                self.env[model_name].search_count(item["domain"]),
+                item["code"],
+            )
+
+            self.assertNotIn("license_key", repr(item).lower())
+            self.assertNotIn("password", repr(item).lower())
+
+    def test_ui2_overview_comparison_payload_has_no_secret_fields(self):
+        dashboard = self.env["it.management.dashboard"].with_user(self.agent)
+        data = dashboard.get_dashboard_data(
+            "overview",
+            {"date_from": "2026-01-01", "date_to": "2026-12-31"},
+        )
+        for item in data["kpis"]:
+            self.assertIn("previous_count", item)
+            self.assertIn("delta", item)
+            self.assertIn("delta_percent", item)
+            self.assertIn("direction", item)
+            self.assertNotIn("license_key", item)
+            self.assertNotIn("secret", item)

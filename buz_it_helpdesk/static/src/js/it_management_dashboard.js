@@ -14,6 +14,7 @@ export class ItManagementDashboard extends Component {
     static components = { HelpdeskDashboard };
 
     setup() {
+        this.loadSequence = 0;
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = useState({
