@@ -2,6 +2,7 @@ import base64
 from datetime import timedelta
 
 from odoo import api, fields, models
+from odoo.tools import html_sanitize
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 
@@ -12,6 +13,10 @@ class HelpdeskTicket(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "priority_id desc, create_date desc"
     _NEW_TICKET_ACTIVITY_SUMMARY = "New IT Helpdesk Ticket"
+    _SLA_OVERDUE_ACTIVITY_SUMMARY = "SLA overdue: review ticket"
+    _PORTAL_ACTIVE_STAGE_CODES = {"draft", "new", "in_progress", "pending_user"}
+    _PORTAL_MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+    _PORTAL_ALLOWED_MIMETYPES = {"application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "image/gif", "image/jpeg", "image/png", "text/plain", "text/csv", "application/zip"}
     _STAGE_CODE_BY_NAME = {
         "Draft": "draft",
         "New": "new",
@@ -60,6 +65,16 @@ class HelpdeskTicket(models.Model):
     sla_paused_at = fields.Datetime(readonly=True, tracking=True)
     sla_paused_hours = fields.Float(readonly=True, tracking=True)
     sla_overdue_notified_at = fields.Datetime(readonly=True)
+    sla_overdue_notification_key = fields.Char(readonly=True, copy=False)
+    sla_overdue_notification_user_ids = fields.Many2many(
+        "res.users",
+        "it_helpdesk_ticket_sla_notification_user_rel",
+        "ticket_id",
+        "user_id",
+        string="SLA Overdue Notification Users",
+        readonly=True,
+        copy=False,
+    )
     first_response_hours = fields.Float(compute="_compute_metrics", store=True)
     resolution_hours_elapsed = fields.Float(compute="_compute_metrics", store=True)
     sla_compliant = fields.Boolean(compute="_compute_metrics", store=True)
@@ -328,12 +343,19 @@ class HelpdeskTicket(models.Model):
         self.ensure_one()
         Attachment = self.env["ir.attachment"].sudo()
         attachments = self.env["ir.attachment"]
+        self._check_portal_interaction_allowed()
         for upload in uploads:
             if upload and upload.filename:
+                content = upload.read()
+                mimetype = (upload.mimetype or "").lower()
+                if len(content) > self._PORTAL_MAX_ATTACHMENT_BYTES:
+                    raise ValidationError("Each attachment must be 10 MB or smaller.")
+                if mimetype not in self._PORTAL_ALLOWED_MIMETYPES:
+                    raise ValidationError("This attachment type is not allowed.")
                 attachment = Attachment.create({
                     "name": upload.filename,
                     "datas_fname": upload.filename,
-                    "datas": base64.b64encode(upload.read()),
+                    "datas": base64.b64encode(content),
                     "res_model": self._name,
                     "res_id": self.id,
                     "type": "binary",
@@ -343,6 +365,21 @@ class HelpdeskTicket(models.Model):
         if attachments:
             self.sudo().write({"attachment_ids": [fields.Command.link(attachment.id) for attachment in attachments]})
         return attachments
+
+    def _check_portal_interaction_allowed(self):
+        self.ensure_one()
+        if self._technical_stage_code(self.stage_id) not in self._PORTAL_ACTIVE_STAGE_CODES:
+            raise AccessError("Portal replies and uploads are not allowed for this ticket status.")
+
+    def action_portal_reply(self, body):
+        self.ensure_one()
+        self._check_portal_interaction_allowed()
+        body = html_sanitize((body or "").strip())
+        if body:
+            self.with_context(mail_notify_force_send=False).message_post(
+                body=body, message_type="comment", subtype_xmlid="mail.mt_comment"
+            )
+        return True
 
     def _ensure_agent(self):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
@@ -501,7 +538,7 @@ class HelpdeskTicket(models.Model):
                 order="category_id desc, priority_id desc, sequence",
                 limit=1,
             )
-            values = {"sla_id": sla.id or False, "response_deadline": False, "sla_deadline": False}
+            values = {"sla_id": sla.id or False, "response_deadline": False, "sla_deadline": False, "sla_overdue_notified_at": False, "sla_overdue_notification_key": False, "sla_overdue_notification_user_ids": [fields.Command.clear()]}
             if sla:
                 now = fields.Datetime.now()
                 calendar = ticket.company_id.resource_calendar_id
@@ -577,6 +614,9 @@ class HelpdeskTicket(models.Model):
             return not_overdue_domain if value else overdue_domain
         raise ValueError("Unsupported operator for is_overdue search")
 
+    def _notify_thread_by_email(self, *args, **kwargs):
+        """Helpdesk communication is internal; never enqueue outbound email."""
+        return True
     def message_post(self, **kwargs):
         self.ensure_one()
         message = super().message_post(**kwargs)
@@ -609,11 +649,24 @@ class HelpdeskTicket(models.Model):
         overdue = self.search([("is_overdue", "=", True), ("sla_overdue_notified_at", "=", False)])
         manager_group = self.env.ref("buz_it_helpdesk.group_it_helpdesk_manager", raise_if_not_found=False)
         for ticket in overdue:
-            partners = ticket.team_id.member_ids.mapped("partner_id")
+            users = ticket.team_id.member_ids
             if manager_group:
-                partners |= manager_group.users.filtered(lambda user: ticket.company_id in user.company_ids).mapped("partner_id")
-            ticket.message_post(body="SLA deadline exceeded. Please review and escalate this ticket.", partner_ids=partners.ids, subtype_xmlid="mail.mt_note")
-            ticket.sudo().with_context(skip_sla=True).write({"sla_overdue_notified_at": fields.Datetime.now()})
+                users |= manager_group.users.filtered(lambda user: ticket.company_id in user.company_ids)
+            ticket.message_post(body="SLA deadline exceeded. Please review and escalate this ticket.", subtype_xmlid="mail.mt_note")
+            ticket._schedule_sla_overdue_activities(users)
+            ticket.sudo().with_context(skip_sla=True).write({"sla_overdue_notified_at": fields.Datetime.now(), "sla_overdue_notification_key": "sla_overdue:%s:%s" % (ticket.id, ticket.sla_deadline), "sla_overdue_notification_user_ids": [fields.Command.set(users.ids)]})
+
+    def _schedule_sla_overdue_activities(self, users):
+        self.ensure_one()
+        activity_type = self.env.ref("mail.mail_activity_data_todo")
+        for user in users.filtered(lambda u: u and u != self.requester_id):
+            existing = self.activity_ids.filtered(
+                lambda activity: activity.user_id == user
+                and activity.activity_type_id == activity_type
+                and activity.summary == self._SLA_OVERDUE_ACTIVITY_SUMMARY
+            )
+            if not existing:
+                self.activity_schedule(activity_type_id=activity_type.id, user_id=user.id, summary=self._SLA_OVERDUE_ACTIVITY_SUMMARY, note="SLA deadline exceeded. Review and escalate this ticket.")
     def action_confirm(self):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_requester"):
             raise AccessError("Only Helpdesk Requesters can confirm tickets.")
@@ -722,6 +775,8 @@ class HelpdeskTicket(models.Model):
                     "stage_id": stage.id,
                     "resolved_at": False,
                     "sla_overdue_notified_at": False,
+                    "sla_overdue_notification_key": False,
+                    "sla_overdue_notification_user_ids": [fields.Command.clear()],
                     "sla_paused_at": False,
                     "sla_paused_hours": 0,
                 }

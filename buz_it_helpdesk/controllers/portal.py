@@ -1,6 +1,7 @@
 from odoo import http
 from odoo.exceptions import ValidationError
 from odoo.http import request
+from odoo.tools import html_sanitize
 from odoo.addons.portal.controllers.portal import CustomerPortal
 from werkzeug.exceptions import BadRequest
 
@@ -30,7 +31,7 @@ class HelpdeskPortal(CustomerPortal):
                 raise BadRequest(str(error)) from error
             vals = {
                 "subject": post.get("subject"),
-                "description": post.get("description"),
+                "description": html_sanitize(post.get("description") or ""),
                 "requester_id": request.env.user.id,
                 "source": "web",
                 "category_id": category_id,
@@ -62,6 +63,6 @@ class HelpdeskPortal(CustomerPortal):
             return request.not_found()
         body = (post.get("body") or "").strip()
         if body:
-            ticket.message_post(body=body, message_type="comment", subtype_xmlid="mail.mt_comment")
+            ticket.action_portal_reply(body)
         ticket.sudo()._add_uploaded_attachments(request.httprequest.files.getlist("attachments"))
         return request.redirect("/my/helpdesk/%s" % ticket.id)

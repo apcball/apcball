@@ -1,7 +1,10 @@
 from datetime import timedelta
+from io import BytesIO
+
+from werkzeug.datastructures import FileStorage
 
 from odoo import fields
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -139,6 +142,7 @@ class TestHelpdeskTicket(TransactionCase):
         self.assertEqual(ticket.stage_id, in_progress)
         self.assertFalse(ticket.resolved_at)
         self.assertFalse(ticket.sla_overdue_notified_at)
+        self.assertFalse(ticket.sla_overdue_notification_key)
         self.assertEqual(ticket.sla_paused_hours, 0)
 
     def test_cancel_and_closed_ticket_guards(self):
@@ -192,3 +196,47 @@ class TestHelpdeskTicket(TransactionCase):
         ticket.with_context(sla_change_reason="Customer reclassification").write(
             {"category_id": category.id}
         )
+    def test_sla_cron_creates_one_activity_without_outbound_mail(self):
+        ticket = self.ticket_model.with_user(self.agent).create(
+            {"subject": "SLA notification test", "category_id": self.category.id, "priority_id": self.priority.id}
+        )
+        ticket.with_context(skip_sla=True).write(
+            {"sla_deadline": fields.Datetime.now() - timedelta(hours=1), "sla_overdue_notified_at": False}
+        )
+        before_mail = self.env["mail.mail"].search_count([])
+        self.ticket_model._cron_check_sla()
+        self.ticket_model._cron_check_sla()
+        self.assertEqual(self.env["mail.mail"].search_count([]), before_mail)
+        activities = ticket.activity_ids.filtered(lambda activity: activity.summary == "SLA overdue: review ticket")
+        self.assertEqual(len(activities), 1)
+        self.assertTrue(ticket.sla_overdue_notified_at)
+        self.assertTrue(ticket.sla_overdue_notification_key)
+
+    def test_portal_reply_is_sanitized_and_closed_ticket_is_read_only(self):
+        ticket = self.ticket_model.with_user(self.agent).create(
+            {"subject": "Portal security test", "category_id": self.category.id, "priority_id": self.priority.id}
+        )
+        ticket.action_portal_reply("<p>Safe</p><script>alert('x')</script>")
+        message = ticket.message_ids.filtered(lambda item: item.body and "Safe" in item.body)[-1]
+        self.assertNotIn("<script", message.body.lower())
+        ticket.action_cancel()
+        with self.assertRaises(AccessError):
+            ticket.action_portal_reply("must be blocked")
+
+    def test_portal_attachment_limits_and_mime_validation(self):
+        ticket = self.ticket_model.with_user(self.agent).create(
+            {"subject": "Portal upload security test", "category_id": self.category.id, "priority_id": self.priority.id}
+        )
+        bad_type = FileStorage(stream=BytesIO(b"#!/bin/sh"), filename="run.sh", content_type="application/x-sh")
+        with self.assertRaises(ValidationError):
+            ticket._add_uploaded_attachments([bad_type])
+        too_large = FileStorage(
+            stream=BytesIO(b"x" * (ticket._PORTAL_MAX_ATTACHMENT_BYTES + 1)),
+            filename="large.txt",
+            content_type="text/plain",
+        )
+        with self.assertRaises(ValidationError):
+            ticket._add_uploaded_attachments([too_large])
+        valid = FileStorage(stream=BytesIO(b"hello"), filename="note.txt", content_type="text/plain")
+        ticket._add_uploaded_attachments([valid])
+        self.assertIn("note.txt", ticket.attachment_ids.mapped("name"))
