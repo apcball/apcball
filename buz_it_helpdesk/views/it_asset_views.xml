@@ -58,7 +58,7 @@
                             <field name="account_email" invisible="asset_type != 'email'"/>
                             <field name="account_url" invisible="asset_type not in ('email', 'system_account')"/>
                             <field name="license_product" invisible="asset_type != 'software_license'"/>
-                            <field name="license_key" widget="password" groups="buz_it_helpdesk.group_it_helpdesk_manager" invisible="asset_type != 'software_license'"/>
+                            <field name="license_key" widget="password" groups="buz_it_helpdesk.group_it_asset_manager" invisible="asset_type != 'software_license'"/>
                             <field name="license_expiry_date" invisible="asset_type != 'software_license'"/>
                             <field name="license_seats" invisible="asset_type != 'software_license'"/>
                             <field name="password" widget="password" groups="buz_it_helpdesk.group_it_helpdesk_manager" invisible="asset_type not in ('email', 'system_account')"/>

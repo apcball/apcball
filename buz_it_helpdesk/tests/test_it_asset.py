@@ -2,7 +2,7 @@ from base64 import b64encode
 from datetime import date
 
 from odoo import fields
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -121,3 +121,50 @@ class TestItAsset(TransactionCase):
         })
         with self.assertRaises(AccessError):
             self.env["buz.it.asset"].with_user(self.requester).search([])
+    def test_phase_5a_role_matrix_and_license_key_boundary(self):
+        asset_user_group = self.env.ref("buz_it_helpdesk.group_it_asset_user")
+        asset_manager_group = self.env.ref("buz_it_helpdesk.group_it_asset_manager")
+        asset_user = self.env["res.users"].sudo().create({
+            "name": "IT Asset User",
+            "login": "it.asset.user.5a",
+            "groups_id": [fields.Command.set([self.env.ref("base.group_user").id, asset_user_group.id])],
+        })
+        asset_manager = self.env["res.users"].sudo().create({
+            "name": "IT Asset Manager",
+            "login": "it.asset.manager.5a",
+            "groups_id": [fields.Command.set([self.env.ref("base.group_user").id, asset_manager_group.id])],
+        })
+        asset = self.env["buz.it.asset"].with_user(asset_manager).create({
+            "asset_name": "Role matrix license",
+            "asset_type": "software_license",
+            "license_product": "Product",
+            "license_key": "SECRET-5A",
+        })
+        self.assertEqual(asset.with_user(asset_manager).license_key, "SECRET-5A")
+        with self.assertRaises(AccessError):
+            asset.with_user(asset_user).read(["license_key"])
+        asset.with_user(asset_user).write({"asset_name": "Role matrix license updated"})
+
+    def test_phase_5a_company_rule_and_archive_instead_of_delete(self):
+        asset = self.env["buz.it.asset"].with_user(self.agent).create({
+            "asset_name": "Company boundary asset",
+            "company_id": self.company.id,
+        })
+        other_asset = self.env["buz.it.asset"].sudo().with_company(self.other_company).create({
+            "asset_name": "Other company asset",
+            "company_id": self.other_company.id,
+        })
+        visible_other = self.env["buz.it.asset"].with_user(self.agent).with_company(self.other_company).search([])
+        self.assertNotIn(other_asset.id, visible_other.ids)
+        with self.assertRaises(UserError):
+            asset.with_user(self.manager).unlink()
+        asset.with_user(self.manager).write({"active": False})
+        self.assertFalse(asset.active)
+    def test_phase_5a_portal_user_cannot_access_assets(self):
+        portal_user = self.env["res.users"].sudo().create({
+            "name": "Asset Portal User",
+            "login": "asset.portal.user.5a",
+            "groups_id": [fields.Command.set([self.env.ref("base.group_portal").id])],
+        })
+        with self.assertRaises(AccessError):
+            self.env["buz.it.asset"].with_user(portal_user).search([])

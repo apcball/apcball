@@ -4,6 +4,16 @@
         <field name="name">IT Management</field>
         <field name="sequence">30</field>
     </record>
+    <record id="group_it_asset_user" model="res.groups">
+        <field name="name">IT Asset User</field>
+        <field name="category_id" ref="module_category_it_helpdesk"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="group_it_asset_manager" model="res.groups">
+        <field name="name">IT Asset Manager</field>
+        <field name="category_id" ref="module_category_it_helpdesk"/>
+        <field name="implied_ids" eval="[(4, ref('group_it_asset_user'))]"/>
+    </record>
     <record id="group_it_helpdesk_requester" model="res.groups">
         <field name="name">Requester</field>
         <field name="category_id" ref="module_category_it_helpdesk"/>
@@ -12,12 +22,12 @@
     <record id="group_it_helpdesk_agent" model="res.groups">
         <field name="name">Support Agent</field>
         <field name="category_id" ref="module_category_it_helpdesk"/>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('group_it_asset_user'))]"/>
     </record>
     <record id="group_it_helpdesk_manager" model="res.groups">
         <field name="name">Helpdesk Manager</field>
         <field name="category_id" ref="module_category_it_helpdesk"/>
-        <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('group_it_helpdesk_agent'))]"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('group_it_helpdesk_agent')), (4, ref('group_it_asset_manager'))]"/>
     </record>
 
     <record id="rule_ticket_requester" model="ir.rule">

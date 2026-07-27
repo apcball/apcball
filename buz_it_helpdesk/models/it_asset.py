@@ -1,5 +1,5 @@
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class ItAssetCategory(models.Model):
@@ -125,7 +125,7 @@ class ItAsset(models.Model):
     license_key = fields.Char(
         string="License Key",
         copy=False,
-        groups="buz_it_helpdesk.group_it_helpdesk_manager",
+        groups="buz_it_helpdesk.group_it_asset_manager",
     )
     license_expiry_date = fields.Date(string="License Expiry", tracking=True)
     license_seats = fields.Integer(string="License Seats", default=1, tracking=True)
@@ -141,6 +141,8 @@ class ItAsset(models.Model):
     )
     software_ids = fields.Many2many("buz.it.asset.software", relation="buz_it_asset_software_rel", column1="asset_id", column2="software_id", string="Installed Software", check_company=True)
     department_id = fields.Many2one("hr.department", string="Department", tracking=True, check_company=True)
+    employee_id = fields.Many2one("hr.employee", string="End User", tracking=True, check_company=True)
+    custodian_id = fields.Many2one("hr.employee", string="IT Custodian", tracking=True, check_company=True)
     assigned_user_id = fields.Many2one("res.users", string="Responsible User", tracking=True)
     user_nickname = fields.Char(string="Nickname", tracking=True)
     computer_username = fields.Char(string="User Name", tracking=True)
@@ -178,6 +180,9 @@ class ItAsset(models.Model):
         ("asset_name_uniq", "unique(name)", "Asset number must be unique."),
         ("serial_company_uniq", "unique(serial_number, company_id)", "Serial Number must be unique per company."),
     ]
+
+    def unlink(self):
+        raise UserError("IT Assets are archived instead of deleted.")
 
     def action_set_under_repair(self):
         self.write({"status": "repair"})
