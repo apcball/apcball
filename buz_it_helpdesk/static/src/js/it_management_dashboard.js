@@ -23,6 +23,8 @@ export class ItManagementDashboard extends Component {
             loading: false,
             error: false,
             filterVersion: 0,
+            lastUpdated: null,
+            sidebarCollapsed: false,
         });
         this.load = this.load.bind(this);
         this.selectSection = this.selectSection.bind(this);
@@ -32,17 +34,28 @@ export class ItManagementDashboard extends Component {
     }
 
     async load() {
+        const sequence = ++this.loadSequence;
+        const section = this.state.section;
+        const filters = { ...this.state.filters };
         this.state.loading = true;
         this.state.error = false;
         try {
-            this.state.data = await this.orm.call(
+            const data = await this.orm.call(
                 "it.management.dashboard", "get_dashboard_data",
-                [this.state.section, this.state.filters]
+                [section, filters]
             );
+            if (sequence === this.loadSequence && section === this.state.section) {
+                this.state.data = data;
+                this.state.lastUpdated = new Date();
+            }
         } catch (error) {
-            this.state.error = true;
+            if (sequence === this.loadSequence) {
+                this.state.error = true;
+            }
         } finally {
-            this.state.loading = false;
+            if (sequence === this.loadSequence) {
+                this.state.loading = false;
+            }
         }
     }
 
@@ -58,6 +71,14 @@ export class ItManagementDashboard extends Component {
     async onFilterChange(event) {
         this.state.filters[event.target.name] = event.target.value;
         this.state.filterVersion += 1;
+        await this.load();
+    }
+
+    toggleSidebar() {
+        this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
+    }
+
+    async refresh() {
         await this.load();
     }
 
@@ -78,6 +99,18 @@ export class ItManagementDashboard extends Component {
 
     isCompanySelected(companyId) {
         return String(companyId) === String(this.state.filters.company_id);
+    }
+
+    get lastUpdatedLabel() {
+        if (!this.state.lastUpdated) {
+            return "Not loaded yet";
+        }
+        return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(this.state.lastUpdated);
+    }
+
+    get hasData() {
+        const data = this.state.data || {};
+        return Boolean(data.kpis?.length || data.tickets?.length || data.assets?.length || data.status_overview?.length || data.status?.length);
     }
 
     get filterKey() {
