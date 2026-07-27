@@ -12,7 +12,7 @@ class HelpdeskTeam(models.Model):
     sequence = fields.Integer(default=10)
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company)
     member_ids = fields.Many2many("res.users", string="Team Members")
-    category_ids = fields.Many2many("it.helpdesk.category", string="Categories")
+    category_ids = fields.Many2many("it.helpdesk.category", string="Categories", check_company=True)
     alias_id = fields.Many2one("mail.alias", string="Email Alias", ondelete="set null")
     active = fields.Boolean(default=True)
 

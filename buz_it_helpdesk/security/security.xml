@@ -17,7 +17,7 @@
     <record id="group_it_helpdesk_manager" model="res.groups">
         <field name="name">Helpdesk Manager</field>
         <field name="category_id" ref="module_category_it_helpdesk"/>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('group_it_helpdesk_agent'))]"/>
     </record>
 
     <record id="rule_ticket_requester" model="ir.rule">
@@ -42,19 +42,19 @@
     <record id="rule_stage_company" model="ir.rule">
         <field name="name">Helpdesk stages: allowed companies</field>
         <field name="model_id" ref="model_it_helpdesk_stage"/>
-        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester'))]"/>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester')), (4, ref('group_it_helpdesk_agent'))]"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
     <record id="rule_category_company" model="ir.rule">
         <field name="name">Helpdesk categories: allowed companies</field>
         <field name="model_id" ref="model_it_helpdesk_category"/>
-        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester'))]"/>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester')), (4, ref('group_it_helpdesk_agent'))]"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
     <record id="rule_priority_company" model="ir.rule">
         <field name="name">Helpdesk priorities: allowed companies</field>
         <field name="model_id" ref="model_it_helpdesk_priority"/>
-        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester'))]"/>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester')), (4, ref('group_it_helpdesk_agent'))]"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
     <record id="rule_sla_company" model="ir.rule">
@@ -66,7 +66,7 @@
     <record id="rule_tag_company" model="ir.rule">
         <field name="name">Helpdesk tags: allowed companies</field>
         <field name="model_id" ref="model_it_helpdesk_tag"/>
-        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester'))]"/>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester')), (4, ref('group_it_helpdesk_agent'))]"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
 </odoo>

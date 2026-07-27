@@ -157,9 +157,78 @@ class HelpdeskTicket(models.Model):
         )
 
     @api.model
-    def _default_stage_id(self):
-        stage = self._get_stage_for_company(self.env.company, "Draft")
+    def _default_stage_id(self, company=None):
+        stage = self._get_stage_for_company(company or self.env.company, "Draft")
         return stage.id if stage else False
+
+    @api.model
+    def _default_priority_id(self, company=None):
+        company = company or self.env.company
+        priority = self.env["it.helpdesk.priority"].search(
+            [("company_id", "=", company.id), ("active", "=", True)],
+            order="sequence, id",
+            limit=1,
+        )
+        return priority.id if priority else False
+
+    @api.model
+    def _default_team_id(self, company=None):
+        company = company or self.env.company
+        team = self.env["it.helpdesk.team"].search(
+            [("company_id", "=", company.id), ("active", "=", True)],
+            order="sequence, id",
+            limit=1,
+        )
+        return team.id if team else False
+
+    @api.model
+    def _ensure_company_defaults(self, company=None):
+        company = company or self.env.company
+        stage_model = self.env["it.helpdesk.stage"].sudo().with_company(company)
+        stages_by_name = {
+            stage.name: stage
+            for stage in stage_model.search([("company_id", "=", company.id)], order="sequence, id")
+        }
+        for name, sequence, is_closed in [
+            ("Draft", 0, False),
+            ("New", 1, False),
+            ("In Progress", 3, False),
+            ("Pending User", 4, False),
+            ("Resolved", 5, False),
+            ("Closed", 6, True),
+            ("Cancelled", 7, True),
+        ]:
+            if name not in stages_by_name:
+                stages_by_name[name] = stage_model.create(
+                    {"name": name, "sequence": sequence, "is_closed": is_closed, "company_id": company.id}
+                )
+        category_model = self.env["it.helpdesk.category"].sudo().with_company(company)
+        category = category_model.search([("company_id", "=", company.id)], order="sequence, id", limit=1)
+        if not category:
+            category = category_model.create({"name": "Other", "company_id": company.id})
+        priority_model = self.env["it.helpdesk.priority"].sudo().with_company(company)
+        priority = priority_model.search([("company_id", "=", company.id)], order="sequence, id", limit=1)
+        if not priority:
+            priority = priority_model.create(
+                {"name": "Medium", "code": "medium", "sequence": 2, "company_id": company.id}
+            )
+        team_model = self.env["it.helpdesk.team"].sudo().with_company(company)
+        team = team_model.search([("company_id", "=", company.id), ("active", "=", True)], order="sequence, id", limit=1)
+        if not team:
+            team = team_model.create({"name": "IT Helpdesk", "sequence": 1, "company_id": company.id})
+        sla_model = self.env["it.helpdesk.sla"].sudo().with_company(company)
+        if not sla_model.search([("company_id", "=", company.id), ("active", "=", True)], limit=1):
+            sla_model.create(
+                {
+                    "name": "Standard SLA",
+                    "response_hours": 4,
+                    "resolution_hours": 24,
+                    "category_id": category.id,
+                    "priority_id": priority.id,
+                    "company_id": company.id,
+                }
+            )
+        return True
 
     @api.model
     def _default_category_id(self, company=None):
@@ -217,25 +286,21 @@ class HelpdeskTicket(models.Model):
     def create(self, vals_list):
         requester_mode = not self.env.su and not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         for vals in vals_list:
+            company = self.env["res.company"].browse(vals.get("company_id") or self.env.company.id)
+            self._ensure_company_defaults(company)
             if requester_mode:
-                vals["stage_id"] = self._default_stage_id()
+                vals["stage_id"] = self._default_stage_id(company)
             requester_id = vals.get("requester_id") or self.env.user.id
             requester = self.env["res.users"].browse(requester_id)
             if vals.get("name", "New") == "New":
                 vals["name"] = self.env["ir.sequence"].next_by_code("it.helpdesk.ticket") or "New"
-            vals.setdefault("stage_id", self._default_stage_id())
-            company = self.env["res.company"].browse(vals.get("company_id") or self.env.company.id)
-            priority = self.env["it.helpdesk.priority"].search(
-                [("company_id", "=", company.id), ("active", "=", True)],
-                order="sequence, id",
-                limit=1,
-            )
+            vals.setdefault("stage_id", self._default_stage_id(company))
             vals.setdefault("category_id", self._default_category_id(company))
-            vals.setdefault("priority_id", priority.id)
+            vals.setdefault("priority_id", self._default_priority_id(company))
             vals.setdefault("requester_id", requester_id)
             vals.setdefault("department", self._get_requester_department_name(requester))
             if not vals.get("team_id"):
-                team = self.env["it.helpdesk.team"].search([( "company_id", "=", vals.get("company_id", self.env.company.id)), ("active", "=", True)], order="sequence, id", limit=1)
+                team = self.env["it.helpdesk.team"].search([("id", "=", self._default_team_id(company)), ("active", "=", True)], limit=1)
                 vals["team_id"] = team.id
         records = super().create(vals_list)
         records.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()

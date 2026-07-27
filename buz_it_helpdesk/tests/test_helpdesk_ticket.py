@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -220,3 +220,76 @@ class TestHelpdeskTicket(TransactionCase):
             model._validate_portal_selection("not-an-id", self.priority.id)
         with self.assertRaises(ValidationError):
             model._validate_portal_selection(self.other_category.id, self.other_priority.id)
+
+    def test_defaults_are_provisioned_for_each_company(self):
+        model = self.env["it.helpdesk.ticket"]
+        model.sudo()._ensure_company_defaults(self.other_company)
+        for model_name in (
+            "it.helpdesk.stage",
+            "it.helpdesk.category",
+            "it.helpdesk.priority",
+            "it.helpdesk.team",
+            "it.helpdesk.sla",
+        ):
+            records = self.env[model_name].sudo().search([("company_id", "=", self.other_company.id)])
+            self.assertTrue(records, model_name)
+
+        ticket = model.sudo().create(
+            {"subject": "Other company defaults", "company_id": self.other_company.id}
+        )
+        self.assertEqual(ticket.company_id, self.other_company)
+        self.assertTrue(ticket.stage_id and ticket.category_id and ticket.priority_id and ticket.team_id)
+
+    def test_ticket_rejects_references_from_another_company(self):
+        base_vals = {
+            "subject": "Cross company reference",
+            "company_id": self.company.id,
+            "category_id": self.category.id,
+            "priority_id": self.priority.id,
+            "team_id": self.team.id,
+        }
+        for field, value in (
+            ("category_id", self.other_category.id),
+            ("priority_id", self.other_priority.id),
+        ):
+            with self.assertRaises(UserError):
+                self.env["it.helpdesk.ticket"].sudo().create({**base_vals, field: value})
+
+        other_team = self.env["it.helpdesk.team"].sudo().create(
+            {"name": "Other Company Team", "company_id": self.other_company.id}
+        )
+        with self.assertRaises(UserError):
+            self.env["it.helpdesk.ticket"].sudo().create({**base_vals, "team_id": other_team.id})
+
+        other_sla = self.env["it.helpdesk.sla"].sudo().create(
+            {
+                "name": "Other Company SLA",
+                "company_id": self.other_company.id,
+                "category_id": self.other_category.id,
+                "priority_id": self.other_priority.id,
+            }
+        )
+        with self.assertRaises(UserError):
+            self.env["it.helpdesk.ticket"].sudo().create({**base_vals, "sla_id": other_sla.id})
+
+    def test_manager_only_group_can_run_agent_workflow(self):
+        self.assertTrue(self.manager.has_group("buz_it_helpdesk.group_it_helpdesk_agent"))
+        manager_team = self.env["it.helpdesk.team"].sudo().create(
+            {
+                "name": "Manager Workflow Team",
+                "company_id": self.company.id,
+                "member_ids": [fields.Command.link(self.manager.id)],
+            }
+        )
+        ticket = self.env["it.helpdesk.ticket"].sudo().create(
+            {
+                "subject": "Manager workflow",
+                "company_id": self.company.id,
+                "stage_id": self.stage_new.id,
+                "category_id": self.category.id,
+                "priority_id": self.priority.id,
+                "team_id": manager_team.id,
+            }
+        )
+        ticket.with_user(self.manager).action_assign()
+        self.assertEqual(ticket.assigned_to, self.manager)
