@@ -23,13 +23,15 @@
     --it-radius-lg: .875rem;
     display: grid;
     grid-template-columns: 15rem minmax(0, 1fr);
+    height: calc(100vh - 3.5rem);
     min-height: calc(100vh - 3.5rem);
+    overflow: hidden;
     background: var(--it-color-canvas);
     color: var(--it-color-ink);
     font-size: .875rem;
 }
 .o_it_management_dashboard.is-collapsed { grid-template-columns: 4.25rem minmax(0, 1fr); }
-.o_it_management_sidebar { position: relative; display: flex; flex-direction: column; gap: var(--it-space-4); padding: var(--it-space-4) var(--it-space-3); background: var(--it-color-surface); border-right: 1px solid var(--it-color-border); }
+.o_it_management_sidebar { position: relative; display: flex; flex-direction: column; gap: var(--it-space-4); min-height: 0; padding: var(--it-space-4) var(--it-space-3); overflow-y: auto; background: var(--it-color-surface); border-right: 1px solid var(--it-color-border); }
 .o_it_management_brand { display: flex; align-items: center; gap: var(--it-space-2); min-height: 2.25rem; padding: 0 var(--it-space-2); color: var(--it-color-primary); font-size: .75rem; font-weight: 800; letter-spacing: .08em; white-space: nowrap; }
 .o_it_management_brand_mark { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: var(--it-radius-sm); background: var(--it-color-primary); color: #fff; font-size: .7rem; letter-spacing: 0; }
 .o_it_management_brand_text { overflow: hidden; }
@@ -43,7 +45,7 @@
 .is-collapsed .o_it_management_brand_text, .is-collapsed .o_it_management_nav span { display: none; }
 .is-collapsed .o_it_management_nav { justify-content: center; padding: 0; }
 .is-collapsed .o_it_management_sidebar_toggle { align-self: center; }
-.o_it_management_main { min-width: 0; padding: var(--it-space-6); }
+.o_it_management_main { min-width: 0; min-height: 0; padding: var(--it-space-6); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .o_it_management_header { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--it-space-6); margin-bottom: var(--it-space-3); }
 .o_it_management_heading { min-width: 0; }
 .o_it_management_eyebrow { margin: 0 0 var(--it-space-1); color: var(--it-color-primary); font-size: .7rem; font-weight: 800; letter-spacing: .1em; }
@@ -65,6 +67,10 @@
 .o_it_management_skeleton_kpi { width: min(12rem, 28%); height: 5rem; }
 .o_it_management_skeleton_panel { width: 100%; height: 8rem; }
 .o_it_management_section { min-width: 0; }
+.o_it_management_overview_kpi_panel { padding: var(--it-space-4); border: 1px solid var(--it-color-border); border-radius: var(--it-radius-lg); background: var(--it-color-surface); box-shadow: 0 1px 2px #1018280d; }
+.o_it_management_overview_kpi_heading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--it-space-3); margin-bottom: var(--it-space-3); }
+.o_it_management_overview_kpi_heading h2 { margin: 0; font-size: 1.05rem; }
+.o_it_management_overview_kpi_heading span { color: var(--it-color-muted); font-size: .75rem; }
 .o_it_management_kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--it-space-3); }
 .o_it_management_kpi, .o_it_management_row { border: 1px solid var(--it-color-border); background: var(--it-color-surface); text-align: left; cursor: pointer; }
 .o_it_management_kpi { min-width: 0; min-height: 9.25rem; padding: var(--it-space-4); border-radius: var(--it-radius-lg); display: flex; flex-direction: column; justify-content: flex-start; gap: var(--it-space-2); }
@@ -76,6 +82,11 @@
 .o_it_management_kpi strong { display: block; margin-top: .25rem; }
 .o_it_management_kpi strong { color: var(--it-color-primary); font-size: 1.8rem; line-height: 1; }
 .o_it_management_kpi_previous, .o_it_management_kpi_delta { padding-left: 0; }
+.o_it_management_overview_kpi_panel .o_it_management_kpis { gap: 0; }
+.o_it_management_overview_kpi_panel .o_it_management_kpi { border: 0; border-radius: 0; padding: .25rem 1rem; }
+.o_it_management_overview_kpi_panel .o_it_management_kpi + .o_it_management_kpi { border-left: 1px solid #d0d5dd; }
+.o_it_management_overview_kpi_panel .o_it_management_kpi:hover,
+.o_it_management_overview_kpi_panel .o_it_management_kpi:focus-visible { background: #f8fbff; box-shadow: none; }
 .o_it_management_kpi.kpi-sla_overdue .o_it_management_kpi_icon { background: #fff1f3; color: #d92d20; }
 .o_it_management_kpi.kpi-in_use .o_it_management_kpi_icon { background: #ecfdf3; color: #039855; }
 .o_it_management_kpi.kpi-repair .o_it_management_kpi_icon { background: #fff6ed; color: #f79009; }
@@ -94,7 +105,7 @@
 @keyframes it-management-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .o_it_management_skeleton { animation: none; } }
 @media (max-width: 1100px) { .o_it_management_kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .o_it_management_header { align-items: flex-start; flex-direction: column; } .o_it_management_filter_bar { justify-content: flex-start; } }
-@media (max-width: 760px) { .o_it_management_dashboard, .o_it_management_dashboard.is-collapsed { display: block; min-height: auto; } .o_it_management_sidebar { display: flex; flex-direction: row; align-items: center; overflow-x: auto; padding: var(--it-space-2); border-right: 0; border-bottom: 1px solid var(--it-color-border); } .o_it_management_sidebar_toggle { display: none; } .o_it_management_nav_group { flex-direction: row; min-width: max-content; } .o_it_management_nav { width: auto; } .o_it_management_brand_text, .is-collapsed .o_it_management_brand_text, .is-collapsed .o_it_management_nav span { display: inline; } .o_it_management_main { padding: var(--it-space-4); } .o_it_management_filter_bar { width: 100%; } .o_it_management_control { flex: 1 1 8rem; } .o_it_management_refresh { flex: 0 0 auto; } .o_it_management_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .o_it_management_dashboard, .o_it_management_dashboard.is-collapsed { display: block; height: auto; min-height: auto; overflow: visible; } .o_it_management_sidebar { display: flex; flex-direction: row; align-items: center; overflow-x: auto; padding: var(--it-space-2); border-right: 0; border-bottom: 1px solid var(--it-color-border); } .o_it_management_sidebar_toggle { display: none; } .o_it_management_nav_group { flex-direction: row; min-width: max-content; } .o_it_management_nav { width: auto; } .o_it_management_brand_text, .is-collapsed .o_it_management_brand_text, .is-collapsed .o_it_management_nav span { display: inline; } .o_it_management_main { max-height: none; padding: var(--it-space-4); overflow: visible; } .o_it_management_filter_bar { width: 100%; } .o_it_management_control { flex: 1 1 8rem; } .o_it_management_refresh { flex: 0 0 auto; } .o_it_management_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .o_it_management_header { gap: var(--it-space-4); } .o_it_management_filter_bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .o_it_management_control select, .o_it_management_control input { min-width: 0; width: 100%; } .o_it_management_refresh { width: 100%; } .o_it_management_kpis, .o_it_management_cards { grid-template-columns: minmax(0, 1fr); } .o_it_management_cards article:last-child:nth-child(3) { grid-column: auto; } .o_it_management_meta { align-items: flex-start; flex-direction: column; } }
 .o_it_management_kpi {
     position: relative;
@@ -370,13 +381,13 @@
     .o_it_management_main { padding: 1.25rem; }
 }
 @media (max-width: 900px) {
-    .o_it_management_dashboard, .o_it_management_dashboard.is-collapsed { display: block; min-height: auto; }
+    .o_it_management_dashboard, .o_it_management_dashboard.is-collapsed { display: block; height: auto; min-height: auto; overflow: visible; }
     .o_it_management_sidebar { flex-direction: row; align-items: center; overflow-x: auto; padding: .5rem; border-right: 0; border-bottom: 1px solid var(--it-color-border); }
     .o_it_management_sidebar_toggle { display: none; }
     .o_it_management_nav_group { flex-direction: row; min-width: max-content; }
     .o_it_management_nav { width: auto; }
     .o_it_management_brand_text, .is-collapsed .o_it_management_brand_text, .is-collapsed .o_it_management_nav span { display: inline; }
-    .o_it_management_main { padding: 1rem; }
+    .o_it_management_main { max-height: none; padding: 1rem; overflow: visible; }
     .o_it_management_kpis, .o_it_management_charts, .o_it_management_ui4_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .o_it_management_chart_panel_trend { grid-column: 1 / -1; }
 }
