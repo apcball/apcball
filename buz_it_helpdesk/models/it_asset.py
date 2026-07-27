@@ -122,11 +122,13 @@ class ItAsset(models.Model):
         groups="buz_it_helpdesk.group_it_helpdesk_manager",
     )
     license_product = fields.Char(string="Licensed Product", tracking=True)
+    license_version = fields.Char(string="License Version", tracking=True)
     license_key = fields.Char(
         string="License Key",
         copy=False,
         groups="buz_it_helpdesk.group_it_asset_manager",
     )
+    license_start_date = fields.Date(string="License Start", tracking=True)
     license_expiry_date = fields.Date(string="License Expiry", tracking=True)
     license_seats = fields.Integer(string="License Seats", default=1, tracking=True)
     service_name = fields.Char(string="Platform / Service", tracking=True)
@@ -181,6 +183,41 @@ class ItAsset(models.Model):
         ("serial_company_uniq", "unique(serial_number, company_id)", "Serial Number must be unique per company."),
     ]
 
+
+    @api.constrains(
+        "asset_type", "asset_name", "license_product", "license_version",
+        "license_start_date", "license_expiry_date", "license_seats",
+        "company_id", "active",
+    )
+    def _check_phase_5b_master_data(self):
+        for asset in self:
+            if asset.asset_type in ("computer", "printer") and not asset.asset_name:
+                raise ValidationError("Hardware Asset Name is required.")
+            if asset.asset_type != "software_license":
+                continue
+            required = {
+                "Licensed Product": asset.license_product,
+                "License Version": asset.license_version,
+                "License Start": asset.license_start_date,
+                "License Expiry": asset.license_expiry_date,
+            }
+            missing = [label for label, value in required.items() if not value]
+            if missing:
+                raise ValidationError("Software License requires: %s." % ", ".join(missing))
+            if asset.license_seats < 1:
+                raise ValidationError("License Seats must be at least 1.")
+            if asset.license_expiry_date < asset.license_start_date:
+                raise ValidationError("License Expiry cannot be before License Start.")
+            duplicate = self.search([
+                ("id", "!=", asset.id), ("active", "=", True),
+                ("company_id", "=", asset.company_id.id),
+                ("asset_type", "=", "software_license"),
+                ("license_product", "=", asset.license_product),
+                ("license_version", "=", asset.license_version),
+                ("license_start_date", "=", asset.license_start_date),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError("Duplicate Software License record for the same product, version, and start date.")
     def unlink(self):
         raise UserError("IT Assets are archived instead of deleted.")
 

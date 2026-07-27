@@ -138,6 +138,9 @@ class TestItAsset(TransactionCase):
             "asset_name": "Role matrix license",
             "asset_type": "software_license",
             "license_product": "Product",
+            "license_version": "2026",
+            "license_start_date": date(2026, 1, 1),
+            "license_expiry_date": date(2026, 12, 31),
             "license_key": "SECRET-5A",
         })
         self.assertEqual(asset.with_user(asset_manager).license_key, "SECRET-5A")
@@ -168,3 +171,57 @@ class TestItAsset(TransactionCase):
         })
         with self.assertRaises(AccessError):
             self.env["buz.it.asset"].with_user(portal_user).search([])
+    def test_phase_5b_hardware_master_fields(self):
+        vendor = self.env["res.partner"].create({"name": "5B Vendor"})
+        asset = self.env["buz.it.asset"].with_user(self.agent).create({
+            "asset_type": "computer",
+            "asset_name": "5B Hardware",
+            "serial_number": "5B-SERIAL-1",
+            "brand": "Example",
+            "model_name": "Model X",
+            "model_code": "X-1",
+            "location": "IT Room",
+            "purchase_date": date(2026, 1, 10),
+            "warranty_expiry_date": date(2028, 1, 9),
+            "vendor_id": vendor.id,
+        })
+        self.assertEqual(asset.serial_number, "5B-SERIAL-1")
+        self.assertEqual(asset.location, "IT Room")
+        with self.assertRaises(ValidationError):
+            self.env["buz.it.asset"].with_user(self.agent).create({
+                "asset_type": "computer",
+                "serial_number": "5B-NO-NAME",
+            })
+
+    def test_phase_5b_software_license_required_and_duplicate_rules(self):
+        model = self.env["buz.it.asset"].with_user(self.manager)
+        valid = {
+            "asset_type": "software_license",
+            "asset_name": "5B License",
+            "license_product": "Example Suite",
+            "license_version": "2026",
+            "license_start_date": date(2026, 1, 1),
+            "license_expiry_date": date(2026, 12, 31),
+            "license_seats": 10,
+            "license_key": "SECRET-5B",
+        }
+        license_asset = model.create(valid)
+        self.assertEqual(license_asset.license_seats, 10)
+        with self.assertRaises(ValidationError):
+            model.create(dict(valid, asset_name="Missing Version", license_version=False))
+        with self.assertRaises(ValidationError):
+            model.create(dict(valid, asset_name="Bad Seats", license_seats=0))
+        with self.assertRaises(ValidationError):
+            model.create(dict(valid, asset_name="Bad Dates", license_start_date=date(2027, 1, 1)))
+        with self.assertRaises(ValidationError):
+            model.create(dict(valid, asset_name="Duplicate License"))
+
+    def test_phase_5b_sensitive_key_is_not_in_asset_views(self):
+        views = self.env["ir.ui.view"].sudo()
+        for xml_id in (
+            "buz_it_helpdesk.view_buz_it_asset_list",
+            "buz_it_helpdesk.view_buz_it_asset_kanban",
+            "buz_it_helpdesk.view_buz_it_asset_search",
+        ):
+            view = self.env.ref(xml_id)
+            self.assertNotIn("name=\"license_key\"", view.arch)

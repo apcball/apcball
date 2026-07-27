@@ -13,9 +13,9 @@
     <menuitem id="menu_it_assets_all" name="All Hardware" parent="menu_it_assets_hardware" action="action_buz_it_assets" sequence="3" groups="buz_it_helpdesk.group_it_asset_user,buz_it_helpdesk.group_it_asset_manager"/>
     <menuitem id="menu_it_assets_software" name="Software &amp; Licenses" parent="menu_it_assets" sequence="20" groups="buz_it_helpdesk.group_it_asset_user,buz_it_helpdesk.group_it_asset_manager"/>
     <menuitem id="menu_it_assets_software_licenses" name="Software Licenses" parent="menu_it_assets_software" action="action_buz_it_asset_software_licenses" sequence="1" groups="buz_it_helpdesk.group_it_asset_user,buz_it_helpdesk.group_it_asset_manager"/>
-    <menuitem id="menu_it_assets_accounts" name="Accounts &amp; Access" parent="menu_it_assets" sequence="30" groups="buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-    <menuitem id="menu_it_assets_email" name="Email Accounts" parent="menu_it_assets_accounts" action="action_buz_it_asset_email_accounts" sequence="1" groups="buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-    <menuitem id="menu_it_assets_system_accounts" name="System Accounts" parent="menu_it_assets_accounts" action="action_buz_it_asset_system_accounts" sequence="2" groups="buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_it_assets_accounts" name="Accounts &amp; Access" parent="menu_it_assets" sequence="30" groups="base.group_no_one"/>
+    <menuitem id="menu_it_assets_email" name="Email Accounts" parent="menu_it_assets_accounts" action="action_buz_it_asset_email_accounts" sequence="1" groups="base.group_no_one"/>
+    <menuitem id="menu_it_assets_system_accounts" name="System Accounts" parent="menu_it_assets_accounts" action="action_buz_it_asset_system_accounts" sequence="2" groups="base.group_no_one"/>
     <menuitem id="menu_it_assets_configuration" name="Configuration" parent="menu_it_assets" sequence="90" groups="buz_it_helpdesk.group_it_asset_manager"/>
     <menuitem id="menu_it_asset_categories" name="Hardware Categories" parent="menu_it_assets_configuration" action="action_buz_it_asset_categories" sequence="1" groups="buz_it_helpdesk.group_it_asset_manager"/>
     <menuitem id="menu_it_asset_spec_categories" name="Computer Specification Categories" parent="menu_it_assets_configuration" action="action_buz_it_asset_spec_categories" sequence="2" groups="buz_it_helpdesk.group_it_asset_manager"/>
