@@ -1,9 +1,9 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="buz_it_helpdesk.HelpdeskDashboard">
         <div class="o_helpdesk_dashboard">
             <div class="o_helpdesk_dashboard_content container-fluid">
-                <header class="o_helpdesk_dashboard_header">
+                <header class="o_helpdesk_dashboard_header" t-if="!props.embedded">
                     <div>
                         <div class="o_helpdesk_dashboard_eyebrow">IT MANAGEMENT</div>
                         <h1>IT Helpdesk Overview</h1>
@@ -15,7 +15,7 @@
                     </button>
                 </header>
 
-                <section class="o_helpdesk_panel o_helpdesk_filter_panel" aria-label="Dashboard filters">
+                <section class="o_helpdesk_panel o_helpdesk_filter_panel" aria-label="Dashboard filters" t-if="!props.embedded">
                     <div class="o_helpdesk_panel_heading">
                         <div><i class="fa fa-filter" aria-hidden="true"/><span>Filters</span></div>
                         <span class="o_helpdesk_filter_hint">All metrics update automatically</span>

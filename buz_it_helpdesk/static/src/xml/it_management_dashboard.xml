@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_it_helpdesk.ItManagementDashboard">
+        <div class="o_it_management_dashboard">
+            <aside class="o_it_management_sidebar" aria-label="IT Management Dashboard sections">
+                <div class="o_it_management_brand">IT MANAGEMENT</div>
+                <button type="button" class="o_it_management_nav" t-att-class="{'active': state.section == 'overview'}" t-on-click="() => selectSection('overview')">Overview</button>
+                <button type="button" class="o_it_management_nav" t-att-class="{'active': state.section == 'helpdesk'}" t-on-click="() => selectSection('helpdesk')">Helpdesk</button>
+                <button type="button" class="o_it_management_nav" t-att-class="{'active': state.section == 'asset'}" t-on-click="() => selectSection('asset')">IT Asset</button>
+            </aside>
+            <main class="o_it_management_main">
+                <header class="o_it_management_header">
+                    <div><h1>IT Management Dashboard</h1><p>Unified operational view for Helpdesk and IT Assets.</p></div>
+                    <div class="o_it_management_filters">
+                        <label>Company<select name="company_id" t-on-change="onFilterChange" t-att-disabled="state.loading"><option value="">All</option><t t-foreach="state.data?.options?.companies || []" t-as="company" t-key="company.id"><option t-att-value="company.id" t-att-selected="isCompanySelected(company.id)"><t t-esc="company.label"/></option></t></select></label>
+                        <label>From<input type="date" name="date_from" t-att-value="state.filters.date_from" t-on-change="onFilterChange" t-att-disabled="state.loading"/></label>
+                        <label>To<input type="date" name="date_to" t-att-value="state.filters.date_to" t-on-change="onFilterChange" t-att-disabled="state.loading"/></label>
+                    </div>
+                </header>
+                <div t-if="state.loading" class="o_it_management_state" role="status"><i class="fa fa-circle-o-notch fa-spin"/><strong>Loading selected dashboard</strong></div>
+                <div t-elif="state.error" class="o_it_management_state o_it_management_error" role="alert"><i class="fa fa-exclamation-triangle"/><strong>Dashboard data could not be loaded</strong><button class="btn btn-outline-danger" t-on-click="load">Try Again</button></div>
+                <t t-elif="state.section == 'helpdesk'"><HelpdeskDashboard t-key="filterKey" t-props="{ embedded: true, filters: state.filters }"/></t>
+                <section t-elif="state.section == 'overview'" class="o_it_management_section">
+                    <div class="o_it_management_kpis"><t t-foreach="state.data?.kpis || []" t-as="kpi" t-key="kpi.code"><button class="o_it_management_kpi" t-on-click="() => openSource({...kpi, res_model: kpi.code.startsWith('open') || kpi.code.includes('sla') ? 'it.helpdesk.ticket' : 'buz.it.asset'}, kpi.label)"><span><t t-esc="kpi.label"/></span><strong><t t-esc="kpi.count"/></strong></button></t></div>
+                    <div class="o_it_management_cards"><article><h2>Helpdesk Status</h2><t t-foreach="state.data?.tickets || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'it.helpdesk.ticket'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t></article><article><h2>Asset Status</h2><t t-foreach="state.data?.assets || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t></article></div>
+                    <div t-if="!state.data?.kpis?.length" class="o_it_management_empty">No dashboard data for the selected filters.</div>
+                </section>
+                <section t-elif="state.section == 'asset'" class="o_it_management_section"><div class="o_it_management_kpis"><t t-foreach="state.data?.kpis || []" t-as="kpi" t-key="kpi.code"><button class="o_it_management_kpi" t-on-click="() => openSource({...kpi, res_model: 'buz.it.asset'}, kpi.label)"><span><t t-esc="kpi.label"/></span><strong><t t-esc="kpi.count"/></strong></button></t></div><div class="o_it_management_cards"><article><h2>Status</h2><t t-foreach="state.data?.status || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t></article><article><h2>By Type</h2><t t-foreach="state.data?.types || []" t-as="row" t-key="row.label"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t></article><article><h2>By Department</h2><t t-foreach="state.data?.departments || []" t-as="row" t-key="row.label"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t></article></div><div t-if="!state.data?.kpis?.length" class="o_it_management_empty">No asset data for the selected filters.</div></section>
+            </main>
+        </div>
+    </t>
+</templates>

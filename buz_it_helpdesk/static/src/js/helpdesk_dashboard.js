@@ -21,6 +21,7 @@ const defaultFilters = () => ({
 });
 
 export class HelpdeskDashboard extends Component {
+    static props = { embedded: { type: Boolean, optional: true }, filters: { type: Object, optional: true } };
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
@@ -30,7 +31,7 @@ export class HelpdeskDashboard extends Component {
         this.load = this.load.bind(this);
         this.loadSequence = 0;
         this.state = useState({
-            filters: defaultFilters(),
+            filters: this.props.filters ? { ...this.props.filters } : defaultFilters(),
             data: null,
             loading: true,
             error: false,
@@ -105,4 +106,4 @@ export class HelpdeskDashboard extends Component {
 }
 
 HelpdeskDashboard.template = "buz_it_helpdesk.HelpdeskDashboard";
-registry.category("actions").add("buz_it_helpdesk_dashboard", HelpdeskDashboard);
+// HelpdeskDashboard is embedded by ItManagementDashboard.

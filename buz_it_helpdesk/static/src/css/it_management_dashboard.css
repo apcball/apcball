@@ -1,0 +1,26 @@
+.o_it_management_dashboard { display: flex; min-height: 100%; background: #f8fafc; color: #172033; }
+.o_it_management_sidebar { width: 15rem; padding: 1.25rem .85rem; background: #101828; color: #d0d5dd; flex: 0 0 auto; }
+.o_it_management_brand { color: #fff; font-weight: 700; letter-spacing: .08em; font-size: .75rem; padding: .5rem .75rem 1.5rem; }
+.o_it_management_nav { width: 100%; border: 0; border-radius: .5rem; background: transparent; color: inherit; text-align: left; padding: .75rem; margin-bottom: .3rem; cursor: pointer; }
+.o_it_management_nav:hover, .o_it_management_nav.active { background: #344054; color: #fff; }
+.o_it_management_main { min-width: 0; flex: 1; padding: 1.5rem; }
+.o_it_management_header { display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; }
+.o_it_management_header h1 { margin: 0; font-size: 1.65rem; }
+.o_it_management_header p { color: #667085; margin: .35rem 0 0; }
+.o_it_management_filters { display: flex; gap: .65rem; flex-wrap: wrap; align-items: end; }
+.o_it_management_filters label { display: flex; flex-direction: column; gap: .25rem; color: #667085; font-size: .75rem; font-weight: 600; }
+.o_it_management_filters input, .o_it_management_filters select { min-width: 8rem; border: 1px solid #d0d5dd; border-radius: .4rem; padding: .45rem; background: #fff; color: #172033; }
+.o_it_management_kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
+.o_it_management_kpi, .o_it_management_row { border: 1px solid #eaecf0; background: #fff; text-align: left; cursor: pointer; }
+.o_it_management_kpi { border-radius: .75rem; padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.o_it_management_kpi:hover, .o_it_management_row:hover { border-color: #84adff; box-shadow: 0 2px 8px #10182812; }
+.o_it_management_kpi span { color: #667085; font-size: .8rem; }
+.o_it_management_kpi strong { font-size: 1.8rem; color: #175cd3; }
+.o_it_management_cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.o_it_management_cards article { background: #fff; border: 1px solid #eaecf0; border-radius: .75rem; padding: 1rem; min-width: 0; }
+.o_it_management_cards h2 { font-size: 1rem; margin: 0 0 .7rem; }
+.o_it_management_row { width: 100%; display: flex; justify-content: space-between; padding: .55rem .65rem; border-width: 0 0 1px; border-radius: 0; }
+.o_it_management_state, .o_it_management_empty { display: flex; justify-content: center; align-items: center; gap: .75rem; min-height: 20rem; color: #667085; }
+.o_it_management_error { flex-direction: column; color: #b42318; }
+@media (max-width: 900px) { .o_it_management_dashboard { flex-direction: column; } .o_it_management_sidebar { width: 100%; display: flex; gap: .35rem; padding: .65rem; } .o_it_management_brand { padding: .7rem; margin-right: auto; } .o_it_management_nav { width: auto; margin: 0; } .o_it_management_header { flex-direction: column; } .o_it_management_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .o_it_management_main { padding: .75rem; } .o_it_management_kpis, .o_it_management_cards { grid-template-columns: minmax(0, 1fr); } .o_it_management_sidebar { overflow-x: auto; } .o_it_management_brand { min-width: max-content; } }
