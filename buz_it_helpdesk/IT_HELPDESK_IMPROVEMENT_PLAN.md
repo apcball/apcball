@@ -63,7 +63,7 @@ Rollback:
 | 5D Renewal & Notification | Not Started | ผู้ใช้ |
 | 6 Unified Dashboard | Not Started | ผู้ใช้ |
 | 7 Regression, Security Review & UAT | Not Started | ผู้ใช้ |
-| 8 Production & Monitoring | Not Started | ผู้ใช้ |
+| 8 UAT Procedure Design: User & IT | Not Started | ผู้ใช้และ IT |
 
 ## นโยบายช่องทางการแจ้งเตือน
 
@@ -640,47 +640,62 @@ IT Management Dashboard
 
 ---
 
-## ระยะที่ 8: Production Readiness, Deploy และ Monitoring
+## ระยะที่ 8: ออกแบบขั้นตอน UAT ทั้งฝั่ง User และ IT
 
 ### เป้าหมาย
 
-เตรียมระบบสำหรับใช้งานจริงและมีแผนย้อนกลับเมื่อเกิดปัญหา
+ออกแบบกระบวนการ UAT ให้ครอบคลุมการใช้งานจริงของ User และการปฏิบัติงานของ IT
+โดยกำหนดบทบาท ขั้นตอนทดสอบ หลักฐาน และเกณฑ์การอนุมัติให้ตรวจสอบย้อนกลับได้
 
 ### งาน
 
-- ตรวจสอบ `__manifest__.py` และ Dependencies
-- ตรวจสอบ Upgrade Module บนฐานข้อมูลสำเนา
-- สำรองฐานข้อมูลก่อน Deploy
-- ตรวจสอบ Mail Alias และ Incoming Mail Route
-- ตรวจสอบว่า Helpdesk Outbound Email ยังปิดตามนโยบาย
-- ตรวจสอบ Outgoing Mail สำหรับ IT Asset ด้วย Test Recipient ก่อนเปิดจริง
-- ตรวจสอบ Cron Job
-- ตรวจสอบ Mail Queue, Notification Retry และ Failure Activity
-- ตรวจสอบสิทธิ์ User จริงตามบทบาท
-- ตรวจสอบ Backup และ Restore
-- ตรวจสอบ Backup ของ Attachment และข้อมูล Renewal
-- ตรวจสอบ Migration Script บน Production Snapshot
-- กำหนด Maintenance Window, Owner และ Communication Plan
-- กำหนด Monitoring สำหรับ Cron Failure, Mail Queue, HTTP Error และ Database Error
-- กำหนด Post-deploy Smoke Test และ KPI Baseline
-- จัดทำรายการเปลี่ยนแปลง
-- Deploy ไป DEV ก่อน
-- ตรวจสอบหลักฐานและผลอนุมัติ UAT จากระยะที่ 7
-- Deploy Production หลัง UAT ผ่าน
-- เฝ้าระวังหลัง Deploy และเปรียบเทียบกับ Baseline
+#### 8.1 ขั้นตอนร่วมก่อนเริ่ม UAT
+
+- ระบุ Scope, Objective, Environment, Version และวันที่ทดสอบให้ชัดเจน
+- จัดเตรียม UAT Scenario, Test Data, User Account และ Role ที่ใช้ทดสอบ
+- กำหนดผู้รับผิดชอบ ผู้อนุมัติ ช่องทางแจ้งปัญหา และรอบเวลาการทดสอบ
+- กำหนดรูปแบบหลักฐาน เช่น Screenshot, Ticket Number, Activity, Chatter, Email และผลจาก Dashboard
+- กำหนดระดับ Severity, วิธีบันทึก Defect, ผู้รับผิดชอบแก้ไข และเกณฑ์ Retest
+
+#### 8.2 ขั้นตอน UAT ฝั่ง User
+
+1. User ตรวจสอบการเข้าสู่ระบบและการมองเห็นเมนูตามสิทธิ์ของตนเอง
+2. User สร้าง Ticket พร้อมข้อมูลที่จำเป็น Attachment และรายละเอียดปัญหา
+3. User ตรวจสอบการส่ง Ticket การได้รับเลขที่ Ticket และการแสดงสถานะ
+4. User ติดตามการมอบหมายงาน การตอบกลับ การขอข้อมูลเพิ่ม และการเปลี่ยนสถานะ
+5. User ตรวจสอบ SLA, กำหนดเวลา, Notification และประวัติการสื่อสารใน Chatter
+6. User ทดสอบการปิดงาน การเปิด Ticket เดิมกลับมาติดตาม และการค้นหาข้อมูล
+7. User ทดสอบกรณีที่เกี่ยวข้องกับ IT Asset เช่น การแจ้งซ่อม การยืมคืน และข้อมูลอุปกรณ์
+8. User บันทึกผล Actual Result, Expected Result, หลักฐาน และข้อเสนอแนะใน UAT Sheet
+
+#### 8.3 ขั้นตอน UAT ฝั่ง IT
+
+1. IT ตรวจสอบการรับ Ticket การจัดลำดับความสำคัญ และการมอบหมายผู้รับผิดชอบ
+2. IT ตรวจสอบ Workflow ตั้งแต่ New, In Progress, Pending User จนถึง Resolved/Closed
+3. IT ทดสอบ SLA, Activity, Notification, Cron, Retry, Catch-up และการป้องกันการแจ้งเตือนซ้ำ
+4. IT ตรวจสอบสิทธิ์ของ Agent, Manager และ IT Asset Manager รวมถึง Multi-company
+5. IT ทดสอบการจัดการ Attachment, Asset History, Repair, Renewal และ License Seat Allocation
+6. IT ตรวจสอบ Dashboard KPI, Drill-down, Filter และความถูกต้องเมื่อเปรียบเทียบกับ Source Records
+7. IT ตรวจสอบ Log, Mail Queue, Failure Activity และข้อมูลลับที่ไม่ควรแสดง
+8. IT ตรวจสอบการแก้ไข Defect, Retest, Regression และบันทึกผลการทดสอบแต่ละ Scenario
+
+#### 8.4 ขั้นตอนสรุปผลและอนุมัติ
+
+- IT รวบรวมผล UAT ของ User และ IT แยกตาม Scenario และ Severity
+- Defect ที่ไม่ผ่านต้องมีผู้รับผิดชอบ กำหนดวันแก้ไข และผล Retest
+- User ยืนยันผลด้านกระบวนการใช้งาน ส่วน IT ยืนยันผลด้าน Workflow, Security และ Technical Operation
+- จัดทำ UAT Summary พร้อมรายการ Passed, Failed, Deferred และ Known Issues
+- ขออนุมัติ UAT จากตัวแทน User และผู้รับผิดชอบ IT ก่อนส่งต่อไปยังระยะถัดไป
 
 ### เกณฑ์ผ่าน
 
-- DEV Upgrade ผ่าน
-- UAT ผ่านตาม Test Scenario
-- มี Backup ที่ Restore สำเร็จ
-- มี Rollback Plan
-- Cron, Mail Queue, Activity และ Dashboard ผ่าน Smoke Test
-- ไม่มีข้อมูลลับใน Log หรือ Email
-- Monitoring และผู้รับผิดชอบ Incident พร้อมใช้งาน
-- ไม่มี Blocker หรือ Critical Issue ค้างอยู่
-- ผู้รับผิดชอบอนุมัติก่อน Deploy Production
-
+- มี UAT Scenario และ Test Data ครบทั้งฝั่ง User และ IT
+- User และ IT ดำเนินการตามขั้นตอนและบันทึกหลักฐานครบทุก Scenario
+- ไม่มี Critical หรือ High Severity Defect ที่ยังไม่มีแผนแก้ไขและกำหนด Retest
+- ผล Workflow, Security, Notification, Asset และ Dashboard ผ่านตาม Acceptance Criteria
+- ผล UAT ถูกสรุปแยกเป็น Passed, Failed, Deferred และ Known Issues
+- มีการอนุมัติผล UAT จากตัวแทน User และผู้รับผิดชอบ IT
+- เอกสาร UAT สามารถตรวจสอบย้อนกลับจาก Scenario ไปยังหลักฐานและ Defect ได้
 ---
 
 ## วิธีสั่งให้ Codex ทำงานทีละระยะ
