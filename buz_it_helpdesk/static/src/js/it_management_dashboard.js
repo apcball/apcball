@@ -149,6 +149,17 @@ export class ItManagementDashboard extends Component {
     formatDashboardDate(value) {
         return value ? value.slice(0, 10) : "";
     }
+
+    kpiIcon(code) {
+        return {
+            open: "fa-ticket",
+            sla_overdue: "fa-clock-o",
+            in_use: "fa-desktop",
+            repair: "fa-wrench",
+            license_expiring: "fa-file-text-o",
+        }[code] || "fa-bar-chart";
+    }
+
     isCompanySelected(companyId) {
         return String(companyId) === String(this.state.filters.company_id);
     }

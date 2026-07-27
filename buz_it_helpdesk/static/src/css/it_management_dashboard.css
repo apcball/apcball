@@ -67,10 +67,19 @@
 .o_it_management_section { min-width: 0; }
 .o_it_management_kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--it-space-3); }
 .o_it_management_kpi, .o_it_management_row { border: 1px solid var(--it-color-border); background: var(--it-color-surface); text-align: left; cursor: pointer; }
-.o_it_management_kpi { min-width: 0; min-height: 6.5rem; padding: var(--it-space-4); border-radius: var(--it-radius-lg); display: flex; flex-direction: column; justify-content: space-between; gap: var(--it-space-2); }
+.o_it_management_kpi { min-width: 0; min-height: 9.25rem; padding: var(--it-space-4); border-radius: var(--it-radius-lg); display: flex; flex-direction: column; justify-content: flex-start; gap: var(--it-space-2); }
 .o_it_management_kpi:hover, .o_it_management_kpi:focus-visible, .o_it_management_row:hover, .o_it_management_row:focus-visible { border-color: #84adff; box-shadow: 0 2px 8px #10182812; outline: 0; }
-.o_it_management_kpi span { color: var(--it-color-muted); font-size: .8rem; }
+.o_it_management_kpi_head { display: flex; align-items: center; gap: var(--it-space-2); min-width: 0; }
+.o_it_management_kpi_icon { display: grid; flex: 0 0 2.75rem; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: var(--it-radius-md); background: var(--it-color-primary-soft); color: var(--it-color-primary); font-size: 1.35rem; }
+.o_it_management_kpi_label { min-width: 0; overflow: hidden; color: var(--it-color-muted); font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
+.o_it_management_kpi_arrow { margin-left: auto; color: var(--it-color-subtle); font-size: .75rem; }
+.o_it_management_kpi strong { display: block; margin-top: .25rem; }
 .o_it_management_kpi strong { color: var(--it-color-primary); font-size: 1.8rem; line-height: 1; }
+.o_it_management_kpi_previous, .o_it_management_kpi_delta { padding-left: 0; }
+.o_it_management_kpi.kpi-sla_overdue .o_it_management_kpi_icon { background: #fff1f3; color: #d92d20; }
+.o_it_management_kpi.kpi-in_use .o_it_management_kpi_icon { background: #ecfdf3; color: #039855; }
+.o_it_management_kpi.kpi-repair .o_it_management_kpi_icon { background: #fff6ed; color: #f79009; }
+.o_it_management_kpi.kpi-license_expiring .o_it_management_kpi_icon { background: #f9f5ff; color: #7f56d9; }
 .o_it_management_cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--it-space-4); margin-top: var(--it-space-4); }
 .o_it_management_cards article { min-width: 0; padding: var(--it-space-4); border: 1px solid var(--it-color-border); border-radius: var(--it-radius-lg); background: var(--it-color-surface); }
 .o_it_management_cards article:last-child:nth-child(3) { grid-column: span 2; }
