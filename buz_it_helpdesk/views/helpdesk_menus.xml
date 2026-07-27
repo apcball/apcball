@@ -25,4 +25,5 @@
     <menuitem id="menu_it_helpdesk_settings_priorities" name="Priorities" parent="menu_it_helpdesk_settings" action="action_helpdesk_priorities" sequence="20" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_settings_stages" name="Stages" parent="menu_it_helpdesk_settings" action="action_helpdesk_stages" sequence="30" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_settings_tags" name="Tags" parent="menu_it_helpdesk_settings" action="action_helpdesk_tags" sequence="40" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
-</odoo>
+    <menuitem id="menu_it_asset_renewals" name="License Renewals" parent="menu_it_assets_software" action="action_buz_it_asset_renewals" sequence="2" groups="buz_it_helpdesk.group_it_asset_user,buz_it_helpdesk.group_it_asset_manager"/>
+    <menuitem id="menu_it_asset_notification_config" name="Notification Configuration" parent="menu_it_assets_configuration" action="action_buz_it_asset_notification_config" sequence="90" groups="buz_it_helpdesk.group_it_asset_manager"/></odoo>

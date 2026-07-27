@@ -195,6 +195,7 @@ class ItAsset(models.Model):
     company_id = fields.Many2one("res.company", required=True, index=True, default=lambda self: self.env.company)
     history_ids = fields.One2many("buz.it.asset.log", "asset_id", string="History", readonly=True)
     license_allocation_ids = fields.One2many("buz.it.asset.license.allocation", "asset_id", string="License Allocations")
+    renewal_ids = fields.One2many("buz.it.asset.renewal", "asset_id", string="Renewals", readonly=True)
 
     _sql_constraints = [
         ("asset_name_uniq", "unique(name)", "Asset number must be unique."),

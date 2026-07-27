@@ -138,7 +138,13 @@
                                 </tree>
                             </field>
                         </page>
-                    </notebook>                </sheet>
+                        <page string="Renewals" invisible="asset_type != 'software_license'">
+                            <field name="renewal_ids" nolabel="1">
+                                <tree create="0" edit="0" delete="0">
+                                    <field name="name"/><field name="status"/><field name="owner_id"/><field name="start_date"/><field name="new_expiry_date"/><field name="success_date"/>
+                                </tree>
+                            </field>
+                        </page>                    </notebook>                </sheet>
                 <chatter/>
             </form>
         </field>

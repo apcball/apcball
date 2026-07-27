@@ -21,6 +21,10 @@ class ItAssetLog(models.Model):
         ("retire", "Retired"),
         ("license_allocate", "License Allocated"),
         ("license_release", "License Released"),
+        ("renewal_start", "Renewal Started"),
+        ("renewal_renewed", "Renewed"),
+        ("renewal_expired", "Renewal Expired"),
+        ("renewal_cancelled", "Renewal Cancelled"),
     ], required=True, readonly=True)
     event_date = fields.Datetime(required=True, readonly=True, default=fields.Datetime.now)
     performed_by_id = fields.Many2one("res.users", required=True, readonly=True, ondelete="restrict")
@@ -47,6 +51,7 @@ class ItAssetLog(models.Model):
     repair_result = fields.Text(readonly=True)
     evidence_attachment_ids = fields.Many2many("ir.attachment", readonly=True)
     currency_id = fields.Many2one("res.currency", related="company_id.currency_id", readonly=True)
+    renewal_id = fields.Many2one("buz.it.asset.renewal", readonly=True, ondelete="restrict")
 
     def write(self, vals):
         raise UserError("IT Asset History is immutable.")

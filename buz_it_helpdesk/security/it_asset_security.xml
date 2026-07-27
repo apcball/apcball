@@ -66,4 +66,39 @@
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_asset_manager'))]"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
-</odoo>
+    <record id="rule_it_asset_renewal_agent" model="ir.rule">
+        <field name="name">Agent: company IT asset renewals</field>
+        <field name="model_id" ref="model_buz_it_asset_renewal"/>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_asset_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_it_asset_renewal_manager" model="ir.rule">
+        <field name="name">Manager: company IT asset renewals</field>
+        <field name="model_id" ref="model_buz_it_asset_renewal"/>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_asset_manager'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_it_asset_notification_log_agent" model="ir.rule">
+        <field name="name">Agent: company IT asset notification logs</field>
+        <field name="model_id" ref="model_buz_it_asset_notification_log"/>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_asset_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_it_asset_notification_log_manager" model="ir.rule">
+        <field name="name">Manager: company IT asset notification logs</field>
+        <field name="model_id" ref="model_buz_it_asset_notification_log"/>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_asset_manager'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_it_asset_notification_config_agent" model="ir.rule">
+        <field name="name">Agent: company IT asset notification configuration</field>
+        <field name="model_id" ref="model_buz_it_asset_notification_config"/>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_asset_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_it_asset_notification_config_manager" model="ir.rule">
+        <field name="name">Manager: company IT asset notification configuration</field>
+        <field name="model_id" ref="model_buz_it_asset_notification_config"/>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_asset_manager'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record></odoo>

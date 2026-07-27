@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_it_asset_renewal_tree" model="ir.ui.view">
+        <field name="name">buz.it.asset.renewal.tree</field>
+        <field name="model">buz.it.asset.renewal</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="status == 'renewed'" decoration-danger="status == 'expired'">
+                <field name="name"/><field name="asset_id"/><field name="status" widget="badge"/>
+                <field name="owner_id"/><field name="vendor_id"/><field name="cost"/>
+                <field name="start_date"/><field name="new_expiry_date"/><field name="success_date"/>
+                <field name="company_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_buz_it_asset_renewal_form" model="ir.ui.view">
+        <field name="name">buz.it.asset.renewal.form</field>
+        <field name="model">buz.it.asset.renewal</field>
+        <field name="arch" type="xml">
+            <form string="License Renewal">
+                <header>
+                    <button name="action_start" type="object" string="Start Renewal" class="btn-primary" invisible="status != 'pending_review'"/>
+                    <button name="action_mark_renewed" type="object" string="Mark Renewed" class="btn-success" invisible="status != 'in_progress'"/>
+                    <button name="action_mark_expired" type="object" string="Mark Expired" class="btn-danger" invisible="status not in ('pending_review', 'in_progress')"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="status in ('renewed', 'expired', 'cancelled')"/>
+                    <field name="status" widget="statusbar" statusbar_visible="pending_review,in_progress,renewed,expired,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group><field name="name"/><field name="asset_id"/><field name="owner_id"/><field name="vendor_id"/></group>
+                        <group><field name="start_date"/><field name="new_expiry_date"/><field name="success_date" readonly="1"/><field name="document_no"/></group>
+                    </group>
+                    <field name="company_id" invisible="1"/>
+                    <group><field name="cost"/><field name="currency_id"/><field name="notes"/></group>
+                    <group string="Evidence"><field name="evidence_attachment_ids" widget="many2many_binary"/></group>
+                    <notebook>
+                        <page string="Notifications"><field name="notification_ids" readonly="1"><tree create="0" edit="0" delete="0"><field name="notification_type"/><field name="scheduled_date"/><field name="state" widget="badge"/><field name="sent_at"/><field name="retry_count"/><field name="error_detail"/></tree></field></page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_buz_it_asset_renewal_search" model="ir.ui.view">
+        <field name="name">buz.it.asset.renewal.search</field>
+        <field name="model">buz.it.asset.renewal</field>
+        <field name="arch" type="xml"><search><field name="name"/><field name="asset_id"/><field name="status"/><field name="owner_id"/><field name="vendor_id"/><field name="company_id"/></search></field>
+    </record>
+    <record id="view_buz_it_asset_notification_config_form" model="ir.ui.view">
+        <field name="name">buz.it.asset.notification.config.form</field>
+        <field name="model">buz.it.asset.notification.config</field>
+        <field name="arch" type="xml"><form string="Asset Notification Configuration"><sheet><group><field name="name"/><field name="company_id"/><field name="timezone"/><field name="recipient_ids" widget="many2many_tags"/><field name="active"/></group></sheet></form></field>
+    </record>
+    <record id="action_buz_it_asset_renewals" model="ir.actions.act_window"><field name="name">License Renewals</field><field name="res_model">buz.it.asset.renewal</field><field name="view_mode">tree,form</field><field name="search_view_id" ref="view_buz_it_asset_renewal_search"/></record>
+    <record id="action_buz_it_asset_notification_config" model="ir.actions.act_window"><field name="name">Notification Configuration</field><field name="res_model">buz.it.asset.notification.config</field><field name="view_mode">form</field></record>
+</odoo>
