@@ -225,3 +225,113 @@ class TestItAsset(TransactionCase):
         ):
             view = self.env.ref(xml_id)
             self.assertNotIn("name=\"license_key\"", view.arch)
+    def test_phase_5c_assignment_repair_history_and_forbidden_transitions(self):
+        employee = self.env["hr.employee"].sudo().create({
+            "name": "5C End User",
+            "company_id": self.company.id,
+        })
+        asset = self.env["buz.it.asset"].with_user(self.agent).create({
+            "asset_type": "computer",
+            "asset_name": "5C Lifecycle Asset",
+            "category_id": self.category.id,
+        })
+
+        asset.with_user(self.agent).action_assign(employee_id=employee.id)
+        self.assertEqual(asset.status, "in_use")
+        self.assertEqual(asset.employee_id, employee)
+        asset.with_user(self.agent).action_return()
+        self.assertEqual(asset.status, "available")
+
+        asset.with_user(self.agent).action_send_to_repair(
+            repair_sent_date=date(2026, 7, 1),
+            repair_cost=1250.0,
+            repair_symptoms="Broken screen",
+        )
+        self.assertEqual(asset.status, "repair")
+        with self.assertRaises(ValidationError):
+            asset.with_user(self.agent).action_assign(employee_id=employee.id)
+        with self.assertRaises(ValidationError):
+            asset.with_user(self.agent).write({"employee_id": employee.id})
+
+        asset.with_user(self.agent).action_repair_done(
+            repair_received_date=date(2026, 7, 10),
+            repair_result="Screen replaced",
+        )
+        asset.with_user(self.agent).action_mark_lost()
+        with self.assertRaises(ValidationError):
+            asset.with_user(self.agent).action_assign(employee_id=employee.id)
+        asset.with_user(self.agent).action_recover()
+        asset.with_user(self.agent).action_retire()
+        self.assertFalse(asset.active)
+        with self.assertRaises(ValidationError):
+            asset.with_user(self.agent).action_assign(employee_id=employee.id)
+
+        event_types = set(asset.history_ids.sudo().mapped("event_type"))
+        self.assertTrue({
+            "assign", "return", "repair_send", "repair_done",
+            "lost", "recover", "retire",
+        }.issubset(event_types))
+        repair_log = asset.history_ids.sudo().filtered(lambda log: log.event_type == "repair_send")
+        self.assertEqual(repair_log.repair_cost, 1250.0)
+        self.assertEqual(repair_log.repair_symptoms, "Broken screen")
+        with self.assertRaises(UserError):
+            repair_log.write({"new_value": "tampered"})
+        with self.assertRaises(AccessError):
+            repair_log.with_user(self.agent).write({"new_value": "tampered"})
+        with self.assertRaises(UserError):
+            repair_log.unlink()
+
+    def test_phase_5c_license_allocation_cannot_exceed_seats(self):
+        employees = self.env["hr.employee"].sudo().create([
+            {"name": "5C License User 1", "company_id": self.company.id},
+            {"name": "5C License User 2", "company_id": self.company.id},
+            {"name": "5C License User 3", "company_id": self.company.id},
+        ])
+        license_asset = self.env["buz.it.asset"].with_user(self.manager).create({
+            "asset_type": "software_license",
+            "asset_name": "5C Seat Limited",
+            "license_product": "5C Product",
+            "license_version": "1.0",
+            "license_start_date": date(2026, 1, 1),
+            "license_expiry_date": date(2026, 12, 31),
+            "license_seats": 2,
+        })
+        allocation_model = self.env["buz.it.asset.license.allocation"].with_user(self.agent)
+        first = allocation_model.create({
+            "asset_id": license_asset.id,
+            "employee_id": employees[0].id,
+            "seats": 1,
+        })
+        allocation_model.create({
+            "asset_id": license_asset.id,
+            "employee_id": employees[1].id,
+            "seats": 1,
+        })
+        with self.assertRaises(ValidationError):
+            allocation_model.create({
+                "asset_id": license_asset.id,
+                "employee_id": employees[2].id,
+                "seats": 1,
+            })
+        first.write({"active": False, "returned_date": date(2026, 7, 20)})
+        self.assertFalse(first.active)
+        self.assertIn("license_release", license_asset.history_ids.sudo().mapped("event_type"))
+        with self.assertRaises(UserError):
+            first.unlink()
+
+    def test_phase_5c_expired_license_cannot_be_assigned(self):
+        employee = self.env["hr.employee"].sudo().create({
+            "name": "5C Expired User",
+            "company_id": self.company.id,
+        })
+        asset = self.env["buz.it.asset"].with_user(self.manager).create({
+            "asset_type": "software_license",
+            "asset_name": "5C Expired License",
+            "license_product": "5C Expired Product",
+            "license_version": "1.0",
+            "license_start_date": date(2025, 1, 1),
+            "license_expiry_date": date(2025, 12, 31),
+            "license_seats": 1,
+        })
+        with self.assertRaises(ValidationError):
+            asset.with_user(self.agent).action_assign(employee_id=employee.id)

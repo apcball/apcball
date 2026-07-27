@@ -20,7 +20,7 @@
                 <field name="license_product" string="Licensed Product" invisible="asset_type != 'software_license'"/>
                 <field name="license_version" string="Version" invisible="asset_type != 'software_license'"/>
                 <field name="software_ids" widget="many2many_tags"/>
-                <field name="company_id" column_invisible="1"/>
+                <field name="company_id" invisible="1"/>
             </tree>
         </field>
     </record>
@@ -40,7 +40,7 @@
         <field name="name">buz.it.asset.form</field>
         <field name="model">buz.it.asset</field>
         <field name="arch" type="xml">
-            <form string="IT Asset"><header><button name="action_set_under_repair" type="object" string="Under Repair" class="btn-warning" invisible="status == 'repair'"/><button name="action_set_damaged" type="object" string="Lost" class="btn-danger" invisible="status == 'lost'"/><button name="action_set_retired" type="object" string="Retired" class="btn-secondary" invisible="status == 'retired'"/></header>
+            <form string="IT Asset"><header><button name="action_set_under_repair" type="object" string="Under Repair" class="btn-warning" invisible="status == 'repair'"/><button name="action_set_damaged" type="object" string="Lost" class="btn-danger" invisible="status == 'lost'"/><button name="action_set_retired" type="object" string="Retired" class="btn-secondary" invisible="status == 'retired'"/><button name="action_assign" type="object" string="Assign" class="btn-primary" invisible="status in ('repair', 'lost', 'retired')"/><button name="action_return" type="object" string="Return" class="btn-secondary" invisible="status != 'in_use'"/><button name="action_repair_done" type="object" string="Repair Done" class="btn-success" invisible="status != 'repair'"/><button name="action_recover" type="object" string="Recover" class="btn-success" invisible="status != 'lost'"/></header>
                 <sheet>
                     <field name="status" invisible="1"/><field name="company_id" invisible="1"/>
                     <field name="active" invisible="1"/>
@@ -54,7 +54,7 @@
                     <group>
                         <group>
                             <field name="asset_type" string="Type" readonly="1"/><field name="name" string="Asset Number" readonly="1" invisible="asset_type == 'printer'"/>
-                            <field name="department_id" string="Department"/><field name="assigned_user_id" string="Responsible User" domain="[('share', '=', False)]"/>
+                            <field name="department_id" string="Department"/><field name="employee_id" string="End User"/><field name="custodian_id" string="IT Custodian"/><field name="assigned_user_id" string="Responsible User" domain="[('share', '=', False)]"/>
                             <field name="user_nickname" string="Nickname" invisible="asset_type == 'printer'"/>
                             <field name="computer_username" string="User Name" invisible="asset_type == 'printer'"/>
                             <field name="service_name" invisible="asset_type not in ('email', 'system_account')"/>
@@ -87,7 +87,7 @@
                     <group string="Computer Specifications" col="1" invisible="asset_type != 'computer'">
                         <field name="spec_line_ids" nolabel="1">
                             <tree editable="bottom">
-                                <field name="company_id" column_invisible="1"/>
+                                <field name="company_id" invisible="1"/>
                                 <field name="sequence" widget="handle"/>
                                 <field name="category_id"/>
                                 <field name="value" placeholder="e.g. Intel Core i7, 32 GB, RTX 4060, 1 TB NVMe"/>
@@ -98,7 +98,47 @@
                         <field name="attachment_ids" widget="helpdesk_attachment_preview" nolabel="1"/>
                     </group>
                     <group string="Note" invisible="asset_type == 'printer'"><field name="notes" placeholder="Internal note..." nolabel="1"/></group>
-                </sheet>
+                    <group string="Repair Details" invisible="asset_type == 'software_license'">
+                        <field name="repair_vendor_id"/>
+                        <field name="repair_ticket_id"/>
+                        <field name="repair_sent_date"/>
+                        <field name="repair_received_date"/>
+                        <field name="repair_cost"/>
+                        <field name="repair_symptoms"/>
+                        <field name="repair_result"/>
+                        <field name="repair_attachment_ids" widget="many2many_binary"/>
+                    </group>                    <notebook>
+                        <page string="History">
+                            <field name="history_ids" nolabel="1">
+                                <tree create="0" edit="0" delete="0">
+                                    <field name="company_id" invisible="1"/>
+                                    <field name="event_date"/>
+                                    <field name="event_type"/>
+                                    <field name="performed_by_id"/>
+                                    <field name="employee_id"/>
+                                    <field name="custodian_id"/>
+                                    <field name="location"/>
+                                    <field name="status"/>
+                                    <field name="ticket_id"/>
+                                    <field name="old_value"/>
+                                    <field name="new_value"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="License Allocations" invisible="asset_type != 'software_license'">
+                            <field name="license_allocation_ids" nolabel="1">
+                                <tree editable="bottom" delete="0">
+                                    <field name="company_id" invisible="1"/>
+                                    <field name="employee_id"/>
+                                    <field name="user_id" readonly="1"/>
+                                    <field name="seats"/>
+                                    <field name="allocated_date"/>
+                                    <field name="returned_date"/>
+                                    <field name="active"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>                </sheet>
                 <chatter/>
             </form>
         </field>

@@ -8,3 +8,4 @@ from . import helpdesk_ticket
 from . import helpdesk_dashboard
 
 from . import it_asset
+from . import it_asset_history
