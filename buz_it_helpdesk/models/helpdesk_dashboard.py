@@ -62,6 +62,73 @@ class HelpdeskTicketDashboard(models.Model):
         return "other"
 
     @api.model
+    def _chart_period(self, filters=None):
+        filters = filters or {}
+        date_to = filters.get("date_to") or fields.Date.context_today(self)
+        date_from = filters.get("date_from")
+        try:
+            date_to = datetime.strptime(str(date_to), "%Y-%m-%d").date()
+            date_from = datetime.strptime(str(date_from), "%Y-%m-%d").date() if date_from else date_to - timedelta(days=29)
+        except (TypeError, ValueError):
+            return None
+        return (date_from, date_to) if date_from <= date_to else None
+
+    @api.model
+    def _chart_day_domain(self, domain, field_name, day):
+        next_day = day + timedelta(days=1)
+        return list(domain) + [
+            (field_name, ">=", "%s 00:00:00" % day),
+            (field_name, "<", "%s 00:00:00" % next_day),
+        ]
+
+    @api.model
+    def get_chart_data(self, filters=None):
+        if not (
+            self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
+            or self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_manager")
+        ):
+            raise AccessError("Only Helpdesk Agents and Managers can view the dashboard.")
+        filters = filters or {}
+        period = self._chart_period(filters)
+        if not period:
+            return {"date_from": False, "date_to": False, "series": []}
+        date_from, date_to = period
+        domain = self._dashboard_domain(filters)
+        resolved_base_domain = [term for term in domain if term[0] != "create_date"]
+        resolved_base_domain += [
+            ("resolved_at", ">=", "%s 00:00:00" % date_from),
+            ("resolved_at", "<", "%s 00:00:00" % (date_to + timedelta(days=1))),
+        ]
+        created_groups = self.read_group(domain, ["__count"], ["create_date:day"], lazy=False)
+        resolved_groups = self.search_read(resolved_base_domain, ["resolved_at"])
+        created_by_day = {}
+        for group in created_groups:
+            key = str(group.get("create_date:day") or "")[:10]
+            if key:
+                created_by_day[key] = group.get("__count", 0)
+        resolved_by_day = {}
+        for ticket in resolved_groups:
+            key = str(ticket.get("resolved_at") or "")[:10]
+            if key:
+                resolved_by_day[key] = resolved_by_day.get(key, 0) + 1
+        series = []
+        day = date_from
+        while day <= date_to:
+            key = fields.Date.to_string(day)
+            series.append({
+                "date": key,
+                "created_count": created_by_day.get(key, 0),
+                "resolved_count": resolved_by_day.get(key, 0),
+                "created_domain": self._chart_day_domain(domain, "create_date", day),
+                "resolved_domain": self._chart_day_domain(
+                    [term for term in resolved_base_domain if term[0] not in ("resolved_at",)],
+                    "resolved_at",
+                    day,
+                ),
+            })
+            day += timedelta(days=1)
+        return {"date_from": fields.Date.to_string(date_from), "date_to": fields.Date.to_string(date_to), "series": series}
+    @api.model
     def get_dashboard_data(self, filters=None):
         if not (
             self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
@@ -99,9 +166,11 @@ class HelpdeskTicketDashboard(models.Model):
             return sorted(result, key=lambda item: (-item["count"], item["label"]))[:12]
 
         trend = [{"label": group.get("create_date:day") or "", "count": group.get("__count", 0)} for group in self.read_group(domain, ["__count"], ["create_date:day"], lazy=False)]
+        backlog = [item for item in status_overview if item["code"] not in ("closed", "cancelled")]
+        chart_data = self.get_chart_data(filters)
         options = {}
         specs = (("companies", "res.company", [("id", "in", self.env.companies.ids)]), ("teams", "it.helpdesk.team", [("company_id", "in", self.env.companies.ids), ("active", "=", True)]), ("priorities", "it.helpdesk.priority", [("company_id", "in", self.env.companies.ids), ("active", "=", True)]), ("categories", "it.helpdesk.category", [("company_id", "in", self.env.companies.ids), ("active", "=", True)]))
         for key, model_name, option_domain in specs:
             options[key] = [{"id": record.id, "label": record.display_name} for record in self.env[model_name].search(option_domain, order="name, id")]
         options["assignees"] = [{"id": user.id, "label": user.display_name} for user in self.env["res.users"].search([("company_ids", "in", self.env.companies.ids), ("share", "=", False)], order="name, id")]
-        return {"domain": domain, "kpis": kpis, "status_overview": status_overview, "trend": trend, "by_team": grouped("team_id"), "by_assignee": grouped("assigned_to"), "by_priority": grouped("priority_id"), "by_category": grouped("category_id"), "options": options}
+        return {"domain": domain, "kpis": kpis, "status_overview": status_overview, "trend": trend, "charts": {"created_resolved": chart_data, "ticket_backlog": {"rows": backlog}}, "by_team": grouped("team_id"), "by_assignee": grouped("assigned_to"), "by_priority": grouped("priority_id"), "by_category": grouped("category_id"), "options": options}

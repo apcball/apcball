@@ -27,7 +27,66 @@
                 <t t-elif="state.section == 'helpdesk'"><HelpdeskDashboard t-key="filterKey" t-props="{ embedded: true, filters: state.filters }"/></t>
                 <section t-elif="state.section == 'overview'" class="o_it_management_section">
                     <div class="o_it_management_kpis"><t t-foreach="state.data?.kpis || []" t-as="kpi" t-key="kpi.code"><button class="o_it_management_kpi" t-att-class="kpi.direction ? 'direction-' + kpi.direction : ''" t-on-click="() => openSource({...kpi, res_model: kpi.code.startsWith('open') || kpi.code.includes('sla') ? 'it.helpdesk.ticket' : 'buz.it.asset'}, kpi.label)"><span><t t-esc="kpi.label"/></span><strong><t t-esc="kpi.count"/></strong><small class="o_it_management_kpi_previous">Previous: <t t-if="kpi.previous_count !== null &amp;&amp; kpi.previous_count !== undefined"><t t-esc="kpi.previous_count"/></t><t t-else="">N/A</t></small><small class="o_it_management_kpi_delta"><t t-if="kpi.delta !== null"><t t-esc="kpi.delta"/> (<t t-if="kpi.delta_percent !== null"><t t-esc="kpi.delta_percent"/>%</t><t t-else="">N/A</t>)</t><t t-else="">N/A</t></small></button></t></div>
-                    <div class="o_it_management_cards"><article><h2>Helpdesk Status</h2><t t-foreach="state.data?.tickets || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'it.helpdesk.ticket'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t><div t-if="!state.data?.tickets?.length" class="o_it_management_panel_empty">No Helpdesk data for the selected filters.</div></article><article><h2>Asset Status</h2><t t-foreach="state.data?.assets || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t><div t-if="!state.data?.assets?.length" class="o_it_management_panel_empty">No Asset data for the selected filters.</div></article></div>
+                    <div class="o_it_management_charts">
+                        <article class="o_it_management_chart_panel o_it_management_chart_panel_trend">
+                            <div class="o_it_management_panel_heading"><h2>Created vs Resolved</h2><span>Daily ticket activity</span></div>
+                            <t t-if="chartSeries.length">
+                                <svg class="o_it_management_svg_chart" viewBox="0 0 720 240" role="img" aria-label="Created versus resolved tickets by day">
+                                    <line x1="52" y1="198" x2="668" y2="198" class="o_it_management_chart_axis"/>
+                                    <polyline t-att-points="linePoints('created_count')" class="o_it_management_chart_line o_it_management_chart_line_created" fill="none"/>
+                                    <polyline t-att-points="linePoints('resolved_count')" class="o_it_management_chart_line o_it_management_chart_line_resolved" fill="none"/>
+                                    <t t-foreach="chartSeries" t-as="point" t-key="point.date">
+                                        <circle t-att-cx="linePointX(point_index)" t-att-cy="linePointY(point.created_count)" r="4" class="o_it_management_chart_point o_it_management_chart_point_created" tabindex="0" role="button" t-on-click="() => openChartSource(point, 'created', 'Created tickets')" t-on-keydown="(event) => onChartKeydown(event, point, 'created', 'Created tickets')">
+                                            <title><t t-esc="point.date"/> Created: <t t-esc="point.created_count"/></title>
+                                        </circle>
+                                        <circle t-att-cx="linePointX(point_index)" t-att-cy="linePointY(point.resolved_count)" r="4" class="o_it_management_chart_point o_it_management_chart_point_resolved" tabindex="0" role="button" t-on-click="() => openChartSource(point, 'resolved', 'Resolved tickets')" t-on-keydown="(event) => onChartKeydown(event, point, 'resolved', 'Resolved tickets')">
+                                            <title><t t-esc="point.date"/> Resolved: <t t-esc="point.resolved_count"/></title>
+                                        </circle>
+                                    </t>
+                                </svg>
+                                <div class="o_it_management_chart_legend" aria-label="Created versus resolved legend"><span><i class="o_it_management_legend_dot is-created"/>Created</span><span><i class="o_it_management_legend_dot is-resolved"/>Resolved</span></div>
+                            </t>
+                            <div t-else="" class="o_it_management_chart_empty" role="status">No ticket activity for the selected period.</div>
+                        </article>
+                        <article class="o_it_management_chart_panel">
+                            <div class="o_it_management_panel_heading"><h2>Ticket Backlog</h2><span>Open workflow statuses</span></div>
+                            <t t-if="backlogRows.length">
+                                <svg class="o_it_management_svg_chart o_it_management_backlog_chart" viewBox="0 0 560 230" role="img" aria-label="Open ticket backlog by status">
+                                    <t t-foreach="backlogRows" t-as="row" t-key="row.code">
+                                        <g t-att-transform="'translate(0,' + backlogY(row_index) + ')'" tabindex="0" role="button" t-on-click="() => openSource({...row, res_model: 'it.helpdesk.ticket'}, row.label)" t-on-keydown="(event) => onChartKeydown(event, row, 'domain', row.label)">
+                                            <text x="0" y="16" class="o_it_management_chart_label"><t t-esc="row.label"/></text>
+                                            <rect x="110" y="3" t-att-width="backlogWidth(row.count)" height="20" rx="4" class="o_it_management_backlog_bar"/>
+                                            <text x="548" y="18" text-anchor="end" class="o_it_management_chart_value"><t t-esc="row.count"/></text>
+                                        </g>
+                                    </t>
+                                </svg>
+                            </t>
+                            <div t-else="" class="o_it_management_chart_empty" role="status">No open tickets for the selected filters.</div>
+                        </article>
+                        <article class="o_it_management_chart_panel">
+                            <div class="o_it_management_panel_heading"><h2>Asset Status</h2><span>Total: <t t-esc="assetStatusTotal"/></span></div>
+                            <t t-if="assetStatusTotal">
+                                <div class="o_it_management_asset_chart">
+                                    <svg class="o_it_management_donut" viewBox="0 0 220 220" role="img" aria-label="Asset status distribution">
+                                        <circle cx="110" cy="110" r="76" pathLength="100" class="o_it_management_donut_track"/>
+                                        <t t-foreach="assetStatusRows" t-as="row" t-key="row.code">
+                                            <circle cx="110" cy="110" r="76" pathLength="100" fill="none" stroke-width="28" t-att-stroke="assetColor(row.code)" t-att-stroke-dasharray="row.percentage + ' ' + (100 - row.percentage)" t-att-stroke-dashoffset="assetDashOffset(row_index)" class="o_it_management_donut_segment" transform="rotate(-90 110 110)" tabindex="0" role="button" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)" t-on-keydown="(event) => onChartKeydown(event, row, 'domain', row.label)">
+                                                <title><t t-esc="row.label"/>: <t t-esc="row.count"/> (<t t-esc="row.percentage"/>%)</title>
+                                            </circle>
+                                        </t>
+                                        <text x="110" y="106" text-anchor="middle" class="o_it_management_donut_total"><t t-esc="assetStatusTotal"/></text>
+                                        <text x="110" y="126" text-anchor="middle" class="o_it_management_donut_caption">Assets</text>
+                                    </svg>
+                                    <div class="o_it_management_asset_legend" aria-label="Asset status legend">
+                                        <t t-foreach="assetStatusRows" t-as="row" t-key="row.code">
+                                            <button type="button" class="o_it_management_asset_legend_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)" t-on-keydown="(event) => onChartKeydown(event, row, 'domain', row.label)"><i t-att-style="'background-color: ' + assetColor(row.code)"/><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/> (<t t-esc="row.percentage"/>%)</strong></button>
+                                        </t>
+                                    </div>
+                                </div>
+                            </t>
+                            <div t-else="" class="o_it_management_chart_empty" role="status">No assets for the selected filters.</div>
+                        </article>
+                    </div>                    <div class="o_it_management_cards"><article><h2>Helpdesk Status</h2><t t-foreach="state.data?.tickets || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'it.helpdesk.ticket'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t><div t-if="!state.data?.tickets?.length" class="o_it_management_panel_empty">No Helpdesk data for the selected filters.</div></article><article><h2>Asset Status</h2><t t-foreach="state.data?.assets || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t><div t-if="!state.data?.assets?.length" class="o_it_management_panel_empty">No Asset data for the selected filters.</div></article></div>
                     <div t-if="!hasData" class="o_it_management_empty"><i class="fa fa-inbox"/><strong>No dashboard data</strong><span>No records match the selected filters.</span></div>
                 </section>
                 <section t-elif="state.section == 'asset'" class="o_it_management_section"><div class="o_it_management_kpis"><t t-foreach="state.data?.kpis || []" t-as="kpi" t-key="kpi.code"><button class="o_it_management_kpi" t-on-click="() => openSource({...kpi, res_model: 'buz.it.asset'}, kpi.label)"><span><t t-esc="kpi.label"/></span><strong><t t-esc="kpi.count"/></strong></button></t></div><div class="o_it_management_cards"><article><h2>Status</h2><t t-foreach="state.data?.status || []" t-as="row" t-key="row.code"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t><div t-if="!state.data?.status?.length" class="o_it_management_panel_empty">No status data.</div></article><article><h2>By Type</h2><t t-foreach="state.data?.types || []" t-as="row" t-key="row.label"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t><div t-if="!state.data?.types?.length" class="o_it_management_panel_empty">No type data.</div></article><article><h2>By Department</h2><t t-foreach="state.data?.departments || []" t-as="row" t-key="row.label"><button class="o_it_management_row" t-on-click="() => openSource({...row, res_model: 'buz.it.asset'}, row.label)"><span><t t-esc="row.label"/></span><strong><t t-esc="row.count"/></strong></button></t><div t-if="!state.data?.departments?.length" class="o_it_management_panel_empty">No department data.</div></article></div><div t-if="!hasData" class="o_it_management_empty"><i class="fa fa-inbox"/><strong>No asset data</strong><span>No records match the selected filters.</span></div></section>

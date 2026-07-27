@@ -110,3 +110,190 @@
 .o_it_management_kpi.direction-na .o_it_management_kpi_delta {
     color: var(--it-muted);
 }
+.o_it_management_charts {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: var(--it-space-4);
+    margin-top: var(--it-space-4);
+}
+.o_it_management_chart_panel {
+    min-width: 0;
+    padding: var(--it-space-4);
+    border: 1px solid var(--it-color-border);
+    border-radius: var(--it-radius-lg);
+    background: var(--it-color-surface);
+}
+.o_it_management_chart_panel_trend {
+    grid-column: span 1;
+}
+.o_it_management_panel_heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--it-space-2);
+    margin-bottom: var(--it-space-3);
+}
+.o_it_management_panel_heading h2 {
+    margin: 0;
+}
+.o_it_management_panel_heading span {
+    color: var(--it-muted);
+    font-size: 0.75rem;
+}
+.o_it_management_svg_chart {
+    display: block;
+    width: 100%;
+    min-height: 220px;
+    overflow: visible;
+}
+.o_it_management_chart_axis {
+    stroke: var(--it-color-border);
+    stroke-width: 1;
+}
+.o_it_management_chart_line {
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.o_it_management_chart_line_created {
+    stroke: var(--it-color-primary);
+}
+.o_it_management_chart_line_resolved {
+    stroke: var(--it-color-secondary);
+}
+.o_it_management_chart_point {
+    stroke: var(--it-color-surface);
+    stroke-width: 2;
+    cursor: pointer;
+}
+.o_it_management_chart_point:focus,
+.o_it_management_donut_segment:focus,
+.o_it_management_backlog_chart g:focus {
+    outline: none;
+    stroke-width: 5;
+}
+.o_it_management_chart_point_created {
+    fill: var(--it-color-primary);
+}
+.o_it_management_chart_point_resolved {
+    fill: var(--it-color-secondary);
+}
+.o_it_management_chart_legend {
+    display: flex;
+    gap: var(--it-space-4);
+    color: var(--it-muted);
+    font-size: 0.8rem;
+}
+.o_it_management_chart_legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--it-space-1);
+}
+.o_it_management_legend_dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+}
+.o_it_management_legend_dot.is-created {
+    background: var(--it-color-primary);
+}
+.o_it_management_legend_dot.is-resolved {
+    background: var(--it-color-secondary);
+}
+.o_it_management_chart_empty {
+    display: grid;
+    min-height: 220px;
+    place-items: center;
+    color: var(--it-muted);
+    text-align: center;
+}
+.o_it_management_chart_label,
+.o_it_management_chart_value {
+    fill: var(--it-color-text);
+    font-size: 11px;
+}
+.o_it_management_backlog_bar {
+    fill: var(--it-color-primary);
+}
+.o_it_management_backlog_chart g {
+    cursor: pointer;
+}
+.o_it_management_backlog_chart g:focus .o_it_management_backlog_bar {
+    fill: var(--it-color-secondary);
+}
+.o_it_management_donut {
+    display: block;
+    width: min(100%, 220px);
+    margin: 0 auto;
+    overflow: visible;
+}
+.o_it_management_donut_track,
+.o_it_management_donut_segment {
+    fill: none;
+}
+.o_it_management_donut_track {
+    stroke: var(--it-color-border);
+    stroke-width: 28;
+}
+.o_it_management_donut_segment {
+    cursor: pointer;
+    transition: opacity 120ms ease;
+}
+.o_it_management_donut_segment:hover,
+.o_it_management_donut_segment:focus {
+    opacity: 0.8;
+}
+.o_it_management_donut_total {
+    fill: var(--it-color-text);
+    font-size: 26px;
+    font-weight: 700;
+}
+.o_it_management_donut_caption {
+    fill: var(--it-muted);
+    font-size: 12px;
+}
+.o_it_management_asset_chart {
+    display: grid;
+    gap: var(--it-space-3);
+}
+.o_it_management_asset_legend {
+    display: grid;
+    gap: var(--it-space-1);
+}
+.o_it_management_asset_legend_row {
+    display: grid;
+    grid-template-columns: 0.7rem 1fr auto;
+    align-items: center;
+    gap: var(--it-space-2);
+    width: 100%;
+    padding: var(--it-space-1) 0;
+    border: 0;
+    background: transparent;
+    color: var(--it-color-text);
+    text-align: left;
+}
+.o_it_management_asset_legend_row i {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+}
+.o_it_management_asset_legend_row:focus-visible {
+    outline: 2px solid var(--it-color-primary);
+    outline-offset: 2px;
+}
+@media (max-width: 1100px) {
+    .o_it_management_charts {
+        grid-template-columns: 1fr 1fr;
+    }
+    .o_it_management_chart_panel_trend {
+        grid-column: 1 / -1;
+    }
+}
+@media (max-width: 760px) {
+    .o_it_management_charts {
+        grid-template-columns: 1fr;
+    }
+    .o_it_management_chart_panel_trend {
+        grid-column: auto;
+    }
+}

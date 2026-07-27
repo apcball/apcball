@@ -135,6 +135,10 @@ class ItManagementDashboard(models.Model):
         for code, label in status_specs:
             status_domain = list(domain) + [("status", "=", code)]
             status_rows.append({"code": code, "label": label, "count": Asset.search_count(status_domain), "domain": status_domain})
+        total = sum(row["count"] for row in status_rows)
+        for row in status_rows:
+            row["percentage"] = round((row["count"] * 100.0) / total, 2) if total else 0.0
+        asset_status_chart = {"total": total, "rows": status_rows}
         type_rows = grouped("asset_type")
         department_rows = grouped("department_id")
         repair_domain = list(domain) + [("status", "=", "repair")]
@@ -144,6 +148,7 @@ class ItManagementDashboard(models.Model):
             "types": type_rows,
             "departments": department_rows,
             "repair": {"count": Asset.search_count(repair_domain), "domain": repair_domain},
+            "charts": {"asset_status": asset_status_chart},
             "options": self._options(),
         }
 
@@ -176,6 +181,11 @@ class ItManagementDashboard(models.Model):
             "kpis": current_kpis,
             "tickets": tickets.get("status_overview", []),
             "assets": assets["status"],
+            "charts": {
+                "created_resolved": tickets["charts"]["created_resolved"],
+                "ticket_backlog": tickets["charts"]["ticket_backlog"],
+                "asset_status": assets["charts"]["asset_status"],
+            },
             "options": assets["options"],
         }
 

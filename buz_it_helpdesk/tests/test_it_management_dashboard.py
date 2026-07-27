@@ -132,3 +132,54 @@ class TestItManagementDashboard(TransactionCase):
             self.assertIn("direction", item)
             self.assertNotIn("license_key", item)
             self.assertNotIn("secret", item)
+    def test_ui3_created_resolved_series_fills_empty_days_and_domains(self):
+        ticket_model = self.env["it.helpdesk.ticket"].with_user(self.agent)
+        filters = {
+            "company_id": self.env.company.id,
+            "date_from": "2026-01-01",
+            "date_to": "2026-01-03",
+        }
+        chart = ticket_model.get_chart_data(filters)
+        self.assertEqual([row["date"] for row in chart["series"]], ["2026-01-01", "2026-01-02", "2026-01-03"])
+        for row in chart["series"]:
+            self.assertEqual(row["created_count"], ticket_model.search_count(row["created_domain"]))
+            self.assertEqual(row["resolved_count"], ticket_model.search_count(row["resolved_domain"]))
+            self.assertIn(("company_id", "=", self.env.company.id), row["created_domain"])
+            self.assertIn(("company_id", "=", self.env.company.id), row["resolved_domain"])
+
+    def test_ui3_backlog_excludes_closed_and_cancelled(self):
+        data = self.env["it.management.dashboard"].with_user(self.agent).get_dashboard_data(
+            "helpdesk",
+            {"company_id": self.env.company.id, "date_from": "2026-01-01", "date_to": "2026-01-03"},
+        )
+        rows = data["charts"]["ticket_backlog"]["rows"]
+        self.assertFalse({row["code"] for row in rows} & {"closed", "cancelled"})
+        for row in rows:
+            self.assertEqual(
+                row["count"],
+                self.env["it.helpdesk.ticket"].search_count(row["domain"]),
+            )
+
+    def test_ui3_asset_status_percentages_and_drilldown(self):
+        dashboard = self.env["it.management.dashboard"].with_user(self.agent)
+        self._asset(status="available")
+        self._asset(status="repair")
+        data = dashboard.get_dashboard_data(
+            "overview",
+            {"company_id": self.env.company.id, "date_from": "2026-01-01", "date_to": "2026-12-31"},
+        )
+        chart = data["charts"]["asset_status"]
+        self.assertEqual(chart["total"], sum(row["count"] for row in chart["rows"]))
+        self.assertAlmostEqual(sum(row["percentage"] for row in chart["rows"]), 100.0, places=2)
+        for row in chart["rows"]:
+            self.assertEqual(row["count"], self.env["buz.it.asset"].search_count(row["domain"]))
+
+    def test_ui3_empty_data_returns_zero_series_and_zero_asset_total(self):
+        dashboard = self.env["it.management.dashboard"].with_user(self.agent)
+        filters = {"company_id": self.env.company.id, "date_from": "1990-01-01", "date_to": "1990-01-03"}
+        chart = self.env["it.helpdesk.ticket"].with_user(self.agent).get_chart_data(filters)
+        self.assertEqual(len(chart["series"]), 3)
+        self.assertTrue(all(row["created_count"] == 0 and row["resolved_count"] == 0 for row in chart["series"]))
+        asset_chart = dashboard.get_dashboard_data("overview", filters)["charts"]["asset_status"]
+        self.assertEqual(asset_chart["total"], 0)
+        self.assertTrue(all(row["percentage"] == 0.0 for row in asset_chart["rows"]))

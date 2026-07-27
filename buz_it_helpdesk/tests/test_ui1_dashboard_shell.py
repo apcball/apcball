@@ -24,9 +24,7 @@ class TestUI1DashboardShell(TestCase):
         for marker in ("--it-color-primary", "--it-space-4", "--it-radius-lg", "@media (max-width: 760px)", "grid-template-columns", "o_it_management_skeleton"):
             self.assertIn(marker, self.css)
 
-    def test_ui1_does_not_introduce_comparison_or_chart_contract(self):
-        combined = (self.js + self.xml + self.css).lower()
-        self.assertNotIn("previous period", combined)
-        self.assertNotIn("delta percentage", combined)
-        self.assertNotIn("<svg", combined)
-        self.assertNotIn("chart.js", combined)
+    def test_ui1_shell_contract_remains_present_after_later_chart_phases(self):
+        for marker in ("o_it_management_dashboard", "o_it_management_sidebar", "o_it_management_filter_bar"):
+            self.assertIn(marker, self.xml)
+        self.assertIn("loadSequence", self.js)

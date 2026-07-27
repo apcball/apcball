@@ -102,6 +102,86 @@ export class ItManagementDashboard extends Component {
         return String(companyId) === String(this.state.filters.company_id);
     }
 
+    get chartSeries() {
+        return this.state.data?.charts?.created_resolved?.series || [];
+    }
+
+    get backlogRows() {
+        return this.state.data?.charts?.ticket_backlog?.rows || [];
+    }
+
+    get assetStatusRows() {
+        return this.state.data?.charts?.asset_status?.rows || [];
+    }
+
+    get assetStatusTotal() {
+        return this.state.data?.charts?.asset_status?.total || 0;
+    }
+
+    chartMax() {
+        return Math.max(1, ...this.chartSeries.map((item) => Math.max(item.created_count, item.resolved_count)));
+    }
+
+    linePoints(key) {
+        const series = this.chartSeries;
+        const max = this.chartMax();
+        if (!series.length) {
+            return "";
+        }
+        return series.map((item, index) => {
+            const x = 52 + (index * 616) / Math.max(1, series.length - 1);
+            const y = 198 - (item[key] * 156) / max;
+            return x + "," + y;
+        }).join(" ");
+    }
+
+    linePointX(index) {
+        return 52 + (index * 616) / Math.max(1, this.chartSeries.length - 1);
+    }
+
+    linePointY(value) {
+        return 198 - (value * 156) / this.chartMax();
+    }
+
+    backlogMax() {
+        return Math.max(1, ...this.backlogRows.map((item) => item.count));
+    }
+
+    backlogY(index) {
+        return 28 + index * 34;
+    }
+
+    backlogWidth(count) {
+        return (count * 430) / this.backlogMax();
+    }
+
+    assetDashOffset(index) {
+        return -this.assetStatusRows.slice(0, index).reduce((total, row) => total + row.percentage, 0);
+    }
+
+    assetColor(code) {
+        return {
+            available: "#12A57A",
+            in_use: "#7A5AF8",
+            repair: "#F79009",
+            lost: "#D92D20",
+            retired: "#667085",
+        }[code] || "#98A2B3";
+    }
+
+    async openChartSource(item, kind, title) {
+        const domain = item?.[kind + "_domain"] || item?.domain;
+        if (domain) {
+            await this.openSource({ domain, res_model: kind === "created" || kind === "resolved" ? "it.helpdesk.ticket" : "buz.it.asset" }, title);
+        }
+    }
+
+    onChartKeydown(event, item, kind, title) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            this.openChartSource(item, kind, title);
+        }
+    }
     get lastUpdatedLabel() {
         if (!this.state.lastUpdated) {
             return "Not loaded yet";
