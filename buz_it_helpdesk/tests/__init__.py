@@ -14,3 +14,5 @@ from . import test_ui4_dashboard_lists
 from . import test_ui5_dashboard_navigation
 
 from . import test_ui6_dashboard_qa
+
+from . import test_ui7_regression_contract
