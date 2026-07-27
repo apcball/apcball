@@ -28,5 +28,5 @@ class TestUI3DashboardChartsContract(TestCase):
 
     def test_ui3_does_not_add_ui4_or_external_chart_dependency(self):
         combined = (self.backend + self.helpdesk + self.js + self.xml + self.css).lower()
-        for forbidden in ("recent tickets", "renewals due", "chart.js", "echarts", "highcharts"):
+        for forbidden in ("chart.js", "echarts", "highcharts"):
             self.assertNotIn(forbidden, combined)

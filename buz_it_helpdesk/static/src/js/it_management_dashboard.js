@@ -84,7 +84,21 @@ export class ItManagementDashboard extends Component {
     }
 
     async openSource(item, title) {
-        if (!item?.domain || !item?.res_model) {
+        if (!item?.res_model) {
+            return;
+        }
+        if (item.res_id) {
+            await this.action.doAction({
+                type: "ir.actions.act_window",
+                name: title,
+                res_model: item.res_model,
+                res_id: item.res_id,
+                views: [[false, "form"]],
+                target: "current",
+            });
+            return;
+        }
+        if (!item.domain) {
             return;
         }
         await this.action.doAction({
@@ -98,6 +112,17 @@ export class ItManagementDashboard extends Component {
         });
     }
 
+    get recentTickets() {
+        return this.state.data?.recent_tickets?.rows || [];
+    }
+
+    get renewalsDue() {
+        return this.state.data?.renewals_due?.rows || [];
+    }
+
+    formatDashboardDate(value) {
+        return value ? value.slice(0, 10) : "";
+    }
     isCompanySelected(companyId) {
         return String(companyId) === String(this.state.filters.company_id);
     }

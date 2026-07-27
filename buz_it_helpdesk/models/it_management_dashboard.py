@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+import pytz
+
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
@@ -8,6 +10,7 @@ class ItManagementDashboard(models.Model):
     _name = "it.management.dashboard"
     _auto = False
     _description = "IT Management Unified Dashboard"
+    _LIST_LIMIT = 10
 
     def _check_access(self):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
@@ -46,6 +49,67 @@ class ItManagementDashboard(models.Model):
             ],
         }
 
+    @api.model
+    def _bounded_limit(self, filters, key):
+        try:
+            requested = int((filters or {}).get(key, self._LIST_LIMIT))
+        except (TypeError, ValueError):
+            requested = self._LIST_LIMIT
+        return max(1, min(requested, self._LIST_LIMIT))
+
+    @api.model
+    def _company_today(self, company):
+        config = self.env["buz.it.asset.notification.config"].search([
+            ("company_id", "=", company.id), ("active", "=", True),
+        ], limit=1)
+        timezone = pytz.timezone((config.timezone if config else False) or self.env.user.tz or "UTC")
+        return datetime.now(timezone).date()
+
+    @api.model
+    def _recent_tickets(self, filters):
+        Ticket = self.env["it.helpdesk.ticket"]
+        domain = Ticket._dashboard_domain(filters)
+        limit = self._bounded_limit(filters, "recent_limit")
+        records = Ticket.search(domain, order="create_date desc, id desc", limit=limit)
+        rows = [{
+            "id": ticket.id, "ticket_no": ticket.name, "subject": ticket.subject or "",
+            "requester": ticket.requester_id.display_name or "",
+            "priority": ticket.priority_id.display_name or "", "priority_code": ticket.priority_code or "",
+            "status": ticket.stage_id.display_name or "", "status_code": ticket.stage_code or "other",
+            "created": fields.Datetime.to_string(ticket.create_date) if ticket.create_date else False,
+            "res_model": "it.helpdesk.ticket", "res_id": ticket.id,
+        } for ticket in records]
+        return {"rows": rows, "limit": limit, "domain": domain, "res_model": "it.helpdesk.ticket",
+                "action_xml_id": "buz_it_helpdesk.action_helpdesk_tickets"}
+
+    @api.model
+    def _renewals_due(self, filters):
+        Renewal = self.env["buz.it.asset.renewal"]
+        domain = self._company_domain({key: value for key, value in filters.items() if key not in ("date_from", "date_to")}) + [("status", "not in", ("renewed", "cancelled", "not_required"))]
+        records = Renewal.search(domain, order="new_expiry_date asc, id asc")
+        limit = self._bounded_limit(filters, "renewal_limit")
+        date_from = fields.Date.to_date(filters["date_from"]) if filters.get("date_from") else False
+        date_to = fields.Date.to_date(filters["date_to"]) if filters.get("date_to") else False
+        labels = dict(Renewal._fields["status"].selection)
+        rows = []
+        for renewal in records:
+            expiry = renewal.new_expiry_date or renewal.asset_id.license_expiry_date
+            if not expiry or (date_from and expiry < date_from) or (date_to and expiry > date_to):
+                continue
+            days = (expiry - self._company_today(renewal.company_id)).days
+            rows.append({
+                "id": renewal.id, "asset_id": renewal.asset_id.id,
+                "product": renewal.asset_id.license_product or renewal.asset_id.asset_name or renewal.asset_id.name,
+                "vendor": renewal.vendor_id.display_name or "", "expiry": fields.Date.to_string(expiry),
+                "days_remaining": days, "status": labels.get(renewal.status, renewal.status),
+                "status_code": renewal.status,
+                "severity": "critical" if days <= 7 else "warning" if days <= 30 else "attention",
+                "res_model": "buz.it.asset.renewal", "res_id": renewal.id,
+                "asset_res_model": "buz.it.asset", "asset_res_id": renewal.asset_id.id,
+            })
+        rows.sort(key=lambda row: (row["expiry"], row["id"]))
+        return {"rows": rows[:limit], "limit": limit, "domain": domain,
+                "res_model": "buz.it.asset.renewal", "action_xml_id": "buz_it_helpdesk.action_buz_it_asset_renewals"}
     @api.model
     def _previous_period_filters(self, filters):
         """Return a non-overlapping period with the same duration."""
@@ -186,6 +250,8 @@ class ItManagementDashboard(models.Model):
                 "ticket_backlog": tickets["charts"]["ticket_backlog"],
                 "asset_status": assets["charts"]["asset_status"],
             },
+            "recent_tickets": self._recent_tickets(filters),
+            "renewals_due": self._renewals_due(filters),
             "options": assets["options"],
         }
 
