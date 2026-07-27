@@ -6,9 +6,11 @@
                 <div class="o_it_management_brand"><span class="o_it_management_brand_mark">IT</span><span class="o_it_management_brand_text">IT MANAGEMENT</span></div>
                 <button type="button" class="o_it_management_sidebar_toggle" t-on-click="toggleSidebar" t-att-aria-label="state.sidebarCollapsed ? 'Expand dashboard navigation' : 'Collapse dashboard navigation'"><i t-att-class="state.sidebarCollapsed ? 'fa fa-chevron-right' : 'fa fa-chevron-left'"/></button>
                 <nav class="o_it_management_nav_group" aria-label="Dashboard sections">
-                    <button type="button" class="o_it_management_nav" t-att-class="{'active': state.section == 'overview'}" t-on-click="() => selectSection('overview')"><i class="fa fa-home"/><span>Overview</span></button>
-                    <button type="button" class="o_it_management_nav" t-att-class="{'active': state.section == 'helpdesk'}" t-on-click="() => selectSection('helpdesk')"><i class="fa fa-life-ring"/><span>Helpdesk</span></button>
-                    <button type="button" class="o_it_management_nav" t-att-class="{'active': state.section == 'asset'}" t-on-click="() => selectSection('asset')"><i class="fa fa-laptop"/><span>IT Asset</span></button>
+                    <t t-foreach="navigationItems" t-as="item" t-key="item.key">
+                        <button type="button" class="o_it_management_nav" t-att-class="{'active': (item.kind == 'section' &amp;&amp; state.section == item.section)}" t-att-aria-label="item.label" t-on-click="() => openNavigation(item)">
+                            <i t-att-class="'fa ' + item.icon" aria-hidden="true"/><span><t t-esc="item.label"/></span>
+                        </button>
+                    </t>
                 </nav>
             </aside>
             <main class="o_it_management_main">

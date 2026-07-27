@@ -31,6 +31,7 @@ export class ItManagementDashboard extends Component {
         this.selectSection = this.selectSection.bind(this);
         this.onFilterChange = this.onFilterChange.bind(this);
         this.openSource = this.openSource.bind(this);
+        this.openNavigation = this.openNavigation.bind(this);
         onWillStart(this.load);
     }
 
@@ -60,6 +61,19 @@ export class ItManagementDashboard extends Component {
         }
     }
 
+    async openNavigation(item) {
+        if (item?.kind === "section" && item.section) {
+            await this.selectSection(item.section);
+            return;
+        }
+        if (item?.kind === "action" && item.action_xml_id) {
+            await this.action.doAction(item.action_xml_id);
+        }
+    }
+
+    get navigationItems() {
+        return this.state.data?.options?.navigation || [];
+    }
     async selectSection(section) {
         if (section === this.state.section) {
             return;

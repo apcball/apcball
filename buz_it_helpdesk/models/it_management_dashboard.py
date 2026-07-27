@@ -41,14 +41,37 @@ class ItManagementDashboard(models.Model):
         return domain
 
     @api.model
+    def _navigation(self):
+        is_helpdesk = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
+        is_asset = self.env.user.has_group("buz_it_helpdesk.group_it_asset_user")
+        is_manager = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_manager")
+        if not is_helpdesk:
+            return []
+        navigation = [{"key": "overview", "label": "Overview", "icon": "fa-home", "kind": "section", "section": "overview"}]
+        if is_helpdesk:
+            navigation += [
+                {"key": "helpdesk", "label": "Helpdesk", "icon": "fa-life-ring", "kind": "section", "section": "helpdesk"},
+                {"key": "reports", "label": "Reports", "icon": "fa-bar-chart", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_helpdesk_report", "domain": []},
+            ]
+        if is_asset:
+            navigation += [
+                {"key": "assets", "label": "IT Assets", "icon": "fa-laptop", "kind": "section", "section": "asset"},
+                {"key": "licenses", "label": "Licenses", "icon": "fa-key", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_buz_it_asset_software_licenses", "domain": [["asset_type", "=", "software_license"]]},
+                {"key": "renewals", "label": "Renewals", "icon": "fa-refresh", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_buz_it_asset_renewals", "domain": []},
+            ]
+        if is_manager:
+            navigation.append({"key": "settings", "label": "Settings", "icon": "fa-cog", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_helpdesk_categories", "domain": []})
+        return navigation
+
+    @api.model
     def _options(self):
         return {
             "companies": [
                 {"id": company.id, "label": company.display_name}
                 for company in self.env.companies
             ],
+            "navigation": self._navigation(),
         }
-
     @api.model
     def _bounded_limit(self, filters, key):
         try:
@@ -262,7 +285,9 @@ class ItManagementDashboard(models.Model):
             raise ValidationError("Unknown dashboard section.")
         filters = filters or {}
         if section == "helpdesk":
-            return self.env["it.helpdesk.ticket"].get_dashboard_data(filters)
+            data = self.env["it.helpdesk.ticket"].get_dashboard_data(filters)
+            data.setdefault("options", {})["navigation"] = self._navigation()
+            return data
         if section == "asset":
             return self._asset_data(filters)
         return self._overview_data(filters)
