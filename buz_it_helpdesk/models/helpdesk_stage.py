@@ -8,6 +8,20 @@ class HelpdeskStage(models.Model):
     _order = "sequence, id"
 
     name = fields.Char(required=True, translate=True)
+    code = fields.Selection(
+        [
+            ("draft", "Draft"),
+            ("new", "New"),
+            ("in_progress", "In Progress"),
+            ("pending_user", "Pending User"),
+            ("resolved", "Resolved"),
+            ("closed", "Closed"),
+            ("cancelled", "Cancelled"),
+            ("other", "Other"),
+        ],
+        default="other",
+        index=True,
+    )
     sequence = fields.Integer(default=10)
     fold = fields.Boolean(string="Fold in Kanban")
     is_closed = fields.Boolean(string="Closed Stage")

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-    <record id="stage_draft" model="it.helpdesk.stage"><field name="name">Draft</field><field name="sequence">0</field></record>
-    <record id="stage_new" model="it.helpdesk.stage"><field name="name">New</field><field name="sequence">1</field></record>
-    <record id="stage_in_progress" model="it.helpdesk.stage"><field name="name">In Progress</field><field name="sequence">3</field></record>
-    <record id="stage_pending_user" model="it.helpdesk.stage"><field name="name">Pending User</field><field name="sequence">4</field></record>
-    <record id="stage_resolved" model="it.helpdesk.stage"><field name="name">Resolved</field><field name="sequence">5</field></record>
-    <record id="stage_closed" model="it.helpdesk.stage"><field name="name">Closed</field><field name="sequence">6</field><field name="fold">1</field><field name="is_closed">1</field></record>
-    <record id="stage_cancelled" model="it.helpdesk.stage"><field name="name">Cancelled</field><field name="sequence">7</field><field name="fold">1</field><field name="is_closed">1</field></record>
+    <record id="stage_draft" model="it.helpdesk.stage"><field name="name">Draft</field><field name="code">draft</field><field name="sequence">0</field></record>
+    <record id="stage_new" model="it.helpdesk.stage"><field name="name">New</field><field name="code">new</field><field name="sequence">1</field></record>
+    <record id="stage_in_progress" model="it.helpdesk.stage"><field name="name">In Progress</field><field name="code">in_progress</field><field name="sequence">3</field></record>
+    <record id="stage_pending_user" model="it.helpdesk.stage"><field name="name">Pending User</field><field name="code">pending_user</field><field name="sequence">4</field></record>
+    <record id="stage_resolved" model="it.helpdesk.stage"><field name="name">Resolved</field><field name="code">resolved</field><field name="sequence">5</field></record>
+    <record id="stage_closed" model="it.helpdesk.stage"><field name="name">Closed</field><field name="code">closed</field><field name="sequence">6</field><field name="fold">1</field><field name="is_closed">1</field></record>
+    <record id="stage_cancelled" model="it.helpdesk.stage"><field name="name">Cancelled</field><field name="code">cancelled</field><field name="sequence">7</field><field name="fold">1</field><field name="is_closed">1</field></record>
     <record id="priority_low" model="it.helpdesk.priority"><field name="name">Low</field><field name="code">low</field><field name="sequence">1</field></record>
     <record id="priority_medium" model="it.helpdesk.priority"><field name="name">Medium</field><field name="code">medium</field><field name="sequence">2</field></record>
     <record id="priority_high" model="it.helpdesk.priority"><field name="name">High</field><field name="code">high</field><field name="sequence">3</field><field name="color">3</field></record>

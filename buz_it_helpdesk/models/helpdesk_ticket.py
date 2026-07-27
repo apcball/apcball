@@ -12,6 +12,15 @@ class HelpdeskTicket(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "priority_id desc, create_date desc"
     _NEW_TICKET_ACTIVITY_SUMMARY = "New IT Helpdesk Ticket"
+    _STAGE_CODE_BY_NAME = {
+        "Draft": "draft",
+        "New": "new",
+        "In Progress": "in_progress",
+        "Pending User": "pending_user",
+        "Resolved": "resolved",
+        "Closed": "closed",
+        "Cancelled": "cancelled",
+    }
 
     name = fields.Char(string="Ticket No", required=True, copy=False, readonly=True, default="New", index=True)
     subject = fields.Char(required=True, tracking=True)
@@ -80,22 +89,22 @@ class HelpdeskTicket(models.Model):
         current_user = self.env.user
         is_requester = current_user.has_group("buz_it_helpdesk.group_it_helpdesk_requester")
         for ticket in self:
-            ticket.can_confirm = is_requester and ticket.stage_id.name == "Draft" and ticket.requester_id == current_user
+            ticket.can_confirm = is_requester and ticket._technical_stage_code(ticket.stage_id) == "draft" and ticket.requester_id == current_user
 
     @api.depends("stage_id")
     def _compute_can_assign_to_me(self):
         for ticket in self:
-            ticket.can_assign_to_me = ticket.stage_id.name == "New"
+            ticket.can_assign_to_me = ticket._technical_stage_code(ticket.stage_id) == "new"
 
     @api.depends("stage_id")
     def _compute_can_set_pending_user(self):
         for ticket in self:
-            ticket.can_set_pending_user = ticket.stage_id.name == "In Progress"
+            ticket.can_set_pending_user = ticket._technical_stage_code(ticket.stage_id) == "in_progress"
 
     @api.depends("stage_id")
     def _compute_can_resume_in_progress(self):
         for ticket in self:
-            ticket.can_resume_in_progress = ticket.stage_id.name == "Pending User"
+            ticket.can_resume_in_progress = ticket._technical_stage_code(ticket.stage_id) == "pending_user"
 
     @api.depends("stage_id")
     def _compute_can_attach_files(self):
@@ -107,35 +116,22 @@ class HelpdeskTicket(models.Model):
     def _compute_can_edit_ticket(self):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         for ticket in self:
-            ticket.can_edit_ticket = is_agent or not ticket.stage_id or ticket.stage_id.name == "Draft"
+            ticket.can_edit_ticket = is_agent or not ticket.stage_id or ticket._technical_stage_code(ticket.stage_id) == "draft"
     @api.depends("stage_id")
     def _compute_can_edit_protected_fields(self):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         for ticket in self:
             ticket.can_edit_protected_fields = is_agent
 
-    @api.depends("stage_id", "stage_id.sequence", "stage_id.is_closed")
+    @api.depends("stage_id", "stage_id.code", "stage_id.name")
     def _compute_stage_code(self):
         for ticket in self:
-            stage = ticket.stage_id
-            if not stage:
-                ticket.stage_code = False
-            elif stage.sequence == 0:
-                ticket.stage_code = "draft"
-            elif stage.sequence == 1:
-                ticket.stage_code = "new"
-            elif stage.sequence == 3:
-                ticket.stage_code = "in_progress"
-            elif stage.sequence == 4:
-                ticket.stage_code = "pending_user"
-            elif stage.sequence == 5:
-                ticket.stage_code = "resolved"
-            elif stage.sequence == 6 and stage.is_closed:
-                ticket.stage_code = "closed"
-            elif stage.sequence >= 7 and stage.is_closed:
-                ticket.stage_code = "cancelled"
-            else:
-                ticket.stage_code = "other"
+            ticket.stage_code = ticket._technical_stage_code(ticket.stage_id)
+
+    def _technical_stage_code(self, stage):
+        if not stage:
+            return False
+        return self._STAGE_CODE_BY_NAME.get(stage.name, "other") if stage.code == "other" else (stage.code or self._STAGE_CODE_BY_NAME.get(stage.name, "other"))
 
     @api.onchange("team_id")
     def _onchange_team_id_clear_assigned_to(self):
@@ -189,18 +185,18 @@ class HelpdeskTicket(models.Model):
             stage.name: stage
             for stage in stage_model.search([("company_id", "=", company.id)], order="sequence, id")
         }
-        for name, sequence, is_closed in [
-            ("Draft", 0, False),
-            ("New", 1, False),
-            ("In Progress", 3, False),
-            ("Pending User", 4, False),
-            ("Resolved", 5, False),
-            ("Closed", 6, True),
-            ("Cancelled", 7, True),
+        for name, code, sequence, is_closed in [
+            ("Draft", "draft", 0, False),
+            ("New", "new", 1, False),
+            ("In Progress", "in_progress", 3, False),
+            ("Pending User", "pending_user", 4, False),
+            ("Resolved", "resolved", 5, False),
+            ("Closed", "closed", 6, True),
+            ("Cancelled", "cancelled", 7, True),
         ]:
             if name not in stages_by_name:
                 stages_by_name[name] = stage_model.create(
-                    {"name": name, "sequence": sequence, "is_closed": is_closed, "company_id": company.id}
+                    {"name": name, "code": code, "sequence": sequence, "is_closed": is_closed, "company_id": company.id}
                 )
         category_model = self.env["it.helpdesk.category"].sudo().with_company(company)
         category = category_model.search([("company_id", "=", company.id)], order="sequence, id", limit=1)
@@ -303,7 +299,7 @@ class HelpdeskTicket(models.Model):
                 team = self.env["it.helpdesk.team"].search([("id", "=", self._default_team_id(company)), ("active", "=", True)], limit=1)
                 vals["team_id"] = team.id
         records = super().create(vals_list)
-        records.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
+        records.filtered(lambda ticket: ticket._technical_stage_code(ticket.stage_id) != "draft")._apply_sla()
         for ticket in records:
             ticket._sync_responsible_notifications()
         return records
@@ -325,7 +321,7 @@ class HelpdeskTicket(models.Model):
         if partners:
             self.message_subscribe(partner_ids=partners.ids)
         activity_users = new_users - self.requester_id
-        if self.stage_id.name != "Draft" and activity_users:
+        if self._technical_stage_code(self.stage_id) != "draft" and activity_users:
             self._schedule_new_ticket_activities(users=activity_users)
 
     def _add_uploaded_attachments(self, uploads):
@@ -388,21 +384,30 @@ class HelpdeskTicket(models.Model):
         target_stage = self.env["it.helpdesk.stage"].browse(stage_id).exists()
         if not target_stage:
             raise UserError("The selected ticket stage does not exist.")
-        if confirm_mode and target_stage.name != "New":
+        target_code = self._technical_stage_code(target_stage)
+        if confirm_mode and target_code != "new":
             raise AccessError("A requester can only confirm a Draft ticket.")
+        allowed_transitions = {
+            "draft": {"new", "cancelled"},
+            "new": {"in_progress", "cancelled"},
+            "in_progress": {"pending_user", "resolved", "cancelled"},
+            "pending_user": {"in_progress", "cancelled"},
+            "resolved": {"closed"},
+            "closed": {"in_progress"},
+            "cancelled": {"in_progress"},
+        }
         for ticket in self:
-            if confirm_mode and (ticket.requester_id != self.env.user or ticket.stage_id.name != "Draft"):
+            current_code = self._technical_stage_code(ticket.stage_id)
+            if confirm_mode and (ticket.requester_id != self.env.user or current_code != "draft"):
                 raise AccessError("Only the requester can confirm their own Draft ticket.")
-            if ticket.stage_id == target_stage:
+            if current_code == target_code:
                 continue
-            in_progress = self._get_stage_for_company(ticket.company_id, "In Progress")
-            if ticket.stage_id.is_closed and target_stage != in_progress:
-                raise UserError("A closed or cancelled ticket can only be reopened to In Progress.")
-            closed = self._get_stage_for_company(ticket.company_id, "Closed")
-            if target_stage == closed:
-                resolved = self._get_stage_for_company(ticket.company_id, "Resolved")
-                if ticket.stage_id != resolved:
-                    raise UserError("A ticket must be Resolved before it can be Closed.")
+            if target_code not in allowed_transitions.get(current_code, set()):
+                raise UserError(
+                    "Invalid Helpdesk workflow transition: %s -> %s."
+                    % (current_code, target_code)
+                )
+
     def write(self, vals):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         if not self.env.su and not is_agent:
@@ -413,9 +418,9 @@ class HelpdeskTicket(models.Model):
                 if any(ticket.stage_id.name not in allowed_stages for ticket in self):
                     raise AccessError("Attachments can only be added from Draft through Pending User.")
             else:
-                if any(ticket.stage_id.name != "Draft" for ticket in self):
+                if any(self._technical_stage_code(ticket.stage_id) != "draft" for ticket in self):
                     raise AccessError("Requesters cannot edit a confirmed ticket.")
-                protected = {"stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
+                protected = {"stage_id", "requester_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
                 confirm_only_stage = self.env.context.get("helpdesk_confirm") and set(vals) <= {"stage_id"}
                 if protected.intersection(vals) and not confirm_only_stage:
                     raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
@@ -423,13 +428,16 @@ class HelpdeskTicket(models.Model):
         previous_users_map = {}
         if {"assigned_to", "assignee_ids"} & set(vals):
             previous_users_map = {ticket.id: ticket._get_responsible_users() for ticket in self}
+        if {"category_id", "priority_id"} & set(vals) and not self.env.context.get("sla_change_reason"):
+            if any(self._technical_stage_code(ticket.stage_id) != "draft" for ticket in self):
+                raise UserError("Changing Category or Priority after confirmation requires a SLA change reason.")
         if "stage_id" in vals:
             target = self.env["it.helpdesk.stage"].browse(vals["stage_id"])
             now = fields.Datetime.now()
             for ticket in self:
-                if target.name == "Pending User" and ticket.stage_id.name != "Pending User":
+                if self._technical_stage_code(target) == "pending_user" and self._technical_stage_code(ticket.stage_id) != "pending_user":
                     stage_updates[ticket.id] = {"sla_paused_at": now}
-                elif ticket.stage_id.name == "Pending User" and target.name != "Pending User" and ticket.sla_paused_at:
+                elif self._technical_stage_code(ticket.stage_id) == "pending_user" and self._technical_stage_code(target) != "pending_user" and ticket.sla_paused_at:
                     paused = ticket._get_work_hours(ticket.sla_paused_at, now)
                     update = {"sla_paused_at": False, "sla_paused_hours": ticket.sla_paused_hours + paused}
                     calendar = ticket.company_id.resource_calendar_id
@@ -442,7 +450,7 @@ class HelpdeskTicket(models.Model):
             self._check_stage_change(vals["stage_id"])
         if vals.get("stage_id"):
             target_stage = self.env["it.helpdesk.stage"].browse(vals["stage_id"])
-            if target_stage.name == "Resolved":
+            if self._technical_stage_code(target_stage) == "resolved":
                 vals = dict(vals)
                 vals.setdefault("resolved_at", fields.Datetime.now())
         result = super().write(vals)
@@ -452,7 +460,7 @@ class HelpdeskTicket(models.Model):
             for ticket in self:
                 ticket._sync_responsible_notifications(previous_users_map.get(ticket.id))
         if {"category_id", "priority_id", "company_id"} & set(vals):
-            self.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
+            self.filtered(lambda ticket: ticket._technical_stage_code(ticket.stage_id) != "draft")._apply_sla()
         return result
 
     @api.depends("create_date", "first_response_at", "resolved_at", "sla_deadline")
@@ -576,6 +584,7 @@ class HelpdeskTicket(models.Model):
             not self.first_response_at
             and message.message_type == "comment"
             and self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
+            and message.subtype_id != self.env.ref("mail.mt_note")
             and not self.env.context.get("skip_first_response")
         ):
             self.with_context(skip_first_response=True).write({"first_response_at": fields.Datetime.now()})
@@ -611,7 +620,7 @@ class HelpdeskTicket(models.Model):
         for ticket in self:
             if ticket.requester_id != self.env.user:
                 raise AccessError("Only the requester can confirm this ticket.")
-            if ticket.stage_id.name != "Draft":
+            if self._technical_stage_code(ticket.stage_id) != "draft":
                 raise UserError("Only Draft tickets can be confirmed.")
             stage = ticket._get_stage_for_company(ticket.company_id, "New")
             if not stage:
@@ -628,6 +637,7 @@ class HelpdeskTicket(models.Model):
                 counts = {user: self.search_count([( "assigned_to", "=", user.id), ("stage_id.is_closed", "=", False)]) for user in users}
                 assignee = min(counts, key=counts.get)
                 ticket.write({"assigned_to": assignee.id, "assignee_ids": fields.Command.link(assignee.id)})
+                ticket.action_clear_new_ticket_activity()
 
     def action_assign(self):
         self._ensure_agent()
@@ -640,11 +650,12 @@ class HelpdeskTicket(models.Model):
             if not stage:
                 raise UserError("The In Progress stage is not configured for this company.")
             ticket.write({"assigned_to": self.env.user.id, "stage_id": stage.id})
+            ticket.action_clear_new_ticket_activity()
 
     def action_pending_user(self):
         self._ensure_agent()
         for ticket in self:
-            if ticket.stage_id.name != "In Progress":
+            if self._technical_stage_code(ticket.stage_id) != "in_progress":
                 raise UserError("Only an In Progress ticket can be set to Pending User.")
             stage = self._get_stage_for_company(ticket.company_id, "Pending User")
             if not stage:
@@ -653,7 +664,7 @@ class HelpdeskTicket(models.Model):
     def action_in_progress(self):
         self._ensure_agent()
         for ticket in self:
-            if ticket.stage_id.name != "Pending User":
+            if self._technical_stage_code(ticket.stage_id) != "pending_user":
                 raise UserError("Only a Pending User ticket can be returned to In Progress.")
             stage = self._get_stage_for_company(ticket.company_id, "In Progress")
             if not stage:
@@ -670,8 +681,26 @@ class HelpdeskTicket(models.Model):
                 raise UserError("The Resolved stage is not configured for this company.")
             ticket.write({"stage_id": stage.id})
 
+    def action_cancel(self):
+        self._ensure_agent()
+        for ticket in self:
+            if self._technical_stage_code(ticket.stage_id) not in {
+                "draft",
+                "new",
+                "in_progress",
+                "pending_user",
+            }:
+                raise UserError("Only open tickets can be cancelled.")
+            stage = self._get_stage_for_company(ticket.company_id, "Cancelled")
+            if not stage:
+                raise UserError("The Cancelled stage is not configured for this company.")
+            ticket.write({"stage_id": stage.id})
+
     def action_close(self):
         self._ensure_agent()
+        for ticket in self:
+            if self._technical_stage_code(ticket.stage_id) == "closed":
+                raise UserError("A Closed ticket cannot be closed again.")
         for ticket in self:
             resolved = self._get_stage_for_company(ticket.company_id, "Resolved")
             if ticket.stage_id != resolved:
@@ -683,9 +712,18 @@ class HelpdeskTicket(models.Model):
     def action_reopen(self):
         self._ensure_agent()
         for ticket in self:
-            if not ticket.stage_id.is_closed:
+            if self._technical_stage_code(ticket.stage_id) not in {"closed", "cancelled"}:
                 raise UserError("Only closed or cancelled tickets can be reopened.")
             stage = self._get_stage_for_company(ticket.company_id, "In Progress")
             if not stage:
                 raise UserError("The In Progress stage is not configured for this company.")
-            ticket.write({"stage_id": stage.id})
+            ticket.write(
+                {
+                    "stage_id": stage.id,
+                    "resolved_at": False,
+                    "sla_overdue_notified_at": False,
+                    "sla_paused_at": False,
+                    "sla_paused_hours": 0,
+                }
+            )
+            ticket._apply_sla()
