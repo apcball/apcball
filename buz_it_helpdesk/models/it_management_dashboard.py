@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
 
-import pytz
-
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
@@ -9,8 +7,63 @@ from odoo.exceptions import AccessError, ValidationError
 class ItManagementDashboard(models.Model):
     _name = "it.management.dashboard"
     _auto = False
-    _description = "IT Management Unified Dashboard"
+    _description = "IT Management Helpdesk Dashboard"
     _LIST_LIMIT = 10
+
+    @api.model
+    def _cleanup_legacy_asset_data(self):
+        """Remove the retired Asset subsystem during module upgrade.
+
+        This is intentionally SQL-based because the legacy models are no longer
+        registered. The statements are idempotent so fresh installations are
+        safe as well.
+        """
+        self.env.cr.execute("""
+            DELETE FROM ir_attachment WHERE res_model LIKE 'buz.it.asset%%';
+            DELETE FROM mail_activity WHERE res_model LIKE 'buz.it.asset%%';
+            DELETE FROM mail_followers WHERE res_model LIKE 'buz.it.asset%%';
+            DELETE FROM mail_message WHERE model LIKE 'buz.it.asset%%';
+            DELETE FROM ir_cron WHERE model_id IN (
+                SELECT id FROM ir_model WHERE model LIKE 'buz.it.asset%%'
+            );
+            DELETE FROM ir_act_window WHERE res_model LIKE 'buz.it.asset%%';
+            DELETE FROM ir_ui_view WHERE model LIKE 'buz.it.asset%%';
+            DELETE FROM ir_ui_menu WHERE id IN (
+                SELECT res_id FROM ir_model_data
+                 WHERE module = 'buz_it_helpdesk' AND model = 'ir.ui.menu'
+                   AND (name LIKE '%%asset%%' OR name LIKE '%%renewal%%')
+            );
+            DELETE FROM ir_model_access WHERE model_id IN (
+                SELECT id FROM ir_model WHERE model LIKE 'buz.it.asset%%'
+            );
+            DELETE FROM ir_rule WHERE model_id IN (
+                SELECT id FROM ir_model WHERE model LIKE 'buz.it.asset%%'
+            );
+            DELETE FROM ir_model_fields WHERE model_id IN (
+                SELECT id FROM ir_model WHERE model LIKE 'buz.it.asset%%'
+            );
+            DELETE FROM ir_model_constraint WHERE model IN (
+                SELECT model FROM ir_model WHERE model LIKE 'buz.it.asset%%'
+            );
+            DELETE FROM ir_model_data
+             WHERE module = 'buz_it_helpdesk'
+               AND name != 'asset_cleanup'
+               AND (name LIKE '%%asset%%' OR name LIKE '%%renewal%%');
+            DELETE FROM res_groups_implied_rel
+             WHERE gid IN (SELECT id FROM res_groups WHERE name ILIKE 'IT Asset%%')
+                OR hid IN (SELECT id FROM res_groups WHERE name ILIKE 'IT Asset%%');
+            DELETE FROM res_groups_users_rel
+             WHERE gid IN (SELECT id FROM res_groups WHERE name ILIKE 'IT Asset%%');
+            DELETE FROM res_groups WHERE name ILIKE 'IT Asset%%';
+            DELETE FROM ir_model WHERE model LIKE 'buz.it.asset%%';
+        """)
+        for table in (
+            "buz_it_asset_notification_log", "buz_it_asset_notification_config",
+            "buz_it_asset_license_allocation", "buz_it_asset_renewal",
+            "buz_it_asset_log", "buz_it_asset_spec_line", "buz_it_asset",
+            "buz_it_asset_software", "buz_it_asset_spec_category", "buz_it_asset_category",
+        ):
+            self.env.cr.execute('DROP TABLE IF EXISTS "%s" CASCADE' % table)
 
     def _check_access(self):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
@@ -42,31 +95,20 @@ class ItManagementDashboard(models.Model):
 
     @api.model
     def _navigation(self):
-        is_helpdesk = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
-        is_asset = self.env.user.has_group("buz_it_helpdesk.group_it_asset_user")
-        is_manager = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_manager")
-        if not is_helpdesk:
+        if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
             return []
-        navigation = [{"key": "overview", "label": "Overview", "icon": "fa-home", "kind": "section", "section": "overview"}]
-        if is_helpdesk:
-            navigation += [
-                {"key": "helpdesk", "label": "Helpdesk", "icon": "fa-life-ring", "kind": "section", "section": "helpdesk"},
-            ]
-        if is_asset:
-            navigation += [
-                {"key": "assets", "label": "IT Assets", "icon": "fa-laptop", "kind": "section", "section": "asset"},
-            ]
-        return navigation
+        return [
+            {"key": "overview", "label": "Dashboard", "icon": "fa-home", "kind": "section", "section": "overview"},
+            {"key": "helpdesk", "label": "Helpdesk", "icon": "fa-life-ring", "kind": "section", "section": "helpdesk"},
+        ]
 
     @api.model
     def _options(self):
         return {
-            "companies": [
-                {"id": company.id, "label": company.display_name}
-                for company in self.env.companies
-            ],
+            "companies": [{"id": company.id, "label": company.display_name} for company in self.env.companies],
             "navigation": self._navigation(),
         }
+
     @api.model
     def _bounded_limit(self, filters, key):
         try:
@@ -74,14 +116,6 @@ class ItManagementDashboard(models.Model):
         except (TypeError, ValueError):
             requested = self._LIST_LIMIT
         return max(1, min(requested, self._LIST_LIMIT))
-
-    @api.model
-    def _company_today(self, company):
-        config = self.env["buz.it.asset.notification.config"].search([
-            ("company_id", "=", company.id), ("active", "=", True),
-        ], limit=1)
-        timezone = pytz.timezone((config.timezone if config else False) or self.env.user.tz or "UTC")
-        return datetime.now(timezone).date()
 
     @api.model
     def _recent_tickets(self, filters):
@@ -101,58 +135,21 @@ class ItManagementDashboard(models.Model):
                 "action_xml_id": "buz_it_helpdesk.action_helpdesk_tickets"}
 
     @api.model
-    def _renewals_due(self, filters):
-        Renewal = self.env["buz.it.asset.renewal"]
-        filters = filters or {}
-        domain = self._company_domain({key: value for key, value in filters.items() if key not in ("date_from", "date_to")}) + [("status", "not in", ("renewed", "cancelled", "not_required"))]
-        limit = self._bounded_limit(filters, "renewal_limit")
-        records = Renewal.search(domain, order="new_expiry_date asc, id asc", limit=limit)
-        date_from = fields.Date.to_date(filters["date_from"]) if filters.get("date_from") else False
-        date_to = fields.Date.to_date(filters["date_to"]) if filters.get("date_to") else False
-        labels = dict(Renewal._fields["status"].selection)
-        today_by_company = {}
-        rows = []
-        for renewal in records:
-            expiry = renewal.new_expiry_date or renewal.asset_id.license_expiry_date
-            if not expiry or (date_from and expiry < date_from) or (date_to and expiry > date_to):
-                continue
-            if renewal.company_id.id not in today_by_company:
-                today_by_company[renewal.company_id.id] = self._company_today(renewal.company_id)
-            days = (expiry - today_by_company[renewal.company_id.id]).days
-            rows.append({
-                "id": renewal.id, "asset_id": renewal.asset_id.id,
-                "product": renewal.asset_id.license_product or renewal.asset_id.asset_name or renewal.asset_id.name,
-                "vendor": renewal.vendor_id.display_name or "", "expiry": fields.Date.to_string(expiry),
-                "days_remaining": days, "status": labels.get(renewal.status, renewal.status),
-                "status_code": renewal.status,
-                "severity": "critical" if days <= 7 else "warning" if days <= 30 else "attention",
-                "res_model": "buz.it.asset.renewal", "res_id": renewal.id,
-                "asset_res_model": "buz.it.asset", "asset_res_id": renewal.asset_id.id,
-            })
-        rows.sort(key=lambda row: (row["expiry"], row["id"]))
-        return {"rows": rows[:limit], "limit": limit, "domain": domain,
-                "res_model": "buz.it.asset.renewal", "action_xml_id": "buz_it_helpdesk.action_buz_it_asset_renewals"}
-
-    @api.model
     def _previous_period_filters(self, filters):
-        """Return a non-overlapping period with the same duration."""
         filters = filters or {}
-        date_from = filters.get("date_from")
-        date_to = filters.get("date_to")
-        if not date_from or not date_to:
+        if not filters.get("date_from") or not filters.get("date_to"):
             return None
         try:
-            current_from = datetime.strptime(date_from, "%Y-%m-%d").date()
-            current_to = datetime.strptime(date_to, "%Y-%m-%d").date()
+            current_from = datetime.strptime(filters["date_from"], "%Y-%m-%d").date()
+            current_to = datetime.strptime(filters["date_to"], "%Y-%m-%d").date()
         except (TypeError, ValueError):
             return None
         if current_to < current_from:
             return None
         duration = (current_to - current_from).days + 1
         previous_to = current_from - timedelta(days=1)
-        previous_from = previous_to - timedelta(days=duration - 1)
         previous = dict(filters)
-        previous["date_from"] = fields.Date.to_string(previous_from)
+        previous["date_from"] = fields.Date.to_string(previous_to - timedelta(days=duration - 1))
         previous["date_to"] = fields.Date.to_string(previous_to)
         return previous
 
@@ -162,11 +159,8 @@ class ItManagementDashboard(models.Model):
         if not previous_count:
             return {"delta": delta, "delta_percent": None, "direction": "up" if delta > 0 else "flat"}
         percentage = (delta * 100.0) / previous_count
-        return {
-            "delta": delta,
-            "delta_percent": round(percentage, 2),
-            "direction": "up" if delta > 0 else "down" if delta < 0 else "flat",
-        }
+        return {"delta": delta, "delta_percent": round(percentage, 2),
+                "direction": "up" if delta > 0 else "down" if delta < 0 else "flat"}
 
     @api.model
     def _add_comparison(self, current_kpis, previous_kpis):
@@ -176,118 +170,46 @@ class ItManagementDashboard(models.Model):
             current = dict(item)
             previous_count = previous_by_code.get(item["code"])
             current["previous_count"] = previous_count
-            current.update(
-                self._comparison(item["count"], previous_count)
-                if previous_count is not None
-                else {"delta": None, "delta_percent": None, "direction": "na"}
-            )
+            current.update(self._comparison(item["count"], previous_count) if previous_count is not None else {
+                "delta": None, "delta_percent": None, "direction": "na",
+            })
             result.append(current)
         return result
 
     @api.model
-    def _asset_data(self, filters):
-        domain = self._company_domain(filters)
-        Asset = self.env["buz.it.asset"]
-        status_specs = (
-            ("in_use", "In Use"), ("available", "Available"),
-            ("repair", "Under Repair"), ("lost", "Lost"), ("retired", "Retired"),
-        )
-        kpis = []
-        for code, label, extra_domain in (
-            ("in_use", "Asset In Use", [("status", "=", "in_use")]),
-            ("repair", "Under Repair", [("status", "=", "repair")]),
-            ("license_expiring", "License Expiring", [
-                ("asset_type", "=", "software_license"),
-                ("license_expiry_date", "!=", False),
-                ("license_expiry_date", ">=", filters.get("date_from") or fields.Date.context_today(self)),
-                ("license_expiry_date", "<=", filters.get("date_to") or fields.Date.context_today(self),),
-            ]),
-        ):
-            count_domain = list(domain) + extra_domain
-            kpis.append({"code": code, "label": label, "count": Asset.search_count(count_domain), "domain": count_domain})
-
-        def grouped(field_name):
-            rows = []
-            for group in Asset.read_group(domain, [field_name], [field_name], lazy=False):
-                value = group.get(field_name)
-                value_id, label = value if isinstance(value, (list, tuple)) else (False, "Unassigned")
-                rows.append({
-                    "id": value_id, "label": label or "Unassigned",
-                    "count": group.get("%s_count" % field_name, group.get("__count", 0)),
-                    "domain": list(domain) + [(field_name, "=", value_id)],
-                })
-            return sorted(rows, key=lambda row: (-row["count"], row["label"]))[:12]
-
-        status_rows = []
-        for code, label in status_specs:
-            status_domain = list(domain) + [("status", "=", code)]
-            status_rows.append({"code": code, "label": label, "count": Asset.search_count(status_domain), "domain": status_domain})
-        total = sum(row["count"] for row in status_rows)
-        for row in status_rows:
-            row["percentage"] = round((row["count"] * 100.0) / total, 2) if total else 0.0
-        asset_status_chart = {"total": total, "rows": status_rows}
-        type_rows = grouped("asset_type")
-        department_rows = grouped("department_id")
-        repair_domain = list(domain) + [("status", "=", "repair")]
-        return {
-            "kpis": kpis,
-            "status": status_rows,
-            "types": type_rows,
-            "departments": department_rows,
-            "repair": {"count": Asset.search_count(repair_domain), "domain": repair_domain},
-            "charts": {"asset_status": asset_status_chart},
-            "options": self._options(),
-        }
-
-    @api.model
     def _overview_data(self, filters):
         tickets = self.env["it.helpdesk.ticket"].get_dashboard_data(filters)
-        assets = self._asset_data(filters)
         ticket_map = {item["code"]: item for item in tickets.get("kpis", [])}
-        asset_map = {item["code"]: item for item in assets["kpis"]}
         current_kpis = [
             ticket_map.get("open", {"code": "open", "label": "Open Tickets", "count": 0, "domain": []}),
             ticket_map.get("sla_overdue", {"code": "sla_overdue", "label": "SLA Overdue", "count": 0, "domain": []}),
-            asset_map["in_use"], asset_map["repair"], asset_map["license_expiring"],
         ]
         previous_filters = self._previous_period_filters(filters)
+        previous_kpis = []
         if previous_filters:
             previous_tickets = self.env["it.helpdesk.ticket"].get_dashboard_data(previous_filters)
-            previous_assets = self._asset_data(previous_filters)
-            previous_kpis = [
-                {"code": "open", "count": next((item["count"] for item in previous_tickets["kpis"] if item["code"] == "open"), 0)},
-                {"code": "sla_overdue", "count": next((item["count"] for item in previous_tickets["kpis"] if item["code"] == "sla_overdue"), 0)},
-                next(item for item in previous_assets["kpis"] if item["code"] == "in_use"),
-                next(item for item in previous_assets["kpis"] if item["code"] == "repair"),
-                next(item for item in previous_assets["kpis"] if item["code"] == "license_expiring"),
-            ]
-            current_kpis = self._add_comparison(current_kpis, previous_kpis)
-        else:
-            current_kpis = self._add_comparison(current_kpis, [])
+            previous_kpis = [{"code": code, "count": next(
+                (item["count"] for item in previous_tickets["kpis"] if item["code"] == code), 0
+            )} for code in ("open", "sla_overdue")]
         return {
-            "kpis": current_kpis,
+            "kpis": self._add_comparison(current_kpis, previous_kpis),
             "tickets": tickets.get("status_overview", []),
-            "assets": assets["status"],
             "charts": {
                 "created_resolved": tickets["charts"]["created_resolved"],
                 "ticket_backlog": tickets["charts"]["ticket_backlog"],
-                "asset_status": assets["charts"]["asset_status"],
             },
             "recent_tickets": self._recent_tickets(filters),
-            "renewals_due": self._renewals_due(filters),
-            "options": assets["options"],
+            "options": self._options(),
         }
 
     @api.model
     def get_dashboard_data(self, section="overview", filters=None):
         self._check_access()
-        if section not in ("overview", "helpdesk", "asset"):
+        if section not in ("overview", "helpdesk"):
             raise ValidationError("Unknown dashboard section.")
         filters = filters or {}
         if section == "helpdesk":
             data = self.env["it.helpdesk.ticket"].get_dashboard_data(filters)
             data.setdefault("options", {})["navigation"] = self._navigation()
             return data
-        if section == "asset":
-            return self._asset_data(filters)
         return self._overview_data(filters)

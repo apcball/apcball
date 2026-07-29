@@ -26,7 +26,7 @@ class TestUI6DashboardQAContract(TestCase):
         self.assertIn("get_dashboard_data", self.backend)
 
     def test_bounded_payload_and_query_behavior(self):
-        for marker in ("_LIST_LIMIT = 10", "recent_limit", "renewal_limit", "limit=limit", "create_date desc, id desc"):
+        for marker in ("_LIST_LIMIT = 10", "recent_limit", '"limit": limit', "create_date desc, id desc"):
             self.assertIn(marker, self.backend)
-        recent = self.backend[self.backend.index("def _recent_tickets"):self.backend.index("def _renewals_due")]
+        recent = self.backend[self.backend.index("def _recent_tickets"):self.backend.index("def _previous_period_filters")]
         self.assertNotIn("description", recent)

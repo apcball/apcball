@@ -144,10 +144,6 @@ export class ItManagementDashboard extends Component {
         return this.state.data?.recent_tickets?.rows || [];
     }
 
-    get renewalsDue() {
-        return this.state.data?.renewals_due?.rows || [];
-    }
-
     formatDashboardDate(value) {
         return value ? value.slice(0, 10) : "";
     }
@@ -156,9 +152,6 @@ export class ItManagementDashboard extends Component {
         return {
             open: "fa-ticket",
             sla_overdue: "fa-clock-o",
-            in_use: "fa-desktop",
-            repair: "fa-wrench",
-            license_expiring: "fa-file-text-o",
         }[code] || "fa-bar-chart";
     }
 
@@ -172,14 +165,6 @@ export class ItManagementDashboard extends Component {
 
     get backlogRows() {
         return this.state.data?.charts?.ticket_backlog?.rows || [];
-    }
-
-    get assetStatusRows() {
-        return this.state.data?.charts?.asset_status?.rows || [];
-    }
-
-    get assetStatusTotal() {
-        return this.state.data?.charts?.asset_status?.total || 0;
     }
 
     chartMax() {
@@ -219,24 +204,10 @@ export class ItManagementDashboard extends Component {
         return (count * 180) / this.backlogMax();
     }
 
-    assetDashOffset(index) {
-        return -this.assetStatusRows.slice(0, index).reduce((total, row) => total + row.percentage, 0);
-    }
-
-    assetColor(code) {
-        return {
-            available: "#12A57A",
-            in_use: "#7A5AF8",
-            repair: "#F79009",
-            lost: "#D92D20",
-            retired: "#667085",
-        }[code] || "#98A2B3";
-    }
-
     async openChartSource(item, kind, title) {
         const domain = item?.[kind + "_domain"] || item?.domain;
         if (domain) {
-            await this.openSource({ domain, res_model: kind === "created" || kind === "resolved" ? "it.helpdesk.ticket" : "buz.it.asset" }, title);
+            await this.openSource({ domain, res_model: "it.helpdesk.ticket" }, title);
         }
     }
 
@@ -255,7 +226,7 @@ export class ItManagementDashboard extends Component {
 
     get hasData() {
         const data = this.state.data || {};
-        return Boolean(data.kpis?.length || data.tickets?.length || data.assets?.length || data.status_overview?.length || data.status?.length);
+        return Boolean(data.kpis?.length || data.tickets?.length || data.status_overview?.length || this.recentTickets.length);
     }
 
     get filterKey() {

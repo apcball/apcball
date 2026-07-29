@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <function model="it.management.dashboard" name="_cleanup_legacy_asset_data"/>
+</odoo>

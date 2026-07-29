@@ -88,9 +88,6 @@
 .o_it_management_overview_kpi_panel .o_it_management_kpi:hover,
 .o_it_management_overview_kpi_panel .o_it_management_kpi:focus-visible { background: #f8fbff; box-shadow: none; }
 .o_it_management_kpi.kpi-sla_overdue .o_it_management_kpi_icon { background: #fff1f3; color: #d92d20; }
-.o_it_management_kpi.kpi-in_use .o_it_management_kpi_icon { background: #ecfdf3; color: #039855; }
-.o_it_management_kpi.kpi-repair .o_it_management_kpi_icon { background: #fff6ed; color: #f79009; }
-.o_it_management_kpi.kpi-license_expiring .o_it_management_kpi_icon { background: #f9f5ff; color: #7f56d9; }
 .o_it_management_cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--it-space-4); margin-top: var(--it-space-4); }
 .o_it_management_cards article { min-width: 0; padding: var(--it-space-4); border: 1px solid var(--it-color-border); border-radius: var(--it-radius-lg); background: var(--it-color-surface); }
 .o_it_management_cards article:last-child:nth-child(3) { grid-column: span 2; }
@@ -137,7 +134,7 @@
 }
 .o_it_management_charts {
     display: grid;
-    grid-template-columns: 1.25fr 1.25fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--it-space-4);
     margin-top: var(--it-space-4);
 }
@@ -250,66 +247,6 @@
 .o_it_management_backlog_chart g:focus .o_it_management_backlog_bar {
     fill: var(--it-color-secondary);
 }
-.o_it_management_donut {
-    display: block;
-    width: min(100%, 220px);
-    margin: 0 auto;
-    overflow: visible;
-}
-.o_it_management_donut_track,
-.o_it_management_donut_segment {
-    fill: none;
-}
-.o_it_management_donut_track {
-    stroke: var(--it-color-border);
-    stroke-width: 28;
-}
-.o_it_management_donut_segment {
-    cursor: pointer;
-    transition: opacity 120ms ease;
-}
-.o_it_management_donut_segment:hover,
-.o_it_management_donut_segment:focus {
-    opacity: 0.8;
-}
-.o_it_management_donut_total {
-    fill: var(--it-color-text);
-    font-size: 26px;
-    font-weight: 700;
-}
-.o_it_management_donut_caption {
-    fill: var(--it-muted);
-    font-size: 12px;
-}
-.o_it_management_asset_chart {
-    display: grid;
-    gap: var(--it-space-3);
-}
-.o_it_management_asset_legend {
-    display: grid;
-    gap: var(--it-space-1);
-}
-.o_it_management_asset_legend_row {
-    display: grid;
-    grid-template-columns: 0.7rem 1fr auto;
-    align-items: center;
-    gap: var(--it-space-2);
-    width: 100%;
-    padding: var(--it-space-1) 0;
-    border: 0;
-    background: transparent;
-    color: var(--it-color-text);
-    text-align: left;
-}
-.o_it_management_asset_legend_row i {
-    width: 0.7rem;
-    height: 0.7rem;
-    border-radius: 50%;
-}
-.o_it_management_asset_legend_row:focus-visible {
-    outline: 2px solid var(--it-color-primary);
-    outline-offset: 2px;
-}
 @media (max-width: 1100px) {
     .o_it_management_charts {
         grid-template-columns: 1fr 1fr;
@@ -328,7 +265,7 @@
 }
 .o_it_management_ui4_grid {
     display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
     margin-top: 16px;
 }
