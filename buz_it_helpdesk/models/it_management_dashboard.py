@@ -56,8 +56,6 @@ class ItManagementDashboard(models.Model):
             navigation += [
                 {"key": "assets", "label": "IT Assets", "icon": "fa-laptop", "kind": "section", "section": "asset"},
             ]
-        if is_manager:
-            navigation.append({"key": "settings", "label": "Settings", "icon": "fa-cog", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_helpdesk_categories", "domain": []})
         return navigation
 
     @api.model
