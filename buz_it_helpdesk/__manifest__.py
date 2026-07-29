@@ -11,7 +11,7 @@ without dependencies on custom or business modules.
     """,
     'author': 'BUZ',
     'license': 'LGPL-3',
-    'depends': ['base'],
+    'depends': ['base', 'hr'],
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',

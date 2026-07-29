@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class HelpdeskTicket(models.Model):
@@ -23,9 +24,25 @@ class HelpdeskTicket(models.Model):
         default=lambda self: self.env.user,
         index=True,
     )
-    assigned_user_id = fields.Many2one('res.users', string='Assigned To')
+    department_id = fields.Many2one(
+        'hr.department',
+        string='Department',
+        readonly=True,
+        index=True,
+    )
+    assigned_user_id = fields.Many2one(
+        'res.users',
+        string='Assigned To',
+        domain="[('id', 'in', team_user_ids)]",
+    )
     category_id = fields.Many2one('buz.helpdesk.category', string='Category')
     team_id = fields.Many2one('buz.helpdesk.team', string='Team')
+    team_user_ids = fields.Many2many(
+        'res.users',
+        related='team_id.user_ids',
+        string='Team Users',
+        readonly=True,
+    )
     stage_id = fields.Many2one(
         'buz.helpdesk.stage',
         string='Stage',
@@ -53,4 +70,39 @@ class HelpdeskTicket(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'buz.helpdesk.ticket'
                 ) or 'New'
+            requester = self.env['res.users'].browse(
+                vals.get('requester_id') or self.env.uid
+            )
+            vals['department_id'] = (
+                requester.employee_id.department_id.id
+                if requester.exists() and requester.employee_id
+                else False
+            )
         return super().create(vals_list)
+
+    @api.onchange('requester_id')
+    def _onchange_requester_id(self):
+        """Keep the ticket department aligned with its requester."""
+        self.department_id = (
+            self.requester_id.employee_id.department_id
+            if self.requester_id and self.requester_id.employee_id
+            else False
+        )
+
+    @api.onchange('team_id')
+    def _onchange_team_id(self):
+        """Clear an assignee who is not a member of the selected team."""
+        if self.team_id and self.assigned_user_id not in self.team_id.user_ids:
+            self.assigned_user_id = False
+
+    @api.constrains('team_id', 'assigned_user_id')
+    def _check_assigned_user_in_team(self):
+        for ticket in self:
+            if (
+                ticket.team_id
+                and ticket.assigned_user_id
+                and ticket.assigned_user_id not in ticket.team_id.user_ids
+            ):
+                raise ValidationError(
+                    'The assigned user must be a member of the selected team.'
+                )

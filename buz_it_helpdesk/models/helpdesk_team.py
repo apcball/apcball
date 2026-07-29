@@ -9,6 +9,14 @@ class HelpdeskTeam(models.Model):
     name = fields.Char(required=True)
     sequence = fields.Integer(default=10)
     description = fields.Text()
+    user_ids = fields.Many2many(
+        'res.users',
+        'buz_helpdesk_team_user_rel',
+        'team_id',
+        'user_id',
+        string='IT Users',
+        help='Users who can be assigned tickets for this team.',
+    )
     active = fields.Boolean(default=True)
 
     _sql_constraints = [

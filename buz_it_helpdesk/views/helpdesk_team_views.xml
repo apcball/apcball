@@ -22,6 +22,9 @@
                         <field name="sequence"/>
                         <field name="active"/>
                     </group>
+                    <group string="Team Members">
+                        <field name="user_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    </group>
                     <field name="description"/>
                 </sheet>
             </form>
