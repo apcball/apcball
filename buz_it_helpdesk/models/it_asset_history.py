@@ -43,7 +43,6 @@ class ItAssetLog(models.Model):
     old_value = fields.Text(readonly=True)
     new_value = fields.Text(readonly=True)
     ticket_id = fields.Many2one("it.helpdesk.ticket", readonly=True, check_company=True)
-    repair_vendor_id = fields.Many2one("res.partner", readonly=True, check_company=True)
     repair_sent_date = fields.Date(readonly=True)
     repair_received_date = fields.Date(readonly=True)
     repair_cost = fields.Monetary(readonly=True, currency_field="currency_id")

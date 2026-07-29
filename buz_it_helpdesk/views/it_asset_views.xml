@@ -99,7 +99,6 @@
                     </group>
                     <group string="Note" invisible="asset_type == 'printer'"><field name="notes" placeholder="Internal note..." nolabel="1"/></group>
                     <group string="Repair Details" invisible="asset_type == 'software_license'">
-                        <field name="repair_vendor_id"/>
                         <field name="repair_ticket_id"/>
                         <field name="repair_sent_date"/>
                         <field name="repair_received_date"/>

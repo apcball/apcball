@@ -165,7 +165,6 @@ class ItAsset(models.Model):
     purchase_date = fields.Date(tracking=True)
     warranty_expiry_date = fields.Date(string="Warranty Expiry", tracking=True)
     vendor_id = fields.Many2one("res.partner", string="Vendor", tracking=True, check_company=True)
-    repair_vendor_id = fields.Many2one("res.partner", string="Repair Vendor", tracking=True, check_company=True)
     repair_sent_date = fields.Date(string="Repair Sent Date", tracking=True)
     repair_received_date = fields.Date(string="Repair Received Date", tracking=True)
     repair_cost = fields.Monetary(string="Repair Cost", tracking=True, currency_field="company_currency_id")
@@ -298,7 +297,7 @@ class ItAsset(models.Model):
             asset._create_history("return", new_value="Returned")
         return True
 
-    def action_send_to_repair(self, repair_vendor_id=False, repair_sent_date=False, repair_cost=0.0, repair_symptoms=False, ticket_id=False, repair_attachment_ids=False):
+    def action_send_to_repair(self, repair_sent_date=False, repair_cost=0.0, repair_symptoms=False, ticket_id=False, repair_attachment_ids=False):
         for asset in self:
             if asset.status in ("retired", "lost"):
                 raise ValidationError("Retired or Lost assets cannot be sent to repair.")
@@ -306,7 +305,6 @@ class ItAsset(models.Model):
             asset._create_history(
                 "repair_send",
                 ticket_id=ticket_id or asset.repair_ticket_id.id or False,
-                repair_vendor_id=repair_vendor_id or asset.repair_vendor_id.id or False,
                 repair_sent_date=repair_sent_date or asset.repair_sent_date or fields.Date.context_today(asset),
                 repair_cost=repair_cost or asset.repair_cost or 0.0,
                 repair_symptoms=repair_symptoms or asset.repair_symptoms or False,
