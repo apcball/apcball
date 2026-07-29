@@ -2,14 +2,14 @@
 
 ## Scope
 
-Validate the reduced IT Management structure: Dashboard and Helpdesk only.
+Validate the reduced IT Management structure: Helpdesk only.
 
 ## Regression and upgrade
 
 | Area | Check | Evidence |
 |---|---|---|
-| Menu | IT Management shows only Dashboard and Helpdesk | |
-| Dashboard | Helpdesk KPIs, charts and Recent Tickets load | |
+| Menu | IT Management shows only Helpdesk | |
+| Helpdesk | Helpdesk dashboard, tickets, SLA and Recent Tickets load | |
 | Helpdesk | Ticket list, workflow, SLA and settings remain usable | |
 | Roles | Requester denied; Agent/Manager allowed; manager Settings preserved | |
 | Company filters | Data stays within allowed companies | |
@@ -27,8 +27,8 @@ Validate the reduced IT Management structure: Dashboard and Helpdesk only.
 
 ## Manual checks
 
-- [ ] Dashboard and Helpdesk open for Agent and Manager.
-- [ ] Requester cannot access the Dashboard endpoint.
+- [ ] Helpdesk opens for Agent and Manager.
+- [ ] Requester cannot access the Helpdesk dashboard endpoint.
 - [ ] Asset menu, Asset section, Asset chart and Renewals Due are absent.
 - [ ] KPI, chart and ticket-row drill-downs open Helpdesk records only.
 - [ ] No secret or attachment/chatter detail is exposed in the Dashboard payload.

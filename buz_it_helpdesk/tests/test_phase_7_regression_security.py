@@ -21,9 +21,9 @@ class TestPhase7RegressionSecurity(TransactionCase):
     def test_role_matrix_and_asset_section_removal(self):
         dashboard = self.env["it.management.dashboard"]
         with self.assertRaises(AccessError):
-            dashboard.with_user(self.requester).get_dashboard_data("overview", {})
+            dashboard.with_user(self.requester).get_dashboard_data("helpdesk", {})
         navigation = dashboard.with_user(self.agent)._navigation()
-        self.assertEqual([item["section"] for item in navigation], ["overview", "helpdesk"])
+        self.assertEqual([item["section"] for item in navigation], ["helpdesk"])
 
     def test_email_intake_does_not_enqueue_outbound_mail(self):
         ticket_model = self.env["it.helpdesk.ticket"].with_user(self.agent)

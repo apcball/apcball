@@ -2,13 +2,13 @@
 
 ## Scope
 
-The IT Management main area currently contains only Dashboard and Helpdesk. The Asset subsystem is retired from this addon and is removed from the runtime UI and RPC contract.
+The IT Management main area currently contains only Helpdesk. The Asset subsystem is retired from this addon and is removed from the runtime UI and RPC contract.
 
 ## Client and RPC
 
 - Client action: `buz_it_helpdesk_dashboard` through `action_helpdesk_dashboard_overview`
 - RPC: `it.management.dashboard.get_dashboard_data(section, filters)`
-- Valid sections: `overview`, `helpdesk`
+- Valid sections: `overview`, `helpdesk`; only Helpdesk is exposed in the main navigation
 - Filters: `company_id`, `date_from`, `date_to`; Helpdesk-specific filters remain supported by the Helpdesk dashboard
 - Access: Helpdesk Agent and Helpdesk Manager; Requester is denied
 
@@ -28,10 +28,7 @@ All drill-down records use `it.helpdesk.ticket`. No Asset models, Asset actions,
 
 ## Menu contract
 
-Under `IT Management`, the only top-level menus are:
-
-- Dashboard
-- Helpdesk
+Under `IT Management`, the only top-level menu is Helpdesk.
 
 Helpdesk retains Tickets, My Tickets, SLA and manager-only Settings.
 

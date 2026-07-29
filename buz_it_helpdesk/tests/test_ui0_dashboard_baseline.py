@@ -13,4 +13,6 @@ class TestUI0DashboardBaseline(TestCase):
         )
         self.assertNotIn("buz.it.asset", combined)
         self.assertNotIn("menu_it_assets", combined)
+        self.assertNotIn('name="Dashboard"', combined)
+        self.assertIn('name="Helpdesk"', combined)
         self.assertNotIn("renewals_due", combined)

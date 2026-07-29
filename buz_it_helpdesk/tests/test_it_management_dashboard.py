@@ -18,11 +18,11 @@ class TestItManagementDashboard(TransactionCase):
             "groups_id": [fields.Command.set([cls.env.ref("base.group_user").id, cls.requester_group.id])],
         })
 
-    def test_dashboard_has_only_helpdesk_sections(self):
+    def test_navigation_has_only_helpdesk(self):
         dashboard = self.env["it.management.dashboard"].with_user(self.agent)
         navigation = dashboard._navigation()
-        self.assertEqual({item["section"] for item in navigation}, {"overview", "helpdesk"})
-        self.assertEqual({item["label"] for item in navigation}, {"Dashboard", "Helpdesk"})
+        self.assertEqual([item["section"] for item in navigation], ["helpdesk"])
+        self.assertEqual([item["label"] for item in navigation], ["Helpdesk"])
 
     def test_dashboard_rejects_asset_section_and_requester(self):
         dashboard = self.env["it.management.dashboard"]

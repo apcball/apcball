@@ -12,6 +12,7 @@ class ItManagementDashboard(models.Model):
 
     @api.model
     def _cleanup_legacy_asset_data(self):
+        return
         """Remove the retired Asset subsystem during module upgrade.
 
         This is intentionally SQL-based because the legacy models are no longer
@@ -19,13 +20,28 @@ class ItManagementDashboard(models.Model):
         safe as well.
         """
         self.env.cr.execute("""
+            CREATE TEMP TABLE legacy_it_management_menu_ids ON COMMIT DROP AS
+            WITH RECURSIVE menu_tree AS (
+                SELECT child.id
+                  FROM ir_ui_menu child
+                  JOIN ir_ui_menu root ON root.id = child.parent_id
+                 WHERE root.name->>'en_US' = 'IT Management'
+                   AND child.name->>'en_US' <> 'Helpdesk'
+                UNION ALL
+                SELECT child.id
+                  FROM ir_ui_menu child
+                  JOIN menu_tree parent ON parent.id = child.parent_id
+            )
+            SELECT id FROM menu_tree;
+            DELETE FROM ir_model_data
+             WHERE model = 'ir.ui.menu'
+               AND res_id IN (SELECT id FROM legacy_it_management_menu_ids);
+            DELETE FROM ir_ui_menu
+             WHERE id IN (SELECT id FROM legacy_it_management_menu_ids);
             DELETE FROM ir_attachment WHERE res_model LIKE 'buz.it.asset%%';
             DELETE FROM mail_activity WHERE res_model LIKE 'buz.it.asset%%';
             DELETE FROM mail_followers WHERE res_model LIKE 'buz.it.asset%%';
             DELETE FROM mail_message WHERE model LIKE 'buz.it.asset%%';
-            DELETE FROM ir_cron WHERE model_id IN (
-                SELECT id FROM ir_model WHERE model LIKE 'buz.it.asset%%'
-            );
             DELETE FROM ir_act_window WHERE res_model LIKE 'buz.it.asset%%';
             DELETE FROM ir_ui_view WHERE model LIKE 'buz.it.asset%%';
             DELETE FROM ir_ui_menu WHERE id IN (
@@ -98,7 +114,6 @@ class ItManagementDashboard(models.Model):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
             return []
         return [
-            {"key": "overview", "label": "Dashboard", "icon": "fa-home", "kind": "section", "section": "overview"},
             {"key": "helpdesk", "label": "Helpdesk", "icon": "fa-life-ring", "kind": "section", "section": "helpdesk"},
         ]
 
