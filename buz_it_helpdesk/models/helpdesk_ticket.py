@@ -45,6 +45,9 @@ class HelpdeskTicket(models.Model):
         related='category_id.type_ids',
         string='Category Types', readonly=True,
     )
+    show_category_type = fields.Boolean(
+        compute='_compute_show_category_type',
+    )
     team_id = fields.Many2one('buz.helpdesk.team', string='Team')
     team_user_ids = fields.Many2many(
         'res.users',
@@ -71,6 +74,11 @@ class HelpdeskTicket(models.Model):
         required=True,
     )
     active = fields.Boolean(default=True)
+
+    @api.depends('category_id.name')
+    def _compute_show_category_type(self):
+        for ticket in self:
+            ticket.show_category_type = ticket.category_id.name == 'Hardware'
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -107,7 +115,13 @@ class HelpdeskTicket(models.Model):
     @api.onchange('category_id')
     def _onchange_category_id(self):
         """Clear a type that does not belong to the selected category."""
-        if self.category_type_id and self.category_type_id not in self.category_id.type_ids:
+        if (
+            not self.show_category_type
+            or (
+                self.category_type_id
+                and self.category_type_id not in self.category_id.type_ids
+            )
+        ):
             self.category_type_id = False
 
     @api.constrains('category_id', 'category_type_id')
