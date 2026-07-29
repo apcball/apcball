@@ -29,8 +29,8 @@ access_it_asset_category_manager,it asset category manager,model_buz_it_asset_ca
 
 access_it_asset_spec_category_agent,it asset spec category agent,model_buz_it_asset_spec_category,buz_it_helpdesk.group_it_asset_user,1,0,0,0
 access_it_asset_spec_category_manager,it asset spec category manager,model_buz_it_asset_spec_category,buz_it_helpdesk.group_it_asset_manager,1,1,1,0
-access_it_asset_spec_line_agent,it asset spec line agent,model_buz_it_asset_spec_line,buz_it_helpdesk.group_it_asset_user,1,1,1,0
-access_it_asset_spec_line_manager,it asset spec line manager,model_buz_it_asset_spec_line,buz_it_helpdesk.group_it_asset_manager,1,1,1,0
+access_it_asset_spec_line_agent,it asset spec line agent,model_buz_it_asset_spec_line,buz_it_helpdesk.group_it_asset_user,1,1,1,1
+access_it_asset_spec_line_manager,it asset spec line manager,model_buz_it_asset_spec_line,buz_it_helpdesk.group_it_asset_manager,1,1,1,1
 access_it_asset_software_agent,it asset software agent,model_buz_it_asset_software,buz_it_helpdesk.group_it_asset_user,1,0,0,0
 access_it_asset_software_manager,it asset software manager,model_buz_it_asset_software,buz_it_helpdesk.group_it_asset_manager,1,1,1,0
 access_it_asset_log_agent,it asset history agent,model_buz_it_asset_log,buz_it_helpdesk.group_it_asset_user,1,0,0,0
