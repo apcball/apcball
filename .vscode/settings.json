@@ -2,5 +2,12 @@
     "python.languageServer": "None",
     "python.analysis.typeCheckingMode": "standard",
     "git.ignoreLimitWarning": true,
-    "xml.symbols.enabled": false
+    "xml.symbols.enabled": false,
+    "python-envs.pythonProjects": [
+        {
+            "path": "buz_it_helpdesk",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
 }
