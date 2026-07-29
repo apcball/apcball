@@ -53,12 +53,12 @@
                         <article class="o_it_management_chart_panel">
                             <div class="o_it_management_panel_heading"><h2>Ticket Backlog</h2><span>Open workflow statuses</span></div>
                             <t t-if="backlogRows.length">
-                                <svg class="o_it_management_svg_chart o_it_management_backlog_chart" viewBox="0 0 560 230" role="img" aria-label="Open ticket backlog by status">
+                                <svg class="o_it_management_svg_chart o_it_management_backlog_chart" viewBox="0 0 380 230" role="img" aria-label="Open ticket backlog by status">
                                     <t t-foreach="backlogRows" t-as="row" t-key="row.code">
                                         <g t-att-transform="'translate(0,' + backlogY(row_index) + ')'" tabindex="0" role="button" t-on-click="() => openSource({...row, res_model: 'it.helpdesk.ticket'}, row.label)" t-on-keydown="(event) => onChartKeydown(event, row, 'domain', row.label)">
                                             <text x="0" y="16" class="o_it_management_chart_label"><t t-esc="row.label"/></text>
                                             <rect x="110" y="3" t-att-width="backlogWidth(row.count)" height="20" rx="4" class="o_it_management_backlog_bar"/>
-                                            <text x="548" y="18" text-anchor="end" class="o_it_management_chart_value"><t t-esc="row.count"/></text>
+                                            <text x="368" y="18" text-anchor="end" class="o_it_management_chart_value"><t t-esc="row.count"/></text>
                                         </g>
                                     </t>
                                 </svg>

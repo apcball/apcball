@@ -137,7 +137,7 @@
 }
 .o_it_management_charts {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 1.25fr 1.25fr 1fr;
     gap: var(--it-space-4);
     margin-top: var(--it-space-4);
 }
@@ -235,6 +235,10 @@
 .o_it_management_chart_label,
 .o_it_management_chart_value {
     fill: var(--it-color-text);
+    font-size: 11px;
+}
+.o_it_management_backlog_chart .o_it_management_chart_label,
+.o_it_management_backlog_chart .o_it_management_chart_value {
     font-size: 11px;
 }
 .o_it_management_backlog_bar {

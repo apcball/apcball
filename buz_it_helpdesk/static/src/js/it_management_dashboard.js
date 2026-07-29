@@ -216,7 +216,7 @@ export class ItManagementDashboard extends Component {
     }
 
     backlogWidth(count) {
-        return (count * 430) / this.backlogMax();
+        return (count * 180) / this.backlogMax();
     }
 
     assetDashOffset(index) {
