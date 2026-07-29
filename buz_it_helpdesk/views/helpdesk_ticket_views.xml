@@ -69,6 +69,7 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button string="Create Ticket" special="save" class="btn-primary"/>
                     <field name="stage_id" widget="statusbar" options="{'clickable': true}"/>
                 </header>
                 <sheet>
