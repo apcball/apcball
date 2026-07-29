@@ -106,18 +106,15 @@ class ReportInvoiceExcel(models.AbstractModel):
 
                 # Build row with fallback logic
                 so_ref = ""
-                salesperson = ""
-                sale_team = ""
+                salesperson = self._safe_text(invoice.invoice_user_id.name)
+                sale_team = self._safe_text(invoice.team_id.name)
                 shipping_address = ""
                 if ref_is_sale and ref_order:
                     so_ref = self._safe_text(ref_order.client_order_ref)
-                    salesperson = self._safe_text(ref_order.user_id.name)
-                    sale_team = self._safe_text(ref_order.team_id.name)
                     shipping_address = self._safe_text(ref_order.partner_shipping_id.contact_address)
                 elif not ref_is_sale and ref_order:
                     so_ref = self._safe_text(ref_order.name)
-                    salesperson = self._safe_text(ref_order.employee_id.name)
-                    sale_team = self._safe_text(ref_order.location_id.display_name or "")
+                    sale_team = self._safe_text(ref_order.location_id.display_name or sale_team)
                     shipping_address = self._safe_text(
                         ref_order.partner_shipping_id.contact_address if ref_order.partner_shipping_id else ""
                     )
