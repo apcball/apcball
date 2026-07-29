@@ -36,6 +36,15 @@ class HelpdeskTicket(models.Model):
         domain="[('id', 'in', team_user_ids)]",
     )
     category_id = fields.Many2one('buz.helpdesk.category', string='Category')
+    category_type_id = fields.Many2one(
+        'buz.helpdesk.category.type', string='Type',
+        domain="[('id', 'in', category_type_ids)]",
+    )
+    category_type_ids = fields.One2many(
+        'buz.helpdesk.category.type', 'category_id',
+        related='category_id.type_ids',
+        string='Category Types', readonly=True,
+    )
     team_id = fields.Many2one('buz.helpdesk.team', string='Team')
     team_user_ids = fields.Many2many(
         'res.users',
@@ -94,6 +103,20 @@ class HelpdeskTicket(models.Model):
         """Clear an assignee who is not a member of the selected team."""
         if self.team_id and self.assigned_user_id not in self.team_id.user_ids:
             self.assigned_user_id = False
+
+    @api.onchange('category_id')
+    def _onchange_category_id(self):
+        """Clear a type that does not belong to the selected category."""
+        if self.category_type_id and self.category_type_id not in self.category_id.type_ids:
+            self.category_type_id = False
+
+    @api.constrains('category_id', 'category_type_id')
+    def _check_category_type(self):
+        for ticket in self:
+            if ticket.category_type_id and ticket.category_type_id.category_id != ticket.category_id:
+                raise ValidationError(
+                    'The selected type must belong to the selected category.'
+                )
 
     @api.constrains('team_id', 'assigned_user_id')
     def _check_assigned_user_in_team(self):

@@ -22,6 +22,14 @@
                         <field name="sequence"/>
                         <field name="active"/>
                     </group>
+                    <separator string="Types"/>
+                    <field name="type_ids" nolabel="1">
+                        <tree editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </tree>
+                    </field>
                     <field name="description"/>
                 </sheet>
             </form>
