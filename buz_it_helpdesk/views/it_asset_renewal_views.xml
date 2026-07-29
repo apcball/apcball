@@ -45,11 +45,16 @@
         <field name="model">buz.it.asset.renewal</field>
         <field name="arch" type="xml"><search><field name="name"/><field name="asset_id"/><field name="status"/><field name="owner_id"/><field name="vendor_id"/><field name="company_id"/></search></field>
     </record>
+    <record id="view_buz_it_asset_notification_config_tree" model="ir.ui.view">
+        <field name="name">buz.it.asset.notification.config.tree</field>
+        <field name="model">buz.it.asset.notification.config</field>
+        <field name="arch" type="xml"><tree><field name="name"/><field name="company_id"/><field name="timezone"/><field name="active"/></tree></field>
+    </record>
     <record id="view_buz_it_asset_notification_config_form" model="ir.ui.view">
         <field name="name">buz.it.asset.notification.config.form</field>
         <field name="model">buz.it.asset.notification.config</field>
         <field name="arch" type="xml"><form string="Asset Notification Configuration"><sheet><group><field name="name"/><field name="company_id"/><field name="timezone"/><field name="recipient_ids" widget="many2many_tags"/><field name="active"/></group></sheet></form></field>
     </record>
     <record id="action_buz_it_asset_renewals" model="ir.actions.act_window"><field name="name">License Renewals</field><field name="res_model">buz.it.asset.renewal</field><field name="view_mode">tree,form</field><field name="search_view_id" ref="view_buz_it_asset_renewal_search"/></record>
-    <record id="action_buz_it_asset_notification_config" model="ir.actions.act_window"><field name="name">Notification Configuration</field><field name="res_model">buz.it.asset.notification.config</field><field name="view_mode">form</field></record>
+    <record id="action_buz_it_asset_notification_config" model="ir.actions.act_window"><field name="name">Notification Configuration</field><field name="res_model">buz.it.asset.notification.config</field><field name="view_mode">tree,form</field></record>
 </odoo>

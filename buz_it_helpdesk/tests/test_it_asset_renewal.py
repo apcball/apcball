@@ -74,6 +74,17 @@ class TestItAssetRenewal(TransactionCase):
         self.assertTrue(renewal.message_ids)
         self.assertEqual(config.timezone, "Asia/Bangkok")
 
+    def test_notification_config_allows_inactive_duplicates_but_one_active(self):
+        Config = self.env["buz.it.asset.notification.config"].with_user(self.manager)
+        active = Config.create({"company_id": self.company.id})
+        inactive = Config.create({"company_id": self.company.id, "active": False})
+
+        inactive.write({"name": "Archived Asset Notifications"})
+        self.assertTrue(active.active)
+        self.assertFalse(inactive.active)
+        inactive.write({"active": True})
+        self.assertFalse(active.active)
+        self.assertTrue(inactive.active)
     def test_phase_5d_failed_notification_is_retryable_and_auditable(self):
         renewal = self.env["buz.it.asset.renewal"].with_user(self.manager).create({"asset_id": self._asset().id})
         log = renewal.notification_ids[0]

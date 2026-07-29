@@ -23,9 +23,33 @@ class ItAssetNotificationConfig(models.Model):
     recipient_ids = fields.Many2many("res.users", string="Recipients")
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ("company_uniq", "unique(company_id)", "Only one active notification configuration is allowed per company."),
-    ]
+    def init(self):
+        """Replace the old company-wide constraint with an active-only index."""
+        self.env.cr.execute(
+            """
+            ALTER TABLE buz_it_asset_notification_config
+            DROP CONSTRAINT IF EXISTS buz_it_asset_notification_config_company_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+                buz_it_asset_notification_config_active_company_uniq
+            ON buz_it_asset_notification_config (company_id)
+            WHERE active
+            """
+        )
+
+    @api.constrains("company_id", "active")
+    def _check_one_active_per_company(self):
+        for config in self.filtered("active"):
+            duplicate = self.sudo().search([
+                ("company_id", "=", config.company_id.id),
+                ("active", "=", True),
+                ("id", "!=", config.id),
+            ], limit=1)
+            if duplicate:
+                duplicate.active = False
 
 
 class ItAssetRenewal(models.Model):
