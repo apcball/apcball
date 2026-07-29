@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_it_management" name="IT Management" sequence="20" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_helpdesk" name="Helpdesk" parent="menu_it_management" sequence="10" groups="buz_it_helpdesk.group_it_requester"/>
+
+    <menuitem id="menu_my_tickets" name="My Tickets" parent="menu_helpdesk" sequence="10" action="action_helpdesk_my_tickets" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_tickets" name="Tickets" parent="menu_helpdesk" sequence="20" action="action_helpdesk_tickets" groups="buz_it_helpdesk.group_it_support_agent"/>
+
+    <menuitem id="menu_helpdesk_configuration" name="Configuration" parent="menu_helpdesk" sequence="90" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_helpdesk_categories" name="Categories" parent="menu_helpdesk_configuration" sequence="10" action="action_helpdesk_categories" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_helpdesk_teams" name="Teams" parent="menu_helpdesk_configuration" sequence="20" action="action_helpdesk_teams" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_helpdesk_stages" name="Stages" parent="menu_helpdesk_configuration" sequence="30" action="action_helpdesk_stages" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+</odoo>

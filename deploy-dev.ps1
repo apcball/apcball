@@ -5,6 +5,7 @@ param(
     [string]$Module,
 
     [string]$SshTarget = 'root@217.216.32.33',
+    [string]$SshKey = (Join-Path $env:USERPROFILE '.ssh\id_ed25519_dev_nopass'),
     [string]$Database = 'MOG_DEV'
 )
 
@@ -24,6 +25,11 @@ if (-not (Test-Path -LiteralPath (Join-Path $modulePath '__manifest__.py')) -or
 }
 
 Write-Host "Deploying $Module to $SshTarget ($Database)..."
+
+$sshOptions += @(
+    '-i', $SshKey,
+    '-o', 'IdentitiesOnly=yes'
+)
 
 # Remove the previous copy so deleted local files do not remain on DEV.
 & ssh @sshOptions $SshTarget "rm -rf '$remoteModule' && mkdir -p '$remoteModule'"

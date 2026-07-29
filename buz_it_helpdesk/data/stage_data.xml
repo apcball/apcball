@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="stage_new" model="buz.helpdesk.stage">
+        <field name="name">New</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="stage_in_progress" model="buz.helpdesk.stage">
+        <field name="name">In Progress</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="stage_resolved" model="buz.helpdesk.stage">
+        <field name="name">Resolved</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="stage_closed" model="buz.helpdesk.stage">
+        <field name="name">Closed</field>
+        <field name="sequence">40</field>
+        <field name="fold">True</field>
+    </record>
+</odoo>

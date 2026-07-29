@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_helpdesk_ticket_search" model="ir.ui.view">
+        <field name="name">buz.helpdesk.ticket.search</field>
+        <field name="model">buz.helpdesk.ticket</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="subject"/>
+                <field name="requester_id"/>
+                <field name="assigned_user_id"/>
+                <field name="category_id"/>
+                <field name="team_id"/>
+                <field name="stage_id"/>
+                <filter name="open" string="Open" domain="[('active', '=', True)]"/>
+                <filter name="closed" string="Archived" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_stage" string="Stage" context="{'group_by': 'stage_id'}"/>
+                    <filter name="group_team" string="Team" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_priority" string="Priority" context="{'group_by': 'priority'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="view_helpdesk_ticket_list" model="ir.ui.view">
+        <field name="name">buz.helpdesk.ticket.list</field>
+        <field name="model">buz.helpdesk.ticket</field>
+        <field name="arch" type="xml">
+            <tree default_order="create_date desc">
+                <field name="name"/>
+                <field name="subject"/>
+                <field name="requester_id"/>
+                <field name="team_id"/>
+                <field name="assigned_user_id"/>
+                <field name="stage_id"/>
+                <field name="priority" widget="priority"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_helpdesk_ticket_kanban" model="ir.ui.view">
+        <field name="name">buz.helpdesk.ticket.kanban</field>
+        <field name="model">buz.helpdesk.ticket</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="stage_id">
+                <field name="name"/>
+                <field name="subject"/>
+                <field name="requester_id"/>
+                <field name="priority"/>
+                <field name="stage_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <field name="name" class="fw-bold"/>
+                        <div><field name="subject"/></div>
+                        <div class="text-muted"><field name="requester_id"/></div>
+                        <field name="priority" widget="priority"/>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    <record id="view_helpdesk_ticket_form" model="ir.ui.view">
+        <field name="name">buz.helpdesk.ticket.form</field>
+        <field name="model">buz.helpdesk.ticket</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="subject" class="oe_edit_only"/>
+                        <h1><field name="subject" placeholder="Ticket subject"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="requester_id"/>
+                            <field name="assigned_user_id"/>
+                            <field name="priority" widget="priority"/>
+                        </group>
+                        <group>
+                            <field name="category_id"/>
+                            <field name="team_id"/>
+                            <field name="stage_id"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <separator string="Description"/>
+                    <field name="description" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_helpdesk_my_tickets" model="ir.actions.act_window">
+        <field name="name">My Tickets</field>
+        <field name="res_model">buz.helpdesk.ticket</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="search_view_id" ref="view_helpdesk_ticket_search"/>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{'default_requester_id': uid}</field>
+    </record>
+    <record id="action_helpdesk_tickets" model="ir.actions.act_window">
+        <field name="name">Tickets</field>
+        <field name="res_model">buz.helpdesk.ticket</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="search_view_id" ref="view_helpdesk_ticket_search"/>
+    </record>
+</odoo>
