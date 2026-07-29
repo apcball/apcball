@@ -51,13 +51,10 @@ class ItManagementDashboard(models.Model):
         if is_helpdesk:
             navigation += [
                 {"key": "helpdesk", "label": "Helpdesk", "icon": "fa-life-ring", "kind": "section", "section": "helpdesk"},
-                {"key": "reports", "label": "Reports", "icon": "fa-bar-chart", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_helpdesk_report", "domain": []},
             ]
         if is_asset:
             navigation += [
                 {"key": "assets", "label": "IT Assets", "icon": "fa-laptop", "kind": "section", "section": "asset"},
-                {"key": "licenses", "label": "Licenses", "icon": "fa-key", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_buz_it_asset_software_licenses", "domain": [["asset_type", "=", "software_license"]]},
-                {"key": "renewals", "label": "Renewals", "icon": "fa-refresh", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_buz_it_asset_renewals", "domain": []},
             ]
         if is_manager:
             navigation.append({"key": "settings", "label": "Settings", "icon": "fa-cog", "kind": "action", "action_xml_id": "buz_it_helpdesk.action_helpdesk_categories", "domain": []})
