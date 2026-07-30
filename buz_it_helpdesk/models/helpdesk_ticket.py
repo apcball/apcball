@@ -9,6 +9,16 @@ class HelpdeskTicket(models.Model):
     _order = 'create_date desc, id desc'
     _rec_name = 'name'
 
+    _transition_map = {
+        'draft': ('new', 'cancelled'),
+        'new': ('in_progress', 'cancelled'),
+        'in_progress': ('resolved', 'pending_user', 'cancelled'),
+        'pending_user': ('in_progress', 'cancelled'),
+        'resolved': ('closed', 'in_progress'),
+        'closed': ('in_progress',),
+        'cancelled': ('draft',),
+    }
+
     name = fields.Char(
         string='Ticket Number',
         required=True,
@@ -72,7 +82,7 @@ class HelpdeskTicket(models.Model):
         required=True,
         tracking=True,
         default=lambda self: self.env['buz.helpdesk.stage'].search(
-            [('active', '=', True)], order='sequence, id', limit=1
+            [('code', '=', 'draft')], limit=1
         ),
     )
     priority = fields.Selection(
@@ -98,16 +108,14 @@ class HelpdeskTicket(models.Model):
 
     @api.depends('stage_id')
     def _compute_is_draft_stage(self):
-        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
         for ticket in self:
-            ticket.is_draft_stage = ticket.stage_id == draft_stage
+            ticket.is_draft_stage = ticket.stage_id.code == 'draft'
 
     @api.depends('stage_id')
     def _compute_show_receive_button(self):
-        new_stage = self.env.ref('buz_it_helpdesk.stage_new')
         for ticket in self:
             ticket.show_receive_button = (
-                ticket.stage_id == new_stage and not ticket.assigned_user_id
+                ticket.stage_id.code == 'new' and not ticket.assigned_user_id
             )
 
     @api.depends('stage_id')
@@ -116,12 +124,11 @@ class HelpdeskTicket(models.Model):
         is_agent = self.env.user.has_group(
             'buz_it_helpdesk.group_it_support_agent'
         ) or self.env.user.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
-        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
         for ticket in self:
             if is_agent:
                 ticket.is_editable = True
             else:
-                ticket.is_editable = ticket.stage_id == draft_stage
+                ticket.is_editable = ticket.stage_id.code == 'draft'
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -151,14 +158,28 @@ class HelpdeskTicket(models.Model):
         self.assigned_user_id = self.env.user
         return True
 
+    def _check_transition(self, new_stage_id):
+        new_stage = self.env['buz.helpdesk.stage'].browse(new_stage_id)
+        if not new_stage.active:
+            raise UserError(_('Cannot transition to an inactive stage.'))
+        new_code = new_stage.code
+        for ticket in self:
+            old_code = ticket.stage_id.code
+            if old_code and new_code and new_code not in self._transition_map.get(old_code, ()):
+                raise UserError(
+                    _('Invalid stage transition: from "%s" to "%s".')
+                    % (ticket.stage_id.display_name, new_stage.display_name)
+                )
+
     def write(self, vals):
+        if 'stage_id' in vals:
+            self._check_transition(vals['stage_id'])
         is_agent = self.env.user.has_group(
             'buz_it_helpdesk.group_it_support_agent'
         ) or self.env.user.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
         if not is_agent:
-            draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
             for ticket in self:
-                if ticket.stage_id != draft_stage:
+                if ticket.stage_id.code != 'draft':
                     raise UserError(
                         _('You can only edit tickets in Draft stage.')
                     )
