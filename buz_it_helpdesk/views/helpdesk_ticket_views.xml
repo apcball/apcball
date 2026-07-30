@@ -108,7 +108,7 @@
     <record id="action_helpdesk_my_tickets" model="ir.actions.act_window">
         <field name="name">My Tickets</field>
         <field name="res_model">buz.helpdesk.ticket</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,kanban,form</field>
         <field name="search_view_id" ref="view_helpdesk_ticket_search"/>
         <field name="domain">[('requester_id', '=', uid)]</field>
         <field name="context">{'default_requester_id': uid}</field>
