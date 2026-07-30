@@ -88,6 +88,7 @@ class HelpdeskTicket(models.Model):
     )
     active = fields.Boolean(default=True)
     is_new_stage = fields.Boolean(compute='_compute_is_new_stage')
+    show_receive_button = fields.Boolean(compute='_compute_show_receive_button')
 
     @api.depends('category_id.name')
     def _compute_show_category_type(self):
@@ -99,6 +100,14 @@ class HelpdeskTicket(models.Model):
         new_stage = self.env.ref('buz_it_helpdesk.stage_new')
         for ticket in self:
             ticket.is_new_stage = ticket.stage_id == new_stage
+
+    @api.depends('stage_id', 'assigned_user_id')
+    def _compute_show_receive_button(self):
+        in_progress = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        for ticket in self:
+            ticket.show_receive_button = (
+                ticket.stage_id == in_progress and not ticket.assigned_user_id
+            )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -120,6 +129,11 @@ class HelpdeskTicket(models.Model):
     def action_create_ticket(self):
         self.ensure_one()
         self.stage_id = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        return True
+
+    def action_receive_ticket(self):
+        self.ensure_one()
+        self.assigned_user_id = self.env.user
         return True
 
     @api.onchange('requester_id')

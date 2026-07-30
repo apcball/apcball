@@ -71,7 +71,9 @@
                 <header>
                     <field name="stage_id" widget="statusbar" options="{'clickable': False}"/>
                     <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_new_stage"/>
+                    <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button"/>
                     <field name="is_new_stage" invisible="1"/>
+                    <field name="show_receive_button" invisible="1"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
