@@ -69,8 +69,9 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button string="Create Ticket" special="save" class="btn-primary"/>
                     <field name="stage_id" widget="statusbar" options="{'clickable': true}"/>
+                    <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_new_stage"/>
+                    <field name="is_new_stage" invisible="1"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -82,7 +83,7 @@
                             <field name="name" readonly="1"/>
                             <field name="requester_id"/>
                             <field name="department_id" readonly="1"/>
-                            <field name="priority" widget="priority"/>
+                            <field name="priority" widget="priority" options="{'autosave': False}"/>
                         </group>
                         <group>
                             <field name="category_id"/>

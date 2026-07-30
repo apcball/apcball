@@ -87,11 +87,18 @@ class HelpdeskTicket(models.Model):
         tracking=True,
     )
     active = fields.Boolean(default=True)
+    is_new_stage = fields.Boolean(compute='_compute_is_new_stage')
 
     @api.depends('category_id.name')
     def _compute_show_category_type(self):
         for ticket in self:
             ticket.show_category_type = ticket.category_id.name == 'Hardware'
+
+    @api.depends('stage_id')
+    def _compute_is_new_stage(self):
+        new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+        for ticket in self:
+            ticket.is_new_stage = ticket.stage_id == new_stage
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -109,6 +116,11 @@ class HelpdeskTicket(models.Model):
                 else False
             )
         return super().create(vals_list)
+
+    def action_create_ticket(self):
+        self.ensure_one()
+        self.stage_id = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        return True
 
     @api.onchange('requester_id')
     def _onchange_requester_id(self):
