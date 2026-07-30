@@ -13,10 +13,10 @@ without dependencies on custom or business modules.
     'license': 'LGPL-3',
     'depends': ['base', 'hr', 'mail'],
     'data': [
-        'security/security.xml',
-        'security/ir.model.access.csv',
         'data/sequence.xml',
         'data/stage_data.xml',
+        'security/security.xml',
+        'security/ir.model.access.csv',
         'views/helpdesk_category_views.xml',
         'views/helpdesk_team_views.xml',
         'views/helpdesk_stage_views.xml',

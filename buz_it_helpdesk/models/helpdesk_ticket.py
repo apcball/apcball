@@ -1,5 +1,5 @@
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class HelpdeskTicket(models.Model):
@@ -87,8 +87,9 @@ class HelpdeskTicket(models.Model):
         tracking=True,
     )
     active = fields.Boolean(default=True)
-    is_new_stage = fields.Boolean(compute='_compute_is_new_stage')
+    is_draft_stage = fields.Boolean(compute='_compute_is_draft_stage')
     show_receive_button = fields.Boolean(compute='_compute_show_receive_button')
+    is_editable = fields.Boolean(compute='_compute_is_editable')
 
     @api.depends('category_id.name')
     def _compute_show_category_type(self):
@@ -96,18 +97,31 @@ class HelpdeskTicket(models.Model):
             ticket.show_category_type = ticket.category_id.name == 'Hardware'
 
     @api.depends('stage_id')
-    def _compute_is_new_stage(self):
+    def _compute_is_draft_stage(self):
+        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+        for ticket in self:
+            ticket.is_draft_stage = ticket.stage_id == draft_stage
+
+    @api.depends('stage_id')
+    def _compute_show_receive_button(self):
         new_stage = self.env.ref('buz_it_helpdesk.stage_new')
         for ticket in self:
-            ticket.is_new_stage = ticket.stage_id == new_stage
-
-    @api.depends('stage_id', 'assigned_user_id')
-    def _compute_show_receive_button(self):
-        in_progress = self.env.ref('buz_it_helpdesk.stage_in_progress')
-        for ticket in self:
             ticket.show_receive_button = (
-                ticket.stage_id == in_progress and not ticket.assigned_user_id
+                ticket.stage_id == new_stage and not ticket.assigned_user_id
             )
+
+    @api.depends('stage_id')
+    @api.depends_context('uid')
+    def _compute_is_editable(self):
+        is_agent = self.env.user.has_group(
+            'buz_it_helpdesk.group_it_support_agent'
+        ) or self.env.user.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
+        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+        for ticket in self:
+            if is_agent:
+                ticket.is_editable = True
+            else:
+                ticket.is_editable = ticket.stage_id == draft_stage
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -128,13 +142,27 @@ class HelpdeskTicket(models.Model):
 
     def action_create_ticket(self):
         self.ensure_one()
-        self.stage_id = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        self.stage_id = self.env.ref('buz_it_helpdesk.stage_new')
         return True
 
     def action_receive_ticket(self):
         self.ensure_one()
+        self.stage_id = self.env.ref('buz_it_helpdesk.stage_in_progress')
         self.assigned_user_id = self.env.user
         return True
+
+    def write(self, vals):
+        is_agent = self.env.user.has_group(
+            'buz_it_helpdesk.group_it_support_agent'
+        ) or self.env.user.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
+        if not is_agent:
+            draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+            for ticket in self:
+                if ticket.stage_id != draft_stage:
+                    raise UserError(
+                        _('You can only edit tickets in Draft stage.')
+                    )
+        return super().write(vals)
 
     @api.onchange('requester_id')
     def _onchange_requester_id(self):

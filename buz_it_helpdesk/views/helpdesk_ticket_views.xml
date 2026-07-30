@@ -70,42 +70,43 @@
             <form>
                 <header>
                     <field name="stage_id" widget="statusbar" options="{'clickable': False}"/>
-                    <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_new_stage"/>
-                    <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button"/>
-                    <field name="is_new_stage" invisible="1"/>
+                    <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_draft_stage"/>
+                    <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <field name="is_draft_stage" invisible="1"/>
                     <field name="show_receive_button" invisible="1"/>
+                    <field name="is_editable" invisible="1"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <label for="subject" class="oe_edit_only"/>
-                        <h1><field name="subject" placeholder="Ticket subject"/></h1>
+                        <h1><field name="subject" placeholder="Ticket subject" readonly="not is_editable"/></h1>
                     </div>
                     <group>
                         <group>
                             <field name="name" readonly="1"/>
-                            <field name="requester_id"/>
+                            <field name="requester_id" readonly="not is_editable"/>
                             <field name="department_id" readonly="1"/>
-                            <field name="priority" widget="priority" options="{'autosave': False}"/>
+                            <field name="priority" widget="priority" options="{'autosave': False}" readonly="not is_editable"/>
                         </group>
                         <group>
-                            <field name="category_id"/>
-                            <field name="category_type_id"
+                            <field name="category_id" readonly="not is_editable"/>
+                            <field name="category_type_id" readonly="not is_editable"
                                    domain="[('id', 'in', category_type_ids)]"
                                    invisible="not show_category_type"/>
                             <field name="category_type_ids" invisible="1"/>
                             <field name="show_category_type" invisible="1"/>
-                            <field name="team_id"/>
-                            <field name="assigned_user_id"
+                            <field name="team_id" readonly="not is_editable"/>
+                            <field name="assigned_user_id" readonly="not is_editable"
                                    domain="[('id', 'in', team_user_ids)]"
                                    options="{'no_create': True}"/>
                             <field name="team_user_ids" invisible="1"/>
-                            <field name="active"/>
+                            <field name="active" readonly="not is_editable"/>
                         </group>
                     </group>
                     <separator string="Attachments"/>
-                    <field name="attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1"/>
+                    <field name="attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1" readonly="not is_editable"/>
                     <separator string="Description"/>
-                    <field name="description" nolabel="1"/>
+                    <field name="description" nolabel="1" readonly="not is_editable"/>
                 </sheet>
                 <div class="oe_chatter">
                     <field name="activity_ids"/>
@@ -127,6 +128,6 @@
         <field name="res_model">buz.helpdesk.ticket</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_helpdesk_ticket_search"/>
-        <field name="domain" eval="[('stage_id', '!=', ref('buz_it_helpdesk.stage_new'))]"/>
+        <field name="domain" eval="[('stage_id', '!=', ref('buz_it_helpdesk.stage_draft'))]"/>
     </record>
 </odoo>

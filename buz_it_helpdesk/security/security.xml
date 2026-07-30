@@ -32,7 +32,7 @@
     <record id="rule_ticket_agent_all" model="ir.rule">
         <field name="name">Helpdesk Ticket: agents see submitted tickets</field>
         <field name="model_id" ref="model_buz_helpdesk_ticket"/>
-        <field name="domain_force" eval="[('stage_id', '!=', ref('buz_it_helpdesk.stage_new'))]"/>
+        <field name="domain_force" eval="[('stage_id', '!=', ref('buz_it_helpdesk.stage_draft'))]"/>
         <field name="groups" eval="[(4, ref('group_it_support_agent'))]"/>
     </record>
 </odoo>
