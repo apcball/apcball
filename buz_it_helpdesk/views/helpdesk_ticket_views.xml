@@ -69,7 +69,7 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <field name="stage_id" widget="statusbar" options="{'clickable': true}"/>
+                    <field name="stage_id" widget="statusbar" options="{'clickable': False}"/>
                     <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_new_stage"/>
                     <field name="is_new_stage" invisible="1"/>
                 </header>
@@ -125,5 +125,6 @@
         <field name="res_model">buz.helpdesk.ticket</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_helpdesk_ticket_search"/>
+        <field name="domain" eval="[('stage_id', '!=', ref('buz_it_helpdesk.stage_new'))]"/>
     </record>
 </odoo>
