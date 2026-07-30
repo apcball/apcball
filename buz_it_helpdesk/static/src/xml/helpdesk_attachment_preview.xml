@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_it_helpdesk.HelpdeskAttachmentPreviewField" owl="1">
+        <div t-attf-class="oe_fileupload o_buz_helpdesk_attachment_preview {{props.className ? props.className : ''}}" aria-atomic="true">
+            <div class="o_attachments">
+                <t t-foreach="files" t-as="file" t-key="file_index">
+                    <div name="attachment" t-attf-class="o_attachment o_attachment_many2many {{!props.readonly ? 'o_attachment_editable' : ''}}">
+                        <div class="o_attachment_wrap">
+                            <div class="o_image_box float-start" role="button" tabindex="0" t-att-title="getFileName(file)" t-on-click="() => this.openPreview(file)" t-on-keydown="(event) => this.onPreviewKeydown(event, file)">
+                                <img t-if="isImage(file) &amp;&amp; file.id" class="o_image o_hover" t-att-src="getPreviewUrl(file)" t-att-alt="getFileName(file)"/>
+                                <span t-else="" class="o_image o_hover" t-att-data-mimetype="file.mimetype || ''" t-att-data-ext="getExtension(file)" role="img"/>
+                            </div>
+                            <div class="caption">
+                                <a t-att-href="getUrl(file.id)" aria-label="Download" download=""><t t-esc="getFileName(file)"/></a>
+                                <span class="badge bg-secondary ms-1" t-att-title="getFileTypeLabel(file)"><t t-esc="getFileTypeLabel(file)"/></span>
+                                <button t-if="!props.readonly" type="button" class="btn btn-link fa fa-times o_attachment_delete" title="Remove" aria-label="Remove" t-on-click="() => this.onFileRemove(file.id)"/>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </div>
+            <div t-if="!props.readonly &amp;&amp; (!props.numberOfFiles || files.length &lt; props.numberOfFiles)" class="oe_add">
+                <FileInput acceptedFileExtensions="props.acceptedFileExtensions" multiUpload="true" onUpload.bind="onFileUploaded" resModel="props.record.resModel" resId="props.record.resId || 0">
+                    <button class="btn btn-secondary o_attach" type="button"><span class="fa fa-paperclip" aria-label="Attach"/> <t t-esc="uploadText"/></button>
+                </FileInput>
+            </div>
+        </div>
+        <div t-if="previewState.file" class="modal d-block" role="dialog" aria-modal="true" t-on-click="closePreview">
+            <div class="modal-dialog modal-xl modal-dialog-centered" t-on-click.stop="">
+                <div class="modal-content bg-dark text-white">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title"><t t-esc="previewState.file.name"/></h5>
+                        <button type="button" class="btn-close btn-close-white" aria-label="Close" t-on-click="closePreview"/>
+                    </div>
+                    <div class="modal-body text-center overflow-auto" style="max-height: 75vh;">
+                        <img class="img-fluid" alt="Preview" t-att-src="getPreviewUrl(previewState.file)" t-att-style="'max-height: 70vh; transform: scale(' + previewState.zoom + '); transform-origin: center; transition: transform 0.2s ease;'"/>
+                    </div>
+                    <div class="modal-footer border-secondary justify-content-center">
+                        <button type="button" class="btn btn-light" aria-label="Zoom out" t-on-click="zoomOut">-</button>
+                        <button type="button" class="btn btn-light" t-on-click="resetZoom">100%</button>
+                        <button type="button" class="btn btn-light" aria-label="Zoom in" t-on-click="zoomIn">+</button>
+                        <button type="button" class="btn btn-secondary" t-on-click="closePreview">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

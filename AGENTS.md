@@ -26,7 +26,7 @@ Requires SSH aliases in `~/.ssh/config`:
 From PowerShell, run the repository script directly in the user's terminal:
 
 ```powershell
-.\deploy-dev.ps1 -Module buz_it_helpdesk
+# .\deploy-dev.ps1 -Module buz_it_helpdesk
 ```
 
 The script uses SSH key authentication and non-interactive SSH options. If it
@@ -38,7 +38,7 @@ causes automation terminals to appear frozen.
 
 ```bash
 # Deploy to DEV server from Windows PowerShell (when rsync is unavailable)
-.\deploy-dev.ps1 -Module <module>
+# .\deploy-dev.ps1 -Module <module>
 
 
 # Test on live DB (DEV only) — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.

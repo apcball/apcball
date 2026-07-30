@@ -4,6 +4,7 @@ from odoo.exceptions import ValidationError
 
 class HelpdeskTicket(models.Model):
     _name = 'buz.helpdesk.ticket'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Helpdesk Ticket'
     _order = 'create_date desc, id desc'
     _rec_name = 'name'
@@ -15,8 +16,15 @@ class HelpdeskTicket(models.Model):
         copy=False,
         default='New',
     )
-    subject = fields.Char(required=True)
+    subject = fields.Char(required=True, tracking=True)
     description = fields.Text()
+    attachment_ids = fields.Many2many(
+        'ir.attachment',
+        'buz_helpdesk_ticket_attachment_rel',
+        'ticket_id',
+        'attachment_id',
+        string='Attachments',
+    )
     requester_id = fields.Many2one(
         'res.users',
         string='Requester',
@@ -34,6 +42,7 @@ class HelpdeskTicket(models.Model):
         'res.users',
         string='Assigned To',
         domain="[('id', 'in', team_user_ids)]",
+        tracking=True,
     )
     category_id = fields.Many2one('buz.helpdesk.category', string='Category')
     category_type_id = fields.Many2one(
@@ -48,7 +57,9 @@ class HelpdeskTicket(models.Model):
     show_category_type = fields.Boolean(
         compute='_compute_show_category_type',
     )
-    team_id = fields.Many2one('buz.helpdesk.team', string='Team')
+    team_id = fields.Many2one(
+        'buz.helpdesk.team', string='Team', tracking=True,
+    )
     team_user_ids = fields.Many2many(
         'res.users',
         related='team_id.user_ids',
@@ -59,6 +70,7 @@ class HelpdeskTicket(models.Model):
         'buz.helpdesk.stage',
         string='Stage',
         required=True,
+        tracking=True,
         default=lambda self: self.env['buz.helpdesk.stage'].search(
             [('active', '=', True)], order='sequence, id', limit=1
         ),
@@ -72,6 +84,7 @@ class HelpdeskTicket(models.Model):
         ],
         default='1',
         required=True,
+        tracking=True,
     )
     active = fields.Boolean(default=True)
 

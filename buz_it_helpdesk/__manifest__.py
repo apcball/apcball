@@ -11,7 +11,7 @@ without dependencies on custom or business modules.
     """,
     'author': 'BUZ',
     'license': 'LGPL-3',
-    'depends': ['base', 'hr'],
+    'depends': ['base', 'hr', 'mail'],
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
@@ -23,6 +23,13 @@ without dependencies on custom or business modules.
         'views/helpdesk_ticket_views.xml',
         'views/helpdesk_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'buz_it_helpdesk/static/src/js/helpdesk_attachment_preview.js',
+            'buz_it_helpdesk/static/src/xml/helpdesk_attachment_preview.xml',
+            'buz_it_helpdesk/static/src/scss/helpdesk_attachment_preview.scss',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,

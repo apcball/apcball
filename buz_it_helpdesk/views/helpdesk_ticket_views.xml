@@ -99,9 +99,15 @@
                             <field name="active"/>
                         </group>
                     </group>
+                    <separator string="Attachments"/>
+                    <field name="attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1"/>
                     <separator string="Description"/>
                     <field name="description" nolabel="1"/>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>
