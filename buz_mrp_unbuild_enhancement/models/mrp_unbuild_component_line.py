@@ -73,6 +73,16 @@ class MrpUnbuildComponentLine(models.Model):
              'quantity 10 and scrap 2 leaves 8 in the destination location '
              'and 2 in the scrap location.',
     )
+    cost_share = fields.Float(
+        string='Cost Share (%)',
+        digits=(5, 2),
+        help='Percentage of the unbuilt product\'s actual consumed value '
+             '(real cost, e.g. FIFO layer value) allocated to this '
+             'component. Leave all components at 0 to keep the default '
+             'Odoo behavior (each component valued at its own standard '
+             'cost). If used, the cost share of all received components '
+             'on the order must add up to 100.',
+    )
     destination_location_id = fields.Many2one(
         'stock.location',
         string='Destination Location',
@@ -149,6 +159,14 @@ class MrpUnbuildComponentLine(models.Model):
                     qty=line.quantity,
                 ))
 
+    @api.constrains('cost_share')
+    def _check_cost_share(self):
+        for line in self:
+            if not (0.0 <= line.cost_share <= 100.0):
+                raise ValidationError(_(
+                    'Cost Share of component "%(product)s" must be between '
+                    '0 and 100.', product=line.product_id.display_name))
+
     @api.onchange('quantity')
     def _onchange_quantity_warning(self):
         """Warn (do not block) when the edited quantity exceeds the
@@ -184,6 +202,7 @@ class MrpUnbuildComponentLine(models.Model):
             'quantity': _('Quantity'),
             'scrap_qty': _('Scrap Qty'),
             'destination_location_id': _('Destination Location'),
+            'cost_share': _('Cost Share (%)'),
         }
         tracked_fields = [f for f in audited if f in vals]
         old_values = {}

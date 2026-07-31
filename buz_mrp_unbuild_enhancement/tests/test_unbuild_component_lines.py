@@ -62,6 +62,45 @@ class TestUnbuildComponentLines(TransactionCase):
         cls.env["stock.quant"]._update_available_quantity(
             cls.finished, cls.stock_location, 10.0)
 
+        # Separate FIFO-costed products for cost-share valuation tests,
+        # stocked via real incoming moves (so valuation layers exist).
+        cls.fifo_categ = cls.env["product.category"].create({
+            "name": "Enh Unbuild FIFO",
+            "property_cost_method": "fifo",
+            "property_valuation": "manual_periodic",
+        })
+        cls.fifo_finished = cls.env["product.product"].create({
+            "name": "Enh Unbuild FIFO Finished",
+            "detailed_type": "product",
+            "categ_id": cls.fifo_categ.id,
+        })
+        cls.fifo_panel = cls.env["product.product"].create({
+            "name": "Enh Unbuild FIFO Panel",
+            "detailed_type": "product",
+            "categ_id": cls.fifo_categ.id,
+        })
+        cls.fifo_screw = cls.env["product.product"].create({
+            "name": "Enh Unbuild FIFO Screw",
+            "detailed_type": "product",
+            "categ_id": cls.fifo_categ.id,
+        })
+        cls.fifo_bom = cls.env["mrp.bom"].create({
+            "product_tmpl_id": cls.fifo_finished.product_tmpl_id.id,
+            "product_qty": 1.0,
+            "bom_line_ids": [
+                Command.create({
+                    "product_id": cls.fifo_panel.id,
+                    "product_qty": 1.0,
+                    "product_uom_id": cls.fifo_panel.uom_id.id,
+                }),
+                Command.create({
+                    "product_id": cls.fifo_screw.id,
+                    "product_qty": 1.0,
+                    "product_uom_id": cls.fifo_screw.uom_id.id,
+                }),
+            ],
+        })
+
     def _create_unbuild(self, qty=2.0, generate=True):
         unbuild = self.env["mrp.unbuild"].create({
             "product_id": self.finished.id,
@@ -79,6 +118,26 @@ class TestUnbuildComponentLines(TransactionCase):
     def _line(self, unbuild, product):
         return unbuild.component_line_ids.filtered(
             lambda l: l.product_id == product)
+
+    def _receive(self, product, qty, price_unit):
+        """Create and validate a real incoming move so a FIFO valuation
+        layer with a known unit cost exists for the product."""
+        move = self.env["stock.move"].create({
+            "name": "Enh Unbuild Test Receipt",
+            "product_id": product.id,
+            "product_uom_qty": qty,
+            "product_uom": product.uom_id.id,
+            "location_id": self.supplier_location.id,
+            "location_dest_id": self.stock_location.id,
+            "company_id": self.company.id,
+            "price_unit": price_unit,
+        })
+        move._action_confirm()
+        move._action_assign()
+        move.quantity = qty
+        move.picked = True
+        move._action_done()
+        return move
 
     def test_01_generate_lines_from_bom(self):
         unbuild = self._create_unbuild(qty=2.0)
@@ -215,3 +274,64 @@ class TestUnbuildComponentLines(TransactionCase):
         unbuild = self._create_unbuild()
         with self.assertRaises(ValidationError):
             unbuild.action_unbuild()
+
+    def _create_fifo_unbuild(self, qty=1.0):
+        unbuild = self.env["mrp.unbuild"].create({
+            "product_id": self.fifo_finished.id,
+            "bom_id": self.fifo_bom.id,
+            "product_qty": qty,
+            "product_uom_id": self.fifo_finished.uom_id.id,
+            "location_id": self.stock_location.id,
+            "location_dest_id": self.stock_location.id,
+            "company_id": self.company.id,
+        })
+        unbuild.action_generate_component_lines()
+        return unbuild
+
+    def test_13_cost_share_splits_actual_fifo_value(self):
+        self._receive(self.fifo_finished, 1.0, 1000.0)
+        unbuild = self._create_fifo_unbuild()
+        self._line(unbuild, self.fifo_panel).cost_share = 70.0
+        self._line(unbuild, self.fifo_screw).cost_share = 30.0
+        unbuild.action_unbuild()
+
+        finished_move = unbuild.produce_line_ids.filtered(
+            lambda m: m.product_id == self.fifo_finished)
+        consumed_value = abs(sum(
+            finished_move.stock_valuation_layer_ids.mapped("value")))
+        self.assertEqual(consumed_value, 1000.0)
+
+        panel_move = unbuild.produce_line_ids.filtered(
+            lambda m: m.product_id == self.fifo_panel)
+        screw_move = unbuild.produce_line_ids.filtered(
+            lambda m: m.product_id == self.fifo_screw)
+        panel_value = sum(
+            panel_move.stock_valuation_layer_ids.mapped("value"))
+        screw_value = sum(
+            screw_move.stock_valuation_layer_ids.mapped("value"))
+        self.assertEqual(panel_value, 700.0)
+        self.assertEqual(screw_value, 300.0)
+        self.assertEqual(panel_value + screw_value, consumed_value)
+
+    def test_14_cost_share_not_summing_100_raises(self):
+        self._receive(self.fifo_finished, 1.0, 1000.0)
+        unbuild = self._create_fifo_unbuild()
+        self._line(unbuild, self.fifo_panel).cost_share = 70.0
+        self._line(unbuild, self.fifo_screw).cost_share = 20.0
+        with self.assertRaises(ValidationError):
+            unbuild.action_unbuild()
+
+    def test_15_cost_share_zero_keeps_default_behavior(self):
+        self._receive(self.fifo_finished, 1.0, 1000.0)
+        unbuild = self._create_fifo_unbuild()
+        # cost_share left at 0 on both lines: standard per-component
+        # standard cost valuation applies, unaffected by this feature.
+        unbuild.action_unbuild()
+        panel_move = unbuild.produce_line_ids.filtered(
+            lambda m: m.product_id == self.fifo_panel)
+        self.assertTrue(panel_move.stock_valuation_layer_ids)
+
+    def test_16_cost_share_out_of_range_raises(self):
+        unbuild = self._create_fifo_unbuild()
+        with self.assertRaises(ValidationError):
+            self._line(unbuild, self.fifo_panel).cost_share = 120.0

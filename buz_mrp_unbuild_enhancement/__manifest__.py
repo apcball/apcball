@@ -14,6 +14,9 @@ Enhance Manufacturing Unbuild Orders for real manufacturing environments:
 * Skip damaged components (Receive checkbox)
 * Scrap part of a returned quantity (real Stock Scrap records)
 * Default return location per BOM line
+* Per-component cost share (%): split the unbuilt product's actual
+  (FIFO) consumed value across returned components instead of
+  valuing each one at its own standard cost
 * Smart buttons: Returned Moves / Scrap / Components
 * "MRP Unbuild Manager" security group controls who can edit
   quantities, locations and scrap quantities
@@ -22,7 +25,7 @@ Enhance Manufacturing Unbuild Orders for real manufacturing environments:
     'category': 'Manufacturing',
     'author': 'Mogen Co.',
     'license': 'LGPL-3',
-    'depends': ['mrp', 'stock'],
+    'depends': ['mrp', 'stock', 'stock_account'],
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',

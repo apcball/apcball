@@ -132,6 +132,17 @@ class MrpUnbuild(models.Model):
                     '"Receive" on at least one component line or remove all '
                     'component lines to use the standard behavior.',
                     name=unbuild.display_name))
+            total_cost_share = sum(active_lines.mapped('cost_share'))
+            if not float_is_zero(total_cost_share, precision_digits=2):
+                precision = self.env['decimal.precision'].precision_get(
+                    'Product Price')
+                if float_compare(total_cost_share, 100.0,
+                                  precision_digits=precision) != 0:
+                    raise ValidationError(_(
+                        'Unbuild %(name)s: Cost Share of received '
+                        'components must add up to 100%% (currently '
+                        '%(total)s%%).',
+                        name=unbuild.display_name, total=total_cost_share))
             for line in active_lines:
                 if not line.destination_location_id:
                     raise ValidationError(_(
@@ -176,6 +187,7 @@ class MrpUnbuild(models.Model):
             'name': self.name,
             'date': self.create_date,
             'bom_line_id': line.bom_line_id.id or False,
+            'unbuild_component_line_id': line.id,
             'product_id': line.product_id.id,
             'product_uom_qty': line.quantity,
             'product_uom': line.product_uom_id.id,
@@ -203,7 +215,16 @@ class MrpUnbuild(models.Model):
             rounding = line.product_uom_id.rounding or 0.01
             if float_is_zero(line.quantity, precision_rounding=rounding):
                 continue
-            moves += moves.create(self._prepare_component_move_values(line))
+            move = moves.create(self._prepare_component_move_values(line))
+            if ('use_custom_cost' in move._fields
+                    and not float_is_zero(line.cost_share,
+                                           precision_digits=2)):
+                # Other modules (e.g. biz_receipt_transfer_cost) may force
+                # a custom cost on every new move at create() time, which
+                # would silently bypass the Cost Share (%) valuation below.
+                # Only clear it when this line actually opts into a share.
+                move.use_custom_cost = False
+            moves += move
         return moves
 
     def _generate_produce_moves(self):
