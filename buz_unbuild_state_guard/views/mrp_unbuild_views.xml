@@ -14,6 +14,11 @@
                                 string="Create Picking"
                                 class="oe_highlight"
                                 invisible="state != 'draft'"/>
+                        <button name="action_direct_unbuild"
+                                type="object"
+                                string="Unbuild Directly"
+                                class="oe_highlight"
+                                invisible="state != 'draft'"/>
                         <button name="action_cancel_picking"
                                 type="object"
                                 string="Cancel Picking"

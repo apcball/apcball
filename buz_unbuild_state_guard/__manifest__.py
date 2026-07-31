@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Buz Unbuild State Guard",
-    "version": "17.0.1.0.0",
+    "version": "17.0.2.0.0",
     "category": "Manufacturing",
-    "summary": "Force unbuild orders through a picking step before completion",
+    "summary": "Optional picking step for unbuild orders, with BOM component cost guard",
     "description": """
-        Enforce a safer unbuild workflow:
-        draft -> picking -> done
+        Safer unbuild workflow:
+        - draft -> picking -> confirm -> done (formal stock issuance)
+        - draft -> done directly, when stock is already available ("Unbuild Directly")
+        - blocks unbuild (either route) if any BOM component has zero cost
     """,
     "author": "Your Company",
     "website": "https://www.yourcompany.com",
