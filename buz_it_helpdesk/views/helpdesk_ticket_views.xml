@@ -71,7 +71,7 @@
                                     <span t-attf-class="badge o_kanban_ticket_priority {{ record.priority.raw_value == '3' ? 'text-bg-danger' : record.priority.raw_value == '2' ? 'text-bg-warning' : record.priority.raw_value == '1' ? 'text-bg-info' : 'text-bg-secondary' }}">
                                         <field name="priority"/>
                                     </span>
-                                    <span class="badge o_kanban_ticket_stage text-bg-light border text-truncate">
+                                    <span t-attf-class="badge o_kanban_ticket_stage {{ record.stage_id.value == 'In Progress' ? 'ticket-stage-progress' : record.stage_id.value == 'New' ? 'ticket-stage-new' : record.stage_id.value == 'Resolved' ? 'ticket-stage-resolved' : record.stage_id.value == 'Closed' ? 'ticket-stage-closed' : 'ticket-stage-draft' }}">
                                         <field name="stage_id"/>
                                     </span>
                                     <div class="o_dropdown_kanban dropdown">

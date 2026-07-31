@@ -46,11 +46,48 @@
         gap: .2rem;
     }
 
-    .o_kanban_ticket_priority,
-    .o_kanban_ticket_stage {
+    .o_kanban_ticket_priority {
         max-width: 8rem;
         font-size: .68rem;
         font-weight: 600;
+    }
+
+    .o_kanban_ticket_stage {
+        max-width: 8rem;
+        border: 1px solid transparent;
+        font-size: .68rem;
+        font-weight: 600;
+    }
+
+    // Status colors intentionally use a separate palette from Priority colors.
+    .o_kanban_ticket_stage.ticket-stage-draft {
+        color: #495057;
+        background-color: #e9ecef;
+        border-color: #ced4da;
+    }
+
+    .o_kanban_ticket_stage.ticket-stage-new {
+        color: #055160;
+        background-color: #cff4fc;
+        border-color: #9eeaf9;
+    }
+
+    .o_kanban_ticket_stage.ticket-stage-progress {
+        color: #432874;
+        background-color: #e2d9f3;
+        border-color: #c5b3e6;
+    }
+
+    .o_kanban_ticket_stage.ticket-stage-resolved {
+        color: #0f5132;
+        background-color: #d1e7dd;
+        border-color: #a3cfbb;
+    }
+
+    .o_kanban_ticket_stage.ticket-stage-closed {
+        color: #41464b;
+        background-color: #dee2e6;
+        border-color: #c6c7c8;
     }
 
     .o_kanban_record_body {
