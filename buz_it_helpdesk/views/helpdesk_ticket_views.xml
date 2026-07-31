@@ -138,11 +138,12 @@
                     <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_draft_stage"/>
                     <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_resolve_ticket" string="Resolve Ticket" type="object" class="btn-success" invisible="not show_resolve_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                    <button name="action_close_ticket" string="Closed Ticket" type="object" class="btn-danger" invisible="is_closed_stage" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_close_ticket" string="Closed Ticket" type="object" class="btn-danger" invisible="not show_close_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <field name="is_draft_stage" invisible="1"/>
                     <field name="is_closed_stage" invisible="1"/>
                     <field name="show_receive_button" invisible="1"/>
                     <field name="show_resolve_button" invisible="1"/>
+                    <field name="show_close_button" invisible="1"/>
                     <field name="is_editable" invisible="1"/>
                 </header>
                 <sheet>
