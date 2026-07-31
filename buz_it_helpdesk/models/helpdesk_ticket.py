@@ -251,6 +251,18 @@ class HelpdeskTicket(models.Model):
         )
         if user_team:
             self.team_id = user_team
+
+        notification_activities = self.env['mail.activity'].search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('activity_type_id', '=', self.env.ref(
+                'mail.mail_activity_data_todo'
+            ).id),
+            ('summary', '=', _('New IT Helpdesk Ticket')),
+            ('date_done', '=', False),
+        ])
+        if notification_activities:
+            notification_activities.action_done()
         return True
 
     def write(self, vals):
