@@ -55,7 +55,27 @@ class ResConfigSettings(models.TransientModel):
     #----------------------------------------------------------
     # Helper
     #----------------------------------------------------------
-    
+
+    @property
+    def THEME_LIGHT_COLOR_DEFAULTS(self):
+        return {
+            'color_brand': '#243742',
+            'color_primary': '#5D8DA8',
+            'color_success': '#28A745',
+            'color_info': '#17A2B8',
+            'color_warning': '#FFAC00',
+            'color_danger': '#DC3545',
+        }
+
+    def _get_light_color_values(self):
+        """Keep light color settings usable when the custom asset is empty."""
+        colors = super()._get_light_color_values()
+        defaults = self.THEME_LIGHT_COLOR_DEFAULTS
+        return {
+            field: colors.get(field) or defaults[field]
+            for field in defaults
+        }
+
     def _get_theme_color_values(self):
         return self.env['web_editor.assets'].get_color_variables_values(
             self.COLOR_ASSET_THEME_URL, 
