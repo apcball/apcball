@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Manufacturing Backdate/Forcedate',
-    'version': '17.0.1.0.0',
+    'version': '17.0.2.0.0',
     'category': 'Manufacturing',
-    'summary': 'Allow backdating for Manufacturing Orders with remark support',
+    'summary': 'Allow backdating for Manufacturing Orders and Unbuild Orders with remark support',
     'description': """
 Manufacturing Backdate Module
 =============================
-Add backdate and remark fields to Manufacturing Orders.
+Add backdate and remark fields to Manufacturing Orders and Unbuild Orders.
 Update stock moves, product moves, inventory valuation, and journal entries with backdate.
-Wizard to set backdate before validation.
-Does not affect normal MO confirmation logic.
+Wizard to set backdate after validation (Done state).
+Does not affect normal MO/Unbuild confirmation logic.
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',
@@ -25,6 +25,7 @@ Does not affect normal MO confirmation logic.
         'security/ir.model.access.csv',
         'wizard/mrp_backdate_wizard_views.xml',
         'views/mrp_production_views.xml',
+        'views/mrp_unbuild_views.xml',
     ],
     'installable': True,
     'application': False,

@@ -13,13 +13,19 @@ class StockMove(models.Model):
         store=True,
     )
 
-    @api.depends('production_id.backdate_remark', 'raw_material_production_id.backdate_remark')
+    @api.depends(
+        'production_id.backdate_remark',
+        'raw_material_production_id.backdate_remark',
+        'unbuild_id.backdate_remark',
+    )
     def _compute_backdate_remark(self):
-        """Compute backdate remark from related MO"""
+        """Compute backdate remark from related MO or Unbuild Order"""
         for move in self:
             remark = ''
             if move.production_id:
                 remark = move.production_id.backdate_remark or ''
             elif move.raw_material_production_id:
                 remark = move.raw_material_production_id.backdate_remark or ''
+            elif move.unbuild_id:
+                remark = move.unbuild_id.backdate_remark or ''
             move.backdate_remark = remark

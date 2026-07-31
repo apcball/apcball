@@ -12,12 +12,13 @@
                 </div>
                 <group>
                     <group>
-                        <field name="production_id" readonly="1"/>
+                        <field name="production_id" readonly="1" invisible="not production_id"/>
+                        <field name="unbuild_id" readonly="1" invisible="not unbuild_id"/>
                         <field name="backdate"/>
                     </group>
                     <group>
-                        <field name="backdate_remark" 
-                               placeholder="Please provide a reason for backdating this manufacturing order..."/>
+                        <field name="backdate_remark"
+                               placeholder="Please provide a reason for backdating this order..."/>
                     </group>
                 </group>
                 <footer>

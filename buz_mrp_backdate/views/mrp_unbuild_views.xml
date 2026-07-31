@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit MRP Unbuild Form View -->
+    <record id="view_mrp_unbuild_form_inherit_backdate" model="ir.ui.view">
+        <field name="name">mrp.unbuild.form.backdate</field>
+        <field name="model">mrp.unbuild</field>
+        <field name="inherit_id" ref="mrp.mrp_unbuild_form_view"/>
+        <field name="priority">200</field>
+        <field name="arch" type="xml">
+            <!-- Add button in header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_open_backdate_wizard"
+                        type="object"
+                        string="Set Backdate"
+                        class="btn-primary"
+                        groups="buz_mrp_backdate.group_mrp_backdate"
+                        invisible="state != 'done'"/>
+            </xpath>
+
+            <!-- Add backdate fields in form -->
+            <xpath expr="//field[@name='lot_id']" position="after">
+                <field name="backdate"
+                       string="Backdate"
+                       groups="buz_mrp_backdate.group_mrp_backdate"
+                       readonly="1"
+                       invisible="not backdate"/>
+                <field name="backdate_remark"
+                       string="Remark"
+                       groups="buz_mrp_backdate.group_mrp_backdate"
+                       readonly="1"
+                       invisible="not backdate_remark"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
