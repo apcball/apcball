@@ -1,5 +1,10 @@
+import logging
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+
+
+_logger = logging.getLogger(__name__)
 
 
 class HelpdeskTicket(models.Model):
@@ -174,7 +179,49 @@ class HelpdeskTicket(models.Model):
 
     def action_create_ticket(self):
         self.ensure_one()
-        self.stage_id = self.env.ref('buz_it_helpdesk.stage_new')
+        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+        if self.stage_id != draft_stage:
+            raise UserError(_('Only Draft tickets can be created.'))
+
+        new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+        self.write({
+            'stage_id': new_stage.id,
+            'create_ticket_date': fields.Date.context_today(self),
+        })
+
+        teams = self.env['buz.helpdesk.team'].search([('active', '=', True)])
+        recipients = teams.mapped('user_ids').filtered('active')
+        recipients -= self.requester_id
+        if not recipients:
+            _logger.warning(
+                'No active IT Helpdesk team members to notify for ticket %s.',
+                self.display_name,
+            )
+            return True
+
+        activity_type = self.env.ref('mail.mail_activity_data_todo')
+        activity_model = self.env['mail.activity']
+        existing_user_ids = set(activity_model.search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('activity_type_id', '=', activity_type.id),
+            ('user_id', 'in', recipients.ids),
+            ('date_done', '=', False),
+        ]).mapped('user_id').ids)
+        note = _(
+            'A new IT Helpdesk ticket %(ticket)s was opened by %(requester)s.',
+            ticket=self.display_name,
+            requester=self.requester_id.display_name,
+        )
+        for user in recipients:
+            if user.id in existing_user_ids:
+                continue
+            self.activity_schedule(
+                'mail.mail_activity_data_todo',
+                user_id=user.id,
+                summary=_('New IT Helpdesk Ticket'),
+                note=note,
+            )
         return True
 
     def action_resolve_ticket(self):
