@@ -14,8 +14,14 @@ class PurchaseOrderLine(models.Model):
             line.allow_product_edit = (
                 line.order_id.state in ("purchase", "done")
                 and not line.qty_received
-                and not line.qty_invoiced
+                and not line._has_non_draft_bill()
             )
+
+    def _has_non_draft_bill(self):
+        # ponytail: any linked bill not draft (posted/cancel) blocks edit
+        self.ensure_one()
+        moves = self.invoice_lines.move_id
+        return bool(moves.filtered(lambda m: m.state != "draft"))
 
     def action_open_change_product_wizard(self):
         self.ensure_one()

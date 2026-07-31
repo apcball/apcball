@@ -28,17 +28,27 @@ class PoLineChangeProductWizard(models.TransientModel):
                 "ยังมียอดรับสินค้าค้างอยู่ (qty_received != 0) "
                 "ต้อง return สินค้าคืนให้ครบก่อนจึงแก้ไขรหัสสินค้าได้"
             )
-        if line.qty_invoiced:
+        if line._has_non_draft_bill():
             raise UserError(
-                "บรรทัดนี้มีการตั้งบิลแล้ว (qty_invoiced != 0) "
-                "ไม่สามารถแก้ไขรหัสสินค้าได้เพราะจะกระทบบัญชี"
+                "บรรทัดนี้มีบิลที่ยืนยันแล้ว (posted/cancel) "
+                "ไม่สามารถแก้ไขรหัสสินค้าได้ บิลต้องเป็น draft เท่านั้น"
             )
 
         old_name = line.product_id.display_name
+        new_product = self.new_product_id
         line.write({
-            "product_id": self.new_product_id.id,
-            "name": self.new_product_id.display_name,
+            "product_id": new_product.id,
+            "name": new_product.display_name,
         })
+        # ponytail: sync draft bill lines so PO and bill stay consistent
+        draft_move_lines = line.invoice_lines.filtered(
+            lambda ml: ml.move_id.state == "draft"
+        )
+        if draft_move_lines:
+            draft_move_lines.write({
+                "product_id": new_product.id,
+                "name": new_product.display_name,
+            })
         order.message_post(
             body=(
                 f"แก้ไขรหัสสินค้าใน PO line จาก <b>{old_name}</b> "

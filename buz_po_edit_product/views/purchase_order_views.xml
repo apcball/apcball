@@ -12,7 +12,7 @@
                         type="object"
                         string="แก้ไขรหัสสินค้า"
                         icon="fa-pencil"
-                        title="แก้ไขรหัสสินค้า (ใช้ได้เมื่อ return ครบและยังไม่ตั้งบิล)"
+                        title="แก้ไขรหัสสินค้า (ใช้ได้เมื่อ return ครบ และบิลเป็น draft หรือยังไม่ตั้งบิล)"
                         invisible="not allow_product_edit"
                         groups="buz_po_edit_product.group_po_edit_product"/>
             </xpath>

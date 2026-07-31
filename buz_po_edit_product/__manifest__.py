@@ -1,6 +1,6 @@
 {
     "name": "Purchase Order Line - Edit Product After Return",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "summary": "Allow correcting product code on a confirmed PO line after stock has been fully returned, with no accounting impact",
     "category": "Purchases",
     "author": "Mogen Co.",
