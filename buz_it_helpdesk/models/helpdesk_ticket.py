@@ -149,6 +149,13 @@ class HelpdeskTicket(models.Model):
         self.ensure_one()
         self.stage_id = self.env.ref('buz_it_helpdesk.stage_in_progress')
         self.assigned_user_id = self.env.user
+        user_team = self.env['buz.helpdesk.team'].search(
+            [('user_ids', 'in', self.assigned_user_id.id)],
+            order='sequence, name',
+            limit=1,
+        )
+        if user_team:
+            self.team_id = user_team
         return True
 
     def write(self, vals):
