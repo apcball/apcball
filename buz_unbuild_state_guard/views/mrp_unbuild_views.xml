@@ -62,6 +62,7 @@
             <field name="priority">100</field>
             <field name="arch" type="xml">
                 <xpath expr="//search" position="inside">
+                    <field name="name" string="Reference" filter_domain="[('name', 'ilike', self)]"/>
                     <field name="picking_id"/>
                     <filter string="Picking" name="picking" domain="[('state', '=', 'picking')]"/>
                 </xpath>
