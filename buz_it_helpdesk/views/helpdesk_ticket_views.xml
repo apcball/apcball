@@ -72,12 +72,14 @@
                     <field name="stage_id" widget="statusbar" options="{'clickable': False}"/>
                     <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_draft_stage"/>
                     <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                    <button name="action_close_ticket" string="Closed Ticket" type="object" class="btn-danger" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_close_ticket" string="Closed Ticket" type="object" class="btn-danger" invisible="is_closed_stage" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <field name="is_draft_stage" invisible="1"/>
+                    <field name="is_closed_stage" invisible="1"/>
                     <field name="show_receive_button" invisible="1"/>
                     <field name="is_editable" invisible="1"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Closed" bg_color="text-bg-danger" invisible="not is_closed_stage"/>
                     <div class="oe_title">
                         <label for="subject" class="oe_edit_only"/>
                         <h1><field name="subject" placeholder="Ticket subject" readonly="not is_editable"/></h1>

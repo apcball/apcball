@@ -99,6 +99,7 @@ class HelpdeskTicket(models.Model):
     )
     active = fields.Boolean(default=True)
     is_draft_stage = fields.Boolean(compute='_compute_is_draft_stage')
+    is_closed_stage = fields.Boolean(compute='_compute_is_closed_stage')
     show_receive_button = fields.Boolean(compute='_compute_show_receive_button')
     is_editable = fields.Boolean(compute='_compute_is_editable')
 
@@ -112,6 +113,12 @@ class HelpdeskTicket(models.Model):
         draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
         for ticket in self:
             ticket.is_draft_stage = ticket.stage_id == draft_stage
+
+    @api.depends('stage_id')
+    def _compute_is_closed_stage(self):
+        closed_stage = self.env.ref('buz_it_helpdesk.stage_closed')
+        for ticket in self:
+            ticket.is_closed_stage = ticket.stage_id == closed_stage
 
     @api.depends('stage_id')
     def _compute_show_receive_button(self):
