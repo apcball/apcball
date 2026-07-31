@@ -78,10 +78,9 @@ class MrpUnbuildComponentLine(models.Model):
         digits=(5, 2),
         help='Percentage of the unbuilt product\'s actual consumed value '
              '(real cost, e.g. FIFO layer value) allocated to this '
-             'component. Leave all components at 0 to keep the default '
-             'Odoo behavior (each component valued at its own standard '
-             'cost). If used, the cost share of all received components '
-             'on the order must add up to 100.',
+             'component. Required: the Cost Share of all received '
+             'components on the order must add up to 100 before the '
+             'unbuild can be confirmed.',
     )
     destination_location_id = fields.Many2one(
         'stock.location',
@@ -164,8 +163,8 @@ class MrpUnbuildComponentLine(models.Model):
         for line in self:
             if not (0.0 <= line.cost_share <= 100.0):
                 raise ValidationError(_(
-                    'Cost Share of component "%(product)s" must be between '
-                    '0 and 100.', product=line.product_id.display_name))
+                    'Cost Share ของชิ้นส่วน "%(product)s" ต้องอยู่ระหว่าง '
+                    '0 ถึง 100', product=line.product_id.display_name))
 
     @api.onchange('quantity')
     def _onchange_quantity_warning(self):

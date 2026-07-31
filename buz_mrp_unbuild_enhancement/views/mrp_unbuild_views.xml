@@ -13,7 +13,7 @@
                 <field name="product_uom_id" groups="uom.group_uom"/>
                 <field name="receive" widget="boolean_toggle"/>
                 <field name="scrap_qty"/>
-                <field name="cost_share" optional="hide"/>
+                <field name="cost_share" optional="show"/>
                 <field name="destination_location_id"/>
                 <field name="lot_id" optional="show"/>
                 <field name="note" optional="show"/>

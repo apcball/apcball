@@ -128,45 +128,45 @@ class MrpUnbuild(models.Model):
                 lambda l: l.receive and l.quantity > 0)
             if not active_lines:
                 raise ValidationError(_(
-                    'Unbuild %(name)s: all components are skipped. Enable '
-                    '"Receive" on at least one component line or remove all '
-                    'component lines to use the standard behavior.',
+                    'Unbuild %(name)s: ไม่มีชิ้นส่วนใดถูกรับเลย กรุณาเปิด '
+                    '"Receive" อย่างน้อย 1 รายการ หรือลบรายการ Components '
+                    'ทั้งหมดเพื่อใช้พฤติกรรมมาตรฐานของ Odoo',
                     name=unbuild.display_name))
             total_cost_share = sum(active_lines.mapped('cost_share'))
-            if not float_is_zero(total_cost_share, precision_digits=2):
-                precision = self.env['decimal.precision'].precision_get(
-                    'Product Price')
-                if float_compare(total_cost_share, 100.0,
-                                  precision_digits=precision) != 0:
-                    raise ValidationError(_(
-                        'Unbuild %(name)s: Cost Share of received '
-                        'components must add up to 100%% (currently '
-                        '%(total)s%%).',
-                        name=unbuild.display_name, total=total_cost_share))
+            precision = self.env['decimal.precision'].precision_get(
+                'Product Price')
+            if float_compare(total_cost_share, 100.0,
+                              precision_digits=precision) != 0:
+                raise ValidationError(_(
+                    'Unbuild %(name)s: ต้องระบุ Cost Share (%%) ของ '
+                    'ชิ้นส่วนที่รับทั้งหมดให้รวมกันเป็น 100%% ก่อนยืนยัน '
+                    'Unbuild นี้ได้ (ตอนนี้รวม %(total)s%%)',
+                    name=unbuild.display_name, total=total_cost_share))
             for line in active_lines:
                 if not line.destination_location_id:
                     raise ValidationError(_(
-                        'Component "%(product)s" has no destination '
-                        'location.', product=line.product_id.display_name))
+                        'ชิ้นส่วน "%(product)s" ยังไม่ได้ระบุ '
+                        'Destination Location',
+                        product=line.product_id.display_name))
                 if line.destination_location_id.usage != 'internal':
                     raise ValidationError(_(
-                        'Destination location "%(location)s" of component '
-                        '"%(product)s" must be an internal location.',
+                        'Destination Location "%(location)s" ของชิ้นส่วน '
+                        '"%(product)s" ต้องเป็น Internal Location เท่านั้น',
                         location=line.destination_location_id.display_name,
                         product=line.product_id.display_name))
                 rounding = line.product_uom_id.rounding or 0.01
                 if float_compare(line.scrap_qty, line.quantity,
                                  precision_rounding=rounding) > 0:
                     raise ValidationError(_(
-                        'Component "%(product)s": scrap quantity exceeds '
-                        'the returned quantity.',
+                        'ชิ้นส่วน "%(product)s": จำนวน Scrap มากกว่าจำนวน '
+                        'ที่รับคืน',
                         product=line.product_id.display_name))
                 if (line.product_id.tracking != 'none'
                         and not unbuild.mo_id):
                     raise ValidationError(_(
-                        'Component "%(product)s" is tracked by lot/serial. '
-                        'Select the original Manufacturing Order on the '
-                        'unbuild so Odoo can retrieve the consumed lots.',
+                        'ชิ้นส่วน "%(product)s" มีการติดตาม Lot/Serial '
+                        'กรุณาเลือก Manufacturing Order ต้นทางใน Unbuild '
+                        'เพื่อให้ Odoo ดึง Lot ที่ใช้ไปได้ถูกต้อง',
                         product=line.product_id.display_name))
 
     # ------------------------------------------------------------------

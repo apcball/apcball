@@ -155,6 +155,8 @@ class TestUnbuildComponentLines(TransactionCase):
         unbuild = self._create_unbuild(qty=2.0)
         screw_line = self._line(unbuild, self.screw)
         screw_line.quantity = 38.0
+        screw_line.cost_share = 50.0
+        self._line(unbuild, self.panel).cost_share = 50.0
         unbuild.action_unbuild()
         move = unbuild.produce_line_ids.filtered(
             lambda m: m.product_id == self.screw)
@@ -175,6 +177,7 @@ class TestUnbuildComponentLines(TransactionCase):
     def test_04_receive_false_skips_move(self):
         unbuild = self._create_unbuild()
         self._line(unbuild, self.panel).receive = False
+        self._line(unbuild, self.screw).cost_share = 100.0
         unbuild.action_unbuild()
         products = unbuild.produce_line_ids.mapped("product_id")
         self.assertNotIn(self.panel, products)
@@ -187,7 +190,9 @@ class TestUnbuildComponentLines(TransactionCase):
             "quantity": 10.0,
             "scrap_qty": 2.0,
             "destination_location_id": self.dest_a.id,
+            "cost_share": 60.0,
         })
+        self._line(unbuild, self.panel).cost_share = 40.0
         unbuild.action_unbuild()
         self.assertEqual(len(unbuild.scrap_ids), 1)
         scrap = unbuild.scrap_ids
@@ -204,8 +209,10 @@ class TestUnbuildComponentLines(TransactionCase):
 
     def test_06_per_line_destination(self):
         unbuild = self._create_unbuild()
-        self._line(unbuild, self.panel).destination_location_id = self.dest_a
-        self._line(unbuild, self.screw).destination_location_id = self.dest_b
+        self._line(unbuild, self.panel).write({
+            "destination_location_id": self.dest_a.id, "cost_share": 50.0})
+        self._line(unbuild, self.screw).write({
+            "destination_location_id": self.dest_b.id, "cost_share": 50.0})
         unbuild.action_unbuild()
         panel_move = unbuild.produce_line_ids.filtered(
             lambda m: m.product_id == self.panel)
@@ -250,7 +257,7 @@ class TestUnbuildComponentLines(TransactionCase):
         unbuild = self._create_unbuild()
         self._line(unbuild, self.panel).receive = False
         screw_line = self._line(unbuild, self.screw)
-        screw_line.scrap_qty = 2.0
+        screw_line.write({"scrap_qty": 2.0, "cost_share": 100.0})
         unbuild.action_unbuild()
         self.assertEqual(unbuild.component_line_count, 2)
         self.assertEqual(unbuild.returned_move_count, 1)
@@ -321,15 +328,12 @@ class TestUnbuildComponentLines(TransactionCase):
         with self.assertRaises(ValidationError):
             unbuild.action_unbuild()
 
-    def test_15_cost_share_zero_keeps_default_behavior(self):
-        self._receive(self.fifo_finished, 1.0, 1000.0)
-        unbuild = self._create_fifo_unbuild()
-        # cost_share left at 0 on both lines: standard per-component
-        # standard cost valuation applies, unaffected by this feature.
-        unbuild.action_unbuild()
-        panel_move = unbuild.produce_line_ids.filtered(
-            lambda m: m.product_id == self.fifo_panel)
-        self.assertTrue(panel_move.stock_valuation_layer_ids)
+    def test_15_cost_share_required_blocks_confirm(self):
+        # Cost Share (%) is mandatory: leaving it at 0 on every line must
+        # block confirmation, not silently fall back to standard cost.
+        unbuild = self._create_unbuild()
+        with self.assertRaises(ValidationError):
+            unbuild.action_unbuild()
 
     def test_16_cost_share_out_of_range_raises(self):
         unbuild = self._create_fifo_unbuild()
