@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_unbuild_component_line_user,mrp.unbuild.component.line user,model_mrp_unbuild_component_line,mrp.group_mrp_user,1,1,1,0
+access_unbuild_component_line_manager,mrp.unbuild.component.line manager,model_mrp_unbuild_component_line,group_unbuild_manager,1,1,1,1

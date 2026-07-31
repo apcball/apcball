@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="mrp_unbuild_component_line_tree_view" model="ir.ui.view">
+        <field name="name">mrp.unbuild.component.line.tree</field>
+        <field name="model">mrp.unbuild.component.line</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="not receive"
+                  decoration-danger="scrap_qty &gt; quantity">
+                <field name="unbuild_id"/>
+                <field name="product_id"/>
+                <field name="quantity"/>
+                <field name="product_uom_id" groups="uom.group_uom"/>
+                <field name="receive" widget="boolean_toggle"/>
+                <field name="scrap_qty"/>
+                <field name="destination_location_id"/>
+                <field name="lot_id" optional="show"/>
+                <field name="note" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="mrp_unbuild_form_view_inherit_components" model="ir.ui.view">
+        <field name="name">mrp.unbuild.form.inherit.components</field>
+        <field name="model">mrp.unbuild</field>
+        <field name="inherit_id" ref="mrp.mrp_unbuild_form_view"/>
+        <field name="priority">110</field>
+        <field name="arch" type="xml">
+
+            <!-- Refresh components button -->
+            <xpath expr="//header" position="inside">
+                <button name="action_generate_component_lines"
+                        string="Refresh Components"
+                        type="object"
+                        invisible="state != 'draft' or not bom_id"
+                        help="Re-explode the Bill of Materials into component lines. Manual edits will be lost."/>
+            </xpath>
+
+            <!-- Smart buttons -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" name="action_view_component_lines"
+                        type="object" icon="fa-list"
+                        invisible="component_line_count == 0">
+                    <field name="component_line_count" widget="statinfo" string="Components"/>
+                </button>
+                <button class="oe_stat_button" name="action_view_returned_moves"
+                        type="object" icon="fa-exchange"
+                        invisible="state != 'done'">
+                    <field name="returned_move_count" widget="statinfo" string="Returned Moves"/>
+                </button>
+                <button class="oe_stat_button" name="action_view_scraps"
+                        type="object" icon="fa-trash"
+                        invisible="scrap_count == 0">
+                    <field name="scrap_count" widget="statinfo" string="Scraps"/>
+                </button>
+            </xpath>
+
+            <!-- Components notebook page -->
+            <xpath expr="//sheet" position="inside">
+                <notebook>
+                    <page string="Components" name="components">
+                        <field name="component_line_ids"
+                               readonly="state != 'draft'">
+                            <tree editable="bottom"
+                                  decoration-muted="not receive"
+                                  decoration-danger="scrap_qty &gt; quantity">
+                                <field name="sequence" widget="handle"/>
+                                <field name="is_unbuild_manager" column_invisible="1"/>
+                                <field name="state" column_invisible="1"/>
+                                <field name="bom_line_id" column_invisible="1"/>
+                                <field name="company_id" column_invisible="1"/>
+                                <field name="tracking" column_invisible="1"/>
+                                <field name="product_uom_category_id" column_invisible="1"/>
+                                <field name="product_id" readonly="1" force_save="1"/>
+                                <field name="expected_qty" optional="hide"/>
+                                <field name="quantity"
+                                       readonly="not is_unbuild_manager"
+                                       force_save="1"/>
+                                <field name="product_uom_id"
+                                       groups="uom.group_uom"
+                                       readonly="1" force_save="1"
+                                       options="{'no_open': True, 'no_create': True}"/>
+                                <field name="receive" widget="boolean_toggle"/>
+                                <field name="scrap_qty"
+                                       readonly="not is_unbuild_manager"
+                                       force_save="1"/>
+                                <field name="destination_location_id"
+                                       readonly="not is_unbuild_manager"
+                                       force_save="1"
+                                       options="{'no_create': True}"/>
+                                <field name="lot_id"
+                                       optional="show"
+                                       readonly="tracking == 'none'"
+                                       options="{'no_create': True}"/>
+                                <field name="note" optional="show"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="mrp_unbuild_search_view_inherit_components" model="ir.ui.view">
+        <field name="name">mrp.unbuild.search.inherit.components</field>
+        <field name="model">mrp.unbuild</field>
+        <field name="inherit_id" ref="mrp.mrp_unbuild_search_view"/>
+        <field name="priority">110</field>
+        <field name="arch" type="xml">
+            <filter name="done" position="after">
+                <filter name="partial_return" string="Partial Return"
+                        domain="[('component_line_ids.receive', '=', False)]"/>
+                <filter name="has_scrap" string="Has Scrap"
+                        domain="[('component_line_ids.scrap_qty', '&gt;', 0)]"/>
+            </filter>
+        </field>
+    </record>
+
+</odoo>

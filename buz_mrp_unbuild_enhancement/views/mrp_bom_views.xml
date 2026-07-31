@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="mrp_bom_form_view_inherit_return_location" model="ir.ui.view">
+        <field name="name">mrp.bom.form.inherit.return.location</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='bom_line_ids']/tree/field[@name='product_qty']"
+                   position="after">
+                <field name="default_return_location_id"
+                       optional="hide"
+                       groups="stock.group_stock_multi_locations"
+                       options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

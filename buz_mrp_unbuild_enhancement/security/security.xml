@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_unbuild_manager" model="res.groups">
+        <field name="name">MRP Unbuild Manager</field>
+        <field name="category_id" ref="base.module_category_manufacturing"/>
+        <field name="implied_ids" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+        <field name="comment">Can edit component quantities, destination locations and scrap quantities on Unbuild Orders. Regular users can only confirm.</field>
+    </record>
+</odoo>
