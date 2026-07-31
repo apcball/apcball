@@ -101,6 +101,7 @@ class HelpdeskTicket(models.Model):
     is_draft_stage = fields.Boolean(compute='_compute_is_draft_stage')
     is_closed_stage = fields.Boolean(compute='_compute_is_closed_stage')
     show_receive_button = fields.Boolean(compute='_compute_show_receive_button')
+    show_resolve_button = fields.Boolean(compute='_compute_show_resolve_button')
     is_editable = fields.Boolean(compute='_compute_is_editable')
 
     @api.depends('category_id.name')
@@ -128,6 +129,11 @@ class HelpdeskTicket(models.Model):
                 ticket.stage_id == new_stage and not ticket.assigned_user_id
             )
 
+    @api.depends('stage_id')
+    def _compute_show_resolve_button(self):
+        in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        for ticket in self:
+            ticket.show_resolve_button = ticket.stage_id == in_progress_stage
     @api.depends('stage_id')
     @api.depends_context('uid')
     def _compute_is_editable(self):
@@ -163,6 +169,10 @@ class HelpdeskTicket(models.Model):
         self.stage_id = self.env.ref('buz_it_helpdesk.stage_new')
         return True
 
+    def action_resolve_ticket(self):
+        self.ensure_one()
+        self.stage_id = self.env.ref('buz_it_helpdesk.stage_resolved')
+        return True
     def action_close_ticket(self):
         self.ensure_one()
         self.write({
