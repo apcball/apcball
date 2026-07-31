@@ -45,6 +45,11 @@ class SaleOrderLine(models.Model):
         related="order_id.project_name",
         string="Project Name",
     )
+    customer_reference = fields.Char(
+        related="order_id.client_order_ref",
+        string="Customer PO",
+        store=True,
+    )
     partner_shipping_id = fields.Many2one(
         related="order_id.partner_shipping_id",
         string="Delivery Address",
@@ -145,12 +150,16 @@ class SaleOrderLine(models.Model):
                 )
             line.reserve_qty = reserved
 
-    @api.depends('state', 'product_uom_qty', 'qty_delivered')
+    @api.depends('state', 'product_uom_qty', 'qty_delivered', 'move_ids.state')
     def _compute_is_pending_delivery(self):
         for line in self:
+            active_moves = any(
+                m.state != 'cancel' for m in line.move_ids
+            )
             line.is_pending_delivery = (
                 line.state == 'sale'
                 and line.product_uom_qty > line.qty_delivered
+                and active_moves
             )
 
     @api.depends('qty_to_deliver')
