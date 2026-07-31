@@ -16,6 +16,12 @@ class HelpdeskTicket(models.Model):
         copy=False,
         default='New',
     )
+    create_ticket_date = fields.Date(
+        string='Create Ticket',
+        readonly=True,
+        copy=False,
+        default=fields.Date.context_today,
+    )
     subject = fields.Char(required=True, tracking=True)
     description = fields.Text()
     attachment_ids = fields.Many2many(
