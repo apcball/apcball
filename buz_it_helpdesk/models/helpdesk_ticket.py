@@ -22,6 +22,11 @@ class HelpdeskTicket(models.Model):
         copy=False,
         default=fields.Date.context_today,
     )
+    closed_ticket_date = fields.Date(
+        string='Closed Ticket',
+        readonly=True,
+        copy=False,
+    )
     subject = fields.Char(required=True, tracking=True)
     description = fields.Text()
     attachment_ids = fields.Many2many(
@@ -149,6 +154,14 @@ class HelpdeskTicket(models.Model):
     def action_create_ticket(self):
         self.ensure_one()
         self.stage_id = self.env.ref('buz_it_helpdesk.stage_new')
+        return True
+
+    def action_close_ticket(self):
+        self.ensure_one()
+        self.write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_closed').id,
+            'closed_ticket_date': fields.Date.context_today(self),
+        })
         return True
 
     def action_receive_ticket(self):

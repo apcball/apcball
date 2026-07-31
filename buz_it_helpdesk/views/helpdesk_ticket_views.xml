@@ -72,6 +72,7 @@
                     <field name="stage_id" widget="statusbar" options="{'clickable': False}"/>
                     <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_draft_stage"/>
                     <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_close_ticket" string="Closed Ticket" type="object" class="btn-danger" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <field name="is_draft_stage" invisible="1"/>
                     <field name="show_receive_button" invisible="1"/>
                     <field name="is_editable" invisible="1"/>
@@ -85,6 +86,7 @@
                         <group>
                             <field name="name" readonly="1"/>
                             <field name="create_ticket_date" readonly="1"/>
+                            <field name="closed_ticket_date" readonly="1"/>
                             <field name="requester_id" readonly="not is_editable"/>
                             <field name="department_id" readonly="1"/>
                             <field name="priority" widget="priority" options="{'autosave': False}" readonly="not is_editable"/>
