@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
@@ -14,18 +14,21 @@ class PurchaseOrder(models.Model):
         if self.partner_code:
             # Convert to uppercase for case-insensitive search
             partner_code = self.partner_code.strip().upper()
-            partner = self.env['res.partner'].search([
+            domain = [
                 ('partner_code', '=ilike', partner_code),
-                ('supplier_rank', '>', 0)
-            ], limit=1)
+                ('supplier_rank', '>', 0),
+            ]
+            if self.company_id:
+                domain += ['|', ('company_id', '=', False), ('company_id', '=', self.company_id.id)]
+            partner = self.env['res.partner'].search(domain, limit=1)
             if partner:
                 self.partner_id = partner.id
                 return {}
             else:
                 return {
                     'warning': {
-                        'title': 'Warning',
-                        'message': 'No vendor found with this partner code.'
+                        'title': _('Warning'),
+                        'message': _('No vendor found with this partner code.')
                     }
                 }
 

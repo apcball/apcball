@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 class ResPartner(models.Model):
@@ -12,13 +12,19 @@ class ResPartner(models.Model):
         size=50
     )
 
-    @api.constrains('partner_code')
+    @api.constrains('partner_code', 'company_id')
     def _check_partner_code_unique(self):
         for record in self:
             if record.partner_code:
-                existing = self.search([
-                    ('partner_code', '=', record.partner_code),
-                    ('id', '!=', record.id)
-                ])
+                domain = [
+                    ('partner_code', '=ilike', record.partner_code),
+                    ('id', '!=', record.id),
+                ]
+                if record.company_id:
+                    domain += ['|', ('company_id', '=', False), ('company_id', '=', record.company_id.id)]
+                existing = self.search(domain, limit=1)
                 if existing:
-                    raise ValidationError(f'Partner code "{record.partner_code}" already exists for {existing.name}!')
+                    raise ValidationError(_(
+                        'Partner code "%(code)s" already exists for %(partner)s!',
+                        code=record.partner_code, partner=existing.name,
+                    ))

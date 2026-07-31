@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
@@ -15,22 +15,25 @@ class AccountMove(models.Model):
             # Convert to uppercase for case-insensitive search
             partner_code = self.partner_code.strip().upper()
             domain = [('partner_code', '=ilike', partner_code)]
-            
+
             # Add appropriate domain based on move type
             if self.move_type in ('out_invoice', 'out_refund', 'out_receipt'):
                 domain.append(('customer_rank', '>', 0))
             elif self.move_type in ('in_invoice', 'in_refund', 'in_receipt'):
                 domain.append(('supplier_rank', '>', 0))
-            
+
+            if self.company_id:
+                domain += ['|', ('company_id', '=', False), ('company_id', '=', self.company_id.id)]
+
             partner = self.env['res.partner'].search(domain, limit=1)
             if partner:
                 self.partner_id = partner.id
                 return {}
             else:
-                message = 'No customer found with this partner code.' if self.move_type in ('out_invoice', 'out_refund', 'out_receipt') else 'No vendor found with this partner code.'
+                message = _('No customer found with this partner code.') if self.move_type in ('out_invoice', 'out_refund', 'out_receipt') else _('No vendor found with this partner code.')
                 return {
                     'warning': {
-                        'title': 'Warning',
+                        'title': _('Warning'),
                         'message': message
                     }
                 }
