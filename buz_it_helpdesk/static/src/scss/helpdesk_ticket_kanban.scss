@@ -1,0 +1,93 @@
+.o_kanban_ticket_card {
+    min-height: 0;
+    padding: .75rem .85rem;
+    border-left: 4px solid #adb5bd;
+    border-radius: .35rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+    transition: box-shadow .15s ease, transform .15s ease;
+
+    &:hover {
+        box-shadow: 0 3px 10px rgba(0, 0, 0, .12);
+        transform: translateY(-1px);
+    }
+
+    &.ticket-low { border-left-color: #6c757d; }
+    &.ticket-normal { border-left-color: #0d6efd; }
+    &.ticket-high { border-left-color: #fd7e14; }
+    &.ticket-urgent { border-left-color: #dc3545; }
+
+    .o_kanban_record_top {
+        align-items: flex-start;
+        gap: .5rem;
+        margin-bottom: .45rem;
+    }
+
+    .o_kanban_record_headings { min-width: 0; }
+
+    .o_kanban_record_title {
+        display: block;
+        color: #212529;
+        font-size: .95rem;
+        line-height: 1.25;
+    }
+
+    .o_kanban_record_subtitle {
+        margin-top: .15rem;
+        color: #6c757d;
+        font-size: .8rem;
+    }
+
+    .o_kanban_record_top_right {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: .25rem;
+    }
+
+    .o_kanban_ticket_priority,
+    .o_kanban_ticket_stage {
+        max-width: 8rem;
+        font-size: .68rem;
+        font-weight: 600;
+    }
+
+    .o_kanban_record_body {
+        padding: .45rem 0;
+        border-top: 1px solid #f0f1f2;
+        border-bottom: 1px solid #f0f1f2;
+    }
+
+    .o_kanban_ticket_description {
+        margin-bottom: .4rem;
+        line-height: 1.35;
+    }
+
+    .o_kanban_ticket_badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .25rem;
+    }
+
+    .o_kanban_ticket_badges .badge {
+        max-width: 100%;
+        font-size: .68rem;
+        font-weight: 500;
+    }
+
+    .o_kanban_record_bottom {
+        align-items: center;
+        gap: .5rem;
+        padding-top: .5rem;
+    }
+
+    .o_kanban_ticket_assignee {
+        min-width: 0;
+        margin-right: auto;
+    }
+
+    .o_kanban_record_bottom .text-nowrap {
+        color: #6c757d;
+        font-size: .7rem;
+    }
+}

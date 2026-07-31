@@ -28,6 +28,7 @@ without dependencies on custom or business modules.
             'buz_it_helpdesk/static/src/js/helpdesk_attachment_preview.js',
             'buz_it_helpdesk/static/src/xml/helpdesk_attachment_preview.xml',
             'buz_it_helpdesk/static/src/scss/helpdesk_attachment_preview.scss',
+            'buz_it_helpdesk/static/src/scss/helpdesk_ticket_kanban.scss',
         ],
     },
     'installable': True,
