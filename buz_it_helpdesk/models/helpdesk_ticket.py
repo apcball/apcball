@@ -1,10 +1,5 @@
-import logging
-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-
-
-_logger = logging.getLogger(__name__)
 
 
 class HelpdeskTicket(models.Model):
@@ -87,9 +82,7 @@ class HelpdeskTicket(models.Model):
         string='Stage',
         required=True,
         tracking=True,
-        default=lambda self: self.env['buz.helpdesk.stage'].search(
-            [('active', '=', True)], order='sequence, id', limit=1
-        ),
+        default=lambda self: self.env.ref('buz_it_helpdesk.stage_draft'),
     )
     priority = fields.Selection(
         [
@@ -106,14 +99,14 @@ class HelpdeskTicket(models.Model):
     is_draft_stage = fields.Boolean(compute='_compute_is_draft_stage')
     is_closed_stage = fields.Boolean(compute='_compute_is_closed_stage')
     show_receive_button = fields.Boolean(compute='_compute_show_receive_button')
-    show_resolve_button = fields.Boolean(compute='_compute_show_resolve_button')
     show_close_button = fields.Boolean(compute='_compute_show_close_button')
     is_editable = fields.Boolean(compute='_compute_is_editable')
+    can_manage_assignment = fields.Boolean(compute='_compute_can_manage_assignment')
 
-    @api.depends('category_id.name')
+    @api.depends('category_id.type_ids')
     def _compute_show_category_type(self):
         for ticket in self:
-            ticket.show_category_type = ticket.category_id.name == 'Hardware'
+            ticket.show_category_type = bool(ticket.category_id.type_ids)
 
     @api.depends('stage_id')
     def _compute_is_draft_stage(self):
@@ -127,51 +120,87 @@ class HelpdeskTicket(models.Model):
         for ticket in self:
             ticket.is_closed_stage = ticket.stage_id == closed_stage
 
-    @api.depends('stage_id')
+    @api.depends('stage_id', 'assigned_user_id')
+    @api.depends_context('uid')
     def _compute_show_receive_button(self):
         new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+        is_agent = self._is_support_agent()
         for ticket in self:
             ticket.show_receive_button = (
-                ticket.stage_id == new_stage and not ticket.assigned_user_id
+                is_agent and ticket.stage_id == new_stage
+                and not ticket.assigned_user_id
             )
 
-    @api.depends('stage_id')
-    def _compute_show_resolve_button(self):
-        in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
-        for ticket in self:
-            ticket.show_resolve_button = ticket.stage_id == in_progress_stage
-
-    @api.depends('stage_id')
+    @api.depends('stage_id', 'assigned_user_id')
+    @api.depends_context('uid')
     def _compute_show_close_button(self):
-        resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
+        in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        legacy_resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
+        is_manager = self._is_helpdesk_manager()
         for ticket in self:
-            ticket.show_close_button = ticket.stage_id == resolved_stage
+            ticket.show_close_button = (
+                ticket.stage_id in (in_progress_stage, legacy_resolved_stage)
+                and (is_manager or ticket.assigned_user_id == self.env.user)
+            )
 
-    @api.depends('stage_id')
+    @api.depends('stage_id', 'assigned_user_id', 'requester_id')
     @api.depends_context('uid')
     def _compute_is_editable(self):
-        is_agent = self.env.user.has_group(
-            'buz_it_helpdesk.group_it_support_agent'
-        ) or self.env.user.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
+        is_manager = self._is_helpdesk_manager()
         draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
         for ticket in self:
-            if is_agent:
+            if is_manager:
                 ticket.is_editable = True
+            elif ticket.stage_id == draft_stage:
+                ticket.is_editable = ticket.requester_id == self.env.user
             else:
-                ticket.is_editable = ticket.stage_id == draft_stage
+                ticket.is_editable = (
+                    self._is_support_agent()
+                    and ticket.assigned_user_id == self.env.user
+                )
+
+    @api.depends_context('uid')
+    def _compute_can_manage_assignment(self):
+        can_manage = self._is_helpdesk_manager()
+        for ticket in self:
+            ticket.can_manage_assignment = can_manage
+
+    def _is_support_agent(self):
+        return self.env.user.has_group(
+            'buz_it_helpdesk.group_it_support_agent'
+        )
+
+    def _is_helpdesk_manager(self):
+        return self.env.user.has_group(
+            'buz_it_helpdesk.group_it_helpdesk_manager'
+        )
 
     def copy(self, default=None):
         default = dict(default or {})
-        default['stage_id'] = self.env.ref('buz_it_helpdesk.stage_draft').id
+        default.update({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_draft').id,
+            'team_id': False,
+            'assigned_user_id': False,
+            'create_ticket_date': False,
+            'closed_ticket_date': False,
+            'active': True,
+        })
         return super().copy(default)
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            is_manager = self._is_helpdesk_manager()
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'buz.helpdesk.ticket'
                 ) or 'New'
+            vals['stage_id'] = self.env.ref('buz_it_helpdesk.stage_draft').id
+            vals['team_id'] = False
+            vals['assigned_user_id'] = False
+            vals['closed_ticket_date'] = False
+            if not is_manager:
+                vals['requester_id'] = self.env.uid
             requester = self.env['res.users'].browse(
                 vals.get('requester_id') or self.env.uid
             )
@@ -184,25 +213,29 @@ class HelpdeskTicket(models.Model):
 
     def action_create_ticket(self):
         self.ensure_one()
+        if (
+            not self._is_helpdesk_manager()
+            and self.requester_id != self.env.user
+        ):
+            raise UserError(_('Only the requester can submit this ticket.'))
         draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
         if self.stage_id != draft_stage:
             raise UserError(_('Only Draft tickets can be created.'))
 
+        recipients = self.env['res.users'].search([
+            ('active', '=', True),
+            ('groups_id', 'in', self.env.ref(
+                'buz_it_helpdesk.group_it_support_agent'
+            ).id),
+        ]) - self.requester_id
+        if not recipients:
+            raise UserError(_('No active IT Support Agent is available.'))
+
         new_stage = self.env.ref('buz_it_helpdesk.stage_new')
-        self.write({
+        self.with_context(buz_helpdesk_transition=True).write({
             'stage_id': new_stage.id,
             'create_ticket_date': fields.Date.context_today(self),
         })
-
-        teams = self.env['buz.helpdesk.team'].search([('active', '=', True)])
-        recipients = teams.mapped('user_ids').filtered('active')
-        recipients -= self.requester_id
-        if not recipients:
-            _logger.warning(
-                'No active IT Helpdesk team members to notify for ticket %s.',
-                self.display_name,
-            )
-            return True
 
         activity_type = self.env.ref('mail.mail_activity_data_todo')
         activity_model = self.env['mail.activity']
@@ -229,33 +262,48 @@ class HelpdeskTicket(models.Model):
             )
         return True
 
-    def action_resolve_ticket(self):
-        self.ensure_one()
-        self.stage_id = self.env.ref('buz_it_helpdesk.stage_resolved')
-        return True
-
     def action_close_ticket(self):
         self.ensure_one()
-        resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
-        if self.stage_id != resolved_stage:
-            raise UserError(_('A ticket must be Resolved before it can be Closed.'))
-        self.write({
+        if not self._is_support_agent():
+            raise UserError(_('Only IT Support Agents can close tickets.'))
+        in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        legacy_resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
+        if self.stage_id not in (in_progress_stage, legacy_resolved_stage):
+            raise UserError(_('Only In Progress tickets can be Closed.'))
+        if (
+            not self._is_helpdesk_manager()
+            and self.assigned_user_id != self.env.user
+        ):
+            raise UserError(_('Only the assigned agent can close this ticket.'))
+        self.with_context(buz_helpdesk_transition=True).write({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_closed').id,
             'closed_ticket_date': fields.Date.context_today(self),
         })
+        self.message_post(
+            body=_('This ticket has been closed by %s.') % (
+                self.env.user.display_name
+            ),
+            partner_ids=[self.requester_id.partner_id.id],
+            subtype_xmlid='mail.mt_comment',
+        )
         return True
 
     def action_receive_ticket(self):
         self.ensure_one()
-        self.stage_id = self.env.ref('buz_it_helpdesk.stage_in_progress')
-        self.assigned_user_id = self.env.user
-        user_team = self.env['buz.helpdesk.team'].search(
-            [('user_ids', 'in', self.assigned_user_id.id)],
-            order='sequence, name',
-            limit=1,
+        if not self._is_support_agent():
+            raise UserError(_('Only IT Support Agents can receive tickets.'))
+        self.env.cr.execute(
+            'SELECT id FROM buz_helpdesk_ticket WHERE id = %s FOR UPDATE',
+            (self.id,),
         )
-        if user_team:
-            self.team_id = user_team
+        self.invalidate_recordset(['stage_id', 'assigned_user_id'])
+        new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+        if self.stage_id != new_stage or self.assigned_user_id:
+            raise UserError(_('This ticket has already been received.'))
+        self.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+            'assigned_user_id': self.env.user.id,
+        })
 
         notification_activities = self.env['mail.activity'].search([
             ('res_model', '=', self._name),
@@ -271,15 +319,28 @@ class HelpdeskTicket(models.Model):
         return True
 
     def write(self, vals):
-        is_agent = self.env.user.has_group(
-            'buz_it_helpdesk.group_it_support_agent'
-        ) or self.env.user.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
-        if not is_agent:
+        if self.env.context.get('buz_helpdesk_transition'):
+            return super().write(vals)
+        is_manager = self._is_helpdesk_manager()
+        protected = {
+            'stage_id', 'assigned_user_id', 'create_ticket_date',
+            'closed_ticket_date', 'name', 'department_id', 'requester_id',
+        }
+        if 'stage_id' in vals:
+            raise UserError(_('Use the workflow buttons to change Stage.'))
+        if any(field in vals for field in protected - {'assigned_user_id'}):
+            raise UserError(_('System-managed ticket fields cannot be edited.'))
+        if ('assigned_user_id' in vals or 'team_id' in vals) and not is_manager:
+            raise UserError(_('Only a Manager can change assignment.'))
+        if not is_manager:
             draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
             for ticket in self:
-                if ticket.stage_id != draft_stage:
+                if (
+                    ticket.stage_id != draft_stage
+                    and ticket.assigned_user_id != self.env.user
+                ):
                     raise UserError(
-                        _('You can only edit tickets in Draft stage.')
+                        _('Only the assigned agent can edit this ticket.')
                     )
         return super().write(vals)
 

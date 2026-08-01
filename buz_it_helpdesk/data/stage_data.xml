@@ -16,7 +16,7 @@
         <field name="name">Resolved</field>
         <field name="sequence">40</field>
         <field name="fold">False</field>
-        <field name="active">True</field>
+        <field name="active">False</field>
     </record>
     <record id="stage_closed" model="buz.helpdesk.stage">
         <field name="name">Closed</field>
