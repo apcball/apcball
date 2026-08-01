@@ -1,10 +1,11 @@
-from odoo import fields, models
+from odoo import fields, models, _
 from odoo.exceptions import UserError
 
 
 class ITAssetAssignment(models.Model):
     _name = 'buz.it.asset.assignment'
     _description = 'IT Asset Assignment History'
+    _check_company_auto = True
     _order = 'assigned_date desc, id desc'
 
     asset_id = fields.Many2one(

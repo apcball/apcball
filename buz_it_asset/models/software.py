@@ -27,6 +27,7 @@ class ITSoftwareLicense(models.Model):
     _name = 'buz.it.software.license'
     _description = 'IT Software License'
     _inherit = ['mail.thread', 'mail.activity.mixin']
+    _check_company_auto = True
     _order = 'expiration_date, name'
 
     name = fields.Char(required=True, tracking=True)
@@ -73,6 +74,7 @@ class ITSoftwareLicense(models.Model):
 class ITSoftwareInstallation(models.Model):
     _name = 'buz.it.software.installation'
     _description = 'IT Software Installation'
+    _check_company_auto = True
     _order = 'install_date desc, id desc'
 
     license_id = fields.Many2one(
@@ -110,6 +112,11 @@ class ITSoftwareInstallation(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if bool(vals.get('asset_id')) == bool(vals.get('employee_id')):
+                raise ValidationError(_(
+                    'Installation must target exactly one hardware asset or employee.'
+                ))
         records = super().create(vals_list)
         for record in records:
             record.action_install()

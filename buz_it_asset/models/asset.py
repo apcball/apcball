@@ -42,6 +42,7 @@ class ITAsset(models.Model):
     _name = 'buz.it.asset'
     _description = 'IT Hardware Asset'
     _inherit = ['mail.thread', 'mail.activity.mixin']
+    _check_company_auto = True
     _order = 'create_date desc, id desc'
 
     name = fields.Char(required=True, tracking=True)
@@ -104,10 +105,19 @@ class ITAsset(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            company = self.env['res.company'].browse(
+                vals.get('company_id') or self.env.company.id,
+            ).exists()
+            if not company:
+                raise ValidationError(_('Select a valid company.'))
+            vals['company_id'] = company.id
             if vals.get('asset_tag', 'New') == 'New':
-                vals['asset_tag'] = self.env['ir.sequence'].next_by_code(
-                    'buz.it.asset') or 'New'
-            vals.setdefault('company_id', self.env.company.id)
+                sequence_date = self.env.context.get(
+                    'ir_sequence_date', fields.Date.context_today(self),
+                )
+                vals['asset_tag'] = company._next_it_asset_tag(
+                    sequence_date,
+                ) or 'New'
         return super().create(vals_list)
 
     def action_assign(self, employee_id=None):
