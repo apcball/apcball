@@ -91,6 +91,23 @@ class ITAsset(models.Model):
     purchase_date = fields.Date()
     vendor_id = fields.Many2one('res.partner', check_company=True)
     warranty_end = fields.Date()
+    # Hardware specifications are intentionally free-text so the same asset
+    # model can cover computers, servers, networking equipment, and peripherals.
+    cpu = fields.Char(string='CPU / Processor')
+    ram = fields.Char(string='RAM / Memory')
+    gpu = fields.Char(string='GPU / Graphics')
+    motherboard = fields.Char(string='Motherboard')
+    storage = fields.Char(string='Storage')
+    storage_type = fields.Char(string='Storage Type')
+    display = fields.Char(string='Display')
+    operating_system = fields.Char(string='Operating System')
+    network = fields.Char(string='Network / Connectivity')
+    mac_address = fields.Char(string='MAC Address')
+    ip_address = fields.Char(string='IP Address')
+    power_supply = fields.Char(string='Power Supply / Battery')
+    ports = fields.Char(string='Ports / Interfaces')
+    accessories = fields.Char(string='Included Accessories')
+    other_specifications = fields.Text(string='Other Specifications')
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
         index=True, tracking=True,

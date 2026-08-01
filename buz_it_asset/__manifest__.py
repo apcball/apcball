@@ -1,6 +1,6 @@
 {
     'name': 'IT Asset',
-    'version': '17.0.1.3.0',
+    'version': '17.0.1.4.0',
     'category': 'Services/IT',
     'summary': 'Hardware and software asset registry for IT Management',
     'author': 'BUZ',

@@ -72,6 +72,41 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Specifications">
+                            <group>
+                                <group string="Processor &amp; Memory">
+                                    <field name="cpu"/>
+                                    <field name="ram"/>
+                                    <field name="motherboard"/>
+                                </group>
+                                <group string="Graphics &amp; Storage">
+                                    <field name="gpu"/>
+                                    <field name="storage"/>
+                                    <field name="storage_type"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Display &amp; Operating System">
+                                    <field name="display"/>
+                                    <field name="operating_system"/>
+                                </group>
+                                <group string="Network">
+                                    <field name="network"/>
+                                    <field name="mac_address"/>
+                                    <field name="ip_address"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Power &amp; Interfaces">
+                                    <field name="power_supply"/>
+                                    <field name="ports"/>
+                                </group>
+                                <group string="Additional Information">
+                                    <field name="accessories"/>
+                                    <field name="other_specifications" placeholder="Other hardware details..."/>
+                                </group>
+                            </group>
+                        </page>
                         <page string="Notes"><field name="notes"/></page>
                         <page string="Assignment History">
                             <field name="assignment_ids" readonly="1">
