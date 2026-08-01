@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_it_management" name="IT Management" sequence="20" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_it_management" name="IT Management" sequence="20"
+              web_icon="buz_it_helpdesk,static/description/icon.png"
+              groups="buz_it_helpdesk.group_it_requester"/>
     <menuitem id="menu_helpdesk" name="Helpdesk" parent="menu_it_management" sequence="10" groups="buz_it_helpdesk.group_it_requester"/>
 
     <menuitem id="menu_my_tickets" name="My Tickets" parent="menu_helpdesk" sequence="10" action="action_helpdesk_my_tickets" groups="buz_it_helpdesk.group_it_requester"/>
