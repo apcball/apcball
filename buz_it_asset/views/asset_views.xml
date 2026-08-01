@@ -74,6 +74,7 @@
                     <field name="spec_profile" invisible="1"/>
                     <notebook>
                         <page name="specifications" string="ข้อมูลสเปค (Specifications)">
+                            <group col="2">
                             <group string="Processor &amp; Memory" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']">
                                 <field name="cpu" string="CPU / Processor"/>
                                 <field name="ram" string="RAM / Memory"/>
@@ -110,9 +111,10 @@
                                 <field name="rack_drive_details" string="RAID / Drive Details" invisible="spec_profile != 'server'"/>
                                 <field name="print_scan_type" string="Print / Scan Type" invisible="spec_profile != 'printer'"/>
                             </group>
-                            <group string="Additional Information">
+                            <group string="Additional Information" colspan="2">
                                 <field name="accessories" string="Included Accessories"/>
                                 <field name="other_specifications" string="Other Specifications" placeholder="Other hardware details..."/>
+                            </group>
                             </group>
                         </page>
                         <page string="หมายเหตุ (Notes)"><field name="notes"/></page>
