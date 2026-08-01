@@ -5,19 +5,47 @@ from odoo.exceptions import UserError, ValidationError
 class ITAssetCategory(models.Model):
     _name = 'buz.it.asset.category'
     _description = 'IT Asset Category'
-    _order = 'name'
+    _order = 'sequence, name'
 
     name = fields.Char(required=True)
-    company_id = fields.Many2one(
-        'res.company', required=True, default=lambda self: self.env.company,
-    )
+    sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     description = fields.Text()
+    type_ids = fields.One2many('buz.it.asset.type', 'category_id', string='Types')
 
     _sql_constraints = [
-        ('name_company_uniq', 'unique(name, company_id)',
-         'The category name must be unique per company.'),
+        ('name_uniq', 'unique(name)', 'The category name must be unique.'),
     ]
+
+    def unlink(self):
+        if any(category.type_ids for category in self):
+            raise UserError(_('Categories with types must be archived.'))
+        return super().unlink()
+
+
+class ITAssetType(models.Model):
+    _name = 'buz.it.asset.type'
+    _description = 'IT Asset Type'
+    _order = 'sequence, name'
+
+    name = fields.Char(required=True)
+    category_id = fields.Many2one(
+        'buz.it.asset.category', required=True, ondelete='restrict',
+    )
+    sequence = fields.Integer(default=10)
+    active = fields.Boolean(default=True)
+    description = fields.Text()
+    asset_ids = fields.One2many('buz.it.asset', 'type_id', string='Hardware')
+
+    _sql_constraints = [
+        ('name_category_uniq', 'unique(name, category_id)',
+         'The type name must be unique within its category.'),
+    ]
+
+    def unlink(self):
+        if any(asset_type.asset_ids for asset_type in self):
+            raise UserError(_('Types with hardware assets must be archived.'))
+        return super().unlink()
 
 
 class ITAssetLocation(models.Model):
@@ -49,9 +77,13 @@ class ITAsset(models.Model):
     asset_tag = fields.Char(
         required=True, readonly=True, copy=False, default='New', tracking=True,
     )
+    type_id = fields.Many2one(
+        'buz.it.asset.type', ondelete='restrict',
+        tracking=True,
+    )
     category_id = fields.Many2one(
-        'buz.it.asset.category', required=True, ondelete='restrict',
-        check_company=True, tracking=True,
+        'buz.it.asset.category', related='type_id.category_id', store=True,
+        readonly=True, string='Category', tracking=True,
     )
     manufacturer = fields.Char()
     model = fields.Char()
@@ -92,12 +124,15 @@ class ITAsset(models.Model):
          'The serial number must be unique per company.'),
     ]
 
-    @api.constrains('company_id', 'category_id', 'location_id',
+    @api.constrains('company_id', 'type_id', 'location_id',
                     'assigned_employee_id')
     def _check_company_links(self):
         for record in self:
-            for field_name in ('category_id', 'location_id',
-                               'assigned_employee_id'):
+            if not record.type_id:
+                raise ValidationError(_('Select a hardware type.'))
+            if record.type_id and not record.type_id.active:
+                raise ValidationError(_('Hardware must use an active hardware type.'))
+            for field_name in ('location_id', 'assigned_employee_id'):
                 linked = record[field_name]
                 if linked and linked.company_id and linked.company_id != record.company_id:
                     raise ValidationError(_('Related record must belong to the asset company.'))
@@ -105,6 +140,8 @@ class ITAsset(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if not vals.get('type_id'):
+                raise ValidationError(_('Select a hardware type.'))
             company = self.env['res.company'].browse(
                 vals.get('company_id') or self.env.company.id,
             ).exists()
@@ -119,6 +156,11 @@ class ITAsset(models.Model):
                     sequence_date,
                 ) or 'New'
         return super().create(vals_list)
+
+    def write(self, vals):
+        if 'type_id' in vals and not vals['type_id']:
+            raise ValidationError(_('Select a hardware type.'))
+        return super().write(vals)
 
     def action_assign(self, employee_id=None):
         for asset in self:

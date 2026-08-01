@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="category_end_user_devices" model="buz.it.asset.category">
+        <field name="name">อุปกรณ์ผู้ใช้ (End-User Devices)</field><field name="sequence">10</field>
+    </record>
+    <record id="category_network_infrastructure" model="buz.it.asset.category">
+        <field name="name">อุปกรณ์เครือข่าย (Network Infrastructure)</field><field name="sequence">20</field>
+    </record>
+    <record id="category_servers_storage" model="buz.it.asset.category">
+        <field name="name">เซิร์ฟเวอร์และระบบจัดเก็บข้อมูล (Servers &amp; Storage)</field><field name="sequence">30</field>
+    </record>
+    <record id="category_peripherals_accessories" model="buz.it.asset.category">
+        <field name="name">อุปกรณ์ต่อพ่วงและอุปกรณ์เสริม (Peripherals &amp; Accessories)</field><field name="sequence">40</field>
+    </record>
+
+    <record id="type_desktop_pc" model="buz.it.asset.type"><field name="name">คอมพิวเตอร์ตั้งโต๊ะ (Desktop PC)</field><field name="category_id" ref="category_end_user_devices"/><field name="sequence">10</field></record>
+    <record id="type_laptop" model="buz.it.asset.type"><field name="name">แล็ปท็อป (Laptop / Notebook)</field><field name="category_id" ref="category_end_user_devices"/><field name="sequence">20</field></record>
+    <record id="type_tablet" model="buz.it.asset.type"><field name="name">แท็บเล็ต (Tablet)</field><field name="category_id" ref="category_end_user_devices"/><field name="sequence">30</field></record>
+    <record id="type_smartphone" model="buz.it.asset.type"><field name="name">สมาร์ตโฟน (Smartphone)</field><field name="category_id" ref="category_end_user_devices"/><field name="sequence">40</field></record>
+
+    <record id="type_router" model="buz.it.asset.type"><field name="name">เราเตอร์ (Router)</field><field name="category_id" ref="category_network_infrastructure"/><field name="sequence">10</field></record>
+    <record id="type_switch" model="buz.it.asset.type"><field name="name">สวิตช์ (Switch)</field><field name="category_id" ref="category_network_infrastructure"/><field name="sequence">20</field></record>
+    <record id="type_access_point" model="buz.it.asset.type"><field name="name">จุดกระจายสัญญาณ (Access Point)</field><field name="category_id" ref="category_network_infrastructure"/><field name="sequence">30</field></record>
+    <record id="type_hardware_firewall" model="buz.it.asset.type"><field name="name">ไฟร์วอลล์ฮาร์ดแวร์ (Hardware Firewall)</field><field name="category_id" ref="category_network_infrastructure"/><field name="sequence">40</field></record>
+
+    <record id="type_server" model="buz.it.asset.type"><field name="name">เซิร์ฟเวอร์ (Server)</field><field name="category_id" ref="category_servers_storage"/><field name="sequence">10</field></record>
+    <record id="type_nas_san" model="buz.it.asset.type"><field name="name">ระบบจัดเก็บข้อมูล (NAS / SAN)</field><field name="category_id" ref="category_servers_storage"/><field name="sequence">20</field></record>
+    <record id="type_hdd_ssd" model="buz.it.asset.type"><field name="name">ฮาร์ดดิสก์และเอสเอสดี (HDD / SSD)</field><field name="category_id" ref="category_servers_storage"/><field name="sequence">30</field></record>
+
+    <record id="type_monitor" model="buz.it.asset.type"><field name="name">จอภาพ (Monitor)</field><field name="category_id" ref="category_peripherals_accessories"/><field name="sequence">10</field></record>
+    <record id="type_printer_scanner" model="buz.it.asset.type"><field name="name">เครื่องพิมพ์และเครื่องสแกน (Printer / Scanner)</field><field name="category_id" ref="category_peripherals_accessories"/><field name="sequence">20</field></record>
+    <record id="type_ups" model="buz.it.asset.type"><field name="name">เครื่องสำรองไฟ (UPS)</field><field name="category_id" ref="category_peripherals_accessories"/><field name="sequence">30</field></record>
+    <record id="type_keyboard_mouse" model="buz.it.asset.type"><field name="name">อุปกรณ์ควบคุม (Keyboard &amp; Mouse)</field><field name="category_id" ref="category_peripherals_accessories"/><field name="sequence">40</field></record>
+</odoo>

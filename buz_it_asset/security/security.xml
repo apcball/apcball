@@ -25,7 +25,12 @@
     <record id="rule_category_company" model="ir.rule">
         <field name="name">IT Asset Category: allowed companies</field>
         <field name="model_id" ref="model_buz_it_asset_category"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_type_global" model="ir.rule">
+        <field name="name">IT Asset Type: all companies</field>
+        <field name="model_id" ref="model_buz_it_asset_type"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
     </record>
     <record id="rule_location_company" model="ir.rule">
         <field name="name">IT Asset Location: allowed companies</field>

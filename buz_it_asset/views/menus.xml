@@ -13,5 +13,6 @@
     <menuitem id="menu_software_installations" name="Installations" parent="menu_software" sequence="30" action="action_software_installations" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_it_asset_configuration" name="Configuration" parent="menu_it_asset" sequence="90" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_asset_categories" name="Hardware Categories" parent="menu_it_asset_configuration" sequence="10" action="action_it_asset_categories" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_asset_types" name="Hardware Types" parent="menu_it_asset_configuration" sequence="15" action="action_it_asset_types" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_asset_locations" name="Asset Locations" parent="menu_it_asset_configuration" sequence="20" action="action_it_asset_locations" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
 </odoo>

@@ -15,8 +15,9 @@ class TestITAsset(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
-        cls.category = cls.env['buz.it.asset.category'].create({
-            'name': 'Laptop', 'company_id': cls.company.id,
+        cls.category = cls.env['buz.it.asset.category'].create({'name': 'End User Devices'})
+        cls.asset_type = cls.env['buz.it.asset.type'].create({
+            'name': 'Laptop', 'category_id': cls.category.id,
         })
         cls.location = cls.env['buz.it.asset.location'].create({
             'name': 'IT Room', 'company_id': cls.company.id,
@@ -25,9 +26,25 @@ class TestITAsset(TransactionCase):
             'name': 'Asset Holder', 'company_id': cls.company.id,
         })
 
+    def test_default_hardware_taxonomy(self):
+        categories = self.env['buz.it.asset.category'].search([
+            ('id', 'in', [
+                self.env.ref('buz_it_asset.category_end_user_devices').id,
+                self.env.ref('buz_it_asset.category_network_infrastructure').id,
+                self.env.ref('buz_it_asset.category_servers_storage').id,
+                self.env.ref('buz_it_asset.category_peripherals_accessories').id,
+            ]),
+        ])
+        self.assertEqual(len(categories), 4)
+        self.assertEqual(sum(len(category.type_ids) for category in categories), 15)
+        self.assertEqual(
+            self.env.ref('buz_it_asset.type_laptop').category_id,
+            self.env.ref('buz_it_asset.category_end_user_devices'),
+        )
+
     def test_assign_and_return_creates_immutable_history(self):
         asset = self.env['buz.it.asset'].create({
-            'name': 'ThinkPad', 'category_id': self.category.id,
+            'name': 'ThinkPad', 'type_id': self.asset_type.id,
             'location_id': self.location.id,
         })
         asset.assigned_employee_id = self.employee
@@ -48,32 +65,30 @@ class TestITAsset(TransactionCase):
     def test_asset_tag_sequence_is_yearly_and_company_specific(self):
         company_a = self.env['res.company'].create({'name': 'Asset Company A'})
         company_b = self.env['res.company'].create({'name': 'Asset Company B'})
-        category_a = self.env['buz.it.asset.category'].create({
-            'name': 'Laptop', 'company_id': company_a.id,
-        })
-        category_b = self.env['buz.it.asset.category'].create({
-            'name': 'Laptop', 'company_id': company_b.id,
-        })
+        category_a = self.env['buz.it.asset.category'].create({'name': 'Laptop A'})
+        category_b = self.env['buz.it.asset.category'].create({'name': 'Laptop B'})
+        type_a = self.env['buz.it.asset.type'].create({'name': 'Laptop', 'category_id': category_a.id})
+        type_b = self.env['buz.it.asset.type'].create({'name': 'Laptop', 'category_id': category_b.id})
 
-        def create_asset(company, category, name, sequence_date):
+        def create_asset(company, asset_type, name, sequence_date):
             return self.env['buz.it.asset'].with_company(company).with_context(
                 ir_sequence_date=sequence_date,
             ).create({
                 'name': name,
-                'category_id': category.id,
+                'type_id': asset_type.id,
                 'company_id': company.id,
             })
 
-        first = create_asset(company_a, category_a, 'A-1', date(2026, 8, 1))
-        second = create_asset(company_a, category_a, 'A-2', date(2026, 8, 2))
+        first = create_asset(company_a, type_a, 'A-1', date(2026, 8, 1))
+        second = create_asset(company_a, type_a, 'A-2', date(2026, 8, 2))
         next_month = create_asset(
-            company_a, category_a, 'A-3', date(2026, 9, 1),
+            company_a, type_a, 'A-3', date(2026, 9, 1),
         )
         other_company = create_asset(
-            company_b, category_b, 'B-1', date(2026, 8, 1),
+            company_b, type_b, 'B-1', date(2026, 8, 1),
         )
         next_year = create_asset(
-            company_a, category_a, 'A-2027', date(2027, 1, 1),
+            company_a, type_a, 'A-2027', date(2027, 1, 1),
         )
 
         self.assertEqual(first.asset_tag, 'ITA/2026/08/0001')
@@ -103,9 +118,9 @@ class TestITAsset(TransactionCase):
         other_company = self.env['res.company'].create({
             'name': 'Other Asset Company',
         })
-        other_category = self.env['buz.it.asset.category'].create({
-            'name': 'Other Category',
-            'company_id': other_company.id,
+        other_category = self.env['buz.it.asset.category'].create({'name': 'Other Category'})
+        other_type = self.env['buz.it.asset.type'].create({
+            'name': 'Other Type', 'category_id': other_category.id,
         })
         other_employee = self.env['hr.employee'].create({
             'name': 'Other Employee',
@@ -117,7 +132,7 @@ class TestITAsset(TransactionCase):
         })
         asset = self.env['buz.it.asset'].create({
             'name': 'Company Asset',
-            'category_id': self.category.id,
+            'type_id': self.asset_type.id,
             'company_id': self.company.id,
         })
         product = self.env['buz.it.software.product'].create({
@@ -131,11 +146,6 @@ class TestITAsset(TransactionCase):
         })
 
         invalid_creates = [
-            ('buz.it.asset', {
-                'name': 'Invalid Asset',
-                'category_id': other_category.id,
-                'company_id': self.company.id,
-            }),
             ('buz.it.asset.assignment', {
                 'asset_id': asset.id,
                 'employee_id': other_employee.id,
