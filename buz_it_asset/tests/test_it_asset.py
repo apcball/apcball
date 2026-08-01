@@ -42,9 +42,54 @@ class TestITAsset(TransactionCase):
             self.env.ref('buz_it_asset.category_end_user_devices'),
         )
 
+    def test_default_specification_profiles(self):
+        expected = {
+            'type_desktop_pc': 'desktop',
+            'type_laptop': 'laptop',
+            'type_tablet': 'mobile',
+            'type_smartphone': 'mobile',
+            'type_router': 'network',
+            'type_switch': 'network',
+            'type_access_point': 'network',
+            'type_hardware_firewall': 'network',
+            'type_server': 'server',
+            'type_nas_san': 'storage',
+            'type_hdd_ssd': 'storage',
+            'type_monitor': 'monitor',
+            'type_printer_scanner': 'printer',
+            'type_ups': 'ups',
+            'type_keyboard_mouse': 'input',
+        }
+        for xmlid, profile in expected.items():
+            self.assertEqual(self.env.ref(f'buz_it_asset.{xmlid}').spec_profile, profile)
+        self.assertEqual(self.asset_type.spec_profile, 'generic')
+
+    def test_serial_number_is_required_for_new_assets(self):
+        with self.assertRaises(ValidationError):
+            self.env['buz.it.asset'].create({
+                'name': 'Missing Serial',
+                'type_id': self.asset_type.id,
+            })
+
+    def test_changing_type_keeps_existing_specifications(self):
+        asset = self.env['buz.it.asset'].create({
+            'name': 'Profile Test',
+            'type_id': self.asset_type.id,
+            'serial_number': 'SN-PROFILE-001',
+            'cpu': 'Intel Core i7',
+        })
+        other_type = self.env['buz.it.asset.type'].create({
+            'name': 'Network Type', 'category_id': self.category.id,
+            'spec_profile': 'network',
+        })
+        asset.write({'type_id': other_type.id})
+        self.assertEqual(asset.cpu, 'Intel Core i7')
+        self.assertEqual(asset.spec_profile, 'network')
+
     def test_assign_and_return_creates_immutable_history(self):
         asset = self.env['buz.it.asset'].create({
             'name': 'ThinkPad', 'type_id': self.asset_type.id,
+            'serial_number': 'SN-THINKPAD-001',
             'location_id': self.location.id,
         })
         asset.assigned_employee_id = self.employee
@@ -76,6 +121,7 @@ class TestITAsset(TransactionCase):
             ).create({
                 'name': name,
                 'type_id': asset_type.id,
+                'serial_number': f'SN-{name}',
                 'company_id': company.id,
             })
 
@@ -133,6 +179,7 @@ class TestITAsset(TransactionCase):
         asset = self.env['buz.it.asset'].create({
             'name': 'Company Asset',
             'type_id': self.asset_type.id,
+            'serial_number': 'SN-COMPANY-001',
             'company_id': self.company.id,
         })
         product = self.env['buz.it.software.product'].create({

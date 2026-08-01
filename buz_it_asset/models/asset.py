@@ -34,6 +34,19 @@ class ITAssetType(models.Model):
     )
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
+    spec_profile = fields.Selection([
+        ('generic', 'Generic'),
+        ('desktop', 'Desktop PC'),
+        ('laptop', 'Laptop / Notebook'),
+        ('mobile', 'Tablet / Smartphone'),
+        ('network', 'Network Equipment'),
+        ('server', 'Server'),
+        ('storage', 'Storage'),
+        ('monitor', 'Monitor'),
+        ('printer', 'Printer / Scanner'),
+        ('ups', 'UPS'),
+        ('input', 'Keyboard / Mouse'),
+    ], required=True, default='generic', string='Specification Profile')
     description = fields.Text()
     asset_ids = fields.One2many('buz.it.asset', 'type_id', string='Hardware')
 
@@ -80,6 +93,11 @@ class ITAsset(models.Model):
     type_id = fields.Many2one(
         'buz.it.asset.type', ondelete='restrict',
         tracking=True,
+    )
+    spec_profile = fields.Selection(
+        related='type_id.spec_profile',
+        string='Specification Profile',
+        readonly=True,
     )
     category_id = fields.Many2one(
         'buz.it.asset.category', related='type_id.category_id', store=True,
@@ -172,6 +190,8 @@ class ITAsset(models.Model):
         for vals in vals_list:
             if not vals.get('type_id'):
                 raise ValidationError(_('Select a hardware type.'))
+            if not vals.get('serial_number'):
+                raise ValidationError(_('Enter a serial number for the asset.'))
             company = self.env['res.company'].browse(
                 vals.get('company_id') or self.env.company.id,
             ).exists()
@@ -190,6 +210,8 @@ class ITAsset(models.Model):
     def write(self, vals):
         if 'type_id' in vals and not vals['type_id']:
             raise ValidationError(_('Select a hardware type.'))
+        if 'serial_number' in vals and not vals['serial_number']:
+            raise ValidationError(_('Enter a serial number for the asset.'))
         return super().write(vals)
 
     def action_assign(self, employee_id=None):

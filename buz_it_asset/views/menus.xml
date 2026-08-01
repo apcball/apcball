@@ -33,4 +33,22 @@
     <menuitem id="menu_asset_categories" name="Hardware Categories" parent="menu_it_asset_configuration" sequence="10" action="action_it_asset_categories" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_asset_types" name="Hardware Types" parent="menu_it_asset_configuration" sequence="15" action="action_it_asset_types" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_asset_locations" name="Asset Locations" parent="menu_it_asset_configuration" sequence="20" action="action_it_asset_locations" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <record id="menu_desktop_pc" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_laptop" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_tablet" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_smartphone" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_network_equipment" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_router" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_switch" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_access_point" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_hardware_firewall" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_servers_storage" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_server" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_nas_san" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_hdd_ssd" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_peripherals_accessories" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_monitor" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_printer_scanner" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_ups" model="ir.ui.menu"><field name="active">False</field></record>
+    <record id="menu_keyboard_mouse" model="ir.ui.menu"><field name="active">False</field></record>
 </odoo>

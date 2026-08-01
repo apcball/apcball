@@ -8,6 +8,7 @@
     'depends': ['buz_it_helpdesk', 'hr', 'mail'],
     'data': [
         'data/hardware_taxonomy.xml',
+        'data/asset_spec_profiles.xml',
         'security/security.xml',
         'security/ir.model.access.csv',
         'views/asset_views.xml',

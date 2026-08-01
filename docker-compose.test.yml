@@ -13,6 +13,11 @@ services:
     image: my-odoo:17
     depends_on:
       - postgres-test
+    environment:
+      HOST: postgres-test
+      PORT: 5432
+      USER: odoo
+      PASSWORD: odoo
     volumes:
       - ./:/mnt/extra-addons
     command: >
@@ -21,7 +26,8 @@ services:
       --db_user=odoo
       --db_password=odoo
       --addons-path=/mnt/extra-addons
-      -u buz_it_helpdesk
+      -i buz_it_asset
+      --test-tags /buz_it_asset
       --test-enable
       --stop-after-init
       --no-http

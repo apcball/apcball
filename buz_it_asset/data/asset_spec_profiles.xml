@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="type_desktop_pc" model="buz.it.asset.type"><field name="spec_profile">desktop</field></record>
+    <record id="type_laptop" model="buz.it.asset.type"><field name="spec_profile">laptop</field></record>
+    <record id="type_tablet" model="buz.it.asset.type"><field name="spec_profile">mobile</field></record>
+    <record id="type_smartphone" model="buz.it.asset.type"><field name="spec_profile">mobile</field></record>
+    <record id="type_router" model="buz.it.asset.type"><field name="spec_profile">network</field></record>
+    <record id="type_switch" model="buz.it.asset.type"><field name="spec_profile">network</field></record>
+    <record id="type_access_point" model="buz.it.asset.type"><field name="spec_profile">network</field></record>
+    <record id="type_hardware_firewall" model="buz.it.asset.type"><field name="spec_profile">network</field></record>
+    <record id="type_server" model="buz.it.asset.type"><field name="spec_profile">server</field></record>
+    <record id="type_nas_san" model="buz.it.asset.type"><field name="spec_profile">storage</field></record>
+    <record id="type_hdd_ssd" model="buz.it.asset.type"><field name="spec_profile">storage</field></record>
+    <record id="type_monitor" model="buz.it.asset.type"><field name="spec_profile">monitor</field></record>
+    <record id="type_printer_scanner" model="buz.it.asset.type"><field name="spec_profile">printer</field></record>
+    <record id="type_ups" model="buz.it.asset.type"><field name="spec_profile">ups</field></record>
+    <record id="type_keyboard_mouse" model="buz.it.asset.type"><field name="spec_profile">input</field></record>
+</odoo>

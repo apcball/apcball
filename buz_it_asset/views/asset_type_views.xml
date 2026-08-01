@@ -77,4 +77,36 @@
             </xpath>
         </field>
     </record>
+    <!-- The central form is the only user-facing hardware form. -->
+    <record id="view_it_asset_form_central_cleanup" model="ir.ui.view">
+        <field name="name">buz.it.asset.form.central.cleanup</field>
+        <field name="model">buz.it.asset</field>
+        <field name="inherit_id" ref="view_it_asset_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='serial_number']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_it_asset_type_form_profile" model="ir.ui.view">
+        <field name="name">buz.it.asset.type.form.profile</field>
+        <field name="model">buz.it.asset.type</field>
+        <field name="inherit_id" ref="view_it_asset_type_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="spec_profile"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_it_asset_desktop_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_laptop_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_mobile_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_network_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_server_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_storage_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_monitor_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_printer_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_ups_form" model="ir.ui.view"><field name="active">False</field></record>
+    <record id="view_it_asset_input_device_form" model="ir.ui.view"><field name="active">False</field></record>
 </odoo>
