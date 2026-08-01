@@ -6,7 +6,25 @@
     <menuitem id="menu_my_software" name="My Software" parent="menu_my_assets" sequence="20" action="action_my_software" groups="buz_it_helpdesk.group_it_requester"/>
     <menuitem id="menu_hardware" name="Hardware" parent="menu_it_asset" sequence="20" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_all_hardware" name="All Hardware" parent="menu_hardware" sequence="10" action="action_it_asset" groups="buz_it_helpdesk.group_it_support_agent"/>
-    <menuitem id="menu_assignment_history" name="Assignment History" parent="menu_hardware" sequence="20" action="action_it_asset_assignments" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_desktop_pc" name="คอมพิวเตอร์ตั้งโต๊ะ (Desktop PC)" parent="menu_hardware" sequence="20" action="action_it_asset_desktop" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_laptop" name="แล็ปท็อป (Laptop / Notebook)" parent="menu_hardware" sequence="30" action="action_it_asset_laptop" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_tablet" name="แท็บเล็ต (Tablet)" parent="menu_hardware" sequence="40" action="action_it_asset_tablet" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_smartphone" name="สมาร์ตโฟน (Smartphone)" parent="menu_hardware" sequence="50" action="action_it_asset_smartphone" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_network_equipment" name="อุปกรณ์เครือข่าย (Network Equipment)" parent="menu_hardware" sequence="60" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_router" name="เราเตอร์ (Router)" parent="menu_network_equipment" sequence="10" action="action_it_asset_router" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_switch" name="สวิตช์ (Switch)" parent="menu_network_equipment" sequence="20" action="action_it_asset_switch" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_access_point" name="แอ็กเซสพอยต์ (Access Point)" parent="menu_network_equipment" sequence="30" action="action_it_asset_access_point" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_hardware_firewall" name="ไฟร์วอลล์ฮาร์ดแวร์ (Hardware Firewall)" parent="menu_network_equipment" sequence="40" action="action_it_asset_firewall" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_servers_storage" name="เซิร์ฟเวอร์และพื้นที่จัดเก็บ (Servers &amp; Storage)" parent="menu_hardware" sequence="70" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_server" name="เซิร์ฟเวอร์ (Server)" parent="menu_servers_storage" sequence="10" action="action_it_asset_server" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_nas_san" name="NAS / SAN" parent="menu_servers_storage" sequence="20" action="action_it_asset_nas_san" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_hdd_ssd" name="ฮาร์ดดิสก์ / SSD (HDD / SSD)" parent="menu_servers_storage" sequence="30" action="action_it_asset_hdd_ssd" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_peripherals_accessories" name="อุปกรณ์ต่อพ่วงและอุปกรณ์เสริม (Peripherals &amp; Accessories)" parent="menu_hardware" sequence="80" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_monitor" name="จอภาพ (Monitor)" parent="menu_peripherals_accessories" sequence="10" action="action_it_asset_monitor" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_printer_scanner" name="เครื่องพิมพ์ / สแกนเนอร์ (Printer / Scanner)" parent="menu_peripherals_accessories" sequence="20" action="action_it_asset_printer_scanner" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_ups" name="เครื่องสำรองไฟ (UPS)" parent="menu_peripherals_accessories" sequence="30" action="action_it_asset_ups" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_keyboard_mouse" name="คีย์บอร์ด / เมาส์ (Keyboard &amp; Mouse)" parent="menu_peripherals_accessories" sequence="40" action="action_it_asset_keyboard_mouse" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_assignment_history" name="Assignment History" parent="menu_hardware" sequence="90" action="action_it_asset_assignments" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_software" name="Software" parent="menu_it_asset" sequence="30" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_software_products" name="Software Products" parent="menu_software" sequence="10" action="action_software_products" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_software_licenses" name="Licenses" parent="menu_software" sequence="20" action="action_software_licenses" groups="buz_it_helpdesk.group_it_support_agent"/>

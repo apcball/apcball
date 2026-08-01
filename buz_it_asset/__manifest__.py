@@ -11,6 +11,7 @@
         'security/security.xml',
         'security/ir.model.access.csv',
         'views/asset_views.xml',
+        'views/asset_type_views.xml',
         'views/software_views.xml',
         'views/menus.xml',
     ],
