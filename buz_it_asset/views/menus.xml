@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_it_asset" name="IT Asset" parent="buz_it_helpdesk.menu_it_management" sequence="20" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_my_assets" name="My Assets" parent="menu_it_asset" sequence="10" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_my_hardware" name="My Hardware" parent="menu_my_assets" sequence="10" action="action_my_hardware" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_my_software" name="My Software" parent="menu_my_assets" sequence="20" action="action_my_software" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_hardware" name="Hardware" parent="menu_it_asset" sequence="20" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_all_hardware" name="All Hardware" parent="menu_hardware" sequence="10" action="action_it_asset" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_assignment_history" name="Assignment History" parent="menu_hardware" sequence="20" action="action_it_asset_assignments" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_software" name="Software" parent="menu_it_asset" sequence="30" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_software_products" name="Software Products" parent="menu_software" sequence="10" action="action_software_products" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_software_licenses" name="Licenses" parent="menu_software" sequence="20" action="action_software_licenses" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_software_installations" name="Installations" parent="menu_software" sequence="30" action="action_software_installations" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_it_asset_configuration" name="Configuration" parent="menu_it_asset" sequence="90" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_asset_categories" name="Hardware Categories" parent="menu_it_asset_configuration" sequence="10" action="action_it_asset_categories" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_asset_locations" name="Asset Locations" parent="menu_it_asset_configuration" sequence="20" action="action_it_asset_locations" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+</odoo>

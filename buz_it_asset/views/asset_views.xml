@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_it_asset_tree" model="ir.ui.view">
+        <field name="name">buz.it.asset.tree</field>
+        <field name="model">buz.it.asset</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'retired'" decoration-danger="state in ('lost', 'repair')">
+                <field name="asset_tag"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="serial_number"/>
+                <field name="assigned_employee_id"/>
+                <field name="location_id"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_it_asset_search" model="ir.ui.view">
+        <field name="name">buz.it.asset.search</field>
+        <field name="model">buz.it.asset</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="asset_tag"/>
+                <field name="name"/>
+                <field name="serial_number"/>
+                <field name="assigned_employee_id"/>
+                <field name="category_id"/>
+                <filter name="available" string="Available" domain="[('state', '=', 'available')]"/>
+                <filter name="assigned" string="Assigned" domain="[('state', '=', 'assigned')]"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_category" string="Category" context="{'group_by': 'category_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_holder" string="Current Holder" context="{'group_by': 'assigned_employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="view_it_asset_form" model="ir.ui.view">
+        <field name="name">buz.it.asset.form</field>
+        <field name="model">buz.it.asset</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_assign" type="object" string="Assign" class="oe_highlight" invisible="state != 'available'" groups="buz_it_helpdesk.group_it_support_agent"/>
+                    <button name="action_return" type="object" string="Return" invisible="state != 'assigned'" groups="buz_it_helpdesk.group_it_support_agent"/>
+                    <field name="state" widget="statusbar" statusbar_visible="available,assigned,repair,retired,lost"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box"/>
+                    <div class="oe_title"><h1><field name="name" placeholder="Asset name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="asset_tag"/>
+                            <field name="category_id"/>
+                            <field name="manufacturer"/>
+                            <field name="model"/>
+                            <field name="serial_number"/>
+                        </group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="location_id"/>
+                            <field name="assigned_employee_id" readonly="state != 'available'"/>
+                            <field name="purchase_date"/>
+                            <field name="vendor_id"/>
+                            <field name="warranty_end"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes"><field name="notes"/></page>
+                        <page string="Assignment History">
+                            <field name="assignment_ids" readonly="1">
+                                <tree>
+                                    <field name="employee_id"/>
+                                    <field name="assigned_date"/>
+                                    <field name="returned_date"/>
+                                    <field name="assigned_by_id"/>
+                                    <field name="returned_by_id"/>
+                                    <field name="location_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_it_asset_category_tree" model="ir.ui.view">
+        <field name="name">buz.it.asset.category.tree</field>
+        <field name="model">buz.it.asset.category</field>
+        <field name="arch" type="xml"><tree><field name="name"/><field name="company_id"/><field name="active"/></tree></field>
+    </record>
+    <record id="view_it_asset_category_form" model="ir.ui.view">
+        <field name="name">buz.it.asset.category.form</field>
+        <field name="model">buz.it.asset.category</field>
+        <field name="arch" type="xml"><form><sheet><group><field name="name"/><field name="company_id"/><field name="active"/></group><field name="description"/></sheet></form></field>
+    </record>
+    <record id="view_it_asset_location_tree" model="ir.ui.view">
+        <field name="name">buz.it.asset.location.tree</field>
+        <field name="model">buz.it.asset.location</field>
+        <field name="arch" type="xml"><tree><field name="name"/><field name="company_id"/><field name="active"/></tree></field>
+    </record>
+    <record id="view_it_asset_location_form" model="ir.ui.view">
+        <field name="name">buz.it.asset.location.form</field>
+        <field name="model">buz.it.asset.location</field>
+        <field name="arch" type="xml"><form><sheet><group><field name="name"/><field name="company_id"/><field name="active"/></group><field name="description"/></sheet></form></field>
+    </record>
+    <record id="view_it_asset_assignment_tree" model="ir.ui.view">
+        <field name="name">buz.it.asset.assignment.tree</field>
+        <field name="model">buz.it.asset.assignment</field>
+        <field name="arch" type="xml"><tree create="0" delete="0"><field name="asset_id"/><field name="employee_id"/><field name="assigned_date"/><field name="returned_date"/><field name="assigned_by_id"/><field name="returned_by_id"/><field name="location_id"/><field name="company_id"/></tree></field>
+    </record>
+    <record id="action_it_asset" model="ir.actions.act_window">
+        <field name="name">Hardware</field><field name="res_model">buz.it.asset</field><field name="view_mode">tree,form</field><field name="search_view_id" ref="view_it_asset_search"/>
+    </record>
+    <record id="action_my_hardware" model="ir.actions.act_window">
+        <field name="name">My Hardware</field><field name="res_model">buz.it.asset</field><field name="view_mode">tree,form</field><field name="domain">[('assigned_employee_id.user_id', '=', uid)]</field><field name="search_view_id" ref="view_it_asset_search"/>
+    </record>
+    <record id="action_it_asset_categories" model="ir.actions.act_window">
+        <field name="name">Hardware Categories</field><field name="res_model">buz.it.asset.category</field><field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_it_asset_locations" model="ir.actions.act_window">
+        <field name="name">Asset Locations</field><field name="res_model">buz.it.asset.location</field><field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_it_asset_assignments" model="ir.actions.act_window">
+        <field name="name">Assignment History</field><field name="res_model">buz.it.asset.assignment</field><field name="view_mode">tree</field><field name="view_id" ref="view_it_asset_assignment_tree"/>
+    </record>
+</odoo>

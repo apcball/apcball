@@ -1,0 +1,20 @@
+{
+    'name': 'IT Asset',
+    'version': '17.0.1.0.0',
+    'category': 'Services/IT',
+    'summary': 'Hardware and software asset registry for IT Management',
+    'author': 'BUZ',
+    'license': 'LGPL-3',
+    'depends': ['buz_it_helpdesk', 'hr', 'mail'],
+    'data': [
+        'data/sequence.xml',
+        'security/security.xml',
+        'security/ir.model.access.csv',
+        'views/asset_views.xml',
+        'views/software_views.xml',
+        'views/menus.xml',
+    ],
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+}
