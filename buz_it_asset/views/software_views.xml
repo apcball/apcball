@@ -22,8 +22,10 @@
                             <field name="active" string="Active"/>
                         </group>
                     </group>
-                    <group string="Notes">
-                        <field name="notes" nolabel="1" placeholder="Supported operating systems, documentation links, or internal notes..."/>
+                    <group>
+                        <group string="Notes">
+                            <field name="notes" nolabel="1" colspan="2" widget="text" style="min-height: 120px;" placeholder="Supported operating systems, documentation links, or internal notes..."/>
+                        </group>
                     </group>
                 </sheet>
             </form>
