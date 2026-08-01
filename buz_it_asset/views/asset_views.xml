@@ -73,46 +73,46 @@
                     </group>
                     <field name="spec_profile" invisible="1"/>
                     <notebook>
-                        <page name="specifications" string="Specifications">
+                        <page name="specifications" string="ข้อมูลสเปค (Specifications)">
                             <group string="Processor &amp; Memory" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']">
-                                <field name="cpu" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']"/>
-                                <field name="ram" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']"/>
-                                <field name="motherboard" invisible="spec_profile != 'desktop'"/>
-                                <field name="gpu" invisible="spec_profile not in ['desktop', 'laptop']"/>
+                                <field name="cpu" string="CPU / Processor"/>
+                                <field name="ram" string="RAM / Memory"/>
+                                <field name="gpu" string="GPU / Graphics" invisible="spec_profile not in ['desktop', 'laptop']"/>
+                                <field name="motherboard" string="Motherboard" invisible="spec_profile != 'desktop'"/>
                             </group>
-                            <group string="Storage &amp; Display" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server', 'monitor', 'printer']">
-                                <field name="storage" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']"/>
-                                <field name="storage_type" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']"/>
-                                <field name="display" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'monitor', 'printer']"/>
-                                <field name="resolution" invisible="spec_profile != 'monitor'"/>
-                                <field name="refresh_rate" invisible="spec_profile != 'monitor'"/>
+                            <group string="Storage &amp; Display" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server', 'storage', 'monitor', 'printer']">
+                                <field name="storage" string="Storage Capacity" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']"/>
+                                <field name="storage_type" string="Storage Type" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server', 'storage']"/>
+                                <field name="capacity" string="Capacity" invisible="spec_profile not in ['storage', 'ups']"/>
+                                <field name="interface" string="Interface" invisible="spec_profile not in ['storage', 'input']"/>
+                                <field name="form_factor" string="Form Factor" invisible="spec_profile != 'storage'"/>
+                                <field name="display" string="Display" invisible="spec_profile not in ['laptop', 'mobile', 'monitor', 'printer']"/>
+                                <field name="resolution" string="Resolution" invisible="spec_profile != 'monitor'"/>
+                                <field name="refresh_rate" string="Refresh Rate" invisible="spec_profile != 'monitor'"/>
                             </group>
-                            <group string="System &amp; Network" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'network', 'server', 'storage', 'printer', 'ups']">
-                                <field name="operating_system" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']"/>
-                                <field name="network" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'network', 'server', 'storage', 'printer', 'ups']"/>
-                                <field name="mac_address" invisible="spec_profile not in ['mobile', 'network', 'storage', 'printer']"/>
-                                <field name="ip_address" invisible="spec_profile not in ['mobile', 'network', 'server', 'storage', 'printer', 'ups']"/>
-                                <field name="firmware" invisible="spec_profile != 'network'"/>
-                                <field name="imei" invisible="spec_profile != 'mobile'"/>
-                            </group>
-                            <group string="Device Details" invisible="spec_profile not in ['server', 'storage', 'printer', 'ups', 'input']">
-                                <field name="rack_drive_details" invisible="spec_profile != 'server'"/>
-                                <field name="capacity" invisible="spec_profile not in ['storage', 'ups']"/>
-                                <field name="interface" invisible="spec_profile not in ['storage', 'input']"/>
-                                <field name="form_factor" invisible="spec_profile != 'storage'"/>
-                                <field name="print_scan_type" invisible="spec_profile != 'printer'"/>
+                            <group string="Operating System &amp; Network" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'network', 'server', 'storage', 'printer', 'ups']">
+                                <field name="operating_system" string="Operating System" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'server']"/>
+                                <field name="network" string="Network / Connectivity"/>
+                                <field name="mac_address" string="MAC Address" invisible="spec_profile not in ['desktop', 'laptop', 'mobile', 'network', 'storage', 'printer']"/>
+                                <field name="ip_address" string="IP Address" invisible="spec_profile not in ['desktop', 'laptop', 'network', 'server', 'storage', 'printer', 'ups']"/>
+                                <field name="firmware" string="Firmware" invisible="spec_profile != 'network'"/>
+                                <field name="imei" string="IMEI" invisible="spec_profile != 'mobile'"/>
                             </group>
                             <group string="Power &amp; Interfaces" invisible="spec_profile not in ['laptop', 'mobile', 'network', 'server', 'monitor', 'printer', 'ups', 'input']">
-                                <field name="power_supply" invisible="spec_profile not in ['laptop', 'mobile', 'network', 'server', 'monitor', 'printer', 'ups', 'input']"/>
-                                <field name="battery" invisible="spec_profile not in ['mobile', 'ups', 'input']"/>
-                                <field name="runtime" invisible="spec_profile != 'ups'"/>
-                                <field name="input_output" invisible="spec_profile != 'ups'"/>
-                                <field name="connection_type" invisible="spec_profile != 'input'"/>
-                                <field name="ports" invisible="spec_profile not in ['laptop', 'network', 'server', 'monitor', 'printer', 'ups', 'input']"/>
+                                <field name="power_supply" string="Power Supply / Battery"/>
+                                <field name="battery" string="Battery" invisible="spec_profile not in ['laptop', 'mobile', 'ups', 'input']"/>
+                                <field name="ports" string="Ports / Interfaces" invisible="spec_profile not in ['desktop', 'laptop', 'network', 'server', 'monitor', 'printer', 'ups', 'input']"/>
+                                <field name="connection_type" string="Connection Type" invisible="spec_profile != 'input'"/>
+                                <field name="runtime" string="Runtime" invisible="spec_profile != 'ups'"/>
+                                <field name="input_output" string="Input / Output" invisible="spec_profile != 'ups'"/>
+                            </group>
+                            <group string="Device Details" invisible="spec_profile not in ['server', 'printer']">
+                                <field name="rack_drive_details" string="RAID / Drive Details" invisible="spec_profile != 'server'"/>
+                                <field name="print_scan_type" string="Print / Scan Type" invisible="spec_profile != 'printer'"/>
                             </group>
                             <group string="Additional Information">
-                                <field name="accessories"/>
-                                <field name="other_specifications" placeholder="Other hardware details..."/>
+                                <field name="accessories" string="Included Accessories"/>
+                                <field name="other_specifications" string="Other Specifications" placeholder="Other hardware details..."/>
                             </group>
                         </page>
                         <page string="หมายเหตุ (Notes)"><field name="notes"/></page>
