@@ -160,6 +160,11 @@ class HelpdeskTicket(models.Model):
             else:
                 ticket.is_editable = ticket.stage_id == draft_stage
 
+    def copy(self, default=None):
+        default = dict(default or {})
+        default['stage_id'] = self.env.ref('buz_it_helpdesk.stage_draft').id
+        return super().copy(default)
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
