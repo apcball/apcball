@@ -100,6 +100,66 @@ class TestITAsset(TransactionCase):
         self.assertEqual(asset.purchase_price, 42500)
         self.assertEqual(asset.currency_id, self.company.currency_id)
 
+    def test_software_product_type_version_and_edition(self):
+        product = self.env['buz.it.software.product'].create({
+            'name': 'Office',
+            'software_type': 'office',
+            'version': '2026',
+            'edition': 'Business',
+            'company_id': self.company.id,
+        })
+        other_version = self.env['buz.it.software.product'].create({
+            'name': 'Office',
+            'software_type': 'office',
+            'version': '2027',
+            'edition': 'Business',
+            'company_id': self.company.id,
+        })
+        self.assertEqual(product.software_type, 'office')
+        self.assertEqual(product.version, '2026')
+        self.assertNotEqual(product, other_version)
+
+    def test_software_license_currency_and_contract_dates(self):
+        product = self.env['buz.it.software.product'].create({
+            'name': 'Accounting', 'company_id': self.company.id,
+        })
+        license_record = self.env['buz.it.software.license'].create({
+            'name': 'Accounting 2026', 'product_id': product.id,
+            'start_date': date(2026, 8, 1),
+            'expiration_date': date(2027, 7, 31),
+            'company_id': self.company.id,
+        })
+        self.assertEqual(license_record.currency_id, self.company.currency_id)
+        with self.assertRaises(ValidationError):
+            license_record.write({
+                'start_date': date(2027, 8, 1),
+                'expiration_date': date(2027, 7, 31),
+            })
+
+    def test_free_license_has_unlimited_installations(self):
+        product = self.env['buz.it.software.product'].create({
+            'name': 'Free Utility', 'company_id': self.company.id,
+        })
+        license_record = self.env['buz.it.software.license'].create({
+            'name': 'Free Utility', 'product_id': product.id,
+            'license_type': 'free', 'seat_count': 1,
+            'company_id': self.company.id,
+        })
+        second_employee = self.env['hr.employee'].create({
+            'name': 'Second User', 'company_id': self.company.id,
+        })
+        self.env['buz.it.software.installation'].create({
+            'license_id': license_record.id,
+            'employee_id': self.employee.id,
+            'company_id': self.company.id,
+        })
+        self.env['buz.it.software.installation'].create({
+            'license_id': license_record.id,
+            'employee_id': second_employee.id,
+            'company_id': self.company.id,
+        })
+        self.assertEqual(license_record.active_installation_count, 2)
+
     def test_asset_accepts_employee_or_department_not_both(self):
         department_asset = self.env['buz.it.asset'].create({
             'name': 'Shared Printer',
@@ -333,6 +393,20 @@ class TestITAsset(TransactionCase):
         support = create_user('asset-support', support_group)
         manager = create_user('asset-manager', manager_group)
         installation_model = self.env['buz.it.software.installation']
+        license_model = self.env['buz.it.software.license']
+
+        requester_fields = license_model.with_user(requester).fields_get(
+            ['license_key', 'cost', 'purchase_document_file'],
+        )
+        support_fields = license_model.with_user(support).fields_get(
+            ['license_key', 'cost', 'purchase_document_file'],
+        )
+        self.assertNotIn('license_key', requester_fields)
+        self.assertNotIn('cost', requester_fields)
+        self.assertNotIn('purchase_document_file', requester_fields)
+        self.assertIn('license_key', support_fields)
+        self.assertIn('cost', support_fields)
+        self.assertIn('purchase_document_file', support_fields)
 
         self.assertFalse(
             installation_model.with_user(requester).check_access_rights(

@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_software_product_tree" model="ir.ui.view"><field name="name">buz.it.software.product.tree</field><field name="model">buz.it.software.product</field><field name="arch" type="xml"><tree><field name="name"/><field name="manufacturer"/><field name="edition"/><field name="company_id"/><field name="active"/></tree></field></record>
+    <record id="view_software_product_tree" model="ir.ui.view">
+        <field name="name">buz.it.software.product.tree</field>
+        <field name="model">buz.it.software.product</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="software_type"/>
+                <field name="version"/>
+                <field name="edition"/>
+                <field name="manufacturer"/>
+                <field name="company_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
     <record id="view_software_product_form" model="ir.ui.view">
         <field name="name">buz.it.software.product.form</field>
         <field name="model">buz.it.software.product</field>
@@ -8,16 +23,16 @@
             <form>
                 <sheet>
                     <div class="oe_title">
-                        <h1>
-                            <field name="name" placeholder="Software product name"/>
-                        </h1>
+                        <h1><field name="name" placeholder="Software product name"/></h1>
                     </div>
                     <group>
-                        <group string="Product Information">
-                            <field name="manufacturer" string="Manufacturer / Publisher"/>
+                        <group string="Software Information">
+                            <field name="software_type" string="Software Type"/>
+                            <field name="version" string="Version"/>
                             <field name="edition" string="Edition" placeholder="Standard, Professional, Enterprise..."/>
                         </group>
-                        <group string="Company &amp; Status">
+                        <group string="Publisher &amp; Status">
+                            <field name="manufacturer" string="Manufacturer / Publisher"/>
                             <field name="company_id" string="Company"/>
                             <field name="active" string="Active"/>
                         </group>
@@ -31,12 +46,143 @@
             </form>
         </field>
     </record>
-    <record id="view_software_license_tree" model="ir.ui.view"><field name="name">buz.it.software.license.tree</field><field name="model">buz.it.software.license</field><field name="arch" type="xml"><tree><field name="name"/><field name="product_id"/><field name="license_type"/><field name="seat_count"/><field name="active_installation_count"/><field name="expiration_date"/><field name="company_id"/></tree></field></record>
-    <record id="view_software_license_form" model="ir.ui.view"><field name="name">buz.it.software.license.form</field><field name="model">buz.it.software.license</field><field name="arch" type="xml"><form><sheet><group><group><field name="name"/><field name="product_id"/><field name="license_type"/><field name="license_key" groups="buz_it_helpdesk.group_it_helpdesk_manager"/><field name="vendor_id"/></group><group><field name="company_id"/><field name="seat_count"/><field name="active_installation_count" readonly="1"/><field name="start_date"/><field name="expiration_date"/><field name="active"/></group></group><field name="notes"/><notebook><page string="Installations"><field name="installation_ids" readonly="1"><tree create="0" delete="0"><field name="asset_id"/><field name="employee_id"/><field name="install_date"/><field name="uninstall_date"/><field name="active"/></tree></field></page></notebook></sheet><chatter/></form></field></record>
-    <record id="view_software_installation_tree" model="ir.ui.view"><field name="name">buz.it.software.installation.tree</field><field name="model">buz.it.software.installation</field><field name="arch" type="xml"><tree delete="0"><field name="license_id"/><field name="asset_id"/><field name="employee_id"/><field name="install_date"/><field name="uninstall_date"/><field name="installed_by_id"/><field name="active"/><field name="company_id"/></tree></field></record>
-    <record id="view_software_installation_form" model="ir.ui.view"><field name="name">buz.it.software.installation.form</field><field name="model">buz.it.software.installation</field><field name="arch" type="xml"><form><header><button name="action_uninstall" type="object" string="Uninstall" invisible="not active" groups="buz_it_helpdesk.group_it_support_agent"/></header><sheet><group><field name="license_id"/><field name="asset_id"/><field name="employee_id"/><field name="install_date"/><field name="uninstall_date"/><field name="installed_by_id"/><field name="active"/><field name="company_id"/></group><field name="notes"/></sheet></form></field></record>
-    <record id="action_software_products" model="ir.actions.act_window"><field name="name">Software Products</field><field name="res_model">buz.it.software.product</field><field name="view_mode">tree,form</field></record>
-    <record id="action_software_licenses" model="ir.actions.act_window"><field name="name">Licenses</field><field name="res_model">buz.it.software.license</field><field name="view_mode">tree,form</field></record>
-    <record id="action_software_installations" model="ir.actions.act_window"><field name="name">Installations</field><field name="res_model">buz.it.software.installation</field><field name="view_mode">tree,form</field></record>
-    <record id="action_my_software" model="ir.actions.act_window"><field name="name">My Software</field><field name="res_model">buz.it.software.installation</field><field name="view_mode">tree,form</field><field name="domain">['|', ('employee_id.user_id', '=', uid), ('asset_id.assigned_employee_id.user_id', '=', uid)]</field></record>
+
+    <record id="view_software_license_tree" model="ir.ui.view">
+        <field name="name">buz.it.software.license.tree</field>
+        <field name="model">buz.it.software.license</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="license_type"/>
+                <field name="seat_count" optional="hide"/>
+                <field name="active_installation_count"/>
+                <field name="expiration_date"/>
+                <field name="cost" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager" optional="hide"/>
+                <field name="company_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_software_license_form" model="ir.ui.view">
+        <field name="name">buz.it.software.license.form</field>
+        <field name="model">buz.it.software.license</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="License name or contract reference"/></h1>
+                    </div>
+                    <group>
+                        <group string="License Information">
+                            <field name="product_id"/>
+                            <field name="license_type"/>
+                            <field name="license_key" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                            <field name="seat_count" invisible="license_type == 'free'"/>
+                            <field name="active_installation_count" readonly="1"/>
+                        </group>
+                        <group string="Contract Period">
+                            <field name="vendor_id"/>
+                            <field name="start_date"/>
+                            <field name="expiration_date"/>
+                            <field name="company_id"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Finance &amp; Documents" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="cost"/>
+                            <field name="purchase_document_no" string="Receipt / Tax Invoice No."/>
+                            <field name="purchase_document_file" filename="purchase_document_filename" string="Receipt / Tax Invoice"/>
+                            <field name="purchase_document_filename" invisible="1"/>
+                        </group>
+                        <group string="Responsibility">
+                            <field name="responsible_employee_id" string="Responsible Person"/>
+                            <field name="responsible_department_id" string="Using Department"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Contract or internal notes..."/>
+                    <notebook>
+                        <page string="Installations">
+                            <field name="installation_ids" readonly="1">
+                                <tree create="0" delete="0">
+                                    <field name="asset_id"/>
+                                    <field name="employee_id"/>
+                                    <field name="install_date"/>
+                                    <field name="uninstall_date"/>
+                                    <field name="active"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_software_installation_tree" model="ir.ui.view">
+        <field name="name">buz.it.software.installation.tree</field>
+        <field name="model">buz.it.software.installation</field>
+        <field name="arch" type="xml">
+            <tree delete="0">
+                <field name="license_id"/>
+                <field name="asset_id"/>
+                <field name="employee_id"/>
+                <field name="install_date"/>
+                <field name="uninstall_date"/>
+                <field name="installed_by_id"/>
+                <field name="active"/>
+                <field name="company_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_software_installation_form" model="ir.ui.view">
+        <field name="name">buz.it.software.installation.form</field>
+        <field name="model">buz.it.software.installation</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_uninstall" type="object" string="Uninstall" invisible="not active" groups="buz_it_helpdesk.group_it_support_agent"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="license_id"/>
+                        <field name="asset_id"/>
+                        <field name="employee_id"/>
+                        <field name="install_date"/>
+                        <field name="uninstall_date"/>
+                        <field name="installed_by_id"/>
+                        <field name="active"/>
+                        <field name="company_id"/>
+                    </group>
+                    <field name="notes" string="Installation Location / Bound Machine Notes"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_software_products" model="ir.actions.act_window">
+        <field name="name">Software Products</field>
+        <field name="res_model">buz.it.software.product</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_software_licenses" model="ir.actions.act_window">
+        <field name="name">Licenses</field>
+        <field name="res_model">buz.it.software.license</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_software_installations" model="ir.actions.act_window">
+        <field name="name">Installations</field>
+        <field name="res_model">buz.it.software.installation</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_my_software" model="ir.actions.act_window">
+        <field name="name">My Software</field>
+        <field name="res_model">buz.it.software.installation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">['|', ('employee_id.user_id', '=', uid), ('asset_id.assigned_employee_id.user_id', '=', uid)]</field>
+    </record>
 </odoo>

@@ -8,6 +8,13 @@ class ITSoftwareProduct(models.Model):
     _order = 'name'
 
     name = fields.Char(required=True)
+    software_type = fields.Selection([
+        ('operating_system', 'Operating System'),
+        ('office', 'Office'),
+        ('specialized', 'Specialized Software'),
+        ('other', 'Other'),
+    ], required=True, default='other')
+    version = fields.Char()
     manufacturer = fields.Char()
     edition = fields.Char()
     company_id = fields.Many2one(
@@ -17,9 +24,9 @@ class ITSoftwareProduct(models.Model):
     notes = fields.Text()
 
     _sql_constraints = [
-        ('name_edition_company_uniq',
-         'unique(name, edition, company_id)',
-         'The software product must be unique per company and edition.'),
+        ('name_version_edition_company_uniq',
+         'unique(name, version, edition, company_id)',
+         'The software product must be unique per company, version, and edition.'),
     ]
 
 
@@ -36,16 +43,43 @@ class ITSoftwareLicense(models.Model):
         check_company=True,
     )
     license_type = fields.Selection([
-        ('perpetual', 'Perpetual'),
+        ('perpetual', 'Lifetime / Perpetual'),
         ('subscription', 'Subscription'),
+        ('free', 'Free'),
         ('oem', 'OEM'),
         ('trial', 'Trial'),
     ], required=True, default='subscription')
-    license_key = fields.Char(groups='buz_it_helpdesk.group_it_helpdesk_manager')
+    license_key = fields.Char(
+        groups='buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager',
+    )
     seat_count = fields.Integer(required=True, default=1)
     start_date = fields.Date()
     expiration_date = fields.Date()
     vendor_id = fields.Many2one('res.partner', check_company=True)
+    currency_id = fields.Many2one(
+        'res.currency', related='company_id.currency_id', store=True,
+        readonly=True,
+    )
+    cost = fields.Monetary(
+        currency_field='currency_id',
+        groups='buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager',
+    )
+    purchase_document_no = fields.Char(
+        groups='buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager',
+    )
+    purchase_document_file = fields.Binary(
+        attachment=True,
+        groups='buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager',
+    )
+    purchase_document_filename = fields.Char(
+        groups='buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager',
+    )
+    responsible_employee_id = fields.Many2one(
+        'hr.employee', check_company=True,
+    )
+    responsible_department_id = fields.Many2one(
+        'hr.department', check_company=True,
+    )
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
         index=True,
@@ -65,10 +99,18 @@ class ITSoftwareLicense(models.Model):
             record.active_installation_count = len(
                 record.installation_ids.filtered('active'))
 
-    @api.constrains('seat_count')
+    @api.constrains('seat_count', 'license_type')
     def _check_seat_count(self):
-        if any(record.seat_count < 1 for record in self):
+        if any(record.license_type != 'free' and record.seat_count < 1
+               for record in self):
             raise ValidationError(_('License seats must be at least one.'))
+
+    @api.constrains('start_date', 'expiration_date')
+    def _check_contract_dates(self):
+        for record in self:
+            if (record.start_date and record.expiration_date
+                    and record.expiration_date < record.start_date):
+                raise ValidationError(_('The expiration date cannot be before the start date.'))
 
 
 class ITSoftwareInstallation(models.Model):
@@ -105,7 +147,11 @@ class ITSoftwareInstallation(models.Model):
     @api.constrains('company_id', 'license_id', 'asset_id', 'employee_id')
     def _check_companies(self):
         for record in self:
-            links = (record.license_id, record.asset_id, record.employee_id)
+            links = (
+                record.license_id, record.asset_id, record.employee_id,
+                record.license_id.responsible_employee_id,
+                record.license_id.responsible_department_id,
+            )
             if any(link and link.company_id and link.company_id != record.company_id
                    for link in links):
                 raise ValidationError(_('All installation records must belong to the same company.'))
@@ -128,7 +174,8 @@ class ITSoftwareInstallation(models.Model):
                 raise UserError(_('An inactive installation cannot be installed.'))
             if record.license_id.expiration_date and record.license_id.expiration_date < fields.Date.context_today(record):
                 raise UserError(_('This software license has expired.'))
-            if record.license_id.active_installation_count > record.license_id.seat_count:
+            if (record.license_id.license_type != 'free'
+                    and record.license_id.active_installation_count > record.license_id.seat_count):
                 raise UserError(_('The software license has no available seats.'))
         return True
 
