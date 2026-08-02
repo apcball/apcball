@@ -14,6 +14,9 @@ access_location_manager,IT Location manager,model_buz_it_asset_location,buz_it_h
 access_product_requester,Software Product requester,model_buz_it_software_product,buz_it_helpdesk.group_it_requester,1,0,0,0
 access_product_agent,Software Product support agent,model_buz_it_software_product,buz_it_helpdesk.group_it_support_agent,1,0,0,0
 access_product_manager,Software Product manager,model_buz_it_software_product,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_software_type_requester,Software Type requester,model_buz_it_software_type,buz_it_helpdesk.group_it_requester,1,0,0,0
+access_software_type_agent,Software Type support agent,model_buz_it_software_type,buz_it_helpdesk.group_it_support_agent,1,1,1,1
+access_software_type_manager,Software Type manager,model_buz_it_software_type,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 access_license_requester,Software License requester,model_buz_it_software_license,buz_it_helpdesk.group_it_requester,1,0,0,0
 access_license_agent,Software License support agent,model_buz_it_software_license,buz_it_helpdesk.group_it_support_agent,1,0,0,0
 access_license_manager,Software License manager,model_buz_it_software_license,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1

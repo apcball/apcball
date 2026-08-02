@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="software_type_operating_system" model="buz.it.software.type">
+        <field name="name">Operating System</field>
+    </record>
+    <record id="software_type_office" model="buz.it.software.type">
+        <field name="name">Office</field>
+    </record>
+    <record id="software_type_specialized" model="buz.it.software.type">
+        <field name="name">Specialized Software</field>
+    </record>
+    <record id="software_type_other" model="buz.it.software.type">
+        <field name="name">Other</field>
+    </record>
+</odoo>

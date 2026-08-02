@@ -2,18 +2,32 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
 
+class ITSoftwareType(models.Model):
+    _name = 'buz.it.software.type'
+    _description = 'IT Software Type'
+    _order = 'name'
+
+    name = fields.Char(required=True)
+    active = fields.Boolean(default=True)
+
+    _sql_constraints = [
+        ('name_uniq', 'unique(name)', 'The software type name must be unique.'),
+    ]
+
+
 class ITSoftwareProduct(models.Model):
     _name = 'buz.it.software.product'
     _description = 'IT Software Product'
     _order = 'name'
 
     name = fields.Char(required=True)
-    software_type = fields.Selection([
-        ('operating_system', 'Operating System'),
-        ('office', 'Office'),
-        ('specialized', 'Specialized Software'),
-        ('other', 'Other'),
-    ], required=True, default='other')
+    software_type = fields.Many2one(
+        'buz.it.software.type', required=True,
+        default=lambda self: self.env.ref(
+            'buz_it_asset.software_type_other', raise_if_not_found=False,
+        ),
+        ondelete='restrict',
+    )
     version = fields.Char()
     manufacturer = fields.Char()
     edition = fields.Char()

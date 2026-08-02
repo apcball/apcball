@@ -101,21 +101,24 @@ class TestITAsset(TransactionCase):
         self.assertEqual(asset.currency_id, self.company.currency_id)
 
     def test_software_product_type_version_and_edition(self):
+        custom_type = self.env['buz.it.software.type'].create({
+            'name': 'Developer Tools',
+        })
         product = self.env['buz.it.software.product'].create({
             'name': 'Office',
-            'software_type': 'office',
+            'software_type': custom_type.id,
             'version': '2026',
             'edition': 'Business',
             'company_id': self.company.id,
         })
         other_version = self.env['buz.it.software.product'].create({
             'name': 'Office',
-            'software_type': 'office',
+            'software_type': self.env.ref('buz_it_asset.software_type_office').id,
             'version': '2027',
             'edition': 'Business',
             'company_id': self.company.id,
         })
-        self.assertEqual(product.software_type, 'office')
+        self.assertEqual(product.software_type, custom_type)
         self.assertEqual(product.version, '2026')
         self.assertNotEqual(product, other_version)
 
