@@ -44,6 +44,8 @@ class TestITAsset(TransactionCase):
             self.env.ref('buz_it_asset.type_laptop').category_id,
             self.env.ref('buz_it_asset.category_end_user_devices'),
         )
+        self.assertEqual(self.env.ref('buz_it_asset.type_desktop_pc').asset_prefix, 'ITPC')
+        self.assertEqual(self.env.ref('buz_it_asset.type_laptop').asset_prefix, 'ITNB')
 
     def test_default_specification_profiles(self):
         expected = {
@@ -268,8 +270,12 @@ class TestITAsset(TransactionCase):
         company_b = self.env['res.company'].create({'name': 'Asset Company B'})
         category_a = self.env['buz.it.asset.category'].create({'name': 'Laptop A'})
         category_b = self.env['buz.it.asset.category'].create({'name': 'Laptop B'})
-        type_a = self.env['buz.it.asset.type'].create({'name': 'Laptop', 'category_id': category_a.id})
-        type_b = self.env['buz.it.asset.type'].create({'name': 'Laptop', 'category_id': category_b.id})
+        type_a = self.env['buz.it.asset.type'].create({
+            'name': 'Laptop', 'asset_prefix': 'ITTA', 'category_id': category_a.id,
+        })
+        type_b = self.env['buz.it.asset.type'].create({
+            'name': 'Laptop', 'asset_prefix': 'ITTBX', 'category_id': category_b.id,
+        })
 
         def create_asset(company, asset_type, name, sequence_date):
             return self.env['buz.it.asset'].with_company(company).with_context(
@@ -293,20 +299,20 @@ class TestITAsset(TransactionCase):
             company_a, type_a, 'A-2027', date(2027, 1, 1),
         )
 
-        self.assertEqual(first.asset_tag, 'ITA/2026/08/0001')
-        self.assertEqual(second.asset_tag, 'ITA/2026/08/0002')
-        self.assertEqual(next_month.asset_tag, 'ITA/2026/09/0003')
-        self.assertEqual(other_company.asset_tag, 'ITA/2026/08/0001')
-        self.assertEqual(next_year.asset_tag, 'ITA/2027/01/0001')
+        self.assertEqual(first.asset_tag, 'ITTA/2026/08/0001')
+        self.assertEqual(second.asset_tag, 'ITTA/2026/08/0002')
+        self.assertEqual(next_month.asset_tag, 'ITTA/2026/09/0003')
+        self.assertEqual(other_company.asset_tag, 'ITTBX/2026/08/0001')
+        self.assertEqual(next_year.asset_tag, 'ITTA/2027/01/0001')
         sequences = self.env['ir.sequence'].search([
-            ('code', '=', 'buz.it.asset'),
+            ('code', 'in', (f'buz.it.asset.type.{type_a.id}', f'buz.it.asset.type.{type_b.id}')),
             ('company_id', 'in', (company_a.id, company_b.id)),
         ])
-        self.assertEqual(len(sequences), 2)
+        self.assertEqual(len(sequences), 4)
         self.assertTrue(all(sequences.mapped('use_date_range')))
 
     def test_asset_tag_date_range_race_is_retryable(self):
-        sequence = self.company._ensure_it_asset_sequence()
+        sequence = self.company._ensure_it_asset_sequence(self.asset_type)
         with self.assertRaises(SerializationFailure):
             with self.env.cr.savepoint():
                 with patch.object(
@@ -314,7 +320,7 @@ class TestITAsset(TransactionCase):
                     '_next',
                     side_effect=UniqueViolation(),
                 ):
-                    self.company._next_it_asset_tag(date(2026, 8, 1))
+                    self.company._next_it_asset_tag(self.asset_type, date(2026, 8, 1))
 
     def test_multi_company_relations_are_rejected(self):
         other_company = self.env['res.company'].create({

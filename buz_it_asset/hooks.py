@@ -63,6 +63,8 @@ def pre_init_hook(env):
 
 
 def post_init_hook(env):
-    """Create an independent IT Asset sequence for every existing company."""
+    """Create an independent IT Asset sequence for every company/type."""
+    types = env['buz.it.asset.type'].sudo().search([])
     for company in env['res.company'].sudo().search([]):
-        company._ensure_it_asset_sequence()
+        for asset_type in types:
+            company._ensure_it_asset_sequence(asset_type)

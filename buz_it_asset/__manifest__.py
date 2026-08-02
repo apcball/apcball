@@ -1,6 +1,6 @@
 {
     'name': 'IT Asset',
-    'version': '17.0.1.8.0',
+    'version': '17.0.1.9.0',
     'category': 'Services/IT',
     'summary': 'Hardware and software asset registry for IT Management',
     'author': 'BUZ',
@@ -8,6 +8,7 @@
     'depends': ['buz_it_helpdesk', 'hr', 'mail'],
     'data': [
         'data/hardware_taxonomy.xml',
+        'data/asset_prefixes.xml',
         'data/asset_spec_profiles.xml',
         'data/software_types.xml',
         'security/security.xml',

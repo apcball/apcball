@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="type_desktop_pc" model="buz.it.asset.type"><field name="asset_prefix">ITPC</field></record>
+    <record id="type_laptop" model="buz.it.asset.type"><field name="asset_prefix">ITNB</field></record>
+    <record id="type_tablet" model="buz.it.asset.type"><field name="asset_prefix">ITTB</field></record>
+    <record id="type_smartphone" model="buz.it.asset.type"><field name="asset_prefix">ITSP</field></record>
+    <record id="type_router" model="buz.it.asset.type"><field name="asset_prefix">ITRT</field></record>
+    <record id="type_switch" model="buz.it.asset.type"><field name="asset_prefix">ITSW</field></record>
+    <record id="type_access_point" model="buz.it.asset.type"><field name="asset_prefix">ITAP</field></record>
+    <record id="type_hardware_firewall" model="buz.it.asset.type"><field name="asset_prefix">ITFW</field></record>
+    <record id="type_server" model="buz.it.asset.type"><field name="asset_prefix">ITSV</field></record>
+    <record id="type_nas_san" model="buz.it.asset.type"><field name="asset_prefix">ITNS</field></record>
+    <record id="type_hdd_ssd" model="buz.it.asset.type"><field name="asset_prefix">ITHD</field></record>
+    <record id="type_monitor" model="buz.it.asset.type"><field name="asset_prefix">ITMN</field></record>
+    <record id="type_printer_scanner" model="buz.it.asset.type"><field name="asset_prefix">ITPS</field></record>
+    <record id="type_ups" model="buz.it.asset.type"><field name="asset_prefix">ITUP</field></record>
+    <record id="type_keyboard_mouse" model="buz.it.asset.type"><field name="asset_prefix">ITKM</field></record>
+</odoo>

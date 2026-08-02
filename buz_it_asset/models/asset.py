@@ -1,3 +1,5 @@
+import re
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -29,6 +31,9 @@ class ITAssetType(models.Model):
     _order = 'sequence, name'
 
     name = fields.Char(required=True)
+    asset_prefix = fields.Char(
+        string='Asset Prefix', required=True, index=True, copy=False, size=16,
+    )
     category_id = fields.Many2one(
         'buz.it.asset.category', required=True, ondelete='restrict',
     )
@@ -53,7 +58,63 @@ class ITAssetType(models.Model):
     _sql_constraints = [
         ('name_category_uniq', 'unique(name, category_id)',
          'The type name must be unique within its category.'),
+        ('asset_prefix_uniq', 'unique(asset_prefix)',
+         'The asset prefix must be unique.'),
     ]
+
+    @api.model
+    def _prefix_candidate(self, name):
+        letters = re.sub(r'[^A-Z0-9]', '', (name or '').upper())
+        return ('IT' + (letters[:4] or 'TYPE'))[:16]
+
+    @api.model
+    def _next_available_prefix(self, name, reserved=None):
+        reserved = set(reserved or [])
+        candidate = self._prefix_candidate(name)
+        existing = set(self.search([]).mapped('asset_prefix')) | reserved
+        if candidate not in existing:
+            return candidate
+        index = 2
+        while True:
+            suffix = str(index)
+            value = candidate[:16 - len(suffix)] + suffix
+            if value not in existing:
+                return value
+            index += 1
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        reserved = set()
+        for vals in vals_list:
+            prefix = (vals.get('asset_prefix') or '').strip().upper()
+            if not prefix:
+                prefix = self._next_available_prefix(vals.get('name'), reserved)
+            vals['asset_prefix'] = prefix
+            reserved.add(prefix)
+        records = super().create(vals_list)
+        for record in records:
+            for company in self.env['res.company'].sudo().search([]):
+                company._ensure_it_asset_sequence(record)
+        return records
+
+    def write(self, vals):
+        if 'asset_prefix' in vals:
+            vals['asset_prefix'] = (vals['asset_prefix'] or '').strip().upper()
+        result = super().write(vals)
+        if 'asset_prefix' in vals:
+            for record in self:
+                for company in self.env['res.company'].sudo().search([]):
+                    company._ensure_it_asset_sequence(record)
+        return result
+
+    @api.constrains('asset_prefix')
+    def _check_asset_prefix(self):
+        for record in self:
+            if not re.fullmatch(r'IT[A-Z0-9]+', record.asset_prefix or ''):
+                raise ValidationError(_(
+                    'Asset Prefix must start with IT and contain only uppercase '
+                    'letters and numbers.'
+                ))
 
     def unlink(self):
         if any(asset_type.asset_ids for asset_type in self):
@@ -89,6 +150,9 @@ class ITAsset(models.Model):
     name = fields.Char(required=True, tracking=True)
     asset_tag = fields.Char(
         required=True, readonly=True, copy=False, default='New', tracking=True,
+    )
+    legacy_asset_tag = fields.Char(
+        string='Legacy Asset Tag', readonly=True, copy=False, index=True,
     )
     type_id = fields.Many2one(
         'buz.it.asset.type', ondelete='restrict',
@@ -230,6 +294,7 @@ class ITAsset(models.Model):
                     'ir_sequence_date', fields.Date.context_today(self),
                 )
                 vals['asset_tag'] = company._next_it_asset_tag(
+                    self.env['buz.it.asset.type'].browse(vals['type_id']),
                     sequence_date,
                 ) or 'New'
         return super().create(vals_list)
