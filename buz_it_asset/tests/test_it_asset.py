@@ -25,6 +25,9 @@ class TestITAsset(TransactionCase):
         cls.employee = cls.env['hr.employee'].create({
             'name': 'Asset Holder', 'company_id': cls.company.id,
         })
+        cls.department = cls.env['hr.department'].create({
+            'name': 'Shared IT Equipment', 'company_id': cls.company.id,
+        })
 
     def test_default_hardware_taxonomy(self):
         categories = self.env['buz.it.asset.category'].search([
@@ -85,6 +88,96 @@ class TestITAsset(TransactionCase):
         asset.write({'type_id': other_type.id})
         self.assertEqual(asset.cpu, 'Intel Core i7')
         self.assertEqual(asset.spec_profile, 'network')
+
+    def test_purchase_information_uses_company_currency(self):
+        asset = self.env['buz.it.asset'].create({
+            'name': 'Purchased Laptop',
+            'type_id': self.asset_type.id,
+            'serial_number': 'SN-PURCHASE-001',
+            'purchase_date': date(2026, 8, 1),
+            'purchase_price': 42500,
+        })
+        self.assertEqual(asset.purchase_price, 42500)
+        self.assertEqual(asset.currency_id, self.company.currency_id)
+
+    def test_asset_accepts_employee_or_department_not_both(self):
+        department_asset = self.env['buz.it.asset'].create({
+            'name': 'Shared Printer',
+            'type_id': self.asset_type.id,
+            'serial_number': 'SN-DEPARTMENT-001',
+            'responsible_department_id': self.department.id,
+        })
+        department_asset.action_assign()
+        self.assertEqual(department_asset.state, 'assigned')
+        self.assertEqual(
+            department_asset.assignment_ids.department_id,
+            self.department,
+        )
+        self.assertFalse(department_asset.assignment_ids.employee_id)
+        department_asset.action_return()
+        self.assertFalse(department_asset.responsible_department_id)
+
+        with self.assertRaises(ValidationError):
+            self.env['buz.it.asset'].create({
+                'name': 'Invalid Shared Asset',
+                'type_id': self.asset_type.id,
+                'serial_number': 'SN-OWNER-INVALID-001',
+                'assigned_employee_id': self.employee.id,
+                'responsible_department_id': self.department.id,
+            })
+
+    def test_maintenance_internal_external_and_completion(self):
+        asset = self.env['buz.it.asset'].create({
+            'name': 'Repair Asset',
+            'type_id': self.asset_type.id,
+            'serial_number': 'SN-REPAIR-001',
+        })
+        internal = self.env['buz.it.asset.maintenance'].create({
+            'asset_id': asset.id,
+            'sent_date': date(2026, 8, 1),
+            'symptom': 'Does not boot',
+            'technician_employee_id': self.employee.id,
+            'cost': 1200,
+        })
+        self.assertEqual(internal.currency_id, self.company.currency_id)
+        self.assertIn(internal, asset.maintenance_ids)
+        internal.action_done()
+        self.assertEqual(internal.state, 'done')
+        self.assertTrue(internal.completed_date)
+        with self.assertRaises(UserError):
+            internal.unlink()
+
+        external = self.env['buz.it.asset.maintenance'].create({
+            'asset_id': asset.id,
+            'sent_date': date(2026, 8, 2),
+            'symptom': 'Damaged display',
+            'external_technician_name': 'External Technician',
+        })
+        external.action_start()
+        self.assertEqual(external.state, 'in_progress')
+
+        with self.assertRaises(ValidationError):
+            self.env['buz.it.asset.maintenance'].create({
+                'asset_id': asset.id,
+                'symptom': 'Invalid technician selection',
+                'technician_employee_id': self.employee.id,
+                'external_technician_name': 'External Technician',
+            })
+
+    def test_completed_maintenance_requires_valid_date(self):
+        asset = self.env['buz.it.asset'].create({
+            'name': 'Maintenance Date Asset',
+            'type_id': self.asset_type.id,
+            'serial_number': 'SN-REPAIR-DATE-001',
+        })
+        with self.assertRaises(ValidationError):
+            self.env['buz.it.asset.maintenance'].create({
+                'asset_id': asset.id,
+                'sent_date': date(2026, 8, 2),
+                'completed_date': date(2026, 8, 1),
+                'symptom': 'Invalid dates',
+                'state': 'done',
+            })
 
     def test_assign_and_return_creates_immutable_history(self):
         asset = self.env['buz.it.asset'].create({
@@ -253,6 +346,22 @@ class TestITAsset(TransactionCase):
         )
         self.assertTrue(
             installation_model.with_user(manager).check_access_rights(
+                'create', raise_exception=False,
+            ),
+        )
+        maintenance_model = self.env['buz.it.asset.maintenance']
+        self.assertFalse(
+            maintenance_model.with_user(requester).check_access_rights(
+                'create', raise_exception=False,
+            ),
+        )
+        self.assertTrue(
+            maintenance_model.with_user(support).check_access_rights(
+                'create', raise_exception=False,
+            ),
+        )
+        self.assertTrue(
+            maintenance_model.with_user(manager).check_access_rights(
                 'create', raise_exception=False,
             ),
         )

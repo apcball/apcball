@@ -107,6 +107,14 @@ class ITAsset(models.Model):
     model = fields.Char()
     serial_number = fields.Char(tracking=True)
     purchase_date = fields.Date()
+    currency_id = fields.Many2one(
+        'res.currency', related='company_id.currency_id', store=True,
+        readonly=True,
+    )
+    purchase_price = fields.Monetary(
+        string='ราคาซื้อ (Purchase Price)', currency_field='currency_id',
+        tracking=True,
+    )
     vendor_id = fields.Many2one('res.partner', check_company=True)
     warranty_end = fields.Date()
     # Hardware specifications are intentionally free-text so the same asset
@@ -150,9 +158,16 @@ class ITAsset(models.Model):
         'hr.employee', string='Current Holder', check_company=True,
         tracking=True,
     )
+    responsible_department_id = fields.Many2one(
+        'hr.department', string='Responsible Department', check_company=True,
+        tracking=True,
+    )
     assignment_ids = fields.One2many(
         'buz.it.asset.assignment', 'asset_id', string='Assignment History',
         readonly=True,
+    )
+    maintenance_ids = fields.One2many(
+        'buz.it.asset.maintenance', 'asset_id', string='Maintenance History',
     )
     state = fields.Selection([
         ('available', 'Available'),
@@ -173,14 +188,26 @@ class ITAsset(models.Model):
     ]
 
     @api.constrains('company_id', 'type_id', 'location_id',
-                    'assigned_employee_id')
+                    'assigned_employee_id', 'responsible_department_id',
+                    'state')
     def _check_company_links(self):
         for record in self:
             if not record.type_id:
                 raise ValidationError(_('Select a hardware type.'))
             if record.type_id and not record.type_id.active:
                 raise ValidationError(_('Hardware must use an active hardware type.'))
-            for field_name in ('location_id', 'assigned_employee_id'):
+            if record.assigned_employee_id and record.responsible_department_id:
+                raise ValidationError(_(
+                    'Select either a current holder or a responsible department, not both.'
+                ))
+            if record.state == 'assigned' and not (
+                    record.assigned_employee_id or record.responsible_department_id):
+                raise ValidationError(_(
+                    'Assigned assets must have a current holder or responsible department.'
+                ))
+            for field_name in (
+                    'location_id', 'assigned_employee_id',
+                    'responsible_department_id'):
                 linked = record[field_name]
                 if linked and linked.company_id and linked.company_id != record.company_id:
                     raise ValidationError(_('Related record must belong to the asset company.'))
@@ -214,30 +241,43 @@ class ITAsset(models.Model):
             raise ValidationError(_('Enter a serial number for the asset.'))
         return super().write(vals)
 
-    def action_assign(self, employee_id=None):
+    def action_assign(self, employee_id=None, department_id=None):
         for asset in self:
             if asset.state != 'available':
                 raise UserError(_('Only available assets can be assigned.'))
             employee = self.env['hr.employee'].browse(
                 employee_id or asset.assigned_employee_id.id).exists()
-            if not employee:
-                raise UserError(_('Select a current holder before assigning the asset.'))
+            department = self.env['hr.department'].browse(
+                department_id or asset.responsible_department_id.id,
+            ).exists()
+            if bool(employee) == bool(department):
+                raise UserError(_(
+                    'Select either a current holder or a responsible department before assigning.'
+                ))
             if employee.company_id and employee.company_id != asset.company_id:
                 raise ValidationError(_('The employee must belong to the asset company.'))
+            if department.company_id and department.company_id != asset.company_id:
+                raise ValidationError(_('The department must belong to the asset company.'))
             self.env['buz.it.asset.assignment'].create({
                 'asset_id': asset.id,
                 'employee_id': employee.id,
+                'department_id': department.id,
                 'assigned_date': fields.Date.context_today(self),
                 'assigned_by_id': self.env.user.id,
                 'company_id': asset.company_id.id,
                 'location_id': asset.location_id.id,
             })
-            asset.write({'assigned_employee_id': employee.id, 'state': 'assigned'})
+            asset.write({
+                'assigned_employee_id': employee.id,
+                'responsible_department_id': department.id,
+                'state': 'assigned',
+            })
         return True
 
     def action_return(self):
         for asset in self:
-            if asset.state != 'assigned' or not asset.assigned_employee_id:
+            if asset.state != 'assigned' or not (
+                    asset.assigned_employee_id or asset.responsible_department_id):
                 raise UserError(_('Only assigned assets can be returned.'))
             open_assignment = asset.assignment_ids.filtered(
                 lambda line: not line.returned_date)[:1]
@@ -247,7 +287,11 @@ class ITAsset(models.Model):
                 'returned_date': fields.Date.context_today(self),
                 'returned_by_id': self.env.user.id,
             })
-            asset.write({'assigned_employee_id': False, 'state': 'available'})
+            asset.write({
+                'assigned_employee_id': False,
+                'responsible_department_id': False,
+                'state': 'available',
+            })
         return True
 
     def unlink(self):

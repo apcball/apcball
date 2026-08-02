@@ -1,5 +1,5 @@
-from odoo import fields, models, _
-from odoo.exceptions import UserError
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class ITAssetAssignment(models.Model):
@@ -13,7 +13,11 @@ class ITAssetAssignment(models.Model):
         index=True,
     )
     employee_id = fields.Many2one(
-        'hr.employee', required=True, ondelete='restrict', check_company=True,
+        'hr.employee', ondelete='restrict', check_company=True,
+    )
+    department_id = fields.Many2one(
+        'hr.department', ondelete='restrict', check_company=True,
+        string='Responsible Department',
     )
     assigned_date = fields.Date(required=True, default=fields.Date.context_today)
     returned_date = fields.Date(readonly=True)
@@ -28,6 +32,19 @@ class ITAssetAssignment(models.Model):
         readonly=True, index=True,
     )
     notes = fields.Text()
+
+    @api.constrains('employee_id', 'department_id', 'company_id')
+    def _check_assignment_target(self):
+        for record in self:
+            if bool(record.employee_id) == bool(record.department_id):
+                raise ValidationError(_(
+                    'An assignment must have either an employee or a department.'
+                ))
+            target = record.employee_id or record.department_id
+            if target.company_id and target.company_id != record.company_id:
+                raise ValidationError(_(
+                    'The assignment target must belong to the assignment company.'
+                ))
 
     def write(self, vals):
         allowed = {'returned_date', 'returned_by_id'}

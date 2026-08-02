@@ -13,7 +13,7 @@
     <record id="rule_assignment_requester" model="ir.rule">
         <field name="name">IT Assignment: own history</field>
         <field name="model_id" ref="model_buz_it_asset_assignment"/>
-        <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+        <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('department_id.member_ids.user_id', '=', user.id)]</field>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/>
     </record>
     <record id="rule_assignment_it_all" model="ir.rule">
@@ -55,7 +55,7 @@
     <record id="rule_asset_requester_own" model="ir.rule">
         <field name="name">IT Asset: requester sees own assets</field>
         <field name="model_id" ref="model_buz_it_asset"/>
-        <field name="domain_force">[('assigned_employee_id.user_id', '=', user.id)]</field>
+        <field name="domain_force">['|', ('assigned_employee_id.user_id', '=', user.id), ('responsible_department_id.member_ids.user_id', '=', user.id)]</field>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/>
     </record>
     <record id="rule_asset_it_all" model="ir.rule">
@@ -67,12 +67,29 @@
     <record id="rule_installation_requester_own" model="ir.rule">
         <field name="name">Software Installation: requester sees own installations</field>
         <field name="model_id" ref="model_buz_it_software_installation"/>
-        <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('asset_id.assigned_employee_id.user_id', '=', user.id)]</field>
+        <field name="domain_force">['|', '|', ('employee_id.user_id', '=', user.id), ('asset_id.assigned_employee_id.user_id', '=', user.id), ('asset_id.responsible_department_id.member_ids.user_id', '=', user.id)]</field>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/>
     </record>
     <record id="rule_installation_it_all" model="ir.rule">
         <field name="name">Software Installation: IT team sees all</field>
         <field name="model_id" ref="model_buz_it_software_installation"/>
+        <field name="domain_force">[('id', '!=', 0)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
+    </record>
+    <record id="rule_maintenance_company" model="ir.rule">
+        <field name="name">IT Asset Maintenance: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_asset_maintenance"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_maintenance_requester_own" model="ir.rule">
+        <field name="name">IT Asset Maintenance: requester sees own asset history</field>
+        <field name="model_id" ref="model_buz_it_asset_maintenance"/>
+        <field name="domain_force">['|', ('asset_id.assigned_employee_id.user_id', '=', user.id), ('asset_id.responsible_department_id.member_ids.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/>
+    </record>
+    <record id="rule_maintenance_it_all" model="ir.rule">
+        <field name="name">IT Asset Maintenance: IT team sees all</field>
+        <field name="model_id" ref="model_buz_it_asset_maintenance"/>
         <field name="domain_force">[('id', '!=', 0)]</field>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
     </record>
