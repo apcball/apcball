@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 class PosLiteSession(models.Model):
     _name = 'pos.lite.session'
     _description = 'POS Lite Daily Session'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'analytic.mixin']
     _order = 'id desc'
     _rec_name = 'name'
 

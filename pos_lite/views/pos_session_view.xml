@@ -260,6 +260,12 @@
                                                 <field name="current_trade_channel"/>
                                             </div>
                                         </div>
+                                        <div class="col-12">
+                                            <span class="o_form_label text-muted small">Analytic Distribution</span>
+                                            <div>
+                                                <field name="analytic_distribution" widget="analytic_distribution"/>
+                                            </div>
+                                        </div>
                                         <field name="company_id" invisible="1"/>
                                     </div>
                                 </div>

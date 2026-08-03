@@ -31,6 +31,7 @@ Features:
         'product',
         'stock',
         'account',
+        'analytic',
         'sale_management',
         'hr',
         'buz_po_portal',

@@ -487,6 +487,7 @@ class PosLiteOrder(models.Model):
                 'discount_fixed': inv_discount_fixed,
                 'tax_ids': [fields.Command.set(taxes.ids)],
                 'product_uom_id': line.product_id.uom_id.id,
+                'analytic_distribution': self.session_id.analytic_distribution or False,
             }))
         invoice_partner = self.partner_invoice_id or partner
         vals = {
