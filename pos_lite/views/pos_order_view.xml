@@ -94,7 +94,7 @@
                     <button name="action_reorder" type="object" string="Re-order" class="btn-secondary" invisible="state == 'draft'"/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state == 'cancelled' or (state == 'done' and not is_return)"/>
                     <!-- Print -->
-                    <button name="action_print_invoice" type="object" string="Invoice" class="oe_highlight" invisible="state == 'draft'" groups="pos_lite.group_pos_lite_user"/>
+                    <button name="action_print_invoice" type="object" string="Print Invoice" class="oe_highlight" invisible="state == 'draft'" groups="pos_lite.group_pos_lite_user"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,paid,done,cancelled"/>
                 </header>
                 <sheet>
@@ -103,7 +103,7 @@
                         <button name="action_view_invoice" type="object" class="oe_stat_button" icon="fa-file-text-o" invisible="not invoice_id">
                             <div class="o_stat_info">
                                 <span class="o_stat_value"><field name="invoice_id"/></span>
-                                <span class="o_stat_text">Invoice</span>
+                                <span class="o_stat_text">Print Invoice</span>
                             </div>
                         </button>
                         <button name="action_view_picking" type="object" class="oe_stat_button" icon="fa-truck" invisible="not picking_id">

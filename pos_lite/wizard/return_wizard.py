@@ -15,20 +15,6 @@ class PosLiteReturnWizard(models.TransientModel):
     return_reason = fields.Text(string='Return Reason')
     is_exchange = fields.Boolean(default=False)
 
-    # Refund payment method
-    refund_payment_method = fields.Selection([
-        ('cash', 'Cash'),
-        ('transfer', 'Transfer'),
-        ('card', 'Card'),
-        ('promptpay', 'PromptPay'),
-        ('other', 'Other'),
-    ], default='cash', string='Refund Method', required=True)
-    refund_journal_id = fields.Many2one(
-        'account.journal', string='Refund Journal',
-        domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]",
-        check_company=True,
-    )
-
     # Exchange fields
     exchange_partner_id = fields.Many2one(
         'res.partner', string='Exchange Customer',
@@ -86,17 +72,9 @@ class PosLiteReturnWizard(models.TransientModel):
         if not self.order_id:
             self.line_ids = [(5, 0, 0)]
             return
-        config = self.env['pos.lite.config'].get_default_config(self.order_id.company_id)
         self.exchange_warehouse_id = self.order_id.warehouse_id
         self.exchange_partner_id = self.order_id.partner_id
         self.exchange_channel = self.order_id.channel
-        if not self.refund_journal_id:
-            if config and config.journal_id:
-                self.refund_journal_id = config.journal_id
-            else:
-                default_journal = self.order_id._get_default_payment_journal()
-                if default_journal:
-                    self.refund_journal_id = default_journal.id
         lines = []
         for line in self.order_id.line_ids.filtered(lambda l: l.product_id):
             available_qty = line.available_return_qty if hasattr(line, 'available_return_qty') else line.qty
@@ -114,13 +92,6 @@ class PosLiteReturnWizard(models.TransientModel):
                 'selected': True,
             }))
         self.line_ids = lines
-
-    @api.onchange('refund_payment_method')
-    def _onchange_refund_payment_method(self):
-        if self.refund_payment_method and not self.refund_journal_id:
-            config = self.env['pos.lite.config'].get_default_config(self.company_id)
-            if config and config.journal_id:
-                self.refund_journal_id = config.journal_id
 
     @api.constrains('line_ids')
     def _check_lines(self):
@@ -192,12 +163,12 @@ class PosLiteReturnWizard(models.TransientModel):
             'line_ids': line_commands,
         })
 
-        # Refund payment (use selected method instead of hardcoded 'cash')
-        refund_journal = self.refund_journal_id or return_order._get_default_payment_journal()
+        # Refund payment
+        refund_journal = return_order._get_default_payment_journal()
         refund_amount = abs(return_order.amount_total)
         self.env['pos.lite.payment'].create({
             'order_id': return_order.id,
-            'payment_method': self.refund_payment_method,
+            'payment_method': 'cash',
             'amount': -refund_amount,
             'journal_id': refund_journal.id if refund_journal else False,
             'note': self.return_reason or _('Customer return refund'),
@@ -246,7 +217,7 @@ class PosLiteReturnWizard(models.TransientModel):
             ex_journal = exchange_order._get_default_payment_journal()
             self.env['pos.lite.payment'].create({
                 'order_id': exchange_order.id,
-                'payment_method': self.refund_payment_method,
+                'payment_method': 'cash',
                 'amount': abs(exchange_order.amount_total),
                 'journal_id': ex_journal.id if ex_journal else False,
                 'note': _('Exchange payment for %s') % order.name,

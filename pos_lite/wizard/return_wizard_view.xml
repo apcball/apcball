@@ -65,12 +65,6 @@
                         </field>
                     </group>
 
-                    <!-- Refund Method -->
-                    <group string="Refund Method">
-                        <field name="refund_payment_method"/>
-                        <field name="refund_journal_id" domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]"/>
-                    </group>
-
                     <group invisible="not is_exchange" string="Exchange — New Items">
                         <group>
                             <field name="exchange_partner_id" invisible="not is_exchange" context="{'pos_lite_partner_search': 1}"/>

@@ -273,50 +273,6 @@ class TestReturnFlow(TestReturnExchangeBase):
         action = return_order.action_create_return()
         self.assertEqual(action['res_model'], 'pos.lite.return.wizard')
 
-    def test_return_refund_payment_method(self):
-        """return wizard ใช้ refund_payment_method ที่เลือก ไม่ใช่ hardcode cash"""
-        order = self._create_and_process_order([
-            (self.product_a.id, 2, 100.0),
-        ])
-        wizard = self.env['pos.lite.return.wizard'].create({
-            'order_id': order.id,
-            'refund_payment_method': 'transfer',
-        })
-        wizard._onchange_order_id()
-        wizard.action_confirm()
-
-        return_order = self.env['pos.lite.order'].search([
-            ('return_of_order_id', '=', order.id),
-        ], limit=1)
-        self.assertTrue(return_order)
-        self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
-
-    def test_return_refund_payment_with_journal(self):
-        """return wizard ใช้ refund_journal_id ที่เลือก"""
-        bank_journal = self.env['account.journal'].create({
-            'name': 'Bank Test',
-            'type': 'bank',
-            'code': 'BNKT',
-            'company_id': self.company.id,
-        })
-        order = self._create_and_process_order([
-            (self.product_a.id, 1, 100.0),
-        ])
-        wizard = self.env['pos.lite.return.wizard'].create({
-            'order_id': order.id,
-            'refund_payment_method': 'transfer',
-            'refund_journal_id': bank_journal.id,
-        })
-        wizard._onchange_order_id()
-        wizard.action_confirm()
-
-        return_order = self.env['pos.lite.order'].search([
-            ('return_of_order_id', '=', order.id),
-        ], limit=1)
-        self.assertTrue(return_order)
-        self.assertEqual(return_order.payment_ids[0].journal_id, bank_journal)
-        self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
-
     def test_same_day_return_still_auto_processes(self):
         """Regression: return confirmed same day → auto-post invoice + auto-validate picking (Flow 1)."""
         order = self._create_and_process_order([
