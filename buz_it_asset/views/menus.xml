@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <menuitem id="menu_it_management_dashboard" name="Dashboard" parent="buz_it_helpdesk.menu_it_management" sequence="5" action="action_it_management_dashboard" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_it_asset" name="IT Asset" parent="buz_it_helpdesk.menu_it_management" sequence="20" groups="buz_it_helpdesk.group_it_requester"/>
     <menuitem id="menu_my_assets" name="My Assets" parent="menu_it_asset" sequence="10" groups="buz_it_helpdesk.group_it_requester"/>
     <menuitem id="menu_my_hardware" name="My Hardware" parent="menu_my_assets" sequence="10" action="action_my_hardware" groups="buz_it_helpdesk.group_it_requester"/>

@@ -1,6 +1,6 @@
 {
     'name': 'IT Asset',
-    'version': '17.0.1.9.0',
+    'version': '17.0.1.10.0',
     'category': 'Services/IT',
     'summary': 'Hardware and software asset registry for IT Management',
     'author': 'BUZ',
@@ -15,11 +15,19 @@
         'security/ir.model.access.csv',
         'views/asset_views.xml',
         'views/software_views.xml',
+        'views/dashboard_views.xml',
         'views/menus.xml',
     ],
     'installable': True,
     'application': False,
     'auto_install': False,
+    'assets': {
+        'web.assets_backend': [
+            'buz_it_asset/static/src/js/it_management_dashboard.js',
+            'buz_it_asset/static/src/xml/it_management_dashboard.xml',
+            'buz_it_asset/static/src/scss/it_management_dashboard.scss',
+        ],
+    },
     'pre_init_hook': 'pre_init_hook',
     'post_init_hook': 'post_init_hook',
 }

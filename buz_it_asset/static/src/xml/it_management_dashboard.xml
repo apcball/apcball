@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_it_asset.ITManagementDashboard">
+        <div class="o_it_management_dashboard">
+            <div class="it-dashboard-header">
+                <div><h1>IT Management Overview</h1><p>Helpdesk and asset operations at a glance</p></div>
+                <div class="it-dashboard-toolbar">
+                    <select t-on-change="onPeriodChange" t-att-value="state.period">
+                        <option value="this_month">This Month</option>
+                        <option value="last_30_days">Last 30 Days</option>
+                        <option value="last_90_days">Last 90 Days</option>
+                        <option value="this_year">This Year</option>
+                    </select>
+                    <select t-if="state.data" t-on-change="onCompanyChange" t-att-value="state.company">
+                        <option value="all">All Companies</option>
+                        <option t-foreach="state.data.companies" t-as="company" t-key="company.id" t-att-value="company.id"><t t-esc="company.name"/></option>
+                    </select>
+                    <button class="btn btn-light" t-on-click="refresh"><i class="fa fa-refresh"/> Refresh</button>
+                </div>
+            </div>
+            <div t-if="state.loading" class="it-dashboard-loading"><i class="fa fa-spinner fa-spin"/> Loading dashboard…</div>
+            <div t-elif="state.error" class="alert alert-danger"><t t-esc="state.error"/><button class="btn btn-sm btn-outline-danger ms-2" t-on-click="refresh">Retry</button></div>
+            <t t-elif="state.data">
+                <t t-set="data" t-value="state.data"/>
+                <div class="it-demo-note">LIVE DATA</div>
+                <div class="it-kpi-grid">
+                    <button class="it-kpi-card" t-on-click="() => openDrilldown('open_tickets')"><span class="it-kpi-label">Open Tickets</span><strong><t t-esc="data.kpis.open_tickets"/></strong><span class="it-kpi-icon violet"><i class="fa fa-life-ring"/></span></button>
+                    <button class="it-kpi-card" t-on-click="() => openDrilldown('urgent_tickets')"><span class="it-kpi-label">Urgent Tickets</span><strong class="danger"><t t-esc="data.kpis.urgent_tickets"/></strong><span class="it-kpi-icon red"><i class="fa fa-exclamation-triangle"/></span></button>
+                    <button class="it-kpi-card" t-on-click="() => openDrilldown('assets_assigned')"><span class="it-kpi-label">Assets Assigned</span><strong><t t-esc="data.kpis.assets_assigned"/></strong><span class="it-kpi-icon violet"><i class="fa fa-laptop"/></span></button>
+                    <button class="it-kpi-card" t-on-click="() => openDrilldown('assets_available')"><span class="it-kpi-label">Assets Available</span><strong class="success"><t t-esc="data.kpis.assets_available"/></strong><span class="it-kpi-icon green"><i class="fa fa-check-circle"/></span></button>
+                    <button class="it-kpi-card" t-on-click="() => openDrilldown('assets_repair')"><span class="it-kpi-label">Assets Under Repair</span><strong class="warning"><t t-esc="data.kpis.assets_repair"/></strong><span class="it-kpi-icon amber"><i class="fa fa-wrench"/></span></button>
+                    <button class="it-kpi-card" t-on-click="() => openDrilldown('licenses_expiring')"><span class="it-kpi-label">Licenses Expiring</span><strong class="warning"><t t-esc="data.kpis.licenses_expiring"/></strong><span class="it-kpi-icon amber"><i class="fa fa-key"/></span></button>
+                </div>
+                <section class="it-attention-card">
+                    <div class="section-heading"><h2>Needs Attention</h2><span>Current operational follow-up</span></div>
+                    <div class="attention-grid">
+                        <button t-foreach="data.needs_attention.urgent_tickets" t-as="item" t-key="item.title" class="attention-item urgent" t-on-click="() => openDrilldown(item.target, item.bucket)"><span class="attention-dot"/><span><b><t t-esc="item.title"/></b><small><t t-esc="item.detail"/></small></span><em>Urgent</em></button>
+                        <button t-foreach="data.needs_attention.repairs" t-as="item" t-key="item.title" class="attention-item warning" t-on-click="() => openDrilldown(item.target, item.bucket)"><span class="attention-dot"/><span><b><t t-esc="item.title"/></b><small><t t-esc="item.detail"/></small></span><em>Repair</em></button>
+                        <button t-foreach="data.needs_attention.licenses" t-as="item" t-key="item.title" class="attention-item warning" t-on-click="() => openDrilldown(item.target, item.bucket)"><span class="attention-dot"/><span><b><t t-esc="item.title"/></b><small>Expires <t t-esc="item.detail"/></small></span><em>License</em></button>
+                        <div t-if="!data.needs_attention.urgent_tickets.length and !data.needs_attention.repairs.length and !data.needs_attention.licenses.length" class="attention-empty">No urgent follow-up items.</div>
+                    </div>
+                </section>
+                <div class="it-dashboard-grid">
+                    <section class="it-panel it-dashboard-trend"><div class="section-heading"><h2>Ticket Trend</h2><span><t t-esc="data.meta.date_from"/> – <t t-esc="data.meta.date_to"/></span></div><div class="chart-box large"><canvas t-ref="ticketTrend"/></div></section>
+                    <section class="it-panel"><div class="section-heading"><h2>Ticket Status</h2><span>Click a segment to open</span></div><div class="chart-box"><canvas t-ref="ticketStatus"/></div><div class="legend-list"><span t-foreach="data.ticket_status" t-as="row" t-key="row.label"><i/><t t-esc="row.label"/> <b><t t-esc="row.value"/></b></span></div></section>
+                    <section class="it-panel"><div class="section-heading"><h2>Asset Status</h2><span>Current inventory</span></div><div class="chart-box"><canvas t-ref="assetStatus"/></div><div class="legend-list"><span t-foreach="data.asset_status" t-as="row" t-key="row.label"><i/><t t-esc="row.label"/> <b><t t-esc="row.value"/></b></span></div></section>
+                    <section class="it-panel"><div class="section-heading"><h2>Assets by Category</h2><span>Click a bar to open</span></div><div class="chart-box large"><canvas t-ref="assetCategory"/></div></section>
+                    <section class="it-panel license-panel"><div class="section-heading"><h2>Software License Seats</h2><span>Used versus available</span></div><div class="license-progress"><div><span>Used</span><b><t t-esc="data.license_seats.used"/></b></div><div class="progress"><span t-att-style="'width: ' + (data.license_seats.total ? Math.min(100, data.license_seats.used / data.license_seats.total * 100) : 0) + '%'"/></div><div><span>Available</span><b><t t-esc="data.license_seats.available"/></b></div></div><small t-if="data.license_seats.unlimited_licenses">Includes <t t-esc="data.license_seats.unlimited_licenses"/> unlimited license(s)</small></section>
+                </div>
+                <section class="it-panel recent-panel"><div class="section-heading"><h2>Recent Tickets</h2><span>Latest submitted tickets</span></div><div class="recent-table"><div class="recent-row recent-head"><span>Ticket</span><span>Subject</span><span>Priority</span><span>Assignee</span><span>Status</span></div><button t-foreach="data.recent_tickets" t-as="ticket" t-key="ticket.id" class="recent-row" t-on-click="() => openDrilldown(ticket.target)"><span><b><t t-esc="ticket.name"/></b></span><span><t t-esc="ticket.subject"/></span><span><em t-att-class="'priority priority-' + ticket.priority.toLowerCase()"><t t-esc="ticket.priority"/></em></span><span><t t-esc="ticket.assigned_to"/></span><span><em class="status"><t t-esc="ticket.stage"/></em></span></button><div t-if="!data.recent_tickets.length" class="attention-empty">No submitted tickets found.</div></div></section>
+            </t>
+        </div>
+    </t>
+</templates>

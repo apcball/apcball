@@ -3,3 +3,4 @@ from . import assignment
 from . import company
 from . import maintenance
 from . import software
+from . import dashboard

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_it_management_dashboard" model="ir.actions.client">
+        <field name="name">IT Management Overview</field>
+        <field name="tag">buz_it_management_dashboard</field>
+    </record>
+</odoo>

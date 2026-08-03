@@ -43,6 +43,14 @@ class HelpdeskTicket(models.Model):
         default=lambda self: self.env.user,
         index=True,
     )
+    company_id = fields.Many2one(
+        'res.company',
+        string='Company',
+        required=True,
+        default=lambda self: self.env.company,
+        index=True,
+        readonly=True,
+    )
     department_id = fields.Many2one(
         'hr.department',
         string='Department',
@@ -183,6 +191,7 @@ class HelpdeskTicket(models.Model):
             'assigned_user_id': False,
             'create_ticket_date': False,
             'closed_ticket_date': False,
+            'company_id': self.env.company.id,
             'active': True,
         })
         return super().copy(default)
@@ -199,6 +208,7 @@ class HelpdeskTicket(models.Model):
             vals['team_id'] = False
             vals['assigned_user_id'] = False
             vals['closed_ticket_date'] = False
+            vals['company_id'] = self.env.company.id
             if not is_manager:
                 vals['requester_id'] = self.env.uid
             requester = self.env['res.users'].browse(
@@ -325,6 +335,7 @@ class HelpdeskTicket(models.Model):
         protected = {
             'stage_id', 'assigned_user_id', 'create_ticket_date',
             'closed_ticket_date', 'name', 'department_id', 'requester_id',
+            'company_id',
         }
         if 'stage_id' in vals:
             raise UserError(_('Use the workflow buttons to change Stage.'))

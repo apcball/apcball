@@ -26,3 +26,4 @@ access_installation_manager,Installation manager,model_buz_it_software_installat
 access_maintenance_requester,IT Asset Maintenance requester,model_buz_it_asset_maintenance,buz_it_helpdesk.group_it_requester,1,0,0,0
 access_maintenance_agent,IT Asset Maintenance support agent,model_buz_it_asset_maintenance,buz_it_helpdesk.group_it_support_agent,1,1,1,1
 access_maintenance_manager,IT Asset Maintenance manager,model_buz_it_asset_maintenance,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_it_management_dashboard,IT Management dashboard,model_buz_it_management_dashboard,buz_it_helpdesk.group_it_support_agent,1,0,0,0
