@@ -1,12 +1,12 @@
 """Per-location configuration tests.
 
-Validates the new contract: one `pos.lite.config` per (company, stock.location),
-driven by `stock.location`. Sessions inherit the location and the single-open
-invariant is enforced per location.
+Validates the contract: `pos.lite.config` is driven by `stock.location`, and
+`pos.lite.session` inherits its location from its config. Multiple configs and
+concurrently-open sessions may share the same (company, location).
 """
 
 from odoo.tests import common, tagged
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError
 
 
 @tagged('-at_install', 'post_install')
@@ -70,11 +70,13 @@ class TestLocationConfig(common.TransactionCase):
         with self.assertRaises(ValidationError):
             self.env['pos.lite.config'].create(vals)
 
-    def test_two_configs_same_location_rejected(self):
-        """Two configs on the same (company, location) collide."""
-        self.env['pos.lite.config'].create(self._config_vals(self.loc_a))
-        with self.assertRaises(ValidationError):
-            self.env['pos.lite.config'].create(self._config_vals(self.loc_a))
+    def test_two_configs_same_location_allowed(self):
+        """Two configs may share the same (company, location)."""
+        cfg1 = self.env['pos.lite.config'].create(self._config_vals(self.loc_a))
+        cfg2 = self.env['pos.lite.config'].create(self._config_vals(self.loc_a))
+        self.assertNotEqual(cfg1.id, cfg2.id)
+        self.assertEqual(cfg1.location_id, self.loc_a)
+        self.assertEqual(cfg2.location_id, self.loc_a)
 
     def test_two_configs_different_locations_ok(self):
         """Distinct locations each get their own config."""
@@ -108,18 +110,19 @@ class TestLocationConfig(common.TransactionCase):
         })
         self.assertEqual(session.location_id, self.loc_a)
 
-    def test_two_sessions_same_location_blocked(self):
-        """Two open sessions on the same location are not allowed."""
+    def test_two_sessions_same_location_allowed(self):
+        """Two open sessions may share the same location (same config)."""
         cfg = self.env['pos.lite.config'].create(self._config_vals(self.loc_a))
-        self.env['pos.lite.session'].create({
+        sess1 = self.env['pos.lite.session'].create({
             'config_id': cfg.id,
             'company_id': self.company.id,
         })
-        with self.assertRaises(UserError):
-            self.env['pos.lite.session'].create({
-                'config_id': cfg.id,
-                'company_id': self.company.id,
-            })
+        sess2 = self.env['pos.lite.session'].create({
+            'config_id': cfg.id,
+            'company_id': self.company.id,
+        })
+        self.assertEqual(sess1.state, 'opened')
+        self.assertEqual(sess2.state, 'opened')
 
     def test_two_sessions_different_locations_allowed(self):
         """Two open sessions on different locations run in parallel."""
