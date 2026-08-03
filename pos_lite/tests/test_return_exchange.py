@@ -520,3 +520,39 @@ class TestExchangeFlow(TestReturnExchangeBase):
         self.assertTrue(exchange_order)
         self.assertEqual(return_order.state, 'done')
         self.assertEqual(exchange_order.state, 'done')
+
+
+@tagged('-at_install', 'post_install')
+class TestDocumentDateShift(TestReturnExchangeBase):
+    """Invoice date and stock validation date always = order date + 1 day."""
+
+    def test_invoice_and_picking_dated_one_day_after_order(self):
+        order = self._create_and_process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        expected_date = order.date_order.date() + datetime.timedelta(days=1)
+        self.assertEqual(order.invoice_id.invoice_date, expected_date)
+        self.assertEqual(order.picking_id.date_done.date(), expected_date)
+        self.assertEqual(order.picking_id.scheduled_date.date(), expected_date)
+
+    def test_document_date_follows_backdated_order_date(self):
+        """+1 day is relative to date_order, not to real-world today."""
+        order = self.env['pos.lite.order'].create({
+            'company_id': self.company.id,
+            'channel': 'phone',
+            'partner_id': self.partner.id,
+            'warehouse_id': self.warehouse.id,
+            'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'employee_id': self.employee.id,
+            'line_ids': [(0, 0, {
+                'product_id': self.product_storable.id,
+                'qty': 1,
+                'price_unit': 200.0,
+            })],
+        })
+        order.write({'date_order': order.date_order - datetime.timedelta(days=5)})
+        order.action_quick_pay_and_process()
+        expected_date = order.date_order.date() + datetime.timedelta(days=1)
+        self.assertEqual(order.invoice_id.invoice_date, expected_date)
+        self.assertEqual(order.picking_id.date_done.date(), expected_date)

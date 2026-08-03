@@ -1,5 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from datetime import timedelta
 import base64
 import io
 import logging
@@ -458,6 +459,11 @@ class PosLiteOrder(models.Model):
 
     # ─── Invoice / Picking preparation ─────────────────────────
 
+    def _get_document_date(self):
+        """Invoice/stock document date: always order date + 1 day."""
+        self.ensure_one()
+        return self.date_order.date() + timedelta(days=1)
+
     def _prepare_invoice_vals(self):
         self.ensure_one()
         partner = self._get_or_create_customer_partner()
@@ -490,6 +496,7 @@ class PosLiteOrder(models.Model):
             'partner_shipping_id': (self.partner_shipping_id or invoice_partner).id,
             'invoice_origin': self.name,
             'invoice_payment_term_id': False,
+            'invoice_date': self._get_document_date(),
             'journal_id': journal.id,
             'trade_channel': self.trade_channel,
             'invoice_line_ids': line_vals,
@@ -571,6 +578,7 @@ class PosLiteOrder(models.Model):
             'company_id': self.company_id.id,
             'location_id': customer_location.id if self.is_return else stock_location.id,
             'location_dest_id': stock_location.id if self.is_return else customer_location.id,
+            'scheduled_date': self._get_document_date(),
             'move_ids_without_package': moves,
         }
 
@@ -606,6 +614,12 @@ class PosLiteOrder(models.Model):
         elif isinstance(result, dict) and result.get('res_model') == 'stock.backorder.confirmation':
             wizard = self.env['stock.backorder.confirmation'].with_context(result.get('context', {})).create({})
             wizard.process_cancel_backorder()
+        # Stock is validated now, but the transaction/valuation date must reflect
+        # order date + 1 day, not "now" — backdate picking + moves post-validation.
+        doc_date = fields.Datetime.to_datetime(self._get_document_date())
+        picking.write({'date_done': doc_date})
+        picking.move_ids.write({'date': doc_date})
+        picking.move_ids.move_line_ids.write({'date': doc_date})
 
     # ─── Actions: Flow ──────────────────────────────────────────
 
