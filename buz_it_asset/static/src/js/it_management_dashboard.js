@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onMounted, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { loadJS } from "@web/core/assets";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -34,6 +34,7 @@ export class ITManagementDashboard extends Component {
             await this.loadData();
         });
         onMounted(() => this.renderCharts());
+        onPatched(() => this.renderCharts());
         onWillUnmount(() => this.destroyCharts());
     }
 
@@ -60,11 +61,13 @@ export class ITManagementDashboard extends Component {
             this.state.error = error.message || "Unable to load dashboard data.";
         } finally {
             this.state.loading = false;
-            setTimeout(() => this.renderCharts(), 0);
         }
     }
 
     async refresh() {
+        if (this.state.loading) {
+            return;
+        }
         await this.loadData();
     }
 
