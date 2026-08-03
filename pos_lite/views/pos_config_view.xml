@@ -54,6 +54,7 @@
                         <group>
                             <field name="out_picking_type_id"/>
                             <field name="return_picking_type_id"/>
+                            <field name="late_return_picking_type_id"/>
                         </group>
                     </group>
                 </sheet>

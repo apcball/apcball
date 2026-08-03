@@ -56,16 +56,32 @@ class PosLiteConfig(models.Model):
     )
     out_picking_type_id = fields.Many2one(
         'stock.picking.type', string='Delivery Operation Type',
-        domain="[('code', '=', 'outgoing'), ('company_id', '=', company_id)]",
+        domain="[('code', '=', 'outgoing'), ('company_id', '=', company_id), "
+               "('warehouse_id', '=', warehouse_id)]",
         check_company=True,
-        help='Stock operation type used for POS delivery orders. '
-             'Leave empty to use the default outgoing type from the warehouse.',
+        help='Stock operation type used for POS delivery orders. Must belong to this '
+             'config\'s warehouse. Leave empty to use the default outgoing type from '
+             'the warehouse.',
     )
     return_picking_type_id = fields.Many2one(
         'stock.picking.type', string='Return Operation Type',
+        domain="[('code', '=', 'incoming'), ('company_id', '=', company_id), "
+               "('warehouse_id', '=', warehouse_id)]",
+        check_company=True,
+        help='Stock operation type used for POS return orders. Must belong to this '
+             'config\'s warehouse. Leave empty to use the default incoming type from '
+             'the warehouse.',
+    )
+    late_return_picking_type_id = fields.Many2one(
+        'stock.picking.type', string='Late Return Receipt Operation Type',
         domain="[('code', '=', 'incoming'), ('company_id', '=', company_id)]",
         check_company=True,
-        help='Stock operation type used for POS return orders. '
+        help='Stock operation type used when a return is processed more than one day '
+             'after the sale: goods are received as a plain receipt from the customer '
+             'instead of a same-day return, and left unvalidated for manual completion. '
+             'May belong to a different warehouse than this config (e.g. a dedicated '
+             'quarantine/inspection warehouse) — the receiving location follows this '
+             'operation type\'s own default destination, not the config\'s stock location. '
              'Leave empty to use the default incoming type from the warehouse.',
     )
     default_trade_channel = fields.Selection(

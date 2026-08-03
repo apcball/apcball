@@ -142,6 +142,12 @@ class PosLiteOrder(models.Model):
     invoice_id = fields.Many2one('account.move', readonly=True, copy=False)
     picking_id = fields.Many2one('stock.picking', readonly=True, copy=False)
     is_return = fields.Boolean(default=False, copy=False, tracking=True)
+    is_late_return = fields.Boolean(
+        default=False, copy=False, tracking=True,
+        help='Return (or its linked exchange) confirmed on a different calendar day '
+             'than the original sale: credit note stays unposted and the receipt '
+             'stays unvalidated for manual completion.',
+    )
     return_status = fields.Char(compute='_compute_return_exchange_status', string='Return Status')
     return_of_order_id = fields.Many2one('pos.lite.order', readonly=True, copy=False, tracking=True, index=True)
     return_order_ids = fields.One2many('pos.lite.order', 'return_of_order_id', string='Return Orders')
@@ -478,11 +484,18 @@ class PosLiteOrder(models.Model):
             else self.env['pos.lite.config'].get_default_config(self.company_id)
         )
         if self.is_return:
-            picking_type = (
-                config.return_picking_type_id
-                if config and config.return_picking_type_id
-                else self.warehouse_id.in_type_id
-            )
+            if self.is_late_return:
+                picking_type = (
+                    config.late_return_picking_type_id
+                    if config and config.late_return_picking_type_id
+                    else self.warehouse_id.in_type_id
+                )
+            else:
+                picking_type = (
+                    config.return_picking_type_id
+                    if config and config.return_picking_type_id
+                    else self.warehouse_id.in_type_id
+                )
             if not picking_type:
                 raise UserError(_('No incoming picking type for warehouse %s.') % self.warehouse_id.display_name)
         else:
@@ -500,7 +513,15 @@ class PosLiteOrder(models.Model):
             raise UserError(_('No customer location found for stock delivery.'))
         # Source/destination stock location follows the per-location config when
         # set, otherwise the warehouse stock location (legacy behaviour).
-        stock_location = self.location_id or self.warehouse_id.lot_stock_id
+        # Late returns are the exception: the operation type may deliberately point
+        # to a different warehouse (e.g. an NC/quarantine warehouse for inspection
+        # before goods rejoin sellable stock), so the receiving location follows
+        # that operation type's own default destination instead of the config's
+        # stock location — otherwise Odoo flags the picking as location-mismatched.
+        if self.is_return and self.is_late_return and picking_type.default_location_dest_id:
+            stock_location = picking_type.default_location_dest_id
+        else:
+            stock_location = self.location_id or self.warehouse_id.lot_stock_id
         moves = []
         for line in self.line_ids.filtered(lambda l: l.product_id.type != 'service' and l.qty > 0):
             location_id = customer_location.id if self.is_return else stock_location.id
@@ -629,7 +650,8 @@ class PosLiteOrder(models.Model):
         # Create invoice
         if not self.invoice_id:
             invoice = self.env['account.move'].sudo().create(order_su._prepare_invoice_vals())
-            invoice.action_post()
+            if not self.is_late_return:
+                invoice.action_post()
             self.invoice_id = invoice.id
         # Create picking
         if not self.picking_id:
@@ -637,7 +659,17 @@ class PosLiteOrder(models.Model):
             if picking_vals.get('move_ids_without_package'):
                 picking = self.env['stock.picking'].sudo().create(picking_vals)
                 self.picking_id = picking.id
-                order_su._process_stock_picking(picking)
+                if self.is_late_return:
+                    # Late return/exchange: reserve stock but leave the transfer open
+                    # for manual completion — no auto-validate, no lot/backorder wizards.
+                    picking.action_confirm()
+                    picking.action_assign()
+                else:
+                    order_su._process_stock_picking(picking)
+        if self.is_late_return:
+            # Credit note stays unposted, picking stays unvalidated — order stays
+            # 'draft' so staff can review and finish both documents manually.
+            return
         # Invoice is posted only — no account.payment creation, no reconciliation.
         # pos.lite.payment rows stay as internal records; accounting settles separately.
         self.state = 'paid'

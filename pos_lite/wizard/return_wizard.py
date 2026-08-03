@@ -146,6 +146,10 @@ class PosLiteReturnWizard(models.TransientModel):
                     raise UserError(_('Return quantity for %s cannot exceed the available quantity.') % line.description)
 
         order = self.order_id
+        # Same calendar day (local time) as the original sale → auto-post/validate.
+        # Any other day → late flow: draft credit note + unvalidated receipt.
+        order_local_date = fields.Datetime.context_timestamp(self, order.date_order).date()
+        is_late_return = order_local_date != fields.Date.context_today(self)
         line_commands = [fields.Command.create({
             'returned_from_line_id': l.order_line_id.id,
             'product_id': l.product_id.id or l.order_line_id.product_id.id,
@@ -179,6 +183,7 @@ class PosLiteReturnWizard(models.TransientModel):
             'pricelist_id': order.pricelist_id.id,
             'note': return_note,
             'is_return': True,
+            'is_late_return': is_late_return,
             'return_of_order_id': order.id,
             'return_reason': self.return_reason,
             'line_ids': line_commands,
@@ -195,6 +200,12 @@ class PosLiteReturnWizard(models.TransientModel):
             'note': self.return_reason or _('Customer return refund'),
         })
         return_order.action_process_order()
+        if is_late_return:
+            return_order.message_post(body=_(
+                'Late return (processed on a different day than the original sale): '
+                'the credit note was left unposted and the receipt was left unvalidated '
+                'for manual completion.'
+            ))
 
         # 2. Exchange: create new sale order
         if self.is_exchange and self.exchange_line_ids:
@@ -222,6 +233,7 @@ class PosLiteReturnWizard(models.TransientModel):
                 'pricelist_id': order.pricelist_id.id,
                 'note': _('Exchange for order %s (return: %s)') % (order.name, return_order.name),
                 'is_exchange': True,
+                'is_late_return': is_late_return,
                 'exchange_of_order_id': order.id,
                 'exchange_return_order_id': return_order.id,
                 'line_ids': exchange_line_commands,

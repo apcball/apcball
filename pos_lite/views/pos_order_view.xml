@@ -136,6 +136,14 @@
                         <h1><field name="name" readonly="1"/></h1>
                     </div>
 
+                    <field name="is_late_return" invisible="1"/>
+                    <div class="alert alert-warning" role="alert" colspan="2"
+                         invisible="not is_late_return or state != 'draft'">
+                        <span>Late return/exchange: the credit note was left unposted and the
+                        receipt was left unvalidated. Complete both manually from the
+                        Invoice and Picking buttons above.</span>
+                    </div>
+
                     <!-- ═══ Main Info: 3 columns ═══ -->
                     <group col="3" colspan="2">
                         <!-- Col 1: Customer -->

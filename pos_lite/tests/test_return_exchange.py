@@ -1,3 +1,5 @@
+import datetime
+
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError
 
@@ -31,6 +33,14 @@ class TestReturnExchangeBase(common.TransactionCase):
             'categ_id': cls.category.id,
             'sale_ok': True,
             'list_price': 150.0,
+            'taxes_id': [(5, 0, 0)],  # no tax
+        })
+        cls.product_storable = cls.env['product.product'].create({
+            'name': 'Return Product Storable',
+            'type': 'product',
+            'categ_id': cls.category.id,
+            'sale_ok': True,
+            'list_price': 200.0,
             'taxes_id': [(5, 0, 0)],  # no tax
         })
 
@@ -100,6 +110,13 @@ class TestReturnExchangeBase(common.TransactionCase):
             'config_id': cls.config.id,
             'employee_id': cls.employee.id,
             'company_id': cls.company.id,
+        })
+
+        # Stock for the storable product — pickings source from the config's location.
+        cls.env['stock.quant'].create({
+            'product_id': cls.product_storable.id,
+            'location_id': cls.stock_location.id,
+            'quantity': 50.0,
         })
 
     def _create_and_process_order(self, line_data=None):
@@ -264,6 +281,87 @@ class TestReturnFlow(TestReturnExchangeBase):
         self.assertTrue(return_order)
         self.assertEqual(return_order.payment_ids[0].journal_id, bank_journal)
         self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
+
+    def test_same_day_return_still_auto_processes(self):
+        """Regression: return confirmed same day → auto-post invoice + auto-validate picking (Flow 1)."""
+        order = self._create_and_process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        wizard = self.env['pos.lite.return.wizard'].create({'order_id': order.id})
+        wizard._onchange_order_id()
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertFalse(return_order.is_late_return)
+        self.assertEqual(return_order.state, 'done')
+        self.assertEqual(return_order.invoice_id.state, 'posted')
+        self.assertEqual(return_order.picking_id.state, 'done')
+
+    def test_late_return_leaves_documents_draft(self):
+        """Return confirmed on a later day → draft credit note + unvalidated receipt (Flow 2)."""
+        order = self._create_and_process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        order.write({'date_order': order.date_order - datetime.timedelta(days=2)})
+
+        wizard = self.env['pos.lite.return.wizard'].create({'order_id': order.id})
+        wizard._onchange_order_id()
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertTrue(return_order.is_late_return)
+        self.assertEqual(return_order.state, 'draft')
+        self.assertTrue(return_order.invoice_id)
+        self.assertEqual(return_order.invoice_id.state, 'draft')
+        self.assertTrue(return_order.picking_id)
+        self.assertIn(return_order.picking_id.state, ('assigned', 'confirmed'))
+
+    def test_late_return_follows_configured_operation_type_location(self):
+        """Late return receiving location follows the configured operation type's own
+        default destination (e.g. a quarantine/inspection location), not the config's
+        regular stock location — this is what lets Late Return Receipt Operation Type
+        deliberately point elsewhere for inspection before goods rejoin sellable stock."""
+        quarantine_location = self.env['stock.location'].create({
+            'name': 'Quarantine - Late Return Test',
+            'location_id': self.warehouse.view_location_id.id,
+            'usage': 'internal',
+            'company_id': self.company.id,
+        })
+        quarantine_sequence = self.env['ir.sequence'].create({
+            'name': 'Quarantine Receipts Test',
+            'prefix': 'QRT/IN/',
+            'padding': 5,
+            'company_id': self.company.id,
+        })
+        quarantine_picking_type = self.env['stock.picking.type'].create({
+            'name': 'Quarantine Receipts Test',
+            'code': 'incoming',
+            'sequence_id': quarantine_sequence.id,
+            'warehouse_id': self.warehouse.id,
+            'company_id': self.company.id,
+            'default_location_dest_id': quarantine_location.id,
+        })
+        self.config.late_return_picking_type_id = quarantine_picking_type.id
+
+        order = self._create_and_process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        order.write({'date_order': order.date_order - datetime.timedelta(days=2)})
+
+        wizard = self.env['pos.lite.return.wizard'].create({'order_id': order.id})
+        wizard._onchange_order_id()
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertEqual(return_order.picking_id.picking_type_id, quarantine_picking_type)
+        self.assertEqual(return_order.picking_id.location_dest_id, quarantine_location)
+        self.assertNotEqual(quarantine_location, self.stock_location)
 
 
 @tagged('-at_install', 'post_install')
