@@ -693,14 +693,6 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                                 </button>
                                 <span class="pos-page-spacer"></span>
-                                <span class="pos-perpage">แสดง
-                                    <select id="pgPerPage" onchange="setPerPage(this.value)">
-                                        <option value="12" selected="selected">12</option>
-                                        <option value="24">24</option>
-                                        <option value="48">48</option>
-                                        <option value="96">96</option>
-                                    </select> ต่อหน้า
-                                </span>
                                 <div class="pos-view-toggle">
                                     <button type="button" id="viewGridBtn" class="active" onclick="setViewMode('grid')" title="มุมมองตาราง">
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -1000,7 +992,7 @@ async function jsonRpc(url, params) {
 const state = {
     products: [], allProducts: [], categories: [],
     selectedCategoryId: 0,
-    page: 1, perPage: 12, viewMode: 'grid',
+    page: 1, perPage: 10, viewMode: 'grid',
     custResults: [],
     orderLines: [],
     employees: [], selectedEmployeeId: null, selectedEmployeeName: '',
@@ -1577,12 +1569,6 @@ function gotoPage(n) {
     state.page = n;
     renderProducts();
     document.getElementById('posProducts').scrollTop = 0;
-}
-
-function setPerPage(v) {
-    state.perPage = parseInt(v) || 12;
-    state.page = 1;
-    renderProducts();
 }
 
 function setViewMode(mode) {

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import http, fields
 from odoo.http import request
 from odoo.exceptions import UserError, ValidationError, MissingError, AccessError
@@ -274,6 +276,27 @@ class PosLiteController(http.Controller):
                 ['name', 'type', 'list_price', 'default_code', 'categ_id', 'barcode',
                  'taxes_id']
             )
+            # Sort best-sellers first: rank by qty sold (sale.order.line,
+            # confirmed orders) in the last 90 days, company-wide. Sort is
+            # stable, so non-sellers keep their prior relative order after
+            # the best-sellers.
+            cutoff = fields.Datetime.now() - timedelta(days=90)
+            sales_data = request.env['sale.order.line'].sudo().read_group(
+                domain=[
+                    ('product_id', 'in', [p['id'] for p in products]),
+                    ('order_id.state', 'in', ['sale', 'done']),
+                    ('order_id.date_order', '>=', cutoff),
+                    ('order_id.company_id', '=', request.env.company.id),
+                ],
+                fields=['product_id', 'product_uom_qty:sum'],
+                groupby=['product_id'],
+                lazy=False,
+            )
+            sales_qty_map = {
+                s['product_id'][0]: s['product_uom_qty']
+                for s in sales_data
+            }
+            products.sort(key=lambda p: sales_qty_map.get(p['id'], 0.0), reverse=True)
             # Pre-fetch tax rates for all products
             tax_ids_set = set()
             for p in products:
