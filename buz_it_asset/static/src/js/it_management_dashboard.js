@@ -12,6 +12,7 @@ export class ITManagementDashboard extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.openDrilldown = this.openDrilldown.bind(this);
         this.trendRef = useRef("ticketTrend");
         this.ticketStatusRef = useRef("ticketStatus");
         this.assetStatusRef = useRef("assetStatus");
