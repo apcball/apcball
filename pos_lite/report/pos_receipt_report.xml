@@ -452,11 +452,15 @@
                                              <br/>
                                              บริษัท โมเก้น จำกัด
                                              <br/>
-                                             ___________________________
-                                             <br/> 
-                                             ผู้มีอำนาจลงนาม
-                                             <br/>
-                                             AUTHORIZED
+                                             <t t-set="pos_sig" t-value="pos_signature_map.get(doc.id, False)"/>
+                                             <t t-if="pos_sig">
+                                                 <img t-att-src="image_data_uri(pos_sig)" style="height: 40px; max-width: 140px; display: block; margin: 0 auto;"/>
+                                             </t>
+                                             <div style="margin-top: -15px;">
+                                                 ผู้มีอำนาจลงนาม
+                                                 <br/>
+                                                 AUTHORIZED
+                                             </div>
                                          </div>
                                      </div>
 

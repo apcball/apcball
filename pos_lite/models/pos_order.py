@@ -1,10 +1,31 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+import base64
+import io
 import logging
 
 _logger = logging.getLogger(__name__)
 
 WALK_IN_CUSTOMER_NAME = 'Walk-in Customer'
+
+
+def _resize_signature(image_b64, max_width=200, max_height=100):
+    """Resize a base64-encoded image to fit within max_width x max_height.
+    Returns resized base64 string, or original if resize fails."""
+    if not image_b64:
+        return image_b64
+    try:
+        from PIL import Image
+        image_data = base64.b64decode(image_b64)
+        img = Image.open(io.BytesIO(image_data))
+        img.thumbnail((max_width, max_height), Image.LANCZOS)
+        output = io.BytesIO()
+        img_format = img.format or 'PNG'
+        img.save(output, format=img_format)
+        return base64.b64encode(output.getvalue()).decode('utf-8')
+    except Exception as e:
+        _logger.warning("Could not resize signature image: %s", e)
+        return image_b64
 
 # ─── Trade Channel Mapping ────────────────────────────────────
 # Auto-maps POS Lite channel → marketplace_settlement.trade_channel
@@ -116,6 +137,17 @@ class PosLiteOrder(models.Model):
         tracking=True, check_company=True,
         domain="[('company_id', '=', company_id)]",
     )
+    authorized_signature = fields.Binary(
+        string='Authorized Signature',
+        compute='_compute_authorized_signature',
+    )
+
+    @api.depends('employee_id.signature_image')
+    def _compute_authorized_signature(self):
+        for order in self:
+            order.authorized_signature = _resize_signature(
+                order.employee_id.signature_image
+            ) if order.employee_id else False
     line_ids = fields.One2many('pos.lite.order.line', 'order_id', string='Order Lines')
     payment_ids = fields.One2many('pos.lite.payment', 'order_id', string='Payments')
     amount_untaxed = fields.Monetary(compute='_compute_amounts', store=True)
