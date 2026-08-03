@@ -1238,7 +1238,7 @@ async function jsonRpc(url, params) {
 const state = {
     products: [], allProducts: [], categories: [],
     selectedCategoryId: 0,
-    page: 1, perPage: 10, viewMode: 'grid',
+    page: 1, perPage: 12, viewMode: 'grid',
     custResults: [],
     orderLines: [],
     employees: [], selectedEmployeeId: null, selectedEmployeeName: '',
