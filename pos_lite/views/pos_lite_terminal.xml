@@ -1503,7 +1503,7 @@ function renderProducts() {
         const inCart = cartQty[p.id] || 0;
         if (listMode) {
             const imgHtml = p.image_128
-                ? '<img class="pr-img" loading="lazy" src="data:image/png;base64,' + p.image_128 + '" alt=""/>'
+                ? '<img class="pr-img" loading="lazy" src="' + p.image_128 + '" alt=""/>'
                 : '<div class="pr-img-placeholder">📦</div>';
             html += '<div class="pos-product-row' + (outOfStock ? ' out-of-stock' : '') + '"'
                 + (outOfStock ? '' : ' data-prod-id="' + p.id + '"') + '>'
@@ -1516,7 +1516,7 @@ function renderProducts() {
                 + '<span class="pr-price">' + fmt(p.list_price) + '</span></div>';
         } else {
             const imageHtml = p.image_256
-                ? '<img class="pos-product-img" loading="lazy" src="data:image/png;base64,' + p.image_256 + '" alt=""/>'
+                ? '<img class="pos-product-img" loading="lazy" src="' + p.image_256 + '" alt=""/>'
                 : '<div class="pos-product-img-placeholder">📦</div>';
             const cartBadge = inCart ? '<span class="pos-cart-count-badge">' + inCart + '</span>' : '';
             html += '<div class="pos-product-card' + (outOfStock ? ' out-of-stock' : '') + '"'
@@ -1700,7 +1700,7 @@ function renderOrder() {
     let html = '';
     state.orderLines.forEach(function (l) {
         const imgHtml = l.image
-            ? '<img class="pos-order-line-img" src="data:image/png;base64,' + l.image + '"/>'
+            ? '<img class="pos-order-line-img" src="' + l.image + '"/>'
             : '<div class="pos-order-line-img-placeholder">📦</div>';
         html += '<div class="pos-order-line">' + imgHtml
             + '<div class="pos-order-line-info">'

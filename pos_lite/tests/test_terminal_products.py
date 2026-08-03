@@ -133,3 +133,69 @@ class TestTerminalProducts(common.TransactionCase):
 
         self.assertEqual(qty_map[partially_reserved.id], 6.0)
         self.assertEqual(qty_map[fully_reserved.id], 0.0)
+
+    def test_terminal_excludes_zero_stock_products(self):
+        """Zero (or fully-reserved) stock products are hidden from the
+        terminal; service products stay visible regardless of stock."""
+        warehouse = self.env['stock.warehouse'].search([
+            ('company_id', '=', self.env.company.id),
+        ], limit=1)
+        location = self.env['stock.location'].create({
+            'name': 'POS Zero Stock Loc',
+            'location_id': warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': self.env.company.id,
+        })
+        in_stock = self.env['product.product'].create({
+            'name': 'Terminal In Stock',
+            'type': 'product',
+            'sale_ok': True,
+            'can_be_pos': True,
+        })
+        out_of_stock = self.env['product.product'].create({
+            'name': 'Terminal Fully Reserved Out',
+            'type': 'product',
+            'sale_ok': True,
+            'can_be_pos': True,
+        })
+        service = self.env['product.product'].create({
+            'name': 'Terminal Service No Stock',
+            'type': 'service',
+            'sale_ok': True,
+            'can_be_pos': True,
+        })
+        self.env['stock.quant'].create({
+            'product_id': in_stock.id,
+            'location_id': location.id,
+            'quantity': 5.0,
+            'reserved_quantity': 0.0,
+        })
+        self.env['stock.quant'].create({
+            'product_id': out_of_stock.id,
+            'location_id': location.id,
+            'quantity': 5.0,
+            'reserved_quantity': 5.0,
+        })
+
+        # Same read_group + "only qty > 0 is sellable" filter as the
+        # /pos_lite/api/products controller.
+        quant_data = self.env['stock.quant'].read_group(
+            domain=[('location_id', '=', location.id)],
+            fields=['product_id', 'quantity:sum', 'reserved_quantity:sum'],
+            groupby=['product_id'],
+            lazy=False,
+        )
+        product_ids_in_stock = []
+        for q in quant_data:
+            pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
+            qty = max((q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0), 0.0)
+            if qty > 0:
+                product_ids_in_stock.append(pid)
+
+        products = self.env['product.product'].search(
+            _terminal_product_domain(product_ids_in_stock),
+        )
+
+        self.assertIn(in_stock, products)
+        self.assertIn(service, products)
+        self.assertNotIn(out_of_stock, products)

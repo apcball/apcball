@@ -262,13 +262,17 @@ class PosLiteController(http.Controller):
                     # on-hand minus reserved, never negative. Reserved stock is
                     # promised to delivery orders and must not be sellable here.
                     qty = max((q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0), 0.0)
-                    product_ids_in_stock.append(pid)
                     qty_map[pid] = qty
+                    # Only sellable if there's free stock to sell — zero (or
+                    # fully-reserved) stockable products are hidden from the
+                    # terminal entirely, not just greyed out.
+                    if qty > 0:
+                        product_ids_in_stock.append(pid)
 
             products = request.env['product.product'].search_read(
                 _terminal_product_domain(product_ids_in_stock),
                 ['name', 'type', 'list_price', 'default_code', 'categ_id', 'barcode',
-                 'taxes_id', 'image_128', 'image_256']
+                 'taxes_id']
             )
             # Pre-fetch tax rates for all products
             tax_ids_set = set()
@@ -286,10 +290,11 @@ class PosLiteController(http.Controller):
                 for tid in (p.get('taxes_id') or []):
                     tax_rate += tax_rate_map.get(tid, 0.0)
                 p['tax_rate'] = tax_rate
-                if p.get('image_128'):
-                    p['image_128'] = p['image_128'].decode() if isinstance(p['image_128'], bytes) else p['image_128']
-                if p.get('image_256'):
-                    p['image_256'] = p['image_256'].decode() if isinstance(p['image_256'], bytes) else p['image_256']
+                # Serve images by URL (browser fetches/caches in parallel)
+                # instead of embedding base64 bytes in the JSON payload —
+                # keeps the response small for large catalogs.
+                p['image_128'] = '/web/image/product.product/%d/image_128' % p['id']
+                p['image_256'] = '/web/image/product.product/%d/image_256' % p['id']
 
             return {'success': True, 'products': products}
         except _HANDLED_EXCEPTIONS as e:
