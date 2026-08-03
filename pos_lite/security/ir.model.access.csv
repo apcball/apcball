@@ -10,3 +10,4 @@ access_pos_lite_return_wizard_user,pos_lite.return.wizard user,model_pos_lite_re
 access_pos_lite_return_wizard_line_user,pos_lite.return.wizard line user,model_pos_lite_return_wizard_line,pos_lite.group_pos_lite_user,1,1,1,0
 access_pos_lite_return_wizard_exchange_line_user,pos_lite.return.wizard.exchange.line user,model_pos_lite_return_wizard_exchange_line,pos_lite.group_pos_lite_user,1,1,1,0
 access_pos_lite_start_sale_wizard_user,pos_lite.start.sale.wizard user,model_pos_lite_start_sale_wizard,pos_lite.group_pos_lite_user,1,1,1,0
+access_pos_lite_sale_retention_receivable_read,sale.retention.receivable pos_lite read,sale_retention_receivable.model_sale_retention_receivable,pos_lite.group_pos_lite_user,1,0,0,0

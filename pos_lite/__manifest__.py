@@ -34,8 +34,10 @@ Features:
         'sale_management',
         'hr',
         'buz_custom_invoice',
+        'account_invoice_fixed_discount',
         'buz_sale_pricelist_standard_cost',
         'marketplace_settlement',
+        'sale_retention_receivable',
     ],
     'data': [
         'security/security.xml',

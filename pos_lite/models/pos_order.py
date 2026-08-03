@@ -438,17 +438,15 @@ class PosLiteOrder(models.Model):
         line_vals = []
         for line in self.line_ids:
             taxes = line.product_id.taxes_id.filtered(lambda t: t.company_id in (False, self.company_id))
-            inv_price_unit = line.price_unit
-            inv_discount = line.discount
-            if line.discount_type == 'fixed':
-                inv_price_unit = max(line.price_unit - line.discount, 0.0)
-                inv_discount = 0.0
+            inv_discount = line.discount if line.discount_type == 'percent' else 0.0
+            inv_discount_fixed = line.discount if line.discount_type == 'fixed' else 0.0
             line_vals.append(fields.Command.create({
                 'product_id': line.product_id.id,
                 'name': line.description or line.product_id.display_name,
                 'quantity': line.qty,
-                'price_unit': inv_price_unit,
+                'price_unit': line.price_unit,
                 'discount': inv_discount,
+                'discount_fixed': inv_discount_fixed,
                 'tax_ids': [fields.Command.set(taxes.ids)],
                 'product_uom_id': line.product_id.uom_id.id,
             }))
