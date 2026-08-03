@@ -26,19 +26,21 @@ class ITAssetAssignment(models.Model):
         readonly=True,
     )
     returned_by_id = fields.Many2one('res.users', readonly=True)
-    location_id = fields.Many2one('buz.it.asset.location', check_company=True)
+    location_id = fields.Many2one(
+        'buz.it.asset.location', check_company=True,
+    )
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
         readonly=True, index=True,
     )
     notes = fields.Text()
 
-    @api.constrains('employee_id', 'department_id', 'company_id')
+    @api.constrains('employee_id', 'department_id', 'location_id', 'company_id')
     def _check_assignment_target(self):
         for record in self:
-            if bool(record.employee_id) == bool(record.department_id):
+            if not record.employee_id or not record.department_id or not record.location_id:
                 raise ValidationError(_(
-                    'An assignment must have either an employee or a department.'
+                    'An assignment must have an employee, a department, and a location.'
                 ))
             target = record.employee_id or record.department_id
             if target.company_id and target.company_id != record.company_id:

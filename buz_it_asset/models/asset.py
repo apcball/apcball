@@ -260,14 +260,13 @@ class ITAsset(models.Model):
                 raise ValidationError(_('Select a hardware type.'))
             if record.type_id and not record.type_id.active:
                 raise ValidationError(_('Hardware must use an active hardware type.'))
-            if record.assigned_employee_id and record.responsible_department_id:
-                raise ValidationError(_(
-                    'Select either a current holder or a responsible department, not both.'
-                ))
             if record.state == 'assigned' and not (
-                    record.assigned_employee_id or record.responsible_department_id):
+                    record.assigned_employee_id
+                    and record.responsible_department_id
+                    and record.location_id):
                 raise ValidationError(_(
-                    'Assigned assets must have a current holder or responsible department.'
+                    'Assigned assets must have a current holder, a responsible '
+                    'department, and a location.'
                 ))
             for field_name in (
                     'location_id', 'assigned_employee_id',
@@ -315,9 +314,10 @@ class ITAsset(models.Model):
             department = self.env['hr.department'].browse(
                 department_id or asset.responsible_department_id.id,
             ).exists()
-            if bool(employee) == bool(department):
+            if not employee or not department or not asset.location_id:
                 raise UserError(_(
-                    'Select either a current holder or a responsible department before assigning.'
+                    'Select a current holder, a responsible department, and a '
+                    'location before assigning.'
                 ))
             if employee.company_id and employee.company_id != asset.company_id:
                 raise ValidationError(_('The employee must belong to the asset company.'))
