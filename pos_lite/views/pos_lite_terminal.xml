@@ -490,6 +490,9 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 .pos-form-group textarea { resize: vertical; min-height: 56px; }
 .pos-nc-row { display: flex; gap: 10px; }
 .pos-nc-row .pos-form-group { flex: 1; }
+.pos-nc-type-row { display: flex; gap: 18px; }
+.pos-nc-radio { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.pos-nc-radio input { width: auto; margin: 0; }
 .pos-partner-badge {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 6px 10px; margin-bottom: 7px; border-radius: 9px;
@@ -807,11 +810,21 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                             </button>
                         </div>
                         <div class="pos-modal-body">
+                            <div class="pos-form-group pos-nc-type-row">
+                                <label class="pos-nc-radio">
+                                    <input type="radio" name="ncCompanyType" id="ncTypePerson" value="person" onchange="onNcCompanyTypeChange()"/>
+                                    บุคคลธรรมดา
+                                </label>
+                                <label class="pos-nc-radio">
+                                    <input type="radio" name="ncCompanyType" id="ncTypeCompany" value="company" checked="checked" onchange="onNcCompanyTypeChange()"/>
+                                    นิติบุคคล (บริษัท)
+                                </label>
+                            </div>
                             <div class="pos-form-group">
                                 <label>ชื่อลูกค้า *</label>
                                 <input type="text" id="ncName" placeholder="ชื่อบุคคล / บริษัท"/>
                             </div>
-                            <div class="pos-nc-row">
+                            <div class="pos-nc-row" id="ncTaxRow">
                                 <div class="pos-form-group">
                                     <label>เลขประจำตัวผู้เสียภาษี</label>
                                     <input type="text" id="ncVat" placeholder="13 หลัก" maxlength="13" inputmode="numeric"/>
@@ -1155,6 +1168,15 @@ async function loadThaiStates() {
     } catch (e) { state.thStates = []; }
 }
 
+function onNcCompanyTypeChange() {
+    const isPerson = document.getElementById('ncTypePerson').checked;
+    document.getElementById('ncTaxRow').style.display = isPerson ? 'none' : 'flex';
+    if (isPerson) {
+        document.getElementById('ncVat').value = '';
+        document.getElementById('ncBranch').value = '00000';
+    }
+}
+
 function openNewCustomer() {
     document.getElementById('ncName').value = document.getElementById('custName').value.trim();
     document.getElementById('ncPhone').value = document.getElementById('custPhone').value.trim();
@@ -1165,6 +1187,8 @@ function openNewCustomer() {
     document.getElementById('ncCity').value = '';
     document.getElementById('ncZip').value = '';
     document.getElementById('ncState').value = '';
+    document.getElementById('ncTypeCompany').checked = true;
+    onNcCompanyTypeChange();
     loadThaiStates();
     document.getElementById('posNewCustomerModal').classList.add('open');
     document.getElementById('ncName').focus();
@@ -1246,7 +1270,8 @@ async function saveNewCustomer() {
     if (state.creatingCustomer) return;
     const name = document.getElementById('ncName').value.trim();
     if (!name) { showToast('กรุณากรอกชื่อลูกค้า', 'error'); return; }
-    const vat = document.getElementById('ncVat').value.trim();
+    const isPerson = document.getElementById('ncTypePerson').checked;
+    const vat = isPerson ? '' : document.getElementById('ncVat').value.trim();
     if (vat && !/^\d{13}$/.test(vat)) { showToast('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก', 'error'); return; }
 
     state.creatingCustomer = true;
@@ -1257,8 +1282,9 @@ async function saveNewCustomer() {
     try {
         const data = await jsonRpc('/pos_lite/api/create_customer', {
             name: name,
+            company_type: isPerson ? 'person' : 'company',
             vat: vat,
-            branch: document.getElementById('ncBranch').value.trim(),
+            branch: isPerson ? '' : document.getElementById('ncBranch').value.trim(),
             phone: document.getElementById('ncPhone').value.trim(),
             street: document.getElementById('ncStreet').value.trim(),
             street2: document.getElementById('ncStreet2').value.trim(),

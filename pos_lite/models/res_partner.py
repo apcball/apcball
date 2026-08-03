@@ -17,6 +17,8 @@ class ResPartner(models.Model):
         if not name:
             raise ValidationError('กรุณากรอกชื่อลูกค้า')
 
+        company_type = data.get('company_type') if data.get('company_type') in ('person', 'company') else 'company'
+
         vat = (data.get('vat') or '').strip()
         if vat and not (vat.isdigit() and len(vat) == 13):
             raise ValidationError('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก')
@@ -43,6 +45,7 @@ class ResPartner(models.Model):
 
         vals = {
             'name': name,
+            'company_type': company_type,
             'vat': vat or False,
             'phone': (data.get('phone') or '').strip() or False,
             'street': (data.get('street') or '').strip() or False,
