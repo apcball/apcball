@@ -124,6 +124,7 @@ class PosLiteController(http.Controller):
             session_id = session.id or False
         response = request.render('pos_lite.pos_lite_terminal', {
             'session_id': session_id,
+            'is_manager': request.env.user.has_group('pos_lite.group_pos_lite_manager'),
         })
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'

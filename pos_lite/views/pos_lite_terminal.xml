@@ -40,6 +40,144 @@ body {
 button { font-family: inherit; }
 input, select, textarea { font-family: inherit; color: var(--text); }
 
+/* ── Shell + Sidebar ── */
+.pos-shell { display: flex; height: 100vh; overflow: hidden; }
+.pos-sidebar {
+    flex: 0 0 180px; width: 180px; background: var(--white);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    transition: all 0.18s ease; z-index: 40;
+}
+.pos-sidebar-brand {
+    display: flex; align-items: center; gap: 9px; padding: 16px 14px;
+    font-size: 16px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden;
+}
+.pos-sidebar-brand .brand-badge {
+    width: 32px; height: 32px; border-radius: 10px; font-size: 16px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: var(--white); display: flex; align-items: center; justify-content: center;
+}
+.pos-sidebar-nav { flex: 1; overflow-y: auto; padding: 4px 8px; display: flex; flex-direction: column; gap: 2px; }
+.pos-sidebar-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border-radius: 12px; cursor: pointer; text-decoration: none;
+    color: var(--text-secondary); font-size: 13px; font-weight: 600;
+    transition: all 0.13s; white-space: nowrap; overflow: hidden;
+    border: none; background: none; width: 100%; text-align: left;
+}
+.pos-sidebar-item:hover { background: var(--primary-bg); color: var(--text); }
+.pos-sidebar-item.active { background: var(--primary-light); color: var(--primary); border-radius: 999px; }
+.pos-sidebar-icon { font-size: 15px; flex-shrink: 0; width: 20px; text-align: center; }
+.pos-sidebar-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.pos-sidebar.collapsed { flex-basis: 62px; width: 62px; }
+.pos-sidebar.collapsed .pos-sidebar-label, .pos-sidebar.collapsed .pos-sidebar-brand span:not(.brand-badge) { display: none; }
+.pos-sidebar.collapsed .pos-sidebar-item { justify-content: center; padding: 9px 6px; }
+.pos-sidebar-hamburger { display: none; border: none; background: none; cursor: pointer; font-size: 19px; color: var(--text); padding: 4px 8px; border-radius: 8px; }
+.pos-sidebar-hamburger:hover { background: var(--primary-bg); }
+
+/* ── Breadcrumb ── */
+.pos-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; }
+.pos-breadcrumb .crumb-current { font-weight: 700; color: var(--text); }
+
+/* ── Order header row ── */
+.pos-order-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; background: var(--white); border-radius: var(--radius);
+    box-shadow: var(--shadow); flex-shrink: 0;
+}
+.pos-order-header .oh-ref { font-size: 17px; font-weight: 800; white-space: nowrap; }
+.pos-customer-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px;
+    border-radius: 999px; background: var(--success-bg); color: #047857;
+    font-size: 12px; font-weight: 700; border: 1.5px solid var(--success);
+    cursor: pointer; transition: all 0.13s; max-width: 220px;
+}
+.pos-customer-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-customer-pill:hover { background: var(--success); color: var(--white); }
+.pos-header-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px;
+    border: 1.5px solid var(--border); border-radius: 11px; background: var(--white);
+    color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.13s;
+    white-space: nowrap;
+}
+.pos-header-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+.pos-kebab-wrap { position: relative; }
+.pos-kebab-menu {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 90;
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-lg); min-width: 190px; padding: 6px; display: none;
+}
+.pos-kebab-menu.open { display: block; }
+.pos-kebab-menu button {
+    display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    border: none; background: none; font-size: 13px; font-weight: 600; color: var(--text);
+    padding: 9px 12px; border-radius: 9px; cursor: pointer;
+}
+.pos-kebab-menu button:hover { background: var(--primary-bg); color: var(--primary); }
+
+/* ── Info cards row ── */
+.pos-info-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex-shrink: 0; }
+.pos-info-card {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border: 1.5px solid var(--border); border-radius: 13px; background: var(--white);
+    box-shadow: var(--shadow); transition: all 0.13s; min-width: 0; position: relative;
+    text-align: left;
+}
+.pos-info-card.clickable { cursor: pointer; }
+.pos-info-card.clickable:hover { border-color: var(--primary); background: var(--primary-bg); }
+.pos-info-card .ic-chip {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    background: var(--primary-light); color: var(--primary);
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.pos-info-card .ic-body { min-width: 0; flex: 1; }
+.pos-info-card .ic-label { font-size: 10.5px; color: var(--text-secondary); font-weight: 600; }
+.pos-info-card .ic-value { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-info-card-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1.5px dashed var(--primary); border-radius: 13px; background: var(--white);
+    color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.13s;
+    padding: 10px 12px;
+}
+.pos-info-card-btn:hover { background: var(--primary-light); }
+.pos-channel-pop {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 90; width: 290px;
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-lg); padding: 12px; display: none; cursor: default;
+}
+.pos-channel-pop.open { display: block; }
+
+/* ── Left column wrapper ── */
+.pos-left-col { flex: 1.75; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pos-left-title { font-size: 15px; font-weight: 800; white-space: nowrap; }
+.pos-showing { font-size: 12px; color: var(--text-secondary); white-space: nowrap; margin-right: 6px; }
+
+/* ── Cart extras ── */
+.pos-clear-all-btn { background: none; border: none; color: var(--danger); font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.pos-clear-all-btn:hover { background: var(--danger-bg); }
+.pos-clear-all-btn:disabled { color: #D1D5DB; cursor: default; background: none; }
+.pos-add-note-btn { background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 0; }
+.pos-note-wrap textarea {
+    width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 12.5px; outline: none; resize: none; min-height: 40px; margin-top: 4px;
+}
+.pos-note-wrap textarea:focus { border-color: var(--primary); }
+.pos-total-row.due { color: var(--danger); font-weight: 800; font-size: 15px; padding-top: 4px; }
+.pos-total-row.due span:last-child { font-size: 17px; }
+
+/* ── F-key bar ── */
+.pos-fkey-bar {
+    display: flex; gap: 8px; padding: 7px 14px; flex-shrink: 0; flex-wrap: wrap;
+    background: var(--white); border-top: 1px solid var(--border);
+}
+.pos-fkey-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; color: var(--text-secondary);
+    padding: 4px 10px; background: var(--primary-bg); border: 1px solid var(--border);
+    border-radius: 8px; white-space: nowrap; cursor: pointer;
+}
+.pos-fkey-chip:hover { border-color: var(--primary); color: var(--primary); }
+.pos-fkey-chip .fk { font-weight: 800; color: var(--primary); }
+
 /* ── Employee Selection Screen ── */
 .emp-screen {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -130,11 +268,11 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 }
 .pos-topbar-actions button:hover { background: var(--primary-bg); color: var(--primary); }
 
-.pos-main { display: flex; flex: 1; overflow: hidden; padding: 12px; gap: 12px; }
+.pos-main { display: flex; flex: 1; overflow: hidden; padding: 12px; gap: 12px; min-width: 0; }
 
 /* ── Left: products ── */
 .pos-left {
-    flex: 1.75; display: flex; flex-direction: column;
+    flex: 1; display: flex; flex-direction: column;
     background: var(--white); border-radius: var(--radius);
     box-shadow: var(--shadow); overflow: hidden;
 }
@@ -198,8 +336,9 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 .pos-cat-menu button.active { background: var(--primary-light); color: var(--primary); }
 .pos-products {
     flex: 1; overflow-y: auto; padding: 10px 14px 14px;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px; align-content: start;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    grid-auto-rows: max-content;
+    gap: 14px; align-content: start;
     scrollbar-gutter: stable;
     scrollbar-width: thin; scrollbar-color: #C4B5FD transparent;
 }
@@ -243,21 +382,30 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 .pos-product-card.out-of-stock { opacity: 0.55; cursor: not-allowed; filter: grayscale(0.5); }
 .pos-product-card.out-of-stock:hover { transform: none; box-shadow: none; border-color: var(--border); }
 .pos-product-img {
-    width: 100%; height: 96px; object-fit: contain; display: block;
-    background: #FAFAFC; padding: 8px;
+    width: 100%; height: 148px; object-fit: contain; display: block;
+    background: var(--white); padding: 14px; flex-shrink: 0;
 }
 .pos-product-img-placeholder {
-    width: 100%; height: 96px; display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 148px; display: flex; align-items: center; justify-content: center;
     background: linear-gradient(160deg, #F5F3FF, #EDE9FE); color: #C4B5FD; font-size: 32px;
+    flex-shrink: 0;
 }
-.pos-product-info { padding: 8px 10px 10px; flex: 1; display: flex; flex-direction: column; }
+.pos-product-info { padding: 4px 14px 14px; flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .pos-product-name {
-    font-size: 12.5px; font-weight: 600; color: var(--text); line-height: 1.3;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    min-height: 32px;
+    font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.35;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.pos-product-code { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
-.pos-product-price { font-size: 15px; font-weight: 800; color: var(--primary); margin-top: auto; padding-top: 5px; }
+.pos-product-code { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.pos-product-sub {
+    font-size: 11.5px; color: var(--text-secondary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pos-product-price { font-size: 15.5px; font-weight: 800; color: var(--primary); margin-top: 7px; }
+.pos-product-stock { font-size: 11.5px; font-weight: 600; margin-top: 3px; }
+.pos-product-stock.in { color: #059669; }
+.pos-product-stock.low { color: #B45309; }
+.pos-product-stock.out { color: #B91C1C; }
+.pos-product-card.in-cart { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .pos-stock-badge {
     position: absolute; top: 8px; right: 8px;
     font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
@@ -268,10 +416,10 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 .pos-stock-badge.low-stock { color: #B45309; background: rgba(254,243,199,0.95); }
 .pos-stock-badge.no-stock { color: #B91C1C; background: rgba(254,226,226,0.95); }
 .pos-cart-count-badge {
-    position: absolute; top: 8px; left: 8px; min-width: 22px; height: 22px;
+    position: absolute; top: 10px; right: 10px; min-width: 24px; height: 24px;
     border-radius: 999px; background: var(--primary); color: var(--white);
     font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;
-    padding: 0 6px; box-shadow: 0 3px 8px rgba(124,58,237,0.4);
+    padding: 0 6px; box-shadow: 0 3px 8px rgba(124,58,237,0.4); line-height: 0;
 }
 .pos-no-products { grid-column: 1 / -1; text-align: center; padding: 60px 16px; color: var(--text-secondary); font-size: 14px; }
 .pos-no-products svg { display: block; margin: 0 auto 12px; opacity: 0.3; }
@@ -602,25 +750,47 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 }
 
 /* ── Responsive ── */
+@media (max-width: 1200px) {
+    .pos-sidebar { flex-basis: 62px; width: 62px; }
+    .pos-sidebar .pos-sidebar-label, .pos-sidebar .pos-sidebar-brand span:not(.brand-badge) { display: none; }
+    .pos-sidebar .pos-sidebar-item { justify-content: center; padding: 9px 6px; }
+    .pos-topbar .pos-search-wrap { max-width: 260px; }
+}
 @media (max-width: 900px) {
+    .pos-sidebar {
+        position: fixed; left: -190px; top: 0; height: 100vh; width: 180px; flex-basis: 180px;
+        box-shadow: var(--shadow-lg); transition: left 0.22s ease;
+    }
+    .pos-sidebar.open { left: 0; }
+    .pos-sidebar.open .pos-sidebar-label, .pos-sidebar.open .pos-sidebar-brand span:not(.brand-badge) { display: inline; }
+    .pos-sidebar.open .pos-sidebar-item { justify-content: flex-start; padding: 9px 12px; }
+    .pos-sidebar-hamburger { display: inline-flex; }
     .pos-main { flex-direction: column; overflow-y: auto; }
     .pos-left { min-height: 45vh; }
+    .pos-left-col { flex: none; }
     .pos-right { max-width: none; min-width: 0; }
     .pos-left-header { flex-wrap: wrap; }
+    .pos-info-cards { grid-template-columns: 1fr 1fr; }
+    .pos-breadcrumb { display: none; }
+    .pos-order-header { flex-wrap: wrap; }
 }
                 </style>
             </head>
             <body>
                 <script>
                     var CURRENT_SESSION_ID = null;
+                    var IS_MANAGER = false;
                     <t t-if="session_id">
                     CURRENT_SESSION_ID = <t t-esc="session_id"/>;
+                    </t>
+                    <t t-if="is_manager">
+                    IS_MANAGER = true;
                     </t>
                 </script>
 
                 <!-- No-session error screen -->
                 <div id="noSessionScreen" class="pos-error-screen pos-hide">
-                    <div class="icon">🔒</div>
+                    <div class="icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
                     <h2>ไม่พบ Session ที่เปิดอยู่</h2>
                     <p>กรุณาเปิด Session ใน POS Lite ก่อนใช้งานหน้า Terminal แล้วกดปุ่ม "Open Terminal" จากหน้า Session</p>
                     <a href="/web">กลับหน้า Odoo</a>
@@ -628,7 +798,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 
                 <!-- Employee Selection Screen -->
                 <div id="empScreen" class="emp-screen">
-                    <div class="emp-logo">🛍️</div>
+                    <div class="emp-logo"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
                     <h1>POS Lite Terminal</h1>
                     <p>เลือกพนักงานขายประจำกะนี้</p>
                     <div class="session-info" id="sessionInfo">Session: —</div>
@@ -639,42 +809,106 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                 </div>
 
                 <!-- Terminal Screen -->
-                <div id="posTerminal" class="pos-terminal pos-hide">
+                <div id="posShell" class="pos-shell pos-hide">
+                    <!-- Sidebar -->
+                    <div class="pos-sidebar" id="posSidebar">
+                        <div class="pos-sidebar-brand"><span class="brand-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span>POS Lite</span></div>
+                        <nav class="pos-sidebar-nav" id="posNavMenu"></nav>
+                        <div class="pos-sidebar-footer">
+                            <button type="button" class="pos-sidebar-item" onclick="showHelpHint()" title="ช่วยเหลือ / คีย์ลัด">
+                                <span class="pos-sidebar-icon">?</span><span class="pos-sidebar-label">ช่วยเหลือ</span>
+                            </button>
+                            <button type="button" class="pos-sidebar-item" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="ย่อ/ขยายเมนู">
+                                <span class="pos-sidebar-icon" id="collapseIcon">◀</span><span class="pos-sidebar-label">ย่อเมนู</span>
+                            </button>
+                        </div>
+                    </div>
+                <div id="posTerminal" class="pos-terminal" style="flex:1;min-width:0;">
                     <div class="pos-topbar">
                         <div class="pos-topbar-left">
-                            <div class="pos-topbar-brand"><span class="brand-badge">🛍️</span>POS Lite</div>
-                            <div class="pos-chip"><span class="dot"></span><span id="posSessionName">Session</span></div>
+                            <button type="button" class="pos-sidebar-hamburger" onclick="toggleSidebarOpen(event)" title="เมนู">☰</button>
+                            <div class="pos-breadcrumb">
+                                <span>POS Orders</span><span>›</span>
+                                <span class="crumb-current" id="topOrderRef">ออเดอร์ใหม่</span>
+                            </div>
                         </div>
-                        <button class="pos-topbar-emp" id="posEmployeeBadge" onclick="showEmployeeSwitch()">
-                            <span id="posEmployeeName">👤 —</span>
-                            <span class="emp-caret">▼</span>
-                        </button>
-                        <div class="pos-topbar-actions">
-                            <button onclick="showHistoryOrders()" title="ประวัติ / คืนสินค้า">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                                <span>คืนสินค้า</span>
-                            </button>
-                            <button onclick="reloadProducts()" title="โหลดสินค้าใหม่">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                <span>รีเฟรช</span>
-                            </button>
-                            <button onclick="window.location.href='/web'" title="กลับหน้า Odoo">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                                <span>ออก</span>
+                        <div class="pos-search-wrap" style="flex:1;max-width:430px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="posSearch" placeholder="ค้นหาสินค้า ชื่อ / รหัส / บาร์โค้ด…" oninput="filterProducts()" onkeydown="onSearchKey(event)"/>
+                            <span class="search-hint">Ctrl+K</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div class="pos-chip"><span class="dot"></span><span id="posSessionName">Session</span></div>
+                            <button class="pos-topbar-emp" id="posEmployeeBadge" onclick="showEmployeeSwitch()">
+                                <span id="posEmployeeName">—</span>
+                                <span class="emp-caret">▼</span>
                             </button>
                         </div>
                     </div>
                     <div class="pos-main">
+                        <div class="pos-left-col">
+                            <!-- Order header -->
+                            <div class="pos-order-header">
+                                <div class="oh-ref" id="orderHeaderRef">ออเดอร์ใหม่</div>
+                                <button type="button" class="pos-customer-pill" id="customerPillBtn" onclick="openCustomerModal()" title="เลือกลูกค้า">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span id="customerPillName">Walk-in Customer</span>
+                                </button>
+                                <span style="flex:1;"></span>
+                                <button type="button" class="pos-header-btn" id="printInvoiceHeaderBtn" onclick="printInvoice()" style="display:none;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    พิมพ์ใบกำกับ
+                                </button>
+                                <div class="pos-kebab-wrap">
+                                    <button type="button" class="pos-header-btn" id="orderKebabBtn" onclick="toggleOrderKebab(event)" title="เมนูเพิ่มเติม" style="padding:8px 11px;">⋮</button>
+                                    <div class="pos-kebab-menu" id="orderKebabMenu">
+                                        <button type="button" onclick="closeOrderKebab();showHistoryOrders()">ประวัติ / คืนสินค้า</button>
+                                        <button type="button" onclick="closeOrderKebab();reloadProducts()">โหลดสินค้าใหม่</button>
+                                        <button type="button" onclick="window.location.href='/web'">กลับหน้า Odoo</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Info cards -->
+                            <div class="pos-info-cards">
+                                <div class="pos-info-card clickable" id="channelCard" onclick="toggleChannelPopover(event)">
+                                    <div class="ic-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                                    <div class="ic-body">
+                                        <div class="ic-label">ช่องทางขาย</div>
+                                        <div class="ic-value" id="channelCardValue">หน้าร้าน</div>
+                                    </div>
+                                    <div class="pos-channel-pop" id="channelPop" onclick="event.stopPropagation()">
+                                        <div class="pos-channel-row" id="posChannelRow" style="margin-bottom:10px;">
+                                            <button type="button" class="pos-channel-btn active" data-channel="walkin" onclick="selectChannel('walkin')">หน้าร้าน</button>
+                                            <button type="button" class="pos-channel-btn" data-channel="phone" onclick="selectChannel('phone')">โทร</button>
+                                            <button type="button" class="pos-channel-btn" data-channel="line" onclick="selectChannel('line')">LINE</button>
+                                            <button type="button" class="pos-channel-btn" data-channel="other" onclick="selectChannel('other')">อื่นๆ</button>
+                                        </div>
+                                        <select id="posTradeChannel" class="pos-trade-select" title="Trade Channel" style="margin-bottom:0;">
+                                            <option value="">Trade Channel (อัตโนมัติ)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="pos-info-card">
+                                    <div class="ic-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+                                    <div class="ic-body">
+                                        <div class="ic-label">คลังสินค้า</div>
+                                        <div class="ic-value" id="posLocationName">—</div>
+                                    </div>
+                                </div>
+                                <div class="pos-info-card">
+                                    <div class="ic-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                                    <div class="ic-body">
+                                        <div class="ic-label">วันที่</div>
+                                        <div class="ic-value" id="dateCardValue">—</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="pos-info-card-btn" onclick="openCustomerModal()">
+                                    <span>+ เพิ่มลูกค้า</span>
+                                </button>
+                            </div>
                         <div class="pos-left">
                             <div class="pos-left-header">
-                                <div class="pos-search-wrap">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                    <input type="text" id="posSearch" placeholder="ค้นหาสินค้า / สแกนบาร์โค้ด แล้วกด Enter" oninput="filterProducts()" onkeydown="onSearchKey(event)"/>
-                                    <span class="search-hint">F2</span>
-                                </div>
-                                <div class="pos-location-chip" id="posLocationChip">
-                                    <span class="plc-label">📍</span><span id="posLocationName">Location</span>
-                                </div>
+                                <div class="pos-left-title">สินค้า</div>
+                                <span style="flex:1;"></span>
                             </div>
                             <div class="pos-cats-row" id="posCatsRow" style="display:none;">
                                 <div class="pos-cats" id="posCats"></div>
@@ -685,6 +919,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                 <div class="pos-no-products"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>กำลังโหลดสินค้า...</div>
                             </div>
                             <div class="pos-pagination" id="posPagination" style="display:none;">
+                                <span class="pos-showing" id="pgShowing"></span>
                                 <button type="button" class="pos-page-btn" id="pgPrev" onclick="gotoPage(state.page - 1)" title="หน้าก่อนหน้า">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                                 </button>
@@ -703,59 +938,30 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                 </div>
                             </div>
                         </div>
+                        </div>
                         <div class="pos-right">
                             <div class="pos-right-scroll">
-                                <div class="pos-channel-row" id="posChannelRow">
-                                    <button type="button" class="pos-channel-btn active" data-channel="walkin" onclick="selectChannel('walkin')">🏪 หน้าร้าน</button>
-                                    <button type="button" class="pos-channel-btn" data-channel="phone" onclick="selectChannel('phone')">📞 โทร</button>
-                                    <button type="button" class="pos-channel-btn" data-channel="line" onclick="selectChannel('line')">💬 LINE</button>
-                                    <button type="button" class="pos-channel-btn" data-channel="other" onclick="selectChannel('other')">📦 อื่นๆ</button>
-                                </div>
-                                <div class="pos-section-title"><span>📡 ช่องทางขาย</span></div>
-                                <select id="posTradeChannel" class="pos-trade-select" title="Trade Channel">
-                                    <option value="">Trade Channel (อัตโนมัติ)</option>
-                                </select>
-                                <div class="pos-customer-section">
-                                    <div class="pos-section-title">
-                                        <span>👤 ลูกค้า</span>
-                                        <span style="display:inline-flex;align-items:center;gap:8px;">
-                                            <button type="button" class="pos-new-cust-btn" onclick="openNewCustomer()">＋ ลูกค้าใหม่</button>
-                                            <button type="button" class="pos-toggle-link" id="custToggle" onclick="toggleCustomer()">ซ่อน</button>
-                                        </span>
-                                    </div>
-                                    <div class="pos-partner-badge" id="custPartnerBadge" style="display:none;">
-                                        <span id="custPartnerBadgeName"></span>
-                                        <button type="button" onclick="clearSelectedPartner(true)" title="ยกเลิกการเลือกลูกค้า">✕</button>
-                                    </div>
-                                    <div class="pos-cust-search">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                        <input type="text" id="custSearch" placeholder="ค้นหาลูกค้า / เบอร์โทร" autocomplete="off" oninput="onCustSearchInput()" onkeydown="if(event.key==='Escape')closeCustResults()"/>
-                                        <div class="pos-cust-results" id="custResults"></div>
-                                    </div>
-                                    <div id="custFields">
-                                        <input type="text" id="custName" placeholder="ชื่อลูกค้า (เว้นว่าง = Walk-in Customer)" oninput="clearSelectedPartner()"/>
-                                        <input type="tel" id="custPhone" placeholder="เบอร์โทร"/>
-                                        <textarea id="custAddress" placeholder="ที่อยู่" rows="1"></textarea>
-                                    </div>
-                                </div>
                                 <div class="pos-order-lines">
                                     <div class="pos-section-title">
-                                        <span>🛒 รายการสินค้า (<span id="cartCount">0</span>)</span>
-                                        <button type="button" class="pos-clear-cart" onclick="clearCart()">ล้างตะกร้า</button>
+                                        <span>รายการสินค้า (<span id="cartCount">0</span>)</span>
+                                        <button type="button" class="pos-clear-all-btn" id="posClearAllBtn" disabled="disabled" onclick="cancelBill()">ล้างทั้งหมด</button>
                                     </div>
                                     <div id="posOrderLines"></div>
+                                </div>
+                                <div class="pos-note-wrap">
+                                    <button type="button" class="pos-add-note-btn" id="addNoteBtn" onclick="toggleOrderNote()">＋ เพิ่มหมายเหตุ</button>
+                                    <textarea id="orderNote" placeholder="หมายเหตุออเดอร์ (ถ้ามี)" rows="2" style="display:none;"></textarea>
                                 </div>
                             </div>
                             <div class="pos-totals">
                                 <div class="pos-total-row"><span>ยอดก่อนภาษี</span><span id="posSubtotal">฿0.00</span></div>
+                                <div class="pos-total-row"><span>ส่วนลด</span><span id="posDiscount">฿0.00</span></div>
                                 <div class="pos-total-row"><span>ภาษีมูลค่าเพิ่ม</span><span id="posTax">฿0.00</span></div>
                                 <div class="pos-total-row grand"><span>รวมสุทธิ</span><span id="posTotal">฿0.00</span></div>
+                                <div class="pos-total-row"><span>ชำระแล้ว</span><span id="posPaid">฿0.00</span></div>
+                                <div class="pos-total-row due"><span>ค้างชำระ</span><span id="posDue">฿0.00</span></div>
                             </div>
                             <div class="pos-footer-btns">
-                                <button type="button" class="pos-cancel-bill-btn" id="posCancelBillBtn" disabled="disabled" onclick="cancelBill()">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                    ยกเลิกบิล
-                                </button>
                                 <button type="button" class="pos-pay-btn" id="posPayBtn" disabled="disabled" onclick="openProcessModal()">
                                     <span id="posPayBtnText">ชำระเงิน</span>
                                     <span class="pos-key-chip">F9</span>
@@ -763,13 +969,22 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                             </div>
                         </div>
                     </div>
+                    <!-- F-key shortcut bar -->
+                    <div class="pos-fkey-bar">
+                        <span class="pos-fkey-chip" onclick="showHelpHint()"><span class="fk">F1</span> ช่วยเหลือ</span>
+                        <span class="pos-fkey-chip" onclick="document.getElementById('posSearch').focus()"><span class="fk">F2</span> ค้นหา</span>
+                        <span class="pos-fkey-chip" onclick="showHistoryOrders()"><span class="fk">F4</span> ประวัติออเดอร์</span>
+                        <span class="pos-fkey-chip" onclick="openProcessModal()"><span class="fk">F9</span> ชำระเงิน</span>
+                        <span class="pos-fkey-chip" onclick="document.getElementById('posSearch').focus()"><span class="fk">Ctrl+K</span> ค้นหา</span>
+                    </div>
+                </div>
                 </div>
 
                 <!-- Checkout Modal -->
                 <div class="pos-modal-overlay" id="posProcessModal">
                     <div class="pos-modal">
                         <div class="pos-modal-header">
-                            <h2>🧾 ยืนยันการขาย</h2>
+                            <h2>ยืนยันการขาย</h2>
                             <button class="pos-modal-close" onclick="closeProcessModal()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
@@ -777,12 +992,9 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                         <div class="pos-modal-body">
                             <div class="pos-modal-total-amount" id="modalTotal">฿0.00</div>
                             <div class="pos-checkout-lines" id="checkoutLines"></div>
-                            <div class="pos-form-group">
-                                <label>หมายเหตุ</label>
-                                <textarea id="orderNote" placeholder="หมายเหตุออเดอร์ (ถ้ามี)" rows="2"></textarea>
-                            </div>
+                            <div class="pos-checkout-note" id="checkoutNotePreview" style="display:none;font-size:12.5px;color:var(--text-secondary);margin-bottom:10px;"></div>
                             <div style="padding:11px 13px;border:1px dashed var(--border);border-radius:11px;background:var(--primary-bg);font-size:12.5px;color:var(--text-secondary);">
-                                💡 ระบบจะโพสต์ใบกำกับภาษีและตัดสต๊อกทันที โดยไม่บันทึกรายการรับเงิน
+                                ระบบจะโพสต์ใบกำกับภาษีและตัดสต๊อกทันที โดยไม่บันทึกรายการรับเงิน
                             </div>
                         </div>
                         <div class="pos-modal-footer">
@@ -792,11 +1004,45 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                     </div>
                 </div>
 
+                <!-- Customer Modal -->
+                <div class="pos-modal-overlay" id="posCustomerModal">
+                    <div class="pos-modal" style="width:420px;overflow:visible;">
+                        <div class="pos-modal-header">
+                            <h2>ลูกค้า</h2>
+                            <button class="pos-modal-close" onclick="closeCustomerModal()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div class="pos-modal-body">
+                            <div class="pos-customer-section" style="margin-bottom:0;">
+                                <div class="pos-partner-badge" id="custPartnerBadge" style="display:none;">
+                                    <span id="custPartnerBadgeName"></span>
+                                    <button type="button" onclick="clearSelectedPartner(true)" title="ยกเลิกการเลือกลูกค้า">✕</button>
+                                </div>
+                                <div class="pos-cust-search">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <input type="text" id="custSearch" placeholder="ค้นหาลูกค้า / เบอร์โทร" autocomplete="off" oninput="onCustSearchInput()" onkeydown="if(event.key==='Escape')closeCustResults()"/>
+                                    <div class="pos-cust-results" id="custResults"></div>
+                                </div>
+                                <div id="custFields">
+                                    <input type="text" id="custName" placeholder="ชื่อลูกค้า (เว้นว่าง = Walk-in Customer)" oninput="clearSelectedPartner();updateCustomerPill()"/>
+                                    <input type="tel" id="custPhone" placeholder="เบอร์โทร"/>
+                                    <textarea id="custAddress" placeholder="ที่อยู่" rows="2"></textarea>
+                                </div>
+                                <div style="display:flex;gap:8px;margin-top:8px;">
+                                    <button type="button" class="pos-new-cust-btn" style="padding:9px 14px;" onclick="openNewCustomer()">+ ลูกค้าใหม่</button>
+                                    <button type="button" class="pos-btn-confirm" style="flex:1;padding:9px;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;" onclick="closeCustomerModal()">เสร็จสิ้น</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- New Customer Modal -->
                 <div class="pos-modal-overlay" id="posNewCustomerModal">
                     <div class="pos-modal" style="width:440px;">
                         <div class="pos-modal-header">
-                            <h2>➕ สร้างลูกค้าใหม่</h2>
+                            <h2>สร้างลูกค้าใหม่</h2>
                             <button class="pos-modal-close" onclick="closeNewCustomer()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
@@ -883,7 +1129,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                             </div>
                             <div class="pos-print-summary" id="printOrderSummary"></div>
                             <div style="border-top:1px solid var(--border);padding-top:12px;">
-                                <div class="pos-section-title">🖨️ พิมพ์เอกสาร</div>
+                                <div class="pos-section-title">พิมพ์เอกสาร</div>
                                 <div class="pos-print-buttons">
                                     <button class="pos-print-btn" onclick="printReceipt('58mm')">
                                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -909,7 +1155,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                             </div>
                         </div>
                         <div class="pos-modal-footer">
-                            <button class="pos-btn-confirm" onclick="closePrintDetail()">🛒 ขายรายการต่อไป</button>
+                            <button class="pos-btn-confirm" onclick="closePrintDetail()">ขายรายการต่อไป</button>
                         </div>
                     </div>
                 </div>
@@ -918,7 +1164,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                 <div class="pos-modal-overlay" id="posEmpSwitchModal">
                     <div class="pos-modal" style="width:370px;">
                         <div class="pos-modal-header">
-                            <h2>👤 เปลี่ยนพนักงานขาย</h2>
+                            <h2>เปลี่ยนพนักงานขาย</h2>
                             <button class="pos-modal-close" onclick="closeEmployeeSwitch()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
@@ -933,7 +1179,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                 <div class="pos-modal-overlay" id="posHistoryModal">
                     <div class="pos-modal" style="width:520px;">
                         <div class="pos-modal-header">
-                            <h2>📋 ประวัติออเดอร์ — เลือกเพื่อคืนสินค้า</h2>
+                            <h2>ประวัติออเดอร์ — เลือกเพื่อคืนสินค้า</h2>
                             <button class="pos-modal-close" onclick="closeHistoryOrders()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
@@ -953,7 +1199,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                 <div class="pos-modal-overlay" id="posReturnWizardModal">
                     <div class="pos-modal" style="width:540px;">
                         <div class="pos-modal-header">
-                            <h2 id="returnWizardTitle">🔄 คืนสินค้า</h2>
+                            <h2 id="returnWizardTitle">คืนสินค้า</h2>
                             <button class="pos-modal-close" onclick="closeReturnWizard()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
@@ -1003,7 +1249,25 @@ const state = {
     submitting: false, returnSubmitting: false,
     customerVisible: true,
     selectedPartnerId: null, creatingCustomer: false,
+    isManager: (typeof IS_MANAGER !== 'undefined' && IS_MANAGER) || false,
+    sidebarCollapsed: false,
 };
+
+// Shared inline SVG for product image placeholders (no emoji)
+var BOX_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">'
+    + '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>'
+    + '<polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+
+// Broken/missing product image -> swap in the placeholder box
+function posImgErr(img) {
+    var cls = 'pos-product-img-placeholder';
+    if (img.className.indexOf('pr-img') >= 0) cls = 'pr-img-placeholder';
+    else if (img.className.indexOf('pos-order-line-img') >= 0) cls = 'pos-order-line-img-placeholder';
+    var d = document.createElement('div');
+    d.className = cls;
+    d.innerHTML = BOX_SVG;
+    img.replaceWith(d);
+}
 
 // ─── Helpers ────────────────────────────────────────────────
 function fmt(n) {
@@ -1102,9 +1366,134 @@ function selectEmployee(empId, empName) {
     state.selectedEmployeeId = empId;
     state.selectedEmployeeName = empName;
     document.getElementById('empScreen').classList.add('pos-hide');
-    document.getElementById('posTerminal').classList.remove('pos-hide');
-    document.getElementById('posEmployeeName').textContent = '👤 ' + empName;
+    document.getElementById('posShell').classList.remove('pos-hide');
+    document.getElementById('posEmployeeName').textContent = empName;
+    renderSidebarNav();
+    updateChannelCardDisplay();
+    updateCustomerPill();
+    updateDateCard();
+    if (!state._clockTimer) state._clockTimer = setInterval(updateDateCard, 30000);
     startTerminal();
+}
+
+// ─── Sidebar ───────────────────────────────────────────────
+function renderSidebarNav() {
+    var items = [
+        { label: 'หน้าหลัก Odoo', icon: 'home', url: '/web', blank: true },
+        { label: 'POS Lite', icon: 'pos', url: null, active: true },
+        { label: 'ออเดอร์', icon: 'orders', url: '/web#action=pos_lite.action_pos_lite_orders', blank: true },
+        { label: 'พักบิล', icon: 'held', url: '/web#action=pos_lite.action_pos_lite_held_orders', blank: true },
+        { label: 'Sessions', icon: 'sessions', url: '/web#action=pos_lite.action_pos_lite_session', blank: true },
+        { label: 'สินค้า', icon: 'products', url: '/web#action=stock.product_template_action_product', blank: true },
+        { label: 'ลูกค้า', icon: 'customers', url: '/web#action=base.action_partner_form', blank: true },
+        { label: 'สต๊อก', icon: 'stock', url: '/web#action=stock.action_picking_tree_all', blank: true },
+        { label: 'รายงานขาย', icon: 'reports', url: '/web#action=pos_lite.action_pos_lite_daily_sales', blank: true },
+    ];
+    if (state.isManager) {
+        items.push({ label: 'ตั้งค่า', icon: 'settings', url: '/web#action=pos_lite.action_pos_lite_config', blank: true });
+    }
+    var icons = {
+        home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+        pos: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+        orders: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+        held: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+        sessions: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+        products: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+        customers: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+        stock: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+        reports: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+        settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    };
+    var html = '';
+    items.forEach(function (item) {
+        var icon = '<span class="pos-sidebar-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + (icons[item.icon] || '') + '</svg></span>';
+        var label = '<span class="pos-sidebar-label">' + escapeHtml(item.label) + '</span>';
+        if (item.active || !item.url) {
+            html += '<span class="pos-sidebar-item' + (item.active ? ' active' : '') + '" title="' + escapeHtml(item.label) + '">' + icon + label + '</span>';
+        } else {
+            html += '<a href="' + item.url + '"' + (item.blank ? ' target="_blank" rel="noopener"' : '')
+                + ' class="pos-sidebar-item" title="' + escapeHtml(item.label) + '">' + icon + label + '</a>';
+        }
+    });
+    document.getElementById('posNavMenu').innerHTML = html;
+}
+
+function toggleSidebarCollapse() {
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    var sb = document.getElementById('posSidebar');
+    sb.classList.toggle('collapsed', state.sidebarCollapsed);
+    document.getElementById('collapseIcon').textContent = state.sidebarCollapsed ? '›' : '‹';
+}
+
+function toggleSidebarOpen(ev) {
+    if (ev) ev.stopPropagation();
+    document.getElementById('posSidebar').classList.toggle('open');
+}
+
+function showHelpHint() {
+    showToast('คีย์ลัด — F2/Ctrl+K: ค้นหาสินค้า · F4: ประวัติออเดอร์ · F9: ชำระเงิน · Esc: ปิดหน้าต่าง', 'success');
+}
+
+// ─── Header widgets ────────────────────────────────────────
+function updateDateCard() {
+    var el = document.getElementById('dateCardValue');
+    if (el) el.textContent = new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function updateCustomerPill() {
+    var pill = document.getElementById('customerPillName');
+    if (!pill) return;
+    var nameEl = document.getElementById('custName');
+    var name = nameEl ? nameEl.value.trim() : '';
+    pill.textContent = name || 'Walk-in Customer';
+}
+
+function updateOrderHeaderRef() {
+    var ref = (state.lastOrderData && state.lastOrderData.name) ? state.lastOrderData.name : 'ออเดอร์ใหม่';
+    document.getElementById('orderHeaderRef').textContent = ref;
+    document.getElementById('topOrderRef').textContent = ref;
+    var invBtn = document.getElementById('printInvoiceHeaderBtn');
+    if (invBtn) {
+        invBtn.style.display = (state.lastOrderData && state.lastOrderData.print_urls && state.lastOrderData.print_urls.invoice) ? '' : 'none';
+    }
+}
+
+function toggleOrderKebab(ev) {
+    if (ev) ev.stopPropagation();
+    document.getElementById('orderKebabMenu').classList.toggle('open');
+}
+function closeOrderKebab() { document.getElementById('orderKebabMenu').classList.remove('open'); }
+
+function toggleChannelPopover(ev) {
+    if (ev) ev.stopPropagation();
+    document.getElementById('channelPop').classList.toggle('open');
+}
+function closeChannelPopover() { document.getElementById('channelPop').classList.remove('open'); }
+
+function updateChannelCardDisplay() {
+    var map = { walkin: 'หน้าร้าน', phone: 'โทร', line: 'LINE', other: 'อื่นๆ' };
+    var el = document.getElementById('channelCardValue');
+    if (el) el.textContent = map[state.channel] || state.channel;
+}
+
+function toggleOrderNote() {
+    var ta = document.getElementById('orderNote');
+    var shown = ta.style.display !== 'none';
+    ta.style.display = shown ? 'none' : '';
+    document.getElementById('addNoteBtn').textContent = shown ? '+ เพิ่มหมายเหตุ' : '− ซ่อนหมายเหตุ';
+    if (!shown) ta.focus();
+}
+
+// ─── Customer modal ────────────────────────────────────────
+function openCustomerModal() {
+    document.getElementById('posCustomerModal').classList.add('open');
+    document.getElementById('custSearch').focus();
+}
+function closeCustomerModal() {
+    if (state.creatingCustomer) return;
+    closeCustResults();
+    document.getElementById('posCustomerModal').classList.remove('open');
+    updateCustomerPill();
 }
 
 function showEmployeeSwitch() {
@@ -1124,7 +1513,7 @@ function showEmployeeSwitch() {
             if (emp) {
                 state.selectedEmployeeId = emp.id;
                 state.selectedEmployeeName = emp.name;
-                document.getElementById('posEmployeeName').textContent = '👤 ' + emp.name;
+                document.getElementById('posEmployeeName').textContent = emp.name;
                 showToast('เปลี่ยนพนักงานเป็น ' + emp.name, 'success');
                 closeEmployeeSwitch();
             }
@@ -1140,12 +1529,7 @@ function selectChannel(channel) {
     document.querySelectorAll('#posChannelRow .pos-channel-btn').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-channel') === channel);
     });
-}
-
-function toggleCustomer() {
-    state.customerVisible = !state.customerVisible;
-    document.getElementById('custFields').style.display = state.customerVisible ? '' : 'none';
-    document.getElementById('custToggle').textContent = state.customerVisible ? 'ซ่อน' : 'แสดง';
+    updateChannelCardDisplay();
 }
 
 // ─── New Customer ──────────────────────────────────────────
@@ -1203,6 +1587,7 @@ function setSelectedPartner(partner) {
     } else {
         badge.style.display = 'none';
     }
+    updateCustomerPill();
 }
 function clearSelectedPartner(clearFields) {
     if (!state.selectedPartnerId) return;
@@ -1342,6 +1727,13 @@ async function loadProducts() {
 
 const INLINE_CATS = 4; // chips shown inline; the rest go into the "เพิ่มเติม" menu
 
+// "All / 2-FG-Production / สุขภัณฑ์ / โถสุขภัณฑ์" -> "โถสุขภัณฑ์"
+function catShortName(name) {
+    if (!name) return '';
+    const parts = String(name).split('/');
+    return parts[parts.length - 1].trim();
+}
+
 function buildCategories() {
     const seen = {};
     const cats = [];
@@ -1377,7 +1769,7 @@ function renderCategories() {
 
     let html = '<button type="button" class="pos-cat-chip' + (state.selectedCategoryId === 0 ? ' active' : '') + '" data-cat="0">ทั้งหมด</button>';
     inline.forEach(function (c) {
-        html += '<button type="button" class="pos-cat-chip' + (state.selectedCategoryId === c.id ? ' active' : '') + '" data-cat="' + c.id + '">' + escapeHtml(c.name) + '</button>';
+        html += '<button type="button" class="pos-cat-chip' + (state.selectedCategoryId === c.id ? ' active' : '') + '" data-cat="' + c.id + '" title="' + escapeHtml(c.name) + '">' + escapeHtml(catShortName(c.name)) + '</button>';
     });
     el.innerHTML = html;
     el.querySelectorAll('.pos-cat-chip').forEach(function (chip) {
@@ -1396,7 +1788,7 @@ function renderCategories() {
     moreBtn.classList.toggle('active', overflowActive);
     let mhtml = '';
     overflow.forEach(function (c) {
-        mhtml += '<button type="button" class="' + (state.selectedCategoryId === c.id ? 'active' : '') + '" data-cat="' + c.id + '">' + escapeHtml(c.name) + '</button>';
+        mhtml += '<button type="button" class="' + (state.selectedCategoryId === c.id ? 'active' : '') + '" data-cat="' + c.id + '" title="' + escapeHtml(c.name) + '">' + escapeHtml(catShortName(c.name)) + '</button>';
     });
     menu.innerHTML = mhtml;
     menu.querySelectorAll('button').forEach(function (btn) {
@@ -1467,6 +1859,15 @@ function stockBadgeHtml(p, isStatic) {
     return '<span class="' + cls + ' in-stock">' + qty + '</span>';
 }
 
+// Mockup-style stock line under the price (grid cards)
+function stockTextHtml(p) {
+    const qty = typeof p.qty_available === 'number' ? p.qty_available : 0;
+    if (p.type === 'service') return '<div class="pos-product-stock in">บริการ</div>';
+    if (qty <= 0) return '<div class="pos-product-stock out">สินค้าหมด</div>';
+    const cls = qty < 5 ? 'low' : 'in';
+    return '<div class="pos-product-stock ' + cls + '">In Stock: ' + qty.toFixed(2) + '</div>';
+}
+
 function renderProducts() {
     const el = document.getElementById('posProducts');
     const totalPages = Math.max(1, Math.ceil(state.products.length / state.perPage));
@@ -1495,8 +1896,8 @@ function renderProducts() {
         const inCart = cartQty[p.id] || 0;
         if (listMode) {
             const imgHtml = p.image_128
-                ? '<img class="pr-img" loading="lazy" src="' + p.image_128 + '" alt=""/>'
-                : '<div class="pr-img-placeholder">📦</div>';
+                ? '<img class="pr-img" loading="lazy" src="' + p.image_128 + '" alt="" onerror="posImgErr(this)"/>'
+                : '<div class="pr-img-placeholder">' + BOX_SVG + '</div>';
             html += '<div class="pos-product-row' + (outOfStock ? ' out-of-stock' : '') + '"'
                 + (outOfStock ? '' : ' data-prod-id="' + p.id + '"') + '>'
                 + imgHtml
@@ -1508,15 +1909,29 @@ function renderProducts() {
                 + '<span class="pr-price">' + fmt(p.list_price) + '</span></div>';
         } else {
             const imageHtml = p.image_256
-                ? '<img class="pos-product-img" loading="lazy" src="' + p.image_256 + '" alt=""/>'
-                : '<div class="pos-product-img-placeholder">📦</div>';
-            const cartBadge = inCart ? '<span class="pos-cart-count-badge">' + inCart + '</span>' : '';
-            html += '<div class="pos-product-card' + (outOfStock ? ' out-of-stock' : '') + '"'
+                ? '<img class="pos-product-img" loading="lazy" src="' + p.image_256 + '" alt="" onerror="posImgErr(this)"/>'
+                : '<div class="pos-product-img-placeholder">' + BOX_SVG + '</div>';
+            const cartBadge = inCart
+                ? '<span class="pos-cart-count-badge">'
+                    + (inCart > 1 ? inCart : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>')
+                    + '</span>'
+                : '';
+            const catName = catShortName((Array.isArray(p.categ_id) && p.categ_id[1]) ? p.categ_id[1] : '');
+            // Mockup style: latin model name on the name line, Thai description as subtitle
+            let dispName = p.name || '';
+            let dispSub = catName;
+            const m = /^([\x20-\x7E]+?)\s+([฀-๿].*)$/.exec(dispName);
+            if (m) { dispName = m[1]; dispSub = m[2]; }
+            html += '<div class="pos-product-card' + (outOfStock ? ' out-of-stock' : '') + (inCart ? ' in-cart' : '') + '"'
                 + (outOfStock ? '' : ' data-prod-id="' + p.id + '"') + '>'
-                + imageHtml + stockBadgeHtml(p, false) + cartBadge
-                + '<div class="pos-product-info"><div class="pos-product-name">' + escapeHtml(p.name) + '</div>'
-                + (p.default_code ? '<div class="pos-product-code">' + escapeHtml(p.default_code) + '</div>' : '')
-                + '<div class="pos-product-price">' + fmt(p.list_price) + '</div></div></div>';
+                + imageHtml + cartBadge
+                + '<div class="pos-product-info">'
+                + (p.default_code ? '<div class="pos-product-code">[' + escapeHtml(p.default_code) + ']</div>' : '')
+                + '<div class="pos-product-name" title="' + escapeHtml(p.name) + '">' + escapeHtml(dispName) + '</div>'
+                + (dispSub ? '<div class="pos-product-sub">' + escapeHtml(dispSub) + '</div>' : '')
+                + '<div class="pos-product-price">' + fmt(p.list_price) + '</div>'
+                + stockTextHtml(p)
+                + '</div></div>';
         }
     });
     el.innerHTML = html;
@@ -1546,6 +1961,10 @@ function renderPagination(totalPages) {
     const bar = document.getElementById('posPagination');
     if (!totalPages) { bar.style.display = 'none'; return; }
     bar.style.display = 'flex';
+    const total = state.products.length;
+    const from = (state.page - 1) * state.perPage + 1;
+    const to = Math.min(state.page * state.perPage, total);
+    document.getElementById('pgShowing').textContent = 'แสดง ' + from + '–' + to + ' จาก ' + total + ' รายการ';
     document.getElementById('pgPrev').disabled = state.page <= 1;
     document.getElementById('pgNext').disabled = state.page >= totalPages;
     const numbers = document.getElementById('pgNumbers');
@@ -1669,6 +2088,7 @@ function cancelBill() {
     setSelectedPartner(null);
     closeCustResults();
     renderOrder(); updateTotals(); renderProducts();
+    updateCustomerPill();
     showToast('ยกเลิกบิลแล้ว', 'warning');
 }
 
@@ -1686,8 +2106,8 @@ function renderOrder() {
     let html = '';
     state.orderLines.forEach(function (l) {
         const imgHtml = l.image
-            ? '<img class="pos-order-line-img" src="' + l.image + '"/>'
-            : '<div class="pos-order-line-img-placeholder">📦</div>';
+            ? '<img class="pos-order-line-img" src="' + l.image + '" onerror="posImgErr(this)"/>'
+            : '<div class="pos-order-line-img-placeholder">' + BOX_SVG + '</div>';
         html += '<div class="pos-order-line">' + imgHtml
             + '<div class="pos-order-line-info">'
             + '<div class="pos-order-line-name" title="' + escapeHtml(l.name) + '">' + escapeHtml(l.name) + '</div>'
@@ -1722,19 +2142,23 @@ function computeTotals() {
 
 function updateTotals() {
     const t = computeTotals();
+    let discountSum = 0;
+    state.orderLines.forEach(function (l) { discountSum += (l.discount || 0) * (l.qty || 0); });
     document.getElementById('posSubtotal').textContent = fmt(t.subtotal);
+    document.getElementById('posDiscount').textContent = fmt(discountSum);
     document.getElementById('posTax').textContent = fmt(t.tax);
     document.getElementById('posTotal').textContent = fmt(t.total);
+    document.getElementById('posDue').textContent = fmt(t.total); // display only: no payment recorded pre-checkout
     const btn = document.getElementById('posPayBtn');
     const txt = document.getElementById('posPayBtnText');
-    const cancelBtn = document.getElementById('posCancelBillBtn');
+    const clearBtn = document.getElementById('posClearAllBtn');
     if (state.orderLines.length) {
         btn.disabled = false;
-        cancelBtn.disabled = false;
+        clearBtn.disabled = false;
         txt.textContent = 'ชำระเงิน ' + fmt(t.total);
     } else {
         btn.disabled = true;
-        cancelBtn.disabled = true;
+        clearBtn.disabled = true;
         txt.textContent = 'ชำระเงิน';
     }
 }
@@ -1751,9 +2175,13 @@ function openProcessModal() {
     });
     const custName = document.getElementById('custName').value.trim();
     html += '<div class="pos-checkout-line" style="border-top:1px solid var(--border);margin-top:4px;padding-top:7px;">'
-        + '<span class="cl-name" style="color:var(--text-secondary);">👤 ' + escapeHtml(custName || 'Walk-in Customer')
+        + '<span class="cl-name" style="color:var(--text-secondary);">' + escapeHtml(custName || 'Walk-in Customer')
         + ' · ' + escapeHtml(state.selectedEmployeeName) + '</span></div>';
     document.getElementById('checkoutLines').innerHTML = html;
+    const notePrev = document.getElementById('checkoutNotePreview');
+    const noteVal = document.getElementById('orderNote').value.trim();
+    notePrev.textContent = noteVal ? ('หมายเหตุ: ' + noteVal) : '';
+    notePrev.style.display = noteVal ? '' : 'none';
     document.getElementById('posProcessModal').classList.add('open');
 }
 function closeProcessModal() {
@@ -1792,6 +2220,8 @@ async function confirmProcess() {
             state.orderLines = [];
             renderOrder(); updateTotals();
             document.getElementById('orderNote').value = '';
+            document.getElementById('orderNote').style.display = 'none';
+            document.getElementById('addNoteBtn').textContent = '+ เพิ่มหมายเหตุ';
             document.getElementById('custName').value = '';
             document.getElementById('custPhone').value = '';
             document.getElementById('custAddress').value = '';
@@ -1842,6 +2272,7 @@ function renderPrintDetail() {
     document.getElementById('printOrderSummary').innerHTML = html;
     const invBtn = document.getElementById('printInvoiceBtn');
     invBtn.style.display = (o.print_urls && o.print_urls.invoice) ? '' : 'none';
+    updateOrderHeaderRef();
 }
 
 function showSimplePrintDetail(orderName) {
@@ -1850,6 +2281,7 @@ function showSimplePrintDetail(orderName) {
     document.getElementById('printOrderDate').textContent = '';
     document.getElementById('printOrderSummary').innerHTML = '';
     document.getElementById('printInvoiceBtn').style.display = 'none';
+    updateOrderHeaderRef();
 }
 
 function printReceipt(size) {
@@ -1923,7 +2355,7 @@ function closeHistoryOrders() { document.getElementById('posHistoryModal').class
 async function openReturnWizard(orderId, orderName) {
     closeHistoryOrders();
     state.returnOrderId = orderId;
-    document.getElementById('returnWizardTitle').textContent = '🔄 คืนสินค้า — ' + orderName;
+    document.getElementById('returnWizardTitle').textContent = 'คืนสินค้า — ' + orderName;
     document.getElementById('returnWizardBody').innerHTML = '<p style="color:var(--text-secondary);font-size:13px;">กำลังโหลด...</p>';
     document.getElementById('posReturnWizardModal').classList.add('open');
 
@@ -1951,10 +2383,10 @@ async function openReturnWizard(orderId, orderName) {
         html += '</div>';
         html += '<div class="pos-form-group"><label>เหตุผลการคืน</label><input type="text" id="returnReason" placeholder="เช่น สินค้าชำรุด, ลูกค้าเปลี่ยนใจ"/></div>';
         html += '<div class="pos-form-group"><label>วิธีการคืนเงิน</label><select id="returnPaymentMethod">'
-            + '<option value="cash">💵 เงินสด (Cash)</option>'
-            + '<option value="transfer">🏦 โอน (Transfer)</option>'
-            + '<option value="card">💳 บัตรเครดิต (Card)</option>'
-            + '<option value="promptpay">📱 พร้อมเพย์ (PromptPay)</option>'
+            + '<option value="cash">เงินสด (Cash)</option>'
+            + '<option value="transfer">โอน (Transfer)</option>'
+            + '<option value="card">บัตรเครดิต (Card)</option>'
+            + '<option value="promptpay">พร้อมเพย์ (PromptPay)</option>'
             + '</select></div>';
         html += '<div class="pos-return-total-box"><span>ยอดคืนโดยประมาณ</span><span class="amount" id="returnTotalAmount">฿0.00</span></div>';
         document.getElementById('returnWizardBody').innerHTML = html;
@@ -2056,10 +2488,15 @@ function closeReturnWizard() {
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         closeProcessModal(); closeEmployeeSwitch(); closePrintDetail(); closeReturnWizard(); closeHistoryOrders();
-        closeCatMenu(); closeCustResults();
+        closeCatMenu(); closeCustResults(); closeCustomerModal(); closeOrderKebab(); closeChannelPopover();
     }
-    if (e.key === 'F2') { e.preventDefault(); const s = document.getElementById('posSearch'); if (s) s.focus(); }
-    if (e.key === 'F4' || e.key === 'F9') {
+    if (e.key === 'F1') { e.preventDefault(); showHelpHint(); }
+    if (e.key === 'F2' || ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K'))) {
+        e.preventDefault();
+        const s = document.getElementById('posSearch'); if (s) s.focus();
+    }
+    if (e.key === 'F4') { e.preventDefault(); showHistoryOrders(); }
+    if (e.key === 'F9') {
         e.preventDefault();
         const btn = document.getElementById('posPayBtn');
         if (btn && !btn.disabled && !document.getElementById('posProcessModal').classList.contains('open')) openProcessModal();
@@ -2070,6 +2507,11 @@ document.addEventListener('keydown', function (e) {
 document.addEventListener('click', function (e) {
     if (!e.target.closest('#posCatMenu') && !e.target.closest('#posCatMoreBtn')) closeCatMenu();
     if (!e.target.closest('.pos-cust-search')) closeCustResults();
+    if (!e.target.closest('.pos-kebab-wrap')) closeOrderKebab();
+    if (!e.target.closest('#channelCard')) closeChannelPopover();
+    if (window.innerWidth <= 900 && !e.target.closest('#posSidebar') && !e.target.closest('.pos-sidebar-hamburger')) {
+        document.getElementById('posSidebar').classList.remove('open');
+    }
 });
 
 // ─── Bootstrap ──────────────────────────────────────────────
