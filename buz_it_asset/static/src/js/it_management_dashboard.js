@@ -102,15 +102,15 @@ export class ITManagementDashboard extends Component {
                     {
                         label: "Opened",
                         data: trend.map((row) => row.opened),
-                        borderColor: "#6d5dfc",
-                        backgroundColor: "rgba(109, 93, 252, .12)",
+                        borderColor: "#287df0",
+                        backgroundColor: "rgba(40, 125, 240, .10)",
                         fill: true,
                         tension: .35,
                     },
                     {
                         label: "Closed",
                         data: trend.map((row) => row.closed),
-                        borderColor: "#13b8c8",
+                        borderColor: "#15b7c8",
                         backgroundColor: "transparent",
                         tension: .35,
                     },
@@ -119,7 +119,7 @@ export class ITManagementDashboard extends Component {
             options: {
                 ...chartOptions,
                 plugins: {
-                    legend: { display: true, position: "bottom" },
+                    legend: { display: true, position: "top", align: "end" },
                     tooltip: { mode: "index", intersect: false },
                 },
             },
@@ -127,7 +127,7 @@ export class ITManagementDashboard extends Component {
         this.charts.ticketStatus = this.makeDoughnut(
             this.ticketStatusRef.el,
             data.ticket_status || [],
-            ["#6d5dfc", "#13b8c8", "#f5b544", "#8b96a8"],
+            ["#6d36e9", "#287df0", "#22b45b", "#8b96a8"],
             (index) => this.openDrilldown(
                 "ticket_status", data.ticket_status[index].stage_id
             ),
@@ -135,7 +135,7 @@ export class ITManagementDashboard extends Component {
         this.charts.assetStatus = this.makeDoughnut(
             this.assetStatusRef.el,
             data.asset_status || [],
-            ["#21b47e", "#6d5dfc", "#f5b544", "#8b96a8", "#ef6b73"],
+            ["#22b45b", "#287df0", "#f39a16", "#8b96a8", "#ee3e4b"],
             (index) => this.openDrilldown(
                 "asset_status", data.asset_status[index].state
             ),
@@ -147,7 +147,7 @@ export class ITManagementDashboard extends Component {
                 labels: categories.map((row) => row.label),
                 datasets: [{
                     data: categories.map((row) => row.value),
-                    backgroundColor: "#6d5dfc",
+                    backgroundColor: "#287df0",
                     borderRadius: 6,
                 }],
             },
@@ -170,6 +170,27 @@ export class ITManagementDashboard extends Component {
         if (!element) {
             return null;
         }
+        const centerText = {
+            id: "itDashboardDoughnutCenter",
+            afterDraw(chart) {
+                const { ctx, chartArea } = chart;
+                if (!chartArea || !rows.length) {
+                    return;
+                }
+                const total = rows.reduce((sum, row) => sum + Number(row.value || 0), 0);
+                const x = (chartArea.left + chartArea.right) / 2;
+                const y = (chartArea.top + chartArea.bottom) / 2;
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#142348";
+                ctx.font = "800 24px Inter, sans-serif";
+                ctx.fillText(total, x, y + 2);
+                ctx.fillStyle = "#6f7d96";
+                ctx.font = "12px Inter, sans-serif";
+                ctx.fillText("Total", x, y + 21);
+                ctx.restore();
+            },
+        };
         return new window.Chart(element, {
             type: "doughnut",
             data: {
@@ -177,13 +198,15 @@ export class ITManagementDashboard extends Component {
                 datasets: [{
                     data: rows.map((row) => row.value),
                     backgroundColor: colors,
-                    borderWidth: 0,
+                    borderWidth: 2,
+                    borderColor: "#ffffff",
                 }],
             },
+            plugins: [centerText],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: "68%",
+                cutout: "66%",
                 plugins: { legend: { display: false } },
                 onClick: (_event, elements) => {
                     if (elements.length) {
@@ -192,6 +215,11 @@ export class ITManagementDashboard extends Component {
                 },
             },
         });
+    }
+
+    statusPercentage(rows, value) {
+        const total = (rows || []).reduce((sum, row) => sum + Number(row.value || 0), 0);
+        return total ? Math.round(Number(value || 0) / total * 100) : 0;
     }
 
     async openDrilldown(target, bucket = null) {
