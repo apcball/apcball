@@ -40,3 +40,27 @@
     .it-kpi-icon{flex-basis:42px;width:42px;height:42px}
     .it-kpi-card strong{font-size:25px}
 }
+
+/* balanced-viewport-height */
+@media(min-width:901px){
+    .it-kpi-card{min-height:clamp(96px,10vh,112px)}
+    .it-panel{padding:16px}
+    .section-heading{margin-bottom:10px}
+    .section-heading h2{font-size:16px}
+    .chart-box{height:clamp(165px,18vh,195px)}
+    .chart-box.large{height:clamp(190px,20vh,220px)}
+    .status-chart{height:clamp(165px,18vh,195px)}
+    .status-legend{max-height:clamp(165px,18vh,195px)}
+    .it-dashboard-grid>.it-panel{min-height:clamp(210px,22vh,245px)}
+    .recent-panel{min-height:clamp(130px,14vh,160px);padding:16px}
+    .recent-row{padding-top:10px;padding-bottom:10px}
+}
+@media(min-width:901px) and (max-height:800px){
+    .it-kpi-card{min-height:92px}
+    .it-panel{padding:12px}
+    .chart-box{height:145px}
+    .chart-box.large{height:165px}
+    .status-chart,.status-legend{height:145px;max-height:145px}
+    .it-dashboard-grid>.it-panel{min-height:0}
+    .recent-panel{min-height:0;padding:12px}
+}
