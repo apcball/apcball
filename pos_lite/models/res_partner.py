@@ -1,5 +1,9 @@
+import re
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
 class ResPartner(models.Model):
@@ -22,6 +26,10 @@ class ResPartner(models.Model):
         vat = (data.get('vat') or '').strip()
         if vat and not (vat.isdigit() and len(vat) == 13):
             raise ValidationError('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก')
+
+        email = (data.get('email') or '').strip()
+        if email and not _EMAIL_RE.match(email):
+            raise ValidationError('อีเมลไม่ถูกต้อง')
 
         branch = (data.get('branch') or '').strip()
         has_branch_field = 'branch' in self._fields  # from l10n_th_partner
@@ -47,6 +55,7 @@ class ResPartner(models.Model):
             'name': name,
             'company_type': company_type,
             'vat': vat or False,
+            'email': email or False,
             'phone': (data.get('phone') or '').strip() or False,
             'street': (data.get('street') or '').strip() or False,
             'street2': (data.get('street2') or '').strip() or False,

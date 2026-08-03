@@ -839,6 +839,10 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                 <input type="tel" id="ncPhone" placeholder="เบอร์โทร"/>
                             </div>
                             <div class="pos-form-group">
+                                <label>อีเมล</label>
+                                <input type="email" id="ncEmail" placeholder="email@example.com"/>
+                            </div>
+                            <div class="pos-form-group">
                                 <label>ที่อยู่ (บ้านเลขที่ ถนน)</label>
                                 <input type="text" id="ncStreet" placeholder="บ้านเลขที่ ถนน"/>
                             </div>
@@ -1180,6 +1184,7 @@ function onNcCompanyTypeChange() {
 function openNewCustomer() {
     document.getElementById('ncName').value = document.getElementById('custName').value.trim();
     document.getElementById('ncPhone').value = document.getElementById('custPhone').value.trim();
+    document.getElementById('ncEmail').value = '';
     document.getElementById('ncVat').value = '';
     document.getElementById('ncBranch').value = '00000';
     document.getElementById('ncStreet').value = '';
@@ -1273,6 +1278,8 @@ async function saveNewCustomer() {
     const isPerson = document.getElementById('ncTypePerson').checked;
     const vat = isPerson ? '' : document.getElementById('ncVat').value.trim();
     if (vat && !/^\d{13}$/.test(vat)) { showToast('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก', 'error'); return; }
+    const email = document.getElementById('ncEmail').value.trim();
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { showToast('อีเมลไม่ถูกต้อง', 'error'); return; }
 
     state.creatingCustomer = true;
     const btn = document.getElementById('ncSaveBtn');
@@ -1286,6 +1293,7 @@ async function saveNewCustomer() {
             vat: vat,
             branch: isPerson ? '' : document.getElementById('ncBranch').value.trim(),
             phone: document.getElementById('ncPhone').value.trim(),
+            email: email,
             street: document.getElementById('ncStreet').value.trim(),
             street2: document.getElementById('ncStreet2').value.trim(),
             city: document.getElementById('ncCity').value.trim(),
