@@ -111,6 +111,7 @@ class PosLiteReturnWizard(models.TransientModel):
                 'price_unit': line.price_unit,
                 'discount': line.discount,
                 'discount_type': line.discount_type,
+                'selected': True,
             }))
         self.line_ids = lines
 
@@ -124,9 +125,10 @@ class PosLiteReturnWizard(models.TransientModel):
     @api.constrains('line_ids')
     def _check_lines(self):
         for wizard in self:
-            if not wizard.line_ids:
+            selected_lines = wizard.line_ids.filtered('selected')
+            if not selected_lines:
                 raise ValidationError(_('Please select at least one product to return.'))
-            for line in wizard.line_ids:
+            for line in selected_lines:
                 if line.qty <= 0:
                     raise ValidationError(_('Return quantity must be greater than zero.'))
                 # qty_available validation deferred to action_confirm
@@ -136,9 +138,10 @@ class PosLiteReturnWizard(models.TransientModel):
         self.ensure_one()
         if self.order_id.state != 'done':
             raise UserError(_('Only completed orders can be returned.'))
-        if not self.line_ids:
+        selected_lines = self.line_ids.filtered('selected')
+        if not selected_lines:
             raise UserError(_('Please select at least one product to return.'))
-        for line in self.line_ids:
+        for line in selected_lines:
             if line.order_line_id:
                 original_line = line.order_line_id
                 available_qty = original_line.available_return_qty if hasattr(original_line, 'available_return_qty') else original_line.qty
@@ -158,7 +161,7 @@ class PosLiteReturnWizard(models.TransientModel):
             'price_unit': l.order_line_id.price_subtotal / l.order_line_id.qty if l.order_line_id and l.order_line_id.qty else l.price_unit,
             'discount': 0.0,
             'discount_type': 'percent',
-        }) for l in self.line_ids.filtered(lambda l: l.qty > 0)]
+        }) for l in selected_lines.filtered(lambda l: l.qty > 0)]
 
         # 1. Create Return Order (always)
         return_note = '\n'.join([
@@ -280,6 +283,7 @@ class PosLiteReturnWizardLine(models.TransientModel):
     product_id = fields.Many2one('product.product')
     description = fields.Char(readonly=True)
     qty_available = fields.Float(readonly=True)
+    selected = fields.Boolean(default=True)
     qty = fields.Float(default=1.0)
     price_unit = fields.Monetary(required=False)
     discount = fields.Float(default=0.0)

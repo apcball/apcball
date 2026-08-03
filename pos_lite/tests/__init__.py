@@ -6,3 +6,4 @@ from . import test_margin
 from . import test_trade_channel
 from . import test_terminal_products
 from . import test_location_config
+from . import test_access_pos_lite_user

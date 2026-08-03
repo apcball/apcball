@@ -216,6 +216,41 @@ class TestReturnFlow(TestReturnExchangeBase):
         self.assertEqual(return_order.payment_ids[0].amount, -200.0)  # refund → negative
         self.assertEqual(return_order.invoice_id.move_type, 'out_refund')
 
+    def test_return_can_exclude_specific_line(self):
+        """wizard line uncheck (selected=False) → line ไม่ถูกนำไปสร้าง return line"""
+        order = self._create_and_process_order([
+            (self.product_a.id, 1, 200.0),
+            (self.product_b.id, 1, 150.0),
+        ])
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+        })
+        wizard._onchange_order_id()
+        self.assertEqual(len(wizard.line_ids), 2)
+
+        # Exclude product_b from the return
+        line_b = wizard.line_ids.filtered(lambda l: l.product_id == self.product_b)
+        line_b.selected = False
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertTrue(return_order)
+        self.assertEqual(len(return_order.line_ids), 1)
+        self.assertEqual(return_order.line_ids.product_id, self.product_a)
+
+    def test_return_all_lines_unselected_should_fail(self):
+        """ทุก line ถูก unselect → action_confirm ต้อง error"""
+        order = self._create_and_process_order()
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+        })
+        wizard._onchange_order_id()
+        wizard.line_ids.selected = False
+        with self.assertRaises(UserError):
+            wizard.action_confirm()
+
     def test_return_from_return_should_fail(self):
         """return order → ไม่สามารถ return ซ้ำได้ เพราะ state ต้องเป็น done ก่อน"""
         order = self._create_and_process_order()
