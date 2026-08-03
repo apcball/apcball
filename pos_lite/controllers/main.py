@@ -195,6 +195,20 @@ class PosLiteController(http.Controller):
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── States (Thailand only) ────────────────────────────────
+
+    @http.route('/pos_lite/api/states', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_states(self, **kwargs):
+        try:
+            states = request.env['res.country.state'].search_read(
+                [('country_id.code', '=', 'TH')],
+                ['name'],
+                order='name',
+            )
+            return {'success': True, 'states': states}
+        except _HANDLED_EXCEPTIONS as e:
+            return {'success': False, 'error': str(e)}
+
     # ─── Products ───────────────────────────────────────────────
 
     @http.route('/pos_lite/api/products', type='json', auth='user', methods=['POST'], csrf=False)
@@ -365,7 +379,8 @@ class PosLiteController(http.Controller):
             cid = self._get_company_id()
             partner = request.env['res.partner'].sudo().pos_lite_create_customer(data, cid)
             address = ' '.join(filter(None, [
-                partner.street, partner.city, partner.zip]))
+                partner.street, partner.street2, partner.city,
+                partner.state_id.name, partner.zip]))
             return {
                 'success': True,
                 'partner': {
@@ -402,7 +417,8 @@ class PosLiteController(http.Controller):
             ], limit=10, order='name')
             customers = []
             for p in partners:
-                address = ' '.join(filter(None, [p.street, p.city, p.zip]))
+                address = ' '.join(filter(None, [
+                    p.street, p.street2, p.city, p.state_id.name, p.zip]))
                 customers.append({
                     'id': p.id,
                     'name': p.name,

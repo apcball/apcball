@@ -826,18 +826,26 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                 <input type="tel" id="ncPhone" placeholder="เบอร์โทร"/>
                             </div>
                             <div class="pos-form-group">
-                                <label>ที่อยู่</label>
-                                <textarea id="ncStreet" placeholder="บ้านเลขที่ ถนน ตำบล/แขวง" rows="2"></textarea>
+                                <label>ที่อยู่ (บ้านเลขที่ ถนน)</label>
+                                <input type="text" id="ncStreet" placeholder="บ้านเลขที่ ถนน"/>
+                            </div>
+                            <div class="pos-form-group">
+                                <label>ที่อยู่ 2 (เพิ่มเติม)</label>
+                                <input type="text" id="ncStreet2" placeholder="ตำบล/แขวง (เพิ่มเติม)"/>
                             </div>
                             <div class="pos-nc-row">
                                 <div class="pos-form-group">
-                                    <label>อำเภอ/เขต จังหวัด</label>
-                                    <input type="text" id="ncCity" placeholder="อำเภอ/เขต จังหวัด"/>
+                                    <label>อำเภอ/เขต</label>
+                                    <input type="text" id="ncCity" placeholder="อำเภอ/เขต"/>
                                 </div>
                                 <div class="pos-form-group" style="max-width:130px;">
                                     <label>รหัสไปรษณีย์</label>
                                     <input type="text" id="ncZip" placeholder="10xxx" maxlength="5" inputmode="numeric"/>
                                 </div>
+                            </div>
+                            <div class="pos-form-group">
+                                <label>จังหวัด</label>
+                                <select id="ncState"><option value="">-- เลือกจังหวัด --</option></select>
                             </div>
                         </div>
                         <div class="pos-modal-footer">
@@ -1132,14 +1140,32 @@ function toggleCustomer() {
 }
 
 // ─── New Customer ──────────────────────────────────────────
+async function loadThaiStates() {
+    if (state.thStates) return;
+    try {
+        const data = await jsonRpc('/pos_lite/api/states', {});
+        state.thStates = (data.success && data.states) ? data.states : [];
+        const sel = document.getElementById('ncState');
+        state.thStates.forEach(function (s) {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            sel.appendChild(opt);
+        });
+    } catch (e) { state.thStates = []; }
+}
+
 function openNewCustomer() {
     document.getElementById('ncName').value = document.getElementById('custName').value.trim();
     document.getElementById('ncPhone').value = document.getElementById('custPhone').value.trim();
     document.getElementById('ncVat').value = '';
     document.getElementById('ncBranch').value = '00000';
     document.getElementById('ncStreet').value = '';
+    document.getElementById('ncStreet2').value = '';
     document.getElementById('ncCity').value = '';
     document.getElementById('ncZip').value = '';
+    document.getElementById('ncState').value = '';
+    loadThaiStates();
     document.getElementById('posNewCustomerModal').classList.add('open');
     document.getElementById('ncName').focus();
 }
@@ -1235,7 +1261,9 @@ async function saveNewCustomer() {
             branch: document.getElementById('ncBranch').value.trim(),
             phone: document.getElementById('ncPhone').value.trim(),
             street: document.getElementById('ncStreet').value.trim(),
+            street2: document.getElementById('ncStreet2').value.trim(),
             city: document.getElementById('ncCity').value.trim(),
+            state_id: parseInt(document.getElementById('ncState').value) || false,
             zip: document.getElementById('ncZip').value.trim(),
         });
         if (data.success) {

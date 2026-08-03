@@ -36,13 +36,21 @@ class ResPartner(models.Model):
                 raise ValidationError(
                     'เลขภาษีนี้มีลูกค้าอยู่แล้ว: %s' % dup.display_name)
 
+        try:
+            state_id = int(data['state_id']) if data.get('state_id') else False
+        except (ValueError, TypeError):
+            state_id = False
+
         vals = {
             'name': name,
             'vat': vat or False,
             'phone': (data.get('phone') or '').strip() or False,
             'street': (data.get('street') or '').strip() or False,
+            'street2': (data.get('street2') or '').strip() or False,
             'city': (data.get('city') or '').strip() or False,
+            'state_id': state_id,
             'zip': (data.get('zip') or '').strip() or False,
+            'country_id': self.env.ref('base.th').id,
             'customer_rank': 1,
             'company_id': company_id,
         }
