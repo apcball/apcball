@@ -1,6 +1,6 @@
 {
     'name': 'IT Asset',
-    'version': '17.0.1.10.0',
+    'version': '17.0.1.11.0',
     'category': 'Services/IT',
     'summary': 'Hardware and software asset registry for IT Management',
     'author': 'BUZ',
@@ -14,6 +14,7 @@
         'security/security.xml',
         'security/ir.model.access.csv',
         'views/asset_views.xml',
+        'views/ticket_repair_views.xml',
         'views/software_views.xml',
         'views/dashboard_views.xml',
         'views/menus.xml',

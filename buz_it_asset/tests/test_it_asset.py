@@ -165,11 +165,13 @@ class TestITAsset(TransactionCase):
         })
         self.assertEqual(license_record.active_installation_count, 2)
 
-    def test_asset_accepts_employee_or_department_not_both(self):
+    def test_asset_assignment_requires_holder_department_and_location(self):
         department_asset = self.env['buz.it.asset'].create({
             'name': 'Shared Printer',
             'type_id': self.asset_type.id,
             'serial_number': 'SN-DEPARTMENT-001',
+            'location_id': self.location.id,
+            'assigned_employee_id': self.employee.id,
             'responsible_department_id': self.department.id,
         })
         department_asset.action_assign()
@@ -178,7 +180,7 @@ class TestITAsset(TransactionCase):
             department_asset.assignment_ids.department_id,
             self.department,
         )
-        self.assertFalse(department_asset.assignment_ids.employee_id)
+        self.assertEqual(department_asset.assignment_ids.employee_id, self.employee)
         department_asset.action_return()
         self.assertFalse(department_asset.responsible_department_id)
 
@@ -189,45 +191,75 @@ class TestITAsset(TransactionCase):
                 'serial_number': 'SN-OWNER-INVALID-001',
                 'assigned_employee_id': self.employee.id,
                 'responsible_department_id': self.department.id,
+                'state': 'assigned',
             })
 
-    def test_maintenance_internal_external_and_completion(self):
+    def test_maintenance_history_is_ticket_only(self):
         asset = self.env['buz.it.asset'].create({
             'name': 'Repair Asset',
             'type_id': self.asset_type.id,
             'serial_number': 'SN-REPAIR-001',
         })
-        internal = self.env['buz.it.asset.maintenance'].create({
-            'asset_id': asset.id,
-            'sent_date': date(2026, 8, 1),
-            'symptom': 'Does not boot',
-            'technician_employee_id': self.employee.id,
-            'cost': 1200,
-        })
-        self.assertEqual(internal.currency_id, self.company.currency_id)
-        self.assertIn(internal, asset.maintenance_ids)
-        internal.action_done()
-        self.assertEqual(internal.state, 'done')
-        self.assertTrue(internal.completed_date)
         with self.assertRaises(UserError):
-            internal.unlink()
-
-        external = self.env['buz.it.asset.maintenance'].create({
-            'asset_id': asset.id,
-            'sent_date': date(2026, 8, 2),
-            'symptom': 'Damaged display',
-            'external_technician_name': 'External Technician',
-        })
-        external.action_start()
-        self.assertEqual(external.state, 'in_progress')
-
-        with self.assertRaises(ValidationError):
             self.env['buz.it.asset.maintenance'].create({
                 'asset_id': asset.id,
-                'symptom': 'Invalid technician selection',
-                'technician_employee_id': self.employee.id,
-                'external_technician_name': 'External Technician',
+                'symptom': 'Manual history must be rejected',
             })
+
+    def test_ticket_closure_creates_readonly_maintenance_history(self):
+        support = self.env['res.users'].create({
+            'name': 'Repair Support',
+            'login': 'repair_support_user',
+            'email': 'repair-support@example.com',
+            'company_id': self.company.id,
+            'company_ids': [fields.Command.set([self.company.id])],
+            'groups_id': [fields.Command.set([
+                self.env.ref('base.group_user').id,
+                self.env.ref('buz_it_helpdesk.group_it_support_agent').id,
+            ])],
+        })
+        employee = self.env['hr.employee'].create({
+            'name': 'Repair Support Employee',
+            'company_id': self.company.id,
+            'user_id': support.id,
+        })
+        asset = self.env['buz.it.asset'].create({
+            'name': 'Ticket Repair Asset',
+            'type_id': self.asset_type.id,
+            'serial_number': 'SN-TICKET-REPAIR-001',
+            'location_id': self.location.id,
+            'assigned_employee_id': employee.id,
+            'responsible_department_id': self.department.id,
+            'state': 'assigned',
+        })
+        ticket = self.env['buz.helpdesk.ticket'].with_user(support).create({
+            'subject': 'Ticket generated repair history',
+            'asset_id': asset.id,
+            'description': 'Does not power on',
+        })
+        ticket.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+            'assigned_user_id': support.id,
+            'create_ticket_date': date(2026, 8, 3),
+        })
+        ticket = ticket.with_user(support)
+        ticket.write({
+            'diagnosis': 'Power supply failure',
+            'repair_route': 'internal',
+        })
+        ticket.action_confirm_repair_route()
+        self.assertEqual(asset.state, 'repair')
+        ticket.write({'repair_result': 'Replaced power supply and tested.'})
+        ticket.action_mark_ready_close()
+        ticket.action_close_ticket()
+        self.assertEqual(asset.state, 'assigned')
+        history = asset.maintenance_ids.filtered(lambda line: line.ticket_id == ticket)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history.repair_route, 'internal')
+        self.assertEqual(history.repair_result, 'Replaced power supply and tested.')
+        self.assertEqual(history.technician_employee_id, employee)
+        with self.assertRaises(UserError):
+            history.write({'notes': 'Cannot edit history'})
 
     def test_completed_maintenance_requires_valid_date(self):
         asset = self.env['buz.it.asset'].create({
@@ -235,7 +267,7 @@ class TestITAsset(TransactionCase):
             'type_id': self.asset_type.id,
             'serial_number': 'SN-REPAIR-DATE-001',
         })
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             self.env['buz.it.asset.maintenance'].create({
                 'asset_id': asset.id,
                 'sent_date': date(2026, 8, 2),
@@ -249,6 +281,7 @@ class TestITAsset(TransactionCase):
             'name': 'ThinkPad', 'type_id': self.asset_type.id,
             'serial_number': 'SN-THINKPAD-001',
             'location_id': self.location.id,
+            'responsible_department_id': self.department.id,
         })
         asset.assigned_employee_id = self.employee
         asset.action_assign()
@@ -438,12 +471,12 @@ class TestITAsset(TransactionCase):
                 'create', raise_exception=False,
             ),
         )
-        self.assertTrue(
+        self.assertFalse(
             maintenance_model.with_user(support).check_access_rights(
                 'create', raise_exception=False,
             ),
         )
-        self.assertTrue(
+        self.assertFalse(
             maintenance_model.with_user(manager).check_access_rights(
                 'create', raise_exception=False,
             ),

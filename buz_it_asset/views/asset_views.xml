@@ -137,8 +137,13 @@
                         <page name="maintenance" string="ประวัติซ่อมบำรุง (Maintenance Log)">
                             <field name="maintenance_ids" mode="tree,form" context="{'default_asset_id': id}">
                                 <tree decoration-success="state == 'done'" decoration-muted="state == 'cancelled'">
+                                    <field name="ticket_id" optional="show"/>
+                                    <field name="asset_type_id" optional="hide"/>
+                                    <field name="repair_route" optional="show"/>
                                     <field name="sent_date"/>
                                     <field name="symptom"/>
+                                    <field name="diagnosis" optional="hide"/>
+                                    <field name="repair_result" optional="show"/>
                                     <field name="state"/>
                                     <field name="completed_date" optional="show"/>
                                     <field name="technician_employee_id" optional="show"/>
@@ -157,7 +162,9 @@
                                     <sheet>
                                         <group>
                                             <group string="ข้อมูลงานซ่อม (Repair Information)">
+                                                <field name="ticket_id" readonly="1"/>
                                                 <field name="asset_id" readonly="1"/>
+                                                <field name="asset_type_id" readonly="1"/>
                                                 <field name="sent_date"/>
                                                 <field name="completed_date" readonly="state == 'done'"/>
                                                 <field name="symptom"/>
