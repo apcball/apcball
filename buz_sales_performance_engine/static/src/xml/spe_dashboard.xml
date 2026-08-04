@@ -130,6 +130,24 @@
                             <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('payment'))"/> Invoices</div>
                         </div>
                     </div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('pos_returns')">
+                        <div class="spe-kpi-icon spe-ic-amber"><i class="fa fa-undo"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">POS Returns</div>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('pos_returns'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('pos_returns', true)" t-esc="fmtDelta('pos_returns')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('pos_returns'))"/> Returns</div>
+                        </div>
+                    </div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('credit_notes')">
+                        <div class="spe-kpi-icon spe-ic-red"><i class="fa fa-reply-all"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Credit Notes</div>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('credit_notes'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('credit_notes', true)" t-esc="fmtDelta('credit_notes')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('credit_notes'))"/> Notes</div>
+                        </div>
+                    </div>
                     <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('backlog')">
                         <div class="spe-kpi-icon spe-ic-amber"><i class="fa fa-cube"/></div>
                         <div class="spe-kpi-body">

@@ -230,7 +230,8 @@ class SpeDashboardController(http.Controller):
             self._merge_pos_rows(rows, filters, group, bucket, "po.date_order")
         return self._rows_out(rows)
 
-    def _merge_pos_rows(self, rows, filters, group, bucket, date_col):
+    def _merge_pos_rows(self, rows, filters, group, bucket, date_col,
+                         require_fg10_customer=False):
         group_sql = {
             None: "1",
             "bucket": f"date_trunc('{bucket}', {date_col})::date",
@@ -245,6 +246,13 @@ class SpeDashboardController(http.Controller):
         """
         if date_col.startswith("sp."):
             joins += " JOIN stock_picking sp ON sp.id = po.picking_id AND sp.state = 'done'"
+        if require_fg10_customer:
+            joins += """
+                JOIN stock_location loc_src ON loc_src.id = sp.location_id
+                JOIN stock_location loc_dst ON loc_dst.id = sp.location_dest_id
+            """
+            clauses = clauses + ["loc_src.complete_name = 'FG10/Stock'",
+                                  "loc_dst.usage = 'customer'"]
         request.env.cr.execute(
             f"""
             SELECT {group_sql} AS key,
@@ -264,31 +272,49 @@ class SpeDashboardController(http.Controller):
             cur["count"] += r["cnt"]
 
     def _delivery_rows(self, filters, group=None, bucket="day"):
-        """Value delivered = done move qty x SO line unit price (+ POS)."""
+        """Value delivered = SO line unit price, once per (picking, order line).
+
+        A kit/BOM "set" line explodes into several component stock moves that
+        all share the same sale_line_id. Summing sm.quantity * sol.price_unit
+        per move would multiply the line's price by the component count
+        instead of counting the line once, wildly overstating kit deliveries.
+        """
         rows = {}
         source = filters.get("source")
         if source != "pos":
             group_sql = {
                 None: "1",
-                "bucket": f"date_trunc('{bucket}', sp.date_done)::date",
-                "user": "so.user_id",
-                "company": "so.company_id",
-                "partner": "so.partner_id",
+                "bucket": f"date_trunc('{bucket}', date_done)::date",
+                "user": "user_id",
+                "company": "company_id",
+                "partner": "partner_id",
             }[group]
             clauses, params = self._sql_so_filters(filters, "so", "sp.date_done")
             request.env.cr.execute(
                 f"""
+                WITH deduped AS (
+                    SELECT DISTINCT sp.id AS picking_id, sol.id AS sol_id,
+                           sp.date_done AS date_done,
+                           so.user_id AS user_id, so.company_id AS company_id,
+                           so.partner_id AS partner_id,
+                           sol.price_unit * (1 - COALESCE(sol.discount, 0) / 100.0)
+                               AS line_amount
+                    FROM stock_move sm
+                    JOIN stock_picking sp ON sp.id = sm.picking_id
+                    JOIN sale_order_line sol ON sol.id = sm.sale_line_id
+                    JOIN sale_order so ON so.id = sol.order_id
+                    JOIN stock_location loc_src ON loc_src.id = sp.location_id
+                    JOIN stock_location loc_dst ON loc_dst.id = sp.location_dest_id
+                    WHERE sm.state = 'done'
+                      AND sp.state = 'done'
+                      AND loc_src.complete_name = 'FG10/Stock'
+                      AND loc_dst.usage = 'customer'
+                      AND {' AND '.join(clauses)}
+                )
                 SELECT {group_sql} AS key,
-                       COALESCE(SUM(sm.quantity * sol.price_unit
-                                    * (1 - COALESCE(sol.discount, 0) / 100.0)), 0) AS amount,
-                       COUNT(DISTINCT sp.id) AS cnt
-                FROM stock_move sm
-                JOIN stock_picking sp ON sp.id = sm.picking_id
-                JOIN sale_order_line sol ON sol.id = sm.sale_line_id
-                JOIN sale_order so ON so.id = sol.order_id
-                WHERE sm.state = 'done'
-                  AND sp.state = 'done'
-                  AND {' AND '.join(clauses)}
+                       COALESCE(SUM(line_amount), 0) AS amount,
+                       COUNT(DISTINCT picking_id) AS cnt
+                FROM deduped
                 GROUP BY 1
                 """,
                 tuple(params),
@@ -296,8 +322,74 @@ class SpeDashboardController(http.Controller):
             for r in request.env.cr.dictfetchall():
                 rows[r["key"]] = {"amount": r["amount"], "count": r["cnt"]}
         if source != "sale":
-            self._merge_pos_rows(rows, filters, group, bucket, "sp.date_done")
+            self._merge_pos_rows(rows, filters, group, bucket, "sp.date_done",
+                                  require_fg10_customer=True)
         return self._rows_out(rows)
+
+    def _returns_pos_rows(self, filters, group=None, bucket="day"):
+        """POS orders where is_return=true. amount_untaxed is stored negative
+        for return orders; negate it here to show a positive "value returned"."""
+        if filters.get("source") == "sale":
+            return self._rows_out({})
+        group_sql = {
+            None: "1",
+            "bucket": f"date_trunc('{bucket}', po.date_order)::date",
+            "user": "emp.user_id",
+            "company": "po.company_id",
+            "partner": "po.partner_id",
+        }[group]
+        clauses, params = self._sql_pos_filters(filters, "po.date_order")
+        clauses.append("po.is_return = true")
+        request.env.cr.execute(
+            f"""
+            SELECT {group_sql} AS key,
+                   COALESCE(SUM(ABS(po.amount_untaxed)), 0) AS amount,
+                   COUNT(*) AS cnt
+            FROM pos_lite_order po
+            LEFT JOIN hr_employee emp ON emp.id = po.employee_id
+            LEFT JOIN res_users ru ON ru.id = emp.user_id
+            WHERE {' AND '.join(clauses)}
+            GROUP BY 1
+            """,
+            tuple(params),
+        )
+        return self._rows_out({
+            r["key"]: {"amount": r["amount"], "count": r["cnt"]}
+            for r in request.env.cr.dictfetchall()
+        })
+
+    def _returns_credit_note_rows(self, filters, group=None, bucket="day"):
+        """SO-side credit notes (out_refund), excluding POS-originated moves
+        (already counted in _returns_pos_rows) to avoid double counting."""
+        if filters.get("source") == "pos":
+            return self._rows_out({})
+        group_sql = {
+            None: "1",
+            "bucket": f"date_trunc('{bucket}', am.invoice_date)::date",
+            "user": "am.invoice_user_id",
+            "company": "am.company_id",
+            "partner": "am.partner_id",
+        }[group]
+        clauses, params = self._move_sql_filters(filters, "am.invoice_date")
+        clauses.append("am.move_type = 'out_refund'")
+        pos_ids = tuple(self._pos_invoice_move_ids(filters)) or (0,)
+        clauses.append("am.id NOT IN %s")
+        params.append(pos_ids)
+        request.env.cr.execute(
+            f"""
+            SELECT {group_sql} AS key,
+                   COALESCE(-SUM(am.amount_untaxed_signed), 0) AS amount,
+                   COUNT(*) AS cnt
+            FROM account_move am
+            WHERE {' AND '.join(clauses)}
+            GROUP BY 1
+            """,
+            tuple(params),
+        )
+        return self._rows_out({
+            r["key"]: {"amount": r["amount"], "count": r["cnt"]}
+            for r in request.env.cr.dictfetchall()
+        })
 
     def _invoice_rows(self, filters, group=None, bucket="day", measure="invoice"):
         """measure='invoice' -> net untaxed; 'payment' -> collected amount."""
@@ -358,6 +450,50 @@ class SpeDashboardController(http.Controller):
             clauses.append("am.id IN %s" if source == "pos" else "am.id NOT IN %s")
             params.append(pos_ids)
         return clauses, params
+
+    def _delivery_picking_ids(self, filters):
+        """stock.picking ids that back the Delivery KPI (same rules as _delivery_rows)."""
+        ids = set()
+        source = filters.get("source")
+        if source != "pos":
+            clauses, params = self._sql_so_filters(filters, "so", "sp.date_done")
+            request.env.cr.execute(
+                f"""
+                SELECT DISTINCT sp.id
+                FROM stock_move sm
+                JOIN stock_picking sp ON sp.id = sm.picking_id
+                JOIN sale_order_line sol ON sol.id = sm.sale_line_id
+                JOIN sale_order so ON so.id = sol.order_id
+                JOIN stock_location loc_src ON loc_src.id = sp.location_id
+                JOIN stock_location loc_dst ON loc_dst.id = sp.location_dest_id
+                WHERE sm.state = 'done'
+                  AND sp.state = 'done'
+                  AND loc_src.complete_name = 'FG10/Stock'
+                  AND loc_dst.usage = 'customer'
+                  AND {' AND '.join(clauses)}
+                """,
+                tuple(params),
+            )
+            ids.update(r[0] for r in request.env.cr.fetchall())
+        if source != "sale":
+            clauses, params = self._sql_pos_filters(filters, "sp.date_done")
+            request.env.cr.execute(
+                f"""
+                SELECT DISTINCT sp.id
+                FROM pos_lite_order po
+                JOIN stock_picking sp ON sp.id = po.picking_id AND sp.state = 'done'
+                LEFT JOIN hr_employee emp ON emp.id = po.employee_id
+                LEFT JOIN res_users ru ON ru.id = emp.user_id
+                JOIN stock_location loc_src ON loc_src.id = sp.location_id
+                JOIN stock_location loc_dst ON loc_dst.id = sp.location_dest_id
+                WHERE loc_src.complete_name = 'FG10/Stock'
+                  AND loc_dst.usage = 'customer'
+                  AND {' AND '.join(clauses)}
+                """,
+                tuple(params),
+            )
+            ids.update(r[0] for r in request.env.cr.fetchall())
+        return list(ids)
 
     def _backlog(self, filters):
         """Confirmed-not-delivered value (sale orders only)."""
@@ -425,6 +561,8 @@ class SpeDashboardController(http.Controller):
             "delivery": self._total(self._delivery_rows(filters)),
             "invoice": self._total(self._invoice_rows(filters, measure="invoice")),
             "payment": self._total(self._invoice_rows(filters, measure="payment")),
+            "pos_returns": self._total(self._returns_pos_rows(filters)),
+            "credit_notes": self._total(self._returns_credit_note_rows(filters)),
             "backlog": self._backlog(filters),
             "overdue": self._overdue(filters),
         }
@@ -625,9 +763,7 @@ class SpeDashboardController(http.Controller):
 
         def _merge(key, rows):
             for r in rows:
-                uid = r["key"]
-                if not uid:
-                    continue
+                uid = r["key"] or 0
                 entry = merged.setdefault(
                     uid, {"so": 0, "delivery": 0, "invoice": 0, "payment": 0,
                           "target": 0})
@@ -659,14 +795,15 @@ class SpeDashboardController(http.Controller):
 
         users = {
             u.id: u.name
-            for u in request.env["res.users"].sudo().browse(list(merged))
+            for u in request.env["res.users"].sudo().browse(
+                [uid for uid in merged if uid])
         }
         rows = []
         for uid, vals in merged.items():
             target = vals["target"]
             rows.append({
                 "id": uid,
-                "name": users.get(uid, "?"),
+                "name": users.get(uid, "Unassigned"),
                 "so": self._round(vals["so"]),
                 "delivery": self._round(vals["delivery"]),
                 "invoice": self._round(vals["invoice"]),
@@ -798,17 +935,8 @@ class SpeDashboardController(http.Controller):
                 return _act("POS Orders", "pos.lite.order", self._pos_domain(filters))
             return _act("Sales Orders", "sale.order", self._so_domain(filters))
         if kind == "do":
-            d_from, d_to = self._dates(filters)
-            domain = [
-                ("company_id", "in", self._company_ids(filters)),
-                ("picking_type_code", "=", "outgoing"),
-                ("state", "=", "done"),
-            ]
-            if d_from:
-                domain.append(("date_done", ">=", d_from))
-            if d_to:
-                domain.append(("date_done", "<=", d_to))
-            return _act("Deliveries", "stock.picking", domain)
+            return _act("Deliveries", "stock.picking",
+                        [("id", "in", self._delivery_picking_ids(filters) or [0])])
         if kind == "invoice":
             return _act("Posted Invoices", "account.move", self._move_domain(filters))
         if kind == "payment":
@@ -816,6 +944,14 @@ class SpeDashboardController(http.Controller):
                         self._move_domain(filters)
                         + [("payment_state", "in",
                             ("paid", "partial", "in_payment", "reversed"))])
+        if kind == "pos_returns":
+            return _act("POS Returns", "pos.lite.order",
+                        self._pos_domain(filters) + [("is_return", "=", True)])
+        if kind == "credit_notes":
+            pos_ids = self._pos_invoice_move_ids(filters) or [0]
+            return _act("Credit Notes", "account.move",
+                        self._move_domain(filters)
+                        + [("move_type", "=", "out_refund"), ("id", "not in", pos_ids)])
         if kind == "backlog":
             return _act("Backlog Orders", "sale.order",
                         self._so_domain(filters, states=("sale",))

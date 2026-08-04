@@ -1,6 +1,6 @@
 {
     "name": "BUZ Sales Performance Engine",
-    "version": "17.0.2.1.0",
+    "version": "17.0.2.2.0",
     "summary": "Measure REAL sales performance: recognized only when delivered AND invoice posted. Includes POS Lite sales.",
     "description": """
 BUZ Sales Performance Engine
@@ -19,7 +19,8 @@ Features
 --------
 * Salesperson / Sales Team / Company targets (daily, monthly, quarterly, yearly)
 * Real-time OWL pipeline dashboard (Chart.js, no extra JS dependency):
-  KPI cards (Sales Order / Delivery / Invoice / Payment / Backlog / Overdue),
+  KPI cards (Sales Order / Delivery / Invoice / Payment / POS Returns /
+  Credit Notes / Backlog / Overdue),
   sales funnel, sales trend, sales by company / category,
   performance by salesperson with target achievement,
   top customers, follow-up work lists, month-over-month comparison
