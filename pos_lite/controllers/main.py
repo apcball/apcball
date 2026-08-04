@@ -44,6 +44,58 @@ def _get_terminal_location(config):
     return False
 
 
+def _add_kit_products_in_stock(env, location_id, product_ids_in_stock, qty_map):
+    """Append BOM-kit products buildable at location_id to product_ids_in_stock.
+
+    Mirrors buz_stock_current_report's bom_available_by_location logic
+    (models/stock_current_report.py): a kit is available at a location only
+    if every one of its BOM components has free stock there, and the
+    buildable qty is the minimum (component free qty // required qty) across
+    all components. Kits that already have their own stock.quant (already in
+    product_ids_in_stock) are skipped — physical stock wins.
+    """
+    env.cr.execute("""
+        WITH kit_requirement AS (
+            SELECT pp.id AS kit_product_id,
+                   bl.product_id AS component_id,
+                   SUM(bl.product_qty) AS component_qty
+            FROM mrp_bom bom
+            JOIN product_product pp ON pp.product_tmpl_id = bom.product_tmpl_id
+                AND (bom.product_id IS NULL OR bom.product_id = pp.id)
+            JOIN product_template pt ON pt.id = pp.product_tmpl_id
+            JOIN mrp_bom_line bl ON bl.bom_id = bom.id
+            WHERE bom.active = true
+              AND bom.type IN ('normal', 'phantom')
+              AND pp.active = true AND pt.active = true
+              AND NOT (pp.id = ANY(%(excluded_ids)s))
+            GROUP BY pp.id, bl.product_id
+        ),
+        kit_requirement_size AS (
+            SELECT kit_product_id, COUNT(*) AS n_lines
+            FROM kit_requirement
+            GROUP BY kit_product_id
+        ),
+        component_stock AS (
+            SELECT product_id,
+                   GREATEST(COALESCE(SUM(quantity), 0) - COALESCE(SUM(reserved_quantity), 0), 0) AS qty
+            FROM stock_quant
+            WHERE location_id = %(location_id)s
+            GROUP BY product_id
+        )
+        SELECT kr.kit_product_id AS product_id,
+               MIN(FLOOR(cs.qty / NULLIF(kr.component_qty, 0))) AS bom_qty
+        FROM kit_requirement kr
+        JOIN kit_requirement_size krs ON krs.kit_product_id = kr.kit_product_id
+        JOIN component_stock cs ON cs.product_id = kr.component_id AND cs.qty > 0
+        GROUP BY kr.kit_product_id, krs.n_lines
+        HAVING COUNT(*) = krs.n_lines
+           AND MIN(FLOOR(cs.qty / NULLIF(kr.component_qty, 0))) > 0
+    """, {'location_id': location_id, 'excluded_ids': product_ids_in_stock})
+    for row in env.cr.dictfetchall():
+        product_ids_in_stock.append(row['product_id'])
+        qty_map[row['product_id']] = float(row['bom_qty'])
+
+
 def _sanitize_o2m_payload(raw, allowed_fields):
     """Convert a list of dicts (or [0,0,{...}] commands) into whitelist-only
     create commands. Drops any key not in allowed_fields."""
@@ -271,6 +323,13 @@ class PosLiteController(http.Controller):
                     # terminal entirely, not just greyed out.
                     if qty > 0:
                         product_ids_in_stock.append(pid)
+
+                # "Set" products (BOM kits, e.g. bathroom cabinet + basin sold
+                # as one code) carry no stock.quant of their own — availability
+                # is derived from their components. Same buildable-qty formula
+                # as buz_stock_current_report's bom_available_by_location CTE,
+                # scoped to this single terminal location.
+                _add_kit_products_in_stock(request.env, location.id, product_ids_in_stock, qty_map)
 
             products = request.env['product.product'].search_read(
                 _terminal_product_domain(product_ids_in_stock),

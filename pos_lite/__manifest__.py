@@ -1,6 +1,6 @@
 {
     'name': 'POS Lite',
-    'version': '17.0.3.18.0',
+    'version': '17.0.3.19.0',
     'category': 'Sales',
     'summary': 'Lightweight form-based order entry for phone, LINE, and walk-in orders',
     'description': """
@@ -30,6 +30,7 @@ Features:
         'contacts',
         'product',
         'stock',
+        'mrp',
         'account',
         'analytic',
         'sale_management',

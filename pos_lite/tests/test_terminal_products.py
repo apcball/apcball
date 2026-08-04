@@ -3,7 +3,7 @@
 from odoo.tests import common, tagged
 from odoo.exceptions import ValidationError
 
-from ..controllers.main import _get_terminal_location, _terminal_product_domain
+from ..controllers.main import _add_kit_products_in_stock, _get_terminal_location, _terminal_product_domain
 
 
 @tagged('-at_install', 'post_install')
@@ -199,3 +199,88 @@ class TestTerminalProducts(common.TransactionCase):
         self.assertIn(in_stock, products)
         self.assertIn(service, products)
         self.assertNotIn(out_of_stock, products)
+
+    def _create_kit(self, name, component_quants):
+        """Create a phantom-BOM kit product with the given [(product, qty)]
+        component requirements. Returns the kit product."""
+        kit = self.env['product.product'].create({
+            'name': name,
+            'type': 'product',
+            'sale_ok': True,
+            'can_be_pos': True,
+        })
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': kit.product_tmpl_id.id,
+            'product_id': kit.id,
+            'product_qty': 1.0,
+            'type': 'phantom',
+            'bom_line_ids': [
+                (0, 0, {'product_id': component.id, 'product_qty': qty})
+                for component, qty in component_quants
+            ],
+        })
+        return kit
+
+    def test_kit_product_available_when_components_in_stock(self):
+        """A BOM-kit product with no stock.quant of its own becomes available
+        when every component has enough free stock at the location."""
+        warehouse = self.env['stock.warehouse'].search([
+            ('company_id', '=', self.env.company.id),
+        ], limit=1)
+        location = self.env['stock.location'].create({
+            'name': 'POS Kit Loc',
+            'location_id': warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': self.env.company.id,
+        })
+        comp_a = self.env['product.product'].create({
+            'name': 'Kit Component A', 'type': 'product',
+        })
+        comp_b = self.env['product.product'].create({
+            'name': 'Kit Component B', 'type': 'product',
+        })
+        kit = self._create_kit('Terminal Kit', [(comp_a, 1.0), (comp_b, 2.0)])
+        self.env['stock.quant'].create({
+            'product_id': comp_a.id, 'location_id': location.id, 'quantity': 5.0,
+        })
+        self.env['stock.quant'].create({
+            'product_id': comp_b.id, 'location_id': location.id, 'quantity': 6.0,
+        })
+
+        product_ids_in_stock = []
+        qty_map = {}
+        _add_kit_products_in_stock(self.env, location.id, product_ids_in_stock, qty_map)
+
+        self.assertIn(kit.id, product_ids_in_stock)
+        # min(floor(5/1), floor(6/2)) = min(5, 3) = 3
+        self.assertEqual(qty_map[kit.id], 3.0)
+
+    def test_kit_product_hidden_when_a_component_missing(self):
+        """If any single component has zero free stock, the kit is not
+        buildable and must not appear on the terminal."""
+        warehouse = self.env['stock.warehouse'].search([
+            ('company_id', '=', self.env.company.id),
+        ], limit=1)
+        location = self.env['stock.location'].create({
+            'name': 'POS Kit Missing Loc',
+            'location_id': warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': self.env.company.id,
+        })
+        comp_a = self.env['product.product'].create({
+            'name': 'Kit Component C', 'type': 'product',
+        })
+        comp_b = self.env['product.product'].create({
+            'name': 'Kit Component D (missing)', 'type': 'product',
+        })
+        kit = self._create_kit('Terminal Kit Incomplete', [(comp_a, 1.0), (comp_b, 1.0)])
+        self.env['stock.quant'].create({
+            'product_id': comp_a.id, 'location_id': location.id, 'quantity': 10.0,
+        })
+        # comp_b has no quant at all — kit must not be buildable.
+
+        product_ids_in_stock = []
+        qty_map = {}
+        _add_kit_products_in_stock(self.env, location.id, product_ids_in_stock, qty_map)
+
+        self.assertNotIn(kit.id, product_ids_in_stock)
