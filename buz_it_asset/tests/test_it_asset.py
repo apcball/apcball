@@ -272,7 +272,7 @@ class TestITAsset(TransactionCase):
         ticket.write({
             'diagnosis': 'Power supply failure',
             'repair_result': 'Replaced power supply and tested.',
-            'repair_outcome': 'parts_replaced',
+            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_parts_replaced').id,
             'repair_instructions': 'Monitor the power supply for seven days.',
             'repair_part_ids': [fields.Command.create({
                 'name': 'Power supply',
@@ -347,7 +347,7 @@ class TestITAsset(TransactionCase):
         ticket.write({'repair_result': 'Checked and tested.'})
         with self.assertRaises(UserError):
             ticket.action_close_ticket()
-        ticket.write({'repair_outcome': 'parts_replaced'})
+        ticket.write({'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_parts_replaced').id})
         with self.assertRaises(UserError):
             ticket.action_close_ticket()
         with self.assertRaises(ValidationError), self.env.cr.savepoint():
@@ -359,7 +359,7 @@ class TestITAsset(TransactionCase):
                 'quantity': 0,
             })
         ticket.write({
-            'repair_outcome': 'asset_replaced',
+            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_asset_replaced').id,
             'repair_part_ids': [fields.Command.clear()],
         })
         with self.assertRaises(UserError):
@@ -417,7 +417,7 @@ class TestITAsset(TransactionCase):
         ticket = self._create_in_progress_repair_ticket(support, asset)
         ticket.write({
             'repair_result': 'Replaced the registered device.',
-            'repair_outcome': 'asset_replaced',
+            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_asset_replaced').id,
             'replacement_asset_id': replacement.id,
         })
         ticket.action_close_ticket()
@@ -461,7 +461,7 @@ class TestITAsset(TransactionCase):
         ticket = self._create_in_progress_repair_ticket(support, asset)
         ticket.write({
             'repair_result': 'Repair is not economically viable.',
-            'repair_outcome': 'retired',
+            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_retired').id,
             'retire_reason': 'uneconomical',
         })
         with self.assertRaises(UserError):
@@ -523,7 +523,7 @@ class TestITAsset(TransactionCase):
         ).fields_get()
         self.assertNotIn('diagnosis', ticket_fields)
         self.assertNotIn('external_cost', ticket_fields)
-        self.assertIn('repair_outcome', ticket_fields)
+        self.assertIn('repair_outcome_id', ticket_fields)
         self.assertIn('repair_result', ticket_fields)
         maintenance_fields = self.env['buz.it.asset.maintenance'].with_user(
             requester

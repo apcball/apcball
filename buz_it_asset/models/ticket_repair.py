@@ -48,13 +48,14 @@ class HelpdeskTicketRepair(models.Model):
     diagnosis = fields.Text(string='Inspection / Diagnosis', groups=IT_GROUPS)
     repair_instructions = fields.Text(string='Recommendations')
     repair_result = fields.Text(string='Repair Result')
-    repair_outcome = fields.Selection([
-        ('repaired', 'Repaired'),
-        ('parts_replaced', 'Parts Replaced'),
-        ('asset_replaced', 'Asset Replaced'),
-        ('retired', 'Retired'),
-        ('no_repair', 'No Repair'),
-    ], string='Outcome', tracking=True, copy=False)
+    repair_outcome_id = fields.Many2one(
+        'buz.it.asset.repair.outcome', string='Outcome', ondelete='restrict',
+        tracking=True, copy=False,
+        domain=[('active', '=', True)],
+    )
+    repair_outcome_behavior = fields.Selection(
+        related='repair_outcome_id.behavior', readonly=True,
+    )
     replacement_asset_id = fields.Many2one(
         'buz.it.asset', string='Replacement Asset', ondelete='restrict',
         check_company=True, copy=False, groups=IT_GROUPS,
@@ -142,14 +143,14 @@ class HelpdeskTicketRepair(models.Model):
             )
 
     @api.depends(
-        'repair_outcome', 'repair_result', 'repair_instructions', 'stage_id',
+        'repair_outcome_id', 'repair_result', 'repair_instructions', 'stage_id',
     )
     @api.depends_context('uid')
     def _compute_show_repair_process(self):
         is_it_user = self._is_support_agent()
         for ticket in self:
             ticket.show_repair_process = bool(
-                is_it_user or ticket.repair_outcome or ticket.repair_result
+                is_it_user or ticket.repair_outcome_id or ticket.repair_result
                 or ticket.repair_instructions
             )
     _repair_management_fields = {
@@ -164,7 +165,7 @@ class HelpdeskTicketRepair(models.Model):
         'requester_return_date', 'requester_repair_result', 'requester_cost',
         'requester_warranty', 'retire_reason', 'retire_reason_detail',
         'retire_approved_by_id', 'retire_approved_date', 'retire_proposed',
-        'repair_outcome', 'replacement_asset_id', 'repair_part_ids',
+        'repair_outcome_id', 'replacement_asset_id', 'repair_part_ids',
     }
 
     def _check_repair_permission(self):
@@ -225,10 +226,14 @@ class HelpdeskTicketRepair(models.Model):
     def write(self, vals):
         if self._is_support_agent() is False and self._repair_management_fields.intersection(vals):
             raise UserError(_('Only IT Support Agents can edit repair details.'))
-        if 'repair_outcome' in vals:
-            if vals['repair_outcome'] != 'asset_replaced':
+        if 'repair_outcome_id' in vals:
+            outcome = self.env['buz.it.asset.repair.outcome'].browse(
+                vals['repair_outcome_id'],
+            ).exists()
+            behavior = outcome.behavior if outcome else False
+            if behavior != 'asset_replaced':
                 vals['replacement_asset_id'] = False
-            if vals['repair_outcome'] != 'parts_replaced':
+            if behavior != 'parts_replaced':
                 self.mapped('repair_part_ids').unlink()
         if 'asset_id' in vals:
             for ticket in self:
@@ -248,7 +253,7 @@ class HelpdeskTicketRepair(models.Model):
         if approval_fields.intersection(vals) and not self.env.su:
             raise UserError(_('Retirement approval fields are system-managed.'))
         if (
-            {'repair_outcome', 'retire_reason', 'retire_reason_detail'}.intersection(vals)
+            {'repair_outcome_id', 'retire_reason', 'retire_reason_detail'}.intersection(vals)
             and not self.env.su
         ):
             self.sudo().write({
@@ -271,7 +276,7 @@ class HelpdeskTicketRepair(models.Model):
         default.update({
             'diagnosis': False,
             'repair_result': False,
-            'repair_outcome': False,
+            'repair_outcome_id': False,
             'repair_instructions': False,
             'replacement_asset_id': False,
             'repair_part_ids': False,
@@ -291,7 +296,7 @@ class HelpdeskTicketRepair(models.Model):
         self._check_repair_permission()
         if self.stage_id != self.env.ref('buz_it_helpdesk.stage_in_progress'):
             raise UserError(_('Retirement can be proposed only for an In Progress Ticket.'))
-        if not self.asset_id or self.repair_outcome != 'retired':
+        if not self.asset_id or self.repair_outcome_behavior != 'retired':
             raise UserError(_('Select an Asset and the Retired outcome first.'))
         if not self.retire_reason:
             raise UserError(_('Select the reason for retirement.'))
@@ -329,7 +334,7 @@ class HelpdeskTicketRepair(models.Model):
             raise UserError(_('Only a Helpdesk Manager can approve retirement.'))
         if (
             not self.asset_id
-            or self.repair_outcome != 'retired'
+            or self.repair_outcome_behavior != 'retired'
             or not self.retire_proposed
         ):
             raise UserError(_('This Ticket is not awaiting retirement approval.'))
@@ -360,15 +365,15 @@ class HelpdeskTicketRepair(models.Model):
         self._check_repair_permission()
         if not self.repair_result:
             raise UserError(_('Enter the repair result before closing this Ticket.'))
-        if not self.repair_outcome:
+        if not self.repair_outcome_id:
             raise UserError(_('Select the repair outcome before closing this Ticket.'))
-        if self.repair_outcome == 'parts_replaced' and not self.repair_part_ids:
+        if self.repair_outcome_behavior == 'parts_replaced' and not self.repair_part_ids:
             raise UserError(_('Add at least one replacement part before closing this Ticket.'))
-        if self.repair_outcome != 'parts_replaced' and self.repair_part_ids:
+        if self.repair_outcome_behavior != 'parts_replaced' and self.repair_part_ids:
             raise UserError(_(
                 'Replacement parts are allowed only for the Parts Replaced outcome.'
             ))
-        if self.repair_outcome == 'asset_replaced':
+        if self.repair_outcome_behavior == 'asset_replaced':
             if not self.replacement_asset_id:
                 raise UserError(_('Select the Replacement Asset before closing this Ticket.'))
             self._check_replacement_asset(self.replacement_asset_id)
@@ -376,7 +381,7 @@ class HelpdeskTicketRepair(models.Model):
             raise UserError(_(
                 'Replacement Asset is allowed only for the Asset Replaced outcome.'
             ))
-        if self.repair_outcome == 'retired':
+        if self.repair_outcome_behavior == 'retired':
             if not self.retire_reason:
                 raise UserError(_('Select the reason for retirement.'))
             if not self.retire_proposed or not self.sudo().retire_approved_by_id:
@@ -390,7 +395,7 @@ class HelpdeskTicketRepair(models.Model):
         result = super().action_close_ticket()
         if self.asset_id:
             self.env['buz.it.asset.maintenance']._create_from_ticket(self)
-            if self.repair_outcome == 'retired':
+            if self.repair_outcome_behavior == 'retired':
                 self.asset_id.write({'state': 'retired'})
         return result
 
@@ -473,7 +478,7 @@ class ITAssetMaintenance(models.Model):
     repair_route = fields.Selection(related='ticket_id.repair_route', readonly=True, groups=IT_GROUPS)
     diagnosis = fields.Text(related='ticket_id.diagnosis', readonly=True, groups=IT_GROUPS)
     repair_result = fields.Text(related='ticket_id.repair_result', readonly=True)
-    repair_outcome = fields.Selection([
+    repair_outcome_id = fields.Selection([
         ('repaired', 'Repaired'),
         ('parts_replaced', 'Parts Replaced'),
         ('asset_replaced', 'Asset Replaced'),
@@ -565,7 +570,7 @@ class ITAssetMaintenance(models.Model):
                 else False
             ),
             'performed_by_id': operator.id,
-            'repair_outcome': ticket.repair_outcome,
+            'repair_outcome_id': ticket.repair_outcome_id,
             'recommendations': ticket.repair_instructions,
             'replacement_asset_id': ticket.replacement_asset_id.id,
             'external_technician_name': (

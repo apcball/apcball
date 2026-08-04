@@ -14,27 +14,28 @@
                 <field name="show_repair_process" invisible="1"/>
                 <field name="has_legacy_repair_data" invisible="1"/>
                 <field name="retire_proposed" invisible="1"/>
+                <field name="repair_outcome_behavior" invisible="1"/>
             </xpath>
 
             <xpath expr="//field[@name='description']" position="after">
                 <separator string="Repair Summary / สรุปการซ่อม" invisible="not show_repair_process"/>
                 <group invisible="not show_repair_process">
                     <group>
-                        <field name="repair_outcome" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="repair_outcome_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="repair_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="repair_instructions" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                     </group>
                     <group groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
                         <field name="diagnosis" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="replacement_asset_id" domain="[('company_id', '=', company_id), ('id', '!=', asset_id), ('active', '=', True), ('state', 'not in', ['retired', 'lost'])]" options="{'no_create': True}" invisible="repair_outcome != 'asset_replaced'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="retire_reason" invisible="repair_outcome != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="retire_reason_detail" invisible="repair_outcome != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="retire_approved_by_id" invisible="repair_outcome != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
-                        <field name="retire_approved_date" invisible="repair_outcome != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                        <field name="replacement_asset_id" domain="[('company_id', '=', company_id), ('id', '!=', asset_id), ('active', '=', True), ('state', 'not in', ['retired', 'lost'])]" options="{'no_create': True}" invisible="repair_outcome_behavior != 'asset_replaced'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="retire_reason" invisible="repair_outcome_behavior != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="retire_reason_detail" invisible="repair_outcome_behavior != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="retire_approved_by_id" invisible="repair_outcome_behavior != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                        <field name="retire_approved_date" invisible="repair_outcome_behavior != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
                     </group>
                 </group>
 
-                <group string="Replacement Parts / รายการอะไหล่" invisible="repair_outcome != 'parts_replaced'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                <group string="Replacement Parts / รายการอะไหล่" invisible="repair_outcome_behavior != 'parts_replaced'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
                     <field name="repair_part_ids" readonly="not can_edit_repair_details or not is_editable or is_closed_stage">
                         <tree editable="bottom">
                             <field name="name"/>
@@ -84,9 +85,9 @@
             </xpath>
 
             <xpath expr="//header/field[@name='stage_id']" position="before">
-                <button name="action_propose_retirement" type="object" string="Propose Retirement" invisible="repair_outcome != 'retired' or retire_proposed or is_closed_stage" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_approve_retirement" type="object" string="Approve Retirement" class="oe_highlight" invisible="repair_outcome != 'retired' or not retire_proposed or retire_approved_by_id" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_reject_retirement" type="object" string="Reject Retirement" invisible="repair_outcome != 'retired' or not retire_proposed or retire_approved_by_id" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                <button name="action_propose_retirement" type="object" string="Propose Retirement" invisible="repair_outcome_behavior != 'retired' or retire_proposed or is_closed_stage" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                <button name="action_approve_retirement" type="object" string="Approve Retirement" class="oe_highlight" invisible="repair_outcome_behavior != 'retired' or not retire_proposed or retire_approved_by_id" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                <button name="action_reject_retirement" type="object" string="Reject Retirement" invisible="repair_outcome_behavior != 'retired' or not retire_proposed or retire_approved_by_id" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
             </xpath>
         </field>
     </record>

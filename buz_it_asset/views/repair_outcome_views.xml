@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_it_asset_repair_outcome_tree" model="ir.ui.view">
+        <field name="name">buz.it.asset.repair.outcome.tree</field>
+        <field name="model">buz.it.asset.repair.outcome</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="behavior"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_it_asset_repair_outcome_form" model="ir.ui.view">
+        <field name="name">buz.it.asset.repair.outcome.form</field>
+        <field name="model">buz.it.asset.repair.outcome</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                        <field name="behavior"/>
+                        <field name="code" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_it_asset_repair_outcomes" model="ir.actions.act_window">
+        <field name="name">Repair Outcomes</field>
+        <field name="res_model">buz.it.asset.repair.outcome</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+    </record>
+</odoo>
