@@ -19,12 +19,12 @@
                 <group invisible="not show_repair_process">
                     <group>
                         <field name="repair_route" readonly="not can_edit_repair_details or not is_editable or is_closed_stage or repair_substate != 'diagnosis'"/>
-                        <field name="repair_substate" widget="statusbar" statusbar_visible="diagnosis,internal_repair,waiting_parts,awaiting_user_send,sent_external,awaiting_return,awaiting_verification,retire_pending,ready_close" readonly="1"/>
+                        <field name="repair_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="diagnosis" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="repair_instructions" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_requester'"/>
                     </group>
                     <group>
-                        <field name="repair_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="repair_substate" widget="statusbar" statusbar_visible="diagnosis,internal_repair,waiting_parts,awaiting_user_send,sent_external,awaiting_return,awaiting_verification,retire_pending,ready_close" readonly="1"/>
                         <field name="external_test_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_substate != 'awaiting_verification' and repair_route not in ['external_it', 'external_requester']"/>
                         <field name="parts_details" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
                         <field name="parts_responsible_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
