@@ -1082,15 +1082,33 @@ class PosLiteOrderLine(models.Model):
                 ('product_id', 'in', product_ids),
                 ('location_id', 'in', location_ids),
             ],
-            fields=['quantity:sum'],
+            fields=['quantity:sum', 'reserved_quantity:sum'],
             groupby=['product_id', 'location_id'],
             lazy=False,
         )
+        # Free-to-use qty (on-hand minus reserved), same definition used by
+        # the terminal view and buz_stock_current_report. Reserved stock is
+        # promised to delivery orders and must not be sellable here.
         qty_map = {}
         for q in quant_data:
             pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
             lid = q['location_id'][0] if isinstance(q['location_id'], (list, tuple)) else q['location_id']
-            qty_map[(pid, lid)] = q['quantity']
+            qty_map[(pid, lid)] = max((q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0), 0.0)
+
+        # Products with no free qty from their own stock.quant may still be
+        # BOM-kit ("set") products buildable from component stock — mirror
+        # the terminal view's kit aggregation for those (see
+        # models/product_product.py::_pos_lite_kit_stock_map).
+        product_product = self.env['product.product']
+        for location_id in location_ids:
+            stocked_product_ids = [
+                pid for pid in product_ids
+                if qty_map.get((pid, location_id), 0.0) > 0.0
+            ]
+            kit_qty_map = product_product._pos_lite_kit_stock_map(location_id, stocked_product_ids)
+            for pid, qty in kit_qty_map.items():
+                if pid in product_ids:
+                    qty_map[(pid, location_id)] = qty
 
         for key, lines in lines_by_key.items():
             on_hand = qty_map.get(key, 0.0)
