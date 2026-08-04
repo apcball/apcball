@@ -638,6 +638,8 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 .pos-form-group textarea { resize: vertical; min-height: 56px; }
 .pos-nc-row { display: flex; gap: 10px; }
 .pos-nc-row .pos-form-group { flex: 1; }
+.pos-nc-required-group { border: 1.5px solid transparent; border-radius: 12px; padding: 0; transition: border-color .15s, background-color .15s; }
+.pos-form-group input.error, .pos-form-group select.error { border-color: var(--danger); background: var(--danger-bg); }
 .pos-nc-type-row { display: flex; gap: 18px; }
 .pos-nc-radio { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; cursor: pointer; }
 .pos-nc-radio input { width: auto; margin: 0; }
@@ -1024,7 +1026,7 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                     <input type="text" id="custSearch" placeholder="ค้นหาลูกค้า / เบอร์โทร" autocomplete="off" oninput="onCustSearchInput()" onkeydown="if(event.key==='Escape')closeCustResults()"/>
                                     <div class="pos-cust-results" id="custResults"></div>
                                 </div>
-                                <div id="custFields">
+                                <div id="custFields" style="display:none;">
                                     <input type="text" id="custName" placeholder="ชื่อลูกค้า (เว้นว่าง = Walk-in Customer)" oninput="clearSelectedPartner();updateCustomerPill()"/>
                                     <input type="tel" id="custPhone" placeholder="เบอร์โทร"/>
                                     <textarea id="custAddress" placeholder="ที่อยู่" rows="2"></textarea>
@@ -1050,11 +1052,11 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                         <div class="pos-modal-body">
                             <div class="pos-form-group pos-nc-type-row">
                                 <label class="pos-nc-radio">
-                                    <input type="radio" name="ncCompanyType" id="ncTypePerson" value="person" onchange="onNcCompanyTypeChange()"/>
+                                    <input type="radio" name="ncCompanyType" id="ncTypePerson" value="person" checked="checked" onchange="onNcCompanyTypeChange()"/>
                                     บุคคลธรรมดา
                                 </label>
                                 <label class="pos-nc-radio">
-                                    <input type="radio" name="ncCompanyType" id="ncTypeCompany" value="company" checked="checked" onchange="onNcCompanyTypeChange()"/>
+                                    <input type="radio" name="ncCompanyType" id="ncTypeCompany" value="company" onchange="onNcCompanyTypeChange()"/>
                                     นิติบุคคล (บริษัท)
                                 </label>
                             </div>
@@ -1080,27 +1082,29 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                 <label>อีเมล</label>
                                 <input type="email" id="ncEmail" placeholder="email@example.com"/>
                             </div>
-                            <div class="pos-form-group">
-                                <label>ที่อยู่ (บ้านเลขที่ ถนน)</label>
-                                <input type="text" id="ncStreet" placeholder="บ้านเลขที่ ถนน"/>
-                            </div>
-                            <div class="pos-form-group">
-                                <label>ที่อยู่ 2 (เพิ่มเติม)</label>
-                                <input type="text" id="ncStreet2" placeholder="ตำบล/แขวง (เพิ่มเติม)"/>
-                            </div>
-                            <div class="pos-nc-row">
+                            <div class="pos-nc-required-group" id="ncAddressGroup">
                                 <div class="pos-form-group">
-                                    <label>อำเภอ/เขต</label>
-                                    <input type="text" id="ncCity" placeholder="อำเภอ/เขต"/>
+                                    <label>ที่อยู่ (บ้านเลขที่ ถนน)</label>
+                                    <input type="text" id="ncStreet" placeholder="บ้านเลขที่ ถนน"/>
                                 </div>
-                                <div class="pos-form-group" style="max-width:130px;">
-                                    <label>รหัสไปรษณีย์</label>
-                                    <input type="text" id="ncZip" placeholder="10xxx" maxlength="5" inputmode="numeric"/>
+                                <div class="pos-form-group">
+                                    <label>ที่อยู่ 2 (เพิ่มเติม)</label>
+                                    <input type="text" id="ncStreet2" placeholder="ตำบล/แขวง (เพิ่มเติม)"/>
                                 </div>
-                            </div>
-                            <div class="pos-form-group">
-                                <label>จังหวัด</label>
-                                <select id="ncState"><option value="">-- เลือกจังหวัด --</option></select>
+                                <div class="pos-nc-row">
+                                    <div class="pos-form-group">
+                                        <label>อำเภอ/เขต</label>
+                                        <input type="text" id="ncCity" placeholder="อำเภอ/เขต"/>
+                                    </div>
+                                    <div class="pos-form-group" style="max-width:130px;">
+                                        <label>รหัสไปรษณีย์</label>
+                                        <input type="text" id="ncZip" placeholder="10xxx" maxlength="5" inputmode="numeric"/>
+                                    </div>
+                                </div>
+                                <div class="pos-form-group">
+                                    <label>จังหวัด</label>
+                                    <select id="ncState"><option value="">-- เลือกจังหวัด --</option></select>
+                                </div>
                             </div>
                         </div>
                         <div class="pos-modal-footer">
@@ -1555,11 +1559,17 @@ function onNcCompanyTypeChange() {
         document.getElementById('ncVat').value = '';
         document.getElementById('ncBranch').value = '00000';
     }
+    clearNcFieldErrors();
+}
+function clearNcFieldErrors() {
+    ['ncName', 'ncPhone', 'ncEmail', 'ncStreet', 'ncStreet2', 'ncCity', 'ncZip', 'ncState', 'ncVat', 'ncBranch'].forEach(function (id) {
+        document.getElementById(id).classList.remove('error');
+    });
 }
 
 function openNewCustomer() {
-    document.getElementById('ncName').value = document.getElementById('custName').value.trim();
-    document.getElementById('ncPhone').value = document.getElementById('custPhone').value.trim();
+    document.getElementById('ncName').value = document.getElementById('custSearch').value.trim();
+    document.getElementById('ncPhone').value = '';
     document.getElementById('ncEmail').value = '';
     document.getElementById('ncVat').value = '';
     document.getElementById('ncBranch').value = '00000';
@@ -1568,7 +1578,7 @@ function openNewCustomer() {
     document.getElementById('ncCity').value = '';
     document.getElementById('ncZip').value = '';
     document.getElementById('ncState').value = '';
-    document.getElementById('ncTypeCompany').checked = true;
+    document.getElementById('ncTypePerson').checked = true;
     onNcCompanyTypeChange();
     loadThaiStates();
     document.getElementById('posNewCustomerModal').classList.add('open');
@@ -1651,12 +1661,44 @@ function closeCustResults() {
 async function saveNewCustomer() {
     if (state.creatingCustomer) return;
     const name = document.getElementById('ncName').value.trim();
-    if (!name) { showToast('กรุณากรอกชื่อลูกค้า', 'error'); return; }
+    if (!name) { showToast('กรุณากรอกชื่อลูกค้า', 'error'); document.getElementById('ncName').focus(); return; }
     const isPerson = document.getElementById('ncTypePerson').checked;
+    const street = document.getElementById('ncStreet').value.trim();
+    const street2 = document.getElementById('ncStreet2').value.trim();
+    const city = document.getElementById('ncCity').value.trim();
+    const zip = document.getElementById('ncZip').value.trim();
+    const stateId = document.getElementById('ncState').value;
     const vat = isPerson ? '' : document.getElementById('ncVat').value.trim();
     if (vat && !/^\d{13}$/.test(vat)) { showToast('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก', 'error'); return; }
     const email = document.getElementById('ncEmail').value.trim();
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { showToast('อีเมลไม่ถูกต้อง', 'error'); return; }
+
+    {
+        const branch = document.getElementById('ncBranch').value.trim();
+        const phone = document.getElementById('ncPhone').value.trim();
+        const required = [
+            ['ncStreet', street, 'ที่อยู่'],
+            ['ncStreet2', street2, 'ที่อยู่ 2'],
+            ['ncCity', city, 'อำเภอ/เขต'],
+            ['ncZip', zip, 'รหัสไปรษณีย์'],
+            ['ncState', stateId, 'จังหวัด'],
+        ];
+        if (!isPerson) {
+            required.push(['ncVat', vat, 'เลขประจำตัวผู้เสียภาษี']);
+            required.push(['ncBranch', branch, 'สาขา']);
+            required.push(['ncPhone', phone, 'เบอร์โทร']);
+            required.push(['ncEmail', email, 'อีเมล']);
+        }
+        required.forEach(function ([fieldId, val]) {
+            document.getElementById(fieldId).classList.toggle('error', !val);
+        });
+        const missing = required.filter(function ([, val]) { return !val; });
+        if (missing.length) {
+            showToast('กรุณากรอก' + missing[0][2], 'error');
+            document.getElementById(missing[0][0]).focus();
+            return;
+        }
+    }
 
     state.creatingCustomer = true;
     const btn = document.getElementById('ncSaveBtn');
