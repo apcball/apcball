@@ -11,37 +11,39 @@
                 <field name="company_id" invisible="1"/>
                 <field name="asset_state_before_repair" invisible="1"/>
                 <field name="currency_id" invisible="1"/>
+                <field name="can_edit_repair_details" invisible="1"/>
+                <field name="show_repair_process" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='description']" position="after">
-                <separator string="กระบวนการซ่อม / Repair Process" invisible="not asset_id"/>
-                <group invisible="not asset_id">
+                <separator string="กระบวนการซ่อม / Repair Process" invisible="not show_repair_process"/>
+                <group invisible="not show_repair_process">
                     <group>
-                        <field name="repair_route" readonly="not is_editable or is_closed_stage or repair_substate != 'diagnosis'"/>
+                        <field name="repair_route" readonly="not can_edit_repair_details or not is_editable or is_closed_stage or repair_substate != 'diagnosis'"/>
                         <field name="repair_substate" widget="statusbar" statusbar_visible="diagnosis,internal_repair,waiting_parts,awaiting_user_send,sent_external,awaiting_return,awaiting_verification,retire_pending,ready_close" readonly="1"/>
-                        <field name="diagnosis" readonly="not is_editable or is_closed_stage"/>
-                        <field name="repair_instructions" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_requester'"/>
+                        <field name="diagnosis" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="repair_instructions" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_requester'"/>
                     </group>
                     <group>
-                        <field name="repair_result" readonly="not is_editable or is_closed_stage"/>
-                        <field name="external_test_result" readonly="not is_editable or is_closed_stage" invisible="repair_substate != 'awaiting_verification' and repair_route not in ['external_it', 'external_requester']"/>
-                        <field name="parts_details" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_responsible_id" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_order_date" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_received_date" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_reference" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
+                        <field name="repair_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="external_test_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_substate != 'awaiting_verification' and repair_route not in ['external_it', 'external_requester']"/>
+                        <field name="parts_details" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
+                        <field name="parts_responsible_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
+                        <field name="parts_order_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
+                        <field name="parts_received_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
+                        <field name="parts_reference" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
                     </group>
                 </group>
                 <group invisible="not asset_id or repair_route not in ['external_it', 'external_requester']">
                     <group string="External Repair">
-                        <field name="external_vendor_id" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_technician_name" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_sent_date" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_expected_return_date" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_return_date" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_reference" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_quote" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_cost" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_warranty" readonly="not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_vendor_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_technician_name" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_sent_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_expected_return_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_return_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_reference" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_quote" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_cost" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+                        <field name="external_warranty" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
                     </group>
                     <group string="User / Department Repair" invisible="repair_route != 'external_requester'">
                         <field name="requester_sent_date" readonly="1"/>
@@ -54,8 +56,8 @@
                     </group>
                 </group>
                 <group invisible="not asset_id or repair_route != 'retire'">
-                    <field name="retire_reason" readonly="not is_editable or is_closed_stage"/>
-                    <field name="retire_reason_detail" readonly="not is_editable or is_closed_stage"/>
+                    <field name="retire_reason" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                    <field name="retire_reason_detail" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                     <field name="retire_approved_by_id" readonly="1"/>
                     <field name="retire_approved_date" readonly="1"/>
                 </group>

@@ -81,6 +81,38 @@ class HelpdeskTicketRepair(models.Model):
         'res.currency', related='company_id.currency_id', readonly=True,
     )
 
+    can_edit_repair_details = fields.Boolean(
+        string='Can Edit Repair Details',
+        compute='_compute_can_edit_repair_details',
+    )
+
+    @api.depends_context('uid')
+    def _compute_can_edit_repair_details(self):
+        can_edit = (
+            self.env.user.has_group('buz_it_helpdesk.group_it_support_agent')
+            or self.env.user.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
+        )
+        for ticket in self:
+            ticket.can_edit_repair_details = can_edit
+
+    show_repair_process = fields.Boolean(
+        string='Show Repair Process',
+        compute='_compute_show_repair_process',
+    )
+
+    @api.depends('asset_id', 'stage_id')
+    @api.depends_context('uid')
+    def _compute_show_repair_process(self):
+        in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        is_it_user = self._is_support_agent()
+        for ticket in self:
+            ticket.show_repair_process = bool(
+                ticket.asset_id
+                and (
+                    is_it_user
+                    or ticket.stage_id.sequence >= in_progress_stage.sequence
+                )
+            )
     _repair_management_fields = {
         'diagnosis', 'repair_route', 'repair_substate', 'repair_instructions',
         'repair_result', 'parts_details', 'parts_responsible_id',
