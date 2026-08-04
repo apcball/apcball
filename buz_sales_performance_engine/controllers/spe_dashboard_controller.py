@@ -436,11 +436,11 @@ class SpeDashboardController(http.Controller):
     def filter_options(self, **kw):
         env = request.env
         companies = [{"id": c.id, "name": c.name} for c in env.companies]
-        teams = env["crm.team"].search_read(
+        teams = env["crm.team"].sudo().search_read(
             [("company_id", "in", env.companies.ids + [False])], ["name"])
-        salespersons = env["res.users"].search_read(
+        salespersons = env["res.users"].sudo().search_read(
             [("share", "=", False)], ["name"], order="name")
-        partners = env["res.partner"].search_read(
+        partners = env["res.partner"].sudo().search_read(
             [("customer_rank", ">", 0)], ["name"], order="name", limit=500)
         return {
             "companies": companies,
@@ -546,7 +546,7 @@ class SpeDashboardController(http.Controller):
         top_rows = [r for r in top_rows if r["key"]][:10]
         partner_names = {
             p.id: p.name
-            for p in request.env["res.partner"].browse([r["key"] for r in top_rows])
+            for p in request.env["res.partner"].sudo().browse([r["key"] for r in top_rows])
         }
         top_customers = [
             {"id": r["key"], "name": partner_names.get(r["key"], "?"),
@@ -609,7 +609,7 @@ class SpeDashboardController(http.Controller):
         head, tail = items[:limit], items[limit:]
         names = {
             c.id: c.display_name
-            for c in request.env["product.category"].browse(
+            for c in request.env["product.category"].sudo().browse(
                 [k for k, _ in head if k])
         }
         out = [{"name": names.get(k, "Undefined"), "amount": round(v, 2)}
@@ -648,7 +648,7 @@ class SpeDashboardController(http.Controller):
             target_domain.append(("date_end", ">=", filters["date_from"]))
         if filters.get("date_to"):
             target_domain.append(("date_start", "<=", filters["date_to"]))
-        targets = request.env["buz.sales.performance.target"].read_group(
+        targets = request.env["buz.sales.performance.target"].sudo().read_group(
             target_domain, ["target_amount:sum"], ["user_id"])
         for t in targets:
             if t["user_id"]:
@@ -686,7 +686,7 @@ class SpeDashboardController(http.Controller):
         rows = []
 
         if kind == "so_follow_up":
-            orders = env["sale.order"].search(
+            orders = env["sale.order"].sudo().search(
                 self._so_domain(filters, states=("sale",))
                 + [("picking_ids.state", "in", ("waiting", "confirmed", "assigned"))],
                 limit=limit, order="date_order desc")
@@ -702,7 +702,7 @@ class SpeDashboardController(http.Controller):
             } for o in orders]
 
         elif kind == "deliveries":
-            pickings = env["stock.picking"].search([
+            pickings = env["stock.picking"].sudo().search([
                 ("company_id", "in", self._company_ids(filters)),
                 ("picking_type_code", "=", "outgoing"),
                 ("state", "in", ("waiting", "confirmed", "assigned")),
@@ -720,7 +720,7 @@ class SpeDashboardController(http.Controller):
             } for p in pickings]
 
         elif kind == "invoices_to_process":
-            orders = env["sale.order"].search(
+            orders = env["sale.order"].sudo().search(
                 self._so_domain(filters, states=("sale", "done"))
                 + [("invoice_status", "=", "to invoice")],
                 limit=limit, order="date_order desc")
@@ -736,7 +736,7 @@ class SpeDashboardController(http.Controller):
             } for o in orders]
 
         elif kind == "overdue":
-            moves = env["account.move"].search([
+            moves = env["account.move"].sudo().search([
                 ("company_id", "in", self._company_ids(filters)),
                 ("move_type", "=", "out_invoice"),
                 ("state", "=", "posted"),
@@ -759,7 +759,7 @@ class SpeDashboardController(http.Controller):
         # Next activity per record.
         if rows:
             model = rows[0]["res_model"]
-            acts = env["mail.activity"].search_read(
+            acts = env["mail.activity"].sudo().search_read(
                 [("res_model", "=", model),
                  ("res_id", "in", [r["id"] for r in rows])],
                 ["res_id", "summary", "activity_type_id", "date_deadline"],
