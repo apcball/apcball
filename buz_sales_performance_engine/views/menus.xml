@@ -2,6 +2,7 @@
 <odoo>
     <menuitem id="menu_spe_root" name="Sales Performance"
               web_icon="buz_sales_performance_engine,static/description/icon.png"
+              groups="buz_sales_performance_engine.group_spe_user"
               sequence="15"/>
 
     <!-- Dashboard -->
