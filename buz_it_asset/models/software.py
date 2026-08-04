@@ -51,6 +51,8 @@ class ITSoftwareLicense(models.Model):
     _check_company_auto = True
     _order = 'expiration_date, name'
 
+    _retired_input_fields = frozenset({'vendor_id'})
+
     name = fields.Char(required=True, tracking=True)
     product_id = fields.Many2one(
         'buz.it.software.product', required=True, ondelete='restrict',
@@ -112,6 +114,19 @@ class ITSoftwareLicense(models.Model):
         for record in self:
             record.active_installation_count = len(
                 record.installation_ids.filtered('active'))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            for field_name in self._retired_input_fields:
+                vals.pop(field_name, None)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        vals = dict(vals)
+        for field_name in self._retired_input_fields:
+            vals.pop(field_name, None)
+        return super().write(vals)
 
     @api.constrains('seat_count', 'license_type')
     def _check_seat_count(self):

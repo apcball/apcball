@@ -13,6 +13,11 @@ class ITAssetMaintenance(models.Model):
     _check_company_auto = True
     _order = 'sent_date desc, id desc'
 
+    _retired_input_fields = frozenset({
+        'external_technician_name',
+        'vendor_id',
+    })
+
     asset_id = fields.Many2one(
         'buz.it.asset', required=True, ondelete='restrict', check_company=True,
         index=True,
@@ -66,28 +71,35 @@ class ITAssetMaintenance(models.Model):
             elif record.state != 'done':
                 record.completed_date = False
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            for field_name in self._retired_input_fields:
+                vals.pop(field_name, None)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        vals = dict(vals)
+        for field_name in self._retired_input_fields:
+            vals.pop(field_name, None)
+        return super().write(vals)
+
     @api.constrains(
-        'asset_id', 'company_id', 'technician_employee_id', 'vendor_id',
-        'external_technician_name', 'state', 'completed_date', 'sent_date',
+        'asset_id', 'company_id', 'technician_employee_id', 'state',
+        'completed_date', 'sent_date',
     )
     def _check_maintenance_details(self):
         for record in self:
-            if record.technician_employee_id and record.external_technician_name:
-                raise ValidationError(_(
-                    'Select an internal technician or enter an external technician, not both.'
-                ))
-            for linked in (record.technician_employee_id, record.vendor_id):
+            for linked in (record.technician_employee_id,):
                 if linked and linked.company_id and linked.company_id != record.company_id:
                     raise ValidationError(_(
-                        'The technician and repair vendor must belong to the asset company.'
+                        'The technician must belong to the asset company.'
                     ))
             if record.state == 'done' and not record.completed_date:
                 raise ValidationError(_('Enter the completed date for completed maintenance.'))
             if (record.sent_date and record.completed_date
                     and record.completed_date < record.sent_date):
-                raise ValidationError(_(
-                    'The completed date cannot be earlier than the sent date.'
-                ))
+                raise ValidationError(_('The completed date cannot be earlier than the sent date.'))
 
     def action_start(self):
         self.write({'state': 'in_progress', 'completed_date': False})

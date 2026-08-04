@@ -163,12 +163,12 @@ class HelpdeskTicketRepair(models.Model):
         'diagnosis', 'repair_route', 'repair_substate', 'repair_instructions',
         'repair_result', 'parts_details', 'parts_responsible_id',
         'parts_order_date', 'parts_received_date', 'parts_reference',
-        'external_vendor_id', 'external_technician_name', 'external_sent_date',
+        'external_sent_date',
         'external_expected_return_date', 'external_return_date',
         'external_reference', 'external_quote', 'external_cost',
         'external_warranty', 'external_test_result', 'requester_sent_date',
-        'requester_vendor_name', 'requester_expected_return_date',
-        'requester_return_date', 'requester_repair_result', 'requester_cost',
+        'requester_expected_return_date', 'requester_return_date',
+        'requester_repair_result', 'requester_cost',
         'requester_warranty', 'retire_reason', 'retire_reason_detail',
         'retire_approved_by_id', 'retire_approved_date', 'retire_proposed',
         'repair_outcome_id', 'replacement_asset_id', 'repair_part_ids',
@@ -255,6 +255,10 @@ class HelpdeskTicketRepair(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            vals.pop('external_vendor_id', None)
+            vals.pop('external_technician_name', None)
+            vals.pop('requester_vendor_name', None)
         if not self._is_support_agent():
             for vals in vals_list:
                 if self._repair_management_fields.intersection(vals):
@@ -275,6 +279,10 @@ class HelpdeskTicketRepair(models.Model):
             ticket._check_replacement_asset(ticket.replacement_asset_id)
         return records
     def write(self, vals):
+        vals = dict(vals)
+        vals.pop('external_vendor_id', None)
+        vals.pop('external_technician_name', None)
+        vals.pop('requester_vendor_name', None)
         if self._is_support_agent() is False and self._repair_management_fields.intersection(vals):
             raise UserError(_('Only IT Support Agents can edit repair details.'))
         if 'repair_outcome_id' in vals:
@@ -624,11 +632,6 @@ class ITAssetMaintenance(models.Model):
             'repair_outcome_id': ticket.repair_outcome_id.code if ticket.repair_outcome_id else False,
             'recommendations': ticket.repair_instructions,
             'replacement_asset_id': ticket.replacement_asset_id.id,
-            'external_technician_name': (
-                ticket.external_technician_name
-                or ticket.requester_vendor_name
-            ),
-            'vendor_id': ticket.external_vendor_id.id,
             'cost': ticket.external_cost or ticket.requester_cost,
             'notes': ticket.repair_result,
             'attachment_ids': [

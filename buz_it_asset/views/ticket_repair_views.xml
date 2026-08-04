@@ -62,8 +62,6 @@
                         <field name="parts_reference" readonly="1"/>
                     </group>
                     <group>
-                        <field name="external_vendor_id" readonly="1"/>
-                        <field name="external_technician_name" readonly="1"/>
                         <field name="external_sent_date" readonly="1"/>
                         <field name="external_expected_return_date" readonly="1"/>
                         <field name="external_return_date" readonly="1"/>
@@ -75,7 +73,6 @@
                     </group>
                     <group string="Legacy Requester Report">
                         <field name="requester_sent_date" readonly="1"/>
-                        <field name="requester_vendor_name" readonly="1"/>
                         <field name="requester_expected_return_date" readonly="1"/>
                         <field name="requester_return_date" readonly="1"/>
                         <field name="requester_repair_result" readonly="1"/>

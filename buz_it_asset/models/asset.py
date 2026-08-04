@@ -147,6 +147,8 @@ class ITAsset(models.Model):
     _check_company_auto = True
     _order = 'create_date desc, id desc'
 
+    _retired_input_fields = frozenset({'vendor_id'})
+
     name = fields.Char(required=True, tracking=True)
     asset_tag = fields.Char(
         required=True, readonly=True, copy=False, default='New', tracking=True,
@@ -278,6 +280,8 @@ class ITAsset(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            for field_name in self._retired_input_fields:
+                vals.pop(field_name, None)
             if not vals.get('type_id'):
                 raise ValidationError(_('Select a hardware type.'))
             if not vals.get('serial_number'):
@@ -299,6 +303,9 @@ class ITAsset(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        vals = dict(vals)
+        for field_name in self._retired_input_fields:
+            vals.pop(field_name, None)
         if 'type_id' in vals and not vals['type_id']:
             raise ValidationError(_('Select a hardware type.'))
         if 'serial_number' in vals and not vals['serial_number']:

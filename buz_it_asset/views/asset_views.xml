@@ -129,7 +129,6 @@
                                     <field name="purchase_date" string="วันที่รับเข้า/จัดซื้อ (Purchase Date)"/>
                                     <field name="purchase_price" string="ราคาซื้อ (Purchase Price)"/>
                                     <field name="currency_id" invisible="1"/>
-                                    <field name="vendor_id" string="ผู้ขาย (Vendor)" domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]"/>
                                     <field name="warranty_end" string="วันสิ้นสุดการรับประกัน (Warranty Expiry)"/>
                                 </group>
                             </group>
@@ -147,8 +146,6 @@
                                     <field name="state"/>
                                     <field name="completed_date" optional="show"/>
                                     <field name="technician_employee_id" optional="show"/>
-                                    <field name="external_technician_name" optional="show"/>
-                                    <field name="vendor_id" optional="hide"/>
                                     <field name="cost" sum="รวมค่าใช้จ่าย" optional="show"/>
                                     <field name="currency_id" column_invisible="True"/>
                                 </tree>
@@ -171,8 +168,6 @@
                                             </group>
                                             <group string="ช่างและค่าใช้จ่าย (Technician &amp; Cost)">
                                                 <field name="technician_employee_id" domain="[('company_id', '=', company_id)]"/>
-                                                <field name="external_technician_name"/>
-                                                <field name="vendor_id" domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]"/>
                                                 <field name="cost"/>
                                                 <field name="company_id" invisible="1"/>
                                                 <field name="currency_id" invisible="1"/>

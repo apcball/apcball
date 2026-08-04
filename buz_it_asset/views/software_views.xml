@@ -108,7 +108,6 @@
                             <field name="active_installation_count" readonly="1"/>
                         </group>
                         <group string="Contract Period">
-                            <field name="vendor_id"/>
                             <field name="start_date"/>
                             <field name="expiration_date"/>
                             <field name="company_id"/>
