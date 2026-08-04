@@ -621,7 +621,7 @@ class ITAssetMaintenance(models.Model):
                 else False
             ),
             'performed_by_id': operator.id,
-            'repair_outcome_id': ticket.repair_outcome_id,
+            'repair_outcome_id': ticket.repair_outcome_id.code if ticket.repair_outcome_id else False,
             'recommendations': ticket.repair_instructions,
             'replacement_asset_id': ticket.replacement_asset_id.id,
             'external_technician_name': (
