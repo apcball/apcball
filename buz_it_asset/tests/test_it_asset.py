@@ -194,47 +194,38 @@ class TestITAsset(TransactionCase):
                 'state': 'assigned',
             })
 
-    def test_maintenance_history_is_ticket_only(self):
-        asset = self.env['buz.it.asset'].create({
-            'name': 'Repair Asset',
-            'type_id': self.asset_type.id,
-            'serial_number': 'SN-REPAIR-001',
-        })
-        with self.assertRaises(UserError):
-            self.env['buz.it.asset.maintenance'].create({
-                'asset_id': asset.id,
-                'symptom': 'Manual history must be rejected',
-            })
-
-    def test_ticket_closure_creates_readonly_maintenance_history(self):
-        support = self.env['res.users'].create({
-            'name': 'Repair Support',
-            'login': 'repair_support_user',
-            'email': 'repair-support@example.com',
+    def _create_repair_user(self, suffix, group_xmlid):
+        return self.env['res.users'].create({
+            'name': f'Repair User {suffix}',
+            'login': f'repair_user_{suffix}',
+            'email': f'repair-{suffix}@example.com',
             'company_id': self.company.id,
             'company_ids': [fields.Command.set([self.company.id])],
             'groups_id': [fields.Command.set([
                 self.env.ref('base.group_user').id,
-                self.env.ref('buz_it_helpdesk.group_it_support_agent').id,
+                self.env.ref(group_xmlid).id,
             ])],
         })
-        employee = self.env['hr.employee'].create({
-            'name': 'Repair Support Employee',
-            'company_id': self.company.id,
-            'user_id': support.id,
-        })
-        asset = self.env['buz.it.asset'].create({
-            'name': 'Ticket Repair Asset',
+
+    def _create_repair_asset(self, suffix, employee=None, state='available'):
+        values = {
+            'name': f'Repair Asset {suffix}',
             'type_id': self.asset_type.id,
-            'serial_number': 'SN-TICKET-REPAIR-001',
-            'location_id': self.location.id,
-            'assigned_employee_id': employee.id,
-            'responsible_department_id': self.department.id,
-            'state': 'assigned',
-        })
+            'serial_number': f'SN-REPAIR-{suffix}',
+            'state': state,
+        }
+        if state == 'assigned':
+            values.update({
+                'location_id': self.location.id,
+                'assigned_employee_id': employee.id,
+                'responsible_department_id': self.department.id,
+            })
+        return self.env['buz.it.asset'].create(values)
+
+    def _create_in_progress_repair_ticket(self, support, asset=None):
         ticket = self.env['buz.helpdesk.ticket'].with_user(support).create({
             'subject': 'Ticket generated repair history',
-            'asset_id': asset.id,
+            'asset_id': asset.id if asset else False,
             'description': 'Does not power on',
         })
         ticket.with_context(buz_helpdesk_transition=True).write({
@@ -242,25 +233,330 @@ class TestITAsset(TransactionCase):
             'assigned_user_id': support.id,
             'create_ticket_date': date(2026, 8, 3),
         })
-        ticket = ticket.with_user(support)
+        return ticket.with_user(support)
+
+    def test_maintenance_history_is_ticket_only(self):
+        asset = self._create_repair_asset('MANUAL')
+        with self.assertRaises(UserError):
+            self.env['buz.it.asset.maintenance'].create({
+                'asset_id': asset.id,
+                'symptom': 'Manual history must be rejected',
+            })
+
+    def test_ticket_without_asset_closes_without_history(self):
+        support = self._create_repair_user(
+            'no_asset', 'buz_it_helpdesk.group_it_support_agent',
+        )
+        ticket = self._create_in_progress_repair_ticket(support)
+        before = self.env['buz.it.asset.maintenance'].search_count([])
+        ticket.action_close_ticket()
+        self.assertTrue(ticket.is_closed_stage)
+        self.assertEqual(
+            self.env['buz.it.asset.maintenance'].search_count([]),
+            before,
+        )
+
+    def test_ticket_closure_snapshots_readonly_maintenance_history(self):
+        support = self._create_repair_user(
+            'history', 'buz_it_helpdesk.group_it_support_agent',
+        )
+        employee = self.env['hr.employee'].create({
+            'name': 'Repair Support Employee',
+            'company_id': self.company.id,
+            'user_id': support.id,
+        })
+        asset = self._create_repair_asset(
+            'HISTORY', employee=employee, state='assigned',
+        )
+        ticket = self._create_in_progress_repair_ticket(support, asset)
         ticket.write({
             'diagnosis': 'Power supply failure',
-            'repair_route': 'internal',
+            'repair_result': 'Replaced power supply and tested.',
+            'repair_outcome': 'parts_replaced',
+            'repair_instructions': 'Monitor the power supply for seven days.',
+            'repair_part_ids': [fields.Command.create({
+                'name': 'Power supply',
+                'quantity': 1,
+                'old_serial': 'PSU-OLD',
+                'new_serial': 'PSU-NEW',
+                'unit_price': 2500,
+                'notes': 'Warranty 1 year',
+            })],
         })
-        ticket.action_confirm_repair_route()
-        self.assertEqual(asset.state, 'repair')
-        ticket.write({'repair_result': 'Replaced power supply and tested.'})
-        ticket.action_mark_ready_close()
+        original_assignment = (
+            asset.assigned_employee_id,
+            asset.responsible_department_id,
+            asset.location_id,
+        )
         ticket.action_close_ticket()
+
         self.assertEqual(asset.state, 'assigned')
-        history = asset.maintenance_ids.filtered(lambda line: line.ticket_id == ticket)
+        self.assertEqual(
+            (
+                asset.assigned_employee_id,
+                asset.responsible_department_id,
+                asset.location_id,
+            ),
+            original_assignment,
+        )
+        history = asset.maintenance_ids.filtered(
+            lambda line: line.ticket_id == ticket
+        )
         self.assertEqual(len(history), 1)
-        self.assertEqual(history.repair_route, 'internal')
-        self.assertEqual(history.repair_result, 'Replaced power supply and tested.')
-        self.assertEqual(history.technician_employee_id, employee)
+        self.assertEqual(history.repair_outcome, 'parts_replaced')
+        self.assertEqual(history.diagnosis, 'Power supply failure')
+        self.assertEqual(
+            history.repair_result,
+            'Replaced power supply and tested.',
+        )
+        self.assertEqual(history.performed_by_id, support)
+        self.assertEqual(len(history.repair_part_ids), 1)
+        self.assertEqual(history.repair_part_ids.new_serial, 'PSU-NEW')
+        self.assertEqual(
+            self.env['buz.it.asset.maintenance']._create_from_ticket(ticket),
+            history,
+        )
+        self.assertEqual(
+            self.env['buz.it.asset.maintenance'].search_count([
+                ('ticket_id', '=', ticket.id),
+            ]),
+            1,
+        )
         with self.assertRaises(UserError):
             history.write({'notes': 'Cannot edit history'})
+        with self.assertRaises(UserError):
+            history.repair_part_ids.write({'quantity': 2})
 
+    def test_close_validates_result_outcome_parts_and_replacement(self):
+        support = self._create_repair_user(
+            'validation', 'buz_it_helpdesk.group_it_support_agent',
+        )
+        employee = self.env['hr.employee'].create({
+            'name': 'Repair Validation Employee',
+            'company_id': self.company.id,
+            'user_id': support.id,
+        })
+        asset = self._create_repair_asset(
+            'VALIDATION', employee=employee, state='assigned',
+        )
+        replacement = self._create_repair_asset('REPLACEMENT')
+        ticket = self._create_in_progress_repair_ticket(support, asset)
+
+        with self.assertRaises(UserError):
+            ticket.action_close_ticket()
+        ticket.write({'repair_result': 'Checked and tested.'})
+        with self.assertRaises(UserError):
+            ticket.action_close_ticket()
+        ticket.write({'repair_outcome': 'parts_replaced'})
+        with self.assertRaises(UserError):
+            ticket.action_close_ticket()
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            self.env['buz.helpdesk.ticket.repair.part'].with_user(
+                support
+            ).create({
+                'ticket_id': ticket.id,
+                'name': 'Invalid part',
+                'quantity': 0,
+            })
+        ticket.write({
+            'repair_outcome': 'asset_replaced',
+            'repair_part_ids': [fields.Command.clear()],
+        })
+        with self.assertRaises(UserError):
+            ticket.action_close_ticket()
+        with self.assertRaises(ValidationError):
+            ticket.write({'replacement_asset_id': asset.id})
+        ticket.write({'replacement_asset_id': replacement.id})
+
+        other_company = self.env['res.company'].create({
+            'name': 'Repair Other Company',
+        })
+        support.write({
+            'company_ids': [fields.Command.link(other_company.id)],
+        })
+        other_asset = self.env['buz.it.asset'].with_company(
+            other_company
+        ).create({
+            'name': 'Other Company Replacement',
+            'type_id': self.asset_type.id,
+            'serial_number': 'SN-REPAIR-OTHER-COMPANY',
+            'company_id': other_company.id,
+        })
+        with self.assertRaises(ValidationError):
+            ticket.write({'replacement_asset_id': other_asset.id})
+
+    def test_asset_replacement_does_not_transfer_assignment(self):
+        support = self._create_repair_user(
+            'replacement', 'buz_it_helpdesk.group_it_support_agent',
+        )
+        employee = self.env['hr.employee'].create({
+            'name': 'Original Asset Employee',
+            'company_id': self.company.id,
+            'user_id': support.id,
+        })
+        replacement_employee = self.env['hr.employee'].create({
+            'name': 'Replacement Asset Employee',
+            'company_id': self.company.id,
+        })
+        asset = self._create_repair_asset(
+            'ORIGINAL', employee=employee, state='assigned',
+        )
+        replacement = self._create_repair_asset(
+            'NEW-ASSET', employee=replacement_employee, state='assigned',
+        )
+        old_assignment = (
+            asset.assigned_employee_id,
+            asset.responsible_department_id,
+            asset.location_id,
+        )
+        new_assignment = (
+            replacement.assigned_employee_id,
+            replacement.responsible_department_id,
+            replacement.location_id,
+        )
+        ticket = self._create_in_progress_repair_ticket(support, asset)
+        ticket.write({
+            'repair_result': 'Replaced the registered device.',
+            'repair_outcome': 'asset_replaced',
+            'replacement_asset_id': replacement.id,
+        })
+        ticket.action_close_ticket()
+
+        self.assertEqual(
+            (
+                asset.assigned_employee_id,
+                asset.responsible_department_id,
+                asset.location_id,
+            ),
+            old_assignment,
+        )
+        self.assertEqual(
+            (
+                replacement.assigned_employee_id,
+                replacement.responsible_department_id,
+                replacement.location_id,
+            ),
+            new_assignment,
+        )
+        self.assertEqual(
+            asset.maintenance_ids.replacement_asset_id,
+            replacement,
+        )
+
+    def test_retirement_requires_manager_approval(self):
+        support = self._create_repair_user(
+            'retire_agent', 'buz_it_helpdesk.group_it_support_agent',
+        )
+        manager = self._create_repair_user(
+            'retire_manager', 'buz_it_helpdesk.group_it_helpdesk_manager',
+        )
+        employee = self.env['hr.employee'].create({
+            'name': 'Retirement Asset Employee',
+            'company_id': self.company.id,
+            'user_id': support.id,
+        })
+        asset = self._create_repair_asset(
+            'RETIRE', employee=employee, state='assigned',
+        )
+        ticket = self._create_in_progress_repair_ticket(support, asset)
+        ticket.write({
+            'repair_result': 'Repair is not economically viable.',
+            'repair_outcome': 'retired',
+            'retire_reason': 'uneconomical',
+        })
+        with self.assertRaises(UserError):
+            ticket.action_close_ticket()
+        with self.assertRaises(UserError):
+            ticket.write({'retire_proposed': True})
+        ticket.action_propose_retirement()
+        with self.assertRaises(UserError):
+            ticket.action_close_ticket()
+
+        ticket.with_user(manager).action_approve_retirement()
+        ticket.with_user(manager).action_close_ticket()
+        self.assertEqual(asset.state, 'retired')
+        self.assertEqual(
+            asset.maintenance_ids.repair_outcome,
+            'retired',
+        )
+        with self.assertRaises(UserError):
+            ticket.with_user(manager).write({
+                'repair_result': 'Closed history must remain unchanged.',
+            })
+
+    def test_requester_cannot_edit_internal_repair_data(self):
+        requester = self._create_repair_user(
+            'requester', 'buz_it_helpdesk.group_it_requester',
+        )
+        employee = self.env['hr.employee'].create({
+            'name': 'Repair Requester Employee',
+            'company_id': self.company.id,
+            'user_id': requester.id,
+        })
+        asset = self._create_repair_asset(
+            'REQUESTER', employee=employee, state='assigned',
+        )
+        ticket = self.env['buz.helpdesk.ticket'].with_user(requester).create({
+            'subject': 'Requester security ticket',
+            'asset_id': asset.id,
+            'description': 'Screen is blank',
+        })
+        with self.assertRaises(UserError):
+            self.env['buz.helpdesk.ticket'].with_user(requester).create({
+                'subject': 'Unauthorized repair details',
+                'asset_id': asset.id,
+                'description': 'Requester supplied internal fields',
+                'diagnosis': 'Requester must not set this.',
+            })
+        with self.assertRaises(UserError):
+            ticket.write({'diagnosis': 'Requester must not set this.'})
+        with self.assertRaises(UserError):
+            self.env['buz.helpdesk.ticket.repair.part'].with_user(
+                requester
+            ).create({
+                'ticket_id': ticket.id,
+                'name': 'Unauthorized part',
+                'quantity': 1,
+            })
+        ticket_fields = self.env['buz.helpdesk.ticket'].with_user(
+            requester
+        ).fields_get()
+        self.assertNotIn('diagnosis', ticket_fields)
+        self.assertNotIn('external_cost', ticket_fields)
+        self.assertIn('repair_outcome', ticket_fields)
+        self.assertIn('repair_result', ticket_fields)
+        maintenance_fields = self.env['buz.it.asset.maintenance'].with_user(
+            requester
+        ).fields_get()
+        self.assertNotIn('cost', maintenance_fields)
+        self.assertNotIn('diagnosis', maintenance_fields)
+        self.assertIn('repair_outcome', maintenance_fields)
+
+    def test_legacy_repair_data_is_preserved_without_outcome_inference(self):
+        support = self._create_repair_user(
+            'legacy', 'buz_it_helpdesk.group_it_support_agent',
+        )
+        employee = self.env['hr.employee'].create({
+            'name': 'Legacy Repair Employee',
+            'company_id': self.company.id,
+            'user_id': support.id,
+        })
+        asset = self._create_repair_asset(
+            'LEGACY', employee=employee, state='assigned',
+        )
+        ticket = self._create_in_progress_repair_ticket(support, asset)
+        ticket.write({
+            'repair_route': 'external_it',
+            'repair_substate': 'sent_external',
+            'external_reference': 'LEGACY-REF-001',
+        })
+        self.assertFalse(ticket.repair_outcome)
+        self.assertTrue(ticket.has_legacy_repair_data)
+        self.assertEqual(ticket.repair_route, 'external_it')
+        self.assertEqual(ticket.repair_substate, 'sent_external')
+        self.assertEqual(asset.state, 'assigned')
+        with self.assertRaises(UserError):
+            ticket.action_close_ticket()
     def test_completed_maintenance_requires_valid_date(self):
         asset = self.env['buz.it.asset'].create({
             'name': 'Maintenance Date Asset',

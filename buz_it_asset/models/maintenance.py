@@ -1,6 +1,11 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+IT_GROUPS = (
+    'buz_it_helpdesk.group_it_support_agent,'
+    'buz_it_helpdesk.group_it_helpdesk_manager'
+)
+
 
 class ITAssetMaintenance(models.Model):
     _name = 'buz.it.asset.maintenance'
@@ -34,22 +39,22 @@ class ITAssetMaintenance(models.Model):
     completed_date = fields.Date(string='วันที่ซ่อมเสร็จ (Completed Date)')
     technician_employee_id = fields.Many2one(
         'hr.employee', string='ช่างภายใน (Internal Technician)',
-        ondelete='restrict', check_company=True,
+        ondelete='restrict', check_company=True, groups=IT_GROUPS,
     )
     external_technician_name = fields.Char(
-        string='ชื่อช่างภายนอก (External Technician)',
+        string='ชื่อช่างภายนอก (External Technician)', groups=IT_GROUPS,
     )
     vendor_id = fields.Many2one(
         'res.partner', string='ร้านซ่อม/ผู้ขาย (Repair Vendor)',
-        ondelete='restrict', check_company=True,
+        ondelete='restrict', check_company=True, groups=IT_GROUPS,
     )
     cost = fields.Monetary(
-        string='ค่าใช้จ่าย (Cost)', currency_field='currency_id',
+        string='ค่าใช้จ่าย (Cost)', currency_field='currency_id', groups=IT_GROUPS,
     )
     attachment_ids = fields.Many2many(
         'ir.attachment', 'buz_it_asset_maintenance_attachment_rel',
         'maintenance_id', 'attachment_id', string='เอกสารแนบ (Attachments)',
-        copy=False,
+        copy=False, groups=IT_GROUPS,
     )
     notes = fields.Text(string='หมายเหตุ (Notes)')
 

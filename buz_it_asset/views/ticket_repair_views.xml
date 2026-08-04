@@ -6,46 +6,72 @@
         <field name="inherit_id" ref="buz_it_helpdesk.view_helpdesk_ticket_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='category_type_ids']" position="after">
-                <field name="asset_id" string="Asset / อุปกรณ์" domain="[('company_id', '=', company_id), ('active', '=', True), ('state', 'not in', ['retired', 'lost'])]" options="{'no_create': True}" readonly="is_closed_stage or (repair_substate != 'diagnosis')"/>
+                <field name="asset_id" string="Asset / อุปกรณ์" domain="[('company_id', '=', company_id), ('active', '=', True), ('state', 'not in', ['retired', 'lost'])]" options="{'no_create': True}" readonly="is_closed_stage or (not can_edit_repair_details and not is_draft_stage)"/>
                 <field name="asset_type_id" string="Asset Type / ประเภทอุปกรณ์" readonly="1" invisible="not asset_id"/>
                 <field name="company_id" invisible="1"/>
-                <field name="asset_state_before_repair" invisible="1"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="can_edit_repair_details" invisible="1"/>
                 <field name="show_repair_process" invisible="1"/>
+                <field name="has_legacy_repair_data" invisible="1"/>
+                <field name="retire_proposed" invisible="1"/>
             </xpath>
+
             <xpath expr="//field[@name='description']" position="after">
-                <separator string="กระบวนการซ่อม / Repair Process" invisible="not show_repair_process"/>
+                <separator string="Repair Summary / สรุปการซ่อม" invisible="not show_repair_process"/>
                 <group invisible="not show_repair_process">
                     <group>
-                        <field name="repair_route" readonly="not can_edit_repair_details or not is_editable or is_closed_stage or repair_substate != 'diagnosis'"/>
+                        <field name="repair_outcome" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="repair_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="diagnosis" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="repair_instructions" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_requester'"/>
+                        <field name="repair_instructions" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                     </group>
-                    <group>
-                        <field name="repair_substate" widget="statusbar" statusbar_visible="diagnosis,internal_repair,waiting_parts,awaiting_user_send,sent_external,awaiting_return,awaiting_verification,retire_pending,ready_close" readonly="1"/>
-                        <field name="external_test_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_substate != 'awaiting_verification' and repair_route not in ['external_it', 'external_requester']"/>
-                        <field name="parts_details" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_responsible_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_order_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_received_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
-                        <field name="parts_reference" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'parts'"/>
+                    <group groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                        <field name="diagnosis" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="replacement_asset_id" domain="[('company_id', '=', company_id), ('id', '!=', asset_id), ('active', '=', True), ('state', 'not in', ['retired', 'lost'])]" options="{'no_create': True}" invisible="repair_outcome != 'asset_replaced'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="retire_reason" invisible="repair_outcome != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="retire_reason_detail" invisible="repair_outcome != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="retire_approved_by_id" invisible="repair_outcome != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                        <field name="retire_approved_date" invisible="repair_outcome != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
                     </group>
                 </group>
-                <group invisible="not asset_id or repair_route not in ['external_it', 'external_requester']">
-                    <group string="External Repair">
-                        <field name="external_vendor_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_technician_name" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_sent_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_expected_return_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_return_date" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_reference" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_quote" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_cost" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
-                        <field name="external_warranty" readonly="not can_edit_repair_details or not is_editable or is_closed_stage" invisible="repair_route != 'external_it'"/>
+
+                <group string="Replacement Parts / รายการอะไหล่" invisible="repair_outcome != 'parts_replaced'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                    <field name="repair_part_ids" readonly="not can_edit_repair_details or not is_editable or is_closed_stage">
+                        <tree editable="bottom">
+                            <field name="name"/>
+                            <field name="quantity"/>
+                            <field name="old_serial"/>
+                            <field name="new_serial"/>
+                            <field name="unit_price"/>
+                            <field name="currency_id" column_invisible="True"/>
+                            <field name="notes"/>
+                        </tree>
+                    </field>
+                </group>
+
+                <group string="Legacy Repair Workflow (Read-only)" invisible="not has_legacy_repair_data" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                    <group>
+                        <field name="repair_route" readonly="1"/>
+                        <field name="repair_substate" readonly="1"/>
+                        <field name="asset_state_before_repair" readonly="1"/>
+                        <field name="parts_details" readonly="1"/>
+                        <field name="parts_responsible_id" readonly="1"/>
+                        <field name="parts_order_date" readonly="1"/>
+                        <field name="parts_received_date" readonly="1"/>
+                        <field name="parts_reference" readonly="1"/>
                     </group>
-                    <group string="User / Department Repair" invisible="repair_route != 'external_requester'">
+                    <group>
+                        <field name="external_vendor_id" readonly="1"/>
+                        <field name="external_technician_name" readonly="1"/>
+                        <field name="external_sent_date" readonly="1"/>
+                        <field name="external_expected_return_date" readonly="1"/>
+                        <field name="external_return_date" readonly="1"/>
+                        <field name="external_reference" readonly="1"/>
+                        <field name="external_quote" readonly="1"/>
+                        <field name="external_cost" readonly="1"/>
+                        <field name="external_warranty" readonly="1"/>
+                        <field name="external_test_result" readonly="1"/>
+                    </group>
+                    <group string="Legacy Requester Report">
                         <field name="requester_sent_date" readonly="1"/>
                         <field name="requester_vendor_name" readonly="1"/>
                         <field name="requester_expected_return_date" readonly="1"/>
@@ -55,25 +81,12 @@
                         <field name="requester_warranty" readonly="1"/>
                     </group>
                 </group>
-                <group invisible="not asset_id or repair_route != 'retire'">
-                    <field name="retire_reason" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                    <field name="retire_reason_detail" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                    <field name="retire_approved_by_id" readonly="1"/>
-                    <field name="retire_approved_date" readonly="1"/>
-                </group>
             </xpath>
+
             <xpath expr="//header/field[@name='stage_id']" position="before">
-                <button name="action_confirm_repair_route" type="object" string="Confirm Repair Route" class="oe_highlight" invisible="not asset_id or repair_substate != 'diagnosis'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_mark_parts_received" type="object" string="Parts Received" invisible="repair_route != 'parts' or repair_substate != 'waiting_parts'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_mark_external_received" type="object" string="External Repair Returned" invisible="repair_route != 'external_it' or repair_substate != 'sent_external'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_verify_repair" type="object" string="Verify Repair" class="oe_highlight" invisible="repair_substate != 'awaiting_verification'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_mark_ready_close" type="object" string="Ready to Close" invisible="repair_route not in ['internal', 'parts'] or repair_substate != 'internal_repair'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_propose_retirement" type="object" string="Propose Retirement" invisible="repair_route != 'retire' or repair_substate != 'retire_pending'" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_approve_retirement" type="object" string="Approve Retirement" class="oe_highlight" invisible="repair_route != 'retire' or repair_substate != 'retire_pending'" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_reject_retirement" type="object" string="Reject Retirement" invisible="repair_route != 'retire' or repair_substate != 'retire_pending'" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_reset_repair_route" type="object" string="Reset Repair Route" invisible="not asset_id or repair_substate == 'diagnosis'" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
-                <button name="action_open_user_report_sent" type="object" string="Report Asset Sent" invisible="repair_route != 'external_requester' or repair_substate != 'awaiting_user_send'" groups="buz_it_helpdesk.group_it_requester"/>
-                <button name="action_open_user_report_returned" type="object" string="Report Asset Returned" invisible="repair_route != 'external_requester' or repair_substate != 'awaiting_return'" groups="buz_it_helpdesk.group_it_requester"/>
+                <button name="action_propose_retirement" type="object" string="Propose Retirement" invisible="repair_outcome != 'retired' or retire_proposed or is_closed_stage" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                <button name="action_approve_retirement" type="object" string="Approve Retirement" class="oe_highlight" invisible="repair_outcome != 'retired' or not retire_proposed or retire_approved_by_id" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                <button name="action_reject_retirement" type="object" string="Reject Retirement" invisible="repair_outcome != 'retired' or not retire_proposed or retire_approved_by_id" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
             </xpath>
         </field>
     </record>
@@ -88,10 +101,33 @@
                 <attribute name="create">0</attribute>
                 <attribute name="delete">0</attribute>
             </xpath>
+            <xpath expr="//field[@name='maintenance_ids']/tree/field[@name='repair_result']" position="after">
+                <field name="repair_outcome" optional="show"/>
+                <field name="replacement_asset_id" optional="hide"/>
+            </xpath>
             <xpath expr="//field[@name='maintenance_ids']/form" position="attributes">
                 <attribute name="edit">0</attribute>
                 <attribute name="create">0</attribute>
                 <attribute name="delete">0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='maintenance_ids']/form//field[@name='symptom']" position="after">
+                <field name="repair_outcome"/>
+                <field name="repair_result"/>
+                <field name="recommendations"/>
+                <field name="performed_by_id"/>
+                <field name="replacement_asset_id"/>
+                <field name="diagnosis" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                <field name="repair_part_ids" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                    <tree create="0" delete="0">
+                        <field name="name"/>
+                        <field name="quantity"/>
+                        <field name="old_serial"/>
+                        <field name="new_serial"/>
+                        <field name="unit_price"/>
+                        <field name="currency_id" column_invisible="True"/>
+                        <field name="notes"/>
+                    </tree>
+                </field>
             </xpath>
             <xpath expr="//field[@name='maintenance_ids']/form/header/button[@name='action_start']" position="attributes">
                 <attribute name="invisible">1</attribute>
@@ -102,35 +138,6 @@
             <xpath expr="//field[@name='maintenance_ids']/form/header/button[@name='action_cancel']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-        </field>
-    </record>
-
-    <record id="view_ticket_repair_report_wizard" model="ir.ui.view">
-        <field name="name">buz.helpdesk.ticket.repair.report.wizard.form</field>
-        <field name="model">buz.helpdesk.ticket.repair.report.wizard</field>
-        <field name="arch" type="xml">
-            <form>
-                <field name="ticket_id" invisible="1"/>
-                <field name="report_kind" invisible="1"/>
-                <sheet>
-                    <group invisible="report_kind != 'returned'">
-                        <field name="return_date" required="report_kind == 'returned'"/>
-                        <field name="repair_result" required="report_kind == 'returned'"/>
-                        <field name="cost"/>
-                        <field name="warranty"/>
-                    </group>
-                    <group invisible="report_kind != 'sent'">
-                        <field name="sent_date" required="report_kind == 'sent'"/>
-                        <field name="vendor_name" required="report_kind == 'sent'"/>
-                        <field name="expected_return_date"/>
-                    </group>
-                    <field name="attachment_ids" widget="many2many_binary"/>
-                </sheet>
-                <footer>
-                    <button name="action_submit" type="object" string="Submit" class="oe_highlight"/>
-                    <button string="Cancel" special="cancel"/>
-                </footer>
-            </form>
         </field>
     </record>
 </odoo>

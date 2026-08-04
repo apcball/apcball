@@ -93,4 +93,14 @@
         <field name="domain_force">[('id', '!=', 0)]</field>
         <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
     </record>
+    <record id="rule_ticket_repair_part_company" model="ir.rule">
+        <field name="name">Ticket Repair Part: allowed companies</field>
+        <field name="model_id" ref="model_buz_helpdesk_ticket_repair_part"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_maintenance_part_company" model="ir.rule">
+        <field name="name">Maintenance Part: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_asset_maintenance_part"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>
