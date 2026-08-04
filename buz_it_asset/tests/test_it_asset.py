@@ -5,8 +5,191 @@ from psycopg2.errors import SerializationFailure, UniqueViolation
 
 from odoo import fields
 from odoo.addons.buz_it_asset.hooks import pre_init_hook
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
+
+
+@tagged('post_install', '-at_install')
+class TestITAssetSeedData(TransactionCase):
+    CATEGORY_XMLIDS = (
+        'category_end_user_devices',
+        'category_network_infrastructure',
+        'category_servers_storage',
+        'category_peripherals_accessories',
+    )
+    TYPE_EXPECTATIONS = {
+        'type_desktop_pc': ('ITPC', 'desktop'),
+        'type_laptop': ('ITNB', 'laptop'),
+        'type_tablet': ('ITTB', 'mobile'),
+        'type_smartphone': ('ITSP', 'mobile'),
+        'type_router': ('ITRT', 'network'),
+        'type_switch': ('ITSW', 'network'),
+        'type_access_point': ('ITAP', 'network'),
+        'type_hardware_firewall': ('ITFW', 'network'),
+        'type_server': ('ITSV', 'server'),
+        'type_nas_san': ('ITNS', 'storage'),
+        'type_hdd_ssd': ('ITHD', 'storage'),
+        'type_monitor': ('ITMN', 'monitor'),
+        'type_printer_scanner': ('ITPS', 'printer'),
+        'type_ups': ('ITUP', 'ups'),
+        'type_keyboard_mouse': ('ITKM', 'input'),
+    }
+    SOFTWARE_TYPE_XMLIDS = (
+        'software_type_operating_system',
+        'software_type_office',
+        'software_type_specialized',
+        'software_type_other',
+    )
+    REPAIR_OUTCOME_XMLIDS = (
+        'repair_outcome_repaired',
+        'repair_outcome_parts_replaced',
+        'repair_outcome_asset_replaced',
+        'repair_outcome_retired',
+        'repair_outcome_no_repair',
+    )
+
+    def _create_configuration_user(self, login, group_xmlid):
+        return self.env['res.users'].with_context(
+            no_reset_password=True,
+        ).create({
+            'name': login,
+            'login': login,
+            'company_id': self.env.company.id,
+            'company_ids': [fields.Command.set([self.env.company.id])],
+            'groups_id': [fields.Command.set([
+                self.env.ref('base.group_user').id,
+                self.env.ref(group_xmlid).id,
+            ])],
+        })
+
+    def test_clean_install_configuration_is_complete(self):
+        for xmlid in (
+            'buz_it_helpdesk.seq_helpdesk_ticket',
+            'buz_it_helpdesk.stage_draft',
+            'buz_it_helpdesk.stage_new',
+            'buz_it_helpdesk.stage_in_progress',
+            'buz_it_helpdesk.stage_resolved',
+            'buz_it_helpdesk.stage_closed',
+        ):
+            self.assertTrue(self.env.ref(xmlid), xmlid)
+
+        categories = self.env['buz.it.asset.category']
+        for xmlid in self.CATEGORY_XMLIDS:
+            categories |= self.env.ref(f'buz_it_asset.{xmlid}')
+        self.assertEqual(len(categories), 4)
+
+        asset_types = self.env['buz.it.asset.type']
+        for xmlid, expected in self.TYPE_EXPECTATIONS.items():
+            asset_type = self.env.ref(f'buz_it_asset.{xmlid}')
+            asset_types |= asset_type
+            self.assertEqual(
+                (asset_type.asset_prefix, asset_type.spec_profile),
+                expected,
+                xmlid,
+            )
+            self.assertTrue(asset_type.category_id, xmlid)
+        self.assertEqual(len(asset_types), 15)
+
+        software_types = self.env['buz.it.software.type']
+        for xmlid in self.SOFTWARE_TYPE_XMLIDS:
+            software_types |= self.env.ref(f'buz_it_asset.{xmlid}')
+        self.assertEqual(len(software_types), 4)
+
+        repair_outcomes = self.env['buz.it.asset.repair.outcome']
+        for xmlid in self.REPAIR_OUTCOME_XMLIDS:
+            repair_outcomes |= self.env.ref(f'buz_it_asset.{xmlid}')
+        self.assertEqual(len(repair_outcomes), 5)
+
+        transaction_models = (
+            'buz.helpdesk.ticket',
+            'buz.it.asset',
+            'buz.it.asset.assignment',
+            'buz.it.asset.maintenance',
+            'buz.it.software.installation',
+        )
+        self.assertFalse(self.env['ir.model.data'].search([
+            ('module', 'in', ('buz_it_helpdesk', 'buz_it_asset')),
+            ('model', 'in', transaction_models),
+        ]))
+
+    def test_category_and_type_configuration_access(self):
+        requester_group = self.env.ref(
+            'buz_it_helpdesk.group_it_requester',
+        )
+        support_group = self.env.ref(
+            'buz_it_helpdesk.group_it_support_agent',
+        )
+        manager_group = self.env.ref(
+            'buz_it_helpdesk.group_it_helpdesk_manager',
+        )
+        requester = self._create_configuration_user(
+            'taxonomy-requester', 'buz_it_helpdesk.group_it_requester',
+        )
+        support = self._create_configuration_user(
+            'taxonomy-support', 'buz_it_helpdesk.group_it_support_agent',
+        )
+        manager = self._create_configuration_user(
+            'taxonomy-manager', 'buz_it_helpdesk.group_it_helpdesk_manager',
+        )
+
+        for menu_xmlid in ('menu_asset_categories', 'menu_asset_types'):
+            menu = self.env.ref(f'buz_it_asset.{menu_xmlid}')
+            self.assertIn(support_group, menu.groups_id)
+            self.assertIn(manager_group, menu.groups_id)
+            self.assertNotIn(requester_group, menu.groups_id)
+
+        for model_name in ('buz.it.asset.category', 'buz.it.asset.type'):
+            model = self.env[model_name]
+            self.assertTrue(model.with_user(requester).check_access_rights(
+                'read', raise_exception=False,
+            ))
+            for operation in ('write', 'create', 'unlink'):
+                self.assertFalse(
+                    model.with_user(requester).check_access_rights(
+                        operation, raise_exception=False,
+                    ),
+                )
+            for operation in ('read', 'write', 'create'):
+                self.assertTrue(
+                    model.with_user(support).check_access_rights(
+                        operation, raise_exception=False,
+                    ),
+                )
+            self.assertFalse(
+                model.with_user(support).check_access_rights(
+                    'unlink', raise_exception=False,
+                ),
+            )
+            for operation in ('read', 'write', 'create', 'unlink'):
+                self.assertTrue(
+                    model.with_user(manager).check_access_rights(
+                        operation, raise_exception=False,
+                    ),
+                )
+
+        category = self.env['buz.it.asset.category'].with_user(
+            support,
+        ).create({'name': 'Agent Managed Category'})
+        category.with_user(support).write({
+            'name': 'Agent Updated Category',
+            'active': False,
+        })
+        asset_type = self.env['buz.it.asset.type'].with_user(support).create({
+            'name': 'Agent Managed Type',
+            'asset_prefix': 'ITAG',
+            'category_id': category.id,
+        })
+        asset_type.with_user(support).write({
+            'name': 'Agent Updated Type',
+            'active': False,
+        })
+        with self.assertRaises(AccessError):
+            asset_type.with_user(support).unlink()
+        with self.assertRaises(AccessError):
+            category.with_user(support).unlink()
+
+        asset_type.with_user(manager).unlink()
+        category.with_user(manager).unlink()
 
 
 @tagged('post_install', '-at_install')
@@ -30,46 +213,18 @@ class TestITAsset(TransactionCase):
         cls.department = cls.env['hr.department'].create({
             'name': 'Shared IT Equipment', 'company_id': cls.company.id,
         })
-        cls.software_type = cls.env['buz.it.software.type'].create({
-            'name': 'Office',
-        })
-        cls.outcome_parts_replaced = cls.env[
-            'buz.it.asset.repair.outcome'
-        ].create({
-            'name': 'Parts Replaced',
-            'code': 'parts_replaced',
-            'behavior': 'parts_replaced',
-        })
-        cls.outcome_asset_replaced = cls.env[
-            'buz.it.asset.repair.outcome'
-        ].create({
-            'name': 'Asset Replaced',
-            'code': 'asset_replaced',
-            'behavior': 'asset_replaced',
-        })
-        cls.outcome_retired = cls.env[
-            'buz.it.asset.repair.outcome'
-        ].create({
-            'name': 'Retired',
-            'code': 'retired',
-            'behavior': 'retired',
-        })
-
-    def test_install_starts_without_asset_presets(self):
-        for xmlid in (
-            'category_end_user_devices',
-            'category_network_infrastructure',
-            'type_laptop',
-            'software_type_office',
-            'repair_outcome_parts_replaced',
-        ):
-            self.assertFalse(
-                self.env.ref(
-                    f'buz_it_asset.{xmlid}', raise_if_not_found=False,
-                ),
-                xmlid,
-            )
-        self.assertEqual(self.asset_type.spec_profile, 'generic')
+        cls.software_type = cls.env.ref(
+            'buz_it_asset.software_type_office',
+        )
+        cls.outcome_parts_replaced = cls.env.ref(
+            'buz_it_asset.repair_outcome_parts_replaced',
+        )
+        cls.outcome_asset_replaced = cls.env.ref(
+            'buz_it_asset.repair_outcome_asset_replaced',
+        )
+        cls.outcome_retired = cls.env.ref(
+            'buz_it_asset.repair_outcome_retired',
+        )
 
     def test_serial_number_is_required_for_new_assets(self):
         with self.assertRaises(ValidationError):

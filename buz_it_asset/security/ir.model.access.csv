@@ -6,8 +6,10 @@ access_assignment_requester,IT Assignment requester,model_buz_it_asset_assignmen
 access_assignment_agent,IT Assignment support agent,model_buz_it_asset_assignment,buz_it_helpdesk.group_it_support_agent,1,1,1,0
 access_assignment_manager,IT Assignment manager,model_buz_it_asset_assignment,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,0
 access_category_requester,IT Category requester,model_buz_it_asset_category,buz_it_helpdesk.group_it_requester,1,0,0,0
+access_category_agent,IT Category support agent,model_buz_it_asset_category,buz_it_helpdesk.group_it_support_agent,1,1,1,0
 access_category_manager,IT Category manager,model_buz_it_asset_category,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 access_type_requester,IT Type requester,model_buz_it_asset_type,buz_it_helpdesk.group_it_requester,1,0,0,0
+access_type_agent,IT Type support agent,model_buz_it_asset_type,buz_it_helpdesk.group_it_support_agent,1,1,1,0
 access_type_manager,IT Type manager,model_buz_it_asset_type,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 access_location_requester,IT Location requester,model_buz_it_asset_location,buz_it_helpdesk.group_it_requester,1,0,0,0
 access_location_manager,IT Location manager,model_buz_it_asset_location,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1

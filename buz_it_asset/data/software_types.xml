@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo>
+<odoo noupdate="1">
     <record id="software_type_operating_system" model="buz.it.software.type">
         <field name="name">Operating System</field>
     </record>
