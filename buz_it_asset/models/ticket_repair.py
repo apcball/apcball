@@ -193,15 +193,11 @@ class HelpdeskTicketRepair(models.Model):
             requester_employee = ticket.requester_id.employee_id
             if not ticket.category_id or not ticket.category_type_id or not requester_employee:
                 continue
-            category_name = self._normalize_taxonomy_name(ticket.category_id.name)
             type_name = self._normalize_taxonomy_name(ticket.category_type_id.name)
             matching_type_ids = asset_type_model.search([
                 ('active', '=', True),
             ]).filtered(
-                lambda asset_type: (
-                    self._normalize_taxonomy_name(asset_type.category_id.name) == category_name
-                    and self._normalize_taxonomy_name(asset_type.name) == type_name
-                )
+                lambda asset_type: self._normalize_taxonomy_name(asset_type.name) == type_name
             ).ids
             if not matching_type_ids:
                 continue
@@ -231,15 +227,11 @@ class HelpdeskTicketRepair(models.Model):
         matching_type_ids = self.env['buz.it.asset.type'].search([
             ('active', '=', True),
         ]).filtered(
-            lambda asset_type: (
-                self._normalize_taxonomy_name(asset_type.category_id.name)
-                == self._normalize_taxonomy_name(self.category_id.name)
-                and self._normalize_taxonomy_name(asset_type.name)
-                == self._normalize_taxonomy_name(self.category_type_id.name)
-            )
+            lambda asset_type: self._normalize_taxonomy_name(asset_type.name)
+            == self._normalize_taxonomy_name(self.category_type_id.name)
         )
         if asset.type_id not in matching_type_ids:
-            raise ValidationError(_('The Asset must match the selected Category and Type.'))
+            raise ValidationError(_('The Asset must match the selected Type.'))
         if asset.state in ('retired', 'lost'):
             raise ValidationError(_('Retired or lost Assets cannot be repaired.'))
 
