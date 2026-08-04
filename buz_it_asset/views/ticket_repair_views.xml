@@ -6,7 +6,8 @@
         <field name="inherit_id" ref="buz_it_helpdesk.view_helpdesk_ticket_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='category_type_ids']" position="after">
-                <field name="asset_id" string="Asset / อุปกรณ์" domain="[('company_id', '=', company_id), ('active', '=', True), ('state', 'not in', ['retired', 'lost'])]" options="{'no_create': True}" readonly="is_closed_stage or (not can_edit_repair_details and not is_draft_stage)"/>
+                <field name="requester_asset_ids" invisible="1"/>
+        <field name="asset_id" string="Asset / อุปกรณ์" domain="[('id', 'in', requester_asset_ids)]" options="{'no_create': True}" readonly="is_closed_stage or (not can_edit_repair_details and not is_draft_stage)"/>
                 <field name="asset_type_id" string="Asset Type / ประเภทอุปกรณ์" readonly="1" invisible="not asset_id"/>
                 <field name="company_id" invisible="1"/>
                 <field name="currency_id" invisible="1"/>

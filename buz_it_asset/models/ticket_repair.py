@@ -12,6 +12,12 @@ MANAGER_GROUP = 'buz_it_helpdesk.group_it_helpdesk_manager'
 class HelpdeskTicketRepair(models.Model):
     _inherit = 'buz.helpdesk.ticket'
 
+    requester_asset_ids = fields.Many2many(
+        'buz.it.asset',
+        compute='_compute_requester_asset_ids',
+        string='Requester Assets',
+        readonly=True,
+    )
     asset_id = fields.Many2one(
         'buz.it.asset', string='Asset', ondelete='restrict', check_company=True,
         index=True, tracking=True,
@@ -174,13 +180,66 @@ class HelpdeskTicketRepair(models.Model):
         if not self._is_helpdesk_manager() and self.assigned_user_id != self.env.user:
             raise UserError(_('Only the assigned agent can manage this repair.'))
 
+    @api.model
+    def _normalize_taxonomy_name(self, value):
+        return ' '.join((value or '').split()).casefold()
+
+    @api.depends('requester_id', 'company_id', 'category_id', 'category_type_id')
+    def _compute_requester_asset_ids(self):
+        asset_model = self.env['buz.it.asset']
+        asset_type_model = self.env['buz.it.asset.type']
+        for ticket in self:
+            ticket.requester_asset_ids = asset_model.browse()
+            requester_employee = ticket.requester_id.employee_id
+            if not ticket.category_id or not ticket.category_type_id or not requester_employee:
+                continue
+            category_name = self._normalize_taxonomy_name(ticket.category_id.name)
+            type_name = self._normalize_taxonomy_name(ticket.category_type_id.name)
+            matching_type_ids = asset_type_model.search([
+                ('active', '=', True),
+            ]).filtered(
+                lambda asset_type: (
+                    self._normalize_taxonomy_name(asset_type.category_id.name) == category_name
+                    and self._normalize_taxonomy_name(asset_type.name) == type_name
+                )
+            ).ids
+            if not matching_type_ids:
+                continue
+            ticket.requester_asset_ids = asset_model.search([
+                ('company_id', '=', ticket.company_id.id),
+                ('active', '=', True),
+                ('state', 'not in', ['retired', 'lost']),
+                ('assigned_employee_id', '=', requester_employee.id),
+                ('type_id', 'in', matching_type_ids),
+            ])
+
+    @api.onchange('requester_id', 'category_id', 'category_type_id')
+    def _onchange_requester_asset_domain(self):
+        for ticket in self:
+            if ticket.asset_id and ticket.asset_id not in ticket.requester_asset_ids:
+                ticket.asset_id = False
+
     def _check_asset_selection(self, asset):
         if not asset:
             return
         if asset.company_id != self.company_id:
             raise ValidationError(_('The Asset must belong to the Ticket company.'))
-        if not self._is_support_agent() and asset.assigned_employee_id.user_id != self.requester_id:
-            raise ValidationError(_('Users can only select an Asset assigned to themselves.'))
+        if asset.assigned_employee_id != self.requester_id.employee_id:
+            raise ValidationError(_('The Asset must be assigned to the Ticket requester.'))
+        if not self.category_id or not self.category_type_id:
+            raise ValidationError(_('Select a Category and Type before selecting an Asset.'))
+        matching_type_ids = self.env['buz.it.asset.type'].search([
+            ('active', '=', True),
+        ]).filtered(
+            lambda asset_type: (
+                self._normalize_taxonomy_name(asset_type.category_id.name)
+                == self._normalize_taxonomy_name(self.category_id.name)
+                and self._normalize_taxonomy_name(asset_type.name)
+                == self._normalize_taxonomy_name(self.category_type_id.name)
+            )
+        )
+        if asset.type_id not in matching_type_ids:
+            raise ValidationError(_('The Asset must match the selected Category and Type.'))
         if asset.state in ('retired', 'lost'):
             raise ValidationError(_('Retired or lost Assets cannot be repaired.'))
 
