@@ -16,6 +16,8 @@ class TestITAsset(TransactionCase):
         super().setUpClass()
         cls.company = cls.env.company
         cls.category = cls.env['buz.it.asset.category'].create({'name': 'End User Devices'})
+        cls.helpdesk_category = cls.env['buz.helpdesk.category'].create({'name': 'Hardware Support'})
+        cls.helpdesk_type = cls.env['buz.helpdesk.category.type'].create({'name': 'Laptop', 'category_id': cls.helpdesk_category.id})
         cls.asset_type = cls.env['buz.it.asset.type'].create({
             'name': 'Laptop', 'category_id': cls.category.id,
         })
@@ -28,45 +30,45 @@ class TestITAsset(TransactionCase):
         cls.department = cls.env['hr.department'].create({
             'name': 'Shared IT Equipment', 'company_id': cls.company.id,
         })
+        cls.software_type = cls.env['buz.it.software.type'].create({
+            'name': 'Office',
+        })
+        cls.outcome_parts_replaced = cls.env[
+            'buz.it.asset.repair.outcome'
+        ].create({
+            'name': 'Parts Replaced',
+            'code': 'parts_replaced',
+            'behavior': 'parts_replaced',
+        })
+        cls.outcome_asset_replaced = cls.env[
+            'buz.it.asset.repair.outcome'
+        ].create({
+            'name': 'Asset Replaced',
+            'code': 'asset_replaced',
+            'behavior': 'asset_replaced',
+        })
+        cls.outcome_retired = cls.env[
+            'buz.it.asset.repair.outcome'
+        ].create({
+            'name': 'Retired',
+            'code': 'retired',
+            'behavior': 'retired',
+        })
 
-    def test_default_hardware_taxonomy(self):
-        categories = self.env['buz.it.asset.category'].search([
-            ('id', 'in', [
-                self.env.ref('buz_it_asset.category_end_user_devices').id,
-                self.env.ref('buz_it_asset.category_network_infrastructure').id,
-                self.env.ref('buz_it_asset.category_servers_storage').id,
-                self.env.ref('buz_it_asset.category_peripherals_accessories').id,
-            ]),
-        ])
-        self.assertEqual(len(categories), 4)
-        self.assertEqual(sum(len(category.type_ids) for category in categories), 15)
-        self.assertEqual(
-            self.env.ref('buz_it_asset.type_laptop').category_id,
-            self.env.ref('buz_it_asset.category_end_user_devices'),
-        )
-        self.assertEqual(self.env.ref('buz_it_asset.type_desktop_pc').asset_prefix, 'ITPC')
-        self.assertEqual(self.env.ref('buz_it_asset.type_laptop').asset_prefix, 'ITNB')
-
-    def test_default_specification_profiles(self):
-        expected = {
-            'type_desktop_pc': 'desktop',
-            'type_laptop': 'laptop',
-            'type_tablet': 'mobile',
-            'type_smartphone': 'mobile',
-            'type_router': 'network',
-            'type_switch': 'network',
-            'type_access_point': 'network',
-            'type_hardware_firewall': 'network',
-            'type_server': 'server',
-            'type_nas_san': 'storage',
-            'type_hdd_ssd': 'storage',
-            'type_monitor': 'monitor',
-            'type_printer_scanner': 'printer',
-            'type_ups': 'ups',
-            'type_keyboard_mouse': 'input',
-        }
-        for xmlid, profile in expected.items():
-            self.assertEqual(self.env.ref(f'buz_it_asset.{xmlid}').spec_profile, profile)
+    def test_install_starts_without_asset_presets(self):
+        for xmlid in (
+            'category_end_user_devices',
+            'category_network_infrastructure',
+            'type_laptop',
+            'software_type_office',
+            'repair_outcome_parts_replaced',
+        ):
+            self.assertFalse(
+                self.env.ref(
+                    f'buz_it_asset.{xmlid}', raise_if_not_found=False,
+                ),
+                xmlid,
+            )
         self.assertEqual(self.asset_type.spec_profile, 'generic')
 
     def test_serial_number_is_required_for_new_assets(self):
@@ -115,7 +117,7 @@ class TestITAsset(TransactionCase):
         })
         other_version = self.env['buz.it.software.product'].create({
             'name': 'Office',
-            'software_type': self.env.ref('buz_it_asset.software_type_office').id,
+            'software_type': self.software_type.id,
             'version': '2027',
             'edition': 'Business',
             'company_id': self.company.id,
@@ -126,7 +128,7 @@ class TestITAsset(TransactionCase):
 
     def test_software_license_currency_and_contract_dates(self):
         product = self.env['buz.it.software.product'].create({
-            'name': 'Accounting', 'company_id': self.company.id,
+            'name': 'Accounting', 'software_type': self.software_type.id, 'company_id': self.company.id,
         })
         license_record = self.env['buz.it.software.license'].create({
             'name': 'Accounting 2026', 'product_id': product.id,
@@ -143,7 +145,7 @@ class TestITAsset(TransactionCase):
 
     def test_free_license_has_unlimited_installations(self):
         product = self.env['buz.it.software.product'].create({
-            'name': 'Free Utility', 'company_id': self.company.id,
+            'name': 'Free Utility', 'software_type': self.software_type.id, 'company_id': self.company.id,
         })
         license_record = self.env['buz.it.software.license'].create({
             'name': 'Free Utility', 'product_id': product.id,
@@ -226,6 +228,8 @@ class TestITAsset(TransactionCase):
         ticket = self.env['buz.helpdesk.ticket'].with_user(support).create({
             'subject': 'Ticket generated repair history',
             'asset_id': asset.id if asset else False,
+            'category_id': self.helpdesk_category.id,
+            'category_type_id': self.helpdesk_type.id,
             'description': 'Does not power on',
         })
         ticket.with_context(buz_helpdesk_transition=True).write({
@@ -272,7 +276,7 @@ class TestITAsset(TransactionCase):
         ticket.write({
             'diagnosis': 'Power supply failure',
             'repair_result': 'Replaced power supply and tested.',
-            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_parts_replaced').id,
+            'repair_outcome_id': self.outcome_parts_replaced.id,
             'repair_instructions': 'Monitor the power supply for seven days.',
             'repair_part_ids': [fields.Command.create({
                 'name': 'Power supply',
@@ -303,7 +307,7 @@ class TestITAsset(TransactionCase):
             lambda line: line.ticket_id == ticket
         )
         self.assertEqual(len(history), 1)
-        self.assertEqual(history.repair_outcome, 'parts_replaced')
+        self.assertEqual(history.repair_outcome_id, 'parts_replaced')
         self.assertEqual(history.diagnosis, 'Power supply failure')
         self.assertEqual(
             history.repair_result,
@@ -347,7 +351,7 @@ class TestITAsset(TransactionCase):
         ticket.write({'repair_result': 'Checked and tested.'})
         with self.assertRaises(UserError):
             ticket.action_close_ticket()
-        ticket.write({'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_parts_replaced').id})
+        ticket.write({'repair_outcome_id': self.outcome_parts_replaced.id})
         with self.assertRaises(UserError):
             ticket.action_close_ticket()
         with self.assertRaises(ValidationError), self.env.cr.savepoint():
@@ -359,7 +363,7 @@ class TestITAsset(TransactionCase):
                 'quantity': 0,
             })
         ticket.write({
-            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_asset_replaced').id,
+            'repair_outcome_id': self.outcome_asset_replaced.id,
             'repair_part_ids': [fields.Command.clear()],
         })
         with self.assertRaises(UserError):
@@ -417,7 +421,7 @@ class TestITAsset(TransactionCase):
         ticket = self._create_in_progress_repair_ticket(support, asset)
         ticket.write({
             'repair_result': 'Replaced the registered device.',
-            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_asset_replaced').id,
+            'repair_outcome_id': self.outcome_asset_replaced.id,
             'replacement_asset_id': replacement.id,
         })
         ticket.action_close_ticket()
@@ -461,7 +465,7 @@ class TestITAsset(TransactionCase):
         ticket = self._create_in_progress_repair_ticket(support, asset)
         ticket.write({
             'repair_result': 'Repair is not economically viable.',
-            'repair_outcome_id': self.env.ref('buz_it_asset.repair_outcome_retired').id,
+            'repair_outcome_id': self.outcome_retired.id,
             'retire_reason': 'uneconomical',
         })
         with self.assertRaises(UserError):
@@ -476,7 +480,7 @@ class TestITAsset(TransactionCase):
         ticket.with_user(manager).action_close_ticket()
         self.assertEqual(asset.state, 'retired')
         self.assertEqual(
-            asset.maintenance_ids.repair_outcome,
+            asset.maintenance_ids.repair_outcome_id,
             'retired',
         )
         with self.assertRaises(UserError):
@@ -499,12 +503,16 @@ class TestITAsset(TransactionCase):
         ticket = self.env['buz.helpdesk.ticket'].with_user(requester).create({
             'subject': 'Requester security ticket',
             'asset_id': asset.id,
+            'category_id': self.helpdesk_category.id,
+            'category_type_id': self.helpdesk_type.id,
             'description': 'Screen is blank',
         })
         with self.assertRaises(UserError):
             self.env['buz.helpdesk.ticket'].with_user(requester).create({
                 'subject': 'Unauthorized repair details',
                 'asset_id': asset.id,
+                'category_id': self.helpdesk_category.id,
+                'category_type_id': self.helpdesk_type.id,
                 'description': 'Requester supplied internal fields',
                 'diagnosis': 'Requester must not set this.',
             })
@@ -530,7 +538,7 @@ class TestITAsset(TransactionCase):
         ).fields_get()
         self.assertNotIn('cost', maintenance_fields)
         self.assertNotIn('diagnosis', maintenance_fields)
-        self.assertIn('repair_outcome', maintenance_fields)
+        self.assertIn('repair_outcome_id', maintenance_fields)
 
     def test_legacy_repair_data_is_preserved_without_outcome_inference(self):
         support = self._create_repair_user(
@@ -550,7 +558,7 @@ class TestITAsset(TransactionCase):
             'repair_substate': 'sent_external',
             'external_reference': 'LEGACY-REF-001',
         })
-        self.assertFalse(ticket.repair_outcome)
+        self.assertFalse(ticket.repair_outcome_id)
         self.assertTrue(ticket.has_legacy_repair_data)
         self.assertEqual(ticket.repair_route, 'external_it')
         self.assertEqual(ticket.repair_substate, 'sent_external')
@@ -665,6 +673,7 @@ class TestITAsset(TransactionCase):
         })
         other_product = self.env['buz.it.software.product'].create({
             'name': 'Other Product',
+            'software_type': self.software_type.id,
             'company_id': other_company.id,
         })
         asset = self.env['buz.it.asset'].create({
@@ -675,6 +684,7 @@ class TestITAsset(TransactionCase):
         })
         product = self.env['buz.it.software.product'].create({
             'name': 'Company Product',
+            'software_type': self.software_type.id,
             'company_id': self.company.id,
         })
         license_record = self.env['buz.it.software.license'].create({
@@ -801,7 +811,8 @@ class TestITAsset(TransactionCase):
 
     def test_license_seat_limit_and_expiry(self):
         product = self.env['buz.it.software.product'].create({
-            'name': 'Office', 'company_id': self.company.id,
+            'name': 'Office', 'software_type': self.software_type.id,
+            'company_id': self.company.id,
         })
         license_record = self.env['buz.it.software.license'].create({
             'name': 'Office 1 seat', 'product_id': product.id,
@@ -817,7 +828,8 @@ class TestITAsset(TransactionCase):
 
     def test_installation_requires_one_target(self):
         product = self.env['buz.it.software.product'].create({
-            'name': 'VPN Client', 'company_id': self.company.id,
+            'name': 'VPN Client', 'software_type': self.software_type.id,
+            'company_id': self.company.id,
         })
         license_record = self.env['buz.it.software.license'].create({
             'name': 'VPN', 'product_id': product.id, 'seat_count': 2,

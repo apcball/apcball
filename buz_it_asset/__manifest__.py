@@ -1,17 +1,12 @@
 {
     'name': 'IT Asset',
-    'version': '17.0.1.13.0',
+    'version': '17.0.1.14.0',
     'category': 'Services/IT',
     'summary': 'Hardware and software asset registry for IT Management',
     'author': 'BUZ',
     'license': 'LGPL-3',
     'depends': ['buz_it_helpdesk', 'hr', 'mail'],
     'data': [
-        'data/hardware_taxonomy.xml',
-        'data/asset_prefixes.xml',
-        'data/asset_spec_profiles.xml',
-        'data/software_types.xml',
-        'data/repair_outcomes.xml',
         'security/security.xml',
         'security/ir.model.access.csv',
         'views/asset_views.xml',
@@ -22,7 +17,7 @@
         'views/menus.xml',
     ],
     'installable': True,
-    'application': False,
+    'application': True,
     'auto_install': False,
     'assets': {
         'web.assets_backend': [

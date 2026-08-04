@@ -18,6 +18,7 @@ class TestITManagementDashboard(TransactionCase):
             'name': 'Dashboard Laptop',
             'category_id': cls.category.id,
         })
+        cls.software_type = cls.env['buz.it.software.type'].create({'name': 'Dashboard Software Type'})
         cls.support_user = cls.env['res.users'].create({
             'name': 'Dashboard Support User',
             'login': 'dashboard_support_user',
@@ -46,6 +47,7 @@ class TestITManagementDashboard(TransactionCase):
         })
         product = self.env['buz.it.software.product'].create({
             'name': 'Dashboard Software',
+            'software_type': self.software_type.id,
             'company_id': self.company.id,
         })
         self.env['buz.it.software.license'].create({
