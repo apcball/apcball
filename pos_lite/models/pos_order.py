@@ -1095,17 +1095,21 @@ class PosLiteOrderLine(models.Model):
             lid = q['location_id'][0] if isinstance(q['location_id'], (list, tuple)) else q['location_id']
             qty_map[(pid, lid)] = max((q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0), 0.0)
 
-        # Products with no free qty from their own stock.quant may still be
-        # BOM-kit ("set") products buildable from component stock — mirror
-        # the terminal view's kit aggregation for those (see
-        # models/product_product.py::_pos_lite_kit_stock_map).
+        # Products with no own stock.quant at all may still be BOM-kit
+        # ("set") products buildable from component stock — mirror the
+        # terminal view's kit aggregation for those (see
+        # models/product_product.py::_pos_lite_kit_stock_map). Exclude every
+        # product that has its own quant row (present as a key in qty_map),
+        # not just the qty>0 subset — a fully-reserved but physically-stocked
+        # product (own free qty 0) must not fall back to BOM-buildable qty
+        # computed from raw-component stock.
         product_product = self.env['product.product']
         for location_id in location_ids:
-            stocked_product_ids = [
+            own_quant_product_ids = [
                 pid for pid in product_ids
-                if qty_map.get((pid, location_id), 0.0) > 0.0
+                if (pid, location_id) in qty_map
             ]
-            kit_qty_map = product_product._pos_lite_kit_stock_map(location_id, stocked_product_ids)
+            kit_qty_map = product_product._pos_lite_kit_stock_map(location_id, own_quant_product_ids)
             for pid, qty in kit_qty_map.items():
                 if pid in product_ids:
                     qty_map[(pid, location_id)] = qty
