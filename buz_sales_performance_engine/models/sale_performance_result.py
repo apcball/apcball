@@ -154,6 +154,18 @@ class SalePerformanceResult(models.Model):
             return self.env["buz.sales.performance.result"]
 
         env = self.env
+        # Serialize concurrent recomputes on the same sale order lines
+        # (e.g. two invoices posted back-to-back, or a double-click on
+        # Confirm). Without this lock, two transactions can both miss the
+        # "existing" row in their SELECT and both attempt an INSERT,
+        # tripping the uniq_sol_company constraint. The second caller
+        # blocks here until the first commits, then sees the row as
+        # existing and does an UPDATE instead of a duplicate INSERT.
+        env.cr.execute(
+            "SELECT id FROM sale_order_line WHERE id IN %s ORDER BY id FOR UPDATE",
+            (sale_order_line_ids,),
+        )
+
         # Resolve the account.move.line <-> sale.order.line M2M relation
         # dynamically so the query is robust across Odoo versions / schemas.
         aml_sol_field = env["account.move.line"]._fields["sale_line_ids"]
@@ -245,12 +257,17 @@ class SalePerformanceResult(models.Model):
         )
 
         # Upsert the surviving rows.
-        existing = {
-            r["sale_order_line_id"]: r["id"]
-            for r in self.sudo().search_read(
-                [("sale_order_line_id", "in", keep_sol_ids)], ["id", "sale_order_line_id"],
-            )
-        }
+        # NOTE: search_read() returns Many2one fields as (id, display_name)
+        # tuples, not bare ints - keying on r["sale_order_line_id"] directly
+        # made every lookup miss (dict key was a tuple, sol_id is a plain
+        # int), so existing rows were never detected and create() always
+        # fired, tripping uniq_sol_company. Read the raw column instead.
+        env.cr.execute(
+            "SELECT sale_order_line_id, id FROM buz_sales_performance_result"
+            " WHERE sale_order_line_id IN %s",
+            (tuple(keep_sol_ids) or (0,),),
+        )
+        existing = dict(env.cr.fetchall())
 
         def _period_bucket(dt):
             if not dt:
@@ -324,6 +341,14 @@ class SalePerformanceResult(models.Model):
             return self.env["buz.sales.performance.result"]
 
         env = self.env
+        # Same race as _recompute_for_sol: lock the rows first so two
+        # concurrent recomputes on the same POS lines serialize instead of
+        # both attempting a duplicate INSERT (uniq_pos_line_company).
+        env.cr.execute(
+            "SELECT id FROM pos_lite_order_line WHERE id IN %s ORDER BY id FOR UPDATE",
+            (pos_line_ids,),
+        )
+
         # Raw SQL below - make sure pending ORM writes (order state, new
         # lines) are visible to the cursor.
         env.flush_all()
