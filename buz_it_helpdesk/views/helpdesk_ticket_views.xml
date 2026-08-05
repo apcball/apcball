@@ -76,7 +76,7 @@
                                     <span t-attf-class="badge o_kanban_ticket_priority {{ record.priority.raw_value == '3' ? 'text-bg-danger' : record.priority.raw_value == '2' ? 'text-bg-warning' : record.priority.raw_value == '1' ? 'text-bg-info' : 'text-bg-secondary' }}">
                                         <field name="priority"/>
                                     </span>
-                                    <span t-attf-class="badge o_kanban_ticket_stage {{ record.stage_id.value == 'In Progress' ? 'ticket-stage-progress' : record.stage_id.value == 'New' ? 'ticket-stage-new' : record.stage_id.value == 'Resolved' ? 'ticket-stage-resolved' : record.stage_id.value == 'Closed' ? 'ticket-stage-closed' : 'ticket-stage-draft' }}">
+                                    <span t-attf-class="badge o_kanban_ticket_stage {{ record.stage_id.value == 'In Progress' ? 'ticket-stage-progress' : record.stage_id.value == 'Pending User' ? 'ticket-stage-pending' : record.stage_id.value == 'New' ? 'ticket-stage-new' : record.stage_id.value == 'Resolved' ? 'ticket-stage-resolved' : record.stage_id.value == 'Closed' ? 'ticket-stage-closed' : 'ticket-stage-draft' }}">
                                         <field name="stage_id"/>
                                     </span>
                                     <div class="o_dropdown_kanban dropdown">
@@ -142,10 +142,16 @@
                     <field name="stage_id" widget="statusbar" options="{'clickable': False}"/>
                     <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_draft_stage"/>
                     <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
-                    <button name="action_close_ticket" string="Closed Ticket" type="object" class="btn-danger" invisible="not show_close_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_request_user" string="Waiting for User" type="object" class="btn-secondary" invisible="not show_pending_user_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_resume_work" string="Resume Work" type="object" class="btn-primary" invisible="not show_resume_work_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_mark_resolved" string="Mark Resolved" type="object" class="btn-success" invisible="not show_resolve_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_close_ticket" string="Close Ticket" type="object" class="btn-danger" invisible="not show_close_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <field name="is_draft_stage" invisible="1"/>
                     <field name="is_closed_stage" invisible="1"/>
                     <field name="show_receive_button" invisible="1"/>
+                    <field name="show_pending_user_button" invisible="1"/>
+                    <field name="show_resume_work_button" invisible="1"/>
+                    <field name="show_resolve_button" invisible="1"/>
                     <field name="show_close_button" invisible="1"/>
                     <field name="is_editable" invisible="1"/>
                 </header>

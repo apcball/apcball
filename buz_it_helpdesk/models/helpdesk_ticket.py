@@ -107,6 +107,9 @@ class HelpdeskTicket(models.Model):
     is_draft_stage = fields.Boolean(compute='_compute_is_draft_stage')
     is_closed_stage = fields.Boolean(compute='_compute_is_closed_stage')
     show_receive_button = fields.Boolean(compute='_compute_show_receive_button')
+    show_pending_user_button = fields.Boolean(compute='_compute_workflow_buttons')
+    show_resume_work_button = fields.Boolean(compute='_compute_workflow_buttons')
+    show_resolve_button = fields.Boolean(compute='_compute_workflow_buttons')
     show_close_button = fields.Boolean(compute='_compute_show_close_button')
     is_editable = fields.Boolean(compute='_compute_is_editable')
     can_manage_assignment = fields.Boolean(compute='_compute_can_manage_assignment')
@@ -141,13 +144,31 @@ class HelpdeskTicket(models.Model):
 
     @api.depends('stage_id', 'assigned_user_id')
     @api.depends_context('uid')
-    def _compute_show_close_button(self):
+    def _compute_workflow_buttons(self):
         in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
-        legacy_resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
+        pending_user_stage = self.env.ref('buz_it_helpdesk.stage_pending_user')
+        is_agent = self._is_support_agent()
+        is_manager = self._is_helpdesk_manager()
+        for ticket in self:
+            can_work = is_manager or ticket.assigned_user_id == self.env.user
+            ticket.show_pending_user_button = (
+                is_agent and can_work and ticket.stage_id == in_progress_stage
+            )
+            ticket.show_resume_work_button = (
+                is_agent and can_work and ticket.stage_id == pending_user_stage
+            )
+            ticket.show_resolve_button = (
+                is_agent and can_work and ticket.stage_id == in_progress_stage
+            )
+
+    @api.depends('stage_id', 'assigned_user_id')
+    @api.depends_context('uid')
+    def _compute_show_close_button(self):
+        resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
         is_manager = self._is_helpdesk_manager()
         for ticket in self:
             ticket.show_close_button = (
-                ticket.stage_id in (in_progress_stage, legacy_resolved_stage)
+                ticket.stage_id == resolved_stage
                 and (is_manager or ticket.assigned_user_id == self.env.user)
             )
 
@@ -276,10 +297,9 @@ class HelpdeskTicket(models.Model):
         self.ensure_one()
         if not self._is_support_agent():
             raise UserError(_('Only IT Support Agents can close tickets.'))
-        in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
-        legacy_resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
-        if self.stage_id not in (in_progress_stage, legacy_resolved_stage):
-            raise UserError(_('Only In Progress tickets can be Closed.'))
+        resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
+        if self.stage_id != resolved_stage:
+            raise UserError(_('Only Resolved tickets can be Closed.'))
         if (
             not self._is_helpdesk_manager()
             and self.assigned_user_id != self.env.user
@@ -296,6 +316,47 @@ class HelpdeskTicket(models.Model):
             partner_ids=[self.requester_id.partner_id.id],
             subtype_xmlid='mail.mt_comment',
         )
+        return True
+
+    def _assert_assigned_agent_workflow(self):
+        if not self._is_support_agent():
+            raise UserError(_('Only IT Support Agents can change workflow.'))
+        if not self._is_helpdesk_manager() and self.assigned_user_id.id != self.env.uid:
+            raise UserError(_('Only the assigned agent can change workflow.'))
+
+    def action_request_user(self):
+        self.ensure_one()
+        self._assert_assigned_agent_workflow()
+        if self.stage_id != self.env.ref('buz_it_helpdesk.stage_in_progress'):
+            raise UserError(_('Only In Progress tickets can wait for the User.'))
+        self.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_pending_user').id,
+        })
+        self.message_post(
+            body=_('This ticket is waiting for a response from the requester.'),
+            partner_ids=[self.requester_id.partner_id.id],
+            subtype_xmlid='mail.mt_comment',
+        )
+        return True
+
+    def action_resume_work(self):
+        self.ensure_one()
+        self._assert_assigned_agent_workflow()
+        if self.stage_id != self.env.ref('buz_it_helpdesk.stage_pending_user'):
+            raise UserError(_('Only Pending User tickets can resume work.'))
+        self.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+        })
+        return True
+
+    def action_mark_resolved(self):
+        self.ensure_one()
+        self._assert_assigned_agent_workflow()
+        if self.stage_id != self.env.ref('buz_it_helpdesk.stage_in_progress'):
+            raise UserError(_('Only In Progress tickets can be Resolved.'))
+        self.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_resolved').id,
+        })
         return True
 
     def action_receive_ticket(self):
@@ -348,36 +409,32 @@ class HelpdeskTicket(models.Model):
         draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
         new_stage = self.env.ref('buz_it_helpdesk.stage_new')
         in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        pending_user_stage = self.env.ref('buz_it_helpdesk.stage_pending_user')
+        resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
         closed_stage = self.env.ref('buz_it_helpdesk.stage_closed')
 
         if stage == new_stage:
             if self.stage_id == draft_stage:
                 return self.action_create_ticket()
-            self.with_context(buz_helpdesk_transition=True).write({
-                'stage_id': stage.id,
-                'assigned_user_id': False,
-                'team_id': False,
-            })
-            return True
+            raise UserError(_('Tickets can only move to New from Draft.'))
 
         if stage == in_progress_stage:
             if self.stage_id == new_stage:
                 return self.action_receive_ticket()
-            if self.stage_id == closed_stage:
-                raise UserError(_('Closed tickets cannot be reopened this way.'))
-            self.with_context(buz_helpdesk_transition=True).write({
-                'stage_id': stage.id,
-                'assigned_user_id': self.env.user.id,
-            })
-            return True
+            if self.stage_id == pending_user_stage:
+                return self.action_resume_work()
+            raise UserError(_('Only New or Pending User tickets can move to In Progress.'))
+
+        if stage == pending_user_stage:
+            return self.action_request_user()
+
+        if stage == resolved_stage:
+            return self.action_mark_resolved()
 
         if stage == closed_stage:
             return self.action_close_ticket()
 
-        self.with_context(buz_helpdesk_transition=True).write({
-            'stage_id': stage.id,
-        })
-        return True
+        raise UserError(_('Invalid Helpdesk workflow transition.'))
 
     def write(self, vals):
         if self.env.context.get('buz_helpdesk_transition'):

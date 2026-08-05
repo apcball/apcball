@@ -78,6 +78,12 @@
         border-color: #c5b3e6;
     }
 
+    .o_kanban_ticket_stage.ticket-stage-pending {
+        color: #664d03;
+        background-color: #fff3cd;
+        border-color: #ffecb5;
+    }
+
     .o_kanban_ticket_stage.ticket-stage-resolved {
         color: #0f5132;
         background-color: #d1e7dd;

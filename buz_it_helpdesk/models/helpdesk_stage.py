@@ -21,16 +21,14 @@ class HelpdeskStage(models.Model):
             self.env.ref('buz_it_helpdesk.stage_draft').id,
             self.env.ref('buz_it_helpdesk.stage_new').id,
             self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+            self.env.ref('buz_it_helpdesk.stage_pending_user').id,
             self.env.ref('buz_it_helpdesk.stage_resolved').id,
             self.env.ref('buz_it_helpdesk.stage_closed').id,
         }
 
     def write(self, vals):
         if vals.get('active') is False:
-            protected = self._protected_stage_ids()
-            legacy_resolved = self.env.ref('buz_it_helpdesk.stage_resolved').id
-            non_archivable = protected - {legacy_resolved}
-            if non_archivable.intersection(self.ids):
+            if self._protected_stage_ids().intersection(self.ids):
                 raise UserError(_('Workflow stages cannot be archived.'))
         return super().write(vals)
 
