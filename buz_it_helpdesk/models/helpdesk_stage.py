@@ -10,6 +10,11 @@ class HelpdeskStage(models.Model):
     name = fields.Char(required=True)
     sequence = fields.Integer(default=10)
     fold = fields.Boolean(string='Fold in Kanban')
+    show_in_kanban = fields.Boolean(
+        string='Show in Kanban',
+        default=True,
+        help='Show this stage as a column in the Helpdesk Kanban view.',
+    )
     active = fields.Boolean(default=True)
 
     _sql_constraints = [

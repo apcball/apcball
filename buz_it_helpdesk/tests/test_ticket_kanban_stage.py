@@ -169,3 +169,39 @@ class TestTicketKanbanStage(TransactionCase):
             ticket.with_user(self.requester).write({
                 'stage_id': self.stage_in_progress.id,
             })
+
+    def test_kanban_stage_visibility_defaults_to_true(self):
+        self.assertTrue(self.stage_new.show_in_kanban)
+
+        custom_stage = self.env['buz.helpdesk.stage'].with_user(self.manager).create({
+            'name': 'Kanban Visibility Test',
+            'sequence': 100,
+        })
+        self.assertTrue(custom_stage.show_in_kanban)
+
+    def test_kanban_group_expansion_excludes_hidden_and_archived_stages(self):
+        hidden_stage = self.stage_pending_user.with_user(self.manager)
+        hidden_stage.write({'show_in_kanban': False})
+
+        archived_stage = self.env['buz.helpdesk.stage'].with_user(self.manager).create({
+            'name': 'Archived Kanban Stage',
+            'sequence': 110,
+        })
+        archived_stage.write({'active': False})
+
+        expanded_stages = self.env['buz.helpdesk.ticket']._read_group_stage_ids(
+            self.env['buz.helpdesk.stage'], [], 'sequence, name'
+        )
+
+        self.assertIn(self.stage_new, expanded_stages)
+        self.assertNotIn(hidden_stage, expanded_stages)
+        self.assertNotIn(archived_stage, expanded_stages)
+
+    def test_hidden_stage_keeps_existing_ticket(self):
+        ticket = self._ticket(stage_id=self.stage_pending_user.id)
+        self.stage_pending_user.with_user(self.manager).write({
+            'show_in_kanban': False,
+        })
+
+        ticket.invalidate_recordset()
+        self.assertEqual(ticket.stage_id, self.stage_pending_user)

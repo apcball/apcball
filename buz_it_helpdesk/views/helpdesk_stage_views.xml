@@ -8,6 +8,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="fold"/>
+                <field name="show_in_kanban" string="แสดงใน Kanban / Show in Kanban"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -22,6 +23,7 @@
                         <field name="name"/>
                         <field name="sequence"/>
                         <field name="fold"/>
+                        <field name="show_in_kanban" string="แสดงใน Kanban / Show in Kanban"/>
                         <field name="active"/>
                     </group>
                 </sheet>

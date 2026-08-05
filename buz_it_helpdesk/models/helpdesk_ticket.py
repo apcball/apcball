@@ -91,6 +91,7 @@ class HelpdeskTicket(models.Model):
         required=True,
         tracking=True,
         default=lambda self: self.env.ref('buz_it_helpdesk.stage_draft'),
+        group_expand='_read_group_stage_ids',
     )
     priority = fields.Selection(
         [
@@ -113,6 +114,19 @@ class HelpdeskTicket(models.Model):
     show_close_button = fields.Boolean(compute='_compute_show_close_button')
     is_editable = fields.Boolean(compute='_compute_is_editable')
     can_manage_assignment = fields.Boolean(compute='_compute_can_manage_assignment')
+
+    @api.model
+    def _read_group_stage_ids(self, stages, domain, order):
+        """Return active stages configured for display in Kanban.
+
+        The Kanban renderer additionally filters groups that already contain
+        tickets, because read_group includes existing groups even when they
+        are not returned by group_expand.
+        """
+        return self.env['buz.helpdesk.stage'].search([
+            ('active', '=', True),
+            ('show_in_kanban', '=', True),
+        ], order='sequence, name')
 
     @api.depends('category_id.type_ids')
     def _compute_show_category_type(self):
