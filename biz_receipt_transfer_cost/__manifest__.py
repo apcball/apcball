@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Receipt Transfer with Cost Price',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Warehouse',
     'summary': 'กำหนดราคาต้นทุนบน Receipt Transfer และสร้าง Inventory Valuation',
     'description': """

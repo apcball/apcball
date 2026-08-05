@@ -76,31 +76,49 @@ class StockMove(models.Model):
     def create(self, vals_list):
         """Set default custom cost from PO or product's standard price when creating"""
         records = super(StockMove, self).create(vals_list)
-        
+
         # Set custom cost for newly created records that don't have it set
         for record in records:
-            if record.product_id and not record.custom_cost_price:
+            if (record.product_id and not record.custom_cost_price
+                    and not record._is_manufacturing_move()):
                 record.custom_cost_price = record._get_default_cost_price()
                 record.use_custom_cost = True
-        
+
         return records
-    
+
+    def _is_manufacturing_move(self):
+        """True for any move produced by a Manufacturing Order: finished
+        moves, by-products and reverse-manufacturing recovered components.
+
+        These carry their own computed cost (raw cost + labor + overhead,
+        see mrp_account._cal_price and buz_reverse_manufacturing._cal_price)
+        which must not be silently replaced by the product's standard
+        price. Only real receipts (purchase, manual, inventory adjustment)
+        are meant to use the custom cost price.
+        """
+        self.ensure_one()
+        return bool(self.production_id or self.raw_material_production_id)
+
     def _is_in(self):
         """Check if this is an incoming move (receipt)"""
         self.ensure_one()
         return self.location_dest_id._should_be_valued() and \
                not self.location_id._should_be_valued()
-    
+
     def _get_price_unit(self):
         """Override to use custom cost price if set for incoming moves"""
         self.ensure_one()
-        
-        # Only use custom cost for incoming moves with custom cost enabled
-        if self._is_in() and self.use_custom_cost and self.custom_cost_price > 0:
+
+        # Only use custom cost for incoming moves with custom cost enabled,
+        # never for moves produced by a Manufacturing Order (defense in
+        # depth: covers use_custom_cost set some other way, e.g. import).
+        if (self._is_in() and self.use_custom_cost
+                and self.custom_cost_price > 0
+                and not self._is_manufacturing_move()):
             return self.custom_cost_price
-        
+
         return super(StockMove, self)._get_price_unit()
-    
+
     def _get_in_svl_vals(self, forced_quantity):
         """Override to use custom cost price for incoming stock valuation"""
         svl_vals_list = []
@@ -108,13 +126,14 @@ class StockMove(models.Model):
             move = move.with_company(move.company_id)
             valued_move_lines = move._get_in_move_lines()
             valued_quantity = sum(valued_move_lines.mapped("quantity_product_uom"))
-            
-            if float_is_zero(forced_quantity or valued_quantity, 
+
+            if float_is_zero(forced_quantity or valued_quantity,
                            precision_rounding=move.product_id.uom_id.rounding):
                 continue
-            
+
             # Use custom cost if enabled, otherwise use standard logic
-            if move.use_custom_cost and move.custom_cost_price > 0:
+            if (move.use_custom_cost and move.custom_cost_price > 0
+                    and not move._is_manufacturing_move()):
                 unit_cost = move.custom_cost_price
             elif move.product_id.cost_method != 'standard':
                 unit_cost = abs(move._get_price_unit())
