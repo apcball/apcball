@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_reverse_manufacturing" model="ir.module.category">
+        <field name="name">Reverse Manufacturing</field>
+        <field name="description">Access rights for Reverse Manufacturing Orders</field>
+        <field name="sequence">25</field>
+    </record>
+
+    <record id="group_reverse_mfg_user" model="res.groups">
+        <field name="name">Reverse Manufacturing User</field>
+        <field name="category_id" ref="module_category_reverse_manufacturing"/>
+        <field name="implied_ids" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+        <field name="comment">Can create Reverse Manufacturing Orders, start and complete work orders.</field>
+    </record>
+
+    <record id="group_reverse_mfg_supervisor" model="res.groups">
+        <field name="name">Reverse Manufacturing Supervisor</field>
+        <field name="category_id" ref="module_category_reverse_manufacturing"/>
+        <field name="implied_ids" eval="[(4, ref('group_reverse_mfg_user'))]"/>
+        <field name="comment">Can approve and validate (mark done) Reverse Manufacturing Orders.</field>
+    </record>
+
+    <record id="group_reverse_mfg_manager" model="res.groups">
+        <field name="name">Reverse Manufacturing Manager</field>
+        <field name="category_id" ref="module_category_reverse_manufacturing"/>
+        <field name="implied_ids" eval="[(4, ref('group_reverse_mfg_supervisor'))]"/>
+        <field name="comment">Can cancel, reset to draft and override cost allocation on Reverse Manufacturing Orders.</field>
+    </record>
+</odoo>

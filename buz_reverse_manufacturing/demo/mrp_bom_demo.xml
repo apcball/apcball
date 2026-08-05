@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="workcenter_disassembly_demo" model="mrp.workcenter">
+        <field name="name">Demo Disassembly Bench</field>
+        <field name="costs_hour">120.0</field>
+        <field name="time_efficiency">100</field>
+    </record>
+
+    <record id="bom_reverse_tv_demo" model="mrp.bom">
+        <field name="product_tmpl_id" ref="product_tv_demo"/>
+        <field name="product_qty">1</field>
+        <field name="type">reverse</field>
+        <field name="allocation_method">bom_cost</field>
+        <field name="consumption">flexible</field>
+    </record>
+
+    <record id="bom_reverse_tv_demo_line_panel" model="mrp.bom.line">
+        <field name="bom_id" ref="bom_reverse_tv_demo"/>
+        <field name="product_id" ref="product_panel_demo"/>
+        <field name="product_qty">1</field>
+        <field name="recovery_percent">100</field>
+    </record>
+
+    <record id="bom_reverse_tv_demo_line_pcb" model="mrp.bom.line">
+        <field name="bom_id" ref="bom_reverse_tv_demo"/>
+        <field name="product_id" ref="product_pcb_demo"/>
+        <field name="product_qty">1</field>
+        <field name="recovery_percent">90</field>
+    </record>
+
+    <record id="bom_reverse_tv_demo_line_plastic" model="mrp.bom.line">
+        <field name="bom_id" ref="bom_reverse_tv_demo"/>
+        <field name="product_id" ref="product_plastic_demo"/>
+        <field name="product_qty">2</field>
+        <field name="recovery_percent">75</field>
+    </record>
+
+    <record id="bom_reverse_tv_demo_operation" model="mrp.routing.workcenter">
+        <field name="bom_id" ref="bom_reverse_tv_demo"/>
+        <field name="name">Disassemble TV</field>
+        <field name="workcenter_id" ref="workcenter_disassembly_demo"/>
+        <field name="time_cycle_manual">30</field>
+    </record>
+</odoo>

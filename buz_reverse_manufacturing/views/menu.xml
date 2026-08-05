@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_reverse_manufacturing_order"
+              name="Reverse Manufacturing Orders"
+              parent="mrp.menu_mrp_manufacturing"
+              action="action_reverse_manufacturing_order"
+              groups="buz_reverse_manufacturing.group_reverse_mfg_user"
+              sequence="15"/>
+</odoo>

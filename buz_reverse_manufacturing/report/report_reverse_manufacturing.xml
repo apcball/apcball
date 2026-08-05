@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_reverse_manufacturing">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <style>
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_reverse_manufacturing/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                        }
+                        @font-face {
+                            font-family: 'Sarabun';
+                            font-weight: bold;
+                            src: url('/buz_reverse_manufacturing/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                        }
+                        .rmo-report, .rmo-report * {
+                            font-family: 'Sarabun', sans-serif !important;
+                        }
+                        .rmo-report table.rmo-table {
+                            width: 100%; border-collapse: collapse; margin-bottom: 12px;
+                        }
+                        .rmo-report table.rmo-table th,
+                        .rmo-report table.rmo-table td {
+                            border: 1px solid #444; padding: 3px 6px; font-size: 12px;
+                        }
+                        .rmo-report h5 { margin: 10px 0 4px 0; }
+                    </style>
+                    <div class="page rmo-report">
+                        <h4>
+                            Reverse Manufacturing Order:
+                            <span t-field="o.name"/>
+                        </h4>
+
+                        <!-- Header -->
+                        <table class="rmo-table">
+                            <tr>
+                                <th style="width:18%">Responsible</th>
+                                <td style="width:32%"><span t-field="o.user_id"/></td>
+                                <th style="width:18%">Planned Date</th>
+                                <td style="width:32%"><span t-field="o.date_start"/></td>
+                            </tr>
+                            <tr>
+                                <th>State</th>
+                                <td><span t-field="o.state"/></td>
+                                <th>Company</th>
+                                <td><span t-field="o.company_id"/></td>
+                            </tr>
+                            <tr>
+                                <th>Allocation Method</th>
+                                <td><span t-field="o.allocation_method"/></td>
+                                <th>Reverse BOM</th>
+                                <td><span t-field="o.bom_id.display_name"/></td>
+                            </tr>
+                        </table>
+
+                        <!-- Input product -->
+                        <h5>Input Product</h5>
+                        <table class="rmo-table">
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Quantity</th>
+                                <th>UoM</th>
+                                <th>Source Location</th>
+                                <th class="text-end">Input Cost</th>
+                            </tr>
+                            <tr>
+                                <td><span t-field="o.product_id.display_name"/></td>
+                                <td class="text-end"><span t-field="o.product_qty"/></td>
+                                <td><span t-field="o.product_uom_id.name"/></td>
+                                <td><span t-field="o.location_src_id.complete_name"/></td>
+                                <td class="text-end">
+                                    <span t-field="o.total_input_cost"
+                                          t-options='{"widget": "monetary", "display_currency": o.company_currency_id}'/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Recovered components -->
+                        <h5>Recovered Components</h5>
+                        <table class="rmo-table">
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Expected</th>
+                                <th class="text-end">Recovery %</th>
+                                <th class="text-end">Actual</th>
+                                <th class="text-end">Scrap</th>
+                                <th>Destination</th>
+                                <th>Lot/Serial</th>
+                                <th class="text-end">Allocation %</th>
+                                <th class="text-end">Allocated Cost</th>
+                            </tr>
+                            <tr t-foreach="o.recovery_line_ids" t-as="line">
+                                <td><span t-field="line.product_id.display_name"/></td>
+                                <td class="text-end"><span t-field="line.expected_qty"/></td>
+                                <td class="text-end"><span t-field="line.recovery_percent"/></td>
+                                <td class="text-end"><span t-field="line.actual_qty"/></td>
+                                <td class="text-end"><span t-field="line.scrap_qty"/></td>
+                                <td><span t-field="line.destination_location_id.complete_name"/></td>
+                                <td><span t-field="line.lot_id.name"/></td>
+                                <td class="text-end"><span t-field="line.allocation_percent"/></td>
+                                <td class="text-end">
+                                    <span t-field="line.calculated_cost"
+                                          t-options='{"widget": "monetary", "display_currency": line.currency_id}'/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Work orders -->
+                        <h5 t-if="o.workorder_ids">Work Orders</h5>
+                        <table class="rmo-table" t-if="o.workorder_ids">
+                            <tr>
+                                <th>Operation</th>
+                                <th>Work Center</th>
+                                <th>Employees</th>
+                                <th class="text-end">Expected (min)</th>
+                                <th class="text-end">Real (min)</th>
+                                <th>State</th>
+                            </tr>
+                            <tr t-foreach="o.workorder_ids" t-as="wo">
+                                <td><span t-field="wo.name"/></td>
+                                <td><span t-field="wo.workcenter_id.name"/></td>
+                                <td>
+                                    <span t-out="', '.join(wo.time_ids.employee_id.mapped('name'))"/>
+                                </td>
+                                <td class="text-end"><span t-field="wo.duration_expected"/></td>
+                                <td class="text-end"><span t-field="wo.duration"/></td>
+                                <td><span t-field="wo.state"/></td>
+                            </tr>
+                        </table>
+
+                        <!-- Cost summary -->
+                        <h5>Cost Summary</h5>
+                        <table class="rmo-table" style="width:60%">
+                            <tr>
+                                <th>Input Product Cost</th>
+                                <td class="text-end">
+                                    <span t-field="o.total_input_cost"
+                                          t-options='{"widget": "monetary", "display_currency": o.company_currency_id}'/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Labor / Operation Cost</th>
+                                <td class="text-end">
+                                    <span t-field="o.total_labor_cost"
+                                          t-options='{"widget": "monetary", "display_currency": o.company_currency_id}'/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Extra Cost (per unit)</th>
+                                <td class="text-end">
+                                    <span t-field="o.extra_cost"
+                                          t-options='{"widget": "monetary", "display_currency": o.company_currency_id}'/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Total Recovered Value</th>
+                                <td class="text-end">
+                                    <span t-field="o.total_recovered_value"
+                                          t-options='{"widget": "monetary", "display_currency": o.company_currency_id}'/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Signature -->
+                        <table style="width:100%; margin-top:40px; font-size:12px;">
+                            <tr>
+                                <td style="width:33%; text-align:center;">
+                                    ______________________<br/>Operator
+                                </td>
+                                <td style="width:33%; text-align:center;">
+                                    ______________________<br/>Supervisor
+                                </td>
+                                <td style="width:33%; text-align:center;">
+                                    ______________________<br/>Manager
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

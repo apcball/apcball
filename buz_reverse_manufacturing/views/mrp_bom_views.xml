@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_bom_form_inherit_reverse" model="ir.ui.view">
+        <field name="name">mrp.bom.form.inherit.reverse</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+        <field name="arch" type="xml">
+            <field name="type" position="after">
+                <field name="allocation_method"
+                       invisible="type != 'reverse'"
+                       required="type == 'reverse'"/>
+            </field>
+            <xpath expr="//field[@name='bom_line_ids']/tree/field[@name='product_qty']"
+                   position="after">
+                <field name="bom_type" column_invisible="1"/>
+                <field name="recovery_percent" optional="show"
+                       column_invisible="parent.type != 'reverse'"/>
+                <field name="dest_location_id" optional="show" groups="stock.group_stock_multi_locations"
+                       column_invisible="parent.type != 'reverse'"/>
+                <field name="scrap_policy" optional="hide"
+                       column_invisible="parent.type != 'reverse'"/>
+                <field name="allocation_percent" optional="hide"
+                       column_invisible="parent.type != 'reverse'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

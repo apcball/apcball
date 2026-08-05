@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_reverse_manufacturing" model="ir.actions.report">
+        <field name="name">Reverse Manufacturing Order</field>
+        <field name="model">mrp.production</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_reverse_manufacturing.report_reverse_manufacturing</field>
+        <field name="report_file">buz_reverse_manufacturing.report_reverse_manufacturing</field>
+        <field name="print_report_name">'Reverse MO - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="buz_reverse_manufacturing.paperformat_reverse_manufacturing"/>
+    </record>
+</odoo>

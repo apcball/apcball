@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_reverse_recovery_line_tree" model="ir.ui.view">
+        <field name="name">buz.reverse.recovery.line.tree</field>
+        <field name="model">buz.reverse.recovery.line</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" create="true" delete="true">
+                <field name="sequence" widget="handle"/>
+                <field name="product_id" readonly="state not in ('draft', 'confirmed')"/>
+                <field name="product_uom_category_id" column_invisible="1"/>
+                <field name="tracking" column_invisible="1"/>
+                <field name="bom_line_id" column_invisible="1"/>
+                <field name="expected_qty"/>
+                <field name="recovery_percent" readonly="state in ('done', 'cancel')"/>
+                <field name="actual_qty" readonly="state in ('done', 'cancel')"/>
+                <field name="scrap_qty"/>
+                <field name="product_uom_id" groups="uom.group_uom"
+                       readonly="state not in ('draft', 'confirmed')"/>
+                <field name="destination_location_id"
+                       readonly="state in ('done', 'cancel')"
+                       groups="stock.group_stock_multi_locations"/>
+                <field name="lot_id" readonly="state in ('done', 'cancel')"
+                       invisible="tracking == 'none'"
+                       required="tracking != 'none' and state == 'to_close'"
+                       context="{'default_product_id': product_id, 'default_company_id': company_id}"/>
+                <field name="manual_percent" optional="hide"
+                       readonly="state in ('done', 'cancel')"/>
+                <field name="manual_amount" optional="hide"
+                       readonly="state in ('done', 'cancel')"/>
+                <field name="allocation_percent" optional="show"/>
+                <field name="calculated_cost" optional="show"
+                       groups="buz_reverse_manufacturing.group_reverse_mfg_supervisor"/>
+                <field name="final_cost" optional="hide"
+                       groups="buz_reverse_manufacturing.group_reverse_mfg_supervisor"/>
+                <field name="scrap_policy" optional="hide"/>
+                <field name="company_id" column_invisible="1"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+</odoo>

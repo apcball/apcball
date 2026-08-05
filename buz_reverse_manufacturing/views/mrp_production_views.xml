@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form: reverse-specific page, stats and smart buttons -->
+    <record id="mrp_production_form_inherit_reverse" model="ir.ui.view">
+        <field name="name">mrp.production.form.inherit.reverse</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <field name="is_reverse" invisible="1"/>
+                <button name="action_view_reverse_recovered_moves" type="object"
+                        class="oe_stat_button" icon="fa-cubes"
+                        invisible="not is_reverse or state == 'draft'">
+                    <div class="o_stat_info">
+                        <field name="total_recovered_value" class="o_stat_value" widget="monetary"/>
+                        <span class="o_stat_text">Recovered Value</span>
+                    </div>
+                </button>
+                <button name="action_view_reverse_lots" type="object"
+                        class="oe_stat_button" icon="fa-barcode"
+                        invisible="not is_reverse or state == 'draft'">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Lots/Serials</span>
+                    </div>
+                </button>
+            </div>
+            <notebook position="inside">
+                <page string="Recovered Components" name="reverse_recovery"
+                      invisible="not is_reverse">
+                    <group>
+                        <group>
+                            <field name="allocation_method"
+                                   readonly="state not in ('draft', 'confirmed', 'progress', 'to_close')"/>
+                            <field name="company_currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="total_input_cost" widget="monetary"
+                                   groups="buz_reverse_manufacturing.group_reverse_mfg_supervisor"/>
+                            <field name="total_labor_cost" widget="monetary"
+                                   groups="buz_reverse_manufacturing.group_reverse_mfg_supervisor"/>
+                            <field name="total_scrap_value" widget="monetary"
+                                   groups="buz_reverse_manufacturing.group_reverse_mfg_supervisor"/>
+                            <field name="recovery_rate_percent"/>
+                        </group>
+                    </group>
+                    <field name="recovery_line_ids"
+                           context="{'default_production_id': id}"
+                           readonly="state in ('done', 'cancel')"/>
+                    <button name="action_generate_recovery_lines" type="object"
+                            string="Reset Lines from BOM" class="btn-link"
+                            invisible="state != 'draft'"
+                            confirm="This replaces all recovery lines with the reverse BOM content. Continue?"/>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+    <!-- Tree -->
+    <record id="mrp_production_tree_inherit_reverse" model="ir.ui.view">
+        <field name="name">mrp.production.tree.inherit.reverse</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="state" position="before">
+                <field name="is_reverse" optional="hide"/>
+                <field name="recovery_rate_percent" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Search -->
+    <record id="mrp_production_search_inherit_reverse" model="ir.ui.view">
+        <field name="name">mrp.production.search.inherit.reverse</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.view_mrp_production_filter"/>
+        <field name="arch" type="xml">
+            <filter name="filter_plan_date" position="after">
+                <separator/>
+                <filter string="Reverse Manufacturing" name="filter_is_reverse"
+                        domain="[('is_reverse', '=', True)]"/>
+                <filter string="Normal Manufacturing" name="filter_not_reverse"
+                        domain="[('is_reverse', '=', False)]"/>
+            </filter>
+        </field>
+    </record>
+
+    <!-- Action: Reverse Manufacturing Orders -->
+    <record id="action_reverse_manufacturing_order" model="ir.actions.act_window">
+        <field name="name">Reverse Manufacturing Orders</field>
+        <field name="res_model">mrp.production</field>
+        <field name="view_mode">tree,kanban,form,calendar,pivot,graph</field>
+        <field name="domain">[('is_reverse', '=', True)]</field>
+        <field name="context">{'default_is_reverse': True, 'search_default_todo': True}</field>
+        <field name="search_view_id" ref="mrp.view_mrp_production_filter"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a Reverse Manufacturing Order
+            </p>
+            <p>
+                Disassemble a finished product through work orders and
+                recover its components with full cost allocation.
+            </p>
+        </field>
+    </record>
+</odoo>

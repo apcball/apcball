@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_reverse_manufacturing_order" model="ir.sequence">
+        <field name="name">Reverse Manufacturing Order</field>
+        <field name="code">buz.reverse.manufacturing.order</field>
+        <field name="prefix">RMO</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

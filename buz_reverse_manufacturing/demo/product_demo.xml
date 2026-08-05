@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_category_reverse_demo" model="product.category">
+        <field name="name">Reverse Demo (FIFO)</field>
+        <field name="property_cost_method">fifo</field>
+        <field name="property_valuation">real_time</field>
+    </record>
+
+    <record id="product_tv_demo" model="product.template">
+        <field name="name">Demo TV 42"</field>
+        <field name="detailed_type">product</field>
+        <field name="categ_id" ref="product_category_reverse_demo"/>
+        <field name="standard_price">1000.0</field>
+        <field name="weight">12.0</field>
+    </record>
+
+    <record id="product_panel_demo" model="product.product">
+        <field name="name">Demo TV Panel</field>
+        <field name="detailed_type">product</field>
+        <field name="categ_id" ref="product_category_reverse_demo"/>
+        <field name="standard_price">500.0</field>
+        <field name="weight">6.0</field>
+    </record>
+
+    <record id="product_pcb_demo" model="product.product">
+        <field name="name">Demo TV Main PCB</field>
+        <field name="detailed_type">product</field>
+        <field name="categ_id" ref="product_category_reverse_demo"/>
+        <field name="standard_price">300.0</field>
+        <field name="weight">1.0</field>
+    </record>
+
+    <record id="product_plastic_demo" model="product.product">
+        <field name="name">Demo TV Plastic Housing</field>
+        <field name="detailed_type">product</field>
+        <field name="categ_id" ref="product_category_reverse_demo"/>
+        <field name="standard_price">100.0</field>
+        <field name="weight">4.0</field>
+    </record>
+</odoo>
