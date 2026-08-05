@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         LOCATION
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_stock_location_tree" model="ir.ui.view">
+        <field name="name">buz.it.stock.location.tree</field>
+        <field name="model">buz.it.stock.location</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="note"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_location_form" model="ir.ui.view">
+        <field name="name">buz.it.stock.location.form</field>
+        <field name="model">buz.it.stock.location</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="note"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ON-HAND (ยอดคงเหลือ)
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_stock_quant_tree" model="ir.ui.view">
+        <field name="name">buz.it.stock.quant.tree</field>
+        <field name="model">buz.it.stock.quant</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="consumable_id"/>
+                <field name="location_id"/>
+                <field name="qty" string="จำนวน"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_quant_search" model="ir.ui.view">
+        <field name="name">buz.it.stock.quant.search</field>
+        <field name="model">buz.it.stock.quant</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="consumable_id"/>
+                <field name="location_id"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_location" string="Location"
+                            context="{'group_by': 'location_id'}"/>
+                    <filter name="group_consumable" string="สินค้า"
+                            context="{'group_by': 'consumable_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         HISTORY (ประวัติ Stock)
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_stock_history_tree" model="ir.ui.view">
+        <field name="name">buz.it.stock.history.tree</field>
+        <field name="model">buz.it.stock.history</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="move_date" string="วันที่"/>
+                <field name="move_type" string="ประเภท"/>
+                <field name="consumable_id" string="สินค้า"/>
+                <field name="location_id" string="Location"/>
+                <field name="qty" string="จำนวน"/>
+                <field name="reference" string="อ้างอิง"/>
+                <field name="note"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_history_search" model="ir.ui.view">
+        <field name="name">buz.it.stock.history.search</field>
+        <field name="model">buz.it.stock.history</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="consumable_id"/>
+                <field name="location_id"/>
+                <field name="reference"/>
+                <filter name="in" string="รับเข้า" domain="[('move_type', '=', 'in')]"/>
+                <filter name="out" string="จ่ายออก" domain="[('move_type', '=', 'out')]"/>
+                <filter name="adjust" string="ปรับยอด" domain="[('move_type', '=', 'adjust')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_type" string="ประเภท"
+                            context="{'group_by': 'move_type'}"/>
+                    <filter name="group_consumable" string="สินค้า"
+                            context="{'group_by': 'consumable_id'}"/>
+                    <filter name="group_location" string="Location"
+                            context="{'group_by': 'location_id'}"/>
+                    <filter name="group_date" string="เดือน"
+                            context="{'group_by': 'move_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ACTIONS
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="action_stock_location" model="ir.actions.act_window">
+        <field name="name">Location</field>
+        <field name="res_model">buz.it.stock.location</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_consumable_quants" model="ir.actions.act_window">
+        <field name="name">ยอดคงเหลือ</field>
+        <field name="res_model">buz.it.stock.quant</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_stock_quant_search"/>
+    </record>
+
+    <record id="action_stock_history" model="ir.actions.act_window">
+        <field name="name">ประวัติ Stock</field>
+        <field name="res_model">buz.it.stock.history</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_stock_history_search"/>
+    </record>
+</odoo>

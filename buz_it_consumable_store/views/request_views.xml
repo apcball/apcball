@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SEARCH
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_consumable_request_search" model="ir.ui.view">
+        <field name="name">buz.it.consumable.request.search</field>
+        <field name="model">buz.it.consumable.request</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="เลขที่คำขอ"/>
+                <field name="requester_id" string="ผู้ขอ"/>
+                <field name="department_id" string="แผนก"/>
+                <field name="request_date" string="วันที่ขอ"/>
+                <filter name="my_requests" string="คำขอของฉัน"
+                        domain="[('requester_id', '=', uid)]"/>
+                <filter name="pending" string="รอจ่าย"
+                        domain="[('state', '=', 'confirmed')]"/>
+                <filter name="draft" string="ฉบับร่าง"
+                        domain="[('state', '=', 'draft')]"/>
+                <separator/>
+                <filter name="f_partial" string="จ่ายบางส่วน"
+                        domain="[('state', '=', 'partial')]"/>
+                <filter name="f_done" string="เสร็จสิ้น"
+                        domain="[('state', '=', 'done')]"/>
+                <filter name="f_rejected" string="ปฏิเสธ"
+                        domain="[('state', '=', 'rejected')]"/>
+                <filter name="f_cancelled" string="ยกเลิก"
+                        domain="[('state', '=', 'cancelled')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="สถานะ"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_department" string="แผนก"
+                            context="{'group_by': 'department_id'}"/>
+                    <filter name="group_requester" string="ผู้ขอ"
+                            context="{'group_by': 'requester_id'}"/>
+                    <filter name="group_date" string="เดือน"
+                            context="{'group_by': 'request_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         TREE
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_consumable_request_tree" model="ir.ui.view">
+        <field name="name">buz.it.consumable.request.tree</field>
+        <field name="model">buz.it.consumable.request</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'done'"
+                  decoration-danger="state in ('rejected', 'cancelled')"
+                  decoration-warning="state == 'partial'">
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="request_date"/>
+                <field name="line_count" string="รายการ"/>
+                <field name="state" widget="badge"/>
+                <field name="payer_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="pay_date" optional="show"/>
+                <field name="create_date" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         KANBAN
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_consumable_request_kanban" model="ir.ui.view">
+        <field name="name">buz.it.consumable.request.kanban</field>
+        <field name="model">buz.it.consumable.request</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="requester_id"/>
+                <field name="request_date"/>
+                <field name="line_count"/>
+                <field name="total_delivered"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click o_kanban_record">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title"><field name="name"/></strong>
+                                </div>
+                                <span class="badge text-bg-secondary"><field name="state"/></span>
+                            </div>
+                            <div class="o_kanban_record_body text-muted small">
+                                <div><i class="fa fa-user-o me-1" title="ผู้ขอ"/><field name="requester_id"/></div>
+                                <div><i class="fa fa-calendar-o me-1" title="วันที่ขอ"/><field name="request_date"/></div>
+                                <div><i class="fa fa-list me-1" title="รายการ"/><field name="line_count"/> รายการ · จ่ายแล้ว <field name="total_delivered"/></div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         FORM
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_consumable_request_form" model="ir.ui.view">
+        <field name="name">buz.it.consumable.request.form</field>
+        <field name="model">buz.it.consumable.request</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar" options="{'clickable': False}"/>
+                    <field name="show_submit" invisible="1"/>
+                    <field name="show_deliver_all" invisible="1"/>
+                    <field name="show_cancel" invisible="1"/>
+                    <button name="action_submit" type="object" string="ส่งคำขอ"
+                            class="btn-primary" invisible="not show_submit"/>
+                    <button name="action_deliver_all" type="object" string="จ่ายทั้งหมด"
+                            class="btn-primary" invisible="not show_deliver_all"
+                            groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_cancel" type="object" string="ยกเลิกคำขอ"
+                            class="btn-secondary" invisible="not show_cancel"/>
+                    <button name="action_draft" type="object" string="เปิดใหม่"
+                            invisible="state != 'cancelled'"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="เลขที่คำขอ" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="ระบบจะออกเลขที่เมื่อส่งคำขอ"/></h1>
+                    </div>
+                    <group>
+                        <group string="ผู้ขอ">
+                            <field name="requester_id" readonly="1"/>
+                            <field name="employee_id" options="{'no_create': True}"/>
+                            <field name="department_id" options="{'no_create': True}"/>
+                            <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="ข้อมูลคำขอ">
+                            <field name="request_date"/>
+                            <field name="payer_id" readonly="1" widget="many2one_avatar_user"/>
+                            <field name="pay_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="เหตุผล">
+                        <field name="reason" nolabel="1"
+                               placeholder="ระบุเหตุผลการเบิก (ถ้ามี)"/>
+                    </group>
+                    <group string="รายการเบิก">
+                        <field name="line_ids" readonly="state != 'draft'">
+                            <tree editable="bottom">
+                                <field name="request_id" column_invisible="True"/>
+                                <field name="consumable_id"/>
+                                <field name="requested_qty" string="จำนวนที่ขอ"/>
+                                <field name="unit"/>
+                                <field name="delivered_qty" string="จ่ายแล้ว" readonly="1"/>
+                                <field name="remaining_qty" string="เหลือจ่าย" readonly="1"/>
+                                <field name="location_id" string="Location" readonly="1"/>
+                                <field name="state" widget="badge" readonly="1"/>
+                                <field name="reason" string="เหตุผล"/>
+                                <button name="action_deliver" type="object" string="จ่าย"
+                                        icon="fa-credit-card"
+                                        groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"
+                                        invisible="request_id.state == 'draft' or state not in ('pending', 'partial')"/>
+                                <button name="action_reject" type="object" string="ปฏิเสธ"
+                                        icon="fa-times-circle" class="btn-link"
+                                        groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"
+                                        invisible="request_id.state == 'draft' or state not in ('pending', 'partial')"/>
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ACTIONS
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="action_consumable_cart" model="ir.actions.act_window">
+        <field name="name">รายการเบิกครั้งนี้</field>
+        <field name="res_model">buz.it.consumable.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('requester_id', '=', uid), ('state', '=', 'draft')]</field>
+    </record>
+
+    <record id="action_consumable_my_requests" model="ir.actions.act_window">
+        <field name="name">คำขอของฉัน</field>
+        <field name="res_model">buz.it.consumable.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid), ('state', '!=', 'draft')]</field>
+        <field name="search_view_id" ref="view_consumable_request_search"/>
+    </record>
+
+    <record id="action_consumable_all_requests" model="ir.actions.act_window">
+        <field name="name">คำขอทั้งหมด</field>
+        <field name="res_model">buz.it.consumable.request</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('state', '!=', 'draft')]</field>
+        <field name="search_view_id" ref="view_consumable_request_search"/>
+    </record>
+</odoo>

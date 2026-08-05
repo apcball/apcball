@@ -1,0 +1,47 @@
+.o_consumable_image_wrap {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    overflow: hidden;
+    border-radius: 6px;
+    margin-bottom: 8px;
+
+    .o_consumable_image {
+        max-height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+    }
+
+    .o_consumable_placeholder {
+        font-size: 3rem;
+        color: #adb5bd;
+    }
+}
+
+.o_list_view .o_field_image.o_consumable_list_image {
+    width: 90px !important;
+    height: 90px !important;
+    cursor: zoom-in;
+
+    img {
+        width: 90px;
+        height: 90px;
+        object-fit: contain;
+    }
+}
+
+.o_consumable_stock {
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+
+    .o_consumable_stock_qty {
+        font-weight: 700;
+    }
+
+    .o_consumable_stock_unit {
+        color: #6c757d;
+        margin-left: 2px;
+    }
+}

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Global (no group): always restrict to allowed companies -->
+    <record id="rule_consumable_company" model="ir.rule">
+        <field name="name">IT Consumable: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_consumable"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_request_company" model="ir.rule">
+        <field name="name">IT Consumable Request: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_consumable_request"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_request_line_company" model="ir.rule">
+        <field name="name">IT Consumable Request Line: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_consumable_request_line"/>
+        <field name="domain_force">[('request_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_stock_quant_company" model="ir.rule">
+        <field name="name">IT Stock Quant: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_stock_quant"/>
+        <field name="domain_force">[('consumable_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_stock_history_company" model="ir.rule">
+        <field name="name">IT Stock History: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_stock_history"/>
+        <field name="domain_force">[('consumable_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_stock_location_company" model="ir.rule">
+        <field name="name">IT Stock Location: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_stock_location"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- Group rules (OR-combined for a user across groups) -->
+    <record id="rule_consumable_requester_published" model="ir.rule">
+        <field name="name">IT Consumable: requester sees published items</field>
+        <field name="model_id" ref="model_buz_it_consumable"/>
+        <field name="domain_force">[('is_published', '=', True)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/>
+    </record>
+    <record id="rule_consumable_it_all" model="ir.rule">
+        <field name="name">IT Consumable: IT team sees all items</field>
+        <field name="model_id" ref="model_buz_it_consumable"/>
+        <field name="domain_force">[('id', '!=', 0)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
+    </record>
+
+    <record id="rule_request_requester_own" model="ir.rule">
+        <field name="name">IT Consumable Request: requester sees own requests</field>
+        <field name="model_id" ref="model_buz_it_consumable_request"/>
+        <field name="domain_force">[('requester_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/>
+    </record>
+    <record id="rule_request_it_all" model="ir.rule">
+        <field name="name">IT Consumable Request: IT team sees all requests</field>
+        <field name="model_id" ref="model_buz_it_consumable_request"/>
+        <field name="domain_force">[('id', '!=', 0)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
+    </record>
+
+    <record id="rule_request_line_requester_own" model="ir.rule">
+        <field name="name">IT Consumable Request Line: requester sees own lines</field>
+        <field name="model_id" ref="model_buz_it_consumable_request_line"/>
+        <field name="domain_force">[('request_id.requester_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/>
+    </record>
+    <record id="rule_request_line_it_all" model="ir.rule">
+        <field name="name">IT Consumable Request Line: IT team sees all lines</field>
+        <field name="model_id" ref="model_buz_it_consumable_request_line"/>
+        <field name="domain_force">[('id', '!=', 0)]</field>
+        <field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/>
+    </record>
+</odoo>
