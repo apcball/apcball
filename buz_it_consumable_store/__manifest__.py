@@ -1,6 +1,6 @@
 {
     'name': 'IT Consumable Store',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Services/IT',
     'summary': 'Standalone IT consumable store and requisition (Phase 1)',
     'description': """
@@ -37,6 +37,8 @@ Standalone IT consumable requisition system with its own stock.
     'assets': {
         'web.assets_backend': [
             'buz_it_consumable_store/static/src/scss/consumable_store.scss',
+            'buz_it_consumable_store/static/src/xml/consumable_store.xml',
+            'buz_it_consumable_store/static/src/js/consumable_store.js',
         ],
     },
     'demo': [],

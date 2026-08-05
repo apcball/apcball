@@ -186,6 +186,221 @@ class BuzItConsumableRequest(models.Model):
             })
         return cart
 
+    # ── Store / Cart API (OWL "เลือกอุปกรณ์" UI) ─────────────────────
+
+    @api.model
+    def _get_store_consumables(self):
+        return self.env['buz.it.consumable'].search([
+            ('active', '=', True),
+            ('is_published', '=', True),
+        ], order='category_id, name')
+
+    def _check_cart_editable(self, cart):
+        if not cart:
+            raise UserError(_('ยังไม่มีตะกร้าเบิก'))
+        if cart.state != 'draft':
+            raise UserError(_('ไม่สามารถแก้ไขคำขอที่ส่งแล้วได้'))
+        if not (self._is_agent() or cart.requester_id == self.env.user):
+            raise UserError(_('ไม่สามารถแก้ไขคำขอของผู้อื่นได้'))
+
+    @api.model
+    def _line_to_dict(self, line):
+        consumable = line.consumable_id
+        return {
+            'id': line.id,
+            'consumable_id': consumable.id,
+            'name': consumable.name,
+            'unit': line.unit,
+            'qty': line.requested_qty,
+            'on_hand_qty': consumable.on_hand_qty,
+            'max_per_request': consumable.max_per_request,
+            'has_image': bool(consumable.image_1920),
+        }
+
+    @api.model
+    def _cart_to_dict(self, cart):
+        lines = cart.line_ids if cart else self.env['buz.it.consumable.request.line']
+        return {
+            'id': cart.id if cart else False,
+            'name': cart.name if cart else False,
+            'lines': [self._line_to_dict(line) for line in lines],
+            'line_count': len(lines),
+            'total_qty': sum(line.requested_qty for line in lines),
+        }
+
+    @api.model
+    def _item_to_dict(self, item, cart_qty=0.0):
+        return {
+            'id': item.id,
+            'name': item.name,
+            'unit': item.unit,
+            'category_id': item.category_id.id if item.category_id else False,
+            'category_name': item.category_id.name if item.category_id else '',
+            'on_hand_qty': item.on_hand_qty,
+            'low_stock': item.low_stock,
+            'low_stock_threshold': item.low_stock_threshold,
+            'max_per_request': item.max_per_request,
+            'description': item.description or '',
+            'has_image': bool(item.image_1920),
+            'cart_qty': cart_qty,
+        }
+
+    @api.model
+    def get_store_data(self):
+        cart = self._get_current_cart()
+        cart_qty = {}
+        if cart:
+            for line in cart.line_ids:
+                cart_qty[line.consumable_id.id] = line.requested_qty
+        items = self._get_store_consumables()
+        cat_counts = {}
+        for item in items:
+            cat_counts[item.category_id.id] = (
+                cat_counts.get(item.category_id.id, 0) + 1
+            )
+        categories = self.env['buz.it.consumable.category'].search([])
+        return {
+            'categories': [
+                {
+                    'id': cat.id,
+                    'name': cat.name,
+                    'count': cat_counts.get(cat.id, 0),
+                }
+                for cat in categories
+            ],
+            'items': [
+                self._item_to_dict(item, cart_qty.get(item.id, 0.0))
+                for item in items
+            ],
+            'cart': self._cart_to_dict(cart),
+        }
+
+    @api.model
+    def get_cart_data(self):
+        return {'cart': self._cart_to_dict(self._get_current_cart())}
+
+    @api.model
+    def _validate_consumable_available(self, consumable):
+        if not consumable:
+            raise UserError(_('ไม่พบสินค้า'))
+        if not consumable.active or not consumable.is_published:
+            raise UserError(_('สินค้านี้ไม่สามารถเบิกได้'))
+
+    @api.model
+    def _validate_consumable_qty(self, consumable, new_qty):
+        if new_qty <= 0:
+            raise UserError(_('จำนวนต้องมากกว่า 0'))
+        if new_qty > consumable.on_hand_qty:
+            raise UserError(_('จำนวนที่ขอเกินยอดคงเหลือ (%s %s)') % (
+                consumable.on_hand_qty, consumable.unit,
+            ))
+        if consumable.max_per_request and new_qty > consumable.max_per_request:
+            raise UserError(_('จำนวนที่ขอเกินสูงสุดต่อคำขอ (%s %s)') % (
+                consumable.max_per_request, consumable.unit,
+            ))
+
+    @api.model
+    def cart_add(self, consumable_id, qty=1):
+        if qty <= 0:
+            raise UserError(_('จำนวนต้องมากกว่า 0'))
+        consumable = self.env['buz.it.consumable'].browse(consumable_id)
+        self._validate_consumable_available(consumable)
+        cart = self._get_or_create_cart()
+        self._check_cart_editable(cart)
+        line = cart.line_ids.filtered(
+            lambda l: l.consumable_id.id == consumable_id and not l.rejected
+        )
+        existing = line.requested_qty if line else 0.0
+        self._validate_consumable_qty(consumable, existing + qty)
+        if line:
+            line.with_context(buz_consumable_transition=True).write({
+                'requested_qty': existing + qty,
+            })
+        else:
+            self.env['buz.it.consumable.request.line'].create({
+                'request_id': cart.id,
+                'consumable_id': consumable_id,
+                'requested_qty': qty,
+            })
+        return {'cart': self._cart_to_dict(cart)}
+
+    @api.model
+    def cart_set_qty(self, consumable_id, qty):
+        cart = self._get_current_cart()
+        if qty <= 0:
+            if cart:
+                self._check_cart_editable(cart)
+                line = cart.line_ids.filtered(
+                    lambda l: l.consumable_id.id == consumable_id
+                )
+                if line:
+                    line.sudo().unlink()
+            return {'cart': self._cart_to_dict(cart)}
+        consumable = self.env['buz.it.consumable'].browse(consumable_id)
+        self._validate_consumable_available(consumable)
+        if not cart:
+            cart = self._get_or_create_cart()
+        self._check_cart_editable(cart)
+        self._validate_consumable_qty(consumable, qty)
+        line = cart.line_ids.filtered(
+            lambda l: l.consumable_id.id == consumable_id and not l.rejected
+        )
+        if line:
+            line.with_context(buz_consumable_transition=True).write({
+                'requested_qty': qty,
+            })
+        else:
+            self.env['buz.it.consumable.request.line'].create({
+                'request_id': cart.id,
+                'consumable_id': consumable_id,
+                'requested_qty': qty,
+            })
+        return {'cart': self._cart_to_dict(cart)}
+
+    @api.model
+    def cart_remove(self, consumable_id):
+        cart = self._get_current_cart()
+        self._check_cart_editable(cart)
+        line = cart.line_ids.filtered(
+            lambda l: l.consumable_id.id == consumable_id
+        )
+        if line:
+            line.sudo().unlink()
+        return {'cart': self._cart_to_dict(cart)}
+
+    @api.model
+    def cart_clear(self):
+        cart = self._get_current_cart()
+        if cart:
+            self._check_cart_editable(cart)
+            cart.line_ids.sudo().unlink()
+        return {'cart': self._cart_to_dict(cart)}
+
+    @api.model
+    def cart_submit(self):
+        cart = self._get_current_cart()
+        if not cart:
+            raise UserError(_('ยังไม่มีรายการในตะกร้า'))
+        if cart.state != 'draft':
+            raise UserError(_('เฉพาะคำขอฉบับร่างที่ส่งได้'))
+        if not cart.line_ids:
+            raise UserError(_('กรุณาเพิ่มรายการอย่างน้อย 1 รายการ'))
+        cart.action_submit()
+        return {'id': cart.id, 'name': cart.name}
+
+    @api.model
+    def cart_open(self):
+        cart = self._get_current_cart()
+        if not cart:
+            raise UserError(_('ยังไม่มีรายการในตะกร้า'))
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'buz.it.consumable.request',
+            'res_id': cart.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     def action_submit(self):
         self.ensure_one()
         if not self._is_manager() and self.requester_id != self.env.user:

@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         STORE MAIN
+    ═══════════════════════════════════════════════════════════ -->
+    <t t-name="buz_it_consumable_store.Store">
+        <div class="bcs-app">
+
+            <!-- ─── Header ─────────────────────────────────────── -->
+            <div class="bcs-header">
+                <div class="bcs-header-left">
+                    <div class="bcs-breadcrumb">
+                        <span class="bcs-breadcrumb-link">เบิกอุปกรณ์ IT</span>
+                        <i class="fa fa-chevron-right bcs-breadcrumb-sep"/>
+                        <span class="bcs-breadcrumb-current">เลือกอุปกรณ์</span>
+                    </div>
+                    <h1 class="bcs-title">เลือกอุปกรณ์</h1>
+                    <p class="bcs-subtitle">เลือกอุปกรณ์ที่ต้องการเบิก แล้วกด “ส่งคำขอเบิก”</p>
+                </div>
+                <div class="bcs-header-right">
+                    <div class="bcs-search">
+                        <i class="fa fa-search bcs-search-icon"/>
+                        <input type="text" class="bcs-search-input"
+                               placeholder="ค้นหาอุปกรณ์…"
+                               t-model="state.search"/>
+                    </div>
+                    <button class="bcs-cart-btn" t-on-click="onOpenCart" title="ดูตะกร้า">
+                        <i class="fa fa-shopping-cart"/>
+                        <span class="bcs-cart-btn-label">ตะกร้า</span>
+                        <span class="bcs-cart-badge" t-if="state.cart.total_qty > 0"
+                              t-esc="state.cart.total_qty"/>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ─── Filter bar ─────────────────────────────────── -->
+            <div class="bcs-filterbar">
+                <t t-foreach="filters" t-as="f" t-key="f.key">
+                    <button class="bcs-chip"
+                            t-att-class="state.filter === f.key ? 'bcs-chip-active' : ''"
+                            t-on-click="() => setFilter(f.key)">
+                        <t t-esc="f.label"/>
+                    </button>
+                </t>
+                <span class="bcs-result-count" t-if="!state.loading">
+                    <t t-esc="filteredItems.length"/> รายการ
+                </span>
+            </div>
+
+            <!-- ─── Body ───────────────────────────────────────── -->
+            <div class="bcs-body">
+
+                <!-- Sidebar: categories -->
+                <aside class="bcs-sidebar">
+                    <h2 class="bcs-sidebar-title">หมวดหมู่</h2>
+                    <ul class="bcs-cat-list">
+                        <li class="bcs-cat-item"
+                            t-att-class="state.activeCategory === false ? 'bcs-cat-active' : ''"
+                            t-on-click="selectCategory(false)">
+                            <span class="bcs-cat-name">ทั้งหมด</span>
+                            <span class="bcs-cat-count" t-esc="state.items.length"/>
+                        </li>
+                        <t t-foreach="state.categories" t-as="cat" t-key="cat.id">
+                            <li class="bcs-cat-item"
+                                t-att-class="state.activeCategory === cat.id ? 'bcs-cat-active' : ''"
+                                t-on-click="() => selectCategory(cat.id)">
+                                <span class="bcs-cat-name" t-esc="cat.name"/>
+                                <span class="bcs-cat-count" t-esc="cat.count"/>
+                            </li>
+                        </t>
+                    </ul>
+                </aside>
+
+                <!-- Grid: product cards -->
+                <main class="bcs-main">
+                    <div class="bcs-loading" t-if="state.loading">
+                        <i class="fa fa-spinner fa-spin bcs-loading-spin"/>
+                        <span>กำลังโหลดอุปกรณ์…</span>
+                    </div>
+                    <div class="bcs-empty" t-elif="filteredItems.length === 0">
+                        <i class="fa fa-cube bcs-empty-icon"/>
+                        <p class="bcs-empty-title">ไม่พบอุปกรณ์</p>
+                        <p class="bcs-empty-sub">ลองเปลี่ยนคำค้นหาหรือหมวดหมู่</p>
+                    </div>
+                    <div t-else="" class="bcs-grid">
+                        <ProductCard
+                            t-foreach="filteredItems" t-as="item" t-key="item.id"
+                            item="item"
+                            busy="state.busy"
+                            on-add="() => onAdd(item)"
+                            on-remove="() => onRemove(item)"/>
+                    </div>
+                </main>
+
+                <!-- Right: cart summary -->
+                <CartPanel
+                    cart="state.cart"
+                    busy="state.busy"
+                    submitting="state.submitting"
+                    on-submit="onSubmit"
+                    on-clear="onClearCart"
+                    on-qty-change="onQtyChange"
+                    on-qty-input="onCartQtyInput"
+                    on-remove-line="onRemoveLine"/>
+            </div>
+        </div>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         PRODUCT CARD
+    ═══════════════════════════════════════════════════════════ -->
+    <t t-name="buz_it_consumable_store.ProductCard">
+        <div class="bcs-card" t-att-class="props.item.cart_qty > 0 ? 'bcs-card-selected' : ''">
+            <div class="bcs-card-media"
+                 t-att-class="props.item.on_hand_qty === 0 ? 'bcs-card-media-out' : ''">
+                <t t-if="props.item.has_image">
+                    <img class="bcs-card-img" loading="lazy"
+                         t-att-src="'/web/image/buz.it.consumable/' + props.item.id + '/image_1920'"
+                         alt=""/>
+                </t>
+                <t t-else="">
+                    <i class="fa fa-cube bcs-card-placeholder"/>
+                </t>
+                <span class="bcs-card-check" t-if="props.item.cart_qty > 0">
+                    <i class="fa fa-check"/>
+                </span>
+                <span class="bcs-card-stock-badge bcs-stock-out"
+                      t-if="props.item.on_hand_qty === 0">หมดสต็อก</span>
+                <span class="bcs-card-stock-badge bcs-stock-low"
+                      t-elif="props.item.low_stock">ใกล้หมด</span>
+            </div>
+            <div class="bcs-card-content">
+                <div class="bcs-card-category" t-if="props.item.category_name">
+                    <t t-esc="props.item.category_name"/>
+                </div>
+                <div class="bcs-card-name" t-att-title="props.item.name">
+                    <t t-esc="props.item.name"/>
+                </div>
+                <div class="bcs-card-stock">
+                    <span class="bcs-stock-label">คงเหลือ</span>
+                    <span class="bcs-stock-qty" t-esc="props.item.on_hand_qty"/>
+                    <span class="bcs-stock-unit" t-esc="props.item.unit"/>
+                </div>
+                <div class="bcs-card-actions">
+                    <t t-if="props.item.cart_qty > 0">
+                        <button class="bcs-step-btn" t-on-click="props.onRemove"
+                                t-att-disabled="props.busy"
+                                aria-label="ลดจำนวน">−</button>
+                        <span class="bcs-step-qty" t-esc="props.item.cart_qty"/>
+                        <button class="bcs-step-btn bcs-step-inc" t-on-click="props.onAdd"
+                                t-att-disabled="props.busy or props.item.on_hand_qty === 0 or (props.item.max_per_request > 0 and props.item.cart_qty >= props.item.max_per_request)"
+                                aria-label="เพิ่มจำนวน">+</button>
+                    </t>
+                    <button t-else="" class="bcs-add-btn" t-on-click="props.onAdd"
+                            t-att-disabled="props.busy or props.item.on_hand_qty === 0">
+                        <i class="fa fa-plus"/> เพิ่ม
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         CART PANEL
+    ═══════════════════════════════════════════════════════════ -->
+    <t t-name="buz_it_consumable_store.CartPanel">
+        <aside class="bcs-cart">
+            <div class="bcs-cart-header">
+                <h2 class="bcs-cart-title">รายการที่เลือก</h2>
+                <span class="bcs-cart-count-pill" t-if="props.cart.line_count > 0">
+                    <t t-esc="props.cart.line_count"/> รายการ
+                </span>
+            </div>
+            <div class="bcs-cart-lines"
+                 t-att-class="props.cart.lines.length === 0 ? 'bcs-cart-lines-empty' : ''">
+                <t t-if="props.cart.lines.length === 0">
+                    <div class="bcs-cart-empty">
+                        <i class="fa fa-shopping-bag bcs-cart-empty-icon"/>
+                        <p class="bcs-cart-empty-title">ยังไม่มีรายการที่เลือก</p>
+                        <p class="bcs-cart-empty-sub">กด “เพิ่ม” บนการ์ดอุปกรณ์เพื่อเริ่มต้น</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <t t-foreach="props.cart.lines" t-as="line" t-key="line.id">
+                        <div class="bcs-cart-line">
+                            <div class="bcs-cart-line-media">
+                                <t t-if="line.has_image">
+                                    <img class="bcs-cart-line-img"
+                                         t-att-src="'/web/image/buz.it.consumable/' + line.consumable_id + '/image_1920'"
+                                         alt=""/>
+                                </t>
+                                <t t-else="">
+                                    <i class="fa fa-cube bcs-cart-line-ph"/>
+                                </t>
+                            </div>
+                            <div class="bcs-cart-line-body">
+                                <div class="bcs-cart-line-name" t-att-title="line.name">
+                                    <t t-esc="line.name"/>
+                                </div>
+                                <div class="bcs-cart-line-stock">
+                                    เหลือ <t t-esc="line.on_hand_qty"/> <t t-esc="line.unit"/>
+                                </div>
+                                <div class="bcs-cart-line-ctrl">
+                                    <button class="bcs-step-btn bcs-step-sm"
+                                            t-on-click="() => props.onQtyChange(line.consumable_id, line.qty - 1)"
+                                            t-att-disabled="props.busy"
+                                            aria-label="ลดจำนวน">−</button>
+                                    <input type="number" class="bcs-cart-line-input" min="0"
+                                           t-att-value="line.qty"
+                                           t-on-change="(ev) => props.onQtyInput(line.consumable_id, ev)"/>
+                                    <button class="bcs-step-btn bcs-step-sm"
+                                            t-on-click="() => props.onQtyChange(line.consumable_id, line.qty + 1)"
+                                            t-att-disabled="props.busy"
+                                            aria-label="เพิ่มจำนวน">+</button>
+                                    <button class="bcs-cart-line-remove"
+                                            t-on-click="() => props.onRemoveLine(line.consumable_id)"
+                                            t-att-disabled="props.busy"
+                                            title="ลบรายการ">
+                                        <i class="fa fa-trash-o"/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </div>
+            <div class="bcs-cart-footer">
+                <div class="bcs-cart-total">
+                    <span class="bcs-cart-total-label">รวมทั้งหมด</span>
+                    <span class="bcs-cart-total-value">
+                        <t t-esc="props.cart.total_qty"/>
+                        <span class="bcs-cart-total-unit"> ชิ้น</span>
+                    </span>
+                </div>
+                <button class="bcs-btn-submit" t-on-click="props.onSubmit"
+                        t-att-disabled="props.busy or props.submitting or props.cart.line_count === 0">
+                    <i class="fa fa-paper-plane"/> ส่งคำขอเบิก
+                </button>
+                <button class="bcs-btn-clear" t-on-click="props.onClear"
+                        t-att-disabled="props.busy or props.cart.line_count === 0">
+                    <i class="fa fa-trash-o"/> ล้างรายการ
+                </button>
+            </div>
+        </aside>
+    </t>
+
+</templates>

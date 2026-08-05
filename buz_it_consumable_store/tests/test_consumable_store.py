@@ -4,7 +4,7 @@ from odoo.tests.common import TransactionCase, tagged
 
 
 @tagged('post_install', '-at_install')
-class TestConsumableStore(TransactionCase):
+class _ConsumableStoreTestBase(TransactionCase):
 
     def setUp(self):
         super().setUp()
@@ -202,3 +202,183 @@ class TestConsumableStore(TransactionCase):
             ('move_type', '=', 'adjust'),
         ])
         self.assertTrue(history)
+
+
+@tagged('post_install', '-at_install')
+class TestConsumableStoreApi(_ConsumableStoreTestBase):
+
+    def _store(self):
+        return self.env['buz.it.consumable.request'].with_user(
+            self.requester
+        )
+
+    def _get_store_data(self):
+        return self._store().get_store_data()
+
+    def test_get_store_data_published_only(self):
+        hidden = self.env['buz.it.consumable'].create({
+            'name': 'Hidden Item',
+            'unit': 'ชิ้น',
+            'category_id': self.category.id,
+            'company_id': self.env.company.id,
+            'is_published': False,
+        })
+        data = self._get_store_data()
+        ids = [i['id'] for i in data['items']]
+        self.assertIn(self.ink.id, ids)
+        self.assertNotIn(hidden.id, ids)
+        self.assertIn(self.category.id, [c['id'] for c in data['categories']])
+        self.assertEqual(data['cart']['line_count'], 0)
+
+    def test_get_store_data_includes_current_cart(self):
+        self._receive(self.ink, self.location_a, 10)
+        self._store().cart_add(self.ink.id, 2)
+        data = self._get_store_data()
+        item = next(i for i in data['items'] if i['id'] == self.ink.id)
+        self.assertEqual(item['cart_qty'], 2)
+        self.assertEqual(data['cart']['total_qty'], 2)
+        self.assertTrue(data['cart']['id'])
+
+    def test_cart_add_combines_and_submits_without_stock_cut(self):
+        self._receive(self.ink, self.location_a, 10)
+        self._receive(self.mouse, self.location_a, 5)
+        store = self._store()
+
+        result = store.cart_add(self.ink.id, 2)
+        self.assertEqual(result['cart']['line_count'], 1)
+        self.assertEqual(result['cart']['total_qty'], 2)
+
+        result = store.cart_add(self.ink.id, 1)
+        self.assertEqual(result['cart']['line_count'], 1)
+        self.assertEqual(result['cart']['total_qty'], 3)
+
+        store.cart_add(self.mouse.id, 1)
+        self.assertEqual(len(self._store()._get_current_cart().line_ids), 2)
+
+        ink_line = self._store()._get_current_cart().line_ids.filtered(
+            lambda l: l.consumable_id == self.ink
+        )
+        self.assertEqual(ink_line.requested_qty, 3)
+
+        submit = store.cart_submit()
+        request = self.env['buz.it.consumable.request'].browse(submit['id'])
+        self.assertEqual(request.state, 'confirmed')
+        self.assertRegex(request.name, r'^REQ/\d{4}/\d{4}$')
+        self.assertEqual(
+            self._get_quant(self.ink, self.location_a).qty, 10,
+        )
+
+    def test_cart_set_qty_zero_removes_line(self):
+        self._receive(self.ink, self.location_a, 5)
+        store = self._store()
+        store.cart_add(self.ink.id, 3)
+        result = store.cart_set_qty(self.ink.id, 2)
+        self.assertEqual(result['cart']['total_qty'], 2)
+        result = store.cart_set_qty(self.ink.id, 0)
+        self.assertEqual(result['cart']['line_count'], 0)
+        self.assertEqual(len(self._store()._get_current_cart().line_ids), 0)
+
+    def test_cart_remove_line(self):
+        self._receive(self.ink, self.location_a, 5)
+        self._receive(self.mouse, self.location_a, 5)
+        store = self._store()
+        store.cart_add(self.ink.id, 2)
+        store.cart_add(self.mouse.id, 1)
+        result = store.cart_remove(self.ink.id)
+        self.assertEqual(result['cart']['line_count'], 1)
+        self.assertEqual(
+            result['cart']['lines'][0]['consumable_id'], self.mouse.id,
+        )
+
+    def test_cart_clear_removes_all_lines(self):
+        self._receive(self.ink, self.location_a, 5)
+        self._receive(self.mouse, self.location_a, 5)
+        store = self._store()
+        store.cart_add(self.ink.id, 2)
+        store.cart_add(self.mouse.id, 1)
+        result = store.cart_clear()
+        self.assertEqual(result['cart']['line_count'], 0)
+        self.assertEqual(len(self._store()._get_current_cart().line_ids), 0)
+
+    def test_cart_rejects_over_on_hand(self):
+        self._receive(self.ink, self.location_a, 3)
+        store = self._store()
+        store.cart_add(self.ink.id, 2)
+        with self.assertRaises(UserError):
+            store.cart_add(self.ink.id, 2)
+        with self.assertRaises(UserError):
+            store.cart_set_qty(self.ink.id, 4)
+        self.assertEqual(
+            self._store()._get_current_cart().line_ids.requested_qty, 2,
+        )
+
+    def test_cart_rejects_over_max_per_request(self):
+        self._receive(self.ink, self.location_a, 5)
+        self.ink.max_per_request = 5
+        store = self._store()
+        store.cart_add(self.ink.id, 4)
+        with self.assertRaises(UserError):
+            store.cart_add(self.ink.id, 2)
+        self.assertEqual(
+            self._store()._get_current_cart().line_ids.requested_qty, 4,
+        )
+
+    def test_cart_rejects_unpublished_without_creating_cart(self):
+        self.ink.is_published = False
+        store = self._store()
+        with self.assertRaises(UserError):
+            store.cart_add(self.ink.id, 1)
+        self.assertFalse(store._get_current_cart())
+
+    def test_cart_rejects_zero_qty(self):
+        store = self._store()
+        with self.assertRaises(UserError):
+            store.cart_add(self.ink.id, 0)
+        self.assertFalse(store._get_current_cart())
+
+    def test_cart_empty_operations(self):
+        store = self._store()
+        with self.assertRaises(UserError):
+            store.cart_submit()
+        with self.assertRaises(UserError):
+            store.cart_remove(self.ink.id)
+        result = store.cart_clear()
+        self.assertEqual(result['cart']['line_count'], 0)
+
+    def test_after_submit_store_uses_fresh_cart(self):
+        self._receive(self.ink, self.location_a, 5)
+        store = self._store()
+        store.cart_add(self.ink.id, 2)
+        request = store._get_current_cart()
+        store.cart_submit()
+        self.assertEqual(request.state, 'confirmed')
+        self.assertEqual(request.line_ids.requested_qty, 2)
+        with self.assertRaises(UserError):
+            request.line_ids.write({'requested_qty': 1})
+        self.assertFalse(store._get_current_cart())
+        result = store.cart_add(self.ink.id, 1)
+        self.assertEqual(result['cart']['total_qty'], 1)
+        self.assertNotEqual(store._get_current_cart().id, request.id)
+
+    def test_cart_cannot_edit_other_users_cart(self):
+        other = self._create_user(
+            'requester_consumable_other',
+            'buz_it_helpdesk.group_it_requester',
+        )
+        other_cart = self.env['buz.it.consumable.request'].with_user(
+            other
+        )._get_or_create_cart()
+        store = self._store()
+        with self.assertRaises(UserError):
+            store._check_cart_editable(other_cart)
+        with self.assertRaises(UserError):
+            store.cart_remove(self.ink.id)
+
+    def test_agent_can_edit_draft_cart(self):
+        self._receive(self.ink, self.location_a, 5)
+        self._store().cart_add(self.ink.id, 2)
+        cart = self._store()._get_current_cart()
+        agent_store = self.env['buz.it.consumable.request'].with_user(
+            self.agent
+        )
+        agent_store._check_cart_editable(cart)
