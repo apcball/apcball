@@ -46,7 +46,12 @@
         <field name="name">buz.helpdesk.ticket.kanban</field>
         <field name="model">buz.helpdesk.ticket</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="stage_id" class="o_kanban_mobile">
+            <kanban default_group_by="stage_id"
+                    group_create="true"
+                    group_edit="true"
+                    group_delete="true"
+                    records_draggable="true"
+                    class="o_kanban_mobile">
                 <field name="name"/>
                 <field name="subject"/>
                 <field name="description"/>

@@ -21,6 +21,7 @@ class HelpdeskStage(models.Model):
             self.env.ref('buz_it_helpdesk.stage_draft').id,
             self.env.ref('buz_it_helpdesk.stage_new').id,
             self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+            self.env.ref('buz_it_helpdesk.stage_resolved').id,
             self.env.ref('buz_it_helpdesk.stage_closed').id,
         }
 
@@ -34,4 +35,12 @@ class HelpdeskStage(models.Model):
     def unlink(self):
         if self._protected_stage_ids().intersection(self.ids):
             raise UserError(_('Workflow stages cannot be deleted.'))
+        ticket_count = self.env['buz.helpdesk.ticket'].search_count([
+            ('stage_id', 'in', self.ids),
+        ])
+        if ticket_count:
+            raise UserError(_(
+                'A stage used by tickets cannot be deleted. Move the tickets '
+                'to another stage first.'
+            ))
         return super().unlink()

@@ -310,9 +310,18 @@ class HelpdeskTicket(models.Model):
         new_stage = self.env.ref('buz_it_helpdesk.stage_new')
         if self.stage_id != new_stage or self.assigned_user_id:
             raise UserError(_('This ticket has already been received.'))
+        receiving_team = self.env['buz.helpdesk.team'].search([
+            ('active', '=', True),
+            ('user_ids', 'in', self.env.user.id),
+        ], order='sequence, name', limit=1)
+        if not receiving_team:
+            raise UserError(_(
+                'The receiving IT user must belong to an active Helpdesk Team.'
+            ))
         self.with_context(buz_helpdesk_transition=True).write({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
             'assigned_user_id': self.env.user.id,
+            'team_id': receiving_team.id,
         })
 
         notification_activities = self.env['mail.activity'].search([
@@ -328,6 +337,48 @@ class HelpdeskTicket(models.Model):
             notification_activities.action_done()
         return True
 
+    def _change_stage_from_kanban(self, stage):
+        """Apply workflow rules when an IT user drags a ticket."""
+        self.ensure_one()
+        if not self._is_support_agent():
+            raise UserError(_('Only IT Support Agents can change Stage.'))
+        if self.stage_id == stage:
+            return True
+
+        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+        new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+        in_progress_stage = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        closed_stage = self.env.ref('buz_it_helpdesk.stage_closed')
+
+        if stage == new_stage:
+            if self.stage_id == draft_stage:
+                return self.action_create_ticket()
+            self.with_context(buz_helpdesk_transition=True).write({
+                'stage_id': stage.id,
+                'assigned_user_id': False,
+                'team_id': False,
+            })
+            return True
+
+        if stage == in_progress_stage:
+            if self.stage_id == new_stage:
+                return self.action_receive_ticket()
+            if self.stage_id == closed_stage:
+                raise UserError(_('Closed tickets cannot be reopened this way.'))
+            self.with_context(buz_helpdesk_transition=True).write({
+                'stage_id': stage.id,
+                'assigned_user_id': self.env.user.id,
+            })
+            return True
+
+        if stage == closed_stage:
+            return self.action_close_ticket()
+
+        self.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': stage.id,
+        })
+        return True
+
     def write(self, vals):
         if self.env.context.get('buz_helpdesk_transition'):
             return super().write(vals)
@@ -338,7 +389,16 @@ class HelpdeskTicket(models.Model):
             'company_id',
         }
         if 'stage_id' in vals:
-            raise UserError(_('Use the workflow buttons to change Stage.'))
+            stage = self.env['buz.helpdesk.stage'].browse(vals['stage_id']).exists()
+            if not stage:
+                raise ValidationError(_('A valid Stage is required.'))
+            remaining_vals = dict(vals)
+            remaining_vals.pop('stage_id')
+            for ticket in self:
+                ticket._change_stage_from_kanban(stage)
+                if remaining_vals:
+                    ticket.write(remaining_vals)
+            return True
         if any(field in vals for field in protected - {'assigned_user_id'}):
             raise UserError(_('System-managed ticket fields cannot be edited.'))
         if ('assigned_user_id' in vals or 'team_id' in vals) and not is_manager:
