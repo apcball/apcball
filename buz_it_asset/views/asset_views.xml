@@ -175,6 +175,7 @@
                                         </group>
                                         <group string="รายละเอียดเพิ่มเติม (Additional Details)">
                                             <field name="attachment_ids" widget="many2many_binary"/>
+                                            <field name="it_attachment_ids" widget="many2many_binary" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                                             <field name="notes"/>
                                         </group>
                                     </sheet>

@@ -33,6 +33,8 @@
                         <field name="retire_reason_detail" invisible="repair_outcome_behavior != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="retire_approved_by_id" invisible="repair_outcome_behavior != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
                         <field name="retire_approved_date" invisible="repair_outcome_behavior != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                        <separator string="IT Attachments / ไฟล์แนบทีม IT"/>
+                        <field name="it_attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                     </group>
                 </group>
 

@@ -12,6 +12,15 @@ MANAGER_GROUP = 'buz_it_helpdesk.group_it_helpdesk_manager'
 class HelpdeskTicketRepair(models.Model):
     _inherit = 'buz.helpdesk.ticket'
 
+    it_attachment_ids = fields.Many2many(
+        'ir.attachment',
+        'buz_helpdesk_ticket_it_attachment_rel',
+        'ticket_id',
+        'attachment_id',
+        string='IT Attachments',
+        copy=False,
+        groups=IT_GROUPS,
+    )
     requester_asset_ids = fields.Many2many(
         'buz.it.asset',
         compute='_compute_requester_asset_ids',
@@ -172,6 +181,7 @@ class HelpdeskTicketRepair(models.Model):
         'requester_warranty', 'retire_reason', 'retire_reason_detail',
         'retire_approved_by_id', 'retire_approved_date', 'retire_proposed',
         'repair_outcome_id', 'replacement_asset_id', 'repair_part_ids',
+        'it_attachment_ids',
     }
 
     def _check_repair_permission(self):
@@ -636,6 +646,9 @@ class ITAssetMaintenance(models.Model):
             'notes': ticket.repair_result,
             'attachment_ids': [
                 fields.Command.set(ticket.attachment_ids.ids)
+            ],
+            'it_attachment_ids': [
+                fields.Command.set(ticket.it_attachment_ids.ids)
             ],
             'repair_part_ids': [
                 fields.Command.create({

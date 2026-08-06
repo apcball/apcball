@@ -61,6 +61,12 @@ class ITAssetMaintenance(models.Model):
         'maintenance_id', 'attachment_id', string='เอกสารแนบ (Attachments)',
         copy=False, groups=IT_GROUPS,
     )
+    it_attachment_ids = fields.Many2many(
+        'ir.attachment', 'buz_it_asset_maintenance_it_attachment_rel',
+        'maintenance_id', 'attachment_id',
+        string='IT Attachments / ไฟล์แนบทีม IT',
+        copy=False, groups=IT_GROUPS,
+    )
     notes = fields.Text(string='หมายเหตุ (Notes)')
 
     @api.onchange('state')
