@@ -6,12 +6,20 @@
         <field name="model">mrp.bom</field>
         <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
         <field name="arch" type="xml">
+            <field name="type" position="after">
+                <field name="unbuild_cost_share_total"
+                       invisible="type != 'unbuild'"
+                       string="Total Cost Share (%)"/>
+            </field>
             <xpath expr="//field[@name='bom_line_ids']/tree/field[@name='product_qty']"
                    position="after">
                 <field name="default_return_location_id"
                        optional="hide"
                        groups="stock.group_stock_multi_locations"
                        options="{'no_create': True}"/>
+                <field name="cost_share"
+                       optional="show"
+                       column_invisible="parent.type != 'unbuild'"/>
             </xpath>
         </field>
     </record>

@@ -12,6 +12,20 @@ _logger = logging.getLogger(__name__)
 class MrpUnbuild(models.Model):
     _inherit = 'mrp.unbuild'
 
+    bom_id = fields.Many2one(
+        'mrp.bom', 'Bill of Material',
+        domain="""[
+        '|',
+            ('product_id', '=', product_id),
+            '&',
+                ('product_tmpl_id.product_variant_ids', '=', product_id),
+                ('product_id','=',False),
+        ('type', 'in', ('normal', 'unbuild')),
+        '|',
+            ('company_id', '=', company_id),
+            ('company_id', '=', False)
+        ]""",
+        check_company=True)
     component_line_ids = fields.One2many(
         'mrp.unbuild.component.line',
         'unbuild_id',
@@ -109,6 +123,7 @@ class MrpUnbuild(models.Model):
                 'quantity': line_data['qty'],
                 'receive': True,
                 'scrap_qty': 0.0,
+                'cost_share': bom_line.cost_share or 0.0,
                 'destination_location_id': destination.id,
             }))
             sequence += 10
