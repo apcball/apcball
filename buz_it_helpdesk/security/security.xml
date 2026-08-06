@@ -23,9 +23,9 @@
     </record>
 
     <record id="rule_ticket_requester_own" model="ir.rule">
-        <field name="name">Helpdesk Ticket: requester sees own tickets</field>
+        <field name="name">Helpdesk Ticket: requester sees company tickets</field>
         <field name="model_id" ref="model_buz_helpdesk_ticket"/>
-        <field name="domain_force">[('requester_id', '=', user.id)]</field>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         <field name="groups" eval="[(4, ref('group_it_requester'))]"/>
     </record>
 

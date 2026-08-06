@@ -14,6 +14,7 @@
                 <field name="category_type_id"/>
                 <field name="team_id"/>
                 <field name="stage_id"/>
+                <filter name="my_tickets" string="My Tickets" domain="[('requester_id', '=', uid)]"/>
                 <filter name="open" string="Open" domain="[('active', '=', True)]"/>
                 <filter name="closed" string="Archived" domain="[('active', '=', False)]"/>
                 <group expand="0" string="Group By">
@@ -201,10 +202,10 @@
     <record id="action_helpdesk_my_tickets" model="ir.actions.act_window">
         <field name="name">My Tickets</field>
         <field name="res_model">buz.helpdesk.ticket</field>
-        <field name="view_mode">tree,kanban,form</field>
+        <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_helpdesk_ticket_search"/>
-        <field name="domain">[('requester_id', '=', uid)]</field>
-        <field name="context">{'default_requester_id': uid}</field>
+        <field name="domain">[]</field>
+        <field name="context">{'default_requester_id': uid, 'search_default_my_tickets': 1}</field>
     </record>
     <record id="action_helpdesk_tickets" model="ir.actions.act_window">
         <field name="name">Tickets</field>
