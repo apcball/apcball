@@ -108,3 +108,4 @@ class BuzItStockReceiveLine(models.TransientModel):
         related='consumable_id.company_id',
         string='บริษัท',
     )
+

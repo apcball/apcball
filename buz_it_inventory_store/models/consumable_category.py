@@ -16,3 +16,4 @@ class BuzItConsumableCategory(models.Model):
     _sql_constraints = [
         ('name_uniq', 'unique(name)', 'The category name must be unique.'),
     ]
+

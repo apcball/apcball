@@ -21,3 +21,4 @@ class BuzItStockLocation(models.Model):
         ('name_company_uniq', 'unique(name, company_id)',
          'The location name must be unique within its company.'),
     ]
+

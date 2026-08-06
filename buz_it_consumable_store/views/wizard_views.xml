@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <!-- ═══════════════════════════════════════════════════════════════
-         ADD TO CART (เพิ่มในรายการเบิก)
-    ═══════════════════════════════════════════════════════════════ -->
     <record id="view_consumable_add_wizard_form" model="ir.ui.view">
         <field name="name">buz.it.consumable.add.wizard.form</field>
         <field name="model">buz.it.consumable.add.wizard</field>
@@ -78,73 +74,5 @@
     <!-- ═══════════════════════════════════════════════════════════════
          RECEIVE (รับของเข้า)
     ═══════════════════════════════════════════════════════════════ -->
-    <record id="view_stock_receive_wizard_form" model="ir.ui.view">
-        <field name="name">buz.it.stock.receive.wizard.form</field>
-        <field name="model">buz.it.stock.receive.wizard</field>
-        <field name="arch" type="xml">
-            <form string="รับของเข้า">
-                <group>
-                    <group>
-                        <field name="move_date"/>
-                        <field name="default_location_id"/>
-                    </group>
-                    <group>
-                        <field name="company_id"/>
-                    </group>
-                </group>
-                <group string="รายการรับเข้า">
-                    <field name="line_ids" nolabel="1">
-                        <tree editable="bottom">
-                            <field name="consumable_id"/>
-                            <field name="qty" string="จำนวน"/>
-                            <field name="location_id"/>
-                        </tree>
-                    </field>
-                </group>
-                <group string="หมายเหตุ">
-                    <field name="note" nolabel="1"/>
-                </group>
-                <footer>
-                    <button name="action_receive" string="รับของเข้า" type="object" class="btn-primary"/>
-                    <button string="ยกเลิก" class="btn-secondary" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
-
-    <record id="action_stock_receive" model="ir.actions.act_window">
-        <field name="name">รับของเข้า</field>
-        <field name="res_model">buz.it.stock.receive.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
-
-    <!-- ═══════════════════════════════════════════════════════════════
-         ADJUST (ปรับยอด)
-    ═══════════════════════════════════════════════════════════════ -->
-    <record id="view_stock_adjust_wizard_form" model="ir.ui.view">
-        <field name="name">buz.it.stock.adjust.wizard.form</field>
-        <field name="model">buz.it.stock.adjust.wizard</field>
-        <field name="arch" type="xml">
-            <form string="ปรับยอด Stock">
-                <group>
-                    <field name="consumable_id"/>
-                    <field name="location_id"/>
-                    <field name="current_qty" readonly="1"/>
-                    <field name="new_qty"/>
-                </group>
-                <footer>
-                    <button name="action_adjust" string="ปรับยอด" type="object" class="btn-primary"/>
-                    <button string="ยกเลิก" class="btn-secondary" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
-
-    <record id="action_stock_adjust" model="ir.actions.act_window">
-        <field name="name">ปรับยอด</field>
-        <field name="res_model">buz.it.stock.adjust.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
 </odoo>
+

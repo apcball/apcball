@@ -38,12 +38,6 @@ class BuzItStockHistory(models.Model):
     )
     reference = fields.Char(string='Reference')
     note = fields.Text()
-    request_line_id = fields.Many2one(
-        'buz.it.consumable.request.line',
-        string='Request Line',
-        ondelete='set null',
-        index=True,
-    )
     company_id = fields.Many2one(
         'res.company',
         related='location_id.company_id',

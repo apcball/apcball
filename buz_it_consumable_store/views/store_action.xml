@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_consumable_store" model="ir.actions.client">
+        <field name="name">เลือกอุปกรณ์</field>
+        <field name="tag">buz_it_consumable_store.Store</field>
+        <field name="target">current</field>
+    </record>
+</odoo>
+

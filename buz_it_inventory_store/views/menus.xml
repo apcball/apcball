@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_consumable_stock" name="คลังสินค้า IT" parent="buz_it_helpdesk.menu_it_management" sequence="30" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_consumable_receive" name="รับของเข้า" parent="menu_consumable_stock" sequence="10" action="action_stock_receive" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_consumable_adjust" name="ปรับยอด" parent="menu_consumable_stock" sequence="20" action="action_stock_adjust" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_consumable_onhand" name="ยอดคงเหลือ" parent="menu_consumable_stock" sequence="30" action="action_consumable_quants" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_consumable_locations" name="Location" parent="menu_consumable_stock" sequence="40" action="action_stock_location" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_consumable_history" name="ประวัติ Stock" parent="menu_consumable_stock" sequence="50" action="action_stock_history" groups="buz_it_helpdesk.group_it_support_agent"/>
+    <menuitem id="menu_consumable_config" name="การตั้งค่า" parent="menu_consumable_stock" sequence="90" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_consumable_items" name="รายการวัสดุ/อุปกรณ์" parent="menu_consumable_config" sequence="10" action="action_consumable_items" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_consumable_categories" name="หมวดหมู่" parent="menu_consumable_config" sequence="20" action="action_consumable_categories" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+</odoo>
+

@@ -80,3 +80,4 @@ class BuzItStockAdjustWizard(models.TransientModel):
             'note': _('ปรับจาก %s เป็น %s') % (self.current_qty, self.new_qty),
         })
         return {'type': 'ir.actions.act_window_close'}
+

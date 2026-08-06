@@ -38,3 +38,4 @@ class BuzItStockQuant(models.Model):
         ('consumable_location_uniq', 'unique(consumable_id, location_id)',
          'One stock record per item and location.'),
     ]
+
