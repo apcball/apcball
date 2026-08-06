@@ -31,6 +31,10 @@ class DPReportWizard(models.TransientModel):
         ],
         string="DO Status",
     )
+    only_with_dispatch_doc = fields.Boolean(
+        string="Only With Dispatch Document",
+        default=True,
+    )
 
     @api.depends("date_from", "date_to")
     def _compute_report_filename(self):
@@ -58,6 +62,8 @@ class DPReportWizard(models.TransientModel):
             ("scheduled_date", "<=", fields.Datetime.to_string(date_to_dt)),
             ("sale_id", "!=", False),
         ]
+        if self.only_with_dispatch_doc:
+            picking_domain.append(("buz_dispatch_document_ids", "!=", False))
         if self.do_status:
             if self.do_status == 'return':
                 picking_domain.append(('picking_type_id.code', '=', 'incoming'))
@@ -93,6 +99,8 @@ class DPReportWizard(models.TransientModel):
             ("scheduled_date", "<=", fields.Datetime.to_string(date_to_dt)),
             ("sale_id", "=", False),
         ]
+        if self.only_with_dispatch_doc:
+            non_so_domain.append(("buz_dispatch_document_ids", "!=", False))
         if self.do_status:
             if self.do_status == 'return':
                 non_so_domain.append(('picking_type_id.code', '=', 'incoming'))
@@ -107,6 +115,7 @@ class DPReportWizard(models.TransientModel):
             "date_from": fields.Date.to_string(self.date_from),
             "date_to": fields.Date.to_string(self.date_to),
             "do_status": self.do_status,
+            "only_with_dispatch_doc": self.only_with_dispatch_doc,
             "sale_order_ids": sale_orders.ids,
             "service_receipt_picking_ids": non_so_pickings.ids,
         }
