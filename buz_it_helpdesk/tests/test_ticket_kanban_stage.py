@@ -85,15 +85,63 @@ class TestTicketKanbanStage(TransactionCase):
         self.assertEqual(ticket.assigned_user_id, self.support)
         self.assertEqual(ticket.team_id, team)
 
-    def test_cannot_skip_back_to_new_after_submission(self):
+    def test_manager_assignment_starts_new_ticket(self):
         team = self.env['buz.helpdesk.team'].with_user(self.manager).create({
-            'name': 'Kanban Team',
+            'name': 'Manager Assignment Team',
+            'user_ids': [Command.link(self.support.id)],
+        })
+        ticket = self._ticket()
+
+        ticket.with_user(self.manager).write({
+            'team_id': team.id,
+            'assigned_user_id': self.support.id,
+        })
+
+        self.assertEqual(ticket.stage_id, self.stage_in_progress)
+        self.assertEqual(ticket.team_id, team)
+        self.assertEqual(ticket.assigned_user_id, self.support)
+
+    def test_in_progress_can_be_returned_to_new_and_received_again(self):
+        team = self.env['buz.helpdesk.team'].with_user(self.manager).create({
+            'name': 'Rollback Team',
             'user_ids': [Command.link(self.support.id)],
         })
         ticket = self._ticket(
             stage_id=self.stage_in_progress.id,
-            assigned_user_id=self.support.id,
             team_id=team.id,
+            assigned_user_id=self.support.id,
+        )
+
+        ticket.with_user(self.support).write({
+            'stage_id': self.stage_new.id,
+        })
+
+        self.assertEqual(ticket.stage_id, self.stage_new)
+        self.assertFalse(ticket.team_id)
+        self.assertFalse(ticket.assigned_user_id)
+
+        ticket.with_user(self.support).write({
+            'stage_id': self.stage_in_progress.id,
+        })
+        self.assertEqual(ticket.stage_id, self.stage_in_progress)
+        self.assertEqual(ticket.team_id, team)
+        self.assertEqual(ticket.assigned_user_id, self.support)
+
+    def test_only_in_progress_can_be_returned_to_new(self):
+        for stage in (self.stage_pending_user, self.stage_resolved, self.stage_closed):
+            ticket = self._ticket(
+                stage_id=stage.id,
+                assigned_user_id=self.support.id,
+            )
+            with self.assertRaises(UserError):
+                ticket.with_user(self.support).write({
+                    'stage_id': self.stage_new.id,
+                })
+
+    def test_cannot_return_to_new_after_pending_user(self):
+        ticket = self._ticket(
+            stage_id=self.stage_pending_user.id,
+            assigned_user_id=self.support.id,
         )
 
         with self.assertRaises(UserError):

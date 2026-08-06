@@ -398,6 +398,12 @@ class HelpdeskTicket(models.Model):
             'assigned_user_id': self.env.user.id,
             'team_id': receiving_team.id,
         })
+        self._complete_receive_activities()
+        return True
+
+    def _complete_receive_activities(self):
+        """Complete the intake activities after a ticket is received."""
+        self.ensure_one()
 
         notification_activities = self.env['mail.activity'].search([
             ('res_model', '=', self._name),
@@ -410,6 +416,48 @@ class HelpdeskTicket(models.Model):
         ])
         if notification_activities:
             notification_activities.action_done()
+        return True
+
+    def _auto_receive_assigned_ticket(self):
+        """Start a New ticket when a manager completes its assignment."""
+        self.ensure_one()
+        self.env.cr.execute(
+            'SELECT id FROM buz_helpdesk_ticket WHERE id = %s FOR UPDATE',
+            (self.id,),
+        )
+        self.invalidate_recordset(['stage_id', 'team_id', 'assigned_user_id'])
+        if (
+            self.stage_id != self.env.ref('buz_it_helpdesk.stage_new')
+            or not self.team_id
+            or not self.assigned_user_id
+        ):
+            return False
+        if self.assigned_user_id not in self.team_id.user_ids:
+            raise ValidationError(_(
+                'The assigned user must be a member of the selected team.'
+            ))
+        self.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+        })
+        self._complete_receive_activities()
+        return True
+
+    def _rollback_to_new(self):
+        """Return a mistakenly received ticket to the unassigned New queue."""
+        self.ensure_one()
+        if (
+            not self._is_helpdesk_manager()
+            and self.assigned_user_id != self.env.user
+        ):
+            raise UserError(_(
+                'Only the assigned agent or a Helpdesk Manager can return '
+                'this ticket to New.'
+            ))
+        self.with_context(buz_helpdesk_transition=True).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_new').id,
+            'team_id': False,
+            'assigned_user_id': False,
+        })
         return True
 
     def _change_stage_from_kanban(self, stage):
@@ -430,6 +478,8 @@ class HelpdeskTicket(models.Model):
         if stage == new_stage:
             if self.stage_id == draft_stage:
                 return self.action_create_ticket()
+            if self.stage_id == in_progress_stage:
+                return self._rollback_to_new()
             raise UserError(_('Tickets can only move to New from Draft.'))
 
         if stage == in_progress_stage:
@@ -484,7 +534,11 @@ class HelpdeskTicket(models.Model):
                     raise UserError(
                         _('Only the assigned agent can edit this ticket.')
                     )
-        return super().write(vals)
+        result = super().write(vals)
+        if 'team_id' in vals or 'assigned_user_id' in vals:
+            for ticket in self:
+                ticket._auto_receive_assigned_ticket()
+        return result
 
     @api.onchange('requester_id')
     def _onchange_requester_id(self):
