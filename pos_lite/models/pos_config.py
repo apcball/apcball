@@ -39,6 +39,15 @@ class PosLiteConfig(models.Model):
         help='Default cash/bank journal for POS Lite refund records',
         check_company=True,
     )
+    sale_journal_id = fields.Many2one(
+        'account.journal',
+        string='Sales Invoice Journal',
+        domain="[('type', '=', 'sale'), ('company_id', '=', company_id)]",
+        check_company=True,
+        help='Journal used for invoices issued from POS Lite orders. Lets POS Lite '
+             'invoice numbers run on their own sequence, separate from standard sale '
+             'invoices. Leave empty to use the company\'s default sales journal.',
+    )
     branch_number = fields.Char(
         string='Branch Number',
         help='Thai tax branch number (e.g. 00000 for head office). Shown on receipts.',

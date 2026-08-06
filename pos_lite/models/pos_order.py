@@ -467,7 +467,15 @@ class PosLiteOrder(models.Model):
     def _prepare_invoice_vals(self):
         self.ensure_one()
         partner = self._get_or_create_customer_partner()
-        journal = self.env['account.journal'].search([
+        # Resolve config the same way _prepare_picking_vals does: session config
+        # first, then the company default. Lets each POS Lite location issue
+        # invoices on its own sales journal/sequence, separate from standard invoices.
+        config = (
+            self.session_id.config_id
+            if self.session_id and self.session_id.config_id
+            else self.env['pos.lite.config'].get_default_config(self.company_id)
+        )
+        journal = config.sale_journal_id if config and config.sale_journal_id else self.env['account.journal'].search([
             ('company_id', '=', self.company_id.id),
             ('type', '=', 'sale'),
         ], limit=1)
