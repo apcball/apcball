@@ -91,6 +91,46 @@ class TestITManagementDashboard(TransactionCase):
             action['domain'],
         )
 
+    def test_dashboard_returns_all_non_draft_ticket_statuses(self):
+        stages = [
+            self.env.ref('buz_it_helpdesk.stage_new'),
+            self.env.ref('buz_it_helpdesk.stage_in_progress'),
+            self.env.ref('buz_it_helpdesk.stage_pending_user'),
+            self.env.ref('buz_it_helpdesk.stage_resolved'),
+            self.env.ref('buz_it_helpdesk.stage_closed'),
+        ]
+        for index, stage in enumerate(stages):
+            ticket = self.env['buz.helpdesk.ticket'].create({
+                'subject': 'Dashboard Status %s' % index,
+            })
+            ticket.with_context(buz_helpdesk_transition=True).write({
+                'stage_id': stage.id,
+            })
+
+        data = self.dashboard.get_dashboard_data({
+            'period': 'this_month',
+            'company_ids': [self.company.id],
+        })
+        self.assertEqual(
+            [row['label'] for row in data['ticket_status']],
+            ['New', 'In Progress', 'Pending User', 'Resolved', 'Closed'],
+        )
+        self.assertEqual(
+            [row['value'] for row in data['ticket_status']],
+            [1, 1, 1, 1, 1],
+        )
+        self.assertEqual(data['kpis']['open_tickets'], 4)
+
+        pending_action = self.dashboard.get_drilldown_action(
+            'ticket_status',
+            {'period': 'this_month', 'company_ids': [self.company.id]},
+            self.env.ref('buz_it_helpdesk.stage_pending_user').id,
+        )
+        self.assertIn(
+            ('stage_id', '=', self.env.ref('buz_it_helpdesk.stage_pending_user').id),
+            pending_action['domain'],
+        )
+
     def test_dashboard_rejects_unknown_company(self):
         other_company = self.env['res.company'].create({
             'name': 'Dashboard Other Company',

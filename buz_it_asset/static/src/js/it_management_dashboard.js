@@ -131,7 +131,7 @@ export class ITManagementDashboard extends Component {
         this.charts.ticketStatus = this.makeDoughnut(
             this.ticketStatusRef.el,
             data.ticket_status || [],
-            ["#6d36e9", "#287df0", "#22b45b", "#8b96a8"],
+            ["#6d36e9", "#287df0", "#f39a16", "#22b45b", "#8b96a8"],
             (index) => this.openDrilldown(
                 "ticket_status", data.ticket_status[index].stage_id
             ),
@@ -224,6 +224,16 @@ export class ITManagementDashboard extends Component {
     statusPercentage(rows, value) {
         const total = (rows || []).reduce((sum, row) => sum + Number(row.value || 0), 0);
         return total ? Math.round(Number(value || 0) / total * 100) : 0;
+    }
+
+    statusColor(label) {
+        return {
+            "New": "#6d36e9",
+            "In Progress": "#287df0",
+            "Pending User": "#f39a16",
+            "Resolved": "#22b45b",
+            "Closed": "#8b96a8",
+        }[label] || "#8b96a8";
     }
 
     async openDrilldown(target, bucket = null) {

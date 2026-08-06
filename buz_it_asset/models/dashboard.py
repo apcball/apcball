@@ -110,6 +110,7 @@ class ITManagementDashboard(models.AbstractModel):
         stages = [
             ('New', 'buz_it_helpdesk.stage_new'),
             ('In Progress', 'buz_it_helpdesk.stage_in_progress'),
+            ('Pending User', 'buz_it_helpdesk.stage_pending_user'),
             ('Resolved', 'buz_it_helpdesk.stage_resolved'),
             ('Closed', 'buz_it_helpdesk.stage_closed'),
         ]
