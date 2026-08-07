@@ -17,7 +17,7 @@
                 <group string="รายการรับเข้า">
                     <field name="line_ids" nolabel="1">
                         <tree editable="bottom">
-                            <field name="consumable_id"/>
+                            <field name="inventory_item_id"/>
                             <field name="qty" string="จำนวน"/>
                             <field name="location_id"/>
                         </tree>
@@ -50,7 +50,7 @@
         <field name="arch" type="xml">
             <form string="ปรับยอด Stock">
                 <group>
-                    <field name="consumable_id"/>
+                    <field name="inventory_item_id"/>
                     <field name="location_id"/>
                     <field name="current_qty" readonly="1"/>
                     <field name="new_qty"/>

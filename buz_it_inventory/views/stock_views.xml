@@ -41,7 +41,7 @@
         <field name="model">buz.it.stock.quant</field>
         <field name="arch" type="xml">
             <tree>
-                <field name="consumable_id"/>
+                <field name="inventory_item_id"/>
                 <field name="location_id"/>
                 <field name="qty" string="จำนวน"/>
             </tree>
@@ -53,13 +53,13 @@
         <field name="model">buz.it.stock.quant</field>
         <field name="arch" type="xml">
             <search>
-                <field name="consumable_id"/>
+                <field name="inventory_item_id"/>
                 <field name="location_id"/>
                 <group expand="0" string="Group By">
                     <filter name="group_location" string="Location"
                             context="{'group_by': 'location_id'}"/>
-                    <filter name="group_consumable" string="สินค้า"
-                            context="{'group_by': 'consumable_id'}"/>
+                    <filter name="group_inventory_item" string="สินค้า"
+                            context="{'group_by': 'inventory_item_id'}"/>
                 </group>
             </search>
         </field>
@@ -75,7 +75,7 @@
             <tree>
                 <field name="move_date" string="วันที่"/>
                 <field name="move_type" string="ประเภท"/>
-                <field name="consumable_id" string="สินค้า"/>
+                <field name="inventory_item_id" string="สินค้า"/>
                 <field name="location_id" string="Location"/>
                 <field name="qty" string="จำนวน"/>
                 <field name="reference" string="อ้างอิง"/>
@@ -89,7 +89,7 @@
         <field name="model">buz.it.stock.history</field>
         <field name="arch" type="xml">
             <search>
-                <field name="consumable_id"/>
+                <field name="inventory_item_id"/>
                 <field name="location_id"/>
                 <field name="reference"/>
                 <filter name="in" string="รับเข้า" domain="[('move_type', '=', 'in')]"/>
@@ -98,8 +98,8 @@
                 <group expand="0" string="Group By">
                     <filter name="group_type" string="ประเภท"
                             context="{'group_by': 'move_type'}"/>
-                    <filter name="group_consumable" string="สินค้า"
-                            context="{'group_by': 'consumable_id'}"/>
+                    <filter name="group_inventory_item" string="สินค้า"
+                            context="{'group_by': 'inventory_item_id'}"/>
                     <filter name="group_location" string="Location"
                             context="{'group_by': 'location_id'}"/>
                     <filter name="group_date" string="เดือน"
@@ -118,7 +118,7 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <record id="action_consumable_quants" model="ir.actions.act_window">
+    <record id="action_inventory_item_quants" model="ir.actions.act_window">
         <field name="name">ยอดคงเหลือ</field>
         <field name="res_model">buz.it.stock.quant</field>
         <field name="view_mode">tree</field>

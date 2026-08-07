@@ -34,33 +34,41 @@ class BuzItStockReceiveWizard(models.TransientModel):
         if not self.line_ids:
             raise UserError(_('กรุณาเพิ่มรายการอย่างน้อย 1 รายการ'))
         for line in self.line_ids:
+            if line.inventory_item_id.company_id != self.company_id:
+                raise UserError(_(
+                    'The inventory item and receiving wizard must belong to the same company.'
+                ))
             if line.qty <= 0:
                 raise UserError(_('จำนวนรับเข้าของ %s ต้องมากกว่า 0') % (
-                    line.consumable_id.display_name,
+                    line.inventory_item_id.display_name,
                 ))
             location = line.location_id or self.default_location_id
             if not location:
                 raise UserError(_('กรุณาระบุ Location ของ %s') % (
-                    line.consumable_id.display_name,
+                    line.inventory_item_id.display_name,
                 ))
-            if location.company_id != line.consumable_id.company_id:
+            if location.company_id != self.company_id:
+                raise UserError(_(
+                    'The location and receiving wizard must belong to the same company.'
+                ))
+            if location.company_id != line.inventory_item_id.company_id:
                 raise UserError(_('%s และ Location %s ต้องอยู่บริษัทเดียวกัน') % (
-                    line.consumable_id.display_name, location.name,
+                    line.inventory_item_id.display_name, location.name,
                 ))
             quant = self.env['buz.it.stock.quant'].sudo().search([
-                ('consumable_id', '=', line.consumable_id.id),
+                ('inventory_item_id', '=', line.inventory_item_id.id),
                 ('location_id', '=', location.id),
             ], limit=1)
             if not quant:
                 quant = self.env['buz.it.stock.quant'].sudo().create({
-                    'consumable_id': line.consumable_id.id,
+                    'inventory_item_id': line.inventory_item_id.id,
                     'location_id': location.id,
                     'qty': 0.0,
                 })
             quant.qty += line.qty
             self.env['buz.it.stock.history'].sudo().create({
                 'move_type': 'in',
-                'consumable_id': line.consumable_id.id,
+                'inventory_item_id': line.inventory_item_id.id,
                 'location_id': location.id,
                 'qty': line.qty,
                 'move_date': self.move_date,
@@ -88,8 +96,8 @@ class BuzItStockReceiveLine(models.TransientModel):
         'buz.it.stock.receive.wizard',
         ondelete='cascade',
     )
-    consumable_id = fields.Many2one(
-        'buz.it.consumable',
+    inventory_item_id = fields.Many2one(
+        'buz.it.inventory.item',
         string='สินค้า',
         required=True,
     )
@@ -101,11 +109,11 @@ class BuzItStockReceiveLine(models.TransientModel):
     location_id = fields.Many2one(
         'buz.it.stock.location',
         string='Location',
-        domain="[('company_id', '=', consumable_id.company_id)]",
+        domain="[('company_id', '=', inventory_item_id.company_id)]",
     )
     company_id = fields.Many2one(
         'res.company',
-        related='consumable_id.company_id',
+        related='inventory_item_id.company_id',
         string='บริษัท',
     )
 

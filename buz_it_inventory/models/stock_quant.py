@@ -1,13 +1,14 @@
-from odoo import fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class BuzItStockQuant(models.Model):
     _name = 'buz.it.stock.quant'
     _description = 'IT Stock On Hand'
-    _order = 'consumable_id, location_id'
+    _order = 'inventory_item_id, location_id'
 
-    consumable_id = fields.Many2one(
-        'buz.it.consumable',
+    inventory_item_id = fields.Many2one(
+        'buz.it.inventory.item',
         string='Item',
         required=True,
         ondelete='cascade',
@@ -35,7 +36,20 @@ class BuzItStockQuant(models.Model):
     )
 
     _sql_constraints = [
-        ('consumable_location_uniq', 'unique(consumable_id, location_id)',
+        ('inventory_item_location_uniq', 'unique(inventory_item_id, location_id)',
          'One stock record per item and location.'),
     ]
+
+    @api.constrains('inventory_item_id', 'location_id')
+    def _check_company_consistency(self):
+        for record in self:
+            if (
+                record.inventory_item_id.company_id
+                and record.location_id.company_id
+                and record.inventory_item_id.company_id
+                != record.location_id.company_id
+            ):
+                raise ValidationError(_(
+                    'The inventory item and stock location must belong to the same company.'
+                ))
 

@@ -3,15 +3,15 @@ from collections import defaultdict
 from odoo import api, fields, models, _
 
 
-class BuzItConsumable(models.Model):
-    _name = 'buz.it.consumable'
-    _description = 'IT Consumable Item'
+class BuzItInventoryItem(models.Model):
+    _name = 'buz.it.inventory.item'
+    _description = 'IT Inventory Item'
     _order = 'category_id, name'
 
     name = fields.Char(string='ชื่อ', required=True)
     image_1920 = fields.Image(string='รูปภาพ', max_width=1024, max_height=1024)
     category_id = fields.Many2one(
-        'buz.it.consumable.category',
+        'buz.it.inventory.item.category',
         string='หมวดหมู่',
         ondelete='restrict',
     )
@@ -40,7 +40,7 @@ class BuzItConsumable(models.Model):
     )
     quant_ids = fields.One2many(
         'buz.it.stock.quant',
-        'consumable_id',
+        'inventory_item_id',
         string='Stock ตาม Location',
         readonly=True,
     )
@@ -59,10 +59,10 @@ class BuzItConsumable(models.Model):
     def _compute_on_hand_qty(self):
         grouped = defaultdict(float)
         quants = self.env['buz.it.stock.quant'].sudo().search([
-            ('consumable_id', 'in', self.ids),
+            ('inventory_item_id', 'in', self.ids),
         ])
         for quant in quants:
-            grouped[quant.consumable_id.id] += quant.qty
+            grouped[quant.inventory_item_id.id] += quant.qty
         for rec in self:
             rec.on_hand_qty = grouped.get(rec.id, 0.0)
 

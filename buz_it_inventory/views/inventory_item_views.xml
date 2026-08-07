@@ -5,9 +5,9 @@
          STORE (user kanban: เลือกอุปกรณ์)
     ═══════════════════════════════════════════════════════════════ -->
 
-    <record id="view_consumable_search" model="ir.ui.view">
-        <field name="name">buz.it.consumable.search</field>
-        <field name="model">buz.it.consumable</field>
+    <record id="view_inventory_item_search" model="ir.ui.view">
+        <field name="name">buz.it.inventory.item.search</field>
+        <field name="model">buz.it.inventory.item</field>
         <field name="arch" type="xml">
             <search>
                 <field name="name" string="ชื่อสินค้า"/>
@@ -30,12 +30,12 @@
     <!-- ═══════════════════════════════════════════════════════════════
          ITEM MAINTENANCE (manager)
     ═══════════════════════════════════════════════════════════════ -->
-    <record id="view_consumable_tree" model="ir.ui.view">
-        <field name="name">buz.it.consumable.tree</field>
-        <field name="model">buz.it.consumable</field>
+    <record id="view_inventory_item_tree" model="ir.ui.view">
+        <field name="name">buz.it.inventory.item.tree</field>
+        <field name="model">buz.it.inventory.item</field>
         <field name="arch" type="xml">
             <tree decoration-danger="low_stock">
-                <field name="image_1920" widget="image" class="oe_avatar o_consumable_list_image"
+                <field name="image_1920" widget="image" class="oe_avatar o_inventory_item_list_image"
                        options="{'preview_image': 'image_1920', 'zoom': true, 'zoom_delay': 0, 'size': [90, 90]}"/>
                 <field name="name"/>
                 <field name="category_id"/>
@@ -49,9 +49,9 @@
         </field>
     </record>
 
-    <record id="view_consumable_form" model="ir.ui.view">
-        <field name="name">buz.it.consumable.form</field>
-        <field name="model">buz.it.consumable</field>
+    <record id="view_inventory_item_form" model="ir.ui.view">
+        <field name="name">buz.it.inventory.item.form</field>
+        <field name="model">buz.it.inventory.item</field>
         <field name="arch" type="xml">
             <form string="รายการอุปกรณ์">
                 <sheet>
@@ -104,9 +104,9 @@
     <!-- ═══════════════════════════════════════════════════════════════
          CATEGORY
     ═══════════════════════════════════════════════════════════════ -->
-    <record id="view_consumable_category_tree" model="ir.ui.view">
-        <field name="name">buz.it.consumable.category.tree</field>
-        <field name="model">buz.it.consumable.category</field>
+    <record id="view_inventory_item_category_tree" model="ir.ui.view">
+        <field name="name">buz.it.inventory.item.category.tree</field>
+        <field name="model">buz.it.inventory.item.category</field>
         <field name="arch" type="xml">
             <tree>
                 <field name="sequence" widget="handle"/>
@@ -115,9 +115,9 @@
         </field>
     </record>
 
-    <record id="view_consumable_category_form" model="ir.ui.view">
-        <field name="name">buz.it.consumable.category.form</field>
-        <field name="model">buz.it.consumable.category</field>
+    <record id="view_inventory_item_category_form" model="ir.ui.view">
+        <field name="name">buz.it.inventory.item.category.form</field>
+        <field name="model">buz.it.inventory.item.category</field>
         <field name="arch" type="xml">
             <form>
                 <sheet>
@@ -135,16 +135,16 @@
          ACTIONS
     ═══════════════════════════════════════════════════════════════ -->
 
-    <record id="action_consumable_items" model="ir.actions.act_window">
+    <record id="action_inventory_items" model="ir.actions.act_window">
         <field name="name">รายการอุปกรณ์</field>
-        <field name="res_model">buz.it.consumable</field>
+        <field name="res_model">buz.it.inventory.item</field>
         <field name="view_mode">tree,form</field>
-        <field name="search_view_id" ref="view_consumable_search"/>
+        <field name="search_view_id" ref="view_inventory_item_search"/>
     </record>
 
-    <record id="action_consumable_categories" model="ir.actions.act_window">
+    <record id="action_inventory_item_categories" model="ir.actions.act_window">
         <field name="name">หมวดหมู่</field>
-        <field name="res_model">buz.it.consumable.category</field>
+        <field name="res_model">buz.it.inventory.item.category</field>
         <field name="view_mode">tree,form</field>
     </record>
 </odoo>
