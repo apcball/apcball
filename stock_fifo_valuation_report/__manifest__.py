@@ -28,6 +28,7 @@ this report reads stock.valuation.layer directly:
     'depends': ['base', 'stock', 'stock_account', 'product', 'stock_fifo_by_location'],
 
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'reports/stock_fifo_valuation_report_views.xml',
         'reports/stock_fifo_valuation_details_report_views.xml',

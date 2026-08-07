@@ -29,14 +29,19 @@
                 <field name="product_category" string="Category" optional="show"/>
                 <field name="warehouse_id" string="Warehouse" optional="show"/>
                 <field name="opening_qty" string="Opening Qty" optional="show"/>
-                <field name="opening_value" string="Opening Value" optional="show"/>
+                <field name="opening_value" string="Opening Value" optional="show"
+                    groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
                 <field name="in_qty" string="In Qty" optional="show"/>
-                <field name="in_value" string="In Value" optional="show"/>
+                <field name="in_value" string="In Value" optional="show"
+                    groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
                 <field name="out_qty" string="Out Qty" optional="show"/>
-                <field name="out_value" string="Out Value" optional="show"/>
+                <field name="out_value" string="Out Value" optional="show"
+                    groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
                 <field name="ending_qty" string="Ending Qty" optional="show"/>
-                <field name="ending_value" string="Ending Value" optional="show"/>
-                <field name="remaining_value_check" string="Remaining Check" optional="show"/>
+                <field name="ending_value" string="Ending Value" optional="show"
+                    groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
+                <field name="remaining_value_check" string="Remaining Check" optional="show"
+                    groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
                 <button name="report_details" type="object" title="View Detail" class="fa fa-search"/>
             </tree>
         </field>

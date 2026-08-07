@@ -10,6 +10,7 @@
         <t t-call="web.html_container">
             <t t-call="web.external_layout">
                 <t t-set="docs" t-value="env['stock.fifo.valuation.details.report'].browse(detail_ids)"/>
+                <t t-set="show_cost" t-value="env.user.has_group('stock_fifo_valuation_report.group_stock_fifo_valuation_price')"/>
                 <div class="o_inventory_reports_page">
                     <link href="/stock_fifo_valuation_report/static/src/css/report.css" rel="stylesheet"/>
                     <t t-call="stock_fifo_valuation_report.report_stock_fifo_valuation_details_report_base"/>
@@ -47,8 +48,7 @@
                             </div>
                             <div class="act_as_cell"/>
                             <div class="act_as_cell"/>
-                            <div class="act_as_cell"/>
-                            <div class="act_as_cell right">
+                            <div t-if="show_cost" class="act_as_cell right">
                                 <t t-esc="line_opening[0].opening_value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
                             </div>
                             <div class="act_as_cell"/>
@@ -105,16 +105,16 @@
                 <div class="act_as_cell">Warehouse</div>
                 <div class="act_as_cell">Source Loc</div>
                 <div class="act_as_cell">Dest Loc</div>
-                <div class="act_as_cell">Unit Cost</div>
-                <div class="act_as_cell">All-in Unit Cost</div>
+                <div t-if="show_cost" class="act_as_cell">Unit Cost</div>
+                <div t-if="show_cost" class="act_as_cell">All-in Unit Cost</div>
                 <div class="act_as_cell">Qty</div>
-                <div class="act_as_cell">Value</div>
+                <div t-if="show_cost" class="act_as_cell">Value</div>
                 <div class="act_as_cell">Origin Layer</div>
                 <div class="act_as_cell">Origin Remain Qty</div>
                 <div class="act_as_cell">Running Qty</div>
-                <div class="act_as_cell">Running Value</div>
+                <div t-if="show_cost" class="act_as_cell">Running Value</div>
                 <div class="act_as_cell">MO</div>
-                <div class="act_as_cell">Landed Cost Doc</div>
+                <div t-if="show_cost" class="act_as_cell">Landed Cost Doc</div>
             </div>
         </div>
     </template>
@@ -136,16 +136,16 @@
             <div class="act_as_cell left">
                 <t t-out="layer.location_dest_id.complete_name"/>
             </div>
-            <div class="act_as_cell right">
+            <div t-if="show_cost" class="act_as_cell right">
                 <t t-esc="layer.unit_cost" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 4}"/>
             </div>
-            <div class="act_as_cell right">
+            <div t-if="show_cost" class="act_as_cell right">
                 <t t-if="layer.all_in_unit_cost" t-esc="layer.all_in_unit_cost" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 4}"/>
             </div>
             <div class="act_as_cell right">
                 <t t-esc="layer.quantity" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
             </div>
-            <div class="act_as_cell right">
+            <div t-if="show_cost" class="act_as_cell right">
                 <t t-esc="layer.value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
             </div>
             <div class="act_as_cell left">
@@ -157,13 +157,13 @@
             <div class="act_as_cell right">
                 <t t-esc="running_qty" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
             </div>
-            <div class="act_as_cell right">
+            <div t-if="show_cost" class="act_as_cell right">
                 <t t-esc="running_value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
             </div>
             <div class="act_as_cell left">
                 <t t-if="layer.production_id" t-out="layer.production_id.name"/>
             </div>
-            <div class="act_as_cell left">
+            <div t-if="show_cost" class="act_as_cell left">
                 <t t-if="layer.stock_landed_cost_id" t-out="layer.stock_landed_cost_id.name"/>
                 <t t-if="layer.lc_line_count > 1"> (x<t t-esc="layer.lc_line_count"/>)</t>
             </div>
