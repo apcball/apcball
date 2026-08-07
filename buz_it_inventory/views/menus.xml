@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <menuitem id="menu_it_store" name="IT Store" parent="buz_it_helpdesk.menu_it_management" sequence="5" action="action_inventory_item_store" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_issue_request_my" name="คำขอเบิกของฉัน" parent="menu_it_store" sequence="10" action="action_issue_request_my" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_issue_request_all" name="คำขอเบิกทั้งหมด" parent="menu_it_store" sequence="20" action="action_issue_request_all" groups="buz_it_helpdesk.group_it_support_agent"/>
+
     <menuitem id="menu_inventory_stock" name="คลังสินค้า IT" parent="buz_it_helpdesk.menu_it_management" sequence="30" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_inventory_receive" name="รับของเข้า" parent="menu_inventory_stock" sequence="10" action="action_stock_receive" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_inventory_adjust" name="ปรับยอด" parent="menu_inventory_stock" sequence="20" action="action_stock_adjust" groups="buz_it_helpdesk.group_it_support_agent"/>
@@ -10,4 +14,3 @@
     <menuitem id="menu_inventory_items" name="รายการวัสดุ/อุปกรณ์" parent="menu_inventory_config" sequence="10" action="action_inventory_items" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_inventory_item_categories" name="หมวดหมู่" parent="menu_inventory_config" sequence="20" action="action_inventory_item_categories" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
 </odoo>
-

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ISSUE REQUEST TREE
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_issue_request_tree" model="ir.ui.view">
+        <field name="name">buz.it.issue.request.tree</field>
+        <field name="model">buz.it.issue.request</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="request_date"/>
+                <field name="line_count" string="รายการ"/>
+                <field name="total_qty" string="รวมจำนวน"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ISSUE REQUEST KANBAN
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_issue_request_kanban" model="ir.ui.view">
+        <field name="name">buz.it.issue.request.kanban</field>
+        <field name="model">buz.it.issue.request</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" group_create="false" group_delete="false">
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="request_date"/>
+                <field name="line_count"/>
+                <field name="total_qty"/>
+                <field name="state"/>
+                <field name="reason"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_kanban_record">
+                            <div class="o_kanban_record_title">
+                                <field name="name"/>
+                                <span t-if="record.state.raw_value == 'draft'" class="badge text-bg-secondary">Draft</span>
+                                <span t-elif="record.state.raw_value == 'submitted'" class="badge text-bg-warning">Submitted</span>
+                                <span t-elif="record.state.raw_value == 'approved'" class="badge text-bg-info">Approved</span>
+                                <span t-elif="record.state.raw_value == 'issued'" class="badge text-bg-success">Issued</span>
+                                <span t-elif="record.state.raw_value == 'rejected'" class="badge text-bg-danger">Rejected</span>
+                                <span t-else="" class="badge text-bg-secondary">Cancelled</span>
+                            </div>
+                            <div class="o_kanban_record_subtitle">
+                                <field name="requester_id"/>
+                                <t t-if="record.department_id.raw_value">
+                                    · <field name="department_id"/>
+                                </t>
+                            </div>
+                            <div class="text-muted o_text_truncate" t-if="record.reason.raw_value">
+                                <field name="reason"/>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <span><field name="request_date"/></span>
+                                <span class="ms-2"><field name="line_count"/> รายการ</span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ISSUE REQUEST FORM
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_issue_request_form" model="ir.ui.view">
+        <field name="name">buz.it.issue.request.form</field>
+        <field name="model">buz.it.issue.request</field>
+        <field name="arch" type="xml">
+            <form string="คำขอเบิก">
+                <header>
+                    <button name="action_submit" string="ส่งคำขอ" type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" string="อนุมัติ" type="object"
+                            class="btn-primary"
+                            groups="buz_it_helpdesk.group_it_support_agent"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_reject" string="ไม่อนุมัติ" type="object"
+                            class="btn-danger"
+                            groups="buz_it_helpdesk.group_it_support_agent"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_issue" string="จ่ายของ" type="object"
+                            class="btn-primary"
+                            groups="buz_it_helpdesk.group_it_support_agent"
+                            invisible="state != 'approved'"/>
+                    <button name="action_cancel" string="ยกเลิก" type="object"
+                            class="btn-secondary"
+                            invisible="state not in ('draft', 'submitted')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,submitted,approved,issued"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="requester_id" readonly="1"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="request_date" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            <field name="ticket_id"
+                                   options="{'no_create': True}"
+                                   readonly="state in ('approved', 'issued', 'rejected', 'cancelled')"/>
+                        </group>
+                    </group>
+                    <group string="เหตุผลการขอเบิก">
+                        <field name="reason" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="รายการสินค้า">
+                            <field name="line_ids" nolabel="1">
+                                <tree editable="bottom">
+                                    <field name="state" invisible="1"/>
+                                    <field name="item_id" string="สินค้า" options="{'no_create': True}"/>
+                                    <field name="unit" string="หน่วย"/>
+                                    <field name="requested_qty" string="จำนวนขอ"
+                                           readonly="state != 'draft'"/>
+                                    <field name="approved_qty" string="อนุมัติ"
+                                           groups="buz_it_helpdesk.group_it_support_agent"
+                                           readonly="state != 'submitted'"/>
+                                    <field name="issued_qty" string="จ่ายจริง"
+                                           groups="buz_it_helpdesk.group_it_support_agent"
+                                           readonly="state != 'approved'"/>
+                                    <field name="available_qty" string="พร้อมเบิก"/>
+                                    <field name="note" string="หมายเหตุ"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="IT" groups="buz_it_helpdesk.group_it_support_agent">
+                            <group>
+                                <group>
+                                    <field name="it_note"/>
+                                    <field name="rejection_reason"/>
+                                </group>
+                                <group>
+                                    <field name="issue_date" readonly="1"/>
+                                    <field name="issued_by" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ISSUE REQUEST SEARCH
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_issue_request_search" model="ir.ui.view">
+        <field name="name">buz.it.issue.request.search</field>
+        <field name="model">buz.it.issue.request</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="เลขที่คำขอ"/>
+                <field name="requester_id" string="ผู้ขอ"/>
+                <field name="department_id" string="แผนก"/>
+                <field name="ticket_id" string="Ticket"/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="submitted" string="Submitted" domain="[('state', '=', 'submitted')]"/>
+                <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <filter name="issued" string="Issued" domain="[('state', '=', 'issued')]"/>
+                <filter name="rejected" string="Rejected" domain="[('state', '=', 'rejected')]"/>
+                <filter name="cancelled" string="Cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="สถานะ" context="{'group_by': 'state'}"/>
+                    <filter name="group_requester" string="ผู้ขอ" context="{'group_by': 'requester_id'}"/>
+                    <filter name="group_department" string="แผนก" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_date" string="เดือน" context="{'group_by': 'request_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ISSUE REQUEST ACTIONS
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="action_issue_request_my" model="ir.actions.act_window">
+        <field name="name">คำขอเบิกของฉัน</field>
+        <field name="res_model">buz.it.issue.request</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="search_view_id" ref="view_issue_request_search"/>
+        <field name="context">{'search_default_group_state': 1}</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+    </record>
+
+    <record id="action_issue_request_all" model="ir.actions.act_window">
+        <field name="name">คำขอเบิกทั้งหมด</field>
+        <field name="res_model">buz.it.issue.request</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="search_view_id" ref="view_issue_request_search"/>
+        <field name="context">{'search_default_group_state': 1}</field>
+    </record>
+
+</odoo>

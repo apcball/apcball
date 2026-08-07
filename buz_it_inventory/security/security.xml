@@ -6,5 +6,16 @@
     <record id="rule_stock_location_company" model="ir.rule"><field name="name">IT Stock Location: allowed companies</field><field name="model_id" ref="model_buz_it_stock_location"/><field name="domain_force">[('company_id', 'in', company_ids)]</field></record>
     <record id="rule_inventory_item_requester_published" model="ir.rule"><field name="name">IT Inventory Item: requester sees published items</field><field name="model_id" ref="model_buz_it_inventory_item"/><field name="domain_force">[('is_published', '=', True)]</field><field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/></record>
     <record id="rule_inventory_item_it_all" model="ir.rule"><field name="name">IT Inventory Item: IT team sees all items</field><field name="model_id" ref="model_buz_it_inventory_item"/><field name="domain_force">[('id', '!=', 0)]</field><field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/></record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ISSUE REQUEST
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="rule_issue_request_company" model="ir.rule"><field name="name">IT Issue Request: allowed companies</field><field name="model_id" ref="model_buz_it_issue_request"/><field name="domain_force">[('company_id', 'in', company_ids)]</field></record>
+    <record id="rule_issue_request_requester_own" model="ir.rule"><field name="name">IT Issue Request: requester sees own requests</field><field name="model_id" ref="model_buz_it_issue_request"/><field name="domain_force">[('requester_id', '=', user.id)]</field><field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/></record>
+    <record id="rule_issue_request_agent_all" model="ir.rule"><field name="name">IT Issue Request: IT team sees all requests</field><field name="model_id" ref="model_buz_it_issue_request"/><field name="domain_force">[('id', '!=', 0)]</field><field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/></record>
+
+    <record id="rule_issue_request_line_company" model="ir.rule"><field name="name">IT Issue Request Line: allowed companies</field><field name="model_id" ref="model_buz_it_issue_request_line"/><field name="domain_force">[('request_id.company_id', 'in', company_ids)]</field></record>
+    <record id="rule_issue_request_line_requester_own" model="ir.rule"><field name="name">IT Issue Request Line: requester sees own lines</field><field name="model_id" ref="model_buz_it_issue_request_line"/><field name="domain_force">[('request_id.requester_id', '=', user.id)]</field><field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_requester'))]"/></record>
+    <record id="rule_issue_request_line_agent_all" model="ir.rule"><field name="name">IT Issue Request Line: IT team sees all lines</field><field name="model_id" ref="model_buz_it_issue_request_line"/><field name="domain_force">[('id', '!=', 0)]</field><field name="groups" eval="[(4, ref('buz_it_helpdesk.group_it_support_agent')), (4, ref('buz_it_helpdesk.group_it_helpdesk_manager'))]"/></record>
 </odoo>
 

@@ -1,6 +1,6 @@
 {
     'name': 'IT Inventory Store',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Services/IT',
     'summary': 'IT inventory store for materials and equipment',
     'license': 'LGPL-3',
@@ -8,7 +8,9 @@
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
+        'data/sequence.xml',
         'views/inventory_item_views.xml',
+        'views/issue_request_views.xml',
         'views/stock_views.xml',
         'views/wizard_views.xml',
         'views/menus.xml',

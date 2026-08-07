@@ -12,18 +12,99 @@
             <search>
                 <field name="name" string="ชื่อสินค้า"/>
                 <field name="category_id" string="หมวดหมู่"/>
+                <field name="item_type" string="Item Type"/>
                 <field name="unit" string="หน่วย"/>
                 <filter name="low_stock" string="ใกล้หมด"
                         domain="[('low_stock', '=', True)]"/>
                 <filter name="published" string="แสดงในหน้าร้าน"
                         domain="[('is_published', '=', True)]"/>
+                <filter name="ready" string="พร้อมเบิก"
+                        domain="[('available_qty', '>', 0)]"/>
+                <filter name="out" string="หมด"
+                        domain="[('available_qty', '=', 0)]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_category" string="หมวดหมู่"
                             context="{'group_by': 'category_id'}"/>
+                    <filter name="group_item_type" string="Item Type"
+                            context="{'group_by': 'item_type'}"/>
                     <filter name="group_low_stock" string="สถานะคลัง"
                             context="{'group_by': 'low_stock'}"/>
                 </group>
             </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         STORE KANBAN (user facing)
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_inventory_item_store_kanban" model="ir.ui.view">
+        <field name="name">buz.it.inventory.item.store.kanban</field>
+        <field name="model">buz.it.inventory.item</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile" default_group_by="category_id">
+                <field name="name"/>
+                <field name="image_1920"/>
+                <field name="category_id"/>
+                <field name="item_type"/>
+                <field name="unit"/>
+                <field name="available_qty"/>
+                <field name="store_status"/>
+                <field name="description"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_kanban_record">
+                            <div class="o_kanban_record_top">
+                                <span t-if="record.store_status.raw_value == 'ready'" class="badge text-bg-success">พร้อมเบิก</span>
+                                <span t-elif="record.store_status.raw_value == 'low'" class="badge text-bg-warning">ไม่พอ</span>
+                                <span t-else="" class="badge text-bg-danger">หมด</span>
+                            </div>
+                            <div class="o_kanban_image_container">
+                                <img t-att-src="kanban_image('buz.it.inventory.item', 'image_1920', record.id.raw_value)"
+                                     t-att-alt="record.name.value"
+                                     class="o_image_96_cover"/>
+                            </div>
+                            <div class="oe_kanban_details">
+                                <div class="o_kanban_record_title">
+                                    <field name="name"/>
+                                </div>
+                                <div class="o_kanban_record_subtitle">
+                                    <field name="category_id"/>
+                                    <span t-if="record.item_type.raw_value" class="badge text-bg-light">
+                                        <field name="item_type"/>
+                                    </span>
+                                </div>
+                                <div class="text-muted o_text_truncate" t-if="record.description.raw_value">
+                                    <field name="description"/>
+                                </div>
+                                <div>
+                                    หน่วย: <field name="unit"/>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="fw-bold">
+                                    จำนวนพร้อมเบิก: <field name="available_qty"/> <field name="unit"/>
+                                </div>
+                                <button name="action_request_item" type="object"
+                                        class="btn btn-primary btn-sm mt-1"
+                                        t-if="record.available_qty.raw_value > 0">ขอเบิก</button>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_inventory_item_store" model="ir.actions.act_window">
+        <field name="name">IT Store</field>
+        <field name="res_model">buz.it.inventory.item</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="search_view_id" ref="view_inventory_item_search"/>
+        <field name="domain">[('is_published', '=', True), ('active', '=', True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                เลือกสินค้าที่ต้องการ แล้วกด "ขอเบิก"
+            </p>
         </field>
     </record>
 
@@ -39,8 +120,11 @@
                        options="{'preview_image': 'image_1920', 'zoom': true, 'zoom_delay': 0, 'size': [90, 90]}"/>
                 <field name="name"/>
                 <field name="category_id"/>
+                <field name="item_type"/>
                 <field name="unit"/>
                 <field name="on_hand_qty" string="ยอดคงเหลือ"/>
+                <field name="reserved_qty" string="ถูกจอง"/>
+                <field name="available_qty" string="พร้อมให้เบิก"/>
                 <field name="low_stock" string="ใกล้หมด"/>
                 <field name="max_per_request" string="สูงสุดต่อคำขอ"/>
                 <field name="is_published" string="แสดงในหน้าร้าน"/>
@@ -64,6 +148,7 @@
                         </group>
                         <group>
                             <field name="category_id" options="{'no_create': True}"/>
+                            <field name="item_type"/>
                             <field name="unit"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="is_published"/>
@@ -74,6 +159,8 @@
                            groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
                         <group>
                             <field name="on_hand_qty"/>
+                            <field name="reserved_qty"/>
+                            <field name="available_qty"/>
                             <field name="low_stock"/>
                         </group>
                         <group>
