@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <menuitem id="menu_consumable" name="เบิกอุปกรณ์ IT" parent="buz_it_helpdesk.menu_it_management" sequence="40" groups="buz_it_helpdesk.group_it_requester"/>
-    <menuitem id="menu_consumable_store" name="เลือกอุปกรณ์" parent="menu_consumable" sequence="10" action="action_consumable_store" groups="buz_it_helpdesk.group_it_requester"/>
-    <menuitem id="menu_consumable_cart" name="รายการเบิกครั้งนี้" parent="menu_consumable" sequence="20" action="action_consumable_cart" groups="buz_it_helpdesk.group_it_requester"/>
-    <menuitem id="menu_consumable_my_requests" name="คำขอของฉัน" parent="menu_consumable" sequence="30" action="action_consumable_my_requests" groups="buz_it_helpdesk.group_it_requester"/>
-    <menuitem id="menu_consumable_all_requests" name="คำขอทั้งหมด" parent="menu_consumable" sequence="40" action="action_consumable_all_requests" groups="buz_it_helpdesk.group_it_support_agent"/>
-</odoo>
-

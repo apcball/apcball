@@ -25,8 +25,8 @@ services:
       --db_user=odoo
       --db_password=odoo
       --addons-path=/mnt/extra-addons
-      -i buz_it_consumable_store
-      --test-tags /buz_it_consumable_store
+      -i buz_it_inventory
+      --test-tags /buz_it_inventory
       --test-enable
       --stop-after-init
       --no-http

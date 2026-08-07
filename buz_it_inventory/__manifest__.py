@@ -16,5 +16,4 @@
     'installable': True,
     'auto_install': False,
     'application': True,
-    'pre_init_hook': 'pre_init_hook',
 }
