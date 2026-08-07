@@ -432,12 +432,14 @@ class EtaxTransaction(models.Model):
                 "H05-CREATE_PURPOSE_CODE": (
                     self.substitute_reason_code if self.document_type == 'T03' and self.is_substitute
                     else self.remark_cdn if self.document_type == '81'
+                    else self.remark_dbn if self.document_type == '80'
                     else ''
                 ),  # เหตุผลในการเพิ่ม/ลดหนี้
                 "H06-CREATE_PURPOSE": (
                     (self.substitute_reason if self.substitute_reason_code == 'TIVC99' else (dict(self._fields['substitute_reason_code'].selection).get(self.substitute_reason_code) or ''))
                     if self.document_type == 'T03' and self.is_substitute
                     else cdn_label if self.document_type == '81'
+                    else dbn_label if self.document_type == '80'
                     else ''
                 ), # เหตุผลในการเพิ่ม/ลดหนี้
 
