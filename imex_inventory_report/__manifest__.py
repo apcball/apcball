@@ -20,6 +20,7 @@
 
     # always loaded
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'reports/imex_inventory_report_views.xml',
         'reports/imex_inventory_details_report_views.xml',

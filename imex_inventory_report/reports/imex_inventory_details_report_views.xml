@@ -10,6 +10,7 @@
         <t t-call="web.html_container">
             <t t-call="web.external_layout">
                 <t t-set="docs" t-value="env['imex.inventory.details.report'].browse(detail_ids)"/>
+                <t t-set="show_price" t-value="env.user.has_group('imex_inventory_report.group_imex_inventory_price')"/>
                 <div class="o_inventory_reports_page">
                     <link href="/imex_inventory_report/static/src/css/report.css" rel="stylesheet" />
                     <t t-call="imex_inventory_report.report_imex_inventory_details_report_base" />
@@ -53,7 +54,7 @@
                             </div>
                             <div class="act_as_cell" />
                             <div class="act_as_cell" />
-                            <div class="act_as_cell right">
+                            <div t-if="show_price" class="act_as_cell right">
                                 <t t-out="'{0:,.2f}'.format(line_initial[0].initial_amount)"/>
                             </div>
                         </div>
@@ -112,11 +113,11 @@
                 <div class="act_as_cell">Partner</div>
                 <div class="act_as_cell">Source Location</div>
                 <div class="act_as_cell">Dest Location</div>
-                <div class="act_as_cell">Price</div>
+                <div t-if="show_price" class="act_as_cell">Price</div>
                 <div class="act_as_cell">In</div>
                 <div class="act_as_cell">Out</div>
                 <div class="act_as_cell">Balance</div>
-                <div class="act_as_cell">Amount</div>
+                <div t-if="show_price" class="act_as_cell">Amount</div>
             </div>
         </div>
     </template>
@@ -141,7 +142,7 @@
             <div class="act_as_cell left">
                 <t t-out="product_line.location_dest_id.complete_name" />
             </div>
-            <div class="act_as_cell right">
+            <div t-if="show_price" class="act_as_cell right">
                 <t t-out="'{0:,.2f}'.format(product_line.unit_cost)" />
             </div>
             <div class="act_as_cell right">
@@ -153,7 +154,7 @@
             <div class="act_as_cell right">
                 <t t-out="'{0:,.2f}'.format(product_balance)" />
             </div>
-            <div class="act_as_cell right">
+            <div t-if="show_price" class="act_as_cell right">
                 <t t-out="'{0:,.2f}'.format(product_amount)" />
             </div>
         </div>
