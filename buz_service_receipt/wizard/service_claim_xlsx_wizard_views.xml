@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="view_service_claim_xlsx_wizard_form" model="ir.ui.view">
+        <field name="name">buz.service.claim.xlsx.wizard.form</field>
+        <field name="model">buz.service.claim.xlsx.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Claims Excel Report">
+                <group name="filters">
+                    <group string="Date Range">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Entity Filters">
+                        <field name="partner_id" options="{'no_open': True, 'no_create': True}"/>
+                        <field name="technician_id" options="{'no_open': True, 'no_create': True}"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_print_xlsx"
+                            string="Export Excel"
+                            type="object"
+                            class="oe_highlight"/>
+                    <button string="Cancel"
+                            type="object"
+                            class="oe_link"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_service_claim_xlsx_wizard" model="ir.actions.act_window">
+        <field name="name">Claims Excel Report</field>
+        <field name="res_model">buz.service.claim.xlsx.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_service_claim_xlsx_wizard"
+              name="Claims Excel Report"
+              parent="menu_service_receipt_root"
+              sequence="16"
+              action="action_service_claim_xlsx_wizard"/>
+
+</odoo>
