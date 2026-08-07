@@ -18,7 +18,7 @@ def pre_init_hook(env):
     env.cr.execute(
         """
         UPDATE ir_model_data
-           SET module = 'buz_it_inventory_store'
+           SET module = 'buz_it_inventory'
          WHERE module = 'buz_it_consumable_store'
            AND name = ANY(%s)
         """,

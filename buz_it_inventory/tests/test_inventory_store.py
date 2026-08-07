@@ -71,7 +71,7 @@ class TestInventoryStore(TransactionCase):
 
     def test_inventory_menu_is_under_it_management(self):
         stock_menu = self.env.ref(
-            'buz_it_inventory_store.menu_consumable_stock',
+            'buz_it_inventory.menu_consumable_stock',
         )
         root = self.env.ref('buz_it_helpdesk.menu_it_management')
         self.assertEqual(stock_menu.parent_id, root)
