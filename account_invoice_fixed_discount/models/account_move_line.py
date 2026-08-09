@@ -18,6 +18,40 @@ class AccountMoveLine(models.Model):
         ),
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Keep the % `discount` field in sync with `discount_fixed` even when
+        lines are created directly via the ORM (e.g. POS invoice generation),
+        where the `_onchange_discount_fixed` UI onchange never fires.
+
+        Without this, `discount` stays 0 while `price_subtotal` is still
+        computed net of the fixed discount (via `_compute_totals` below), so
+        the aggregated tax base (`_recompute_tax_lines`, which reads
+        `discount`) ends up taxing the pre-discount amount -> sales tax
+        overstated on any invoice line using discount_fixed.
+        """
+        for vals in vals_list:
+            if vals.get("discount_fixed") and not vals.get("discount"):
+                currency = (
+                    self.env["res.currency"].browse(vals["currency_id"])
+                    if vals.get("currency_id")
+                    else self.env.company.currency_id
+                )
+                price_unit = vals.get("price_unit", 0.0)
+                if price_unit and not float_is_zero(
+                    vals["discount_fixed"], precision_rounding=currency.rounding
+                ):
+                    vals["discount"] = (vals["discount_fixed"] / price_unit) * 100
+        return super().create(vals_list)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if "discount_fixed" in vals and "discount" not in vals:
+            for line in self:
+                if line.discount_fixed:
+                    line.discount = line._get_discount_from_fixed_discount()
+        return res
+
     @api.depends("quantity", "discount", "price_unit", "tax_ids", "currency_id")
     def _compute_totals(self):
         """Adjust the computation of the price_subtotal and price_total fields to
