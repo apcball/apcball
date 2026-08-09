@@ -1,6 +1,6 @@
 {
     "name": "Invoice Excel Report",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.0.1",
     "category": "Sales",
     "summary": "Export Invoice report to Excel",
     "author": "Mogen Co., Ltd.",

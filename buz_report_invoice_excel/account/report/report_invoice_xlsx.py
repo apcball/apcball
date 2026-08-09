@@ -290,10 +290,12 @@ class ReportInvoiceExcel(models.AbstractModel):
             ("Unit Price", 14, "unit_price", number_format, True),
         ]
         if show_cost:
-            columns.append(("Cost", 14, "purchase_price", number_format, True))
+            columns += [
+                ("Cost", 14, "purchase_price", number_format, True),
+                ("Margin %", 12, "margin_percent", percent_format, True),
+                ("Margin", 14, "margin", number_format, True),
+            ]
         columns += [
-            ("Margin %", 12, "margin_percent", percent_format, True),
-            ("Margin", 14, "margin", number_format, True),
             ("SUM", 14, "sum_amount", number_format, True),
             ("Note", 24, "note", text_format, False),
             ("Trade Channel", 16, "trade_channel", text_format, False),
