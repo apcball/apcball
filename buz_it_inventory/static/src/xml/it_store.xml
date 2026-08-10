@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_it_inventory.ItStore">
+        <main class="o_it_store">
+            <div class="o_it_store_breadcrumb">IT Management / IT Store</div>
+            <div class="o_it_store_header"><div><h1>IT Store</h1><p>เลือกอุปกรณ์และวัสดุสิ้นเปลืองที่ต้องการเบิก</p></div><button class="btn btn-light" t-on-click="loadCatalog"><i class="fa fa-refresh"/></button></div>
+            <div class="o_it_store_toolbar">
+                <div class="o_it_store_search"><i class="fa fa-search"/><input type="search" placeholder="ค้นหาอุปกรณ์หรือวัสดุ..." t-model="state.search"/></div>
+                <div class="o_it_store_categories"><button t-att-class="state.categoryId ? 'btn btn-light' : 'btn btn-primary'" t-on-click="() => selectCategory(null)">ทั้งหมด</button><t t-foreach="state.categories" t-as="category" t-key="category.id"><button t-att-class="state.categoryId === category.id ? 'btn btn-primary' : 'btn btn-light'" t-on-click="() => selectCategory(category.id)"><t t-esc="category.name"/></button></t></div>
+            </div>
+            <div t-if="state.loading" class="o_it_store_loading"><i class="fa fa-spinner fa-spin"/> กำลังโหลดรายการอุปกรณ์...</div>
+            <div t-elif="!filteredItems.length" class="o_it_store_empty">ไม่พบรายการอุปกรณ์ที่ตรงกับเงื่อนไข</div>
+            <div t-else="" class="o_it_store_layout">
+                <section class="o_it_store_grid"><t t-foreach="filteredItems" t-as="item" t-key="item.id"><article t-att-class="'o_it_store_card o_it_store_card_' + item.store_status">
+                    <div class="o_it_store_card_image"><img t-if="item.image_128" t-att-src="imageUrl(item)" t-att-alt="item.name"/><i t-else="" class="fa fa-cube o_it_store_placeholder"/><span t-att-class="'o_it_store_stock_badge o_it_store_stock_' + item.store_status"><t t-esc="statusLabel(item)"/></span></div>
+                    <div class="o_it_store_card_body"><div class="o_it_store_card_category"><t t-esc="item.category_id ? item.category_id[1] : 'ทั่วไป'"/></div><h2><t t-esc="item.name"/></h2><p class="o_it_store_description"><t t-esc="item.description || 'ไม่มีรายละเอียดเพิ่มเติม'"/></p><div class="o_it_store_stock_line"><span>พร้อมเบิก</span><strong><t t-esc="item.available_qty"/> <t t-esc="item.unit"/></strong></div>
+                        <div t-if="cartQuantity(item)" class="o_it_store_stepper"><button t-on-click="() => setCartQuantity(item, cartQuantity(item) - 1)">−</button><span><t t-esc="cartQuantity(item)"/></span><button t-att-disabled="!canIncrease(item)" t-on-click="() => addItem(item)">+</button></div><button t-else="" class="btn btn-primary o_it_store_add" t-att-disabled="!maxQuantity(item)" t-on-click="() => addItem(item)"><i class="fa fa-plus"/> เพิ่มในคำขอ</button>
+                    </div>
+                </article></t></section>
+                <aside class="o_it_store_cart"><div class="o_it_store_cart_header"><div><h2>คำขอเบิกของฉัน</h2><span><t t-esc="cartCount"/> รายการ</span></div><i class="fa fa-shopping-basket"/></div>
+                    <div t-if="!cartLines.length" class="o_it_store_cart_empty"><i class="fa fa-shopping-basket"/><p>ยังไม่มีรายการในคำขอ</p><small>เลือกอุปกรณ์จากรายการด้านซ้าย</small></div>
+                    <div t-else="" class="o_it_store_cart_lines"><div t-foreach="cartLines" t-as="line" t-key="line.item.id" class="o_it_store_cart_line"><div class="o_it_store_cart_line_image"><img t-if="line.item.image_128" t-att-src="imageUrl(line.item)" t-att-alt="line.item.name"/><i t-else="" class="fa fa-cube"/></div><div class="o_it_store_cart_line_info"><strong><t t-esc="line.item.name"/></strong><span><t t-esc="line.quantity"/> <t t-esc="line.item.unit"/></span></div><button class="btn btn-link o_it_store_remove" t-on-click="() => removeItem(line.item)"><i class="fa fa-trash"/></button></div></div>
+                    <button class="btn btn-primary o_it_store_submit" t-att-disabled="!cartLines.length || state.submitting" t-on-click="createRequest"><i t-if="state.submitting" class="fa fa-spinner fa-spin"/><t t-else="">สร้างคำขอเบิก</t></button>
+                </aside>
+            </div>
+        </main>
+    </t>
+</templates>

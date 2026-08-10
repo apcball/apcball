@@ -5,3 +5,4 @@ from . import stock_quant
 from . import stock_history
 from . import issue_request
 from . import issue_request_line
+from . import store_request

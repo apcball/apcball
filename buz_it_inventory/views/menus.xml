@@ -2,7 +2,7 @@
 <odoo>
     <menuitem id="menu_it_store" name="IT Store" parent="buz_it_helpdesk.menu_it_management" sequence="30" groups="buz_it_helpdesk.group_it_requester"/>
 
-    <menuitem id="menu_inventory_store_front" name="Store" parent="menu_it_store" sequence="10" action="action_inventory_item_store" groups="buz_it_helpdesk.group_it_requester"/>
+    <menuitem id="menu_inventory_store_front" name="Store" parent="menu_it_store" sequence="10" action="action_inventory_item_store_client" groups="buz_it_helpdesk.group_it_requester"/>
     <menuitem id="menu_issue_request_my" name="My Requests" parent="menu_it_store" sequence="20" action="action_issue_request_my" groups="buz_it_helpdesk.group_it_requester"/>
     <menuitem id="menu_issue_request_all" name="All Requests" parent="menu_it_store" sequence="30" action="action_issue_request_all" groups="buz_it_helpdesk.group_it_support_agent"/>
     <menuitem id="menu_inventory_receive" name="Receive Stock" parent="menu_it_store" sequence="40" action="action_stock_receive" groups="buz_it_helpdesk.group_it_support_agent"/>
