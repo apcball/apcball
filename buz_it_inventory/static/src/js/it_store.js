@@ -15,6 +15,14 @@ export class ItStore extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.state = useState({ categories: [], items: [], search: "", categoryId: null, cart: {}, selections: {}, loading: true, submitting: false });
+        this.loadCatalog = this.loadCatalog.bind(this);
+        this.selectCategory = this.selectCategory.bind(this);
+        this.selectionQuantity = this.selectionQuantity.bind(this);
+        this.canIncreaseSelection = this.canIncreaseSelection.bind(this);
+        this.setSelectionQuantity = this.setSelectionQuantity.bind(this);
+        this.addSelectedItem = this.addSelectedItem.bind(this);
+        this.removeItem = this.removeItem.bind(this);
+        this.createRequest = this.createRequest.bind(this);
         onWillStart(() => this.loadCatalog());
     }
 

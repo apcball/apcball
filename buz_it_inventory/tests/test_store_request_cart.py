@@ -60,6 +60,8 @@ class TestStoreRequestCart(TransactionCase):
             {'item_id': second.id, 'quantity': 1},
         ])
         request = self.env['buz.it.issue.request'].browse(action['res_id'])
+        self.assertEqual(action['views'][0][1], 'form')
+        self.assertEqual(action['views'][0][0], self.env.ref('buz_it_inventory.view_issue_request_form').id)
         self.assertEqual(request.state, 'draft')
         self.assertEqual(len(request.line_ids), 2)
         self.assertEqual(request.requester_id, self.requester)

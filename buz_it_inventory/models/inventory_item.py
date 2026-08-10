@@ -158,5 +158,6 @@ class BuzItInventoryItem(models.Model):
             'res_model': 'buz.it.issue.request',
             'res_id': request.id,
             'view_mode': 'form',
+            'views': [(self.env.ref('buz_it_inventory.view_issue_request_form').id, 'form')],
             'target': 'current',
         }
