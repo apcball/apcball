@@ -16,7 +16,7 @@ class BuzItStockAdjustWizard(models.TransientModel):
         'buz.it.stock.location',
         string='Location',
         required=True,
-        domain="[('company_id', '=', inventory_item_id.company_id)]",
+        domain="[('company_id', '=', company_id)]",
     )
     company_id = fields.Many2one(
         'res.company',

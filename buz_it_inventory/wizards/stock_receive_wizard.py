@@ -122,7 +122,7 @@ class BuzItStockReceiveLine(models.TransientModel):
     location_id = fields.Many2one(
         'buz.it.stock.location',
         string='Location',
-        domain="[('company_id', '=', inventory_item_id.company_id)]",
+        domain="[('company_id', '=', company_id)]",
     )
     company_id = fields.Many2one(
         'res.company',

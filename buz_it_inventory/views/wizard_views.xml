@@ -18,6 +18,7 @@
                     <field name="line_ids" nolabel="1">
                         <tree editable="bottom">
                             <field name="inventory_item_id"/>
+                            <field name="company_id" invisible="1"/>
                             <field name="qty" string="จำนวน"/>
                             <field name="location_id"/>
                         </tree>
@@ -51,7 +52,8 @@
             <form string="ปรับยอด Stock">
                 <group>
                     <field name="inventory_item_id"/>
-                    <field name="location_id"/>
+                    <field name="company_id" invisible="1"/>
+                            <field name="location_id"/>
                     <field name="current_qty" readonly="1"/>
                     <field name="new_qty"/>
                 </group>

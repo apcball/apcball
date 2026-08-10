@@ -69,7 +69,7 @@ export class ItStore extends Component {
     addItem(item) { if (this.maxQuantity(item)) this.setCartQuantity(item, this.cartQuantity(item) + 1); }
     removeItem(item) { this.setCartQuantity(item, 0); }
     imageUrl(item) { return `/web/image?model=${ITEM_MODEL}&field=image_1920&id=${item.id}`; }
-    statusLabel(item) { return { ready: "เธเธฃเนเธญเธกเน€เธเธดเธ", low: "เนเธเธฅเนเธซเธกเธ”", out: "เธซเธกเธ”" }[item.store_status] || "เนเธกเนเธเธฃเนเธญเธกเน€เธเธดเธ"; }
+    statusLabel(item) { return { ready: "พร้อมเบิก", low: "ใกล้หมด", out: "หมด" }[item.store_status] || "ไม่พร้อมเบิก"; }
 
     async createRequest() {
         if (!this.cartLines.length || this.state.submitting) return;
@@ -80,7 +80,7 @@ export class ItStore extends Component {
             ]);
             await this.action.doAction(action);
         } catch (error) {
-            this.notification.add(error.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธชเธฃเนเธฒเธเธเธณเธเธญเน€เธเธดเธเนเธ”เน", { type: "danger" });
+            this.notification.add(error.message || "ไม่สามารถสร้างคำขอเบิกได้", { type: "danger" });
             await this.loadCatalog();
         } finally {
             this.state.submitting = false;
