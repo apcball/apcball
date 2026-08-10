@@ -14,7 +14,7 @@ export class ItStore extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
-        this.state = useState({ categories: [], items: [], search: "", categoryId: null, cart: {}, loading: true, submitting: false });
+        this.state = useState({ categories: [], items: [], search: "", categoryId: null, cart: {}, selections: {}, loading: true, submitting: false });
         onWillStart(() => this.loadCatalog());
     }
 
@@ -57,7 +57,23 @@ export class ItStore extends Component {
     selectCategory(categoryId) { this.state.categoryId = categoryId; }
     maxQuantity(item) { return item.max_per_request > 0 ? Math.min(item.available_qty, item.max_per_request) : item.available_qty; }
     cartQuantity(item) { return this.state.cart[item.id] || 0; }
-    canIncrease(item) { return this.cartQuantity(item) < this.maxQuantity(item); }
+    remainingQuantity(item) { return Math.max(0, this.maxQuantity(item) - this.cartQuantity(item)); }
+    selectionQuantity(item) {
+        const remaining = this.remainingQuantity(item);
+        return remaining ? Math.min(this.state.selections[item.id] || 1, remaining) : 0;
+    }
+    canIncreaseSelection(item) { return this.selectionQuantity(item) < this.remainingQuantity(item); }
+
+    setSelectionQuantity(item, quantity) {
+        const remaining = this.remainingQuantity(item);
+        const selections = { ...this.state.selections };
+        if (remaining) {
+            selections[item.id] = Math.max(1, Math.min(quantity, remaining));
+        } else {
+            delete selections[item.id];
+        }
+        this.state.selections = selections;
+    }
 
     setCartQuantity(item, quantity) {
         const bounded = Math.max(0, Math.min(quantity, this.maxQuantity(item)));
@@ -66,9 +82,17 @@ export class ItStore extends Component {
         this.state.cart = cart;
     }
 
-    addItem(item) { if (this.maxQuantity(item)) this.setCartQuantity(item, this.cartQuantity(item) + 1); }
+    addSelectedItem(item) {
+        const quantity = this.selectionQuantity(item);
+        if (!quantity) return;
+        this.setCartQuantity(item, this.cartQuantity(item) + quantity);
+        const selections = { ...this.state.selections };
+        delete selections[item.id];
+        this.state.selections = selections;
+    }
     removeItem(item) { this.setCartQuantity(item, 0); }
     imageUrl(item) { return `/web/image?model=${ITEM_MODEL}&field=image_1920&id=${item.id}`; }
+    itemTypeLabel(item) { return { consumable: "วัสดุสิ้นเปลือง", non_serialized_equipment: "อุปกรณ์ไม่ระบุหมายเลข" }[item.item_type] || (item.category_id && item.category_id[1]) || "ทั่วไป"; }
     statusLabel(item) { return { ready: "พร้อมเบิก", low: "ใกล้หมด", out: "หมด" }[item.store_status] || "ไม่พร้อมเบิก"; }
 
     async createRequest() {
