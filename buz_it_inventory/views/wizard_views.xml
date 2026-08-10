@@ -83,8 +83,8 @@
                 <group>
                     <field name="request_id" readonly="1"/>
                 </group>
-                <group string="รายการจ่าย">
-                    <field name="line_ids" nolabel="1">
+                <group string="รายการจ่าย" colspan="2">
+                    <field name="line_ids" nolabel="1" colspan="2">
                         <tree editable="bottom">
                             <field name="company_id" invisible="1"/>
                             <field name="item_id" readonly="1"/>
