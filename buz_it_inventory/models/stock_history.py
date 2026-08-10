@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class BuzItStockHistory(models.Model):
@@ -39,6 +39,18 @@ class BuzItStockHistory(models.Model):
     )
     reference = fields.Char(string='Reference')
     note = fields.Text()
+    request_id = fields.Many2one(
+        'buz.it.issue.request',
+        string='Issue Request',
+        ondelete='set null',
+        index=True,
+    )
+    request_line_id = fields.Many2one(
+        'buz.it.issue.request.line',
+        string='Issue Request Line',
+        ondelete='set null',
+        index=True,
+    )
     company_id = fields.Many2one(
         'res.company',
         related='location_id.company_id',
@@ -46,6 +58,16 @@ class BuzItStockHistory(models.Model):
         string='Company',
         index=True,
     )
+
+    def write(self, vals):
+        raise UserError(_(
+            'Stock history is permanent and cannot be edited.'
+        ))
+
+    def unlink(self):
+        raise UserError(_(
+            'Stock history is permanent and cannot be deleted.'
+        ))
 
     @api.constrains('inventory_item_id', 'location_id')
     def _check_company_consistency(self):

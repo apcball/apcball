@@ -69,5 +69,39 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ISSUE (จ่ายของ)
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_stock_issue_wizard_form" model="ir.ui.view">
+        <field name="name">buz.it.stock.issue.wizard.form</field>
+        <field name="model">buz.it.stock.issue.wizard</field>
+        <field name="arch" type="xml">
+            <form string="จ่ายของ">
+                <group>
+                    <field name="request_id" readonly="1"/>
+                </group>
+                <group string="รายการจ่าย">
+                    <field name="line_ids" nolabel="1">
+                        <tree editable="bottom">
+                            <field name="company_id" invisible="1"/>
+                            <field name="item_id" readonly="1"/>
+                            <field name="unit" readonly="1"/>
+                            <field name="requested_qty" readonly="1"/>
+                            <field name="issued_qty" readonly="1"/>
+                            <field name="cancelled_qty" readonly="1"/>
+                            <field name="remaining_qty" readonly="1"/>
+                            <field name="location_id"/>
+                            <field name="qty"/>
+                        </tree>
+                    </field>
+                </group>
+                <footer>
+                    <button name="action_issue" string="จ่ายของ" type="object" class="btn-primary"/>
+                    <button string="ยกเลิก" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
 </odoo>
 

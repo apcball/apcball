@@ -21,7 +21,9 @@ class TestIssueRequest(TransactionCase):
             'category_id': self.category.id,
             'company_id': self.env.company.id,
         })
-        self.env['buz.it.stock.quant'].create({
+        self.env['buz.it.stock.quant'].with_context(
+            buz_quant_write=True,
+        ).create({
             'inventory_item_id': self.item.id,
             'location_id': self.location.id,
             'qty': 10,
@@ -59,34 +61,45 @@ class TestIssueRequest(TransactionCase):
             'line_ids': lines,
         })
 
-    def test_submit_reserves_quantity(self):
+    def _issue(self, request, user, issues):
+        """issues: list of (request_line, location_id, qty)."""
+        wizard = self.env['buz.it.stock.issue.wizard'].with_user(user).create({
+            'request_id': request.id,
+            'line_ids': [
+                fields.Command.create({
+                    'request_line_id': line.id,
+                    'location_id': location_id,
+                    'qty': qty,
+                })
+                for line, location_id, qty in issues
+            ],
+        })
+        wizard.action_issue()
+        return wizard
+
+    def test_submit_does_not_reserve_or_reduce_stock(self):
         request = self._make_request(self.requester, self.item, 5)
         request.with_user(self.requester).action_submit()
 
         self.assertEqual(request.state, 'submitted')
         self.item.invalidate_recordset(['on_hand_qty'])
         self.assertEqual(self.item.on_hand_qty, 10)
-        self.assertEqual(self.item.reserved_qty, 5)
-        self.assertEqual(self.item.available_qty, 5)
+        self.assertEqual(self.item.available_qty, 10)
+        self.assertEqual(self.item.pending_qty, 5)
 
-    def test_submit_rejects_over_available(self):
+    def test_submit_rejects_zero_quantity(self):
+        request = self._make_request(self.requester, self.item, 0)
+        with self.assertRaises(UserError):
+            request.with_user(self.requester).action_submit()
+        self.assertEqual(request.state, 'draft')
+
+    def test_submit_does_not_check_available_stock(self):
         request = self._make_request(self.requester, self.item, 15)
-        with self.assertRaises(UserError):
-            request.with_user(self.requester).action_submit()
-        self.assertEqual(request.state, 'draft')
+        request.with_user(self.requester).action_submit()
+        self.assertEqual(request.state, 'submitted')
+        self.assertEqual(self.item.pending_qty, 15)
 
-    def test_submit_aggregates_same_item_lines(self):
-        request = self._make_request(self.requester, self.item, 6, extra_lines=[
-            fields.Command.create({
-                'item_id': self.item.id,
-                'requested_qty': 6,
-            }),
-        ])
-        with self.assertRaises(UserError):
-            request.with_user(self.requester).action_submit()
-        self.assertEqual(request.state, 'draft')
-
-    def test_reject_releases_reservation(self):
+    def test_reject_does_not_affect_stock(self):
         request = self._make_request(self.requester, self.item, 5)
         request.with_user(self.requester).action_submit()
         request.with_user(self.agent).write({
@@ -95,66 +108,145 @@ class TestIssueRequest(TransactionCase):
         request.with_user(self.agent).action_reject()
 
         self.assertEqual(request.state, 'rejected')
-        self.assertEqual(self.item.reserved_qty, 0)
-        self.assertEqual(self.item.available_qty, 10)
+        self.assertEqual(self.item.pending_qty, 0)
+        self.item.invalidate_recordset(['on_hand_qty'])
+        self.assertEqual(self.item.on_hand_qty, 10)
 
-    def test_cancel_releases_reservation(self):
+    def test_cancel_does_not_affect_stock(self):
         request = self._make_request(self.requester, self.item, 5)
         request.with_user(self.requester).action_submit()
         request.with_user(self.requester).action_cancel()
 
         self.assertEqual(request.state, 'cancelled')
-        self.assertEqual(self.item.reserved_qty, 0)
-        self.assertEqual(self.item.available_qty, 10)
+        self.assertEqual(self.item.pending_qty, 0)
+        self.item.invalidate_recordset(['on_hand_qty'])
+        self.assertEqual(self.item.on_hand_qty, 10)
 
-    def test_approve_partial_releases_unreserved(self):
+    def test_partial_issue_multiple_times_then_done(self):
         request = self._make_request(self.requester, self.item, 5)
         request.with_user(self.requester).action_submit()
-        self.assertEqual(self.item.reserved_qty, 5)
+        line = request.line_ids
 
-        request.line_ids.with_user(self.agent).approved_qty = 3
-        request.with_user(self.agent).action_approve()
+        self._issue(request, self.agent, [(line, self.location.id, 2)])
+        self.assertEqual(request.state, 'partially_issued')
+        self.assertEqual(line.issued_qty, 2)
+        self.assertEqual(line.remaining_qty, 3)
 
-        self.assertEqual(request.state, 'approved')
-        self.assertEqual(self.item.reserved_qty, 3)
-        self.assertEqual(self.item.available_qty, 7)
-
-    def test_reject_requires_reason(self):
-        request = self._make_request(self.requester, self.item, 5)
-        request.with_user(self.requester).action_submit()
-        with self.assertRaises(UserError):
-            request.with_user(self.agent).action_reject()
-
-    def test_issue_deducts_stock_and_creates_history(self):
-        request = self._make_request(self.requester, self.item, 5)
-        request.with_user(self.requester).action_submit()
-        request.with_user(self.agent).action_approve()
-        request.with_user(self.agent).action_issue()
-
-        self.assertEqual(request.state, 'issued')
-        self.assertEqual(request.issued_by, self.agent)
+        self._issue(request, self.agent, [(line, self.location.id, 3)])
+        self.assertEqual(request.state, 'done')
+        self.assertEqual(line.issued_qty, 5)
+        self.assertEqual(line.remaining_qty, 0)
         self.item.invalidate_recordset(['on_hand_qty'])
         self.assertEqual(self.item.on_hand_qty, 5)
-        self.assertEqual(self.item.reserved_qty, 0)
-        self.assertEqual(self.item.available_qty, 5)
-        self.assertTrue(self.env['buz.it.stock.history'].search([
+        self.assertEqual(self.item.pending_qty, 0)
+
+    def test_issue_creates_history_linked_to_request(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        line = request.line_ids
+        self._issue(request, self.agent, [(line, self.location.id, 3)])
+
+        history = self.env['buz.it.stock.history'].search([
             ('inventory_item_id', '=', self.item.id),
             ('move_type', '=', 'out'),
             ('reference', '=', request.name),
-        ]))
+        ])
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history.request_id, request)
+        self.assertEqual(history.request_line_id, line)
+        self.assertEqual(history.qty, -3)
+
+    def test_issue_over_remaining_raises(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        line = request.line_ids
+        with self.assertRaises(UserError):
+            self._issue(request, self.agent, [(line, self.location.id, 6)])
+        self.assertEqual(request.state, 'submitted')
+        self.assertEqual(line.issued_qty, 0)
 
     def test_issue_over_stock_raises(self):
         request = self._make_request(self.requester, self.item, 5)
         request.with_user(self.requester).action_submit()
-        request.with_user(self.agent).action_approve()
-        quant = self.env['buz.it.stock.quant'].search([
+        line = request.line_ids
+        self.env['buz.it.stock.quant'].with_context(
+            buz_quant_write=True,
+        ).search([
             ('inventory_item_id', '=', self.item.id),
             ('location_id', '=', self.location.id),
-        ], limit=1)
-        quant.qty = 2
+        ]).write({'qty': 2})
         with self.assertRaises(UserError):
-            request.with_user(self.agent).action_issue()
-        self.assertEqual(request.state, 'approved')
+            self._issue(request, self.agent, [(line, self.location.id, 3)])
+        self.assertEqual(request.state, 'submitted')
+        self.item.invalidate_recordset(['on_hand_qty'])
+        self.assertEqual(self.item.on_hand_qty, 2)
+
+    def test_issue_requires_location(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        line = request.line_ids
+        with self.assertRaises(UserError):
+            self._issue(request, self.agent, [(line, False, 2)])
+
+    def test_issue_requires_at_least_one_line(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        line = request.line_ids
+        with self.assertRaises(UserError):
+            self._issue(request, self.agent, [(line, self.location.id, 0)])
+
+    def test_end_outstanding_requires_reason(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        line = request.line_ids
+        self._issue(request, self.agent, [(line, self.location.id, 2)])
+        self.assertEqual(request.state, 'partially_issued')
+
+        with self.assertRaises(UserError):
+            request.with_user(self.agent).action_end_outstanding()
+        line.with_user(self.agent).cancelled_qty = 3
+        with self.assertRaises(UserError):
+            request.with_user(self.agent).action_end_outstanding()
+
+    def test_end_outstanding_closes_without_touching_stock(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        line = request.line_ids
+        self._issue(request, self.agent, [(line, self.location.id, 2)])
+
+        line.with_user(self.agent).write({
+            'cancelled_qty': 3,
+            'cancel_reason': 'ไม่ได้มาเบิกตามกำหนด',
+        })
+        request.with_user(self.agent).action_end_outstanding()
+
+        self.assertEqual(request.state, 'done')
+        self.assertEqual(line.cancelled_qty, 3)
+        self.assertEqual(line.remaining_qty, 0)
+        self.item.invalidate_recordset(['on_hand_qty'])
+        self.assertEqual(self.item.on_hand_qty, 8)
+
+    def test_cancel_not_allowed_after_issue(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        line = request.line_ids
+        self._issue(request, self.agent, [(line, self.location.id, 2)])
+        self.assertEqual(request.state, 'partially_issued')
+
+        with self.assertRaises(UserError):
+            request.with_user(self.requester).action_cancel()
+        with self.assertRaises(UserError):
+            request.with_user(self.agent).action_cancel()
+
+    def test_requester_cannot_issue_or_reject(self):
+        request = self._make_request(self.requester, self.item, 5)
+        request.with_user(self.requester).action_submit()
+        with self.assertRaises(UserError):
+            request.with_user(self.requester).action_issue_stock()
+        with self.assertRaises(UserError):
+            request.with_user(self.requester).action_reject()
+        with self.assertRaises(UserError):
+            request.with_user(self.requester).action_end_outstanding()
 
     def test_requester_sees_only_own_requests(self):
         other = self._create_user(

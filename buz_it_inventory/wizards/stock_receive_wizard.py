@@ -31,6 +31,10 @@ class BuzItStockReceiveWizard(models.TransientModel):
 
     def action_receive(self):
         self.ensure_one()
+        if not self.env.user.has_group(
+            'buz_it_helpdesk.group_it_support_agent'
+        ):
+            raise UserError(_('Only an IT agent can receive stock.'))
         if not self.line_ids:
             raise UserError(_('กรุณาเพิ่มรายการอย่างน้อย 1 รายการ'))
         for line in self.line_ids:
@@ -55,17 +59,26 @@ class BuzItStockReceiveWizard(models.TransientModel):
                 raise UserError(_('%s และ Location %s ต้องอยู่บริษัทเดียวกัน') % (
                     line.inventory_item_id.display_name, location.name,
                 ))
+            self.env.cr.execute(
+                'SELECT id FROM buz_it_stock_quant '
+                'WHERE inventory_item_id = %s AND location_id = %s FOR UPDATE',
+                (line.inventory_item_id.id, location.id),
+            )
             quant = self.env['buz.it.stock.quant'].sudo().search([
                 ('inventory_item_id', '=', line.inventory_item_id.id),
                 ('location_id', '=', location.id),
             ], limit=1)
             if not quant:
-                quant = self.env['buz.it.stock.quant'].sudo().create({
+                quant = self.env['buz.it.stock.quant'].with_context(
+                    buz_quant_write=True,
+                ).sudo().create({
                     'inventory_item_id': line.inventory_item_id.id,
                     'location_id': location.id,
                     'qty': 0.0,
                 })
-            quant.qty += line.qty
+            quant.with_context(buz_quant_write=True).sudo().write({
+                'qty': quant.qty + line.qty,
+            })
             self.env['buz.it.stock.history'].sudo().create({
                 'move_type': 'in',
                 'inventory_item_id': line.inventory_item_id.id,

@@ -123,7 +123,7 @@
                 <field name="item_type"/>
                 <field name="unit"/>
                 <field name="on_hand_qty" string="ยอดคงเหลือ"/>
-                <field name="reserved_qty" string="ถูกจอง"/>
+                <field name="pending_qty" string="ค้างส่งมอบ"/>
                 <field name="available_qty" string="พร้อมให้เบิก"/>
                 <field name="low_stock" string="ใกล้หมด"/>
                 <field name="max_per_request" string="สูงสุดต่อคำขอ"/>
@@ -159,7 +159,7 @@
                            groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
                         <group>
                             <field name="on_hand_qty"/>
-                            <field name="reserved_qty"/>
+                            <field name="pending_qty"/>
                             <field name="available_qty"/>
                             <field name="low_stock"/>
                         </group>

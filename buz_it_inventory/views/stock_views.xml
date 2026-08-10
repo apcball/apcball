@@ -79,6 +79,7 @@
                 <field name="location_id" string="Location"/>
                 <field name="qty" string="จำนวน"/>
                 <field name="reference" string="อ้างอิง"/>
+                <field name="request_id" string="คำขอ"/>
                 <field name="note"/>
             </tree>
         </field>

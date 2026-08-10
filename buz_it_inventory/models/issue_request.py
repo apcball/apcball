@@ -1,7 +1,6 @@
-from collections import defaultdict
-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_compare, float_is_zero
 
 
 class BuzItIssueRequest(models.Model):
@@ -52,8 +51,8 @@ class BuzItIssueRequest(models.Model):
     state = fields.Selection([
         ('draft', 'Draft'),
         ('submitted', 'Submitted'),
-        ('approved', 'Approved'),
-        ('issued', 'Issued'),
+        ('partially_issued', 'Partially Issued'),
+        ('done', 'Done'),
         ('rejected', 'Rejected'),
         ('cancelled', 'Cancelled'),
     ], string='State', required=True, default='draft', tracking=True, copy=False, index=True)
@@ -94,6 +93,11 @@ class BuzItIssueRequest(models.Model):
         string='Total Qty',
         digits=(16, 0),
     )
+    remaining_total_qty = fields.Float(
+        compute='_compute_remaining_total_qty',
+        string='Remaining Total Qty',
+        digits=(16, 0),
+    )
 
     @api.depends('line_ids', 'line_ids.item_id')
     def _compute_line_count(self):
@@ -104,6 +108,13 @@ class BuzItIssueRequest(models.Model):
     def _compute_total_qty(self):
         for request in self:
             request.total_qty = sum(request.line_ids.mapped('requested_qty'))
+
+    @api.depends('line_ids.remaining_qty')
+    def _compute_remaining_total_qty(self):
+        for request in self:
+            request.remaining_total_qty = sum(
+                request.line_ids.mapped('remaining_qty')
+            )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -126,7 +137,7 @@ class BuzItIssueRequest(models.Model):
     def write(self, vals):
         if not self.env.context.get('buz_issue_transition'):
             for request in self:
-                if request.state in ('issued', 'rejected', 'cancelled'):
+                if request.state in ('done', 'rejected', 'cancelled'):
                     raise UserError(_(
                         'A finalized request cannot be edited.'
                     ))
@@ -166,13 +177,6 @@ class BuzItIssueRequest(models.Model):
                 raise UserError(_(
                     'Please add at least one item to the request.'
                 ))
-            items = request.line_ids.item_id
-            self.env.cr.execute(
-                'SELECT id FROM buz_it_inventory_item '
-                'WHERE id IN %s FOR UPDATE',
-                (tuple(items.ids),),
-            )
-            available = items._get_available_qty()
             for line in request.line_ids:
                 if line.requested_qty <= 0:
                     raise UserError(_(
@@ -182,43 +186,8 @@ class BuzItIssueRequest(models.Model):
                     raise UserError(_(
                         '%s is not available in the Store.'
                     ) % line.item_id.display_name)
-            totals = defaultdict(float)
-            for line in request.line_ids:
-                totals[line.item_id.id] += line.requested_qty
-            for item_id, qty in totals.items():
-                available_qty = available.get(item_id, 0.0)
-                if qty > available_qty:
-                    item = self.env['buz.it.inventory.item'].browse(item_id)
-                    raise UserError(_(
-                        'Not enough stock for %(item)s. Maximum available '
-                        'is %(qty)s %(unit)s.',
-                        item=item.display_name,
-                        qty=available_qty,
-                        unit=item.unit or '',
-                    ))
             request.with_context(buz_issue_transition=True).write({
                 'state': 'submitted',
-            })
-        return True
-
-    def action_approve(self):
-        for request in self:
-            if request.state != 'submitted':
-                raise UserError(_(
-                    'Only a Submitted request can be approved.'
-                ))
-            if not request._is_support_agent():
-                raise UserError(_('Only an IT agent can approve requests.'))
-            for line in request.line_ids:
-                if not line.approved_qty or line.approved_qty <= 0:
-                    line.approved_qty = line.requested_qty
-                if line.approved_qty > line.requested_qty:
-                    raise UserError(_(
-                        'Approved quantity cannot exceed requested quantity '
-                        'for %s.' % line.item_id.display_name
-                    ))
-            request.with_context(buz_issue_transition=True).write({
-                'state': 'approved',
             })
         return True
 
@@ -243,7 +212,9 @@ class BuzItIssueRequest(models.Model):
         for request in self:
             if request.state not in ('draft', 'submitted'):
                 raise UserError(_(
-                    'Only a Draft or Submitted request can be cancelled.'
+                    'Only a Draft or Submitted request can be cancelled. '
+                    'Outstanding items of an issued request must be ended '
+                    'instead.'
                 ))
             if (
                 not request._is_support_agent()
@@ -258,26 +229,107 @@ class BuzItIssueRequest(models.Model):
             })
         return True
 
-    def action_issue(self):
+    def action_issue_stock(self):
+        self.ensure_one()
+        if self.state not in ('submitted', 'partially_issued'):
+            raise UserError(_(
+                'Only a Submitted or Partially Issued request can be issued.'
+            ))
+        if not self._is_support_agent():
+            raise UserError(_('Only an IT agent can issue items.'))
+        wizard = self.env['buz.it.stock.issue.wizard'].create({
+            'request_id': self.id,
+            'line_ids': [
+                fields.Command.create({'request_line_id': line.id})
+                for line in self.line_ids
+            ],
+        })
+        return {
+            'name': _('Issue Items'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'buz.it.stock.issue.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
+    def action_end_outstanding(self):
+        """Close the remaining balance of every line with a cancellation
+        reason. Stock is never touched by this action.
+        """
         for request in self:
-            if request.state != 'approved':
+            if request.state not in ('submitted', 'partially_issued'):
                 raise UserError(_(
-                    'Only an Approved request can be issued.'
+                    'Only a Submitted or Partially Issued request can have '
+                    'its outstanding balance ended.'
                 ))
             if not request._is_support_agent():
-                raise UserError(_('Only an IT agent can issue items.'))
+                raise UserError(_(
+                    'Only an IT agent can end the outstanding balance.'
+                ))
+            if not request.line_ids:
+                raise UserError(_('This request has no lines.'))
             for line in request.line_ids:
-                if not line.issued_qty or line.issued_qty <= 0:
-                    line.issued_qty = line.approved_qty
-                if line.issued_qty > line.approved_qty:
+                if (
+                    float_compare(line.cancelled_qty, 0, precision_digits=0) > 0
+                    and not line.cancel_reason
+                ):
                     raise UserError(_(
-                        'Issued quantity cannot exceed approved quantity '
-                        'for %s.' % line.item_id.display_name
+                        'Please provide the reason for ending the '
+                        'outstanding balance of %s.',
+                        line.item_id.display_name,
                     ))
-                line._issue_stock()
+                if float_compare(
+                    line.remaining_qty, 0, precision_digits=0,
+                ) > 0:
+                    if not line.cancel_reason:
+                        raise UserError(_(
+                            'Please provide the reason for ending the '
+                            'outstanding balance of %s.',
+                            line.item_id.display_name,
+                        ))
+                    if float_compare(
+                        line.cancelled_qty, line.remaining_qty,
+                        precision_digits=0,
+                    ) < 0:
+                        raise UserError(_(
+                            'The cancelled quantity of %s must cover its '
+                            'remaining quantity (%s %s).',
+                            line.item_id.display_name,
+                            line.remaining_qty,
+                            line.unit or '',
+                        ))
+            for line in request.line_ids:
+                if not float_is_zero(line.remaining_qty, precision_digits=0):
+                    line.with_context(buz_issue_transition=True).write({
+                        'cancelled_qty': line.remaining_qty,
+                    })
             request.with_context(buz_issue_transition=True).write({
-                'state': 'issued',
-                'issue_date': fields.Date.context_today(request),
-                'issued_by': self.env.user.id,
+                'state': 'done',
             })
         return True
+
+    def _recompute_state_after_issue(self):
+        """Recompute the request state after items have been issued."""
+        for request in self:
+            if request.state not in ('submitted', 'partially_issued'):
+                continue
+            lines = request.line_ids
+            if all(
+                float_is_zero(line.remaining_qty, precision_digits=0)
+                for line in lines
+            ):
+                request.with_context(buz_issue_transition=True).write({
+                    'state': 'done',
+                    'issue_date': fields.Date.context_today(request),
+                    'issued_by': self.env.user.id,
+                })
+            elif any(
+                not float_is_zero(line.issued_qty, precision_digits=0)
+                for line in lines
+            ):
+                request.with_context(buz_issue_transition=True).write({
+                    'state': 'partially_issued',
+                    'issue_date': fields.Date.context_today(request),
+                    'issued_by': self.env.user.id,
+                })

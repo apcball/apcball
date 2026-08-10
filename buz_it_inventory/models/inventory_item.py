@@ -3,6 +3,8 @@ from collections import defaultdict
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+OPEN_REQUEST_STATES = ('submitted', 'partially_issued')
+
 
 class BuzItInventoryItem(models.Model):
     _name = 'buz.it.inventory.item'
@@ -18,8 +20,7 @@ class BuzItInventoryItem(models.Model):
     )
     item_type = fields.Selection([
         ('consumable', 'Consumable'),
-        ('equipment', 'Equipment'),
-        ('asset', 'Asset'),
+        ('non_serialized_equipment', 'Non-Serialized Equipment'),
     ], string='Item Type', required=True, default='consumable')
     unit = fields.Char(string='หน่วย', required=True, default='ชิ้น')
     max_per_request = fields.Float(
@@ -66,18 +67,19 @@ class BuzItInventoryItem(models.Model):
         'item_id',
         string='Issue Request Lines',
     )
-    reserved_qty = fields.Float(
-        compute='_compute_reserved_qty',
+    pending_qty = fields.Float(
+        compute='_compute_pending_qty',
         store=True,
-        string='ถูกจอง',
+        string='ค้างส่งมอบ',
         digits=(16, 0),
+        help='ยอดที่ถูกขอไว้แต่ยังไม่จ่าย (คำขอยังไม่เสร็จ)',
     )
     available_qty = fields.Float(
         compute='_compute_available_qty',
         store=True,
         string='พร้อมให้เบิก',
         digits=(16, 0),
-        help='ยอดคงเหลือจริงลบจำนวนที่ถูกจองในคำขอยังไม่เสร็จ',
+        help='ยอดคงเหลือจริงของสินค้า (การยื่นคำขอยังไม่จอง Stock)',
     )
     store_status = fields.Selection([
         ('ready', 'พร้อมเบิก'),
@@ -105,24 +107,24 @@ class BuzItInventoryItem(models.Model):
             )
 
     @api.depends(
-        'issue_request_line_ids.requested_qty',
-        'issue_request_line_ids.approved_qty',
+        'issue_request_line_ids.remaining_qty',
         'issue_request_line_ids.request_id.state',
     )
-    def _compute_reserved_qty(self):
+    def _compute_pending_qty(self):
+        grouped = defaultdict(float)
+        lines = self.env['buz.it.issue.request.line'].sudo().search([
+            ('item_id', 'in', self.ids),
+            ('request_id.state', 'in', list(OPEN_REQUEST_STATES)),
+        ])
+        for line in lines:
+            grouped[line.item_id.id] += line.remaining_qty
         for rec in self:
-            reserved = 0.0
-            for line in rec.issue_request_line_ids:
-                if line.request_id.state == 'submitted':
-                    reserved += line.requested_qty
-                elif line.request_id.state == 'approved':
-                    reserved += line.approved_qty
-            rec.reserved_qty = reserved
+            rec.pending_qty = grouped.get(rec.id, 0.0)
 
-    @api.depends('on_hand_qty', 'reserved_qty')
+    @api.depends('on_hand_qty')
     def _compute_available_qty(self):
         for rec in self:
-            rec.available_qty = rec.on_hand_qty - rec.reserved_qty
+            rec.available_qty = rec.on_hand_qty
 
     @api.depends('available_qty', 'low_stock_threshold')
     def _compute_store_status(self):
@@ -136,33 +138,6 @@ class BuzItInventoryItem(models.Model):
                 rec.store_status = 'low'
             else:
                 rec.store_status = 'ready'
-
-    def _get_reserved_qty(self):
-        """Return {item_id: reserved} for these items.
-
-        Reservation is held by lines of requests in 'submitted' (uses the
-        requested quantity) or 'approved' (uses the approved quantity).
-        """
-        reserved = defaultdict(float)
-        if not self.ids:
-            return reserved
-        lines = self.env['buz.it.issue.request.line'].sudo().search([
-            ('item_id', 'in', self.ids),
-        ])
-        for line in lines:
-            if line.request_id.state == 'submitted':
-                reserved[line.item_id.id] += line.requested_qty
-            elif line.request_id.state == 'approved':
-                reserved[line.item_id.id] += line.approved_qty
-        return reserved
-
-    def _get_available_qty(self):
-        """Return {item_id: on_hand - reserved} freshly from the database."""
-        reserved = self._get_reserved_qty()
-        return {
-            rec.id: rec.on_hand_qty - reserved.get(rec.id, 0.0)
-            for rec in self
-        }
 
     def action_request_item(self):
         """Create a Draft issue request for this item from the Store card."""
@@ -185,4 +160,3 @@ class BuzItInventoryItem(models.Model):
             'view_mode': 'form',
             'target': 'current',
         }
-

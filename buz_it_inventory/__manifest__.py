@@ -1,6 +1,6 @@
 {
     'name': 'IT Inventory Store',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'category': 'Services/IT',
     'summary': 'IT inventory store for materials and equipment',
     'license': 'LGPL-3',

@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class BuzItStockQuant(models.Model):
@@ -40,6 +40,26 @@ class BuzItStockQuant(models.Model):
          'One stock record per item and location.'),
     ]
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not self.env.context.get('buz_quant_write'):
+            raise UserError(_(
+                'Stock records can only be created through Receive, Issue '
+                'or Adjustment.'
+            ))
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if not self.env.context.get('buz_quant_write'):
+            raise UserError(_(
+                'Stock quantities can only be changed through Receive, '
+                'Issue or Adjustment.'
+            ))
+        return super().write(vals)
+
+    def unlink(self):
+        raise UserError(_('Stock records cannot be deleted.'))
+
     @api.constrains('inventory_item_id', 'location_id')
     def _check_company_consistency(self):
         for record in self:
@@ -52,4 +72,3 @@ class BuzItStockQuant(models.Model):
                 raise ValidationError(_(
                     'The inventory item and stock location must belong to the same company.'
                 ))
-

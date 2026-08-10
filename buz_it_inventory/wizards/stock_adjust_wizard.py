@@ -55,6 +55,12 @@ class BuzItStockAdjustWizard(models.TransientModel):
 
     def action_adjust(self):
         self.ensure_one()
+        if not self.env.user.has_group(
+            'buz_it_helpdesk.group_it_helpdesk_manager'
+        ):
+            raise UserError(_(
+                'Only a Helpdesk Manager can adjust stock.'
+            ))
         if self.new_qty < 0:
             raise UserError(_('ยอดใหม่ต้องไม่ติดลบ'))
         if self.location_id.company_id != self.inventory_item_id.company_id:
@@ -62,17 +68,26 @@ class BuzItStockAdjustWizard(models.TransientModel):
         diff = self.new_qty - self.current_qty
         if float_is_zero(diff, precision_digits=0):
             return {'type': 'ir.actions.act_window_close'}
+        self.env.cr.execute(
+            'SELECT id FROM buz_it_stock_quant '
+            'WHERE inventory_item_id = %s AND location_id = %s FOR UPDATE',
+            (self.inventory_item_id.id, self.location_id.id),
+        )
         quant = self.env['buz.it.stock.quant'].sudo().search([
             ('inventory_item_id', '=', self.inventory_item_id.id),
             ('location_id', '=', self.location_id.id),
         ], limit=1)
         if not quant:
-            quant = self.env['buz.it.stock.quant'].sudo().create({
+            quant = self.env['buz.it.stock.quant'].with_context(
+                buz_quant_write=True,
+            ).sudo().create({
                 'inventory_item_id': self.inventory_item_id.id,
                 'location_id': self.location_id.id,
                 'qty': 0.0,
             })
-        quant.qty = self.new_qty
+        quant.with_context(buz_quant_write=True).sudo().write({
+            'qty': self.new_qty,
+        })
         self.env['buz.it.stock.history'].sudo().create({
             'move_type': 'adjust',
             'inventory_item_id': self.inventory_item_id.id,

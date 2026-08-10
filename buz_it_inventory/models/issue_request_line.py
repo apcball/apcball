@@ -31,15 +31,27 @@ class BuzItIssueRequestLine(models.Model):
         required=True,
         default=0.0,
     )
-    approved_qty = fields.Float(
-        string='Approved Qty',
-        digits=(16, 0),
-        default=0.0,
-    )
     issued_qty = fields.Float(
         string='Issued Qty',
         digits=(16, 0),
         default=0.0,
+        help='ยอดที่จ่ายจริงสะสม',
+    )
+    cancelled_qty = fields.Float(
+        string='Cancelled Qty',
+        digits=(16, 0),
+        default=0.0,
+        help='จำนวนที่ยุติยอดค้างของรายการนี้',
+    )
+    cancel_reason = fields.Text(
+        string='Cancel Reason',
+        help='เหตุผลที่ยุติยอดค้าง',
+    )
+    remaining_qty = fields.Float(
+        compute='_compute_remaining_qty',
+        store=True,
+        string='ยอดคงค้าง',
+        digits=(16, 0),
     )
     note = fields.Text(string='Note')
     company_id = fields.Many2one(
@@ -66,11 +78,17 @@ class BuzItIssueRequestLine(models.Model):
         digits=(16, 0),
     )
 
+    @api.depends('requested_qty', 'issued_qty', 'cancelled_qty')
+    def _compute_remaining_qty(self):
+        for line in self:
+            line.remaining_qty = (
+                line.requested_qty - line.issued_qty - line.cancelled_qty
+            )
+
     @api.depends('item_id.available_qty')
     def _compute_available_qty(self):
-        available = self.item_id._get_available_qty()
         for line in self:
-            line.available_qty = available.get(line.item_id.id, 0.0)
+            line.available_qty = line.item_id.available_qty
 
     @api.constrains('item_id', 'company_id')
     def _check_company_consistency(self):
@@ -96,7 +114,7 @@ class BuzItIssueRequestLine(models.Model):
     def write(self, vals):
         for line in self:
             state = line.request_id.state
-            if state in ('issued', 'rejected', 'cancelled'):
+            if state in ('done', 'rejected', 'cancelled'):
                 raise UserError(_(
                     'Request lines cannot be edited after finalization.'
                 ))
@@ -104,13 +122,22 @@ class BuzItIssueRequestLine(models.Model):
                 raise UserError(_(
                     'Requested quantity can only be changed in Draft.'
                 ))
-            if 'approved_qty' in vals and state != 'submitted':
+            if 'item_id' in vals and state != 'draft':
                 raise UserError(_(
-                    'Approved quantity can only be set in Submitted state.'
+                    'The item can only be changed in Draft.'
                 ))
-            if 'issued_qty' in vals and state != 'approved':
+            if 'issued_qty' in vals and not self.env.context.get(
+                'buz_issue_transition'
+            ):
                 raise UserError(_(
-                    'Issued quantity can only be set in Approved state.'
+                    'Issued quantity can only be changed through the '
+                    'Issue wizard.'
+                ))
+            if (
+                'cancelled_qty' in vals or 'cancel_reason' in vals
+            ) and not self._current_user_is_support_agent():
+                raise UserError(_(
+                    'Only an IT agent can end the outstanding balance.'
                 ))
         return super().write(vals)
 
@@ -122,35 +149,7 @@ class BuzItIssueRequestLine(models.Model):
                 ))
         return super().unlink()
 
-    def _issue_stock(self):
-        """Deduct the issued quantity from on-hand stock across locations."""
-        self.ensure_one()
-        remaining = self.issued_qty
-        quants = self.env['buz.it.stock.quant'].sudo().search([
-            ('inventory_item_id', '=', self.item_id.id),
-            ('qty', '>', 0),
-        ], order='location_id, id')
-        for quant in quants:
-            if remaining <= 0:
-                break
-            take = min(quant.qty, remaining)
-            quant.qty -= take
-            remaining -= take
-            self.env['buz.it.stock.history'].sudo().create({
-                'move_type': 'out',
-                'inventory_item_id': self.item_id.id,
-                'location_id': quant.location_id.id,
-                'qty': -take,
-                'move_date': fields.Date.context_today(self),
-                'reference': self.request_id.name,
-                'note': _('จ่ายของตามคำขอ %s') % self.request_id.name,
-            })
-        if remaining > 0:
-            raise UserError(_(
-                'Insufficient stock for %s. Missing %s %s.'
-            ) % (
-                self.item_id.display_name,
-                remaining,
-                self.unit or '',
-            ))
-        return True
+    def _current_user_is_support_agent(self):
+        return self.env.user.has_group(
+            'buz_it_helpdesk.group_it_support_agent'
+        )

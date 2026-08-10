@@ -43,8 +43,8 @@
                                 <field name="name"/>
                                 <span t-if="record.state.raw_value == 'draft'" class="badge text-bg-secondary">Draft</span>
                                 <span t-elif="record.state.raw_value == 'submitted'" class="badge text-bg-warning">Submitted</span>
-                                <span t-elif="record.state.raw_value == 'approved'" class="badge text-bg-info">Approved</span>
-                                <span t-elif="record.state.raw_value == 'issued'" class="badge text-bg-success">Issued</span>
+                                <span t-elif="record.state.raw_value == 'partially_issued'" class="badge text-bg-info">Partially Issued</span>
+                                <span t-elif="record.state.raw_value == 'done'" class="badge text-bg-success">Done</span>
                                 <span t-elif="record.state.raw_value == 'rejected'" class="badge text-bg-danger">Rejected</span>
                                 <span t-else="" class="badge text-bg-secondary">Cancelled</span>
                             </div>
@@ -80,23 +80,23 @@
                     <button name="action_submit" string="ส่งคำขอ" type="object"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
-                    <button name="action_approve" string="อนุมัติ" type="object"
-                            class="btn-primary"
-                            groups="buz_it_helpdesk.group_it_support_agent"
-                            invisible="state != 'submitted'"/>
                     <button name="action_reject" string="ไม่อนุมัติ" type="object"
                             class="btn-danger"
                             groups="buz_it_helpdesk.group_it_support_agent"
                             invisible="state != 'submitted'"/>
-                    <button name="action_issue" string="จ่ายของ" type="object"
+                    <button name="action_issue_stock" string="จ่ายของ" type="object"
                             class="btn-primary"
                             groups="buz_it_helpdesk.group_it_support_agent"
-                            invisible="state != 'approved'"/>
+                            invisible="state not in ('submitted', 'partially_issued')"/>
+                    <button name="action_end_outstanding" string="ยุติยอดค้าง" type="object"
+                            class="btn-warning"
+                            groups="buz_it_helpdesk.group_it_support_agent"
+                            invisible="state not in ('submitted', 'partially_issued')"/>
                     <button name="action_cancel" string="ยกเลิก" type="object"
                             class="btn-secondary"
                             invisible="state not in ('draft', 'submitted')"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,submitted,approved,issued"/>
+                           statusbar_visible="draft,submitted,partially_issued,done"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -112,7 +112,7 @@
                             <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                             <field name="ticket_id"
                                    options="{'no_create': True}"
-                                   readonly="state in ('approved', 'issued', 'rejected', 'cancelled')"/>
+                                   readonly="state not in ('draft', 'submitted')"/>
                         </group>
                     </group>
                     <group string="เหตุผลการขอเบิก">
@@ -127,12 +127,17 @@
                                     <field name="unit" string="หน่วย"/>
                                     <field name="requested_qty" string="จำนวนขอ"
                                            readonly="state != 'draft'"/>
-                                    <field name="approved_qty" string="อนุมัติ"
+                                    <field name="issued_qty" string="จ่ายแล้ว"
                                            groups="buz_it_helpdesk.group_it_support_agent"
-                                           readonly="state != 'submitted'"/>
-                                    <field name="issued_qty" string="จ่ายจริง"
+                                           readonly="1"/>
+                                    <field name="cancelled_qty" string="ยุติยอด"
                                            groups="buz_it_helpdesk.group_it_support_agent"
-                                           readonly="state != 'approved'"/>
+                                           readonly="state not in ('submitted', 'partially_issued')"/>
+                                    <field name="cancel_reason" string="เหตุผลยุติยอด"
+                                           groups="buz_it_helpdesk.group_it_support_agent"
+                                           readonly="state not in ('submitted', 'partially_issued')"
+                                           placeholder="ระบุเหตุผลที่ยุติยอดค้าง"/>
+                                    <field name="remaining_qty" string="คงค้าง"/>
                                     <field name="available_qty" string="พร้อมเบิก"/>
                                     <field name="note" string="หมายเหตุ"/>
                                 </tree>
@@ -170,8 +175,8 @@
                 <field name="ticket_id" string="Ticket"/>
                 <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
                 <filter name="submitted" string="Submitted" domain="[('state', '=', 'submitted')]"/>
-                <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
-                <filter name="issued" string="Issued" domain="[('state', '=', 'issued')]"/>
+                <filter name="partially_issued" string="Partially Issued" domain="[('state', '=', 'partially_issued')]"/>
+                <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
                 <filter name="rejected" string="Rejected" domain="[('state', '=', 'rejected')]"/>
                 <filter name="cancelled" string="Cancelled" domain="[('state', '=', 'cancelled')]"/>
                 <group expand="0" string="Group By">
@@ -188,7 +193,7 @@
          ISSUE REQUEST ACTIONS
     ═══════════════════════════════════════════════════════════════ -->
     <record id="action_issue_request_my" model="ir.actions.act_window">
-        <field name="name">คำขอเบิกของฉัน</field>
+        <field name="name">My Requests</field>
         <field name="res_model">buz.it.issue.request</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_issue_request_search"/>
@@ -197,7 +202,7 @@
     </record>
 
     <record id="action_issue_request_all" model="ir.actions.act_window">
-        <field name="name">คำขอเบิกทั้งหมด</field>
+        <field name="name">All Requests</field>
         <field name="res_model">buz.it.issue.request</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_issue_request_search"/>
