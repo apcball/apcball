@@ -59,6 +59,25 @@
 .o_it_store_remove { padding: 0 4px; color: #9ca3af; }
 .o_it_store_remove:hover { color: #dc2626; }
 .o_it_store_submit { width: 100%; margin-top: 12px; }
+.o_it_store_modal_backdrop { position: fixed; inset: 0; z-index: 1050; display: grid; place-items: center; padding: 20px; background: rgba(31, 41, 55, .5); }
+.o_it_store_modal { display: flex; width: 480px; max-width: 100%; max-height: 80vh; flex-direction: column; overflow: hidden; border-radius: 12px; background: #fff; box-shadow: 0 18px 50px rgba(31, 41, 55, .28); }
+.o_it_store_modal_header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
+.o_it_store_modal_header h3 { margin: 0; color: #1f2937; font-size: 18px; font-weight: 700; }
+.o_it_store_modal_close { padding: 0 4px; color: #9ca3af; }
+.o_it_store_modal_close:disabled { opacity: .5; }
+.o_it_store_modal_close:hover { color: #dc2626; }
+.o_it_store_modal_body { flex: 1 1 auto; min-height: 0; padding: 18px 20px; overflow-y: auto; }
+.o_it_store_modal_summary { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.o_it_store_modal_row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.o_it_store_modal_row > span { color: #6b7280; font-size: 13px; }
+.o_it_store_modal_row > strong { overflow: hidden; max-width: 70%; color: #1f2937; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.o_it_store_modal_items { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.o_it_store_modal_items_header { display: flex; justify-content: space-between; padding: 8px 12px; color: #6b7280; background: #f7f8fa; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.o_it_store_modal_item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border-top: 1px solid #f0f0f0; }
+.o_it_store_modal_item_name { overflow: hidden; color: #1f2937; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.o_it_store_modal_item_qty { flex: 0 0 auto; color: #6b7280; font-size: 13px; }
+.o_it_store_modal_footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e5e7eb; }
+.o_it_store_modal_footer .btn { min-width: 130px; }
 .o_it_store_loading, .o_it_store_empty { padding: 70px; color: #6b7280; text-align: center; }
 
 @media (min-width: 1600px) {

@@ -14,7 +14,7 @@ export class ItStore extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
-        this.state = useState({ categories: [], items: [], search: "", categoryId: null, cart: {}, selections: {}, loading: true, submitting: false });
+        this.state = useState({ categories: [], items: [], search: "", categoryId: null, cart: {}, selections: {}, loading: true, submitting: false, modalOpen: false, modalSubmitting: false, requesterName: "", departmentName: "" });
         this.loadCatalog = this.loadCatalog.bind(this);
         this.selectCategory = this.selectCategory.bind(this);
         this.selectionQuantity = this.selectionQuantity.bind(this);
@@ -22,7 +22,9 @@ export class ItStore extends Component {
         this.setSelectionQuantity = this.setSelectionQuantity.bind(this);
         this.addSelectedItem = this.addSelectedItem.bind(this);
         this.removeItem = this.removeItem.bind(this);
-        this.createRequest = this.createRequest.bind(this);
+        this.openCreateModal = this.openCreateModal.bind(this);
+        this.closeModal = this.closeModal.bind(this);
+        this.confirmCreate = this.confirmCreate.bind(this);
         onWillStart(() => this.loadCatalog());
     }
 
@@ -102,20 +104,44 @@ export class ItStore extends Component {
     imageUrl(item) { return `/web/image?model=${ITEM_MODEL}&field=image_1920&id=${item.id}`; }
     itemTypeLabel(item) { return { consumable: "วัสดุสิ้นเปลือง", non_serialized_equipment: "อุปกรณ์ไม่ระบุหมายเลข" }[item.item_type] || (item.category_id && item.category_id[1]) || "ทั่วไป"; }
     statusLabel(item) { return { ready: "พร้อมเบิก", low: "ใกล้หมด", out: "หมด" }[item.store_status] || "ไม่พร้อมเบิก"; }
+    get departmentLabel() { return this.state.departmentName || "ไม่ระบุแผนก"; }
 
-    async createRequest() {
-        if (!this.cartLines.length || this.state.submitting) return;
+    async openCreateModal() {
+        if (!this.cartLines.length || this.state.submitting || this.state.modalOpen) return;
         this.state.submitting = true;
+        try {
+            const summary = await this.orm.call(ITEM_MODEL, "get_store_requester_summary", []);
+            this.state.requesterName = summary.requester_name;
+            this.state.departmentName = summary.department_name;
+            this.state.modalOpen = true;
+        } catch (error) {
+            this.notification.add(error.message || "ไม่สามารถแสดงข้อมูลผู้ขอได้", { type: "danger" });
+            await this.loadCatalog();
+        } finally {
+            this.state.submitting = false;
+        }
+    }
+
+    closeModal() {
+        if (this.state.modalSubmitting) return;
+        this.state.modalOpen = false;
+    }
+
+    async confirmCreate() {
+        if (!this.state.modalOpen || this.state.modalSubmitting || this.state.submitting) return;
+        this.state.modalSubmitting = true;
         try {
             const action = await this.orm.call(ITEM_MODEL, "action_create_store_request", [
                 this.cartLines.map(({ item, quantity }) => ({ item_id: item.id, quantity })),
             ]);
+            this.state.modalOpen = false;
             await this.action.doAction(action);
         } catch (error) {
+            this.state.modalOpen = false;
             this.notification.add(error.message || "ไม่สามารถสร้างคำขอเบิกได้", { type: "danger" });
             await this.loadCatalog();
         } finally {
-            this.state.submitting = false;
+            this.state.modalSubmitting = false;
         }
     }
 }

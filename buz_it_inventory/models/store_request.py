@@ -7,6 +7,23 @@ class BuzItInventoryStoreRequest(models.Model):
     _inherit = 'buz.it.inventory.item'
 
     @api.model
+    def get_store_requester_summary(self):
+        """Return the current user's name and department for the Store
+        confirmation modal. Only the active user is referenced, never an ID
+        passed from the frontend, and no sudo is used.
+        """
+        user = self.env.user
+        employee = user.employee_id
+        return {
+            'requester_name': user.display_name or user.name or '',
+            'department_name': (
+                employee.department_id.name
+                if employee and employee.department_id
+                else False
+            ),
+        }
+
+    @api.model
     def action_create_store_request(self, lines):
         """Create one Draft issue request from the Store cart."""
         if not isinstance(lines, list) or not lines:

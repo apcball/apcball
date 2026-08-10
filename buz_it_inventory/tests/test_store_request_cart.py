@@ -73,3 +73,57 @@ class TestStoreRequestCart(TransactionCase):
             ).action_create_store_request([
                 {'item_id': self.item.id, 'quantity': 4},
             ])
+
+    def test_requester_summary_with_employee_and_department(self):
+        department = self.env['hr.department'].create({
+            'name': 'Store Cart IT Department',
+        })
+        self.env['hr.employee'].create({
+            'name': 'Store Cart Employee',
+            'user_id': self.requester.id,
+            'department_id': department.id,
+        })
+        summary = self.env['buz.it.inventory.item'].with_user(
+            self.requester,
+        ).get_store_requester_summary()
+        self.assertEqual(
+            summary['requester_name'], self.requester.display_name,
+        )
+        self.assertEqual(summary['department_name'], 'Store Cart IT Department')
+
+    def test_requester_summary_without_department(self):
+        summary = self.env['buz.it.inventory.item'].with_user(
+            self.requester,
+        ).get_store_requester_summary()
+        self.assertTrue(summary['requester_name'])
+        self.assertFalse(summary['department_name'])
+
+    def test_requester_summary_uses_current_user(self):
+        other = self.env['res.users'].with_context(
+            no_reset_password=True,
+        ).create({
+            'name': 'Store Cart Other User',
+            'login': 'store_cart_other_user',
+            'email': 'store_cart_other_user@example.com',
+            'company_id': self.env.company.id,
+            'company_ids': [fields.Command.set([self.env.company.id])],
+            'groups_id': [fields.Command.set([
+                self.env.ref('base.group_user').id,
+                self.env.ref('buz_it_helpdesk.group_it_requester').id,
+            ])],
+        })
+        other_department = self.env['hr.department'].create({
+            'name': 'Store Cart Other Department',
+        })
+        self.env['hr.employee'].create({
+            'name': 'Store Cart Other Employee',
+            'user_id': other.id,
+            'department_id': other_department.id,
+        })
+        summary = self.env['buz.it.inventory.item'].with_user(
+            other,
+        ).get_store_requester_summary()
+        self.assertEqual(summary['requester_name'], other.display_name)
+        self.assertEqual(
+            summary['department_name'], other_department.name,
+        )
