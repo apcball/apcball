@@ -189,7 +189,70 @@ class BuzItIssueRequest(models.Model):
             request.with_context(buz_issue_transition=True).write({
                 'state': 'submitted',
             })
-        return True
+        return self._schedule_it_activities()
+
+    def _it_activity_recipients(self):
+        """Active IT users who can handle this request's company, excluding
+        the requester. Helpdesk Managers are included because their group
+        implies the Support Agent group."""
+        self.ensure_one()
+        group = self.env.ref('buz_it_helpdesk.group_it_support_agent')
+        return self.env['res.users'].search([
+            ('active', '=', True),
+            ('groups_id', 'in', group.id),
+            ('company_ids', 'in', self.company_id.id),
+        ]) - self.requester_id
+
+    def _schedule_it_activities(self):
+        """Notify every IT recipient with a To Do activity referencing the
+        submitted request. Returns the number of activities created."""
+        activity_type = self.env.ref('mail.mail_activity_data_todo')
+        activity_model = self.env['mail.activity']
+        count = 0
+        for request in self:
+            recipients = request._it_activity_recipients()
+            if not recipients:
+                continue
+            existing_user_ids = set(activity_model.search([
+                ('res_model', '=', request._name),
+                ('res_id', '=', request.id),
+                ('activity_type_id', '=', activity_type.id),
+                ('user_id', 'in', recipients.ids),
+                ('date_done', '=', False),
+            ]).mapped('user_id').ids)
+            lines_text = '\n'.join(
+                '- %s: %s %s' % (
+                    line.item_id.display_name,
+                    int(line.requested_qty),
+                    line.unit or '',
+                )
+                for line in request.line_ids
+            )
+            department = (
+                request.department_id.name
+                if request.department_id
+                else _('Not specified')
+            )
+            note = _(
+                'Issue Request %(name)s was submitted by %(requester)s.\n'
+                'Department: %(department)s\n'
+                'Items:\n%(items)s',
+                name=request.name,
+                requester=request.requester_id.display_name,
+                department=department,
+                items=lines_text,
+            )
+            for user in recipients:
+                if user.id in existing_user_ids:
+                    continue
+                request.sudo().activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    user_id=user.id,
+                    summary=_('New Issue Request %s') % request.name,
+                    note=note,
+                )
+                count += 1
+        return count
 
     def action_reject(self):
         for request in self:

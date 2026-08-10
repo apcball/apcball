@@ -24,8 +24,8 @@ class BuzItInventoryStoreRequest(models.Model):
         }
 
     @api.model
-    def action_create_store_request(self, lines):
-        """Create one Draft issue request from the Store cart."""
+    def _create_store_request(self, lines):
+        """Validate the Store cart lines and create one Draft Issue Request."""
         if not isinstance(lines, list) or not lines:
             raise UserError(_('Please add at least one item to the request.'))
 
@@ -67,7 +67,14 @@ class BuzItInventoryStoreRequest(models.Model):
                 'requested_qty': quantity,
             }))
 
-        request = self.env['buz.it.issue.request'].create({'line_ids': request_lines})
+        return self.env['buz.it.issue.request'].create({
+            'line_ids': request_lines,
+        })
+
+    @api.model
+    def action_create_store_request(self, lines):
+        """Create one Draft issue request from the Store cart and open it."""
+        request = self._create_store_request(lines)
         return {
             'name': _('Issue Request'),
             'type': 'ir.actions.act_window',
@@ -76,4 +83,17 @@ class BuzItInventoryStoreRequest(models.Model):
             'view_mode': 'form',
             'views': [(self.env.ref('buz_it_inventory.view_issue_request_form').id, 'form')],
             'target': 'current',
+        }
+
+    @api.model
+    def action_create_and_submit_store_request(self, lines):
+        """Create an Issue Request from the Store cart, submit it to IT and
+        notify the IT agents. Returns a summary dict, not a form action."""
+        request = self._create_store_request(lines)
+        activity_count = request.action_submit()
+        return {
+            'request_id': request.id,
+            'request_name': request.name,
+            'state': request.state,
+            'activity_count': activity_count,
         }

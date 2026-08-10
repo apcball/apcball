@@ -12,7 +12,6 @@ export class ItStore extends Component {
 
     setup() {
         this.orm = useService("orm");
-        this.action = useService("action");
         this.notification = useService("notification");
         this.state = useState({ categories: [], items: [], search: "", categoryId: null, cart: {}, selections: {}, loading: true, submitting: false, modalOpen: false, modalSubmitting: false, requesterName: "", departmentName: "" });
         this.loadCatalog = this.loadCatalog.bind(this);
@@ -131,15 +130,20 @@ export class ItStore extends Component {
         if (!this.state.modalOpen || this.state.modalSubmitting || this.state.submitting) return;
         this.state.modalSubmitting = true;
         try {
-            const action = await this.orm.call(ITEM_MODEL, "action_create_store_request", [
+            const result = await this.orm.call(ITEM_MODEL, "action_create_and_submit_store_request", [
                 this.cartLines.map(({ item, quantity }) => ({ item_id: item.id, quantity })),
             ]);
             this.state.modalOpen = false;
-            await this.action.doAction(action);
-        } catch (error) {
-            this.state.modalOpen = false;
-            this.notification.add(error.message || "ไม่สามารถสร้างคำขอเบิกได้", { type: "danger" });
+            this.state.cart = {};
+            this.state.selections = {};
+            if (result.activity_count > 0) {
+                this.notification.add("ส่งคำขอให้ IT แล้ว" + (result.request_name ? `: ${result.request_name}` : ""), { type: "success" });
+            } else {
+                this.notification.add("ส่งคำขอให้ IT แล้ว แต่ยังไม่มีผู้ใช้ IT รับการแจ้งเตือน", { type: "warning" });
+            }
             await this.loadCatalog();
+        } catch (error) {
+            this.notification.add(error.message || "ไม่สามารถสร้างคำขอเบิกได้", { type: "danger" });
         } finally {
             this.state.modalSubmitting = false;
         }
