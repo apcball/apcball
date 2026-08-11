@@ -24,10 +24,13 @@ class BuzItInventoryStoreRequest(models.Model):
         }
 
     @api.model
-    def _create_store_request(self, lines):
+    def _create_store_request(self, lines, reason=None, require_reason=False):
         """Validate the Store cart lines and create one Draft Issue Request."""
         if not isinstance(lines, list) or not lines:
             raise UserError(_('Please add at least one item to the request.'))
+        reason = (reason or '').strip()
+        if require_reason and not reason:
+            raise ValidationError(_('Please provide a reason for the request.'))
 
         quantities = {}
         for line in lines:
@@ -69,6 +72,7 @@ class BuzItInventoryStoreRequest(models.Model):
 
         return self.env['buz.it.issue.request'].create({
             'line_ids': request_lines,
+            'reason': reason or False,
         })
 
     @api.model
@@ -86,10 +90,10 @@ class BuzItInventoryStoreRequest(models.Model):
         }
 
     @api.model
-    def action_create_and_submit_store_request(self, lines):
+    def action_create_and_submit_store_request(self, lines, reason=None):
         """Create an Issue Request from the Store cart, submit it to IT and
         notify the IT agents. Returns a summary dict, not a form action."""
-        request = self._create_store_request(lines)
+        request = self._create_store_request(lines, reason=reason, require_reason=True)
         activity_count = request.action_submit()
         return {
             'request_id': request.id,
