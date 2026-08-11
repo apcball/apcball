@@ -256,6 +256,34 @@ class HelpdeskTicket(models.Model):
             )
         return super().create(vals_list)
 
+    def _notify_by_web_push_prepare_payload(self, message, msg_vals=False):
+        payload = super()._notify_by_web_push_prepare_payload(
+            message,
+            msg_vals=msg_vals,
+        )
+        if not self.env.context.get('buz_helpdesk_new_ticket_push'):
+            return payload
+
+        ticket = self[:1]
+        if not ticket:
+            return payload
+
+        payload['title'] = _('BUZ IT Helpdesk')
+        payload['options']['icon'] = (
+            '/buz_it_helpdesk/static/description/icon.png'
+        )
+        payload['options']['body'] = _(
+            'Ticket: %(ticket)s\nSubject: %(subject)s\nRequester: %(requester)s',
+            ticket=ticket.display_name,
+            subject=ticket.subject,
+            requester=ticket.requester_id.display_name,
+        )
+        payload['options']['data'] = {
+            'model': ticket._name,
+            'res_id': ticket.id,
+        }
+        return payload
+
     def action_create_ticket(self):
         self.ensure_one()
         if (
@@ -300,7 +328,9 @@ class HelpdeskTicket(models.Model):
         for user in recipients:
             if user.id in existing_user_ids:
                 continue
-            self.activity_schedule(
+            self.with_context(
+                buz_helpdesk_new_ticket_push=True
+            ).activity_schedule(
                 'mail.mail_activity_data_todo',
                 user_id=user.id,
                 summary=_('New IT Helpdesk Ticket'),

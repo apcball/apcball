@@ -353,3 +353,36 @@ class TestTicketKanbanStage(TransactionCase):
                 ]
             )
         )
+
+    def test_new_ticket_push_payload_is_brand_and_ticket_specific(self):
+        ticket = self._ticket(subject='VPN access is unavailable')
+        message = ticket.with_user(self.requester).message_post(
+            body='New IT Helpdesk ticket notification',
+        )
+
+        payload = ticket.with_context(
+            buz_helpdesk_new_ticket_push=True,
+        )._notify_by_web_push_prepare_payload(message)
+
+        self.assertEqual(payload['title'], 'BUZ IT Helpdesk')
+        self.assertIn(ticket.display_name, payload['options']['body'])
+        self.assertIn(ticket.subject, payload['options']['body'])
+        self.assertIn(ticket.requester_id.display_name, payload['options']['body'])
+        self.assertEqual(
+            payload['options']['icon'],
+            '/buz_it_helpdesk/static/description/icon.png',
+        )
+        self.assertEqual(
+            payload['options']['data'],
+            {'model': ticket._name, 'res_id': ticket.id},
+        )
+
+    def test_non_ticket_push_payload_is_not_brand_overridden(self):
+        ticket = self._ticket(subject='Standard notification')
+        message = ticket.with_user(self.requester).message_post(
+            body='Standard notification',
+        )
+
+        payload = ticket._notify_by_web_push_prepare_payload(message)
+
+        self.assertNotEqual(payload['title'], 'BUZ IT Helpdesk')
