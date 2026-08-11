@@ -253,3 +253,103 @@ class TestTicketKanbanStage(TransactionCase):
 
         ticket.invalidate_recordset()
         self.assertEqual(ticket.stage_id, self.stage_pending_user)
+
+    def _activity_domain(self, ticket):
+        return [
+            ('res_model', '=', ticket._name),
+            ('res_id', '=', ticket.id),
+            ('activity_type_id', '=', self.env.ref(
+                'mail.mail_activity_data_todo'
+            ).id),
+            ('date_done', '=', False),
+        ]
+
+    def test_new_ticket_activity_targets_active_support_in_ticket_company(self):
+        other_company = self.env['res.company'].create({
+            'name': 'Notification Other Company',
+        })
+        cross_company_support = self.env['res.users'].create({
+            'name': 'Cross Company Support',
+            'login': 'cross-company-support',
+            'company_id': other_company.id,
+            'company_ids': [Command.set([other_company.id])],
+            'groups_id': [Command.set([
+                self.group_user.id,
+                self.group_support.id,
+            ])],
+        })
+        inactive_support = self.env['res.users'].create({
+            'name': 'Inactive Support',
+            'login': 'inactive-support',
+            'groups_id': [Command.set([
+                self.group_user.id,
+                self.group_support.id,
+            ])],
+            'active': False,
+        })
+        ticket = self._ticket(
+            stage_id=self.env.ref('buz_it_helpdesk.stage_draft').id,
+        )
+
+        ticket.with_user(self.requester).action_create_ticket()
+
+        activities = self.env['mail.activity'].search(
+            self._activity_domain(ticket)
+        )
+        self.assertSetEqual(
+            set(activities.mapped('user_id').ids),
+            {self.support.id, self.manager.id},
+        )
+        self.assertNotIn(cross_company_support, activities.mapped('user_id'))
+        self.assertNotIn(inactive_support, activities.mapped('user_id'))
+        self.assertNotIn(self.requester, activities.mapped('user_id'))
+
+    def test_new_ticket_activity_does_not_duplicate_existing_intake_activity(self):
+        ticket = self._ticket(
+            stage_id=self.env.ref('buz_it_helpdesk.stage_draft').id,
+        )
+        ticket.activity_schedule(
+            'mail.mail_activity_data_todo',
+            user_id=self.support.id,
+            summary='New IT Helpdesk Ticket',
+            note='Existing intake activity',
+        )
+
+        ticket.with_user(self.requester).action_create_ticket()
+
+        support_activities = self.env['mail.activity'].search(
+            self._activity_domain(ticket) + [
+                ('user_id', '=', self.support.id),
+                ('summary', '=', 'New IT Helpdesk Ticket'),
+            ]
+        )
+        self.assertEqual(len(support_activities), 1)
+
+    def test_receive_completes_only_system_intake_activities(self):
+        team = self.env['buz.helpdesk.team'].create({
+            'name': 'Notification Receive Team',
+            'user_ids': [Command.set([self.support.id])],
+        })
+        ticket = self._ticket(stage_id=self.stage_new.id)
+        ticket.activity_schedule(
+            'mail.mail_activity_data_todo',
+            user_id=self.support.id,
+            summary='New IT Helpdesk Ticket',
+        )
+        unrelated = ticket.activity_schedule(
+            'mail.mail_activity_data_todo',
+            user_id=self.support.id,
+            summary='Unrelated follow-up',
+        )
+
+        ticket.with_user(self.support).action_receive_ticket()
+
+        self.assertEqual(ticket.team_id, team)
+        self.assertTrue(self.env['mail.activity'].browse(unrelated.id).exists())
+        self.assertFalse(
+            self.env['mail.activity'].search(
+                self._activity_domain(ticket) + [
+                    ('summary', '=', 'New IT Helpdesk Ticket'),
+                ]
+            )
+        )

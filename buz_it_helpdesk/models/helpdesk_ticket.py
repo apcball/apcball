@@ -272,6 +272,7 @@ class HelpdeskTicket(models.Model):
             ('groups_id', 'in', self.env.ref(
                 'buz_it_helpdesk.group_it_support_agent'
             ).id),
+            ('company_ids', 'in', self.company_id.id),
         ]) - self.requester_id
         if not recipients:
             raise UserError(_('No active IT Support Agent is available.'))
