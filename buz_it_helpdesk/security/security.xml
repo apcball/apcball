@@ -48,4 +48,17 @@
         <field name="domain_force">[('id', '!=', 0)]</field>
         <field name="groups" eval="[(4, ref('group_it_helpdesk_manager'))]"/>
     </record>
+
+    <record id="rule_helpdesk_line_group_company" model="ir.rule">
+        <field name="name">Helpdesk LINE groups: assigned companies</field>
+        <field name="model_id" ref="model_buz_helpdesk_line_group"/>
+        <field name="domain_force">['|', ('company_ids', '=', False), ('company_ids', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_manager'))]"/>
+    </record>
+    <record id="rule_helpdesk_line_queue_company" model="ir.rule">
+        <field name="name">Helpdesk LINE queue: company</field>
+        <field name="model_id" ref="model_buz_helpdesk_line_queue"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_manager'))]"/>
+    </record>
 </odoo>

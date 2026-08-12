@@ -13,15 +13,16 @@ import odoo.http
 _logger = logging.getLogger(__name__)
 
 _original_get_session = None
+_DB_RESOLUTION_PATHS = ('/mcp/', '/buz_it_helpdesk/line/webhook')
 
 
 def _patched_get_session_and_dbname(self):
-    """Resolve DB from X-Odoo-DB header or db query param for /mcp/ requests."""
+    """Resolve DB from X-Odoo-DB header or db query param for public API paths."""
     session, dbname = _original_get_session(self)
 
     if not dbname:
         path = self.httprequest.path
-        if path.startswith('/mcp/'):
+        if path.startswith(_DB_RESOLUTION_PATHS):
             db = self.httprequest.headers.get('X-Odoo-DB') or self.httprequest.args.get('db')
             if db:
                 from odoo.http import db_filter

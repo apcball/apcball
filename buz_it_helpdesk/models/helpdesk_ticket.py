@@ -1,5 +1,9 @@
+import logging
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class HelpdeskTicket(models.Model):
@@ -336,7 +340,32 @@ class HelpdeskTicket(models.Model):
                 summary=_('New IT Helpdesk Ticket'),
                 note=note,
             )
+        self._enqueue_line_notification()
         return True
+
+    def _enqueue_line_notification(self):
+        """Queue a LINE group notification without affecting Ticket creation."""
+        self.ensure_one()
+        try:
+            config = self.env['buz.helpdesk.line.config'].sudo().get_singleton()
+            company = self.company_id.sudo()
+            group = company.helpdesk_line_group_id
+            if not config.active or not company.helpdesk_line_enabled or not group or not group.active:
+                return False
+            queue = self.env['buz.helpdesk.line.queue'].sudo()
+            if queue.search_count([('ticket_id', '=', self.id), ('line_group_id', '=', group.id)]):
+                return False
+            queue.create({
+                'ticket_id': self.id,
+                'company_id': self.company_id.id,
+                'line_group_id': group.id,
+                'target_id': group.line_group_id,
+                'message': self.env['buz.helpdesk.line.service'].build_ticket_message(self),
+            })
+            return True
+        except Exception:
+            _logger.exception('Unable to queue LINE notification for Helpdesk Ticket %s', self.id)
+            return False
 
     def action_close_ticket(self):
         self.ensure_one()
