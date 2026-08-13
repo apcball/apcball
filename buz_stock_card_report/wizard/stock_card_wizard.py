@@ -143,6 +143,8 @@ class StockCardWizard(models.TransientModel):
                     "date": line.date,
                     "doc_type": picking.picking_type_id.name if picking else (line.move_id.picking_type_id.name or ""),
                     "doc_number": picking.name if picking else (line.reference or line.move_id.reference or ""),
+                    "location_from": line.location_id.display_name,
+                    "location_to": line.location_dest_id.display_name,
                     "opening": opening_for_row,
                     "in_qty": in_qty,
                     "out_qty": out_qty,

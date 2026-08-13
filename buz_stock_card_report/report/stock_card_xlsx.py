@@ -1,6 +1,9 @@
 from odoo import models
 
-COLUMN_HEADERS = ["ลำดับ", "วันที่", "เอกสาร", "เลขที่", "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ"]
+COLUMN_HEADERS = [
+    "ลำดับ", "วันที่", "เอกสาร", "เลขที่", "ต้นทาง", "ปลายทาง",
+    "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ",
+]
 
 
 class StockCardReportXlsx(models.AbstractModel):
@@ -23,7 +26,8 @@ class StockCardReportXlsx(models.AbstractModel):
         sheet.set_column("B:B", 12)
         sheet.set_column("C:C", 22)
         sheet.set_column("D:D", 16)
-        sheet.set_column("E:H", 12)
+        sheet.set_column("E:F", 20)
+        sheet.set_column("G:J", 12)
 
         row = 0
         for wizard in wizards:
@@ -80,10 +84,12 @@ class StockCardReportXlsx(models.AbstractModel):
                     sheet.write_datetime(row, 1, line["date"], date_format)
                     sheet.write(row, 2, line["doc_type"] or "", text_format)
                     sheet.write(row, 3, line["doc_number"] or "", text_format)
-                    sheet.write(row, 4, line["opening"], number_format)
-                    sheet.write(row, 5, line["in_qty"], number_format)
-                    sheet.write(row, 6, line["out_qty"], number_format)
-                    sheet.write(row, 7, line["balance"], number_format)
+                    sheet.write(row, 4, line["location_from"] or "", text_format)
+                    sheet.write(row, 5, line["location_to"] or "", text_format)
+                    sheet.write(row, 6, line["opening"], number_format)
+                    sheet.write(row, 7, line["in_qty"], number_format)
+                    sheet.write(row, 8, line["out_qty"], number_format)
+                    sheet.write(row, 9, line["balance"], number_format)
                     row += 1
 
                 row += 1
