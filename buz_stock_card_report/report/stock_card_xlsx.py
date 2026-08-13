@@ -46,6 +46,19 @@ class StockCardReportXlsx(models.AbstractModel):
             sheet.write(row, 1, warehouse.name, wh_format)
             row += 1
 
+            if wizard.location_ids:
+                selected_locations = wizard.location_ids.filtered(
+                    lambda loc: loc.id in warehouse_loc_ids
+                )
+                if selected_locations:
+                    sheet.write(row, 0, "ที่ตั้ง", wh_format)
+                    sheet.write(
+                        row, 1,
+                        ", ".join(selected_locations.mapped("display_name")),
+                        wh_format,
+                    )
+                    row += 1
+
             for product in products:
                 opening_balance, lines = wizard.get_stock_card_lines(warehouse, product)
                 if not lines and not opening_balance:
