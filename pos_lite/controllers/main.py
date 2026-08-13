@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import http, fields
 from odoo.http import request
 from odoo.exceptions import UserError, ValidationError, MissingError, AccessError
@@ -10,7 +12,90 @@ _HANDLED_EXCEPTIONS = (UserError, ValidationError, MissingError, AccessError)
 # Field whitelists for controller-built O2M commands — defend against field
 # injection from the terminal client (no state/company_id/is_return/etc.).
 _ORDER_LINE_FIELDS = ('product_id', 'description', 'qty', 'price_unit', 'discount', 'discount_type')
-_PAYMENT_FIELDS = ('payment_method', 'amount', 'journal_id', 'reference', 'note', 'payment_date')
+
+
+def _terminal_product_domain(product_ids_in_stock):
+    """Return the products that can be selected by the terminal.
+
+    Stockable products must have stock in the selected warehouse. Service
+    products do not use stock quants, so they remain available when the stock
+    list is empty.
+    """
+    return [
+        ('sale_ok', '=', True),
+        ('can_be_pos', '=', True),
+        '|',
+        ('type', '=', 'service'),
+        ('id', 'in', product_ids_in_stock),
+    ]
+
+
+def _get_terminal_location(config):
+    """Resolve the stock location the terminal reads product stock from.
+
+    With per-location configuration, every active config is bound to a
+    stock.location, so the location IS the config's identity. The warehouse
+    fallback is kept only for legacy configs that predate the constraint.
+    """
+    if config and config.location_id:
+        return config.location_id
+    if config and config.warehouse_id:
+        return config.warehouse_id.lot_stock_id
+    return False
+
+
+def _resolve_terminal_location(env, cid, session_id=False, warehouse_id=False):
+    """Resolve the single stock location a terminal call should read/sum
+    stock from, given the same session/warehouse-id contract used by
+    /api/products. Shared so every stock-reporting endpoint (grid, search,
+    ...) agrees on "here" instead of drifting into a company-wide sum.
+    """
+    warehouse = False
+    config = False
+
+    # When a session is provided, the location is locked to the session's
+    # config — ignore any client-supplied warehouse_id (per-location
+    # terminal contract). The warehouse_id param is honoured only for
+    # legacy callers that hit the endpoint without a session.
+    if session_id:
+        session = env['pos.lite.session'].sudo().browse(int(session_id))
+        if session.exists() and session.company_id.id in env.companies.ids:
+            config = session.config_id
+            if session.config_id.warehouse_id:
+                warehouse = session.config_id.warehouse_id
+    elif warehouse_id:
+        warehouse = env['stock.warehouse'].sudo().search([
+            ('id', '=', int(warehouse_id)),
+            ('company_id', '=', cid),
+        ], limit=1)
+    if not warehouse:
+        config = env['pos.lite.config'].get_default_config()
+        if config and config.warehouse_id:
+            warehouse = config.warehouse_id
+    if not warehouse:
+        warehouse = env['stock.warehouse'].search([
+            ('company_id', '=', cid),
+        ], limit=1)
+
+    return _get_terminal_location(config) if config else (warehouse.lot_stock_id if warehouse else False)
+
+
+def _add_kit_products_in_stock(env, location_id, product_ids_in_stock, qty_map, own_quant_product_ids):
+    """Append BOM-kit products buildable at location_id to product_ids_in_stock.
+
+    Products that already carry their own stock.quant at this location are
+    skipped — physical stock wins — even if that quant is fully reserved
+    (free qty 0). Excluding only qty>0 products would let a manufactured,
+    already-stocked product that's sold out/reserved fall through to the
+    BOM buildable-qty formula and show phantom availability computed from
+    raw-component stock instead of its own (zero) free quant. Delegates the
+    actual computation to product.product so the normal POS order form can
+    reuse the same logic (see models/product_product.py::_kit_stock_map).
+    """
+    kit_qty_map = env['product.product']._pos_lite_kit_stock_map(location_id, own_quant_product_ids)
+    for product_id, qty in kit_qty_map.items():
+        product_ids_in_stock.append(product_id)
+        qty_map[product_id] = qty
 
 
 def _sanitize_o2m_payload(raw, allowed_fields):
@@ -38,9 +123,26 @@ class PosLiteController(http.Controller):
     # ─── Helpers ────────────────────────────────────────────────
 
     def _get_json_data(self):
-        """Extract JSON body from request."""
-        data = request.jsonrequest if hasattr(request, 'jsonrequest') else {}
-        return data if isinstance(data, dict) else {}
+        """Extract JSON-RPC params from the request body (Odoo 17).
+
+        Odoo 17 removed `request.jsonrequest`; the parsed body is available via
+        `request.get_json_data()` and the RPC params also land in
+        `request.params`. Support both plain-dict and JSON-RPC envelopes.
+        """
+        data = {}
+        try:
+            data = request.get_json_data()
+        except Exception:
+            data = {}
+        if isinstance(data, dict) and isinstance(data.get('params'), dict):
+            data = data['params']
+        if not isinstance(data, dict):
+            data = {}
+        # Merge dispatcher params (covers odoo.jsonRpc-style clients)
+        params = getattr(request, 'params', None)
+        if isinstance(params, dict):
+            data = {**params, **data}
+        return data
 
     def _get_company_id(self):
         """Current user's active company ID."""
@@ -62,8 +164,21 @@ class PosLiteController(http.Controller):
     @http.route('/pos_lite/ui', type='http', auth='user')
     def pos_lite_ui(self, **kwargs):
         session_id = kwargs.get('session_id')
+        try:
+            session_id = int(session_id) if session_id else False
+        except (ValueError, TypeError):
+            session_id = False
+        if not session_id:
+            # No session in the URL — fall back to the user's open session so
+            # the terminal can be bookmarked directly at /pos_lite/ui.
+            session = request.env['pos.lite.session'].search([
+                ('state', '=', 'opened'),
+                ('company_id', '=', request.env.company.id),
+            ], order='id desc', limit=1)
+            session_id = session.id or False
         response = request.render('pos_lite.pos_lite_terminal', {
-            'session_id': session_id and int(session_id) or False,
+            'session_id': session_id,
+            'is_manager': request.env.user.has_group('pos_lite.group_pos_lite_manager'),
         })
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
@@ -81,24 +196,43 @@ class PosLiteController(http.Controller):
                 'employees': [],
                 'default_warehouse_id': False,
                 'default_warehouse_name': '',
+                'default_location_id': False,
+                'default_location_name': '',
                 'default_pricelist_id': False,
                 'default_pricelist_name': '',
             }
             if session_id:
                 session = request.env['pos.lite.session'].sudo().browse(int(session_id))
                 if session.exists() and session.company_id.id in request.env.companies.ids:
+                    result['session_name'] = session.name
+                    result['session_state'] = session.state
                     # Only show employees assigned to this session
-                    employees = session.employee_ids or session.employee_id
+                    employees = session.employee_ids | session.employee_id
                     if employees:
                         result['employees'] = [{'id': e.id, 'name': e.name} for e in employees]
                     if session.config_id.warehouse_id:
                         w = session.config_id.warehouse_id
                         result['default_warehouse_id'] = w.id
                         result['default_warehouse_name'] = w.name
+                    if session.config_id.location_id:
+                        loc = session.config_id.location_id
+                        result['default_location_id'] = loc.id
+                        result['default_location_name'] = loc.display_name
                     if session.config_id.pricelist_id:
                         p = session.config_id.pricelist_id
                         result['default_pricelist_id'] = p.id
                         result['default_pricelist_name'] = p.name
+                    if session.config_id.default_trade_channel:
+                        result['default_trade_channel'] = session.config_id.default_trade_channel
+                    else:
+                        result['default_trade_channel'] = session.current_trade_channel or False
+                    # Trade channel options for the terminal dropdown — the
+                    # dynamic selection lives on pos.lite.order itself.
+                    fg = request.env['pos.lite.order'].fields_get(['trade_channel'])
+                    selection = fg.get('trade_channel', {}).get('selection') or []
+                    result['trade_channel_options'] = [
+                        {'key': k, 'value': v} for k, v in selection
+                    ]
             # No session_id → no employees (terminal requires a session to start)
             return {'success': True, **result}
         except _HANDLED_EXCEPTIONS as e:
@@ -118,6 +252,20 @@ class PosLiteController(http.Controller):
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── States (Thailand only) ────────────────────────────────
+
+    @http.route('/pos_lite/api/states', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_states(self, **kwargs):
+        try:
+            states = request.env['res.country.state'].search_read(
+                [('country_id.code', '=', 'TH')],
+                ['name'],
+                order='name',
+            )
+            return {'success': True, 'states': states}
+        except _HANDLED_EXCEPTIONS as e:
+            return {'success': False, 'error': str(e)}
+
     # ─── Products ───────────────────────────────────────────────
 
     @http.route('/pos_lite/api/products', type='json', auth='user', methods=['POST'], csrf=False)
@@ -126,76 +274,92 @@ class PosLiteController(http.Controller):
             data = self._get_json_data()
             session_id = data.get('session_id')
             warehouse_id = data.get('warehouse_id')
-            warehouse = False
             cid = self._get_company_id()
 
-            if warehouse_id:
-                warehouse = request.env['stock.warehouse'].sudo().search([
-                    ('id', '=', int(warehouse_id)),
-                    ('company_id', '=', cid),
-                ], limit=1)
-            elif session_id:
-                session = request.env['pos.lite.session'].sudo().browse(int(session_id))
-                if session.exists() and session.company_id.id in request.env.companies.ids:
-                    if session.config_id.warehouse_id:
-                        warehouse = session.config_id.warehouse_id
-            if not warehouse:
-                config = request.env['pos.lite.config'].get_default_config()
-                if config and config.warehouse_id:
-                    warehouse = config.warehouse_id
-            if not warehouse:
-                warehouse = request.env['stock.warehouse'].search([
-                    ('company_id', '=', cid),
-                ], limit=1)
+            location = _resolve_terminal_location(request.env, cid, session_id, warehouse_id)
 
-            location = warehouse.lot_stock_id if warehouse else False
-
+            product_ids_in_stock = []
+            qty_map = {}
             if location:
                 quant_data = request.env['stock.quant'].read_group(
                     domain=[('location_id', '=', location.id)],
-                    fields=['product_id', 'quantity:sum'],
+                    fields=['product_id', 'quantity:sum', 'reserved_quantity:sum'],
                     groupby=['product_id'],
                     lazy=False,
                 )
-                product_ids_in_stock = []
-                qty_map = {}
                 for q in quant_data:
                     pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
-                    qty = q['quantity']
-                    product_ids_in_stock.append(pid)
+                    # Free to Use (same definition as buz_stock_current_report):
+                    # on-hand minus reserved, never negative. Reserved stock is
+                    # promised to delivery orders and must not be sellable here.
+                    qty = max((q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0), 0.0)
                     qty_map[pid] = qty
+                    # Only sellable if there's free stock to sell — zero (or
+                    # fully-reserved) stockable products are hidden from the
+                    # terminal entirely, not just greyed out.
+                    if qty > 0:
+                        product_ids_in_stock.append(pid)
 
-                products = request.env['product.product'].search_read(
-                    [
-                        ('id', 'in', product_ids_in_stock),
-                        ('sale_ok', '=', True),
-                        ('can_be_pos', '=', True),
-                    ],
-                    ['name', 'list_price', 'default_code', 'categ_id', 'barcode',
-                     'taxes_id', 'image_128', 'image_256']
+                # "Set" products (BOM kits, e.g. bathroom cabinet + basin sold
+                # as one code) carry no stock.quant of their own — availability
+                # is derived from their components. Same buildable-qty formula
+                # as buz_stock_current_report's bom_available_by_location CTE,
+                # scoped to this single terminal location. Excludes every
+                # product with its own quant row (qty_map.keys()), not just
+                # the qty>0 subset — a fully-reserved but physically-stocked
+                # product must not fall back to BOM-buildable qty.
+                _add_kit_products_in_stock(
+                    request.env, location.id, product_ids_in_stock, qty_map,
+                    list(qty_map.keys()),
                 )
-                # Pre-fetch tax rates for all products
-                tax_ids_set = set()
-                for p in products:
-                    for tid in (p.get('taxes_id') or []):
-                        tax_ids_set.add(tid)
-                tax_rate_map = {}
-                if tax_ids_set:
-                    for tax in request.env['account.tax'].sudo().browse(tax_ids_set):
-                        tax_rate_map[tax.id] = tax.amount
-                for p in products:
-                    p['qty_available'] = qty_map.get(p['id'], 0.0)
-                    # Compute effective tax rate for this product
-                    tax_rate = 0.0
-                    for tid in (p.get('taxes_id') or []):
-                        tax_rate += tax_rate_map.get(tid, 0.0)
-                    p['tax_rate'] = tax_rate
-                    if p.get('image_128'):
-                        p['image_128'] = p['image_128'].decode() if isinstance(p['image_128'], bytes) else p['image_128']
-                    if p.get('image_256'):
-                        p['image_256'] = p['image_256'].decode() if isinstance(p['image_256'], bytes) else p['image_256']
-            else:
-                products = []
+
+            products = request.env['product.product'].search_read(
+                _terminal_product_domain(product_ids_in_stock),
+                ['name', 'type', 'list_price', 'default_code', 'categ_id', 'barcode',
+                 'taxes_id']
+            )
+            # Sort best-sellers first: rank by qty sold (sale.order.line,
+            # confirmed orders) in the last 90 days, company-wide. Sort is
+            # stable, so non-sellers keep their prior relative order after
+            # the best-sellers.
+            cutoff = fields.Datetime.now() - timedelta(days=90)
+            sales_data = request.env['sale.order.line'].sudo().read_group(
+                domain=[
+                    ('product_id', 'in', [p['id'] for p in products]),
+                    ('order_id.state', 'in', ['sale', 'done']),
+                    ('order_id.date_order', '>=', cutoff),
+                    ('order_id.company_id', '=', request.env.company.id),
+                ],
+                fields=['product_id', 'product_uom_qty:sum'],
+                groupby=['product_id'],
+                lazy=False,
+            )
+            sales_qty_map = {
+                s['product_id'][0]: s['product_uom_qty']
+                for s in sales_data
+            }
+            products.sort(key=lambda p: sales_qty_map.get(p['id'], 0.0), reverse=True)
+            # Pre-fetch tax rates for all products
+            tax_ids_set = set()
+            for p in products:
+                for tid in (p.get('taxes_id') or []):
+                    tax_ids_set.add(tid)
+            tax_rate_map = {}
+            if tax_ids_set:
+                for tax in request.env['account.tax'].sudo().browse(tax_ids_set):
+                    tax_rate_map[tax.id] = tax.amount
+            for p in products:
+                p['qty_available'] = qty_map.get(p['id'], 0.0)
+                # Compute effective tax rate for this product
+                tax_rate = 0.0
+                for tid in (p.get('taxes_id') or []):
+                    tax_rate += tax_rate_map.get(tid, 0.0)
+                p['tax_rate'] = tax_rate
+                # Serve images by URL (browser fetches/caches in parallel)
+                # instead of embedding base64 bytes in the JSON payload —
+                # keeps the response small for large catalogs.
+                p['image_128'] = '/web/image/product.product/%d/image_128' % p['id']
+                p['image_256'] = '/web/image/product.product/%d/image_256' % p['id']
 
             return {'success': True, 'products': products}
         except _HANDLED_EXCEPTIONS as e:
@@ -233,25 +397,106 @@ class PosLiteController(http.Controller):
                 if pricelist:
                     pricelist_id = pricelist.id
 
+            # Optional pre-selected partner (created via create_customer);
+            # validated against the active company before it is trusted.
+            partner_id = False
+            raw_partner_id = data.get('partner_id')
+            if raw_partner_id:
+                try:
+                    partner = request.env['res.partner'].sudo().browse(int(raw_partner_id))
+                except (ValueError, TypeError):
+                    raise ValidationError('Invalid partner')
+                if not partner.exists() or partner.company_id.id not in (False, cid):
+                    raise ValidationError('Invalid partner')
+                partner_id = partner.id
+
             # Whitelisted vals only — no state, company_id, is_return injection
             order_vals = {
                 'company_id': cid,
+                'partner_id': partner_id,
                 'customer_name': data.get('customer_name', ''),
                 'partner_phone': data.get('partner_phone', ''),
                 'partner_address': data.get('partner_address', ''),
                 'channel': data.get('channel', 'walkin'),
+                'trade_channel': data.get('trade_channel'),
                 'note': data.get('note', ''),
                 'warehouse_id': wh_id,
                 'pricelist_id': pricelist_id,
-                'session_id': session_id or False,
+                'session_id': int(session_id) if session_id else False,
                 'employee_id': int(employee_id) if employee_id else False,
                 'line_ids': _sanitize_o2m_payload(data.get('line_ids'), _ORDER_LINE_FIELDS),
-                'payment_ids': _sanitize_o2m_payload(data.get('payment_ids'), _PAYMENT_FIELDS),
             }
 
             order = request.env['pos.lite.order'].create(order_vals)
-            order.action_quick_pay_and_process()
+            order.action_process_order()
             return {'success': True, 'order_id': order.id, 'name': order.name}
+        except _HANDLED_EXCEPTIONS as e:
+            return {'success': False, 'error': str(e)}
+
+    # ─── Create Customer ────────────────────────────────────────
+
+    @http.route('/pos_lite/api/create_customer', type='json', auth='user', methods=['POST'], csrf=False)
+    def create_customer(self, **kwargs):
+        """Create a customer with full tax-invoice details from the terminal.
+
+        Runs as sudo: cashiers (group_pos_lite_user) are not partner managers,
+        same reasoning as the sudo partner creation in
+        pos.lite.order._get_or_create_customer_partner. Input is whitelisted
+        field-by-field below — nothing from the payload is passed through raw.
+        """
+        try:
+            data = self._get_json_data()
+            cid = self._get_company_id()
+            partner = request.env['res.partner'].sudo().pos_lite_create_customer(data, cid)
+            address = ' '.join(filter(None, [
+                partner.street, partner.street2, partner.city,
+                partner.state_id.name, partner.zip]))
+            return {
+                'success': True,
+                'partner': {
+                    'id': partner.id,
+                    'name': partner.name,
+                    'phone': partner.phone or '',
+                    'address': address,
+                },
+            }
+        except _HANDLED_EXCEPTIONS as e:
+            return {'success': False, 'error': str(e)}
+
+    @http.route('/pos_lite/api/customer_search', type='json', auth='user', methods=['POST'], csrf=False)
+    def customer_search(self, **kwargs):
+        """Autocomplete customers by name / phone / tax id for the terminal.
+
+        Runs as sudo for the same reason as create_customer: cashiers are not
+        partner managers. Read-only, returns a whitelisted subset of fields.
+        """
+        try:
+            data = self._get_json_data()
+            term = (data.get('term') or '').strip()
+            if len(term) < 2:
+                return {'success': True, 'customers': []}
+            cid = self._get_company_id()
+            partners = request.env['res.partner'].sudo().search([
+                '|', '|', '|',
+                ('name', 'ilike', term),
+                ('phone', 'ilike', term),
+                ('mobile', 'ilike', term),
+                ('vat', 'ilike', term),
+                ('active', '=', True),
+                '|', ('company_id', '=', False), ('company_id', '=', cid),
+            ], limit=10, order='name')
+            customers = []
+            for p in partners:
+                address = ' '.join(filter(None, [
+                    p.street, p.street2, p.city, p.state_id.name, p.zip]))
+                customers.append({
+                    'id': p.id,
+                    'name': p.name,
+                    'phone': p.phone or p.mobile or '',
+                    'vat': p.vat or '',
+                    'address': address,
+                })
+            return {'success': True, 'customers': customers}
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
@@ -293,6 +538,7 @@ class PosLiteController(http.Controller):
             }
             for line in order.line_ids:
                 order_data['lines'].append({
+                    'id': line.id,
                     'product_id': line.product_id.id,
                     'product_name': line.product_id.display_name,
                     'default_code': line.product_id.default_code or '',
@@ -300,6 +546,8 @@ class PosLiteController(http.Controller):
                     'price_unit': line.price_unit,
                     'discount': line.discount,
                     'price_total': line.price_total,
+                    'returned_qty': line.returned_qty,
+                    'available_return_qty': line.available_return_qty,
                 })
             for pay in order.payment_ids:
                 order_data['payments'].append({
@@ -354,7 +602,10 @@ class PosLiteController(http.Controller):
             if original.state != 'done':
                 return {'success': False, 'error': 'Only completed orders can be returned'}
 
-            # Validate return qty against available_return_qty
+            # Validate return qty against available_return_qty and remember the
+            # original line so returned_from_line_id links the return back
+            # (otherwise available_return_qty never decreases for API returns).
+            matched_lines = []
             for line_data in lines:
                 product_id = line_data.get('product_id')
                 return_qty = line_data.get('qty', 1)
@@ -362,9 +613,12 @@ class PosLiteController(http.Controller):
                 if not orig_line:
                     return {'success': False, 'error': 'Product %s not found in original order' % product_id}
                 available = orig_line[0].available_return_qty
+                if return_qty <= 0:
+                    return {'success': False, 'error': 'Return qty must be positive'}
                 if return_qty > available:
                     return {'success': False, 'error': 'Return qty for %s exceeds available (%s > %s)' % (
                         orig_line[0].product_id.display_name, return_qty, available)}
+                matched_lines.append(orig_line[0])
 
             return_vals = {
                 'company_id': original.company_id.id,
@@ -372,6 +626,7 @@ class PosLiteController(http.Controller):
                 'partner_phone': original.partner_phone,
                 'partner_address': original.partner_address,
                 'channel': original.channel,
+                'trade_channel': original.trade_channel,
                 'session_id': data.get('session_id') or original.session_id.id,
                 'employee_id': data.get('employee_id') or original.employee_id.id,
                 'warehouse_id': original.warehouse_id.id or data.get('warehouse_id'),
@@ -384,11 +639,18 @@ class PosLiteController(http.Controller):
                 'payment_ids': [],
             }
 
-            for line_data in lines:
+            for line_data, orig_line in zip(lines, matched_lines):
+                # Refund at the effective (discounted) price actually paid,
+                # matching the backend return wizard behaviour.
+                refund_price = (
+                    orig_line.price_subtotal / orig_line.qty
+                    if orig_line.qty else line_data.get('price_unit', 0)
+                )
                 return_vals['line_ids'].append([0, 0, {
+                    'returned_from_line_id': orig_line.id,
                     'product_id': line_data.get('product_id'),
                     'qty': line_data.get('qty', 1),
-                    'price_unit': line_data.get('price_unit', 0),
+                    'price_unit': refund_price,
                     'discount': 0,
                     'discount_type': 'fixed',
                 }])
@@ -405,14 +667,18 @@ class PosLiteController(http.Controller):
                         'discount_type': 'fixed',
                     }])
 
-            return_vals['payment_ids'].append([0, 0, {
-                'payment_method': data.get('payment_method', 'cash'),
-                'amount': -abs(data.get('amount', 0)),
-                'reference': data.get('reference', ''),
-            }])
-
+            return_vals.pop('payment_ids', None)
             order = request.env['pos.lite.order'].create(return_vals)
-            order.action_quick_pay_and_process()
+            # Refund amount computed server-side from the created order — the
+            # client-provided figure may not include taxes/discounts correctly.
+            request.env['pos.lite.payment'].create({
+                'order_id': order.id,
+                'payment_method': data.get('payment_method', 'cash'),
+                'amount': -abs(order.amount_total),
+                'reference': data.get('reference', ''),
+                'note': data.get('reason', '') or 'Customer return refund',
+            })
+            order.action_process_order()
             return {'success': True, 'order_id': order.id, 'name': order.name}
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
@@ -424,6 +690,9 @@ class PosLiteController(http.Controller):
         try:
             data = self._get_json_data()
             term = data.get('term', '')
+            cid = self._get_company_id()
+            session_id = data.get('session_id')
+            warehouse_id = data.get('warehouse_id')
             products = request.env['product.product'].sudo().search([
                 '|', '|',
                 ('name', 'ilike', term),
@@ -431,22 +700,30 @@ class PosLiteController(http.Controller):
                 ('barcode', 'ilike', term),
                 ('sale_ok', '=', True),
                 ('can_be_pos', '=', True),
-                '|', ('company_id', '=', False), ('company_id', '=', self._get_company_id()),
+                '|', ('company_id', '=', False), ('company_id', '=', cid),
             ], limit=20)
             # Batch qty_available via read_group on stock.quant instead of
             # touching p.qty_available per product (N+1 on big catalogs).
+            # Reports Free to Use (on-hand minus reserved) scoped to the
+            # terminal's own location — same location /api/products and the
+            # order line's _compute_qty_available use. Previously this summed
+            # every internal location company-wide, so a product reserved out
+            # at the terminal's warehouse could still show as sellable because
+            # another, unrelated warehouse had free stock.
             qty_map = {}
-            if products:
+            location = _resolve_terminal_location(request.env, cid, session_id, warehouse_id)
+            if products and location:
                 quants = request.env['stock.quant'].read_group(
                     domain=[('product_id', 'in', products.ids),
-                            ('location_id.usage', '=', 'internal')],
-                    fields=['product_id', 'quantity:sum'],
+                            ('location_id', '=', location.id)],
+                    fields=['product_id', 'quantity:sum', 'reserved_quantity:sum'],
                     groupby=['product_id'],
                     lazy=False,
                 )
                 for q in quants:
                     pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
-                    qty_map[pid] = qty_map.get(pid, 0.0) + q['quantity']
+                    free = (q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0)
+                    qty_map[pid] = qty_map.get(pid, 0.0) + free
             result = []
             for p in products:
                 result.append({
@@ -454,7 +731,7 @@ class PosLiteController(http.Controller):
                     'name': p.display_name,
                     'default_code': p.default_code or '',
                     'list_price': p.list_price,
-                    'qty_available': qty_map.get(p.id, 0.0),
+                    'qty_available': max(qty_map.get(p.id, 0.0), 0.0),
                 })
             return {'success': True, 'products': result}
         except _HANDLED_EXCEPTIONS as e:

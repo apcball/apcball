@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class PosLiteConfig(models.Model):
@@ -15,6 +16,16 @@ class PosLiteConfig(models.Model):
         domain="[('company_id', '=', company_id)]",
         check_company=True,
     )
+    location_id = fields.Many2one(
+        'stock.location',
+        string='Product Stock Location',
+        domain="[('usage', '=', 'internal'), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        check_company=True,
+        help='Location driven by this configuration: the POS Lite terminal reads '
+             'product stock from here, and pickings source/return to this location. '
+             'Multiple configurations may share the same location. Leave empty only '
+             'for legacy records — new/edited configs must set a location.',
+    )
     pricelist_id = fields.Many2one(
         'product.pricelist',
         required=True,
@@ -25,8 +36,17 @@ class PosLiteConfig(models.Model):
         'account.journal',
         required=True,
         domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]",
-        help='Default cash/bank journal for POS Lite payments',
+        help='Default cash/bank journal for POS Lite refund records',
         check_company=True,
+    )
+    sale_journal_id = fields.Many2one(
+        'account.journal',
+        string='Sales Invoice Journal',
+        domain="[('type', '=', 'sale'), ('company_id', '=', company_id)]",
+        check_company=True,
+        help='Journal used for invoices issued from POS Lite orders. Lets POS Lite '
+             'invoice numbers run on their own sequence, separate from standard sale '
+             'invoices. Leave empty to use the company\'s default sales journal.',
     )
     branch_number = fields.Char(
         string='Branch Number',
@@ -45,18 +65,57 @@ class PosLiteConfig(models.Model):
     )
     out_picking_type_id = fields.Many2one(
         'stock.picking.type', string='Delivery Operation Type',
-        domain="[('code', '=', 'outgoing'), ('company_id', '=', company_id)]",
+        domain="[('code', '=', 'outgoing'), ('company_id', '=', company_id), "
+               "('warehouse_id', '=', warehouse_id)]",
         check_company=True,
-        help='Stock operation type used for POS delivery orders. '
-             'Leave empty to use the default outgoing type from the warehouse.',
+        help='Stock operation type used for POS delivery orders. Must belong to this '
+             'config\'s warehouse. Leave empty to use the default outgoing type from '
+             'the warehouse.',
     )
     return_picking_type_id = fields.Many2one(
         'stock.picking.type', string='Return Operation Type',
+        domain="[('code', '=', 'incoming'), ('company_id', '=', company_id), "
+               "('warehouse_id', '=', warehouse_id)]",
+        check_company=True,
+        help='Stock operation type used for POS return orders. Must belong to this '
+             'config\'s warehouse. Leave empty to use the default incoming type from '
+             'the warehouse.',
+    )
+    late_return_picking_type_id = fields.Many2one(
+        'stock.picking.type', string='Late Return Receipt Operation Type',
         domain="[('code', '=', 'incoming'), ('company_id', '=', company_id)]",
         check_company=True,
-        help='Stock operation type used for POS return orders. '
+        help='Stock operation type used when a return is processed more than one day '
+             'after the sale: goods are received as a plain receipt from the customer '
+             'instead of a same-day return, and left unvalidated for manual completion. '
+             'May belong to a different warehouse than this config (e.g. a dedicated '
+             'quarantine/inspection warehouse) — the receiving location follows this '
+             'operation type\'s own default destination, not the config\'s stock location. '
              'Leave empty to use the default incoming type from the warehouse.',
     )
+    default_trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Default Trade Channel',
+        help='Default marketplace trade channel for new orders.',
+    )
+    marketplace_profile_id = fields.Many2one(
+        'marketplace.settlement.profile',
+        string='Marketplace Profile',
+        domain="[('company_id', '=', company_id), ('active', '=', True)]",
+        check_company=True,
+        help='Marketplace profile to auto-set trade channel and accounting defaults.',
+    )
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Dynamic selection mirroring sale.order.trade_channel (injected by marketplace_settlement)."""
+        from .pos_order import _get_trade_channel_selection
+        return _get_trade_channel_selection(self)
+
+    @api.onchange('marketplace_profile_id')
+    def _onchange_marketplace_profile_id(self):
+        if self.marketplace_profile_id:
+            self.default_trade_channel = self.marketplace_profile_id.trade_channel
 
     @api.model
     def get_default_config(self, company=None):
@@ -65,3 +124,34 @@ class PosLiteConfig(models.Model):
             ('company_id', '=', company.id),
             ('active', '=', True),
         ], order='id desc', limit=1)
+
+    @api.model
+    def get_config_for_location(self, location_id, company=None):
+        """Return the active config bound to a given stock.location.
+
+        With per-location configuration, the location is the primary key of a
+        config; this helper resolves it for sessions/orders that already know
+        which location they operate from.
+        """
+        if not location_id:
+            return self.env['pos.lite.config']
+        company = company or self.env.company
+        return self.search([
+            ('company_id', '=', company.id),
+            ('location_id', '=', location_id),
+            ('active', '=', True),
+        ], order='id desc', limit=1)
+
+    @api.constrains('company_id', 'location_id')
+    def _check_location_required(self):
+        """A config must be bound to exactly one stock.location.
+
+        Enforced at the application layer (not as a NOT NULL column) so legacy
+        rows without a location keep loading until they are edited/backfilled.
+        """
+        for config in self:
+            if not config.location_id:
+                raise ValidationError(_(
+                    'POS Lite Configuration "%(name)s" must specify a Product Stock '
+                    'Location.'
+                ) % {'name': config.name or config.display_name})

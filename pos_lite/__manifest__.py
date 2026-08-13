@@ -1,6 +1,6 @@
 {
     'name': 'POS Lite',
-    'version': '17.0.3.6.0',
+    'version': '17.0.3.21.0',
     'category': 'Sales',
     'summary': 'Lightweight form-based order entry for phone, LINE, and walk-in orders',
     'description': """
@@ -10,15 +10,16 @@ Simple form-based order entry for phone, LINE, walk-in, and other manual orders.
 Creates invoice, stock picking, and printable receipt from a lightweight backend form.
 
 Features:
-- Quick pay & process in one click
+- Process & post invoice in one click
 - Hold/resume orders
 - Daily session tracking & close
-- Payment reconciliation with account.payment
+- Optional internal records for manual/refund flows
 - Return & exchange support
 - Multi-size receipt (58mm, 80mm, A4)
 - Sales analytics (pivot, graph)
 - Multi-company support
 - Sales margin from Standard Cost Pricelist (matches SO)
+- Per-location configuration (multiple configs/sessions may share a location)
     """,
     'author': 'AI-DEV-Module-Odoo17',
     'website': 'https://github.com/apcball/AI-DEV-Module-Odoo17',
@@ -29,11 +30,17 @@ Features:
         'contacts',
         'product',
         'stock',
+        'mrp',
         'account',
+        'analytic',
         'sale_management',
         'hr',
+        'buz_po_portal',
         'buz_custom_invoice',
+        'account_invoice_fixed_discount',
         'buz_sale_pricelist_standard_cost',
+        'marketplace_settlement',
+        'sale_retention_receivable',
     ],
     'data': [
         'security/security.xml',
@@ -49,7 +56,6 @@ Features:
         'views/menu.xml',
         'views/pos_lite_terminal.xml',
         'views/product_product_view.xml',
-        'wizard/payment_wizard_view.xml',
         'wizard/return_wizard_view.xml',
         'wizard/start_sale_wizard_view.xml',
     ],

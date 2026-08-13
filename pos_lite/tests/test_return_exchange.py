@@ -1,3 +1,5 @@
+import datetime
+
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError
 
@@ -31,6 +33,14 @@ class TestReturnExchangeBase(common.TransactionCase):
             'categ_id': cls.category.id,
             'sale_ok': True,
             'list_price': 150.0,
+            'taxes_id': [(5, 0, 0)],  # no tax
+        })
+        cls.product_storable = cls.env['product.product'].create({
+            'name': 'Return Product Storable',
+            'type': 'product',
+            'categ_id': cls.category.id,
+            'sale_ok': True,
+            'list_price': 200.0,
             'taxes_id': [(5, 0, 0)],  # no tax
         })
 
@@ -71,11 +81,20 @@ class TestReturnExchangeBase(common.TransactionCase):
             'company_id': cls.company.id,
         })
 
+        # Dedicated stock location so tests never collide with a real config.
+        cls.stock_location = cls.env['stock.location'].create({
+            'name': 'Test Stock Location - Return',
+            'location_id': cls.warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': cls.company.id,
+        })
+
         # Config
         cls.config = cls.env['pos.lite.config'].create({
             'name': 'Test Config',
             'company_id': cls.company.id,
             'warehouse_id': cls.warehouse.id,
+            'location_id': cls.stock_location.id,
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
@@ -93,6 +112,13 @@ class TestReturnExchangeBase(common.TransactionCase):
             'company_id': cls.company.id,
         })
 
+        # Stock for the storable product — pickings source from the config's location.
+        cls.env['stock.quant'].create({
+            'product_id': cls.product_storable.id,
+            'location_id': cls.stock_location.id,
+            'quantity': 50.0,
+        })
+
     def _create_and_process_order(self, line_data=None):
         """Helper: สร้าง order + quick pay → return order object"""
         if line_data is None:
@@ -108,6 +134,8 @@ class TestReturnExchangeBase(common.TransactionCase):
             'partner_id': self.partner.id,
             'warehouse_id': self.warehouse.id,
             'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'employee_id': self.employee.id,
             'line_ids': lines,
         })
         order.action_quick_pay_and_process()
@@ -133,6 +161,8 @@ class TestReturnFlow(TestReturnExchangeBase):
             'partner_id': self.partner.id,
             'warehouse_id': self.warehouse.id,
             'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'employee_id': self.employee.id,
             'line_ids': [(0, 0, {
                 'product_id': self.product_a.id,
                 'qty': 1,
@@ -186,6 +216,41 @@ class TestReturnFlow(TestReturnExchangeBase):
         self.assertEqual(return_order.payment_ids[0].amount, -200.0)  # refund → negative
         self.assertEqual(return_order.invoice_id.move_type, 'out_refund')
 
+    def test_return_can_exclude_specific_line(self):
+        """wizard line uncheck (selected=False) → line ไม่ถูกนำไปสร้าง return line"""
+        order = self._create_and_process_order([
+            (self.product_a.id, 1, 200.0),
+            (self.product_b.id, 1, 150.0),
+        ])
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+        })
+        wizard._onchange_order_id()
+        self.assertEqual(len(wizard.line_ids), 2)
+
+        # Exclude product_b from the return
+        line_b = wizard.line_ids.filtered(lambda l: l.product_id == self.product_b)
+        line_b.selected = False
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertTrue(return_order)
+        self.assertEqual(len(return_order.line_ids), 1)
+        self.assertEqual(return_order.line_ids.product_id, self.product_a)
+
+    def test_return_all_lines_unselected_should_fail(self):
+        """ทุก line ถูก unselect → action_confirm ต้อง error"""
+        order = self._create_and_process_order()
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+        })
+        wizard._onchange_order_id()
+        wizard.line_ids.selected = False
+        with self.assertRaises(UserError):
+            wizard.action_confirm()
+
     def test_return_from_return_should_fail(self):
         """return order → ไม่สามารถ return ซ้ำได้ เพราะ state ต้องเป็น done ก่อน"""
         order = self._create_and_process_order()
@@ -208,49 +273,86 @@ class TestReturnFlow(TestReturnExchangeBase):
         action = return_order.action_create_return()
         self.assertEqual(action['res_model'], 'pos.lite.return.wizard')
 
-    def test_return_refund_payment_method(self):
-        """return wizard ใช้ refund_payment_method ที่เลือก ไม่ใช่ hardcode cash"""
+    def test_same_day_return_still_auto_processes(self):
+        """Regression: return confirmed same day → auto-post invoice + auto-validate picking (Flow 1)."""
         order = self._create_and_process_order([
-            (self.product_a.id, 2, 100.0),
+            (self.product_storable.id, 1, 200.0),
         ])
-        wizard = self.env['pos.lite.return.wizard'].create({
-            'order_id': order.id,
-            'refund_payment_method': 'transfer',
-        })
+        wizard = self.env['pos.lite.return.wizard'].create({'order_id': order.id})
         wizard._onchange_order_id()
         wizard.action_confirm()
 
         return_order = self.env['pos.lite.order'].search([
             ('return_of_order_id', '=', order.id),
         ], limit=1)
-        self.assertTrue(return_order)
-        self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
+        self.assertFalse(return_order.is_late_return)
+        self.assertEqual(return_order.state, 'done')
+        self.assertEqual(return_order.invoice_id.state, 'posted')
+        self.assertEqual(return_order.picking_id.state, 'done')
 
-    def test_return_refund_payment_with_journal(self):
-        """return wizard ใช้ refund_journal_id ที่เลือก"""
-        bank_journal = self.env['account.journal'].create({
-            'name': 'Bank Test',
-            'type': 'bank',
-            'code': 'BNKT',
+    def test_late_return_leaves_documents_draft(self):
+        """Return confirmed on a later day → draft credit note + unvalidated receipt (Flow 2)."""
+        order = self._create_and_process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        order.write({'date_order': order.date_order - datetime.timedelta(days=2)})
+
+        wizard = self.env['pos.lite.return.wizard'].create({'order_id': order.id})
+        wizard._onchange_order_id()
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertTrue(return_order.is_late_return)
+        self.assertEqual(return_order.state, 'draft')
+        self.assertTrue(return_order.invoice_id)
+        self.assertEqual(return_order.invoice_id.state, 'draft')
+        self.assertTrue(return_order.picking_id)
+        self.assertIn(return_order.picking_id.state, ('assigned', 'confirmed'))
+
+    def test_late_return_follows_configured_operation_type_location(self):
+        """Late return receiving location follows the configured operation type's own
+        default destination (e.g. a quarantine/inspection location), not the config's
+        regular stock location — this is what lets Late Return Receipt Operation Type
+        deliberately point elsewhere for inspection before goods rejoin sellable stock."""
+        quarantine_location = self.env['stock.location'].create({
+            'name': 'Quarantine - Late Return Test',
+            'location_id': self.warehouse.view_location_id.id,
+            'usage': 'internal',
             'company_id': self.company.id,
         })
-        order = self._create_and_process_order([
-            (self.product_a.id, 1, 100.0),
-        ])
-        wizard = self.env['pos.lite.return.wizard'].create({
-            'order_id': order.id,
-            'refund_payment_method': 'transfer',
-            'refund_journal_id': bank_journal.id,
+        quarantine_sequence = self.env['ir.sequence'].create({
+            'name': 'Quarantine Receipts Test',
+            'prefix': 'QRT/IN/',
+            'padding': 5,
+            'company_id': self.company.id,
         })
+        quarantine_picking_type = self.env['stock.picking.type'].create({
+            'name': 'Quarantine Receipts Test',
+            'code': 'incoming',
+            'sequence_id': quarantine_sequence.id,
+            'warehouse_id': self.warehouse.id,
+            'company_id': self.company.id,
+            'default_location_dest_id': quarantine_location.id,
+        })
+        self.config.late_return_picking_type_id = quarantine_picking_type.id
+
+        order = self._create_and_process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        order.write({'date_order': order.date_order - datetime.timedelta(days=2)})
+
+        wizard = self.env['pos.lite.return.wizard'].create({'order_id': order.id})
         wizard._onchange_order_id()
         wizard.action_confirm()
 
         return_order = self.env['pos.lite.order'].search([
             ('return_of_order_id', '=', order.id),
         ], limit=1)
-        self.assertTrue(return_order)
-        self.assertEqual(return_order.payment_ids[0].journal_id, bank_journal)
-        self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
+        self.assertEqual(return_order.picking_id.picking_type_id, quarantine_picking_type)
+        self.assertEqual(return_order.picking_id.location_dest_id, quarantine_location)
+        self.assertNotEqual(quarantine_location, self.stock_location)
 
 
 @tagged('-at_install', 'post_install')
@@ -418,3 +520,39 @@ class TestExchangeFlow(TestReturnExchangeBase):
         self.assertTrue(exchange_order)
         self.assertEqual(return_order.state, 'done')
         self.assertEqual(exchange_order.state, 'done')
+
+
+@tagged('-at_install', 'post_install')
+class TestDocumentDateShift(TestReturnExchangeBase):
+    """Invoice date and stock validation date always = order date + 1 day."""
+
+    def test_invoice_and_picking_dated_one_day_after_order(self):
+        order = self._create_and_process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        expected_date = order.date_order.date() + datetime.timedelta(days=1)
+        self.assertEqual(order.invoice_id.invoice_date, expected_date)
+        self.assertEqual(order.picking_id.date_done.date(), expected_date)
+        self.assertEqual(order.picking_id.scheduled_date.date(), expected_date)
+
+    def test_document_date_follows_backdated_order_date(self):
+        """+1 day is relative to date_order, not to real-world today."""
+        order = self.env['pos.lite.order'].create({
+            'company_id': self.company.id,
+            'channel': 'phone',
+            'partner_id': self.partner.id,
+            'warehouse_id': self.warehouse.id,
+            'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'employee_id': self.employee.id,
+            'line_ids': [(0, 0, {
+                'product_id': self.product_storable.id,
+                'qty': 1,
+                'price_unit': 200.0,
+            })],
+        })
+        order.write({'date_order': order.date_order - datetime.timedelta(days=5)})
+        order.action_quick_pay_and_process()
+        expected_date = order.date_order.date() + datetime.timedelta(days=1)
+        self.assertEqual(order.invoice_id.invoice_date, expected_date)
+        self.assertEqual(order.picking_id.date_done.date(), expected_date)

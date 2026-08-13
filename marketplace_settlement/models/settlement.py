@@ -116,30 +116,13 @@ class MarketplaceSettlement(models.Model):
     # Use a Text field to store WHT certificate data instead of Many2many to avoid dependency issues
     wht_cert_data = fields.Text('WHT Certificate Data', compute='_compute_wht_cert_data')
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Generate sequence for settlement reference"""
-        if vals.get('name', 'New') == 'New':
-            vals['name'] = self.env['ir.sequence'].next_by_code('marketplace.settlement') or 'New'
-        return super().create(vals)
-
-    def _check_field_access_rights(self, operation, fields):
-        """Override field access to allow netting operations on posted settlements"""
-        if self.env.context.get('force_netting') or self.env.context.get('netting_operation'):
-            # Allow netting-related fields to be modified even in posted state
-            netting_fields = {'netted_amount', 'netting_move_id', 'is_netted', 'can_perform_netting'}
-            fields = fields - netting_fields
-        return super()._check_field_access_rights(operation, fields)
-
-    def _check_access_rights_and_rules(self, operation, field_names=None):
-        """Override access rights to allow netting operations"""
-        if self.env.context.get('force_netting') or self.env.context.get('netting_operation'):
-            if field_names:
-                netting_fields = {'netted_amount', 'netting_move_id', 'is_netted', 'can_perform_netting'}
-                field_names = set(field_names) - netting_fields
-                if not field_names:
-                    return  # All fields are netting-related, allow access
-        return super()._check_access_rights_and_rules(operation, field_names)
+        for vals in vals_list:
+            if vals.get('name', 'New') == 'New':
+                vals['name'] = self.env['ir.sequence'].next_by_code('marketplace.settlement') or 'New'
+        return super().create(vals_list)
 
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
@@ -176,8 +159,8 @@ class MarketplaceSettlement(models.Model):
         for record in self:
             # Check if Thai WHT module is installed
             try:
-                if 'marketplace.thai.localization' in self.env:
-                    thai_localization = self.env['marketplace.thai.localization'].sudo()
+                if 'marketplace.settlement.thai.localization' in self.env:
+                    thai_localization = self.env['marketplace.settlement.thai.localization'].sudo()
                     record.is_thai_localization_available = thai_localization.is_thai_localization_available()
                 else:
                     record.is_thai_localization_available = False
@@ -462,19 +445,6 @@ class MarketplaceSettlement(models.Model):
             'context': {'default_trade_channel': self.trade_channel},
         }
 
-    def action_view_settlement_move(self):
-        """Open settlement move"""
-        self.ensure_one()
-        if not self.move_id:
-            return None
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Settlement Move'),
-            'res_model': 'account.move',
-            'res_id': self.move_id.id,
-            'view_mode': 'form',
-        }
-
     def action_create_settlement(self):
         self.ensure_one()
         
@@ -517,9 +487,7 @@ class MarketplaceSettlement(models.Model):
             currency_names = ', '.join(currencies.mapped('name'))
             # You might want to show a confirmation dialog here
             # For now, we'll log the warning
-            import logging
-            _logger = logging.getLogger(__name__)
-            _logger.warning('Settlement %s contains invoices with multiple currencies: %s', 
+            _logger.warning('Settlement %s contains invoices with multiple currencies: %s',
                           self.name, currency_names)
 
         # Remove deduction validation - fees now handled through vendor bills
@@ -811,8 +779,6 @@ class MarketplaceSettlement(models.Model):
                         _logger.info(f'Successfully reconciled invoice {inv.name} with settlement {self.name}')
                 except Exception as e:
                     # Log the error but don't fail the settlement creation
-                    import logging
-                    _logger = logging.getLogger(__name__)
                     _logger.warning(f'Failed to reconcile invoice {inv.name}: {str(e)}')
                     # Continue with settlement creation even if reconciliation fails
 
@@ -939,23 +905,6 @@ class MarketplaceSettlement(models.Model):
         else:
             raise UserError(_('Failed to create reverse move.'))
 
-    def action_view_vendor_bills(self):
-        """Open related vendor bills"""
-        if not self.vendor_bill_ids:
-            return {}
-            
-        return {
-            'name': _('Vendor Bills'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'marketplace.vendor.bill',
-            'view_mode': 'tree,form',
-            'domain': [('id', 'in', self.vendor_bill_ids.ids)],
-            'context': {
-                'default_settlement_id': self.id,
-                'default_vendor_id': self.marketplace_partner_id.id,
-            }
-        }
-
     def action_view_wht_certificates(self):
         """Open related WHT certificates - only if Thai localization is available"""
         if not self.is_thai_localization_available:
@@ -1004,7 +953,7 @@ class MarketplaceSettlement(models.Model):
                         wht_amount += abs(line.balance)
         
         # Use the Thai localization helper to create certificate
-        thai_localization = self.env['marketplace.thai.localization'].sudo()
+        thai_localization = self.env['marketplace.settlement.thai.localization'].sudo()
         return thai_localization.create_thai_wht_certificate(
             settlement_id=self.id,
             partner_id=self.marketplace_partner_id.id,
@@ -1184,28 +1133,20 @@ class MarketplaceSettlement(models.Model):
             account_type = _get_account_type(account)
             return account_type in ['liability_payable', 'payable']
 
-        # Calculate receivables from settlement 
-        # For marketplace settlements, the receivable amount is typically the settlement account line (marketplace partner line)
-        # Look for marketplace partner lines that represent the amount we should receive
-        marketplace_settlement_lines = self.move_id.line_ids.filtered(
-            lambda l: l.partner_id == marketplace_partner and l.debit > 0
-        )
-        
-        # Alternative: Also check if there's a direct receivable line for marketplace partner
+        # Calculate receivables from settlement
+        # Prefer actual receivable-type lines for the marketplace partner;
+        # fall back to any marketplace partner debit lines (custom settlement account).
         settlement_receivable_lines = self.move_id.line_ids.filtered(
-            lambda l: l.partner_id == marketplace_partner and 
-            _is_receivable_account(l.account_id)
+            lambda l: l.partner_id == marketplace_partner and
+            _is_receivable_account(l.account_id) and l.debit > 0
         )
-        
-        # Calculate total receivable amount (marketplace owes us)
-        total_receivable_amount = 0.0
-        
-        # First try: Use marketplace partner debit lines (settlement amount)
-        total_receivable_amount += sum(line.debit for line in marketplace_settlement_lines if line.debit > 0)
-        
-        # Second try: Use actual receivable lines if any
-        total_receivable_amount += sum(line.debit for line in settlement_receivable_lines if line.debit > 0)
-        
+        if not settlement_receivable_lines:
+            settlement_receivable_lines = self.move_id.line_ids.filtered(
+                lambda l: l.partner_id == marketplace_partner and l.debit > 0
+            )
+
+        total_receivable_amount = sum(settlement_receivable_lines.mapped('debit'))
+
         # If still no receivable amount and settlement has net amount, use that
         if total_receivable_amount == 0 and self.net_settlement_amount > 0:
             total_receivable_amount = self.net_settlement_amount
@@ -1235,13 +1176,6 @@ class MarketplaceSettlement(models.Model):
                 'default_net_amount': net_amount,
                 'default_currency_id': self.company_currency_id.id,
             },
-        }
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('AR/AP Netting Move'),
-            'res_model': 'account.move',
-            'res_id': self.netting_move_id.id,
-            'view_mode': 'form',
         }
 
     def action_open_netting_wizard(self):
@@ -1341,22 +1275,13 @@ class MarketplaceSettlement(models.Model):
         # Create and post the netting move
         netting_move = self.env['account.move'].create(netting_move_vals)
         netting_move.action_post()
-        
-        # Update settlement record using direct SQL to bypass readonly restrictions
-        try:
-            # Use direct SQL UPDATE to bypass Odoo's ORM restrictions
-            self.env.cr.execute("""
-                UPDATE marketplace_settlement 
-                SET netting_move_id = %s,
-                    netted_amount = %s
-                WHERE id = %s
-            """, (netting_move.id, netting_amount, self.id))
-            
-            # Force cache invalidation
-            self.invalidate_recordset(['netting_move_id', 'netted_amount', 'is_netted', 'can_perform_netting'])
-            
-        except Exception as e:
-            _logger.warning(f"Could not update settlement record via SQL: {e}")
+
+        # Link the netting move; netting_move_id is always writable on posted
+        # settlements (see write() allowed_fields), netted_amount is computed.
+        self.sudo().with_context(netting_operation=True).write({
+            'netting_move_id': netting_move.id,
+        })
+        self.invalidate_recordset(['netting_move_id', 'netted_amount', 'is_netted', 'can_perform_netting'])
         
         # Perform reconciliation
         self._reconcile_netted_amounts_safe(netting_move)
@@ -2154,43 +2079,6 @@ class MarketplaceSettlement(models.Model):
             'res_id': self.move_id.id,
             'view_mode': 'form',
             'target': 'current',
-        }
-
-    def action_view_invoices(self):
-        """Open the list of invoices"""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Settlement Invoices'),
-            'res_model': 'account.move',
-            'domain': [('id', 'in', self.invoice_ids.ids)],
-            'view_mode': 'tree,form',
-            'target': 'current',
-        }
-
-    def action_view_vendor_bills(self):
-        """Open the list of linked vendor bills"""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Linked Vendor Bills'),
-            'res_model': 'account.move',
-            'domain': [('id', 'in', self.vendor_bill_ids.ids)],
-            'view_mode': 'tree,form',
-            'target': 'current',
-        }
-
-    def action_view_fee_allocations(self):
-        """Open the fee allocations"""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Fee Allocations'),
-            'res_model': 'marketplace.fee.allocation',
-            'domain': [('settlement_id', '=', self.id)],
-            'view_mode': 'tree,form',
-            'target': 'current',
-            'context': {'default_settlement_id': self.id}
         }
 
 

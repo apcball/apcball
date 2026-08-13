@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 class PosLiteSession(models.Model):
     _name = 'pos.lite.session'
     _description = 'POS Lite Daily Session'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'analytic.mixin']
     _order = 'id desc'
     _rec_name = 'name'
 
@@ -16,6 +16,12 @@ class PosLiteSession(models.Model):
         'pos.lite.config', required=True,
         domain="[('company_id', '=', company_id)]",
         check_company=True,
+    )
+    location_id = fields.Many2one(
+        'stock.location', related='config_id.location_id',
+        store=True, readonly=True, string='Location',
+        help='Stock location this session operates from, inherited from its '
+             'configuration. Drives product availability and picking source.',
     )
     state = fields.Selection([
         ('opened', 'Opened'),
@@ -73,6 +79,18 @@ class PosLiteSession(models.Model):
         ('walkin', 'Walk-in'),
         ('other', 'Other'),
     ], string='ช่องทางล่าสุด', tracking=True)
+    current_trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Trade Channel ล่าสุด',
+        help='Trade channel last used in this session for settlement grouping.',
+        tracking=True,
+    )
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Dynamic selection mirroring sale.order.trade_channel (injected by marketplace_settlement)."""
+        from .pos_order import _get_trade_channel_selection
+        return _get_trade_channel_selection(self)
 
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Session number must be unique.'),
@@ -131,27 +149,7 @@ class PosLiteSession(models.Model):
                 vals['name'] = self.env['ir.sequence']._safe_next_by_code(
                     'pos.lite.session', 'pos.lite.session', prefix='SESS',
                 )
-        sessions = super().create(vals_list)
-        sessions._check_single_open_session()
-        return sessions
-
-    def _check_single_open_session(self):
-        """At most one opened session per (company, config) — prevents ambiguous
-        sales attribution when two shifts run simultaneously on the same config."""
-        for session in self:
-            if session.state != 'opened':
-                continue
-            existing = self.search([
-                ('id', '!=', session.id),
-                ('company_id', '=', session.company_id.id),
-                ('config_id', '=', session.config_id.id),
-                ('state', '=', 'opened'),
-            ], limit=1)
-            if existing:
-                raise UserError(_(
-                    'Session %s is already open for this company/config. '
-                    'Close it before opening a new one.'
-                ) % existing.name)
+        return super().create(vals_list)
 
     def action_close_session(self):
         for session in self:
@@ -174,14 +172,22 @@ class PosLiteSession(models.Model):
         for session in self:
             if session.state != 'closed':
                 raise UserError(_('Only closed sessions can be reopened.'))
-            # Check if there's already an open session for this company
-            existing = self.search([
+            # Check if there's already an open session for this location
+            # (or config, for legacy configs without a bound location).
+            domain = [
                 ('company_id', '=', session.company_id.id),
                 ('state', '=', 'opened'),
-            ], limit=1)
+            ]
+            if session.location_id:
+                domain.append(('location_id', '=', session.location_id.id))
+            else:
+                domain.append(('config_id', '=', session.config_id.id))
+            existing = self.search(domain, limit=1)
             if existing:
+                loc_label = session.location_id.display_name or session.config_id.display_name
                 raise UserError(
-                    _('Session %s is already open. Close it first before reopening.') % existing.name
+                    _('Session %s is already open for this location (%s). '
+                      'Close it first before reopening.') % (existing.name, loc_label)
                 )
             session.write({
                 'state': 'opened',
@@ -239,6 +245,7 @@ class PosLiteSession(models.Model):
             'default_session_id': self.id,
             'default_employee_id': self.current_employee_id.id,
             'default_channel': self.current_channel or 'walkin',
+            'default_trade_channel': self.current_trade_channel or config.default_trade_channel or False,
             'default_company_id': self.company_id.id,
         }
         if config:
@@ -262,5 +269,5 @@ class PosLiteSession(models.Model):
             'type': 'ir.actions.act_url',
             'name': 'POS Lite Terminal',
             'url': '/pos_lite/ui?session_id=%d' % self.id,
-            'target': 'self',
+            'target': 'new',
         }

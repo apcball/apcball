@@ -84,10 +84,17 @@ class MarginTestBase(common.TransactionCase):
             'name': 'Margin Emp',
             'company_id': cls.company.id,
         })
+        cls.stock_location = cls.env['stock.location'].create({
+            'name': 'Test Stock Location - Margin',
+            'location_id': cls.warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': cls.company.id,
+        })
         cls.config = cls.env['pos.lite.config'].create({
             'name': 'Margin Cfg',
             'company_id': cls.company.id,
             'warehouse_id': cls.warehouse.id,
+            'location_id': cls.stock_location.id,
             'pricelist_id': cls.sales_pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
@@ -155,6 +162,8 @@ class TestStandardCostMargin(MarginTestBase):
 
     def test_parity_with_sale_order(self):
         """POS Lite margin must equal the equivalent SO margin (เหมือนกับ SO)."""
+        if 'margin' not in self.env['sale.order.line']._fields:
+            self.skipTest('sale_margin not installed — SO parity not applicable')
         pos = self._draft_pos_order([(self.product.id, 2, 100.0)])
         pos.invalidate_recordset()
         so = self._sale_order([(self.product.id, 2, 100.0)])
@@ -211,6 +220,8 @@ class TestStandardCostMargin(MarginTestBase):
             'list_price': 50.0,
             'taxes_id': [(5, 0, 0)],
         })
+        if 'margin' not in self.env['sale.order.line']._fields:
+            self.skipTest('sale_margin not installed — SO parity not applicable')
         pos = self._draft_pos_order([(other.id, 1, 50.0)])
         pos.invalidate_recordset()
         so = self._sale_order([(other.id, 1, 50.0)])

@@ -9,9 +9,11 @@
                   expand="1">
                 <field name="name"/>
                 <field name="config_id"/>
+                <field name="location_id" optional="show"/>
                 <field name="employee_ids" string="Employees" widget="many2many_tags"/>
                 <field name="current_employee_id" string="พนักงานขายปัจจุบัน" optional="show"/>
                 <field name="current_channel" string="ช่องทาง" optional="show"/>
+                <field name="current_trade_channel" string="Trade Channel" optional="show"/>
                 <field name="user_id" string="Cashier"/>
                 <field name="date_open" string="วันที่เปิด"/>
                 <field name="date_close" string="วันที่ปิด" optional="hide"/>
@@ -43,7 +45,7 @@
                     <button name="action_open_terminal" type="object"
                             string="🖥 Terminal"
                             class="btn-secondary ms-2"
-                            invisible="1"/>
+                            invisible="state != 'opened'"/>
                     <!-- Change Employee / Channel -->
                     <button name="action_start_sale" type="object"
                             string="🔄 เปลี่ยนพนักงาน"
@@ -97,7 +99,7 @@
                         <button name="action_open_terminal" type="object"
                                 class="oe_stat_button"
                                 icon="fa-desktop"
-                                invisible="1">
+                                invisible="state != 'opened'">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">Terminal</span>
                             </div>
@@ -204,6 +206,12 @@
                                             </div>
                                         </div>
                                         <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">Location</span>
+                                            <div>
+                                                <field name="location_id" options="{'no_create': True}"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
                                             <span class="o_form_label text-muted small">ผู้เปิด</span>
                                             <div>
                                                 <field name="user_id"/>
@@ -246,19 +254,31 @@
                                                 <field name="current_channel"/>
                                             </div>
                                         </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">Trade Channel ปัจจุบัน</span>
+                                            <div>
+                                                <field name="current_trade_channel"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <span class="o_form_label text-muted small">Analytic Distribution</span>
+                                            <div>
+                                                <field name="analytic_distribution" widget="analytic_distribution"/>
+                                            </div>
+                                        </div>
                                         <field name="company_id" invisible="1"/>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right: Payment Breakdown -->
+                        <!-- Right: Money Breakdown -->
                         <div class="col-lg-4">
                             <div class="card shadow-sm mb-3">
                                 <div class="card-header bg-light">
                                     <h5 class="card-title mb-0">
                                         <i class="fa fa-credit-card me-2"/>
-                                        ช่องทางการชำระ
+                                        ยอดตามวิธี
                                     </h5>
                                 </div>
                                 <div class="card-body">
@@ -335,12 +355,14 @@
             <search>
                 <field name="name"/>
                 <field name="config_id"/>
+                <field name="location_id"/>
                 <field name="user_id"/>
                 <field name="employee_ids"/>
                 <filter string="Open" name="open" domain="[('state', '=', 'opened')]"/>
                 <filter string="Closed" name="closed" domain="[('state', '=', 'closed')]"/>
                 <filter string="Today" name="today" domain="[('date_open', '&gt;=', (context_today()).strftime('%Y-%m-%d 00:00:00'))]"/>
                 <group expand="0" string="Group By">
+                    <filter string="Location" name="group_location" context="{'group_by': 'location_id'}"/>
                     <filter string="Config" name="group_config" context="{'group_by': 'config_id'}"/>
                     <filter string="Cashier" name="group_user" context="{'group_by': 'user_id'}"/>
                     <filter string="Employee" name="group_employee" context="{'group_by': 'employee_ids'}"/>

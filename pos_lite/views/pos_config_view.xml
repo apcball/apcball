@@ -8,8 +8,11 @@
                 <field name="name"/>
                 <field name="company_id"/>
                 <field name="warehouse_id"/>
+                <field name="location_id"/>
                 <field name="pricelist_id"/>
                 <field name="journal_id"/>
+                <field name="sale_journal_id" optional="show"/>
+                <field name="default_trade_channel" optional="show"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -29,8 +32,10 @@
                         </group>
                         <group>
                             <field name="warehouse_id"/>
+                            <field name="location_id"/>
                             <field name="pricelist_id"/>
                             <field name="journal_id"/>
+                            <field name="sale_journal_id"/>
                         </group>
                     </group>
                     <group string="Receipt Settings">
@@ -41,10 +46,17 @@
                             <field name="employee_id"/>
                         </group>
                     </group>
+                    <group string="Marketplace Integration">
+                        <group>
+                            <field name="marketplace_profile_id"/>
+                            <field name="default_trade_channel"/>
+                        </group>
+                    </group>
                     <group string="Stock Operation">
                         <group>
                             <field name="out_picking_type_id"/>
                             <field name="return_picking_type_id"/>
+                            <field name="late_return_picking_type_id"/>
                         </group>
                     </group>
                 </sheet>

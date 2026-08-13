@@ -15,20 +15,6 @@ class PosLiteReturnWizard(models.TransientModel):
     return_reason = fields.Text(string='Return Reason')
     is_exchange = fields.Boolean(default=False)
 
-    # Refund payment method
-    refund_payment_method = fields.Selection([
-        ('cash', 'Cash'),
-        ('transfer', 'Transfer'),
-        ('card', 'Card'),
-        ('promptpay', 'PromptPay'),
-        ('other', 'Other'),
-    ], default='cash', string='Refund Method', required=True)
-    refund_journal_id = fields.Many2one(
-        'account.journal', string='Refund Journal',
-        domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]",
-        check_company=True,
-    )
-
     # Exchange fields
     exchange_partner_id = fields.Many2one(
         'res.partner', string='Exchange Customer',
@@ -86,17 +72,9 @@ class PosLiteReturnWizard(models.TransientModel):
         if not self.order_id:
             self.line_ids = [(5, 0, 0)]
             return
-        config = self.env['pos.lite.config'].get_default_config(self.order_id.company_id)
         self.exchange_warehouse_id = self.order_id.warehouse_id
         self.exchange_partner_id = self.order_id.partner_id
         self.exchange_channel = self.order_id.channel
-        if not self.refund_journal_id:
-            if config and config.journal_id:
-                self.refund_journal_id = config.journal_id
-            else:
-                default_journal = self.order_id._get_default_payment_journal()
-                if default_journal:
-                    self.refund_journal_id = default_journal.id
         lines = []
         for line in self.order_id.line_ids.filtered(lambda l: l.product_id):
             available_qty = line.available_return_qty if hasattr(line, 'available_return_qty') else line.qty
@@ -111,22 +89,17 @@ class PosLiteReturnWizard(models.TransientModel):
                 'price_unit': line.price_unit,
                 'discount': line.discount,
                 'discount_type': line.discount_type,
+                'selected': True,
             }))
         self.line_ids = lines
-
-    @api.onchange('refund_payment_method')
-    def _onchange_refund_payment_method(self):
-        if self.refund_payment_method and not self.refund_journal_id:
-            config = self.env['pos.lite.config'].get_default_config(self.company_id)
-            if config and config.journal_id:
-                self.refund_journal_id = config.journal_id
 
     @api.constrains('line_ids')
     def _check_lines(self):
         for wizard in self:
-            if not wizard.line_ids:
+            selected_lines = wizard.line_ids.filtered('selected')
+            if not selected_lines:
                 raise ValidationError(_('Please select at least one product to return.'))
-            for line in wizard.line_ids:
+            for line in selected_lines:
                 if line.qty <= 0:
                     raise ValidationError(_('Return quantity must be greater than zero.'))
                 # qty_available validation deferred to action_confirm
@@ -136,9 +109,10 @@ class PosLiteReturnWizard(models.TransientModel):
         self.ensure_one()
         if self.order_id.state != 'done':
             raise UserError(_('Only completed orders can be returned.'))
-        if not self.line_ids:
+        selected_lines = self.line_ids.filtered('selected')
+        if not selected_lines:
             raise UserError(_('Please select at least one product to return.'))
-        for line in self.line_ids:
+        for line in selected_lines:
             if line.order_line_id:
                 original_line = line.order_line_id
                 available_qty = original_line.available_return_qty if hasattr(original_line, 'available_return_qty') else original_line.qty
@@ -146,6 +120,10 @@ class PosLiteReturnWizard(models.TransientModel):
                     raise UserError(_('Return quantity for %s cannot exceed the available quantity.') % line.description)
 
         order = self.order_id
+        # Same calendar day (local time) as the original sale → auto-post/validate.
+        # Any other day → late flow: draft credit note + unvalidated receipt.
+        order_local_date = fields.Datetime.context_timestamp(self, order.date_order).date()
+        is_late_return = order_local_date != fields.Date.context_today(self)
         line_commands = [fields.Command.create({
             'returned_from_line_id': l.order_line_id.id,
             'product_id': l.product_id.id or l.order_line_id.product_id.id,
@@ -154,7 +132,7 @@ class PosLiteReturnWizard(models.TransientModel):
             'price_unit': l.order_line_id.price_subtotal / l.order_line_id.qty if l.order_line_id and l.order_line_id.qty else l.price_unit,
             'discount': 0.0,
             'discount_type': 'percent',
-        }) for l in self.line_ids.filtered(lambda l: l.qty > 0)]
+        }) for l in selected_lines.filtered(lambda l: l.qty > 0)]
 
         # 1. Create Return Order (always)
         return_note = '\n'.join([
@@ -168,6 +146,7 @@ class PosLiteReturnWizard(models.TransientModel):
             'company_id': order.company_id.id,
             'session_id': order.session_id.id if order.session_id else False,
             'channel': order.channel,
+            'trade_channel': order.trade_channel,
             'customer_name': order.customer_name,
             'partner_id': order.partner_id.id if order.partner_id else False,
             'partner_phone': order.partner_phone,
@@ -178,22 +157,29 @@ class PosLiteReturnWizard(models.TransientModel):
             'pricelist_id': order.pricelist_id.id,
             'note': return_note,
             'is_return': True,
+            'is_late_return': is_late_return,
             'return_of_order_id': order.id,
             'return_reason': self.return_reason,
             'line_ids': line_commands,
         })
 
-        # Refund payment (use selected method instead of hardcoded 'cash')
-        refund_journal = self.refund_journal_id or return_order._get_default_payment_journal()
+        # Refund payment
+        refund_journal = return_order._get_default_payment_journal()
         refund_amount = abs(return_order.amount_total)
         self.env['pos.lite.payment'].create({
             'order_id': return_order.id,
-            'payment_method': self.refund_payment_method,
+            'payment_method': 'cash',
             'amount': -refund_amount,
             'journal_id': refund_journal.id if refund_journal else False,
             'note': self.return_reason or _('Customer return refund'),
         })
         return_order.action_process_order()
+        if is_late_return:
+            return_order.message_post(body=_(
+                'Late return (processed on a different day than the original sale): '
+                'the credit note was left unposted and the receipt was left unvalidated '
+                'for manual completion.'
+            ))
 
         # 2. Exchange: create new sale order
         if self.is_exchange and self.exchange_line_ids:
@@ -210,6 +196,7 @@ class PosLiteReturnWizard(models.TransientModel):
                 'company_id': order.company_id.id,
                 'session_id': order.session_id.id if order.session_id else False,
                 'channel': self.exchange_channel or order.channel,
+                'trade_channel': order.trade_channel,
                 'customer_name': partner.name if partner else order.customer_name,
                 'partner_id': partner.id if partner else False,
                 'partner_phone': (partner.phone or partner.mobile) if partner else order.partner_phone,
@@ -220,6 +207,7 @@ class PosLiteReturnWizard(models.TransientModel):
                 'pricelist_id': order.pricelist_id.id,
                 'note': _('Exchange for order %s (return: %s)') % (order.name, return_order.name),
                 'is_exchange': True,
+                'is_late_return': is_late_return,
                 'exchange_of_order_id': order.id,
                 'exchange_return_order_id': return_order.id,
                 'line_ids': exchange_line_commands,
@@ -229,7 +217,7 @@ class PosLiteReturnWizard(models.TransientModel):
             ex_journal = exchange_order._get_default_payment_journal()
             self.env['pos.lite.payment'].create({
                 'order_id': exchange_order.id,
-                'payment_method': self.refund_payment_method,
+                'payment_method': 'cash',
                 'amount': abs(exchange_order.amount_total),
                 'journal_id': ex_journal.id if ex_journal else False,
                 'note': _('Exchange payment for %s') % order.name,
@@ -266,6 +254,7 @@ class PosLiteReturnWizardLine(models.TransientModel):
     product_id = fields.Many2one('product.product')
     description = fields.Char(readonly=True)
     qty_available = fields.Float(readonly=True)
+    selected = fields.Boolean(default=True)
     qty = fields.Float(default=1.0)
     price_unit = fields.Monetary(required=False)
     discount = fields.Float(default=0.0)

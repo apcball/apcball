@@ -22,6 +22,17 @@ class PosLiteStartSaleWizard(models.TransientModel):
         ('walkin', 'Walk-in'),
         ('other', 'Other'),
     ], default='walkin', required=True, string='ช่องทาง')
+    trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Trade Channel',
+        help='Marketplace trade channel for settlement grouping.',
+    )
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Dynamic selection mirroring sale.order.trade_channel (injected by marketplace_settlement)."""
+        from odoo.addons.pos_lite.models.pos_order import _get_trade_channel_selection
+        return _get_trade_channel_selection(self)
 
     @api.depends('session_id')
     def _compute_allowed_employees(self):
@@ -54,10 +65,15 @@ class PosLiteStartSaleWizard(models.TransientModel):
             if 'channel' in fields_list and not res.get('channel'):
                 if session.current_channel:
                     res['channel'] = session.current_channel
+            if 'trade_channel' in fields_list and not res.get('trade_channel'):
+                if session.current_trade_channel:
+                    res['trade_channel'] = session.current_trade_channel
+                elif session.config_id.default_trade_channel:
+                    res['trade_channel'] = session.config_id.default_trade_channel
         return res
 
     def action_confirm(self):
-        """ยืนยัน → จำค่าพนักงาน+ช่องทางลง session → เปิดหน้าสร้าง order"""
+        """ยืนยัน → จำค่าพนักงาน+ช่องทาง+trade channel ลง session → เปิดหน้าสร้าง order"""
         self.ensure_one()
         if not self.employee_id:
             raise UserError(_('กรุณาเลือกพนักงานขาย'))
@@ -68,6 +84,7 @@ class PosLiteStartSaleWizard(models.TransientModel):
         self.session_id.write({
             'current_employee_id': self.employee_id.id,
             'current_channel': self.channel,
+            'current_trade_channel': self.trade_channel,
         })
 
         return self.session_id.action_new_order()

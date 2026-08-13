@@ -1,6 +1,13 @@
 from odoo import models, fields, api
-from bahttext import bahttext
-from num2words import num2words
+try:
+    from bahttext import bahttext
+except ImportError:
+    bahttext = None
+
+try:
+    from num2words import num2words
+except ImportError:
+    num2words = None
 
 class AccountMove(models.Model):
     _inherit = 'account.move'

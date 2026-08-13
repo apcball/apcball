@@ -1,5 +1,7 @@
 """Additional tests covering constraints, state transitions, cancel, reorder,
-payment wizard, config, and name_search overrides."""
+config, and name_search overrides."""
+
+import uuid
 
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError, ValidationError
@@ -55,10 +57,17 @@ class TestAdditionalBase(common.TransactionCase):
             'name': 'Emp Extra',
             'company_id': cls.company.id,
         })
+        cls.stock_location = cls.env['stock.location'].create({
+            'name': 'Test Stock Location - Extra',
+            'location_id': cls.warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': cls.company.id,
+        })
         cls.config = cls.env['pos.lite.config'].create({
             'name': 'Cfg Extra',
             'company_id': cls.company.id,
             'warehouse_id': cls.warehouse.id,
+            'location_id': cls.stock_location.id,
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
@@ -71,10 +80,11 @@ class TestAdditionalBase(common.TransactionCase):
             'employee_id': cls.employee.id,
             'company_id': cls.company.id,
         })
-        # Stock quant for storable product
+        # Stock quant for storable product — must sit at the config's location,
+        # since pickings now source from order.location_id (= session location).
         cls.env['stock.quant'].create({
             'product_id': cls.product_storable.id,
-            'location_id': cls.warehouse.lot_stock_id.id,
+            'location_id': cls.stock_location.id,
             'quantity': 50.0,
         })
 
@@ -340,61 +350,6 @@ class TestReorder(TestAdditionalBase):
             order.action_reorder()
 
 
-# ─── Payment Wizard ─────────────────────────────────────────
-
-@tagged('-at_install', 'post_install')
-class TestPaymentWizard(TestAdditionalBase):
-    """Test pos.lite.payment.wizard."""
-
-    def test_wizard_confirm_creates_payment(self):
-        order = self._draft_order()
-        wizard = self.env['pos.lite.payment.wizard'].create({
-            'order_id': order.id,
-            'payment_method': 'cash',
-            'amount': 100.0,
-            'journal_id': self.cash_journal.id,
-            'auto_process': True,
-        })
-        wizard.action_confirm()
-        self.assertEqual(order.state, 'done')
-        self.assertTrue(order.payment_ids)
-
-    def test_wizard_zero_amount_raises(self):
-        order = self._draft_order()
-        with self.assertRaises(ValidationError):
-            self.env['pos.lite.payment.wizard'].create({
-                'order_id': order.id,
-                'payment_method': 'cash',
-                'amount': 0.0,
-                'journal_id': self.cash_journal.id,
-            })
-
-    def test_wizard_non_draft_raises(self):
-        order = self._process_order()
-        with self.assertRaises(UserError):
-            wizard = self.env['pos.lite.payment.wizard'].create({
-                'order_id': order.id,
-                'payment_method': 'cash',
-                'amount': 100.0,
-                'journal_id': self.cash_journal.id,
-            })
-            wizard.action_confirm()
-
-    def test_wizard_held_order_resumes(self):
-        order = self._draft_order()
-        order.action_hold()
-        self.assertEqual(order.state, 'held')
-        wizard = self.env['pos.lite.payment.wizard'].create({
-            'order_id': order.id,
-            'payment_method': 'cash',
-            'amount': 100.0,
-            'journal_id': self.cash_journal.id,
-            'auto_process': True,
-        })
-        wizard.action_confirm()
-        self.assertEqual(order.state, 'done')
-
-
 # ─── Config ─────────────────────────────────────────────────
 
 @tagged('-at_install', 'post_install')
@@ -442,12 +397,15 @@ class TestPickingTypeConfig(TestAdditionalBase):
 
     def test_config_out_picking_type_used_when_set(self):
         """เมื่อ config ตั้ง out_picking_type_id → ใช้ค่านั้นแทน warehouse default"""
+        # Unique sequence_code per run: MOG_DEV already holds pickings named
+        # FG10/POSOUT/00001 from earlier runs, and stock_picking_name_uniq
+        # would reject a fresh sequence that restarts at 1.
         custom_type = self.env['stock.picking.type'].create({
             'name': 'POS Delivery Custom',
             'code': 'outgoing',
             'warehouse_id': self.warehouse.id,
             'company_id': self.company.id,
-            'sequence_code': 'POSOUT',
+            'sequence_code': 'PO%s' % uuid.uuid4().hex[:6].upper(),
         })
         self.config.out_picking_type_id = custom_type.id
 
@@ -455,7 +413,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
             (self.product_storable.id, 1, 200.0),
         ])
         self.assertTrue(order.picking_id)
-        self.assertEqual(order.picking_id.picking_type_id, custom_type.id)
+        self.assertEqual(order.picking_id.picking_type_id.id, custom_type.id)
         self.assertNotEqual(order.picking_id.picking_type_id, self.warehouse.out_type_id)
 
     def test_config_return_picking_type_used_when_set(self):
@@ -465,7 +423,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
             'code': 'incoming',
             'warehouse_id': self.warehouse.id,
             'company_id': self.company.id,
-            'sequence_code': 'POSRET',
+            'sequence_code': 'PR%s' % uuid.uuid4().hex[:6].upper(),
         })
         self.config.return_picking_type_id = custom_return_type.id
 
@@ -480,7 +438,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
         wizard._onchange_order_id()
         # เติม return line ด้วย storable product
         wizard.line_ids.write({
-            'returned_from_line_id': original.line_ids[0].id,
+            'order_line_id': original.line_ids[0].id,
         })
         wizard.action_confirm()
 
@@ -489,7 +447,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
         ], limit=1)
         self.assertTrue(return_order)
         self.assertTrue(return_order.picking_id)
-        self.assertEqual(return_order.picking_id.picking_type_id, custom_return_type.id)
+        self.assertEqual(return_order.picking_id.picking_type_id.id, custom_return_type.id)
         self.assertNotEqual(return_order.picking_id.picking_type_id, self.warehouse.in_type_id)
 
 
@@ -714,18 +672,6 @@ class TestOrderOnchange(TestAdditionalBase):
                 })],
             })
 
-    def test_register_payment_action(self):
-        order = self._draft_order()
-        action = order.action_register_payment()
-        self.assertEqual(action['res_model'], 'pos.lite.payment.wizard')
-        self.assertEqual(action['type'], 'ir.actions.act_window')
-
-    def test_register_payment_non_draft_raises(self):
-        order = self._process_order()
-        with self.assertRaises(UserError):
-            order.action_register_payment()
-
-
 # ─── Stock Check ────────────────────────────────────────────
 
 @tagged('-at_install', 'post_install')
@@ -789,7 +735,7 @@ class TestQuickPayEdgeCases(TestAdditionalBase):
             order.action_quick_pay_and_process()
 
     def test_quick_pay_with_partial_payment(self):
-        """มี partial payment แล้ว → quick pay เติมส่วนที่เหลือ"""
+        """มี partial payment แล้ว → quick pay ไม่สร้าง payment เพิ่ม"""
         order = self._draft_order([(self.product_svc.id, 1, 100.0)])
         self.env['pos.lite.payment'].create({
             'order_id': order.id,
@@ -800,4 +746,4 @@ class TestQuickPayEdgeCases(TestAdditionalBase):
         result = order.action_quick_pay_and_process()
         self.assertTrue(result)
         self.assertEqual(order.state, 'done')
-        self.assertEqual(len(order.payment_ids), 2)
+        self.assertEqual(len(order.payment_ids), 1)

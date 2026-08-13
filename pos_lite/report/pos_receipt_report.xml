@@ -190,6 +190,7 @@
                          <div class="row mb-2">
                             <div class="col-12 text-center">
                                 <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบเสร็จรับเงิน/ใบกำกับภาษี/ใบส่งของ</h2>
+ <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">***ไม่ใช่ใบกำกับภาษีฉบับจริงสำหรับการทางภาษี***</p>
                                 <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Receipt/Tax Invoice/Dispatch</p>
                             </div> 
                         </div> 
@@ -381,7 +382,9 @@
                                             <!-- ส่วนล่าง -->
                                             <div style="min-height: 35px; height: 35px; padding: 5px 10px; box-sizing: border-box; font-size: 18px; line-height: 1.2;">
                                                 <strong>จำนวนเงิน (ตัวอักษร):</strong>
-                                                <span t-esc="doc.amount_total_text_th"/>
+                                                <t t-set="pos_totals" t-value="pos_totals_map.get(doc.id, {})"/>
+                                                <t t-set="grand_total" t-value="pos_totals.get('amount_total', doc.amount_total or 0.0)"/>
+                                                <span t-esc="doc._baht_text_th(grand_total) if pos_totals else doc.amount_total_text_th"/>
                                             </div>
                                            
                                         </td>
@@ -394,9 +397,10 @@
                                         </td>
                                         <td style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 18px; vertical-align: top;">
                                             <div>
-                                                <t t-set="amount_total" t-value="doc.amount_untaxed or 0.0"/>
-                                                <t t-set="amount_tax" t-value="doc.amount_tax or 0.0"/>
-                                                <t t-set="grand_total" t-value="doc.amount_total or 0.0"/>
+                                                <t t-set="pos_totals" t-value="pos_totals_map.get(doc.id, {})"/>
+                                                <t t-set="amount_total" t-value="pos_totals.get('amount_untaxed', doc.amount_untaxed or 0.0)"/>
+                                                <t t-set="amount_tax" t-value="pos_totals.get('amount_tax', doc.amount_tax or 0.0)"/>
+                                                <t t-set="grand_total" t-value="pos_totals.get('amount_total', doc.amount_total or 0.0)"/>
                                         
                                                 <div><span t-esc="'{:,.2f}'.format(amount_total)"/></div>
                                                 <div><span t-esc="'{:,.2f}'.format(amount_tax)"/></div>
@@ -451,11 +455,15 @@
                                              <br/>
                                              บริษัท โมเก้น จำกัด
                                              <br/>
-                                             ___________________________
-                                             <br/> 
-                                             ผู้มีอำนาจลงนาม
-                                             <br/>
-                                             AUTHORIZED
+                                             <t t-set="pos_sig" t-value="pos_signature_map.get(doc.id, False)"/>
+                                             <t t-if="pos_sig">
+                                                 <img t-att-src="image_data_uri(pos_sig)" style="height: 40px; max-width: 140px; display: block; margin: 0 auto;"/>
+                                             </t>
+                                             <div style="margin-top: -15px;">
+                                                 ผู้มีอำนาจลงนาม
+                                                 <br/>
+                                                 AUTHORIZED
+                                             </div>
                                          </div>
                                      </div>
 

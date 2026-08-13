@@ -24,17 +24,31 @@ class ReportPosLiteInvoice(models.AbstractModel):
     def _get_report_values(self, docids, data=None):
         orders = self.env['pos.lite.order'].browse(docids)
         invoices = orders.mapped('invoice_id')
-        # Map invoice -> POS employee name for report display
+        # Map invoice -> POS employee name / signature for report display
         pos_employee_map = {}
+        pos_signature_map = {}
+        # Map invoice -> POS order totals. POS computes tax per-line then sums,
+        # which can differ from the invoice's aggregate tax by a few cents
+        # (e.g. 4,620.00 vs 4,619.98). The receipt must match the POS document.
+        pos_totals_map = {}
         for order in orders:
             if order.invoice_id and order.employee_id:
                 pos_employee_map[order.invoice_id.id] = order.employee_id.name
+                pos_signature_map[order.invoice_id.id] = order.authorized_signature
+            if order.invoice_id:
+                pos_totals_map[order.invoice_id.id] = {
+                    'amount_untaxed': order.amount_untaxed,
+                    'amount_tax': order.amount_tax,
+                    'amount_total': order.amount_total,
+                }
         return {
             'doc_ids': invoices.ids,
             'doc_model': 'account.move',
             'docs': invoices,
             'data': data or {},
             'pos_employee_map': pos_employee_map,
+            'pos_signature_map': pos_signature_map,
+            'pos_totals_map': pos_totals_map,
         }
 
 

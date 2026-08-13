@@ -1,7 +1,7 @@
 {
     "name": "BUZ Sales Performance Engine",
-    "version": "17.0.1.0.0",
-    "summary": "Measure REAL sales performance: recognized only when delivered AND invoice posted.",
+    "version": "17.0.2.2.1",
+    "summary": "Measure REAL sales performance: recognized only when delivered AND invoice posted. Includes POS Lite sales.",
     "description": """
 BUZ Sales Performance Engine
 ===========================
@@ -18,10 +18,13 @@ automatically at the sale-order-line granularity via a summary table
 Features
 --------
 * Salesperson / Sales Team / Company targets (daily, monthly, quarterly, yearly)
-* Real-time OWL dashboard (Chart.js, no extra JS dependency)
-* KPI cards, sales-vs-target, delivery / invoice / refund trends,
-  top customers / products / salespersons / teams, leaderboards
-* Drill-downs to invoices, deliveries, sale orders, credit notes
+* Real-time OWL pipeline dashboard (Chart.js, no extra JS dependency):
+  KPI cards (Sales Order / Delivery / Invoice / Payment / POS Returns /
+  Credit Notes / Backlog / Overdue),
+  sales funnel, sales trend, sales by company / category,
+  performance by salesperson with target achievement,
+  top customers, follow-up work lists, month-over-month comparison
+* Drill-downs to sale orders, deliveries, invoices, overdue invoices
 * Event-driven incremental recompute + nightly safety-net cron
 * Multi-company, multi-currency
 * 3-tier security: own records / own team / all
@@ -35,6 +38,7 @@ Features
         "sale_stock",
         "account",
         "crm",
+        "pos_lite",
     ],
     "data": [
         "security/ir_module_category_data.xml",

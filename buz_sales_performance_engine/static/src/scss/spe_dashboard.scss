@@ -1,22 +1,43 @@
+// SPE Dashboard — light theme per mockup
+$spe-blue: #3b82f6;
+$spe-purple: #8b5cf6;
+$spe-orange: #f59e0b;
+$spe-green: #10b981;
+$spe-amber: #f59e0b;
+$spe-red: #ef4444;
+$spe-ink: #1e293b;
+$spe-muted: #94a3b8;
+$spe-border: #e5e7eb;
+$spe-bg: #f3f4f6;
+
 .spe-dashboard {
     height: 100%;
     overflow-y: auto;
     padding: 16px;
-    background: #f5f7f8;
+    background: $spe-bg;
+    font-variant-numeric: tabular-nums;
+    color: $spe-ink;
 
     .spe-loading {
-        padding: 40px;
+        padding: 48px;
         text-align: center;
-        color: #6c757d;
+        color: $spe-muted;
         font-size: 18px;
     }
+    .spe-muted { color: $spe-muted; font-size: 12px; }
+    .spe-clickable { cursor: pointer; }
 
+    // ------------------------------------------------------------------
+    // Filter bar
+    // ------------------------------------------------------------------
     .spe-filter-bar {
         background: #fff;
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 12px 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        margin-bottom: 14px;
+        border: 1px solid $spe-border;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+
         .spe-filters {
             display: flex;
             flex-wrap: wrap;
@@ -26,75 +47,213 @@
         .spe-field {
             display: flex;
             flex-direction: column;
-            label { font-size: 11px; color: #6c757d; margin-bottom: 2px; font-weight: 600; text-transform: uppercase; }
-            input, select { padding: 5px 8px; border: 1px solid #ced4da; border-radius: 4px; min-width: 120px; }
+            label {
+                font-size: 11px; color: $spe-muted; margin-bottom: 3px;
+                font-weight: 600; letter-spacing: .03em;
+            }
+            input, select {
+                padding: 6px 10px; border: 1px solid $spe-border; border-radius: 8px;
+                min-width: 130px; background: #fff; font-size: 13px;
+                transition: border-color .15s, box-shadow .15s;
+                &:focus { border-color: $spe-blue; box-shadow: 0 0 0 3px rgba(59,130,246,.12); outline: none; }
+            }
             &.spe-apply { margin-left: auto; }
+        }
+        .spe-chips {
+            display: inline-flex;
+            background: #f1f5f9;
+            border-radius: 999px;
+            padding: 3px;
+            gap: 2px;
+            .spe-chip {
+                border: none; background: transparent; color: #64748b;
+                border-radius: 999px; padding: 5px 16px; font-size: 13px;
+                font-weight: 600; cursor: pointer; transition: all .15s;
+                &:hover { color: $spe-blue; }
+                &.active { background: $spe-blue; color: #fff; box-shadow: 0 2px 6px rgba(59,130,246,.35); }
+            }
+        }
+        .btn-primary {
+            background: #6d28d9; border: none; border-radius: 8px;
+            &:hover { background: #5b21b6; }
         }
     }
 
+    // ------------------------------------------------------------------
+    // KPI cards
+    // ------------------------------------------------------------------
     .spe-kpi-row {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 12px;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
+
         .spe-kpi-card {
             background: #fff;
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-            border-left: 4px solid #017e84;
-            &.spe-clickable { cursor: pointer; transition: transform .1s; }
-            &.spe-clickable:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
-            .spe-kpi-label { font-size: 12px; color: #6c757d; font-weight: 600; }
-            .spe-kpi-value { font-size: 22px; font-weight: 700; color: #2c3e50; margin-top: 4px; }
+            border: 1px solid $spe-border;
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            transition: box-shadow .15s, transform .15s;
+            &.spe-clickable:hover { box-shadow: 0 4px 14px rgba(15,23,42,.10); transform: translateY(-1px); }
         }
+        .spe-kpi-icon {
+            width: 42px; height: 42px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #fff; flex: 0 0 auto;
+            &.spe-ic-blue   { background: $spe-blue; }
+            &.spe-ic-purple { background: $spe-purple; }
+            &.spe-ic-orange { background: $spe-orange; }
+            &.spe-ic-green  { background: $spe-green; }
+            &.spe-ic-amber  { background: #f97316; }
+            &.spe-ic-red    { background: $spe-red; }
+        }
+        .spe-kpi-label { font-size: 12px; color: #64748b; font-weight: 600; white-space: nowrap; }
+        .spe-kpi-value {
+            font-size: 20px; font-weight: 700; line-height: 1.25;
+            .spe-kpi-cur { font-size: 11px; font-weight: 600; color: $spe-muted; }
+        }
+        .spe-kpi-sub { font-size: 11px; color: $spe-muted; margin-top: 2px; }
+    }
+    .spe-delta {
+        font-size: 12px; font-weight: 700; margin-top: 2px;
+        &.spe-up { color: $spe-green; }
+        &.spe-down { color: $spe-red; }
     }
 
+    // ------------------------------------------------------------------
+    // Cards & grids
+    // ------------------------------------------------------------------
+    .spe-card {
+        background: #fff;
+        border: 1px solid $spe-border;
+        border-radius: 12px;
+        padding: 16px;
+        min-width: 0;
+    }
+    .spe-card-title {
+        font-size: 14px; font-weight: 700; margin-bottom: 12px;
+    }
     .spe-grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        margin-bottom: 16px;
-        @media (max-width: 992px) { grid-template-columns: 1fr; }
+        display: grid; grid-template-columns: 3fr 2fr;
+        gap: 12px; margin-bottom: 14px;
+    }
+    .spe-grid-3 {
+        display: grid; grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px; margin-bottom: 14px;
+        .spe-span-2 { grid-column: span 2; }
+    }
+    .spe-chart-box { height: 280px; position: relative; }
+    .spe-chart-tall { height: 340px; }
+
+    // ------------------------------------------------------------------
+    // Funnel
+    // ------------------------------------------------------------------
+    .spe-funnel {
+        display: flex; flex-direction: column; gap: 10px; padding-top: 6px;
+        .spe-funnel-row {
+            display: grid;
+            grid-template-columns: 110px 1fr 52px;
+            align-items: center; gap: 10px;
+        }
+        .spe-funnel-label { font-size: 12px; font-weight: 600; color: #475569; }
+        .spe-funnel-amount { font-size: 12px; color: $spe-muted; }
+        .spe-funnel-bar-wrap { display: flex; justify-content: center; }
+        .spe-funnel-bar {
+            height: 34px; border-radius: 4px;
+            clip-path: polygon(0 0, 100% 0, 94% 100%, 6% 100%);
+            &.spe-funnel-0 { background: $spe-blue; }
+            &.spe-funnel-1 { background: $spe-purple; }
+            &.spe-funnel-2 { background: $spe-orange; }
+            &.spe-funnel-3 { background: #22d3ee; }
+            &.spe-funnel-4 { background: $spe-green; }
+        }
+        .spe-funnel-pct { font-size: 12px; font-weight: 700; color: #475569; text-align: right; }
     }
 
-    .spe-chart-block {
-        background: #fff;
-        border-radius: 8px;
-        padding: 12px 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        margin-bottom: 16px;
-        .spe-chart-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 8px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #eef0f1;
+    // ------------------------------------------------------------------
+    // Tables
+    // ------------------------------------------------------------------
+    .spe-table-wrap { overflow-x: auto; }
+    .spe-table {
+        width: 100%; border-collapse: collapse; font-size: 13px;
+        thead th {
+            text-align: left; color: #64748b; font-size: 11px; font-weight: 700;
+            letter-spacing: .03em; text-transform: uppercase;
+            padding: 8px 10px; border-bottom: 1px solid $spe-border;
+            white-space: nowrap;
         }
-        .spe-chart-box {
-            position: relative;
-            height: 280px;
-            canvas { max-height: 280px; }
+        tbody td {
+            padding: 9px 10px; border-bottom: 1px solid #f1f5f9;
+            white-space: nowrap;
+        }
+        tbody tr:hover { background: #f8fafc; }
+        .spe-num { text-align: right; }
+        .spe-doc { font-weight: 600; color: $spe-blue; }
+        .spe-empty { text-align: center; color: $spe-muted; padding: 24px; }
+    }
+    .spe-progress {
+        width: 100%; min-width: 80px; height: 8px;
+        background: #f1f5f9; border-radius: 999px; overflow: hidden;
+        .spe-progress-fill {
+            height: 100%; border-radius: 999px;
+            &.spe-pg-green { background: $spe-green; }
+            &.spe-pg-amber { background: $spe-amber; }
+            &.spe-pg-red { background: $spe-red; }
+        }
+    }
+    .spe-badge {
+        display: inline-block; padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-weight: 700;
+        &.spe-badge-warning { background: #fef3c7; color: #b45309; }
+        &.spe-badge-info    { background: #dbeafe; color: #1d4ed8; }
+        &.spe-badge-danger  { background: #fee2e2; color: #b91c1c; }
+        &.spe-badge-success { background: #d1fae5; color: #047857; }
+    }
+
+    // ------------------------------------------------------------------
+    // Tabs
+    // ------------------------------------------------------------------
+    .spe-tabs {
+        display: flex; gap: 4px; border-bottom: 1px solid $spe-border;
+        margin-bottom: 10px; flex-wrap: wrap;
+        .spe-tab {
+            border: none; background: transparent; padding: 8px 14px;
+            font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer;
+            border-bottom: 2px solid transparent; margin-bottom: -1px;
+            &:hover { color: $spe-blue; }
+            &.active { color: $spe-blue; border-bottom-color: $spe-blue; }
         }
     }
 
-    .spe-leaderboard {
-        background: #fff;
-        border-radius: 8px;
-        padding: 12px 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        margin-bottom: 16px;
-        .spe-chart-title {
-            font-size: 14px; font-weight: 700; color: #2c3e50;
-            margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #eef0f1;
+    // ------------------------------------------------------------------
+    // Comparison sparklines
+    // ------------------------------------------------------------------
+    .spe-comparison {
+        display: flex; flex-direction: column; gap: 8px;
+        .spe-comp-row {
+            display: grid; grid-template-columns: 1fr 70px 90px;
+            align-items: center; gap: 8px;
+            padding: 8px 0; border-bottom: 1px solid #f1f5f9;
+            &:last-child { border-bottom: none; }
         }
-        .spe-table {
-            width: 100%;
-            th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #f0f2f3; }
-            th { font-size: 11px; text-transform: uppercase; color: #6c757d; }
-            td.spe-num, th.spe-num { text-align: right; font-variant-numeric: tabular-nums; }
-            tbody tr:hover { background: #f8fafb; }
-        }
+        .spe-comp-label { font-size: 13px; font-weight: 600; }
+        .spe-spark { height: 34px; position: relative; }
+    }
+
+    // ------------------------------------------------------------------
+    // Responsive
+    // ------------------------------------------------------------------
+    @media (max-width: 1400px) {
+        .spe-kpi-row { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 1200px) {
+        .spe-grid-2, .spe-grid-3 { grid-template-columns: 1fr; }
+        .spe-grid-3 .spe-span-2 { grid-column: span 1; }
+    }
+    @media (max-width: 768px) {
+        .spe-kpi-row { grid-template-columns: repeat(2, 1fr); }
     }
 }

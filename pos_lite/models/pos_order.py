@@ -1,11 +1,70 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools.float_utils import float_compare, float_is_zero
+from datetime import timedelta
+import base64
+import io
 import logging
 
 _logger = logging.getLogger(__name__)
 
 WALK_IN_CUSTOMER_NAME = 'Walk-in Customer'
+
+
+def _resize_signature(image_b64, max_width=200, max_height=100):
+    """Resize a base64-encoded image to fit within max_width x max_height.
+    Returns resized base64 string, or original if resize fails."""
+    if not image_b64:
+        return image_b64
+    try:
+        from PIL import Image
+        image_data = base64.b64decode(image_b64)
+        img = Image.open(io.BytesIO(image_data))
+        img.thumbnail((max_width, max_height), Image.LANCZOS)
+        output = io.BytesIO()
+        img_format = img.format or 'PNG'
+        img.save(output, format=img_format)
+        return base64.b64encode(output.getvalue()).decode('utf-8')
+    except Exception as e:
+        _logger.warning("Could not resize signature image: %s", e)
+        return image_b64
+
+# ─── Trade Channel Mapping ────────────────────────────────────
+# Auto-maps POS Lite channel → marketplace_settlement.trade_channel
+# when the user hasn't explicitly chosen a trade_channel.
+POS_CHANNEL_TO_TRADE_CHANNEL = {
+    'phone': 'online_line_fb',
+    'line': 'online_line_fb',
+    'walkin': 'offline_mogen_outlet',
+    'other': 'other',
+}
+
+
+def _get_trade_channel_selection(self):
+    """Return the selection marketplace.settlement injects into sale.order.trade_channel.
+
+    marketplace_settlement adds trade_channel to sale.order via _inherit.
+    If the module is installed, the field will carry the canonical selection;
+    if not, use a hardcoded fallback.
+    """
+    SO = self.env.get('sale.order')
+    if SO is not None:  # empty recordset is falsy — check against None
+        field = SO._fields.get('trade_channel')
+        if field is not None and isinstance(field.selection, list) and field.selection:
+            return field.selection
+    # Fallback if marketplace_settlement is not installed
+    return [
+        ('shopee', 'Shopee'),
+        ('lazada', 'Lazada'),
+        ('nocnoc', 'Noc Noc'),
+        ('tiktok', 'Tiktok'),
+        ('spx', 'SPX'),
+        ('online_line_fb', 'ONLINE/Line + Facebook'),
+        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
+        ('after_sale_service', 'After sale service'),
+        ('installation_service', 'Installation service'),
+        ('own_channel_cdc', 'Own channel ( CDC )'),
+        ('other', 'Other'),
+    ]
 
 
 class PosLiteOrder(models.Model):
@@ -18,6 +77,12 @@ class PosLiteOrder(models.Model):
     name = fields.Char(default='/', copy=False, readonly=True, tracking=True)
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id', store=True, readonly=True)
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Dynamic selection mirroring marketplace.settlement.trade_channel."""
+        return _get_trade_channel_selection(self)
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('held', 'Held'),
@@ -31,6 +96,13 @@ class PosLiteOrder(models.Model):
         ('walkin', 'Walk-in'),
         ('other', 'Other'),
     ], default='phone', required=True, tracking=True)
+    trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Trade Channel',
+        help="Marketplace trade channel for settlement grouping. "
+             "Auto-mapped from POS channel when empty.",
+        tracking=True,
+    )
     customer_name = fields.Char(tracking=True)
     partner_id = fields.Many2one('res.partner', tracking=True, check_company=True)
     partner_phone = fields.Char(tracking=True)
@@ -42,6 +114,13 @@ class PosLiteOrder(models.Model):
         'stock.warehouse', required=True,
         domain="[('company_id', '=', company_id)]",
         tracking=True, check_company=True,
+    )
+    location_id = fields.Many2one(
+        'stock.location', related='session_id.location_id',
+        store=True, readonly=True, string='Location',
+        help='Stock location this order was sold from, inherited from the '
+             'session configuration. Picking source/destination follows this '
+             'location when set; otherwise falls back to warehouse.lot_stock_id.',
     )
     pricelist_id = fields.Many2one(
         'product.pricelist', required=True,
@@ -59,6 +138,17 @@ class PosLiteOrder(models.Model):
         tracking=True, check_company=True,
         domain="[('company_id', '=', company_id)]",
     )
+    authorized_signature = fields.Binary(
+        string='Authorized Signature',
+        compute='_compute_authorized_signature',
+    )
+
+    @api.depends('employee_id.signature_image')
+    def _compute_authorized_signature(self):
+        for order in self:
+            order.authorized_signature = _resize_signature(
+                order.employee_id.signature_image
+            ) if order.employee_id else False
     line_ids = fields.One2many('pos.lite.order.line', 'order_id', string='Order Lines')
     payment_ids = fields.One2many('pos.lite.payment', 'order_id', string='Payments')
     amount_untaxed = fields.Monetary(compute='_compute_amounts', store=True)
@@ -85,6 +175,12 @@ class PosLiteOrder(models.Model):
     invoice_id = fields.Many2one('account.move', readonly=True, copy=False)
     picking_id = fields.Many2one('stock.picking', readonly=True, copy=False)
     is_return = fields.Boolean(default=False, copy=False, tracking=True)
+    is_late_return = fields.Boolean(
+        default=False, copy=False, tracking=True,
+        help='Return (or its linked exchange) confirmed on a different calendar day '
+             'than the original sale: credit note stays unposted and the receipt '
+             'stays unvalidated for manual completion.',
+    )
     return_status = fields.Char(compute='_compute_return_exchange_status', string='Return Status')
     return_of_order_id = fields.Many2one('pos.lite.order', readonly=True, copy=False, tracking=True, index=True)
     return_order_ids = fields.One2many('pos.lite.order', 'return_of_order_id', string='Return Orders')
@@ -124,7 +220,25 @@ class PosLiteOrder(models.Model):
                     raise UserError(_(
                         'Invalid state transition: %s → %s. Use the proper action buttons.'
                     ) % (order.state, new_state))
+        # Once an order is Done, it is locked — no field may change except the
+        # state itself moving off 'done' via an allowed transition (there is
+        # none today, but this keeps the guard symmetric with _ALLOWED_TRANSITIONS
+        # rather than special-casing 'done').
+        if set(vals.keys()) - {'state'}:
+            for order in self:
+                if order.state == 'done':
+                    raise UserError(_(
+                        'Order %s is Done and can no longer be edited.'
+                    ) % order.name)
         return super().write(vals)
+
+    def unlink(self):
+        for order in self:
+            if order.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and cannot be deleted.'
+                ) % order.name)
+        return super().unlink()
 
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Order number must be unique.'),
@@ -221,6 +335,12 @@ class PosLiteOrder(models.Model):
                 vals['name'] = self.env['ir.sequence']._safe_next_by_code(
                     'pos.lite.order', 'pos.lite.order', prefix='POS',
                 )
+            # Auto-set trade_channel from POS channel when not explicitly provided.
+            # This ensures terminal orders (created via controller) also get a trade_channel.
+            if not vals.get('trade_channel') and vals.get('channel'):
+                mapped = POS_CHANNEL_TO_TRADE_CHANNEL.get(vals['channel'])
+                if mapped:
+                    vals['trade_channel'] = mapped
         orders = super().create(vals_list)
         for order in orders:
             if order.is_return:
@@ -270,6 +390,14 @@ class PosLiteOrder(models.Model):
             self.partner_invoice_id = False
             self.partner_shipping_id = False
 
+    @api.onchange('channel')
+    def _onchange_channel(self):
+        """Auto-map trade_channel from POS channel when not explicitly chosen."""
+        if self.channel and not self.trade_channel:
+            mapped = POS_CHANNEL_TO_TRADE_CHANNEL.get(self.channel)
+            if mapped:
+                self.trade_channel = mapped
+
     @api.onchange('session_id')
     def _onchange_session_id(self):
         if self.session_id:
@@ -291,6 +419,8 @@ class PosLiteOrder(models.Model):
         if config:
             self.warehouse_id = config.warehouse_id
             self.pricelist_id = config.pricelist_id
+            if config.default_trade_channel and not self.trade_channel:
+                self.trade_channel = config.default_trade_channel
 
     # ─── Helpers ────────────────────────────────────────────────
 
@@ -347,10 +477,23 @@ class PosLiteOrder(models.Model):
 
     # ─── Invoice / Picking preparation ─────────────────────────
 
+    def _get_document_date(self):
+        """Invoice/stock document date: always order date + 1 day."""
+        self.ensure_one()
+        return self.date_order.date() + timedelta(days=1)
+
     def _prepare_invoice_vals(self):
         self.ensure_one()
         partner = self._get_or_create_customer_partner()
-        journal = self.env['account.journal'].search([
+        # Resolve config the same way _prepare_picking_vals does: session config
+        # first, then the company default. Lets each POS Lite location issue
+        # invoices on its own sales journal/sequence, separate from standard invoices.
+        config = (
+            self.session_id.config_id
+            if self.session_id and self.session_id.config_id
+            else self.env['pos.lite.config'].get_default_config(self.company_id)
+        )
+        journal = config.sale_journal_id if config and config.sale_journal_id else self.env['account.journal'].search([
             ('company_id', '=', self.company_id.id),
             ('type', '=', 'sale'),
         ], limit=1)
@@ -359,19 +502,18 @@ class PosLiteOrder(models.Model):
         line_vals = []
         for line in self.line_ids:
             taxes = line.product_id.taxes_id.filtered(lambda t: t.company_id in (False, self.company_id))
-            inv_price_unit = line.price_unit
-            inv_discount = line.discount
-            if line.discount_type == 'fixed':
-                inv_price_unit = max(line.price_unit - line.discount, 0.0)
-                inv_discount = 0.0
+            inv_discount = line.discount if line.discount_type == 'percent' else 0.0
+            inv_discount_fixed = line.discount if line.discount_type == 'fixed' else 0.0
             line_vals.append(fields.Command.create({
                 'product_id': line.product_id.id,
                 'name': line.description or line.product_id.display_name,
                 'quantity': line.qty,
-                'price_unit': inv_price_unit,
+                'price_unit': line.price_unit,
                 'discount': inv_discount,
+                'discount_fixed': inv_discount_fixed,
                 'tax_ids': [fields.Command.set(taxes.ids)],
                 'product_uom_id': line.product_id.uom_id.id,
+                'analytic_distribution': self.session_id.analytic_distribution or False,
             }))
         invoice_partner = self.partner_invoice_id or partner
         vals = {
@@ -381,7 +523,9 @@ class PosLiteOrder(models.Model):
             'partner_shipping_id': (self.partner_shipping_id or invoice_partner).id,
             'invoice_origin': self.name,
             'invoice_payment_term_id': False,
+            'invoice_date': self._get_document_date(),
             'journal_id': journal.id,
+            'trade_channel': self.trade_channel,
             'invoice_line_ids': line_vals,
         }
         # Link refund to the original posted invoice so reconciliation/etax
@@ -395,14 +539,27 @@ class PosLiteOrder(models.Model):
     def _prepare_picking_vals(self):
         self.ensure_one()
         partner = self._get_or_create_customer_partner()
-        # Resolve picking type: config override → warehouse default
-        config = self.env['pos.lite.config'].get_default_config(self.company_id)
+        # Resolve picking type: session config → default config override → warehouse default.
+        # Per-location configs live on the session; fall back to the company default
+        # for session-less (internal) orders.
+        config = (
+            self.session_id.config_id
+            if self.session_id and self.session_id.config_id
+            else self.env['pos.lite.config'].get_default_config(self.company_id)
+        )
         if self.is_return:
-            picking_type = (
-                config.return_picking_type_id
-                if config and config.return_picking_type_id
-                else self.warehouse_id.in_type_id
-            )
+            if self.is_late_return:
+                picking_type = (
+                    config.late_return_picking_type_id
+                    if config and config.late_return_picking_type_id
+                    else self.warehouse_id.in_type_id
+                )
+            else:
+                picking_type = (
+                    config.return_picking_type_id
+                    if config and config.return_picking_type_id
+                    else self.warehouse_id.in_type_id
+                )
             if not picking_type:
                 raise UserError(_('No incoming picking type for warehouse %s.') % self.warehouse_id.display_name)
         else:
@@ -418,10 +575,21 @@ class PosLiteOrder(models.Model):
             customer_location = self.env['stock.location'].search([('usage', '=', 'customer')], limit=1)
         if not customer_location:
             raise UserError(_('No customer location found for stock delivery.'))
+        # Source/destination stock location follows the per-location config when
+        # set, otherwise the warehouse stock location (legacy behaviour).
+        # Late returns are the exception: the operation type may deliberately point
+        # to a different warehouse (e.g. an NC/quarantine warehouse for inspection
+        # before goods rejoin sellable stock), so the receiving location follows
+        # that operation type's own default destination instead of the config's
+        # stock location — otherwise Odoo flags the picking as location-mismatched.
+        if self.is_return and self.is_late_return and picking_type.default_location_dest_id:
+            stock_location = picking_type.default_location_dest_id
+        else:
+            stock_location = self.location_id or self.warehouse_id.lot_stock_id
         moves = []
         for line in self.line_ids.filtered(lambda l: l.product_id.type != 'service' and l.qty > 0):
-            location_id = customer_location.id if self.is_return else self.warehouse_id.lot_stock_id.id
-            location_dest_id = self.warehouse_id.lot_stock_id.id if self.is_return else customer_location.id
+            location_id = customer_location.id if self.is_return else stock_location.id
+            location_dest_id = stock_location.id if self.is_return else customer_location.id
             moves.append(fields.Command.create({
                 'name': line.description or line.product_id.display_name,
                 'product_id': line.product_id.id,
@@ -435,8 +603,9 @@ class PosLiteOrder(models.Model):
             'partner_id': (self.partner_shipping_id or partner).id,
             'origin': self.name,
             'company_id': self.company_id.id,
-            'location_id': self.warehouse_id.lot_stock_id.id if not self.is_return else customer_location.id,
-            'location_dest_id': customer_location.id if not self.is_return else self.warehouse_id.lot_stock_id.id,
+            'location_id': customer_location.id if self.is_return else stock_location.id,
+            'location_dest_id': stock_location.id if self.is_return else customer_location.id,
+            'scheduled_date': self._get_document_date(),
             'move_ids_without_package': moves,
         }
 
@@ -472,6 +641,12 @@ class PosLiteOrder(models.Model):
         elif isinstance(result, dict) and result.get('res_model') == 'stock.backorder.confirmation':
             wizard = self.env['stock.backorder.confirmation'].with_context(result.get('context', {})).create({})
             wizard.process_cancel_backorder()
+        # Stock is validated now, but the transaction/valuation date must reflect
+        # order date + 1 day, not "now" — backdate picking + moves post-validation.
+        doc_date = fields.Datetime.to_datetime(self._get_document_date())
+        picking.write({'date_done': doc_date})
+        picking.move_ids.write({'date': doc_date})
+        picking.move_ids.move_line_ids.write({'date': doc_date})
 
     # ─── Actions: Flow ──────────────────────────────────────────
 
@@ -490,26 +665,8 @@ class PosLiteOrder(models.Model):
                 raise UserError(_('Only held orders can be resumed.'))
         self.write({'state': 'draft'})
 
-    def action_register_payment(self):
-        self.ensure_one()
-        if self.state not in ('draft', 'held'):
-            raise UserError(_('Only draft or held orders can receive a payment.'))
-        default_journal = self._get_default_payment_journal()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Register Payment'),
-            'res_model': 'pos.lite.payment.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_order_id': self.id,
-                'default_amount': max(self.amount_residual, 0.0),
-                'default_journal_id': default_journal.id if default_journal else False,
-            },
-        }
-
     def action_quick_pay_and_process(self):
-        """One-click: register full cash payment + process order in one step."""
+        """Process order: post invoice + validate picking. No payment registration."""
         self.ensure_one()
         if self.state not in ('draft', 'held'):
             raise UserError(_('Only draft or held orders can be processed.'))
@@ -517,33 +674,6 @@ class PosLiteOrder(models.Model):
             raise UserError(_('Please add at least one order line.'))
         if self.state == 'held':
             self.write({'state': 'draft'})
-        # Check if already fully paid (use absolute values for return orders)
-        abs_total = abs(self.amount_total)
-        abs_paid = abs(self.amount_paid)
-        if float_compare(abs_paid, abs_total, precision_rounding=self.currency_id.rounding) >= 0:
-            self.action_process_order()
-            return True
-        # Create full payment automatically
-        residual = abs_total - abs_paid
-        if residual <= 0:
-            self.action_process_order()
-            return True
-        default_journal = self._get_default_payment_journal()
-        payment_amount = -abs(residual) if self.is_return else residual
-        # Payment method is configurable via context (terminal quick-pay) and
-        # falls back to 'cash' for the backend button.
-        payment_method = self.env.context.get('default_payment_method', 'cash')
-        if payment_method not in dict(
-            self.env['pos.lite.payment']._fields['payment_method'].selection
-        ):
-            payment_method = 'cash'
-        self.env['pos.lite.payment'].create({
-            'order_id': self.id,
-            'payment_method': payment_method,
-            'amount': payment_amount,
-            'journal_id': default_journal.id if default_journal else False,
-            'note': _('Quick pay'),
-        })
         self.action_process_order()
         return True
 
@@ -565,23 +695,17 @@ class PosLiteOrder(models.Model):
         return True
 
     def _process_one_order(self):
-        """Single-order body of action_process_order, wrapped in a savepoint by the caller."""
+        """Single-order body of action_process_order, wrapped in a savepoint by the caller.
+
+        Invoice posting and picking validation run as sudo: POS users
+        (group_pos_lite_user) are cashiers without Invoicing/Inventory groups,
+        and other modules hook posting with their own ACLs (e.g. accounting
+        date policies). Authorization is already enforced at the order level
+        by the record rules; the follow-up documents are system-generated.
+        """
         self.ensure_one()
         if not self.line_ids:
             raise UserError(_('Please add at least one order line.'))
-        paid_amount = sum(self.payment_ids.mapped('amount'))
-        # Allow exchange/return without separate payment if covered
-        if not self.payment_ids:
-            if not (self.is_exchange and self.exchange_of_order_id):
-                raise UserError(_('At least one payment is required.'))
-            paid_amount = self.amount_total
-        # For return: amount_total is negative, paid_amount is negative → compare absolute values
-        abs_total = abs(self.amount_total)
-        abs_paid = abs(paid_amount)
-        if float_compare(abs_paid, abs_total, precision_rounding=self.currency_id.rounding) < 0:
-            if self.is_return:
-                raise UserError(_('Refund payment must cover the full return total.'))
-            raise UserError(_('Payment must cover the full total before processing.'))
         # Stock check (skip service + returns)
         if not self.is_return:
             for line in self.line_ids.filtered(lambda l: l.product_id.type != 'service'):
@@ -590,21 +714,33 @@ class PosLiteOrder(models.Model):
                         _('Insufficient stock for "%s": available %s, requested %s.')
                         % (line.product_id.display_name, line.qty_available, line.qty)
                     )
+        order_su = self.sudo()
         # Ensure partner
         if not self.partner_id:
-            self.partner_id = self._get_or_create_customer_partner().id
+            self.partner_id = order_su._get_or_create_customer_partner().id
         # Create invoice
         if not self.invoice_id:
-            invoice = self.env['account.move'].create(self._prepare_invoice_vals())
-            invoice.action_post()
+            invoice = self.env['account.move'].sudo().create(order_su._prepare_invoice_vals())
+            if not self.is_late_return:
+                invoice.action_post()
             self.invoice_id = invoice.id
         # Create picking
         if not self.picking_id:
-            picking_vals = self._prepare_picking_vals()
+            picking_vals = order_su._prepare_picking_vals()
             if picking_vals.get('move_ids_without_package'):
-                picking = self.env['stock.picking'].create(picking_vals)
+                picking = self.env['stock.picking'].sudo().create(picking_vals)
                 self.picking_id = picking.id
-                self._process_stock_picking(picking)
+                if self.is_late_return:
+                    # Late return/exchange: reserve stock but leave the transfer open
+                    # for manual completion — no auto-validate, no lot/backorder wizards.
+                    picking.action_confirm()
+                    picking.action_assign()
+                else:
+                    order_su._process_stock_picking(picking)
+        if self.is_late_return:
+            # Credit note stays unposted, picking stays unvalidated — order stays
+            # 'draft' so staff can review and finish both documents manually.
+            return
         # Invoice is posted only — no account.payment creation, no reconciliation.
         # pos.lite.payment rows stay as internal records; accounting settles separately.
         self.state = 'paid'
@@ -755,9 +891,18 @@ class PosLiteOrder(models.Model):
             'price_unit': l.price_unit,
             'discount': l.discount,
         }) for l in self.line_ids]
+        # Carry the session when it is still open; otherwise create() falls
+        # back to the current user's open session (and errors if none).
+        session = self.session_id if self.session_id.state == 'opened' else self.env['pos.lite.session']
+        if not session:
+            session = self.env['pos.lite.session'].search([
+                ('state', '=', 'opened'),
+                ('company_id', '=', self.company_id.id),
+            ], limit=1)
         new_order = self.create({
             'company_id': self.company_id.id,
             'channel': self.channel,
+            'trade_channel': self.trade_channel,
             'customer_name': self.customer_name,
             'partner_id': self.partner_id.id if self.partner_id else False,
             'partner_phone': self.partner_phone,
@@ -766,6 +911,8 @@ class PosLiteOrder(models.Model):
             'partner_tax_id': self.partner_tax_id,
             'warehouse_id': self.warehouse_id.id,
             'pricelist_id': self.pricelist_id.id,
+            'session_id': session.id or False,
+            'employee_id': self.employee_id.id if self.employee_id else False,
             'note': _('Re-order from %s') % self.name,
             'line_ids': line_commands,
         })
@@ -922,6 +1069,35 @@ class PosLiteOrderLine(models.Model):
         help="Line margin = price subtotal − (standard cost × qty).",
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        order_ids = {v['order_id'] for v in vals_list if v.get('order_id')}
+        if order_ids:
+            done_orders = self.env['pos.lite.order'].sudo().search([
+                ('id', 'in', list(order_ids)), ('state', '=', 'done'),
+            ])
+            if done_orders:
+                raise UserError(_(
+                    'Order %s is Done and can no longer be edited.'
+                ) % done_orders[0].name)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        for line in self:
+            if line.order_id.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and can no longer be edited.'
+                ) % line.order_id.name)
+        return super().write(vals)
+
+    def unlink(self):
+        for line in self:
+            if line.order_id.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and cannot be deleted.'
+                ) % line.order_id.name)
+        return super().unlink()
+
     @api.depends('return_line_ids.qty')
     def _compute_returned_qty(self):
         for line in self:
@@ -929,9 +1105,12 @@ class PosLiteOrderLine(models.Model):
             line.returned_qty = returned_qty
             line.available_return_qty = max(line.qty - returned_qty, 0.0)
 
-    @api.depends('product_id', 'qty', 'order_id.warehouse_id')
+    @api.depends('product_id', 'qty', 'order_id.warehouse_id', 'order_id.location_id')
     def _compute_qty_available(self):
-        # Batch: collect all (product_id, warehouse.lot_stock_id) pairs
+        # Batch: collect all (product_id, effective_location) pairs.
+        # The effective stock location follows the per-location config
+        # (order.location_id), falling back to the warehouse stock location
+        # for legacy/session-less orders — matching _prepare_picking_vals.
         lines_by_key = {}
         for line in self:
             product = line.product_id
@@ -939,12 +1118,13 @@ class PosLiteOrderLine(models.Model):
                 line.qty_available = 0.0
                 line.is_low_stock = False
                 continue
-            warehouse = line.order_id.warehouse_id
-            if not warehouse:
+            order = line.order_id
+            location = order.location_id or (order.warehouse_id and order.warehouse_id.lot_stock_id)
+            if not location:
                 line.qty_available = 0.0
                 line.is_low_stock = False
                 continue
-            key = (product.id, warehouse.lot_stock_id.id)
+            key = (product.id, location.id)
             lines_by_key.setdefault(key, []).append(line)
 
         if not lines_by_key:
@@ -957,15 +1137,37 @@ class PosLiteOrderLine(models.Model):
                 ('product_id', 'in', product_ids),
                 ('location_id', 'in', location_ids),
             ],
-            fields=['quantity:sum'],
+            fields=['quantity:sum', 'reserved_quantity:sum'],
             groupby=['product_id', 'location_id'],
             lazy=False,
         )
+        # Free-to-use qty (on-hand minus reserved), same definition used by
+        # the terminal view and buz_stock_current_report. Reserved stock is
+        # promised to delivery orders and must not be sellable here.
         qty_map = {}
         for q in quant_data:
             pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
             lid = q['location_id'][0] if isinstance(q['location_id'], (list, tuple)) else q['location_id']
-            qty_map[(pid, lid)] = q['quantity']
+            qty_map[(pid, lid)] = max((q['quantity'] or 0.0) - (q['reserved_quantity'] or 0.0), 0.0)
+
+        # Products with no own stock.quant at all may still be BOM-kit
+        # ("set") products buildable from component stock — mirror the
+        # terminal view's kit aggregation for those (see
+        # models/product_product.py::_pos_lite_kit_stock_map). Exclude every
+        # product that has its own quant row (present as a key in qty_map),
+        # not just the qty>0 subset — a fully-reserved but physically-stocked
+        # product (own free qty 0) must not fall back to BOM-buildable qty
+        # computed from raw-component stock.
+        product_product = self.env['product.product']
+        for location_id in location_ids:
+            own_quant_product_ids = [
+                pid for pid in product_ids
+                if (pid, location_id) in qty_map
+            ]
+            kit_qty_map = product_product._pos_lite_kit_stock_map(location_id, own_quant_product_ids)
+            for pid, qty in kit_qty_map.items():
+                if pid in product_ids:
+                    qty_map[(pid, location_id)] = qty
 
         for key, lines in lines_by_key.items():
             on_hand = qty_map.get(key, 0.0)
@@ -1021,8 +1223,10 @@ class PosLiteOrderLine(models.Model):
             pricelist = pricelists[cid]
 
             if not pricelist:
+                # Parity with buz_sale_pricelist_standard_cost: no cost
+                # pricelist means cost 0 → margin equals the full subtotal.
                 line.standard_cost_price = 0.0
-                line.margin = 0.0
+                line.margin = line.price_subtotal
                 continue
 
             date_order = line.order_id.date_order or fields.Date.today()

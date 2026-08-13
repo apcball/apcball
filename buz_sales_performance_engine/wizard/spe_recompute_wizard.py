@@ -45,6 +45,20 @@ class SpeRecomputeWizard(models.TransientModel):
             sol_ids = [r[0] for r in self.env.cr.fetchall()]
             if sol_ids:
                 Result._recompute_for_sol(sol_ids)
+            self.env.cr.execute(
+                """
+                SELECT pol.id
+                FROM pos_lite_order_line pol
+                JOIN pos_lite_order po ON po.id = pol.order_id
+                LEFT JOIN account_move am ON am.id = po.invoice_id
+                WHERE po.state IN ('done', 'cancelled')
+                  AND am.invoice_date BETWEEN %s AND %s
+                """,
+                (self.date_from, self.date_to),
+            )
+            pol_ids = [r[0] for r in self.env.cr.fetchall()]
+            if pol_ids:
+                Result._recompute_for_pos_lines(pol_ids)
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",

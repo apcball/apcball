@@ -49,10 +49,17 @@ class TestApiBase(common.TransactionCase):
             'name': 'Test Emp API 2',
             'company_id': cls.company.id,
         })
+        cls.stock_location = cls.env['stock.location'].create({
+            'name': 'Test Stock Location - API',
+            'location_id': cls.warehouse.lot_stock_id.id,
+            'usage': 'internal',
+            'company_id': cls.company.id,
+        })
         cls.config = cls.env['pos.lite.config'].create({
             'name': 'Test Config API',
             'company_id': cls.company.id,
             'warehouse_id': cls.warehouse.id,
+            'location_id': cls.stock_location.id,
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
@@ -114,6 +121,12 @@ class TestSessionInfoApi(TestApiBase):
         self.assertTrue(session.config_id.warehouse_id)
         self.assertEqual(session.config_id.warehouse_id.id, self.warehouse.id)
 
+    def test_session_info_returns_default_location(self):
+        """session_info ต้อง return default location จาก config (per-location)"""
+        session = self.session
+        self.assertTrue(session.config_id.location_id)
+        self.assertEqual(session.location_id, self.stock_location)
+
     def test_session_info_returns_pricelist(self):
         """session_info ต้อง return default pricelist จาก config"""
         session = self.session
@@ -140,12 +153,10 @@ class TestOrderDetailApi(TestApiBase):
         self.assertEqual(order.line_ids[0].product_id.id, self.product.id)
         self.assertEqual(order.line_ids[0].qty, 2)
 
-    def test_order_detail_has_payments(self):
-        """order_detail ต้องมี payments"""
+    def test_order_detail_has_no_payments(self):
+        """order_detail สำหรับ order ที่ process แบบไม่ register payment ต้องไม่มี payments"""
         order = self._create_done_order()
-        self.assertTrue(order.payment_ids)
-        self.assertEqual(len(order.payment_ids), 1)
-        self.assertTrue(order.payment_ids[0].amount > 0)
+        self.assertFalse(order.payment_ids)
 
     def test_order_detail_has_employee(self):
         """order_detail ต้องมี employee_name"""
@@ -399,3 +410,111 @@ class TestTerminalReturnFlow(TestApiBase):
             reason='สินค้ามีตำหนิ',
         )
         self.assertEqual(return_order.return_reason, 'สินค้ามีตำหนิ')
+
+
+@tagged('-at_install', 'post_install')
+class TestControllerHelpers(common.TransactionCase):
+    """ทดสอบ helper functions ของ controller (pure functions)"""
+
+    def test_sanitize_o2m_accepts_dicts_and_commands(self):
+        from odoo.addons.pos_lite.controllers.main import (
+            _sanitize_o2m_payload, _ORDER_LINE_FIELDS,
+        )
+        raw = [
+            {'product_id': 1, 'qty': 2, 'price_unit': 50.0},
+            [0, 0, {'product_id': 2, 'qty': 1, 'price_unit': 10.0}],
+        ]
+        commands = _sanitize_o2m_payload(raw, _ORDER_LINE_FIELDS)
+        self.assertEqual(len(commands), 2)
+        self.assertEqual(commands[0][2]['product_id'], 1)
+        self.assertEqual(commands[1][2]['product_id'], 2)
+
+    def test_sanitize_o2m_drops_non_whitelisted_fields(self):
+        from odoo.addons.pos_lite.controllers.main import (
+            _sanitize_o2m_payload, _ORDER_LINE_FIELDS,
+        )
+        raw = [{'product_id': 1, 'qty': 1, 'state': 'done', 'company_id': 99, 'is_return': True}]
+        commands = _sanitize_o2m_payload(raw, _ORDER_LINE_FIELDS)
+        self.assertEqual(len(commands), 1)
+        vals = commands[0][2]
+        self.assertNotIn('state', vals)
+        self.assertNotIn('company_id', vals)
+        self.assertNotIn('is_return', vals)
+
+    def test_sanitize_o2m_rejects_garbage(self):
+        from odoo.addons.pos_lite.controllers.main import (
+            _sanitize_o2m_payload, _ORDER_LINE_FIELDS,
+        )
+        self.assertEqual(_sanitize_o2m_payload(None, _ORDER_LINE_FIELDS), [])
+        self.assertEqual(_sanitize_o2m_payload('junk', _ORDER_LINE_FIELDS), [])
+        self.assertEqual(_sanitize_o2m_payload([{'qty': 3}], _ORDER_LINE_FIELDS), [])
+
+
+@tagged('-at_install', 'post_install')
+class TestCreateCustomerApi(TestApiBase):
+    """ทดสอบ res.partner.pos_lite_create_customer (backend ของ /pos_lite/api/create_customer)"""
+
+    def _create(self, **data):
+        return self.env['res.partner'].pos_lite_create_customer(data, self.company.id)
+
+    def test_create_customer_minimal(self):
+        partner = self._create(name='ลูกค้าทดสอบ POS')
+        self.assertEqual(partner.name, 'ลูกค้าทดสอบ POS')
+        self.assertEqual(partner.customer_rank, 1)
+        self.assertEqual(partner.company_id, self.company)
+
+    def test_create_customer_full_tax_details(self):
+        partner = self._create(
+            name='บริษัท ทดสอบ จำกัด',
+            vat='0105536112233',
+            branch='00000',
+            phone='021234567',
+            street='99 ถ.ทดสอบ แขวงทดสอบ',
+            city='เขตทดสอบ กรุงเทพฯ',
+            zip='10110',
+        )
+        self.assertEqual(partner.vat, '0105536112233')
+        self.assertEqual(partner.phone, '021234567')
+        self.assertEqual(partner.street, '99 ถ.ทดสอบ แขวงทดสอบ')
+        self.assertEqual(partner.zip, '10110')
+        if 'branch' in partner._fields:
+            self.assertEqual(partner.branch, '00000')
+
+    def test_create_customer_requires_name(self):
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self._create(name='   ')
+
+    def test_create_customer_rejects_bad_vat(self):
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self._create(name='Bad VAT', vat='12345')
+        with self.assertRaises(ValidationError):
+            self._create(name='Bad VAT', vat='12345678901ab')
+
+    def test_create_customer_rejects_duplicate_vat(self):
+        from odoo.exceptions import ValidationError
+        self._create(name='ต้นฉบับ', vat='0105536199999', branch='00000')
+        with self.assertRaises(ValidationError):
+            self._create(name='ตัวซ้ำ', vat='0105536199999', branch='00000')
+
+    def test_order_uses_preselected_partner(self):
+        """Order ที่ส่ง partner_id มาแล้วต้องใช้ partner นั้นตรงๆ ไม่ match ตามชื่อ"""
+        partner = self._create(
+            name='ลูกค้าใบกำกับ', vat='0105536188888', branch='00000')
+        order = self.env['pos.lite.order'].create({
+            'company_id': self.company.id,
+            'channel': 'walkin',
+            'partner_id': partner.id,
+            'customer_name': 'ชื่ออื่นที่พิมพ์ทับ',
+            'employee_id': self.emp1.id,
+            'warehouse_id': self.warehouse.id,
+            'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'line_ids': [(0, 0, {
+                'product_id': self.product.id,
+                'qty': 1,
+                'price_unit': 100.0,
+            })],
+        })
+        self.assertEqual(order._get_or_create_customer_partner(), partner)
