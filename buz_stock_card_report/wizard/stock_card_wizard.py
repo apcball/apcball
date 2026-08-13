@@ -1,5 +1,6 @@
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools import float_is_zero
 
 
 class StockCardWizard(models.TransientModel):
@@ -85,7 +86,22 @@ class StockCardWizard(models.TransientModel):
                 ("location_dest_id", "in", list(warehouse_loc_ids)),
             ]
         )
-        return move_lines.product_id
+        onhand_quants = self.env["stock.quant"].search(
+            [
+                ("location_id", "in", list(warehouse_loc_ids)),
+                ("quantity", "!=", 0),
+            ]
+        )
+        return move_lines.product_id | onhand_quants.product_id
+
+    def _get_onhand_qty(self, warehouse_loc_ids, product):
+        quants = self.env["stock.quant"].search(
+            [
+                ("location_id", "in", list(warehouse_loc_ids)),
+                ("product_id", "=", product.id),
+            ]
+        )
+        return sum(quants.mapped("quantity"))
 
     def _line_direction_qty(self, move_line, warehouse_loc_ids):
         """Return (in_qty, out_qty) for a move line relative to one warehouse."""
@@ -151,6 +167,16 @@ class StockCardWizard(models.TransientModel):
                     "balance": running_balance,
                 }
             )
+
+        if not rows:
+            precision = self.env["decimal.precision"].precision_get(
+                "Product Unit of Measure"
+            )
+            if float_is_zero(opening_balance, precision_digits=precision):
+                onhand_qty = self._get_onhand_qty(warehouse_loc_ids, product)
+                if not float_is_zero(onhand_qty, precision_digits=precision):
+                    opening_balance = onhand_qty
+
         return opening_balance, rows
 
     def action_export_excel(self):
