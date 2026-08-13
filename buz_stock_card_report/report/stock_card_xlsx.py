@@ -1,4 +1,5 @@
 from odoo import models
+from odoo.tools import float_is_zero
 
 COLUMN_HEADERS = [
     "ลำดับ", "วันที่", "เอกสาร", "เลขที่", "ต้นทาง", "ปลายทาง",
@@ -63,9 +64,10 @@ class StockCardReportXlsx(models.AbstractModel):
                     )
                     row += 1
 
+            precision = self.env["decimal.precision"].precision_get("Product Unit of Measure")
             for product in products:
                 opening_balance, lines = wizard.get_stock_card_lines(warehouse, product)
-                if not lines and not opening_balance:
+                if not lines and float_is_zero(opening_balance, precision_digits=precision):
                     continue
 
                 sheet.write(
@@ -78,6 +80,19 @@ class StockCardReportXlsx(models.AbstractModel):
                 for col, header in enumerate(COLUMN_HEADERS):
                     sheet.write(row, col, header, header_format)
                 row += 1
+
+                if not lines:
+                    sheet.write(row, 0, 1, text_format)
+                    sheet.write(row, 1, "", text_format)
+                    sheet.write(row, 2, "", text_format)
+                    sheet.write(row, 3, "", text_format)
+                    sheet.write(row, 4, "", text_format)
+                    sheet.write(row, 5, "", text_format)
+                    sheet.write(row, 6, opening_balance, number_format)
+                    sheet.write(row, 7, 0.0, number_format)
+                    sheet.write(row, 8, 0.0, number_format)
+                    sheet.write(row, 9, opening_balance, number_format)
+                    row += 1
 
                 for line in lines:
                     sheet.write(row, 0, line["seq"], text_format)
