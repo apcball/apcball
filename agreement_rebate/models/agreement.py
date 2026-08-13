@@ -42,10 +42,10 @@ class Agreement(models.Model):
 
     rebate_type = fields.Selection(
         selection=[
-            ("global", "Global (A discount global for all lines)"),
-            ("line", "Line (A discount for every line)"),
-            ("section_total", "Compute total and apply discount rule match"),
-            ("section_prorated", "Calculate the discount in each amount section"),
+            ("global", "รวมทุกบรรทัด"),
+            ("line", "แยกตามรายการสินค้า"),
+            ("section_total", "คำนวณจากยอดรวมตามขั้นเปอร์เซ็นต์"),
+            ("section_prorated", "คำนวณแยกตามช่วงยอดเงิน"),
         ],
         string="rebate type",
     )
