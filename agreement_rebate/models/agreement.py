@@ -2,10 +2,43 @@
 # Copyright 2020 Tecnativa - Sergio Teruel
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 
 class Agreement(models.Model):
     _inherit = "agreement"
+
+    rebate_approval_state = fields.Selection(
+        selection=[
+            ("draft", "Draft"),
+            ("submitted", "Submitted"),
+            ("reviewed", "Reviewed"),
+            ("approved", "Approved"),
+            ("rejected", "Rejected"),
+        ],
+        string="Rebate approval status",
+        default="draft",
+        tracking=True,
+        copy=False,
+    )
+    rebate_prepared_by_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Prepared by",
+        default=lambda self: self.env.user,
+        readonly=True,
+        tracking=True,
+        copy=False,
+    )
+    rebate_reviewer_id = fields.Many2one(
+        comodel_name="res.users", string="Reviewed by", readonly=True, copy=False
+    )
+    rebate_approver_id = fields.Many2one(
+        comodel_name="res.users", string="Approved by", readonly=True, copy=False
+    )
+    rebate_submitted_at = fields.Datetime(readonly=True, copy=False)
+    rebate_reviewed_at = fields.Datetime(readonly=True, copy=False)
+    rebate_approved_at = fields.Datetime(readonly=True, copy=False)
+
 
     rebate_type = fields.Selection(
         selection=[
@@ -33,6 +66,73 @@ class Agreement(models.Model):
         related="agreement_type_id.is_rebate", string="Is rebate agreement type"
     )
     additional_consumption = fields.Float(default=0.0)
+
+    def _ensure_rebate_agreement(self):
+        for agreement in self:
+            if not agreement.is_rebate:
+                raise UserError("Only rebate agreements can use this approval workflow.")
+
+    def action_submit_rebate(self):
+        self._ensure_rebate_agreement()
+        for agreement in self:
+            if agreement.rebate_approval_state not in ("draft", "rejected"):
+                raise UserError("Only draft or rejected rebate agreements can be submitted.")
+            agreement.write({
+                "rebate_approval_state": "submitted",
+                "rebate_prepared_by_id": self.env.user.id,
+                "rebate_submitted_at": fields.Datetime.now(),
+            })
+        return True
+
+    def action_review_rebate(self):
+        self._ensure_rebate_agreement()
+        if not self.env.user.has_group("agreement_rebate.group_rebate_reviewer"):
+            raise UserError("You are not allowed to review rebate agreements.")
+        for agreement in self:
+            if agreement.rebate_approval_state != "submitted":
+                raise UserError("Only submitted rebate agreements can be reviewed.")
+            agreement.write({
+                "rebate_approval_state": "reviewed",
+                "rebate_reviewer_id": self.env.user.id,
+                "rebate_reviewed_at": fields.Datetime.now(),
+            })
+        return True
+
+    def action_approve_rebate(self):
+        self._ensure_rebate_agreement()
+        if not self.env.user.has_group("agreement_rebate.group_rebate_approver"):
+            raise UserError("You are not allowed to approve rebate agreements.")
+        for agreement in self:
+            if agreement.rebate_approval_state != "reviewed":
+                raise UserError("Only reviewed rebate agreements can be approved.")
+            agreement.write({
+                "rebate_approval_state": "approved",
+                "rebate_approver_id": self.env.user.id,
+                "rebate_approved_at": fields.Datetime.now(),
+            })
+        return True
+
+    def action_reject_rebate(self):
+        self._ensure_rebate_agreement()
+        for agreement in self:
+            if agreement.rebate_approval_state not in ("submitted", "reviewed"):
+                raise UserError("Only submitted or reviewed rebate agreements can be rejected.")
+            agreement.write({"rebate_approval_state": "rejected"})
+        return True
+
+    def action_reset_rebate(self):
+        self._ensure_rebate_agreement()
+        for agreement in self:
+            agreement.write({
+                "rebate_approval_state": "draft",
+                "rebate_reviewer_id": False,
+                "rebate_approver_id": False,
+                "rebate_submitted_at": False,
+                "rebate_reviewed_at": False,
+                "rebate_approved_at": False,
+            })
+        return True
+
 
 
 class AgreementRebateLine(models.Model):

@@ -4,4 +4,15 @@
         <field name="name">Use agreement rebate</field>
         <field name="category_id" ref="base.module_category_hidden" />
     </record>
+
+    <record id="group_rebate_reviewer" model="res.groups">
+        <field name="name">Review rebate agreements</field>
+        <field name="category_id" ref="base.module_category_hidden" />
+        <field name="implied_ids" eval="[(4, ref('agreement_rebate.group_use_agreement_rebate'))]" />
+    </record>
+    <record id="group_rebate_approver" model="res.groups">
+        <field name="name">Approve rebate agreements</field>
+        <field name="category_id" ref="base.module_category_hidden" />
+        <field name="implied_ids" eval="[(4, ref('agreement_rebate.group_rebate_reviewer'))]" />
+    </record>
 </odoo>

@@ -4,6 +4,7 @@
 from collections import defaultdict
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 from odoo.osv import expression
 from odoo.tools.safe_eval import safe_eval
 
@@ -43,6 +44,7 @@ class AgreementSettlementCreateWiz(models.TransientModel):
         domain = [
             ("rebate_type", "!=", False),
             ("agreement_type_id.is_rebate", "=", True),
+            ("rebate_approval_state", "=", "approved"),
         ]
         settlement_domain = []
         if self.date_from:
@@ -114,6 +116,28 @@ class AgreementSettlementCreateWiz(models.TransientModel):
                 ]
             )
         return domain
+
+    def _get_settled_invoice_line_ids(self):
+        domain = []
+        if self.date_from:
+            domain.append(("date_to", ">=", self.date_from))
+        if self.date_to:
+            domain.append(("date_to", "<=", self.date_to))
+        settlements = self.env["agreement.rebate.settlement"].with_context(
+            active_test=False
+        ).search(domain)
+        return settlements.mapped("line_ids.invoice_line_ids").ids
+
+    def _get_matching_section(self, agreement, amount):
+        sections = agreement.rebate_section_ids.filtered(
+            lambda section: section.amount_from <= amount
+            and (not section.amount_to or amount <= section.amount_to)
+        )
+        if len(sections) > 1:
+            raise UserError(
+                "Rebate sections overlap for agreement %s." % agreement.display_name
+            )
+        return sections[:1]
 
     def _target_line_domain(self, agreement_domain, agreement, line=False):
         domain = agreement_domain.copy()
@@ -189,15 +213,13 @@ class AgreementSettlementCreateWiz(models.TransientModel):
             rebate = amount * agreement.rebate_discount / 100
             vals.update({"percent": agreement.rebate_discount})
         elif agreement.rebate_type == "section_total":
-            section = agreement.rebate_section_ids.filtered(
-                lambda s: s.amount_from <= amount <= s.amount_to
-            )
-            rebate = amount * section.rebate_discount / 100
+            section = self._get_matching_section(agreement, amount)
+            rebate = amount * section.rebate_discount / 100 if section else 0.0
             vals.update(
                 {
-                    "percent": section.rebate_discount,
-                    "amount_from": section.amount_from,
-                    "amount_to": section.amount_to,
+                    "percent": section.rebate_discount if section else 0.0,
+                    "amount_from": section.amount_from if section else 0.0,
+                    "amount_to": section.amount_to if section else 0.0,
                 }
             )
         vals.update(
@@ -215,10 +237,8 @@ class AgreementSettlementCreateWiz(models.TransientModel):
         if agreement.rebate_type == "global":
             return agreement.rebate_discount
         if agreement.rebate_type == "section_total":
-            section = agreement.rebate_section_ids.filtered(
-                lambda s: s.amount_from <= amount <= s.amount_to
-            )
-            return section.rebate_discount
+            section = self._get_matching_section(agreement, amount)
+            return section.rebate_discount if section else 0.0
 
     def _partner_domain(self, agreement):
         return [
@@ -233,6 +253,9 @@ class AgreementSettlementCreateWiz(models.TransientModel):
         Agreement = self.env["agreement"]
         target_model = self._get_target_model()
         orig_domain = self._prepare_target_domain()
+        settled_invoice_line_ids = self._get_settled_invoice_line_ids()
+        if settled_invoice_line_ids:
+            orig_domain.append(("id", "not in", settled_invoice_line_ids))
         settlement_dic = defaultdict(lambda: {"lines": []})
         agreements = Agreement.search(self._prepare_agreement_domain())
         for agreement in agreements:

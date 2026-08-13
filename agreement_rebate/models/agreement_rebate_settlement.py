@@ -2,6 +2,7 @@
 # Copyright 2020 Tecnativa - Sergio Teruel
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from odoo import Command, api, fields, models
+from odoo.exceptions import UserError
 from odoo.osv import expression
 from odoo.tools.safe_eval import safe_eval
 
@@ -66,6 +67,9 @@ class AgreementRebateSettlement(models.Model):
         }.get(inv_type)
 
     def _create_invoices(self, invoice_group="settlement"):
+        agreements = self.line_ids.mapped("agreement_id")
+        if agreements.filtered(lambda agreement: agreement.rebate_approval_state != "approved"):
+            raise UserError("Only approved rebate agreements can create credit notes.")
         # Group lines to invoice
         lines_to_invoice = self.line_ids.filtered(
             lambda line: line.invoice_status == "to_invoice"

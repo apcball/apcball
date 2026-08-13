@@ -128,6 +128,7 @@ class TestAgreementRebateBase(AccountTestInvoicingCommon):
                 "domain": "sale",
                 "start_date": "2022-01-01",
                 "rebate_type": rebate_type,
+                "rebate_approval_state": "approved",
                 "name": f"A discount {rebate_type} for all lines for {partner.name}",
                 "code": f"R-{rebate_type}-{partner.ref}",
                 "partner_id": partner.id,
@@ -357,4 +358,71 @@ class TestAgreementRebate(TestAgreementRebateBase):
         self.assertEqual(
             invoices.invoice_line_ids.name,
             f"{self.product_rappel.name} - Period: 01/01/2022 - 12/31/2022",
+        )
+
+    def test_rebate_approval_workflow(self):
+        agreement = self.Agreement.create({
+            "domain": "sale",
+            "name": "Approval workflow",
+            "code": "APPROVAL-001",
+            "partner_id": self.partner_1.id,
+            "agreement_type_id": self.agreement_type.id,
+            "rebate_type": "global",
+            "rebate_discount": 3.0,
+        })
+        self.assertEqual(agreement.rebate_approval_state, "draft")
+        agreement.action_submit_rebate()
+        self.assertEqual(agreement.rebate_approval_state, "submitted")
+        self.env.user.groups_id += self.env.ref(
+            "agreement_rebate.group_rebate_reviewer"
+        )
+        agreement.action_review_rebate()
+        self.assertEqual(agreement.rebate_approval_state, "reviewed")
+        self.env.user.groups_id += self.env.ref(
+            "agreement_rebate.group_rebate_approver"
+        )
+        agreement.action_approve_rebate()
+        self.assertEqual(agreement.rebate_approval_state, "approved")
+        self.assertEqual(agreement.rebate_approver_id, self.env.user)
+
+    def test_section_total_supports_open_ended_upper_bound(self):
+        agreement = self.Agreement.create({
+            "domain": "sale",
+            "name": "Open ended section",
+            "code": "SECTION-001",
+            "partner_id": self.partner_1.id,
+            "agreement_type_id": self.agreement_type.id,
+            "rebate_type": "section_total",
+            "rebate_section_ids": [
+                (0, 0, {"amount_from": 0.0, "amount_to": 100000.0, "rebate_discount": 1.0}),
+                (0, 0, {"amount_from": 100000.0, "amount_to": 0.0, "rebate_discount": 3.0}),
+            ],
+        })
+        wizard = self.AgreementSettlementCreateWiz.new({"date_to": "2022-12-31"})
+        section = wizard._get_matching_section(agreement, 150000.0)
+        self.assertEqual(section.rebate_discount, 3.0)
+
+    def test_settlement_excludes_already_settled_invoice_lines(self):
+        agreement = self.create_agreements_rebate("global", self.partner_1)
+        invoice_line = self.invoice_partner_1.invoice_line_ids[:1]
+        self.AgreementSettlement.create({
+            "date": "2022-01-31",
+            "date_from": "2022-01-01",
+            "date_to": "2022-01-31",
+            "partner_id": self.partner_1.id,
+            "line_ids": [
+                Command.create({
+                    "agreement_id": agreement.id,
+                    "partner_id": self.partner_1.id,
+                    "invoice_line_ids": [Command.set(invoice_line.ids)],
+                })
+            ],
+        })
+        wizard = self.AgreementSettlementCreateWiz.new({
+            "date_from": "2022-01-01",
+            "date_to": "2022-01-31",
+        })
+        self.assertIn(
+            invoice_line.id,
+            wizard._get_settled_invoice_line_ids(),
         )
