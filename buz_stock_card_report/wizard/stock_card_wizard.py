@@ -26,6 +26,14 @@ class StockCardWizard(models.TransientModel):
         string="Products",
         help="Leave empty to include every product with moves in the period.",
     )
+    location_ids = fields.Many2many(
+        "stock.location",
+        string="Locations",
+        domain=[("usage", "=", "internal")],
+        help="Leave empty to include every internal location of the selected "
+        "warehouse(s). When set, only moves touching these locations (or "
+        "their sub-locations) are counted.",
+    )
     report_filename = fields.Char(
         string="Report Filename",
         compute="_compute_report_filename",
@@ -58,6 +66,11 @@ class StockCardWizard(models.TransientModel):
         locations = self.env["stock.location"].search(
             [("id", "child_of", warehouse.view_location_id.id)]
         )
+        if self.location_ids:
+            selected = self.env["stock.location"].search(
+                [("id", "child_of", self.location_ids.ids)]
+            )
+            locations = locations & selected
         return set(locations.ids)
 
     def _get_products_for_warehouse(self, warehouse_loc_ids, date_to):

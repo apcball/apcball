@@ -12,6 +12,7 @@
                     </group>
                     <group string="Filters">
                         <field name="warehouse_ids" widget="many2many_tags"/>
+                        <field name="location_ids" widget="many2many_tags"/>
                         <field name="product_ids" widget="many2many_tags"/>
                     </group>
                 </group>
