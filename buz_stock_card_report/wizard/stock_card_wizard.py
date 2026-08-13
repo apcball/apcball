@@ -116,6 +116,54 @@ class StockCardWizard(models.TransientModel):
             return 0.0, qty
         return 0.0, 0.0
 
+    def _get_open_document_rows(self, warehouse, warehouse_loc_ids, product):
+        """Break the carried-forward opening balance down into the still
+        outstanding (not fully consumed) FIFO receipt layers, when the
+        stock_fifo_by_location module's remaining_qty tracking is available."""
+        layer_model = self.env.get("stock.valuation.layer")
+        if layer_model is None or "remaining_qty" not in layer_model._fields:
+            return []
+
+        precision = self.env["decimal.precision"].precision_get(
+            "Product Unit of Measure"
+        )
+        domain = [
+            ("product_id", "=", product.id),
+            ("stock_move_id.date", "<", self.date_from),
+            ("remaining_qty", ">", 0),
+        ]
+        if "warehouse_id" in layer_model._fields:
+            domain.append(("warehouse_id", "=", warehouse.id))
+        layers = layer_model.search(domain, order="create_date, id")
+
+        rows = []
+        seq = 0
+        for layer in layers:
+            if float_is_zero(layer.remaining_qty, precision_digits=precision):
+                continue
+            move = layer.stock_move_id
+            if move and warehouse_loc_ids and move.location_dest_id.id not in warehouse_loc_ids:
+                continue
+            picking = move.picking_id if move else False
+            seq += 1
+            rows.append(
+                {
+                    "seq": seq,
+                    "date": move.date if move else layer.create_date,
+                    "doc_type": picking.picking_type_id.name if picking else (
+                        move.picking_type_id.name if move and move.picking_type_id else ""
+                    ),
+                    "doc_number": picking.name if picking else (move.reference if move else ""),
+                    "location_from": move.location_id.display_name if move else "",
+                    "location_to": move.location_dest_id.display_name if move else "",
+                    "opening": layer.remaining_qty,
+                    "in_qty": 0.0,
+                    "out_qty": 0.0,
+                    "balance": layer.remaining_qty,
+                }
+            )
+        return rows
+
     def get_stock_card_lines(self, warehouse, product):
         """Build the ordered ledger (opening balance + running rows) for one
         warehouse/product pair, scoped to the wizard's date range."""
@@ -169,13 +217,18 @@ class StockCardWizard(models.TransientModel):
             )
 
         if not rows:
-            precision = self.env["decimal.precision"].precision_get(
-                "Product Unit of Measure"
-            )
-            if float_is_zero(opening_balance, precision_digits=precision):
-                onhand_qty = self._get_onhand_qty(warehouse_loc_ids, product)
-                if not float_is_zero(onhand_qty, precision_digits=precision):
-                    opening_balance = onhand_qty
+            open_rows = self._get_open_document_rows(warehouse, warehouse_loc_ids, product)
+            if open_rows:
+                rows = open_rows
+                opening_balance = sum(r["opening"] for r in open_rows)
+            else:
+                precision = self.env["decimal.precision"].precision_get(
+                    "Product Unit of Measure"
+                )
+                if float_is_zero(opening_balance, precision_digits=precision):
+                    onhand_qty = self._get_onhand_qty(warehouse_loc_ids, product)
+                    if not float_is_zero(onhand_qty, precision_digits=precision):
+                        opening_balance = onhand_qty
 
         return opening_balance, rows
 
