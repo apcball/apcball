@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_stock_card_xlsx" model="ir.actions.report">
+        <field name="name">Stock Card Report</field>
+        <field name="model">buz.stock.card.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_stock_card_report.report_stock_card_xlsx</field>
+        <field name="report_file">buz_stock_card_report.report_stock_card_xlsx</field>
+        <field name="print_report_name">object.report_filename</field>
+    </record>
+</odoo>

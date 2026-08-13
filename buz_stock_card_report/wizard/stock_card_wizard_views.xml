@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_card_wizard_form" model="ir.ui.view">
+        <field name="name">buz.stock.card.wizard.form</field>
+        <field name="model">buz.stock.card.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Stock Card Report">
+                <group>
+                    <group string="Date Range">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Filters">
+                        <field name="warehouse_ids" widget="many2many_tags"/>
+                        <field name="product_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_excel" string="Export Excel" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stock_card_wizard" model="ir.actions.act_window">
+        <field name="name">Stock Card Report</field>
+        <field name="res_model">buz.stock.card.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_stock_card_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_stock_card_wizard"
+              name="Stock Card"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_card_wizard"
+              sequence="95"
+              groups="stock.group_stock_user"/>
+</odoo>
