@@ -220,7 +220,25 @@ class PosLiteOrder(models.Model):
                     raise UserError(_(
                         'Invalid state transition: %s → %s. Use the proper action buttons.'
                     ) % (order.state, new_state))
+        # Once an order is Done, it is locked — no field may change except the
+        # state itself moving off 'done' via an allowed transition (there is
+        # none today, but this keeps the guard symmetric with _ALLOWED_TRANSITIONS
+        # rather than special-casing 'done').
+        if set(vals.keys()) - {'state'}:
+            for order in self:
+                if order.state == 'done':
+                    raise UserError(_(
+                        'Order %s is Done and can no longer be edited.'
+                    ) % order.name)
         return super().write(vals)
+
+    def unlink(self):
+        for order in self:
+            if order.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and cannot be deleted.'
+                ) % order.name)
+        return super().unlink()
 
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Order number must be unique.'),
@@ -1050,6 +1068,35 @@ class PosLiteOrderLine(models.Model):
         currency_field='currency_id',
         help="Line margin = price subtotal − (standard cost × qty).",
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        order_ids = {v['order_id'] for v in vals_list if v.get('order_id')}
+        if order_ids:
+            done_orders = self.env['pos.lite.order'].sudo().search([
+                ('id', 'in', list(order_ids)), ('state', '=', 'done'),
+            ])
+            if done_orders:
+                raise UserError(_(
+                    'Order %s is Done and can no longer be edited.'
+                ) % done_orders[0].name)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        for line in self:
+            if line.order_id.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and can no longer be edited.'
+                ) % line.order_id.name)
+        return super().write(vals)
+
+    def unlink(self):
+        for line in self:
+            if line.order_id.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and cannot be deleted.'
+                ) % line.order_id.name)
+        return super().unlink()
 
     @api.depends('return_line_ids.qty')
     def _compute_returned_qty(self):
