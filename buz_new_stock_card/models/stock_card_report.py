@@ -437,6 +437,23 @@ class StockCardReport(models.AbstractModel):
         return counts
 
     @api.model
+    def resolve_multi_location_scope(self, location_ids=None, warehouse_ids=None):
+        """Combine explicit locations and whole warehouses into one scope."""
+        ids = set()
+        Location = self.env["stock.location"]
+        for loc_id in location_ids or []:
+            location = Location.browse(loc_id)
+            if location.exists():
+                ids.add(location.id)
+        for wh_id in warehouse_ids or []:
+            warehouse = self.env["stock.warehouse"].browse(wh_id)
+            if warehouse.exists():
+                ids |= set(Location.search(
+                    [("id", "child_of", warehouse.view_location_id.id), ("usage", "=", "internal")]
+                ).ids)
+        return list(ids)
+
+    @api.model
     def resolve_location_scope(self, location_id, include_children):
         location = self.env["stock.location"].browse(location_id)
         if not location.exists():

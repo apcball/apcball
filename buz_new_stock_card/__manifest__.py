@@ -15,6 +15,7 @@
         "views/stock_card_menu.xml",
         "report/stock_card_report_actions.xml",
         "report/stock_card_report_template.xml",
+        "wizard/stock_card_export_wizard_view.xml",
     ],
     "assets": {
         "web.assets_backend": [

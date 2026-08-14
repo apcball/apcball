@@ -209,20 +209,14 @@ export class StockCardAction extends Component {
     }
 
     exportExcel() {
-        if (!this.state.productId || !this.state.selectedLocationId) {
-            this.notification.add("กรุณาเลือกสินค้าและ Location ก่อน Export", { type: "warning" });
-            return;
-        }
-        const params = new URLSearchParams({
-            product_id: this.state.productId,
-            location_id: this.state.selectedLocationId,
-            include_children: this.state.includeChildren ? "1" : "0",
-            date_from: this.state.dateFrom,
-            date_to: this.state.dateTo,
-            show_movements_only: this.state.showMovementsOnly ? "1" : "0",
-            company_id: this.state.companyId,
+        this.action.doAction("buz_new_stock_card.action_stock_card_export_wizard", {
+            additionalContext: {
+                default_product_id: this.state.productId || false,
+                default_date_from: this.state.dateFrom,
+                default_date_to: this.state.dateTo,
+                default_show_movements_only: this.state.showMovementsOnly,
+            },
         });
-        window.open("/stock_card/export_xlsx?" + params.toString(), "_blank");
     }
 
     async printPdf() {

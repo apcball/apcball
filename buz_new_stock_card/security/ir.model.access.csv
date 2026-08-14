@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_buz_stock_card_report_user,buz.stock.card.report user,model_buz_stock_card_report,stock.group_stock_user,1,0,0,0
+access_buz_stock_card_export_wizard_user,buz.stock.card.export.wizard user,model_buz_stock_card_export_wizard,stock.group_stock_user,1,1,1,1
