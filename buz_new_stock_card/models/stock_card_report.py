@@ -279,6 +279,106 @@ class StockCardReport(models.AbstractModel):
         }
 
     @api.model
+    def get_all_stock_card_lines(self, date_from, date_to, company_ids=None, show_movements_only=False):
+        """Flat rows for every (product, internal location) pair that has a
+        move line in the date range - one row per transaction, no per-scope
+        grouping into sheets. Used when the export wizard is run with no
+        product/warehouse/location selected."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+
+        location_domain = [
+            ("usage", "=", "internal"),
+            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
+        ]
+        internal_location_ids = set(self.env["stock.location"].search(location_domain).ids)
+
+        range_domain = [
+            ("state", "=", "done"),
+            ("company_id", "in", company_ids),
+            ("date", ">=", start_utc),
+            ("date", "<", end_utc),
+        ]
+
+        MoveLine = self.env["stock.move.line"]
+        pairs = set()
+        for field_name in ("location_id", "location_dest_id"):
+            groups = MoveLine.read_group(
+                range_domain + [(field_name, "in", list(internal_location_ids))],
+                ["product_id", field_name], ["product_id", field_name], lazy=False,
+            )
+            for group in groups:
+                product = group["product_id"]
+                location = group[field_name]
+                if product and location:
+                    pairs.add((location[0], product[0]))
+
+        Location = self.env["stock.location"]
+        Product = self.env["product.product"]
+        location_names = {}
+        product_info = {}
+
+        rows = []
+        for location_id, product_id in pairs:
+            if location_id not in location_names:
+                location_names[location_id] = Location.browse(location_id).display_name
+            if product_id not in product_info:
+                product = Product.browse(product_id)
+                product_info[product_id] = (product.default_code or "", product.name)
+
+            scope_location_ids = [location_id]
+            opening_balance = self._get_opening_balance(product_id, scope_location_ids, start_utc)
+
+            detail_domain = [
+                ("state", "=", "done"),
+                ("product_id", "=", product_id),
+                ("company_id", "in", company_ids),
+                ("date", ">=", start_utc),
+                ("date", "<", end_utc),
+            ] + self._scope_domain(scope_location_ids)
+            if show_movements_only:
+                detail_domain += [("quantity", "!=", 0)]
+
+            lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
+            running_balance = opening_balance
+            for line in lines:
+                in_qty, out_qty = self._direction_qty(line, scope_location_ids)
+                row_opening = running_balance
+                running_balance += in_qty - out_qty
+                doc_type, doc_number, res_model, res_id, source_document = self._resolve_document(line)
+
+                src_id = line["location_id"][0]
+                dest_id = line["location_dest_id"][0]
+                from_location = Location.browse(src_id).display_name if in_qty and src_id in internal_location_ids else ""
+                to_location = Location.browse(dest_id).display_name if out_qty and dest_id in internal_location_ids else ""
+
+                default_code, product_name = product_info[product_id]
+                rows.append({
+                    "location_label": location_names[location_id],
+                    "product_default_code": default_code,
+                    "product_name": product_name,
+                    "date": self._to_user_tz_str(line["date"]),
+                    "doc_type": doc_type,
+                    "doc_number": doc_number,
+                    "opening": row_opening,
+                    "in": in_qty,
+                    "out": out_qty,
+                    "balance": running_balance,
+                    "from_location": from_location,
+                    "to_location": to_location,
+                    "note": source_document,
+                    "_sort_key": (location_names[location_id], default_code, line["date"], line["id"]),
+                })
+
+        rows.sort(key=lambda r: r["_sort_key"])
+        for idx, row in enumerate(rows):
+            row["seq"] = idx + 1
+            del row["_sort_key"]
+        return rows
+
+    @api.model
     def get_location_tree(self, parent_id=None, company_ids=None):
         if not company_ids:
             company_ids = self.env.companies.ids

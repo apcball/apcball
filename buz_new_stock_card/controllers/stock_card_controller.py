@@ -29,7 +29,6 @@ class StockCardController(http.Controller):
     @http.route("/stock_card/export_xlsx", type="http", auth="user", methods=["GET"])
     def export_stock_card_xlsx(self, **kw):
         try:
-            product_id = int(kw["product_id"])
             date_from = fields.Date.from_string(kw["date_from"])
             date_to = fields.Date.from_string(kw["date_to"])
             show_movements_only = kw.get("show_movements_only") in ("1", "true", "True")
@@ -37,10 +36,42 @@ class StockCardController(http.Controller):
             company_ids = [int(company_id)] if company_id else None
 
             engine = request.env["buz.stock.card.report"]
-            product = request.env["product.product"].browse(product_id)
 
+            product_id_param = kw.get("product_id")
             location_ids_param = kw.get("location_ids")
             warehouse_ids_param = kw.get("warehouse_ids")
+
+            if not product_id_param and not location_ids_param and not warehouse_ids_param:
+                rows = engine.get_all_stock_card_lines(
+                    date_from, date_to,
+                    company_ids=company_ids,
+                    show_movements_only=show_movements_only,
+                )
+
+                output = io.BytesIO()
+                workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+                fmts = {
+                    "header": workbook.add_format({"bold": True, "bg_color": "#D9D9D9", "border": 1}),
+                    "num": workbook.add_format({"num_format": "#,##0.00", "border": 1}),
+                    "date": workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1}),
+                    "text": workbook.add_format({"border": 1}),
+                }
+                self._write_all_stock_card_sheet(workbook, fmts, rows)
+                workbook.close()
+                output.seek(0)
+
+                filename = "Stock_Card_All_%s_%s.xlsx" % (date_from, date_to)
+                return request.make_response(
+                    output.getvalue(),
+                    headers=[
+                        ("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                        ("Content-Disposition", content_disposition(filename)),
+                    ],
+                )
+
+            product_id = int(product_id_param)
+            product = request.env["product.product"].browse(product_id)
+
             sheets = []  # list of (label, scope_ids)
             if location_ids_param or warehouse_ids_param:
                 loc_ids = [int(x) for x in location_ids_param.split(",") if x] if location_ids_param else []
@@ -101,6 +132,46 @@ class StockCardController(http.Controller):
             return request.make_response(
                 json.dumps(error), headers=[("Content-Type", "application/json")], status=400
             )
+
+    def _write_all_stock_card_sheet(self, workbook, fmts, rows):
+        sheet = workbook.add_worksheet("Stock Card")
+
+        sheet.set_column("A:A", 8)
+        sheet.set_column("B:B", 20)
+        sheet.set_column("C:C", 14)
+        sheet.set_column("D:D", 28)
+        sheet.set_column("E:E", 16)
+        sheet.set_column("F:G", 16)
+        sheet.set_column("H:K", 12)
+        sheet.set_column("L:M", 18)
+        sheet.set_column("N:N", 24)
+
+        headers = ["ลำดับ", "คลังสินค้า", "รหัสสินค้า", "ชื่อสินค้า", "วันที่", "เอกสาร", "เลขที่",
+                   "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ", "จากคลัง", "ไปยัง", "หมายเหตุ"]
+        for col, label in enumerate(headers):
+            sheet.write(0, col, label, fmts["header"])
+
+        row = 1
+        for line in rows:
+            sheet.write(row, 0, line["seq"], fmts["text"])
+            sheet.write(row, 1, line["location_label"], fmts["text"])
+            sheet.write(row, 2, line["product_default_code"], fmts["text"])
+            sheet.write(row, 3, line["product_name"], fmts["text"])
+            line_date = datetime.strptime(line["date"], "%d/%m/%y %H:%M:%S") if line["date"] else None
+            if line_date:
+                sheet.write_datetime(row, 4, line_date, fmts["date"])
+            else:
+                sheet.write(row, 4, "", fmts["date"])
+            sheet.write(row, 5, line["doc_type"] or "", fmts["text"])
+            sheet.write(row, 6, line["doc_number"] or "", fmts["text"])
+            sheet.write(row, 7, line["opening"], fmts["num"])
+            sheet.write(row, 8, line["in"], fmts["num"])
+            sheet.write(row, 9, line["out"], fmts["num"])
+            sheet.write(row, 10, line["balance"], fmts["num"])
+            sheet.write(row, 11, line["from_location"] or "", fmts["text"])
+            sheet.write(row, 12, line["to_location"] or "", fmts["text"])
+            sheet.write(row, 13, line["note"] or "", fmts["text"])
+            row += 1
 
     def _write_stock_card_sheet(self, workbook, fmts, sheet_name, product, location_label, data, date_from, date_to):
         sheet = workbook.add_worksheet(sheet_name)
