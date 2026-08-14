@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_wip_manufacturing_report.WipManufacturingAction">
+        <div class="o_wip_report_action d-flex flex-column h-100">
+            <div class="o_wip_report_header d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                <h4 class="mb-0 fw-bold">WIP Manufacturing Report</h4>
+                <div class="o_wip_report_toolbar d-flex gap-2">
+                    <button class="btn btn-outline-success" t-on-click="exportExcel">
+                        <i class="fa fa-file-excel-o me-1 text-success"/>Export Excel
+                    </button>
+                    <button class="btn o_wip_btn_primary" t-on-click="generateReport">
+                        Generate Report
+                    </button>
+                </div>
+            </div>
+            <div class="o_wip_report_body d-flex flex-grow-1" style="min-height:0;">
+                <WipSidebar state="state"
+                            onSetDateFrom.bind="onSetDateFrom"
+                            onSetDateTo.bind="onSetDateTo"
+                            onSetMoIds.bind="onSetMoIds"
+                            onSetProductIds.bind="onSetProductIds"
+                            onSetComponentIds.bind="onSetComponentIds"
+                            onSetLocationIds.bind="onSetLocationIds"
+                            onToggleStatus.bind="onToggleStatus"
+                            onSetCostSource.bind="onSetCostSource"
+                            onToggleValuationDetail.bind="onToggleValuationDetail"
+                            onReset.bind="reset"/>
+                <div class="d-flex flex-column flex-grow-1" style="min-width:0;">
+                    <SummaryCards summary="state.reportData and state.reportData.summary"/>
+                    <WipMainPanel state="state"
+                                  onSetSearch.bind="onSetSearch"
+                                  onChangePage.bind="onChangePage"
+                                  onChangePageSize.bind="onChangePageSize"
+                                  toggleExpand.bind="toggleExpand"
+                                  expandAll.bind="expandAll"
+                                  collapseAll.bind="collapseAll"
+                                  openRecord.bind="openRecord"/>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

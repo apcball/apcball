@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_wip_manufacturing_report.SummaryCards">
+        <div class="o_wip_summary_cards d-flex gap-3 px-3 py-3 border-bottom flex-wrap" t-if="props.summary">
+            <div class="o_wip_summary_card d-flex align-items-center gap-3 p-3 rounded flex-grow-1">
+                <div class="o_wip_summary_icon o_wip_icon_blue">
+                    <i class="fa fa-clipboard"/>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold lh-1" t-esc="props.summary.total_mos"/>
+                    <div class="text-muted small mt-1">Manufacturing Orders</div>
+                </div>
+            </div>
+            <div class="o_wip_summary_card d-flex align-items-center gap-3 p-3 rounded flex-grow-1">
+                <div class="o_wip_summary_icon o_wip_icon_orange">
+                    <i class="fa fa-cube"/>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold lh-1" t-esc="props.summary.total_items"/>
+                    <div class="text-muted small mt-1">Items</div>
+                </div>
+            </div>
+            <div class="o_wip_summary_card d-flex align-items-center gap-3 p-3 rounded flex-grow-1">
+                <div class="o_wip_summary_icon o_wip_icon_purple">
+                    <i class="fa fa-balance-scale"/>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold lh-1" t-esc="fmt(props.summary.total_quantity)"/>
+                    <div class="text-muted small mt-1">Units</div>
+                </div>
+            </div>
+            <div class="o_wip_summary_card d-flex align-items-center gap-3 p-3 rounded flex-grow-1">
+                <div class="o_wip_summary_icon o_wip_icon_teal">
+                    <i class="fa fa-money"/>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold lh-1" t-esc="fmt(props.summary.total_wip_value)"/>
+                    <div class="text-muted small mt-1">Total WIP Value</div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

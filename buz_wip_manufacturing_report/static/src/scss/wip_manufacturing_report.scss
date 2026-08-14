@@ -1,0 +1,136 @@
+.o_wip_report_action {
+    background: #f8f7fa;
+
+    // ------------------------------------------------------------
+    // Header / toolbar
+    // ------------------------------------------------------------
+    .o_wip_report_header {
+        background: #fff;
+    }
+
+    .o_wip_btn_primary {
+        background: #6f4ea6;
+        border-color: #6f4ea6;
+        color: #fff;
+        font-weight: 500;
+
+        &:hover, &:focus {
+            background: #5e4189;
+            border-color: #5e4189;
+            color: #fff;
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Sidebar
+    // ------------------------------------------------------------
+    .o_wip_report_sidebar {
+        background: #fff;
+    }
+
+    .o_wip_section_title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: #6f4ea6;
+        text-transform: uppercase;
+    }
+
+    // ------------------------------------------------------------
+    // Summary cards
+    // ------------------------------------------------------------
+    .o_wip_summary_card {
+        min-width: 200px;
+        background: #fff;
+        border: 1px solid #eee;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .o_wip_summary_icon {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.1rem;
+    }
+
+    .o_wip_icon_blue { background: #4a7bf0; }
+    .o_wip_icon_orange { background: #f0a03c; }
+    .o_wip_icon_purple { background: #8a5cf0; }
+    .o_wip_icon_teal { background: #2ba89a; }
+
+    // ------------------------------------------------------------
+    // Search box
+    // ------------------------------------------------------------
+    .o_wip_search_box {
+        position: relative;
+
+        .fa-search {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+        }
+
+        input {
+            padding-left: 28px;
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Table
+    // ------------------------------------------------------------
+    .o_wip_table {
+        background: #fff;
+
+        thead th {
+            background: #f4f2f7;
+            white-space: nowrap;
+            user-select: none;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #555;
+            border-bottom: 1px solid #e4e0ea;
+            cursor: pointer;
+        }
+
+        .o_wip_mo_row {
+            background: #f4f2f7;
+
+            td {
+                border-top: 1px solid #e4e0ea;
+                border-bottom: 1px solid #e4e0ea;
+            }
+        }
+
+        .o_wip_material_row td {
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .o_wip_grand_total_row td {
+            background: #fdf0d5;
+            border-top: 2px solid #f0a03c;
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Pagination
+    // ------------------------------------------------------------
+    .o_wip_page_btn {
+        min-width: 32px;
+        border: 1px solid #ddd;
+        background: #fff;
+        color: #333;
+
+        &.o_wip_page_active {
+            background: #6f4ea6;
+            border-color: #6f4ea6;
+            color: #fff;
+        }
+    }
+}

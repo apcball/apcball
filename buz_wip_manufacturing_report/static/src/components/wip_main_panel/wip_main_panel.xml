@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_wip_manufacturing_report.WipMainPanel">
+        <div class="o_wip_main_panel d-flex flex-column flex-grow-1" style="min-height:0;">
+            <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom flex-wrap">
+                <button class="btn btn-outline-secondary btn-sm" t-on-click="props.expandAll">
+                    <i class="fa fa-angle-double-down me-1"/>Expand All
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" t-on-click="props.collapseAll">
+                    <i class="fa fa-angle-double-up me-1"/>Collapse All
+                </button>
+                <span class="text-muted small ms-1" t-if="props.state.reportData">
+                    Showing <t t-esc="props.state.reportData.total_count"/> MO / <t t-esc="props.state.reportData.summary.total_items"/> Items
+                </span>
+                <div class="o_wip_search_box ms-2 flex-grow-1" style="max-width: 320px;">
+                    <i class="fa fa-search text-muted"/>
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="Search MO No / Product Code / Product Name / Location..."
+                           t-att-value="props.state.search" t-on-input="onSearchInput"/>
+                </div>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <span class="text-muted small">Rows:</span>
+                    <select class="form-select form-select-sm" style="width: 80px;" t-on-change="onPageSizeChange">
+                        <option value="50" t-att-selected="props.state.pageSize === 50">50</option>
+                        <option value="100" t-att-selected="props.state.pageSize === 100">100</option>
+                        <option value="200" t-att-selected="props.state.pageSize === 200">200</option>
+                        <option value="500" t-att-selected="props.state.pageSize === 500">500</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex-grow-1" style="overflow: auto; min-height:0;">
+                <table class="table table-sm mb-0 o_wip_table" t-if="props.state.reportData">
+                    <thead class="sticky-top">
+                        <tr>
+                            <th style="width: 24px;"/>
+                            <th t-on-click="() => this.onSort('mo_name')">MO No.</th>
+                            <th t-on-click="() => this.onSort('mo_date')">MO Date</th>
+                            <th class="text-end">Item</th>
+                            <th t-on-click="() => this.onSort('product_code')">Product Code</th>
+                            <th>Product Name</th>
+                            <th>Store / Location</th>
+                            <th class="text-end" t-on-click="() => this.onSort('quantity')">Quantity</th>
+                            <th>UOM</th>
+                            <th class="text-end" t-on-click="() => this.onSort('unit_cost')">Unit Cost</th>
+                            <th class="text-end" t-on-click="() => this.onSort('amount')">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="visibleMos" t-as="mo" t-key="mo.mo_id">
+                            <tr class="o_wip_mo_row">
+                                <td class="text-center" style="cursor:pointer;" t-on-click="() => props.toggleExpand(mo.mo_id)">
+                                    <i t-att-class="isExpanded(mo.mo_id) ? 'fa fa-caret-down' : 'fa fa-caret-right'"/>
+                                </td>
+                                <td class="fw-bold">
+                                    <a href="#" t-on-click.prevent="() => props.openRecord('mrp.production', mo.mo_id)" t-esc="mo.mo_name"/>
+                                </td>
+                                <td class="text-nowrap">
+                                    <i class="fa fa-calendar-o text-muted me-1"/><t t-esc="mo.mo_date"/>
+                                </td>
+                                <td colspan="6" class="text-muted small">
+                                    <t t-esc="mo.product_code"/> <t t-esc="mo.product_name"/> — <t t-esc="mo.mo_state_label"/>
+                                </td>
+                                <td class="text-end fw-bold" t-esc="fmt(mo.subtotal_amount)"/>
+                            </tr>
+                            <t t-if="isExpanded(mo.mo_id)">
+                                <tr t-foreach="mo.materials" t-as="material" t-key="material.move_id" class="o_wip_material_row">
+                                    <td/>
+                                    <td/>
+                                    <td/>
+                                    <td class="text-end text-muted" t-esc="material_index + 1"/>
+                                    <td>
+                                        <a href="#" t-on-click.prevent="() => props.openRecord('product.product', material.product_id)" t-esc="material.product_code"/>
+                                    </td>
+                                    <td t-esc="material.product_name"/>
+                                    <td>
+                                        <a href="#" t-on-click.prevent="() => props.openRecord('stock.location', material.location_id)" t-esc="material.location_name"/>
+                                    </td>
+                                    <td class="text-end" t-esc="fmt(material.quantity)"/>
+                                    <td t-esc="material.uom"/>
+                                    <td class="text-end" t-esc="fmt(material.unit_cost)"/>
+                                    <td class="text-end">
+                                        <a t-if="props.state.showValuationDetail" href="#"
+                                           t-on-click.prevent="() => props.openRecord('stock.move', material.move_id)"
+                                           t-esc="fmt(material.amount)"/>
+                                        <t t-else="" t-esc="fmt(material.amount)"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </t>
+                        <tr t-if="!visibleMos.length">
+                            <td colspan="11" class="text-center text-muted py-5">
+                                No WIP manufacturing data found.<br/>
+                                <span class="small">Try changing your date range or filters.</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot t-if="visibleMos.length">
+                        <tr class="o_wip_grand_total_row">
+                            <td colspan="10" class="text-end fw-bold">Grand Total</td>
+                            <td class="text-end fw-bold" t-esc="fmt(props.state.reportData.grand_total.amount)"/>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div t-else="" class="text-center text-muted py-5">
+                    Set filters and click "Generate Report" to load data.
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top" t-if="props.state.reportData">
+                <span class="text-muted small">
+                    <t t-esc="pageStart"/>–<t t-esc="pageEnd"/> of <t t-esc="props.state.reportData.total_count"/> MOs
+                </span>
+                <div class="o_wip_pagination d-flex align-items-center gap-1">
+                    <button class="btn btn-sm o_wip_page_btn" t-att-disabled="!props.state.reportData.has_prev"
+                            t-on-click="() => props.onChangePage(props.state.page - 1)">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <t t-foreach="pageNumbers" t-as="p" t-key="p">
+                        <span t-if="p === '...'" class="px-1 text-muted">…</span>
+                        <button t-else="" class="btn btn-sm o_wip_page_btn"
+                                t-att-class="p === props.state.page ? 'o_wip_page_active' : ''"
+                                t-on-click="() => props.onChangePage(p)">
+                            <t t-esc="p + 1"/>
+                        </button>
+                    </t>
+                    <button class="btn btn-sm o_wip_page_btn" t-att-disabled="!props.state.reportData.has_next"
+                            t-on-click="() => props.onChangePage(props.state.page + 1)">
+                        <i class="fa fa-chevron-right"/>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

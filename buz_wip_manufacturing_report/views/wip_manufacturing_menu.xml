@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_wip_manufacturing_report" model="ir.actions.client">
+        <field name="name">WIP Manufacturing Report</field>
+        <field name="tag">buz_wip_manufacturing_report</field>
+    </record>
+
+    <menuitem id="menu_wip_manufacturing_report"
+              name="WIP Manufacturing Report"
+              parent="mrp.menu_mrp_reporting"
+              action="action_wip_manufacturing_report"
+              groups="mrp.group_mrp_user"
+              sequence="30"/>
+</odoo>

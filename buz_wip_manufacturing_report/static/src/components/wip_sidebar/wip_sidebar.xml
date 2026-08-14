@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_wip_manufacturing_report.WipSidebar">
+        <div class="o_wip_report_sidebar border-end p-3" style="width: 280px; min-width: 280px; overflow-y: auto;">
+            <div class="o_wip_section_title d-flex align-items-center gap-2 mb-3">
+                <i class="fa fa-bars"/>
+                <span>FILTERS</span>
+            </div>
+
+            <label class="form-label small text-muted mb-1">Date From</label>
+            <input type="date" class="form-control form-control-sm mb-2"
+                   t-att-value="props.state.dateFrom" t-on-change="onDateFromChange"/>
+
+            <label class="form-label small text-muted mb-1">Date To</label>
+            <input type="date" class="form-control form-control-sm mb-2"
+                   t-att-value="props.state.dateTo" t-on-change="onDateToChange"/>
+
+            <label class="form-label small text-muted mb-1">Manufacturing Order</label>
+            <div class="mb-2">
+                <MultiRecordSelector resModel="'mrp.production'"
+                                      resIds="props.state.moIds"
+                                      update="props.onSetMoIds"
+                                      fieldString="'MO'"
+                                      placeholder="'All'"/>
+            </div>
+
+            <label class="form-label small text-muted mb-1">Product</label>
+            <div class="mb-2">
+                <MultiRecordSelector resModel="'product.product'"
+                                      resIds="props.state.productIds"
+                                      update="props.onSetProductIds"
+                                      fieldString="'Product'"
+                                      placeholder="'All'"/>
+            </div>
+
+            <label class="form-label small text-muted mb-1">Component</label>
+            <div class="mb-2">
+                <MultiRecordSelector resModel="'product.product'"
+                                      resIds="props.state.componentIds"
+                                      update="props.onSetComponentIds"
+                                      fieldString="'Component'"
+                                      placeholder="'All'"/>
+            </div>
+
+            <label class="form-label small text-muted mb-1">Store / Location</label>
+            <div class="mb-1">
+                <MultiRecordSelector resModel="'stock.location'"
+                                      resIds="props.state.locationIds"
+                                      update="props.onSetLocationIds"
+                                      fieldString="'Location'"
+                                      placeholder="'All'"/>
+            </div>
+
+            <div class="o_wip_section_title mt-4 mb-2">STATUS</div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="wip_status_draft"
+                       t-att-checked="isStatusChecked('draft')"
+                       t-on-change="(ev) => this.onStatusChange('draft', ev)"/>
+                <label class="form-check-label small" for="wip_status_draft">Draft</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="wip_status_confirmed"
+                       t-att-checked="isStatusChecked('confirmed')"
+                       t-on-change="(ev) => this.onStatusChange('confirmed', ev)"/>
+                <label class="form-check-label small" for="wip_status_confirmed">Confirmed</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="wip_status_progress"
+                       t-att-checked="isStatusChecked('progress')"
+                       t-on-change="(ev) => this.onStatusChange('progress', ev)"/>
+                <label class="form-check-label small" for="wip_status_progress">In Progress</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="wip_status_done"
+                       t-att-checked="isStatusChecked('done')"
+                       t-on-change="(ev) => this.onStatusChange('done', ev)"/>
+                <label class="form-check-label small" for="wip_status_done">Done</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="wip_status_cancel"
+                       t-att-checked="isStatusChecked('cancel')"
+                       t-on-change="(ev) => this.onStatusChange('cancel', ev)"/>
+                <label class="form-check-label small" for="wip_status_cancel">Cancelled</label>
+            </div>
+
+            <div class="o_wip_section_title mt-4 mb-2">OPTIONS</div>
+            <label class="form-label small text-muted mb-1">Cost Source</label>
+            <select class="form-select form-select-sm mb-2" t-on-change="onCostSourceChange">
+                <option value="svl" t-att-selected="props.state.costSource === 'svl'">Stock Valuation</option>
+                <option value="move_unit_cost" t-att-selected="props.state.costSource === 'move_unit_cost'">Move Unit Cost</option>
+                <option value="standard_price" t-att-selected="props.state.costSource === 'standard_price'">Standard Cost</option>
+            </select>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="wip_show_valuation"
+                       t-att-checked="props.state.showValuationDetail"
+                       t-on-change="props.onToggleValuationDetail"/>
+                <label class="form-check-label small" for="wip_show_valuation">Show Valuation Detail</label>
+            </div>
+
+            <button class="btn btn-outline-secondary w-100 mt-4" t-on-click="props.onReset">
+                <i class="fa fa-rotate-left me-1"/>Clear
+            </button>
+        </div>
+    </t>
+</templates>
