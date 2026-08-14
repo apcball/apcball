@@ -65,6 +65,19 @@ class StockCardReport(models.AbstractModel):
         end_utc = end_local.astimezone(pytz.UTC).replace(tzinfo=None)
         return start_utc, end_utc
 
+    def _to_user_tz_str(self, naive_utc_dt):
+        """Format a naive UTC datetime (as returned by search_read) in the
+        current user's timezone, matching the format the client expects."""
+        if not naive_utc_dt:
+            return naive_utc_dt
+        tz_name = self.env.user.tz or "UTC"
+        try:
+            tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            tz = pytz.UTC
+        local_dt = pytz.UTC.localize(naive_utc_dt).astimezone(tz)
+        return local_dt.strftime("%d/%m/%y %H:%M:%S")
+
     def _direction_qty(self, line_vals, scope_location_ids):
         """Return (in_qty, out_qty) for one move-line dict against scope."""
         dest_in = line_vals["location_dest_id"][0] in scope_location_ids
@@ -226,7 +239,7 @@ class StockCardReport(models.AbstractModel):
             doc_type, doc_number, res_model, res_id, source_document = self._resolve_document(line)
             rows.append({
                 "seq": offset + idx + 1,
-                "date": line["date"],
+                "date": self._to_user_tz_str(line["date"]),
                 "doc_type": doc_type,
                 "doc_number": doc_number,
                 "reference": source_document,

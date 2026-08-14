@@ -1,5 +1,6 @@
 import io
 import json
+from datetime import datetime
 
 import xlsxwriter
 
@@ -40,7 +41,7 @@ class StockCardController(http.Controller):
             title_fmt = workbook.add_format({"bold": True, "font_size": 12})
             header_fmt = workbook.add_format({"bold": True, "bg_color": "#D9D9D9", "border": 1})
             num_fmt = workbook.add_format({"num_format": "#,##0.00", "border": 1})
-            date_fmt = workbook.add_format({"num_format": "dd/mm/yyyy", "border": 1})
+            date_fmt = workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1})
             text_fmt = workbook.add_format({"border": 1})
 
             sheet.set_column("A:A", 8)
@@ -80,7 +81,11 @@ class StockCardController(http.Controller):
 
             for line in data["lines"]:
                 sheet.write(row, 0, line["seq"], text_fmt)
-                sheet.write_datetime(row, 1, line["date"], date_fmt)
+                line_date = datetime.strptime(line["date"], "%d/%m/%y %H:%M:%S") if line["date"] else None
+                if line_date:
+                    sheet.write_datetime(row, 1, line_date, date_fmt)
+                else:
+                    sheet.write(row, 1, "", date_fmt)
                 sheet.write(row, 2, line["doc_type"] or "", text_fmt)
                 sheet.write(row, 3, line["doc_number"] or "", text_fmt)
                 sheet.write(row, 4, line["reference"] or "", text_fmt)
