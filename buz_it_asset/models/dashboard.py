@@ -270,6 +270,9 @@ class ITManagementDashboard(models.AbstractModel):
         base = self._ticket_base_domain(normalized)
         closed = self.env.ref('buz_it_helpdesk.stage_closed')
         open_domain = base + [('stage_id', '!=', closed.id)]
+        new_ticket_domain = base + [
+            ('stage_id', '=', self.env.ref('buz_it_helpdesk.stage_new').id),
+        ]
         asset_model = self.env['buz.it.asset'].with_context(active_test=False)
         asset_base = [('company_id', 'in', normalized['company_ids'])]
         today = normalized['date_to']
@@ -292,7 +295,7 @@ class ITManagementDashboard(models.AbstractModel):
                 for company in self.env.companies
             ],
             'kpis': {
-                'open_tickets': ticket_model.search_count(open_domain),
+                'open_tickets': ticket_model.search_count(new_ticket_domain),
                 'urgent_tickets': ticket_model.search_count(
                     open_domain + [('priority', '=', '3')]
                 ),
@@ -334,7 +337,7 @@ class ITManagementDashboard(models.AbstractModel):
         closed = self.env.ref('buz_it_helpdesk.stage_closed')
         if target == 'open_tickets':
             name, domain = 'Open Tickets', ticket_base + [
-                ('stage_id', '!=', closed.id),
+                ('stage_id', '=', self.env.ref('buz_it_helpdesk.stage_new').id),
             ]
         elif target == 'urgent_tickets':
             name, domain = 'Urgent Tickets', ticket_base + [
