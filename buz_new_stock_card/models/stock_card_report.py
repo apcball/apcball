@@ -13,6 +13,7 @@ DOC_TYPE_LABELS = {
     "mrp_consume": "เบิกวัตถุดิบผลิต",
     "inventory": "ปรับปรุงสินค้า",
     "pos": "ขายหน้าร้าน",
+    "unbuild": "แยกส่วนประกอบ",
 }
 
 
@@ -162,6 +163,12 @@ class StockCardReport(models.AbstractModel):
             if "production_id" in move._fields and move.production_id:
                 mo = move.production_id
                 return DOC_TYPE_LABELS["mrp_produce"], mo.name, "mrp.production", mo.id, mo.origin or ""
+            if "unbuild_id" in move._fields and move.unbuild_id:
+                unbuild = move.unbuild_id
+                return (
+                    DOC_TYPE_LABELS["unbuild"], unbuild.name, "mrp.unbuild", unbuild.id,
+                    unbuild.mo_id.name or "",
+                )
             if "is_inventory" in move._fields and move.is_inventory:
                 name = move.reference or move.name or ""
                 return DOC_TYPE_LABELS["inventory"], name, False, False, ""

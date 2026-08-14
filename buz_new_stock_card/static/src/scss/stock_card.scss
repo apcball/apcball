@@ -1,5 +1,5 @@
 .o_stock_card_action {
-    background-color: #f7f7fb;
+    background-color: #f5f6fb;
 
     .o_stock_card_header {
         background-color: #fff;
@@ -9,7 +9,7 @@
         width: 32px;
         height: 32px;
         border-radius: 6px;
-        background-color: #714b9c;
+        background-color: #4f5fe0;
         color: #fff;
         font-size: 16px;
     }
@@ -19,33 +19,43 @@
     }
 
     .o_sidebar_section_title {
-        color: #52466b;
+        color: #6b7280;
         text-transform: uppercase;
         font-size: 11px;
         letter-spacing: .03em;
     }
 
     .o_stock_card_main {
-        background-color: #f7f7fb;
+        background-color: #f5f6fb;
     }
 
     .o_report_title {
         .text-primary {
-            color: #714b9c !important;
+            color: #4f5fe0 !important;
             letter-spacing: .02em;
         }
     }
 
     .o_summary_card {
-        background-color: #fff;
         border-radius: 8px;
-        border: 1px solid #eceaf3;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+        border: none;
     }
-    .o_card_opening .fs-4 { color: #52466b; }
-    .o_card_in .fs-4 { color: #1a9e5c; }
-    .o_card_out .fs-4 { color: #d9455f; }
-    .o_card_balance .fs-4 { color: #714b9c; }
+    .o_card_opening {
+        background-color: #eaefff;
+        .fs-4 { color: #3d55d6; }
+    }
+    .o_card_in {
+        background-color: #e6f7ec;
+        .fs-4 { color: #1a9e5c; }
+    }
+    .o_card_out {
+        background-color: #fdecee;
+        .fs-4 { color: #e0455f; }
+    }
+    .o_card_balance {
+        background-color: #f0ecfd;
+        .fs-4 { color: #7c5ce0; }
+    }
 
     .o_pill_toggle .btn {
         border-radius: 4px;
@@ -57,8 +67,8 @@
         overflow: hidden;
 
         thead th {
-            background-color: #f1eef8;
-            color: #52466b;
+            background-color: #f4f5fa;
+            color: #6b7280;
             font-weight: 600;
             border-bottom: none;
             white-space: nowrap;
@@ -67,31 +77,35 @@
             vertical-align: middle;
         }
         tbody tr:hover {
-            background-color: #faf9fd;
+            background-color: #f9faff;
         }
     }
 
     .o_doc_link_icon {
         cursor: pointer;
-        color: #714b9c;
+        color: #4f5fe0;
         &:hover {
-            color: #52366e;
+            color: #3d4bc0;
         }
     }
 
     .o_location_tree_node > div:hover {
-        background-color: rgba(113, 75, 156, 0.08);
+        background-color: rgba(79, 95, 224, 0.08);
     }
     .o_location_tree_node .bg-primary {
-        background-color: #714b9c !important;
+        background-color: #4f5fe0 !important;
+    }
+    .o_location_tree_node .badge {
+        background-color: #eaefff !important;
+        color: #4f5fe0 !important;
     }
 
     .btn-primary {
-        background-color: #714b9c;
-        border-color: #714b9c;
+        background-color: #4f5fe0;
+        border-color: #4f5fe0;
         &:hover {
-            background-color: #5f3f85;
-            border-color: #5f3f85;
+            background-color: #3d4bc0;
+            border-color: #3d4bc0;
         }
     }
 }
