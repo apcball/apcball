@@ -394,6 +394,11 @@ class TestITAsset(TransactionCase):
         })
         return ticket.with_user(support)
 
+    def _resolve_repair_ticket(self, ticket, support):
+        ticket.with_user(support).write({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_resolved').id,
+        })
+
     def test_maintenance_history_is_ticket_only(self):
         asset = self._create_repair_asset('MANUAL')
         with self.assertRaises(UserError):
@@ -408,6 +413,7 @@ class TestITAsset(TransactionCase):
         )
         ticket = self._create_in_progress_repair_ticket(support)
         before = self.env['buz.it.asset.maintenance'].search_count([])
+        self._resolve_repair_ticket(ticket, support)
         ticket.action_close_ticket()
         self.assertTrue(ticket.is_closed_stage)
         self.assertEqual(
@@ -447,6 +453,7 @@ class TestITAsset(TransactionCase):
             asset.responsible_department_id,
             asset.location_id,
         )
+        self._resolve_repair_ticket(ticket, support)
         ticket.action_close_ticket()
 
         self.assertEqual(asset.state, 'assigned')
@@ -579,6 +586,7 @@ class TestITAsset(TransactionCase):
             'repair_outcome_id': self.outcome_asset_replaced.id,
             'replacement_asset_id': replacement.id,
         })
+        self._resolve_repair_ticket(ticket, support)
         ticket.action_close_ticket()
 
         self.assertEqual(
@@ -632,6 +640,7 @@ class TestITAsset(TransactionCase):
             ticket.action_close_ticket()
 
         ticket.with_user(manager).action_approve_retirement()
+        self._resolve_repair_ticket(ticket, support)
         ticket.with_user(manager).action_close_ticket()
         self.assertEqual(asset.state, 'retired')
         self.assertEqual(

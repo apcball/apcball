@@ -1,9 +1,5 @@
-import logging
-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-
-_logger = logging.getLogger(__name__)
 
 
 class HelpdeskTicket(models.Model):
@@ -260,34 +256,6 @@ class HelpdeskTicket(models.Model):
             )
         return super().create(vals_list)
 
-    def _notify_by_web_push_prepare_payload(self, message, msg_vals=False):
-        payload = super()._notify_by_web_push_prepare_payload(
-            message,
-            msg_vals=msg_vals,
-        )
-        if not self.env.context.get('buz_helpdesk_new_ticket_push'):
-            return payload
-
-        ticket = self[:1]
-        if not ticket:
-            return payload
-
-        payload['title'] = _('BUZ IT Helpdesk')
-        payload['options']['icon'] = (
-            '/buz_it_helpdesk/static/description/icon.png'
-        )
-        payload['options']['body'] = _(
-            'Ticket: %(ticket)s\nSubject: %(subject)s\nRequester: %(requester)s',
-            ticket=ticket.display_name,
-            subject=ticket.subject,
-            requester=ticket.requester_id.display_name,
-        )
-        payload['options']['data'] = {
-            'model': ticket._name,
-            'res_id': ticket.id,
-        }
-        return payload
-
     def action_create_ticket(self):
         self.ensure_one()
         if (
@@ -304,7 +272,6 @@ class HelpdeskTicket(models.Model):
             ('groups_id', 'in', self.env.ref(
                 'buz_it_helpdesk.group_it_support_agent'
             ).id),
-            ('company_ids', 'in', self.company_id.id),
         ]) - self.requester_id
         if not recipients:
             raise UserError(_('No active IT Support Agent is available.'))
@@ -332,40 +299,13 @@ class HelpdeskTicket(models.Model):
         for user in recipients:
             if user.id in existing_user_ids:
                 continue
-            self.with_context(
-                buz_helpdesk_new_ticket_push=True
-            ).activity_schedule(
+            self.activity_schedule(
                 'mail.mail_activity_data_todo',
                 user_id=user.id,
                 summary=_('New IT Helpdesk Ticket'),
                 note=note,
             )
-        self._enqueue_line_notification()
         return True
-
-    def _enqueue_line_notification(self):
-        """Queue a LINE group notification without affecting Ticket creation."""
-        self.ensure_one()
-        try:
-            config = self.env['buz.helpdesk.line.config'].sudo().get_singleton()
-            company = self.company_id.sudo()
-            group = company.helpdesk_line_group_id
-            if not config.active or not company.helpdesk_line_enabled or not group or not group.active:
-                return False
-            queue = self.env['buz.helpdesk.line.queue'].sudo()
-            if queue.search_count([('ticket_id', '=', self.id), ('line_group_id', '=', group.id)]):
-                return False
-            queue.create({
-                'ticket_id': self.id,
-                'company_id': self.company_id.id,
-                'line_group_id': group.id,
-                'target_id': group.line_group_id,
-                'message': self.env['buz.helpdesk.line.service'].build_ticket_message(self),
-            })
-            return True
-        except Exception:
-            _logger.exception('Unable to queue LINE notification for Helpdesk Ticket %s', self.id)
-            return False
 
     def action_close_ticket(self):
         self.ensure_one()
