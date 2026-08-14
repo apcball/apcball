@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_new_stock_card.MainPanel">
+        <div class="o_stock_card_main flex-grow-1 p-3" style="overflow-y: auto;">
+            <div t-if="props.state.loading" class="text-center text-muted py-5">
+                Loading Stock Card...
+            </div>
+
+            <div t-elif="props.state.error" class="alert alert-danger">
+                <t t-esc="props.state.error"/>
+            </div>
+
+            <div t-elif="!props.state.cardData" class="text-center text-muted py-5">
+                <p>เลือกสินค้า, ช่วงวันที่ และ Location แล้วกด Search</p>
+            </div>
+
+            <div t-else="">
+                <div class="o_report_title mb-3">
+                    <div class="text-uppercase fw-bold text-primary">รายงาน Stock Card</div>
+                    <div class="small text-muted" t-esc="props.state.selectedLocationName"/>
+                </div>
+
+                <div class="o_product_header d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                    <img t-if="props.state.product and props.state.product.image_128"
+                         t-attf-src="data:image/png;base64,{{props.state.product.image_128}}"
+                         style="width: 64px; height: 64px; object-fit: contain;" class="border rounded"/>
+                    <div>
+                        <div class="fw-bold fs-5" t-esc="props.state.product and props.state.product.default_code"/>
+                        <div t-esc="props.state.productName"/>
+                        <small class="text-muted">
+                            หน่วยเก็บ: <t t-esc="props.state.product and props.state.product.uom_id and props.state.product.uom_id[1]"/>
+                            | Location: <t t-esc="props.state.selectedLocationName"/>
+                            | Period: <t t-esc="props.state.dateFrom"/> - <t t-esc="props.state.dateTo"/>
+                        </small>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-3">
+                        <div class="o_summary_card o_card_opening p-3 text-center">
+                            <div class="small text-muted mb-1">ยอดยกมา</div>
+                            <div class="fw-bold fs-4" t-esc="fmt(props.state.cardData.opening_balance)"/>
+                            <div class="small text-muted">หน่วย</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="o_summary_card o_card_in p-3 text-center">
+                            <div class="small text-muted mb-1">รับทั้งหมด</div>
+                            <div class="fw-bold fs-4" t-esc="fmt(props.state.cardData.total_in)"/>
+                            <div class="small text-muted">หน่วย</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="o_summary_card o_card_out p-3 text-center">
+                            <div class="small text-muted mb-1">จ่ายทั้งหมด</div>
+                            <div class="fw-bold fs-4" t-esc="fmt(props.state.cardData.total_out)"/>
+                            <div class="small text-muted">หน่วย</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="o_summary_card o_card_balance p-3 text-center">
+                            <div class="small text-muted mb-1">คงเหลือ</div>
+                            <div class="fw-bold fs-4" t-esc="fmt(props.state.cardData.closing_balance)"/>
+                            <div class="small text-muted">หน่วย</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-bold">รายการเคลื่อนไหว (Transactions)</div>
+                    <div class="o_pill_toggle btn-group btn-group-sm">
+                        <button class="btn"
+                                t-att-class="props.state.showMovementsOnly ? 'btn-outline-secondary' : 'btn-primary'"
+                                t-on-click="props.onToggleShowMovementsOnly">แสดงทั้งหมด</button>
+                        <button class="btn"
+                                t-att-class="props.state.showMovementsOnly ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="props.onToggleShowMovementsOnly">แสดงเฉพาะที่มีการเคลื่อนไหว</button>
+                    </div>
+                </div>
+
+                <div t-if="!props.state.cardData.lines.length" class="text-center text-muted py-5">
+                    <p><strong>ไม่พบรายการเคลื่อนไหว</strong></p>
+                    <p>Product: <t t-esc="props.state.productName"/></p>
+                    <p>Location: <t t-esc="props.state.selectedLocationName"/></p>
+                    <p>ช่วงวันที่: <t t-esc="props.state.dateFrom"/> - <t t-esc="props.state.dateTo"/></p>
+                </div>
+
+                <table t-else="" class="table table-sm o_stock_card_table">
+                    <thead>
+                        <tr>
+                            <th>ลำดับ</th>
+                            <th>วันที่</th>
+                            <th>เอกสาร</th>
+                            <th>เลขที่</th>
+                            <th>อ้างอิง</th>
+                            <th class="text-end">ยอดยกมา</th>
+                            <th class="text-end">รับ</th>
+                            <th class="text-end">จ่าย</th>
+                            <th class="text-end">คงเหลือ</th>
+                            <th class="text-center">เอกสาร</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="props.state.cardData.lines" t-as="line" t-key="line.seq">
+                            <tr>
+                                <td t-esc="line.seq"/>
+                                <td t-esc="line.date"/>
+                                <td t-esc="line.doc_type"/>
+                                <td t-esc="line.doc_number"/>
+                                <td t-esc="line.reference"/>
+                                <td class="text-end" t-esc="fmt(line.opening)"/>
+                                <td class="text-end text-success" t-esc="line['in'] ? fmt(line['in']) : ''"/>
+                                <td class="text-end text-danger" t-esc="line['out'] ? fmt(line['out']) : ''"/>
+                                <td class="text-end fw-bold" t-esc="fmt(line.balance)"/>
+                                <td class="text-center">
+                                    <i t-if="line.res_model and line.res_id" class="fa fa-file-text-o o_doc_link_icon"
+                                       t-on-click="() => this.onDocClick(line)"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+
+                <div t-if="props.state.cardData.lines.length" class="d-flex justify-content-between align-items-center mt-2">
+                    <div class="small text-muted">
+                        แสดง <t t-esc="pageStart"/> - <t t-esc="pageEnd"/> จาก <t t-esc="props.state.cardData.total_count"/> รายการ
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-outline-secondary btn-sm"
+                                t-att-disabled="!props.state.cardData.has_prev"
+                                t-on-click="() => this.props.onChangePage(0)">«</button>
+                        <button class="btn btn-outline-secondary btn-sm"
+                                t-att-disabled="!props.state.cardData.has_prev"
+                                t-on-click="() => this.props.onChangePage(props.state.page - 1)">‹</button>
+                        <span class="small px-2">หน้า <t t-esc="props.state.page + 1"/> / <t t-esc="lastPage + 1"/></span>
+                        <button class="btn btn-outline-secondary btn-sm"
+                                t-att-disabled="!props.state.cardData.has_next"
+                                t-on-click="() => this.props.onChangePage(props.state.page + 1)">›</button>
+                        <button class="btn btn-outline-secondary btn-sm"
+                                t-att-disabled="!props.state.cardData.has_next"
+                                t-on-click="() => this.props.onChangePage(lastPage)">»</button>
+                        <select class="form-select form-select-sm" style="width: auto;" t-on-change="onPageSizeChange">
+                            <option value="20" t-att-selected="props.state.pageSize === 20">แสดง 20</option>
+                            <option value="50" t-att-selected="props.state.pageSize === 50">แสดง 50</option>
+                            <option value="100" t-att-selected="props.state.pageSize === 100">แสดง 100</option>
+                            <option value="200" t-att-selected="props.state.pageSize === 200">แสดง 200</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

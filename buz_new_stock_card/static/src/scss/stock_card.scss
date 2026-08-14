@@ -1,0 +1,97 @@
+.o_stock_card_action {
+    background-color: #f7f7fb;
+
+    .o_stock_card_header {
+        background-color: #fff;
+    }
+
+    .o_stock_card_logo {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background-color: #714b9c;
+        color: #fff;
+        font-size: 16px;
+    }
+
+    .o_stock_card_sidebar {
+        background-color: #fff;
+    }
+
+    .o_sidebar_section_title {
+        color: #52466b;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: .03em;
+    }
+
+    .o_stock_card_main {
+        background-color: #f7f7fb;
+    }
+
+    .o_report_title {
+        .text-primary {
+            color: #714b9c !important;
+            letter-spacing: .02em;
+        }
+    }
+
+    .o_summary_card {
+        background-color: #fff;
+        border-radius: 8px;
+        border: 1px solid #eceaf3;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+    }
+    .o_card_opening .fs-4 { color: #52466b; }
+    .o_card_in .fs-4 { color: #1a9e5c; }
+    .o_card_out .fs-4 { color: #d9455f; }
+    .o_card_balance .fs-4 { color: #714b9c; }
+
+    .o_pill_toggle .btn {
+        border-radius: 4px;
+    }
+
+    .o_stock_card_table {
+        background-color: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+
+        thead th {
+            background-color: #f1eef8;
+            color: #52466b;
+            font-weight: 600;
+            border-bottom: none;
+            white-space: nowrap;
+        }
+        td, th {
+            vertical-align: middle;
+        }
+        tbody tr:hover {
+            background-color: #faf9fd;
+        }
+    }
+
+    .o_doc_link_icon {
+        cursor: pointer;
+        color: #714b9c;
+        &:hover {
+            color: #52366e;
+        }
+    }
+
+    .o_location_tree_node > div:hover {
+        background-color: rgba(113, 75, 156, 0.08);
+    }
+    .o_location_tree_node .bg-primary {
+        background-color: #714b9c !important;
+    }
+
+    .btn-primary {
+        background-color: #714b9c;
+        border-color: #714b9c;
+        &:hover {
+            background-color: #5f3f85;
+            border-color: #5f3f85;
+        }
+    }
+}
