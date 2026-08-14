@@ -1,3 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_buz_wip_manufacturing_report_user,buz.wip.manufacturing.report user,model_buz_wip_manufacturing_report,mrp.group_mrp_user,1,0,0,0
-access_buz_wip_manufacturing_export_wizard_user,buz.wip.manufacturing.export.wizard user,model_buz_wip_manufacturing_export_wizard,mrp.group_mrp_user,1,1,1,1
+access_buz_wip_manufacturing_report_user,buz.wip.manufacturing.report user,model_buz_wip_manufacturing_report,group_wip_manufacturing_user,1,0,0,0
+access_buz_wip_manufacturing_export_wizard_user,buz.wip.manufacturing.export.wizard user,model_buz_wip_manufacturing_export_wizard,group_wip_manufacturing_user,1,1,1,1

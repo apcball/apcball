@@ -12,6 +12,7 @@
         "web",
     ],
     "data": [
+        "security/security.xml",
         "security/ir.model.access.csv",
         "wizard/wip_manufacturing_export_wizard_views.xml",
         "views/wip_manufacturing_menu.xml",

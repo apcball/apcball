@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_wip_manufacturing_user" model="res.groups">
+        <field name="name">WIP Manufacturing Report User</field>
+        <field name="category_id" ref="base.module_category_inventory_inventory"/>
+    </record>
+</odoo>

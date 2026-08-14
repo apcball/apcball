@@ -9,6 +9,6 @@
               name="WIP Manufacturing Report"
               parent="mrp.menu_mrp_reporting"
               action="action_wip_manufacturing_report"
-              groups="mrp.group_mrp_user"
+              groups="buz_wip_manufacturing_report.group_wip_manufacturing_user"
               sequence="30"/>
 </odoo>
