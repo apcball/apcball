@@ -31,10 +31,33 @@ class HelpdeskLineConfig(models.Model):
         return '%s/buz_it_helpdesk/line/webhook?db=%s' % (base_url.rstrip('/'), self.env.cr.dbname)
 
     @api.model
+    def _normalize_credential_values(self, vals):
+        values = dict(vals)
+        for field_name in ('channel_access_token', 'channel_secret'):
+            if field_name in values and values[field_name] is not None:
+                values[field_name] = values[field_name].strip()
+        return values
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([
+            self._normalize_credential_values(vals) for vals in vals_list
+        ])
+
+    def write(self, vals):
+        return super().write(self._normalize_credential_values(vals))
+
+    @api.model
     def get_singleton(self):
-        record = self.sudo().search([], limit=1)
+        records = self.sudo().search([], order='write_date desc, id desc')
+        record = records[:1]
         if not record:
             return self.sudo().create({'name': 'LINE Messaging API'})
+        if len(records) > 1:
+            _logger.warning(
+                'Multiple LINE configurations found (%s); using configuration id %s as primary.',
+                records.ids, record.id,
+            )
         if not record.webhook_url:
             record.webhook_url = self._default_webhook_url()
         return record
@@ -47,14 +70,14 @@ class HelpdeskLineConfig(models.Model):
 
     def action_test_connection(self):
         self.ensure_one()
-        self.env['buz.helpdesk.line.service'].test_connection()
+        self.env['buz.helpdesk.line.service'].test_connection(config=self)
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
             'title': _('LINE'), 'message': _('LINE connection succeeded.'), 'type': 'success', 'sticky': False,
         }}
 
     @api.model
-    def verify_signature(self, body, signature):
-        config = self.get_singleton()
+    def verify_signature(self, body, signature, config=None):
+        config = config or self.get_singleton()
         if not config.channel_secret or not signature:
             return False
         digest = hmac.new(config.channel_secret.encode(), body, hashlib.sha256).digest()

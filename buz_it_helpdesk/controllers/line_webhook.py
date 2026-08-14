@@ -13,8 +13,9 @@ class HelpdeskLineWebhook(http.Controller):
     def webhook(self, **kwargs):
         body = request.httprequest.get_data()
         signature = request.httprequest.headers.get('X-Line-Signature', '')
-        config = request.env['buz.helpdesk.line.config'].sudo().get_singleton()
-        if not config.active or not request.env['buz.helpdesk.line.config'].sudo().verify_signature(body, signature):
+        config_model = request.env['buz.helpdesk.line.config'].sudo()
+        config = config_model.get_singleton()
+        if not config.active or not config_model.verify_signature(body, signature, config=config):
             return request.make_json_response({'status': 'ok'})
         try:
             payload = json.loads(body.decode('utf-8'))
@@ -31,7 +32,7 @@ class HelpdeskLineWebhook(http.Controller):
                 try:
                     response = requests.get(
                         'https://api.line.me/v2/bot/group/%s/summary' % target_id,
-                        headers={'Authorization': 'Bearer %s' % config.channel_access_token}, timeout=10,
+                        headers={'Authorization': 'Bearer %s' % (config.channel_access_token or '').strip()}, timeout=10,
                     )
                     if response.status_code == 200:
                         name = response.json().get('groupName')

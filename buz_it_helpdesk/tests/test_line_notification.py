@@ -4,7 +4,10 @@ import hashlib
 import hmac
 import json
 
+import requests
+
 from odoo import Command
+from odoo.exceptions import AccessError
 from odoo.tests.common import HttpCase, TransactionCase
 
 
@@ -31,6 +34,14 @@ class TestHelpdeskLineNotification(TransactionCase):
             'name': 'LINE Test Group', 'line_group_id': 'C' + 'a' * 32,
         })
 
+    def test_credentials_are_normalized_and_selected_config_is_used(self):
+        self.config.write({'channel_access_token': '  selected-token  ', 'channel_secret': '  selected-secret  '})
+        self.assertEqual(self.config.channel_access_token, 'selected-token')
+        self.assertEqual(self.config.channel_secret, 'selected-secret')
+        service = self.env['buz.helpdesk.line.service'].sudo()
+        headers = service._headers(config=self.config)
+        self.assertEqual(headers['Authorization'], 'Bearer selected-token')
+
     def _ticket(self, subject='LINE queue test'):
         self.company.write({'helpdesk_line_enabled': True, 'helpdesk_line_group_id': self.line_group.id})
         return self.env['buz.helpdesk.ticket'].with_user(self.requester).create({
@@ -43,6 +54,13 @@ class TestHelpdeskLineNotification(TransactionCase):
         ticket.action_create_ticket()
         self.assertFalse(self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)]))
 
+    def test_company_without_group_does_not_create_queue(self):
+        self.company.write({'helpdesk_line_enabled': True, 'helpdesk_line_group_id': False})
+        ticket = self.env['buz.helpdesk.ticket'].with_user(self.requester).create({
+            'subject': 'No LINE group',
+        })
+        ticket.action_create_ticket()
+        self.assertFalse(self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)]))
     def test_new_ticket_creates_one_snapshot_queue(self):
         ticket = self._ticket()
         ticket.action_create_ticket()
@@ -51,6 +69,10 @@ class TestHelpdeskLineNotification(TransactionCase):
         self.assertIn(ticket.subject, queue.message)
         self.assertNotIn('private description', queue.message)
         self.assertEqual(queue.target_id, self.line_group.line_group_id)
+        self.assertIn(ticket.requester_id.display_name, queue.message)
+        self.assertIn(ticket.company_id.display_name, queue.message)
+        self.assertIn('Priority:', queue.message)
+        self.assertIn('/web#id=%s' % ticket.id, queue.message)
 
     def test_queue_marks_sent_on_200_and_409(self):
         ticket = self._ticket('Send test')
@@ -68,6 +90,42 @@ class TestHelpdeskLineNotification(TransactionCase):
             self.assertTrue(queue2._process_one())
         self.assertEqual(queue2.state, 'sent')
 
+    def test_retryable_failure_then_failed_after_limit(self):
+        ticket = self._ticket('Retry failure test')
+        ticket.action_create_ticket()
+        queue = self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)])
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post',
+            side_effect=requests.exceptions.Timeout('LINE timeout'),
+        ):
+            self.assertFalse(queue._process_one())
+        self.assertEqual(queue.state, 'pending')
+        self.assertEqual(queue.attempt_count, 1)
+
+        queue.write({'attempt_count': 5})
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post',
+            side_effect=requests.exceptions.Timeout('LINE timeout'),
+        ):
+            self.assertFalse(queue._process_one())
+        self.assertEqual(queue.state, 'failed')
+
+    def test_http_401_fails_without_retry(self):
+        ticket = self._ticket('Authentication test')
+        ticket.action_create_ticket()
+        queue = self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)])
+        response = Mock(status_code=401)
+        response.json.return_value = {'message': 'Authentication failed'}
+        with patch('odoo.addons.buz_it_helpdesk.services.line_service.requests.post', return_value=response):
+            self.assertFalse(queue._process_one())
+        self.assertEqual(queue.state, 'failed')
+        self.assertEqual(queue.attempt_count, 1)
+
+    def test_requester_cannot_access_line_configuration(self):
+        with self.assertRaises(AccessError):
+            self.env['buz.helpdesk.line.config'].with_user(self.requester).search([])
+        with self.assertRaises(AccessError):
+            self.env['buz.helpdesk.line.queue'].with_user(self.requester).search([])
     def test_signature_and_webhook_group_registration_are_deterministic(self):
         body = b'{"events":[]}'
         digest = hmac.new(b'secret', body, hashlib.sha256).digest()

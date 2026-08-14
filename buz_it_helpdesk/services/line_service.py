@@ -15,12 +15,14 @@ class HelpdeskLineService(models.AbstractModel):
     _description = 'IT Helpdesk LINE Messaging Service'
 
     @api.model
-    def _config(self):
+    def _config(self, config=None):
+        if config:
+            return config.sudo()
         return self.env['buz.helpdesk.line.config'].sudo().get_singleton()
 
     @api.model
-    def _headers(self, retry_key=None):
-        token = self._config().channel_access_token
+    def _headers(self, retry_key=None, config=None):
+        token = (self._config(config).channel_access_token or '').strip()
         if not token:
             raise UserError(_('LINE Channel Access Token is not configured.'))
         headers = {'Authorization': 'Bearer %s' % token, 'Content-Type': 'application/json'}
@@ -29,9 +31,9 @@ class HelpdeskLineService(models.AbstractModel):
         return headers
 
     @api.model
-    def test_connection(self):
+    def test_connection(self, config=None):
         try:
-            response = requests.get(LINE_INFO_URL, headers=self._headers(), timeout=15)
+            response = requests.get(LINE_INFO_URL, headers=self._headers(config=config), timeout=15)
         except requests.exceptions.RequestException as error:
             raise UserError(_('Cannot connect to LINE API: %s') % error)
         if response.status_code != 200:
@@ -39,11 +41,11 @@ class HelpdeskLineService(models.AbstractModel):
         return True
 
     @api.model
-    def send_group_message(self, target_id, message, retry_key):
+    def send_group_message(self, target_id, message, retry_key, config=None):
         try:
             response = requests.post(
                 LINE_PUSH_URL,
-                headers=self._headers(retry_key),
+                headers=self._headers(retry_key, config=config),
                 json={'to': target_id, 'messages': [{'type': 'text', 'text': message}]},
                 timeout=15,
             )

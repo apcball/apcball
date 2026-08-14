@@ -40,9 +40,12 @@ class HelpdeskLineQueue(models.Model):
     def _process_one(self):
         self.ensure_one()
         service = self.env['buz.helpdesk.line.service'].sudo()
+        config = service._config()
         self.write({'attempt_count': self.attempt_count + 1})
         try:
-            service.send_group_message(self.target_id, self.message, retry_key=self.retry_key)
+            service.send_group_message(
+                self.target_id, self.message, retry_key=self.retry_key, config=config,
+            )
         except Exception as error:
             retryable = service.is_retryable_error(error)
             if retryable and self.attempt_count < 5:

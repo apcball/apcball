@@ -305,6 +305,36 @@ class HelpdeskTicket(models.Model):
                 summary=_('New IT Helpdesk Ticket'),
                 note=note,
             )
+        self._queue_line_notification()
+        return True
+
+    def _queue_line_notification(self):
+        """Queue a new-ticket LINE message without calling the external API."""
+        self.ensure_one()
+        company = self.company_id.sudo()
+        line_group = company.helpdesk_line_group_id
+        config = self.env['buz.helpdesk.line.config'].sudo().get_singleton()
+        if not (
+            company.helpdesk_line_enabled
+            and config.active
+            and config.channel_access_token
+            and config.channel_secret
+            and line_group.active
+        ):
+            return False
+        queue_model = self.env['buz.helpdesk.line.queue'].sudo()
+        if queue_model.search_count([
+            ('ticket_id', '=', self.id),
+            ('line_group_id', '=', line_group.id),
+        ]):
+            return False
+        queue_model.create({
+            'ticket_id': self.id,
+            'company_id': company.id,
+            'line_group_id': line_group.id,
+            'target_id': line_group.line_group_id,
+            'message': self.env['buz.helpdesk.line.service'].sudo().build_ticket_message(self),
+        })
         return True
 
     def action_close_ticket(self):
