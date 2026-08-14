@@ -9,7 +9,6 @@
                     </div>
                     <div>
                         <h4 class="mb-0">Stock Card</h4>
-                        <small class="text-muted">buz_new_stock_card</small>
                     </div>
                 </div>
                 <div class="o_stock_card_toolbar d-flex gap-2">
@@ -18,9 +17,6 @@
                     </button>
                     <button class="btn btn-outline-success btn-sm" t-on-click="exportExcel">
                         <i class="fa fa-file-excel-o me-1"/>Export Excel
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" t-on-click="printPdf">
-                        <i class="fa fa-print me-1"/>Print
                     </button>
                 </div>
             </div>
