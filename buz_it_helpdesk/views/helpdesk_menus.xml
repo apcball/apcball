@@ -12,4 +12,5 @@
     <menuitem id="menu_helpdesk_categories" name="Categories" parent="menu_helpdesk_configuration" sequence="10" action="action_helpdesk_categories" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_helpdesk_teams" name="Teams" parent="menu_helpdesk_configuration" sequence="20" action="action_helpdesk_teams" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_helpdesk_stages" name="Stages" parent="menu_helpdesk_configuration" sequence="30" action="action_helpdesk_stages" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_helpdesk_line_settings" name="LINE Settings" parent="menu_helpdesk_configuration" sequence="40" action="action_helpdesk_line_settings" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
 </odoo>

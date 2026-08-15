@@ -1,0 +1,146 @@
+.o_helpdesk_line_settings {
+    min-height: 100%;
+    padding: 28px;
+    background: #f5f7fb;
+
+    .o_line_settings_header,
+    .o_line_settings_card {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .o_line_settings_header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 20px;
+
+        h1 {
+            margin: 0 0 6px;
+            color: #172554;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        p {
+            margin: 0;
+            color: #64748b;
+        }
+    }
+
+    .o_line_settings_card {
+        padding: 26px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    .o_line_settings_loading {
+        max-width: 900px;
+        margin: 50px auto;
+        color: #64748b;
+        text-align: center;
+    }
+
+    .o_line_settings_field {
+        margin-bottom: 22px;
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        small {
+            display: block;
+            margin-top: 7px;
+            color: #64748b;
+        }
+    }
+
+    .o_line_settings_label_row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .o_line_settings_actions {
+        display: flex;
+        gap: 10px;
+        padding-top: 4px;
+    }
+
+    .o_line_test_result {
+        display: flex;
+        gap: 16px;
+        margin-top: 24px;
+        padding: 20px;
+        border: 1px solid #86efac;
+        border-radius: 10px;
+        background: #f0fdf4;
+
+        h3 {
+            margin: 0 0 12px;
+            color: #166534;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        dl {
+            display: grid;
+            grid-template-columns: 90px minmax(0, 1fr);
+            gap: 5px 12px;
+            margin: 0 0 10px;
+        }
+
+        dt {
+            color: #475569;
+        }
+
+        dd {
+            margin: 0;
+            color: #14532d;
+            overflow-wrap: anywhere;
+        }
+
+        p {
+            margin: 0;
+            color: #166534;
+        }
+    }
+
+    .o_line_test_result_icon {
+        display: grid;
+        flex: 0 0 38px;
+        height: 38px;
+        place-items: center;
+        border-radius: 50%;
+        background: #22c55e;
+        color: #fff;
+        font-size: 18px;
+    }
+
+    @media (max-width: 700px) {
+        padding: 16px;
+
+        .o_line_settings_header {
+            display: block;
+
+            > .badge {
+                margin-top: 12px;
+            }
+        }
+
+        .o_line_settings_card {
+            padding: 18px;
+        }
+
+        .o_line_settings_actions {
+            flex-direction: column;
+        }
+    }
+}

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_it_helpdesk.HelpdeskLineSettings">
+        <div class="o_helpdesk_line_settings">
+            <div class="o_line_settings_header">
+                <div>
+                    <h1>LINE Settings</h1>
+                    <p>Configure one LINE Official Account Bot and a destination group for each company.</p>
+                </div>
+                <span class="badge text-bg-light">No custom database schema</span>
+            </div>
+
+            <div t-if="state.loading" class="o_line_settings_loading">
+                <i class="fa fa-spinner fa-spin"/> Loading LINE settings...
+            </div>
+
+            <div t-else="" class="o_line_settings_card">
+                <div t-if="state.error" class="alert alert-danger" role="alert">
+                    <i class="fa fa-exclamation-circle me-2"/>
+                    <t t-esc="state.error"/>
+                </div>
+
+                <div class="o_line_settings_field">
+                    <label for="line_company">Company</label>
+                    <select id="line_company" class="form-select" t-on-change="onCompanyChange" t-att-value="state.companyId" t-att-disabled="state.saving or state.testing">
+                        <option t-foreach="state.companies" t-as="company" t-key="company.id" t-att-value="company.id">
+                            <t t-esc="company.name"/>
+                        </option>
+                    </select>
+                    <small>Each company has its own LINE destination group.</small>
+                </div>
+
+                <div class="o_line_settings_field">
+                    <div class="o_line_settings_label_row">
+                        <label for="line_token">Channel Access Token</label>
+                        <span t-if="state.tokenConfigured" class="badge text-bg-success">
+                            <i class="fa fa-check-circle me-1"/> Configured
+                        </span>
+                        <span t-else="" class="badge text-bg-warning">Not configured</span>
+                    </div>
+                    <input id="line_token" type="password" class="form-control" autocomplete="new-password" placeholder="Leave blank to keep the current token" t-att-value="state.token" t-on-input="onTokenInput" t-att-disabled="state.saving or state.testing"/>
+                    <small>The saved token is never returned to the browser. A new value replaces the shared Bot token for every company.</small>
+                </div>
+
+                <div class="o_line_settings_field">
+                    <label for="line_group_id">LINE Group ID</label>
+                    <input id="line_group_id" type="text" class="form-control font-monospace" maxlength="33" placeholder="Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" t-att-value="state.groupId" t-on-input="onGroupInput" t-att-disabled="state.saving or state.testing"/>
+                    <small>The ID must start with C. The LINE Official Account Bot must already be a member of this group.</small>
+                </div>
+
+                <div class="o_line_settings_actions">
+                    <button type="button" class="btn btn-outline-primary" t-on-click="save" t-att-disabled="state.saving or state.testing">
+                        <i t-att-class="state.saving ? 'fa fa-spinner fa-spin me-1' : 'fa fa-save me-1'"/>
+                        Save
+                    </button>
+                    <button type="button" class="btn btn-primary" t-on-click="saveAndTest" t-att-disabled="state.saving or state.testing">
+                        <i t-att-class="state.testing ? 'fa fa-spinner fa-spin me-1' : 'fa fa-paper-plane me-1'"/>
+                        Save &amp; Test LINE
+                    </button>
+                </div>
+
+                <div t-if="state.result" class="o_line_test_result" role="status">
+                    <div class="o_line_test_result_icon"><i class="fa fa-check"/></div>
+                    <div>
+                        <h3>LINE destination confirmed</h3>
+                        <dl>
+                            <dt>Company</dt><dd><t t-esc="state.result.companyName"/></dd>
+                            <dt>Bot</dt><dd><t t-esc="state.result.botName"/> <span t-if="state.result.botBasicId">(<t t-esc="state.result.botBasicId"/>)</span></dd>
+                            <dt>Group</dt><dd><t t-esc="state.result.groupName"/></dd>
+                            <dt>Group ID</dt><dd class="font-monospace"><t t-esc="state.result.groupId"/></dd>
+                        </dl>
+                        <p>A test message was delivered. New Tickets for this company will use this group.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

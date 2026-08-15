@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_helpdesk_line_settings" model="ir.actions.client">
+        <field name="name">LINE Settings</field>
+        <field name="tag">buz_it_helpdesk.line_settings</field>
+    </record>
+</odoo>

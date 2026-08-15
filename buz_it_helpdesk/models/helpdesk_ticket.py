@@ -319,7 +319,7 @@ class HelpdeskTicket(models.Model):
         try:
             return self.env[
                 'buz.helpdesk.line.service'
-            ].sudo().send_ticket_notification(self)
+            ].sudo()._send_ticket_notification(self)
         except Exception:
             _logger.exception(
                 'LINE notification failed for Helpdesk Ticket %s; '
