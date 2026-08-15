@@ -1,6 +1,6 @@
 {
     'name': 'IT Helpdesk',
-    'version': '17.0.1.3.1',
+    'version': '17.0.1.3.2',
     'category': 'Services/Helpdesk',
     'summary': 'Standalone IT Helpdesk Phase 1',
     'description': """
