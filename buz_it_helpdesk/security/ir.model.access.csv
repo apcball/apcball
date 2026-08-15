@@ -10,6 +10,3 @@ access_helpdesk_team_requester,helpdesk.team.requester,model_buz_helpdesk_team,b
 access_helpdesk_team_manager,helpdesk.team.manager,model_buz_helpdesk_team,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 access_helpdesk_stage_requester,helpdesk.stage.requester,model_buz_helpdesk_stage,buz_it_helpdesk.group_it_requester,1,0,0,0
 access_helpdesk_stage_manager,helpdesk.stage.manager,model_buz_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
-access_helpdesk_line_config_manager,helpdesk.line.config.manager,model_buz_helpdesk_line_config,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
-access_helpdesk_line_group_manager,helpdesk.line.group.manager,model_buz_helpdesk_line_group,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
-access_helpdesk_line_queue_manager,helpdesk.line.queue.manager,model_buz_helpdesk_line_queue,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,0

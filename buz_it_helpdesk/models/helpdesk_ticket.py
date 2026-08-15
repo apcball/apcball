@@ -1,5 +1,10 @@
+import logging
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+
+
+_logger = logging.getLogger(__name__)
 
 
 class HelpdeskTicket(models.Model):
@@ -305,37 +310,23 @@ class HelpdeskTicket(models.Model):
                 summary=_('New IT Helpdesk Ticket'),
                 note=note,
             )
-        self._queue_line_notification()
+        self._send_line_notification()
         return True
 
-    def _queue_line_notification(self):
-        """Queue a new-ticket LINE message without calling the external API."""
+    def _send_line_notification(self):
+        """Send LINE without allowing an external failure to roll back a Ticket."""
         self.ensure_one()
-        company = self.company_id.sudo()
-        line_group = company.helpdesk_line_group_id
-        config = self.env['buz.helpdesk.line.config'].sudo().get_singleton()
-        if not (
-            company.helpdesk_line_enabled
-            and config.active
-            and config.channel_access_token
-            and config.channel_secret
-            and line_group.active
-        ):
+        try:
+            return self.env[
+                'buz.helpdesk.line.service'
+            ].sudo().send_ticket_notification(self)
+        except Exception:
+            _logger.exception(
+                'LINE notification failed for Helpdesk Ticket %s; '
+                'Ticket creation continues.',
+                self.id,
+            )
             return False
-        queue_model = self.env['buz.helpdesk.line.queue'].sudo()
-        if queue_model.search_count([
-            ('ticket_id', '=', self.id),
-            ('line_group_id', '=', line_group.id),
-        ]):
-            return False
-        queue_model.create({
-            'ticket_id': self.id,
-            'company_id': company.id,
-            'line_group_id': line_group.id,
-            'target_id': line_group.line_group_id,
-            'message': self.env['buz.helpdesk.line.service'].sudo().build_ticket_message(self),
-        })
-        return True
 
     def action_close_ticket(self):
         self.ensure_one()

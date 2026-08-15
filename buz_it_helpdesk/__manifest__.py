@@ -1,6 +1,6 @@
 {
     'name': 'IT Helpdesk',
-    'version': '17.0.1.3.2',
+    'version': '17.0.1.3.3',
     'category': 'Services/Helpdesk',
     'summary': 'Standalone IT Helpdesk Phase 1',
     'description': """
@@ -15,15 +15,12 @@ without dependencies on custom or business modules.
     'data': [
         'data/sequence.xml',
         'data/stage_data.xml',
-        'data/line_data.xml',
-        'data/line_cron.xml',
         'security/security.xml',
         'security/ir.model.access.csv',
         'views/helpdesk_category_views.xml',
         'views/helpdesk_team_views.xml',
         'views/helpdesk_stage_views.xml',
         'views/helpdesk_ticket_views.xml',
-        'views/helpdesk_line_views.xml',
         'views/helpdesk_menus.xml',
     ],
     'assets': {

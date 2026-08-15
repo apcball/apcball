@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
-    <record id="line_config_default" model="buz.helpdesk.line.config">
-        <field name="name">LINE Messaging API</field>
-        <field name="active">False</field>
-    </record>
-</odoo>

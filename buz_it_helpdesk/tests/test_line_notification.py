@@ -1,14 +1,13 @@
 from unittest.mock import Mock, patch
-import base64
-import hashlib
-import hmac
-import json
 
 import requests
 
 from odoo import Command
-from odoo.exceptions import AccessError
-from odoo.tests.common import HttpCase, TransactionCase
+from odoo.tests.common import TransactionCase
+
+
+TOKEN_PARAMETER = 'buz_it_helpdesk.line_channel_access_token'
+GROUP_PARAMETER = 'buz_it_helpdesk.line_group_id'
 
 
 class TestHelpdeskLineNotification(TransactionCase):
@@ -16,167 +15,129 @@ class TestHelpdeskLineNotification(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.group_user = cls.env.ref('base.group_user')
-        cls.group_requester = cls.env.ref('buz_it_helpdesk.group_it_requester')
-        cls.group_support = cls.env.ref('buz_it_helpdesk.group_it_support_agent')
+        group_user = cls.env.ref('base.group_user')
+        group_requester = cls.env.ref(
+            'buz_it_helpdesk.group_it_requester'
+        )
+        group_support = cls.env.ref(
+            'buz_it_helpdesk.group_it_support_agent'
+        )
         cls.requester = cls.env['res.users'].create({
-            'name': 'LINE Test Requester', 'login': 'line-test-requester', 'email': 'line-requester@example.com',
-            'groups_id': [Command.set([cls.group_user.id, cls.group_requester.id])],
+            'name': 'LINE Test Requester',
+            'login': 'line-test-requester',
+            'email': 'line-requester@example.com',
+            'groups_id': [Command.set([
+                group_user.id,
+                group_requester.id,
+            ])],
         })
-        cls.support = cls.env['res.users'].create({
-            'name': 'LINE Test Support', 'login': 'line-test-support', 'email': 'line-support@example.com',
-            'groups_id': [Command.set([cls.group_user.id, cls.group_support.id])],
+        cls.env['res.users'].create({
+            'name': 'LINE Test Support',
+            'login': 'line-test-support',
+            'email': 'line-support@example.com',
+            'groups_id': [Command.set([
+                group_user.id,
+                group_support.id,
+            ])],
         })
         cls.company = cls.env.company
-        cls.config = cls.env['buz.helpdesk.line.config'].sudo().get_singleton()
-        cls.config.write({'active': True, 'channel_access_token': 'token', 'channel_secret': 'secret'})
-        cls.line_group = cls.env['buz.helpdesk.line.group'].sudo().create({
-            'name': 'LINE Test Group', 'line_group_id': 'C' + 'a' * 32,
-        })
+        cls.parameters = cls.env['ir.config_parameter'].sudo()
 
-    def test_credentials_are_normalized_and_selected_config_is_used(self):
-        self.config.write({'channel_access_token': '  selected-token  ', 'channel_secret': '  selected-secret  '})
-        self.assertEqual(self.config.channel_access_token, 'selected-token')
-        self.assertEqual(self.config.channel_secret, 'selected-secret')
-        service = self.env['buz.helpdesk.line.service'].sudo()
-        headers = service._headers(config=self.config)
-        self.assertEqual(headers['Authorization'], 'Bearer selected-token')
-
-    def _ticket(self, subject='LINE queue test'):
-        self.company.write({'helpdesk_line_enabled': True, 'helpdesk_line_group_id': self.line_group.id})
-        return self.env['buz.helpdesk.ticket'].with_user(self.requester).create({
-            'subject': subject, 'description': 'private description',
-        })
-
-    def test_unconfigured_company_does_not_create_queue(self):
-        self.company.write({'helpdesk_line_enabled': False, 'helpdesk_line_group_id': False})
-        ticket = self.env['buz.helpdesk.ticket'].with_user(self.requester).create({'subject': 'No LINE'})
-        ticket.action_create_ticket()
-        self.assertFalse(self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)]))
-
-    def test_company_without_group_does_not_create_queue(self):
-        self.company.write({'helpdesk_line_enabled': True, 'helpdesk_line_group_id': False})
-        ticket = self.env['buz.helpdesk.ticket'].with_user(self.requester).create({
-            'subject': 'No LINE group',
-        })
-        ticket.action_create_ticket()
-        self.assertFalse(self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)]))
-    def test_new_ticket_creates_one_snapshot_queue(self):
-        ticket = self._ticket()
-        ticket.action_create_ticket()
-        queue = self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)])
-        self.assertEqual(len(queue), 1)
-        self.assertIn(ticket.subject, queue.message)
-        self.assertNotIn('private description', queue.message)
-        self.assertEqual(queue.target_id, self.line_group.line_group_id)
-        self.assertIn(ticket.requester_id.display_name, queue.message)
-        self.assertIn(ticket.company_id.display_name, queue.message)
-        self.assertIn('Priority:', queue.message)
-        self.assertIn('/web#id=%s' % ticket.id, queue.message)
-
-    def test_queue_marks_sent_on_200_and_409(self):
-        ticket = self._ticket('Send test')
-        ticket.action_create_ticket()
-        queue = self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)])
-        response = Mock(status_code=200)
-        with patch('odoo.addons.buz_it_helpdesk.services.line_service.requests.post', return_value=response):
-            self.assertTrue(queue._process_one())
-        self.assertEqual(queue.state, 'sent')
-
-        ticket2 = self._ticket('Retry key test')
-        ticket2.action_create_ticket()
-        queue2 = self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket2.id)])
-        with patch('odoo.addons.buz_it_helpdesk.services.line_service.requests.post', return_value=Mock(status_code=409)):
-            self.assertTrue(queue2._process_one())
-        self.assertEqual(queue2.state, 'sent')
-
-    def test_retryable_failure_then_failed_after_limit(self):
-        ticket = self._ticket('Retry failure test')
-        ticket.action_create_ticket()
-        queue = self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)])
-        with patch(
-            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post',
-            side_effect=requests.exceptions.Timeout('LINE timeout'),
+    def setUp(self):
+        super().setUp()
+        for key in (
+            TOKEN_PARAMETER,
+            GROUP_PARAMETER,
+            '%s.%s' % (TOKEN_PARAMETER, self.company.id),
+            '%s.%s' % (GROUP_PARAMETER, self.company.id),
         ):
-            self.assertFalse(queue._process_one())
-        self.assertEqual(queue.state, 'pending')
-        self.assertEqual(queue.attempt_count, 1)
+            self.parameters.set_param(key, '')
 
-        queue.write({'attempt_count': 5})
-        with patch(
-            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post',
-            side_effect=requests.exceptions.Timeout('LINE timeout'),
-        ):
-            self.assertFalse(queue._process_one())
-        self.assertEqual(queue.state, 'failed')
+    def _configure(self, token='test-token', group_id=None):
+        group_id = group_id or ('C' + 'a' * 32)
+        self.parameters.set_param(TOKEN_PARAMETER, token)
+        self.parameters.set_param(GROUP_PARAMETER, group_id)
+        return group_id
 
-    def test_http_401_fails_without_retry(self):
-        ticket = self._ticket('Authentication test')
-        ticket.action_create_ticket()
-        queue = self.env['buz.helpdesk.line.queue'].sudo().search([('ticket_id', '=', ticket.id)])
-        response = Mock(status_code=401)
-        response.json.return_value = {'message': 'Authentication failed'}
-        with patch('odoo.addons.buz_it_helpdesk.services.line_service.requests.post', return_value=response):
-            self.assertFalse(queue._process_one())
-        self.assertEqual(queue.state, 'failed')
-        self.assertEqual(queue.attempt_count, 1)
-
-    def test_requester_cannot_access_line_configuration(self):
-        with self.assertRaises(AccessError):
-            self.env['buz.helpdesk.line.config'].with_user(self.requester).search([])
-        with self.assertRaises(AccessError):
-            self.env['buz.helpdesk.line.queue'].with_user(self.requester).search([])
-    def test_signature_and_webhook_group_registration_are_deterministic(self):
-        body = b'{"events":[]}'
-        digest = hmac.new(b'secret', body, hashlib.sha256).digest()
-        signature = base64.b64encode(digest).decode()
-        self.assertTrue(self.config.verify_signature(body, signature))
-        self.assertFalse(self.config.verify_signature(body, 'invalid'))
-        groups = self.env['buz.helpdesk.line.group'].sudo()
-        groups.register_webhook_group('R' + 'b' * 32, 'Room')
-        groups.register_webhook_group('R' + 'b' * 32, 'Room renamed')
-        room = groups.search([('line_group_id', '=', 'R' + 'b' * 32)])
-        self.assertEqual(len(room), 1)
-        self.assertEqual(room.event_count, 2)
-        self.assertEqual(room.name, 'Room renamed')
-
-    def test_webhook_url_is_editable(self):
-        custom_url = 'https://helpdesk.example.com/buz_it_helpdesk/line/webhook'
-        self.config.write({'webhook_url': custom_url})
-        self.assertEqual(self.config.webhook_url, custom_url)
-
-
-class TestHelpdeskLineWebhook(HttpCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.config = cls.env['buz.helpdesk.line.config'].sudo().get_singleton()
-        cls.config.write({
-            'active': True,
-            'channel_access_token': 'token',
-            'channel_secret': 'secret',
+    def _ticket(self, subject='LINE direct notification'):
+        return self.env['buz.helpdesk.ticket'].with_user(
+            self.requester
+        ).create({
+            'subject': subject,
+            'description': 'private description',
         })
 
-    def _post_webhook(self, body, signature):
-        return self.url_open(
-            '/buz_it_helpdesk/line/webhook',
-            data=body,
-            headers={
-                'Content-Type': 'application/json',
-                'X-Line-Signature': signature,
-            },
+    def test_company_parameters_override_global_values(self):
+        self._configure(token='global-token', group_id='C' + 'a' * 32)
+        self.parameters.set_param(
+            '%s.%s' % (TOKEN_PARAMETER, self.company.id),
+            ' company-token ',
+        )
+        self.parameters.set_param(
+            '%s.%s' % (GROUP_PARAMETER, self.company.id),
+            'C' + 'b' * 32,
+        )
+        values = self.env[
+            'buz.helpdesk.line.service'
+        ].sudo().connection_values(self.company)
+        self.assertEqual(values['token'], 'company-token')
+        self.assertEqual(values['group_id'], 'C' + 'b' * 32)
+
+    def test_unconfigured_line_does_not_call_external_api(self):
+        ticket = self._ticket('No LINE configuration')
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post'
+        ) as post:
+            ticket.action_create_ticket()
+        post.assert_not_called()
+        self.assertEqual(
+            ticket.stage_id,
+            self.env.ref('buz_it_helpdesk.stage_new'),
         )
 
-    def test_webhook_rejects_bad_signature_with_http_200(self):
-        response = self._post_webhook(b'{"events":[]}', 'invalid')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'ok'})
+    def test_new_ticket_sends_line_message(self):
+        group_id = self._configure()
+        ticket = self._ticket()
+        response = Mock(status_code=200)
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post',
+            return_value=response,
+        ) as post:
+            ticket.action_create_ticket()
+        post.assert_called_once()
+        call = post.call_args
+        self.assertEqual(call.kwargs['json']['to'], group_id)
+        message = call.kwargs['json']['messages'][0]['text']
+        self.assertIn(ticket.subject, message)
+        self.assertNotIn('private description', message)
+        self.assertIn(ticket.requester_id.display_name, message)
+        self.assertIn(ticket.company_id.display_name, message)
+        self.assertIn('/web#id=%s' % ticket.id, message)
 
-    def test_webhook_accepts_valid_signature_with_http_200(self):
-        body = b'{"events":[]}'
-        digest = hmac.new(b'secret', body, hashlib.sha256).digest()
-        signature = base64.b64encode(digest).decode()
-        response = self._post_webhook(body, signature)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'ok'})
+    def test_line_timeout_does_not_roll_back_ticket_submission(self):
+        self._configure()
+        ticket = self._ticket('LINE timeout')
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post',
+            side_effect=requests.exceptions.Timeout('LINE timeout'),
+        ):
+            self.assertTrue(ticket.action_create_ticket())
+        self.assertEqual(
+            ticket.stage_id,
+            self.env.ref('buz_it_helpdesk.stage_new'),
+        )
+
+    def test_line_http_error_does_not_roll_back_ticket_submission(self):
+        self._configure()
+        ticket = self._ticket('LINE HTTP error')
+        response = Mock(status_code=401, text='Authentication failed')
+        response.json.return_value = {'message': 'Authentication failed'}
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.post',
+            return_value=response,
+        ):
+            self.assertTrue(ticket.action_create_ticket())
+        self.assertEqual(
+            ticket.stage_id,
+            self.env.ref('buz_it_helpdesk.stage_new'),
+        )
