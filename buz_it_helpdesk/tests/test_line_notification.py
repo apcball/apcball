@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 import requests
@@ -229,6 +230,38 @@ class TestHelpdeskLineNotification(TransactionCase):
         self.assertIn('[TEST] IT Helpdesk', push_call.kwargs['json'][
             'messages'
         ][0]['text'])
+
+    def test_save_and_test_uses_user_timezone_in_message(self):
+        self.manager.tz = 'Asia/Bangkok'
+        responses = [
+            self._response(200, {'displayName': 'Mogen IT Bot'}),
+            self._response(200, {
+                'groupId': LINE_GROUP_ID,
+                'groupName': 'Mogen IT Support',
+            }),
+            self._response(200),
+        ]
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.'
+            'fields.Datetime.now',
+            return_value=datetime(2026, 8, 15, 14, 55, 56),
+        ), patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.'
+            'requests.request',
+            side_effect=responses,
+        ) as request:
+            self._manager_service().save_and_test_line_settings(
+                self.company.id,
+                'new-token',
+                LINE_GROUP_ID,
+            )
+        message = request.call_args_list[2].kwargs['json']['messages'][0][
+            'text'
+        ]
+        self.assertIn(
+            'Time: 2026-08-15 21:55:56 (Asia/Bangkok)',
+            message,
+        )
 
     def test_invalid_token_does_not_save_settings(self):
         with patch(

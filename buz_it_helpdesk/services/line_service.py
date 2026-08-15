@@ -202,6 +202,23 @@ class HelpdeskLineService(models.AbstractModel):
         }
 
     @api.model
+    def _local_datetime_string(self, value=None):
+        """Format a UTC datetime in the configuring user's timezone."""
+        timezone_name = (
+            self.env.context.get('tz')
+            or self.env.user.tz
+            or 'Asia/Bangkok'
+        )
+        local_datetime = fields.Datetime.context_timestamp(
+            self.with_context(tz=timezone_name),
+            value or fields.Datetime.now(),
+        )
+        return '%s (%s)' % (
+            local_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            timezone_name,
+        )
+
+    @api.model
     def _send_ticket_notification(self, ticket):
         ticket.ensure_one()
         values = self._connection_values(ticket.company_id)
@@ -301,7 +318,7 @@ class HelpdeskLineService(models.AbstractModel):
             'company': company.display_name,
             'group': group.get('groupName') or values['group_id'],
             'user': self.env.user.display_name,
-            'time': fields.Datetime.to_string(fields.Datetime.now()),
+            'time': self._local_datetime_string(),
         }
         self._send_group_message(
             values['group_id'],
