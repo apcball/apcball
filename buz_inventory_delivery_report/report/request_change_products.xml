@@ -87,6 +87,21 @@
                             .vendor-info, .delivery-info {
                                 font-size: 14px;
                             }
+                            .document-info,
+                            .document-info * {
+                                line-height: 1.5 !important;
+                            }
+
+                            .document-info > div,
+                            .document-info p {
+                                margin: 0 0 2px 0 !important;
+                                padding: 0 !important;
+                            }
+
+                            .document-info > div:last-child,
+                            .document-info p:last-child {
+                                margin-bottom: 0 !important;
+                            }
                         </style>
 
                         
@@ -210,7 +225,7 @@
                             </div>
 
                             <!-- กล่องที่ 3: 35% ขวาสุด -->
-                            <div style="width: 35%; padding: 8px;">
+                            <div class="document-info" style="width: 35%; padding: 6px 8px;">
                                 <div>วันที่เอกสาร: <t t-esc="o.date"/></div>
                                 <div>วันที่ดำเนินการ: <t t-esc="o.date_done.strftime('%d/%m/%Y') if o.date_done else ''"/></div>
                                 <div>ผู้ติดต่อพนักงาน: <t t-esc="o.employee_contact_id.name or ''"/></div>
