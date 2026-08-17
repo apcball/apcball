@@ -227,13 +227,12 @@ class StockCountTag(models.Model):
         wb.properties.creator = "Mogen Co., Ltd."
         wb.properties.lastModifiedBy = "Mogen Co., Ltd."
 
-        # NOTE: ws.page_setup.fitToPage = True raises AttributeError on a
-        # loaded (non-fresh) worksheet in this openpyxl version because the
-        # property setter proxies through ws.page_setup._parent, which is
-        # None after load_workbook(). Set it via sheet_properties directly.
-        ws.sheet_properties.pageSetUpPr.fitToPage = True
-        ws.page_setup.fitToWidth = 1
-        ws.page_setup.fitToHeight = 0
+        # "Fit to page" scaling makes Excel IGNORE manual row breaks
+        # (ws.row_breaks below) — it recomputes its own page boundaries to
+        # squeeze everything into the fitToHeight page count instead. Use a
+        # fixed 100% scale so each manual break actually starts a new page.
+        ws.sheet_properties.pageSetUpPr.fitToPage = False
+        ws.page_setup.scale = 100
         ws.page_setup.orientation = "landscape"
         ws.page_setup.paperSize = ws.PAPERSIZE_A4
 
