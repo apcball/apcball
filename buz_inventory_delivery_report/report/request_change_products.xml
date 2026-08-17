@@ -187,6 +187,7 @@
 
                             .page.report-page {
                                 box-sizing: border-box;
+                                padding-top: 15mm !important;
                                 page-break-after: auto !important;
                             }
 
