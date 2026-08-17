@@ -337,9 +337,9 @@
                                    </table>
 
                                      <!-- หมายเหตุ -->
-                                  <div style="padding: 15px; font-size: 20px; margin-top: 10px; line-height: 1.5;">
+                                  <div style="padding: 4px 15px; font-size: 20px; margin-top: 2px; line-height: 1.5;">
                                     <strong>หมายเหตุ: </strong>
-                                    <div t-if="o.note" class="transfer-note" style="margin-top: 10px; margin-left: 10px; line-height: 1.5;">
+                                    <div t-if="o.note" class="transfer-note" style="margin-top: 2px; margin-right: 0; margin-bottom: 15px; margin-left: 10px; line-height: 1.5;">
                                         <span t-field="o.note"/>
                                     </div>
                                 </div>
@@ -409,13 +409,12 @@
                                 
                                 </div>
 
-                                <div style="position: relative; min-height: 20mm; padding-bottom: 15mm;">
+                                <div style="margin-top: 20px;">
                                     <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
             
-                                    <!-- Footer fixed bottom -->
+                                    <!-- Footer -->
                                     <div style="
-                                      position: absolute;
-                                      bottom: 0; left: 0; width: 100%;
+                                      width: 100%;
                                       display: flex; justify-content: space-between;
                                       font-size: 10px;
                                       padding-left: 4mm; padding-right: 4mm;
