@@ -102,6 +102,15 @@
                             .document-info p:last-child {
                                 margin-bottom: 0 !important;
                             }
+                            .transfer-note,
+                            .transfer-note * {
+                                line-height: 1.5 !important;
+                            }
+
+                            .transfer-note p {
+                                margin: 0 !important;
+                                padding: 0 !important;
+                            }
                         </style>
 
                         
@@ -328,9 +337,9 @@
                                    </table>
 
                                      <!-- หมายเหตุ -->
-                                  <div style="padding: 15px; font-size: 20px;  margin-top: 10px; line-height: 1.6;">
+                                  <div style="padding: 15px; font-size: 20px; margin-top: 10px; line-height: 1.5;">
                                     <strong>หมายเหตุ: </strong>
-                                    <div t-if="o.note" style="margin-top: 10px; margin-left: 10px;">
+                                    <div t-if="o.note" class="transfer-note" style="margin-top: 10px; margin-left: 10px; line-height: 1.5;">
                                         <span t-field="o.note"/>
                                     </div>
                                 </div>
