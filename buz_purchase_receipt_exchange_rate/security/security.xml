@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_foreign_currency_cost_manager" model="res.groups">
+        <field name="name">Foreign Currency Cost Manager</field>
+        <field name="category_id" ref="base.module_category_inventory_inventory"/>
+        <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+    </record>
+
+    <!-- Stock Managers automatically get this group; Ball/admins can also
+         add specific users directly to group_foreign_currency_cost_manager. -->
+    <record id="stock.group_stock_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_foreign_currency_cost_manager'))]"/>
+    </record>
+</odoo>
