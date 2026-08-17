@@ -133,7 +133,7 @@
                             <div class="row mb-3" style="margin-top: -130px;">
                                <div class="col-4 offset-4 text-center">
                                    <div class="doc-title" style="padding: 14px; font-size: 26px;">
-                                    ใบคืนสินค้าเคลม
+                                     ⃞ ใบคืนสินค้าเคลม ⃞ ใบขออนุมัติคืนสินค้า (ลดหนี้)
                                    </div>
                                </div>
                                <div class="col-4 text-end" style="">
@@ -442,7 +442,7 @@
   
   
       <record id="action_request_change_products_claim" model="ir.actions.report">
-          <field name="name">ใบคืนสินค้าเคลม</field>
+          <field name="name">ใบคืนสินค้าเคลม/ใบขออนุมัติคืนสินค้า ลดหนี้</field>
           <field name="model">stock.picking</field>
           <field name="report_type">qweb-pdf</field>
           <field name="report_name">buz_inventory_delivery_report.request_change_products_claim_document</field>
