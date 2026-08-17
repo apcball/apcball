@@ -75,7 +75,13 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-if="True">
-                    <div class="report-container">
+                    <!-- ir.actions.report._prepare_html() only reapplies the
+                         UTF-8/base-URL minimal layout to nodes marked article. -->
+                    <div class="article report-article"
+                         t-att-data-oe-model="o and o._name"
+                         t-att-data-oe-id="o and o.id"
+                         t-att-data-oe-lang="o and o.env.context.get('lang')">
+                      <div class="report-container">
 
                         <style>
                             @font-face {
@@ -85,8 +91,10 @@
                             
                             html,
                             body,
+                            #wrapwrap,
                             main,
                             .o_report_layout_standard,
+                            .report-article,
                             .report-container,
                             .page,
                             .row {
@@ -106,6 +114,23 @@
                                 width: 100%;
                                 margin: 0 !important;
                                 padding: 0 !important;
+                            }
+
+                            .report-header-top > .col-8 {
+                                flex: 0 0 66.666667%;
+                                width: 66.666667%;
+                                max-width: 66.666667%;
+                            }
+
+                            .report-header-top > .col-4,
+                            .report-header-details > .col-4 {
+                                flex: 0 0 33.333333%;
+                                width: 33.333333%;
+                                max-width: 33.333333%;
+                            }
+
+                            .report-header-details > .offset-4 {
+                                margin-left: 33.333333%;
                             }
 
                             .report-header-top .company-header,
@@ -160,17 +185,10 @@
                                 border: none !important;
                             }
 
-                            .page {
+                            .page.report-page {
                                 box-sizing: border-box;
-                                page-break-after: always;
-                            }                            .page:last-child {
-                                page-break-after: auto;
+                                page-break-after: auto !important;
                             }
-
-
-                            .page-break {
-                                page-break-after: always;
-                              }
 
                             .vendor-info, .delivery-info {
                                 font-size: 14px;
@@ -210,7 +228,8 @@
                          <t t-set="total_pages" t-value="groups_of_3 and len(groups_of_3) or 0"/>
                          <t t-foreach="groups_of_3" t-as="group">
                             
-                             <div class="page">
+                             <div class="page report-page"
+                                  t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
                           <t t-if="groups_of_3">
                               <div>
@@ -473,7 +492,7 @@
 
                              </div>
                        </t>
-                    </div>
+                      </div>
                                <t t-set="page_number" t-value="page_number + 1"/></t>
 
                                    <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
@@ -487,6 +506,7 @@
 
                      
                     
+                      </div>
                     </div>
                               
              </t>     
