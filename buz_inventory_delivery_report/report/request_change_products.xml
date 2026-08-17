@@ -45,8 +45,8 @@
                                </div>
                                <div class="col-4 text-end" style="">
                                   <div style="font-size: 18px;">
-                                      <span>เลขที่: </span>
-                                      <span t-esc="o.name"/>
+                                      <span style="font-size: inherit;">เลขที่: </span>
+                                      <span style="font-size: inherit;" t-esc="o.name"/>
                                   </div>
                                   <div style="font-size: 18px; margin-top: 2px; margin-bottom: 3px;">
                                       หน้า <t t-esc="page_number"/>/<t t-esc="total_pages"/>
