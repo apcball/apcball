@@ -23,6 +23,7 @@
                     <field name="preview_ids" readonly="1">
                         <tree decoration-danger="status == 'error'" decoration-warning="status == 'warning'">
                             <field name="row_number"/>
+                            <field name="doc_no" optional="show"/>
                             <field name="product_code"/>
                             <field name="product_name"/>
                             <field name="warehouse"/>

@@ -9,6 +9,7 @@ class StockCountTagLine(models.Model):
     tag_id = fields.Many2one(
         "buz.stock.count.tag", string="Stock Count Tag", required=True, ondelete="cascade"
     )
+    doc_no = fields.Char(string="Tag No.", help="TAG number as imported from Excel.")
     sequence = fields.Integer(default=10)
 
     product_code = fields.Char(required=True)

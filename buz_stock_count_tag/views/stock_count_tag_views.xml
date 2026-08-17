@@ -31,6 +31,9 @@
                     <button name="action_generate_excel" type="object"
                             string="Generate Excel" class="oe_highlight"
                             invisible="state != 'imported'"/>
+                    <button name="action_generate_excel" type="object"
+                            string="Re-generate Excel"
+                            invisible="state not in ('generated', 'printed')"/>
                     <button name="action_printed" type="object"
                             string="Mark Printed"
                             invisible="state != 'generated'"/>
@@ -38,7 +41,7 @@
                            statusbar_visible="draft,imported,generated,printed"/>
                 </header>
                 <sheet>
-                    <h1><field name="name" readonly="1"/></h1>
+                    <h1><field name="name"/></h1>
                     <group>
                         <group>
                             <field name="date"/>
@@ -56,6 +59,7 @@
                                 <tree editable="bottom" decoration-danger="import_status == 'error'"
                                       decoration-warning="import_status == 'warning'">
                                     <field name="sequence" widget="handle"/>
+                                    <field name="doc_no"/>
                                     <field name="product_code"/>
                                     <field name="product_name"/>
                                     <field name="product_status"/>

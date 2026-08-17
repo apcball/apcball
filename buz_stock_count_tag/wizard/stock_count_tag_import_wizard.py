@@ -11,6 +11,7 @@ except ImportError:
 
 REQUIRED_COLUMNS = ["product_code", "product_name", "warehouse", "quantity"]
 ALL_COLUMNS = [
+    "doc_no",
     "product_code",
     "product_name",
     "product_status",
@@ -125,6 +126,7 @@ class StockCountTagImportWizard(models.TransientModel):
                 {
                     "wizard_id": self.id,
                     "row_number": row_number,
+                    "doc_no": str(get(row, "doc_no")).strip() if get(row, "doc_no") else "",
                     "product_code": product_code or "",
                     "product_name": product_name or "",
                     "product_status": get(row, "product_status") or "",
@@ -162,6 +164,7 @@ class StockCountTagImportWizard(models.TransientModel):
             {
                 "tag_id": self.tag_id.id,
                 "sequence": p.row_number,
+                "doc_no": p.doc_no,
                 "product_code": p.product_code,
                 "product_name": p.product_name,
                 "product_status": p.product_status,
@@ -188,6 +191,7 @@ class StockCountTagImportPreview(models.TransientModel):
         "buz.stock.count.tag.import.wizard", required=True, ondelete="cascade"
     )
     row_number = fields.Integer()
+    doc_no = fields.Char(string="Doc No.")
     product_code = fields.Char()
     product_name = fields.Char()
     product_status = fields.Char()

@@ -123,6 +123,7 @@ class StockCountTag(models.Model):
         ws = wb.active
         ws.title = "Import"
         headers = [
+            "doc_no",
             "product_code",
             "product_name",
             "product_status",
@@ -132,8 +133,8 @@ class StockCountTag(models.Model):
             "quantity",
         ]
         ws.append(headers)
-        ws.append(["SP00010101", "SP10T/1 ตัวเก็บประจุ", "A", "คลังบริการเทคนิค", "ห้องบริการเทคนิค", "SV-1", 3])
-        ws.append(["SP00010102", "Motor Pump", "A", "คลังบริการเทคนิค", "ห้องบริการเทคนิค", "SV-2", 5])
+        ws.append(["TAG/2026/00027", "SP00010101", "SP10T/1 ตัวเก็บประจุ", "A", "คลังบริการเทคนิค", "ห้องบริการเทคนิค", "SV-1", 3])
+        ws.append(["TAG/2026/00027", "SP00010102", "Motor Pump", "A", "คลังบริการเทคนิค", "ห้องบริการเทคนิค", "SV-2", 5])
 
         buf = io.BytesIO()
         wb.save(buf)
@@ -202,8 +203,8 @@ class StockCountTag(models.Model):
         self.ensure_one()
         if not openpyxl:
             raise UserError(_("Python module 'openpyxl' is required."))
-        if self.state != "imported":
-            raise UserError(_("Tag must be in 'Imported' state to generate the Excel file."))
+        if self.state not in ("imported", "generated", "printed"):
+            raise UserError(_("Tag must be imported before generating the Excel file."))
         if not self.line_ids:
             raise UserError(_("There are no lines to generate."))
 
@@ -261,7 +262,10 @@ class StockCountTag(models.Model):
                         self._copy_cell_style(src_cell, dst_cell)
 
             values = {
-                "doc_no": self.name,
+                # The printed TAG number is per-line, driven by the
+                # imported Excel "doc_no" column; fall back to the header's
+                # document number for lines added/edited manually without one.
+                "doc_no": line.doc_no or self.name,
                 "date": self.date,
                 "product_code": line.product_code,
                 "product_name": line.product_name,
