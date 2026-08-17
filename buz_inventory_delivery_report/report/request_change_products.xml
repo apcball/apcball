@@ -18,8 +18,8 @@
     <template id="request_change_products_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-call="web.external_layout">
-                    <div class="page">
+                <t t-if="True">
+                    <div class="report-container">
 
                         <style>
                             @font-face {
@@ -29,7 +29,7 @@
                             
                             @page {
                                 size: A4 landscape;
-                                margin: 3mm 3mm 3mm 3mm;
+                                margin: 0;
                             }
                             
                             body, .page, .row {
@@ -80,6 +80,7 @@
                                 page-break-after: auto;
                             }
 
+
                             .page-break {
                                 page-break-after: always;
                               }
@@ -122,7 +123,7 @@
                          <t t-set="total_pages" t-value="groups_of_3 and len(groups_of_3) or 0"/>
                          <t t-foreach="groups_of_3" t-as="group">
                             
-                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                             <div class="page">
  
                           <t t-if="groups_of_3">
                               <div>
