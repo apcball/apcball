@@ -1,3 +1,4 @@
+import itertools
 from datetime import datetime, time, timedelta
 
 from odoo import api, fields, models, tools
@@ -24,6 +25,8 @@ class ImexInventoryDetailsReport(models.Model):
     location_id = fields.Many2one(comodel_name="stock.location", readonly=True)
     location_dest_id = fields.Many2one(
         comodel_name="stock.location", readonly=True)
+    report_location_id = fields.Many2one(
+        comodel_name="stock.location", readonly=True)
     initial = fields.Float(readonly=True)
     initial_amount = fields.Float(readonly=True)
     product_in = fields.Float(readonly=True)
@@ -46,6 +49,7 @@ class ImexInventoryDetailsReport(models.Model):
                 cast(null as varchar) as origin,
                 0 as location_id,
                 0 as location_dest_id,
+                0 as report_location_id,
                 0.0 as initial,
                 0.0 as initial_amount,
                 0.0 as product_in,
@@ -63,18 +67,15 @@ class ImexInventoryDetailsReport(models.Model):
                 name = "{} ({})".format(name, rec.picking_id.origin)
             rec.display_name = f"{name}"
 
-    def _get_locations(self, location_id, is_groupby_location):
+    def _get_locations(self, location_id):
         if (location_id):
-            if is_groupby_location:
-                locations = tuple(self.env["stock.location"].search(
-                    [("id", "child_of", location_id.ids)]).ids)
-            else:
-                locations = tuple(location_id.ids)
+            locations = tuple(self.env["stock.location"].search(
+                [("id", "child_of", location_id.ids)]).ids)
         else:
             locations = tuple(self.env["stock.location"].search(
                 [("usage", "=", "internal")]).ids)
-            if not locations:
-                locations = (-1,)
+        if not locations:
+            locations = (-1,)
         return locations
 
     def _bangkok_day_start_to_utc(self, day):
@@ -89,10 +90,8 @@ class ImexInventoryDetailsReport(models.Model):
         if date_from < cutoff_date:
             date_from = cutoff_date
         date_to = filter_fields.date_to or fields.Date.context_today(self)
-        is_groupby_location = filter_fields.is_groupby_location
 
-        locations = self._get_locations(
-            filter_fields.location_id, is_groupby_location)
+        locations = self._get_locations(filter_fields.location_id)
         product_ids = tuple(filter_fields.product_ids.ids)
 
         utc_cutoff = self._bangkok_day_start_to_utc(cutoff_date)
@@ -100,33 +99,30 @@ class ImexInventoryDetailsReport(models.Model):
         utc_date_to_excl = self._bangkok_day_start_to_utc(
             date_to + timedelta(days=1))
 
+        # Each move is duplicated into two "legs" tagged by report_location_id
+        # (the out leg keyed on location_id, the in leg keyed on
+        # location_dest_id), mirroring imex_inventory_report.py's groupby
+        # pattern. This lets a transfer between two in-scope locations show
+        # up as two lines: an out under the source location, an in under the
+        # destination, instead of netting to a single zero-sum row.
         query_ = """
-            SELECT row_number() OVER (ORDER BY a.date, a.reference) AS id,* FROM(
+            WITH move_leg AS (
                 SELECT
-                    (SUM(CASE WHEN move.location_dest_id IN %s
-                        THEN move.quantity / uom_move.factor * uom_prod.factor ELSE 0 END)
-                    -
-                    SUM(CASE WHEN move.location_id IN %s
-                        THEN move.quantity / uom_move.factor * uom_prod.factor ELSE 0 END)) AS initial,
-                    (SUM(CASE WHEN move.location_dest_id IN %s
-                        THEN move.quantity / uom_move.factor * uom_prod.factor * COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) ELSE 0 END)
-                    -
-                    SUM(CASE WHEN move.location_id IN %s
-                        THEN move.quantity / uom_move.factor * uom_prod.factor * COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) ELSE 0 END)) AS initial_amount,
-                    null AS date, 
-                    null AS product_id, 
-                    null AS product_qty, 
-                    null AS product_uom, 
-                    null AS product_category,
-                    null AS unit_cost, 
-                    null AS reference, 
-                    null AS partner_id, 
-                    null AS origin, 
-                    null AS location_id, 
-                    null AS location_dest_id,
-                    null AS product_in, 
-                    null AS product_out, 
-                    null AS picking_id
+                    move.id as move_id,
+                    (move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date,
+                    move.product_id,
+                    move.quantity / uom_move.factor * uom_prod.factor as quantity,
+                    move.product_uom,
+                    template.categ_id as product_category,
+                    COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) as unit_cost,
+                    move.reference,
+                    move.partner_id,
+                    move.origin,
+                    move.location_id,
+                    move.location_dest_id,
+                    move.location_id as report_location_id,
+                    'out' as leg,
+                    move.picking_id
                 FROM stock_move move
                     LEFT JOIN (
                         SELECT stock_move_id,
@@ -153,18 +149,18 @@ class ImexInventoryDetailsReport(models.Model):
                             AND svl2.create_date <= move.date
                     ) wh_fallback ON true
                 WHERE
-                    (move.location_id in %s or move.location_dest_id in %s)
+                    move.location_id in %s
                     and move.state = 'done'
                     and move.product_id in %s
                     and move.date >= %s
                     and move.date < %s
                 UNION ALL
                 SELECT
-                    null as initial, null as initial_amount,
+                    move.id as move_id,
                     (move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date,
                     move.product_id,
-                    move.quantity,
-                    move.product_uom, 
+                    move.quantity / uom_move.factor * uom_prod.factor as quantity,
+                    move.product_uom,
                     template.categ_id as product_category,
                     COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) as unit_cost,
                     move.reference,
@@ -172,10 +168,8 @@ class ImexInventoryDetailsReport(models.Model):
                     move.origin,
                     move.location_id,
                     move.location_dest_id,
-                    case when move.location_dest_id in %s
-                        then move.quantity end as product_in,
-                    case when move.location_id in %s
-                        then move.quantity end as product_out,
+                    move.location_dest_id as report_location_id,
+                    'in' as leg,
                     move.picking_id
                 FROM stock_move move
                     LEFT JOIN (
@@ -191,6 +185,8 @@ class ImexInventoryDetailsReport(models.Model):
                     LEFT JOIN stock_location location_d on move.location_dest_id = location_d.id
                     LEFT JOIN product_product product on move.product_id = product.id
                         LEFT JOIN product_template template on product.product_tmpl_id = template.id
+                    LEFT JOIN uom_uom uom_move on move.product_uom = uom_move.id
+                    LEFT JOIN uom_uom uom_prod on template.uom_id = uom_prod.id
                     LEFT JOIN LATERAL (
                         SELECT CASE WHEN SUM(ABS(svl2.quantity)) > 0
                                     THEN SUM(ABS(svl2.value)) / SUM(ABS(svl2.quantity))
@@ -201,41 +197,98 @@ class ImexInventoryDetailsReport(models.Model):
                             AND svl2.create_date <= move.date
                     ) wh_fallback ON true
                 WHERE
-                    (move.location_id in %s or move.location_dest_id in %s)
+                    move.location_dest_id in %s
                     and move.state = 'done'
                     and move.product_id in %s
                     and move.date >= %s
-                    and move.date < %s) AS a
-            ORDER BY a.date, a.reference
+                    and move.date < %s
+            )
+            SELECT row_number() OVER (ORDER BY a.report_location_id, a.date, a.reference) AS id, * FROM (
+                SELECT
+                    (SUM(CASE WHEN leg = 'in' THEN quantity ELSE 0 END)
+                    -
+                    SUM(CASE WHEN leg = 'out' THEN quantity ELSE 0 END)) AS initial,
+                    (SUM(CASE WHEN leg = 'in' THEN quantity * unit_cost ELSE 0 END)
+                    -
+                    SUM(CASE WHEN leg = 'out' THEN quantity * unit_cost ELSE 0 END)) AS initial_amount,
+                    null AS date,
+                    null AS product_id,
+                    null AS product_qty,
+                    null AS product_uom,
+                    null AS product_category,
+                    null AS unit_cost,
+                    null AS reference,
+                    null AS partner_id,
+                    null AS origin,
+                    null AS location_id,
+                    null AS location_dest_id,
+                    report_location_id,
+                    null AS product_in,
+                    null AS product_out,
+                    null AS picking_id
+                FROM move_leg
+                WHERE date < %s
+                GROUP BY report_location_id
+                UNION ALL
+                SELECT
+                    null as initial, null as initial_amount,
+                    date,
+                    product_id,
+                    quantity,
+                    product_uom,
+                    product_category,
+                    unit_cost,
+                    reference,
+                    partner_id,
+                    origin,
+                    location_id,
+                    location_dest_id,
+                    report_location_id,
+                    case when leg = 'in' then quantity end as product_in,
+                    case when leg = 'out' then quantity end as product_out,
+                    picking_id
+                FROM move_leg
+                WHERE date >= %s
+            ) AS a
+            ORDER BY a.report_location_id, a.date, a.reference
             """
         params = (locations,
-                  locations,
-                  locations,
-                  locations,
-                  locations,
+                  product_ids,
+                  utc_cutoff,
+                  utc_date_to_excl,
                   locations,
                   product_ids,
                   utc_cutoff,
+                  utc_date_to_excl,
                   utc_date_from,
-                  locations,
-                  locations,
-                  locations,
-                  locations,
-                  product_ids,
-                  utc_date_from,
-                  utc_date_to_excl)
+                  utc_date_from)
 
         tools.drop_view_if_exists(self._cr, self._table)
-        res = self._cr.execute(
-            """CREATE VIEW {} as ({})""".format(self._table, query_), params)
+        view_ddl = "CREATE VIEW {} as ({})".format(self._table, query_)
+        res = self._cr.execute(view_ddl, params)
         return res
 
     def view_report_details(self, filters):
-        report = self.env["imex.inventory.report.wizard"].create(filters)        
+        report = self.env["imex.inventory.report.wizard"].create(filters)
         #init details view
         self.env["imex.inventory.details.report"].init_results(report)
-        #search all details view records
-        details = self.env["imex.inventory.details.report"].search([])
+        #search all details view records, pre-ordered by location (row_number()
+        #in init_results already sorted the underlying rows by
+        #report_location_id, date, reference, so 'id' order matches)
+        details = self.env["imex.inventory.details.report"].search(
+            [], order="id")
+        location_groups = []
+        for _location_id, group in itertools.groupby(
+                details, key=lambda rec: rec.report_location_id.id):
+            group_lines = self.env["imex.inventory.details.report"].browse(
+                [rec.id for rec in group])
+            initial_line = group_lines.filtered(lambda l: not l.product_id)
+            lines = group_lines.filtered(lambda l: l.product_id)
+            location_groups.append({
+                'location': group_lines[0].report_location_id,
+                'initial_line': initial_line[:1],
+                'lines': lines,
+            })
         data = {
             'product_default_code': report.product_ids.default_code,
             'product_name': report.product_ids.name,
@@ -243,6 +296,11 @@ class ImexInventoryDetailsReport(models.Model):
             'date_to': report.date_to or fields.Date.context_today(self),
             'location': report.location_id.complete_name or None,
             'category': report.product_ids.categ_id.complete_name or None,
-            'detail_ids': details.ids,
+            'location_groups': [{
+                'location_name': g['location'].complete_name,
+                'initial': g['initial_line'].initial or 0.0,
+                'initial_amount': g['initial_line'].initial_amount or 0.0,
+                'line_ids': g['lines'].ids,
+            } for g in location_groups],
         }
         return self.env.ref('imex_inventory_report.action_imex_inventory_details_report_html').with_context(active_model="imex.inventory.details.report").report_action(details.ids,data=data)

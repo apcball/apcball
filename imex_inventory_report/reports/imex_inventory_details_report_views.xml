@@ -9,7 +9,6 @@
     <template id="imex_inventory_details_report_html">
         <t t-call="web.html_container">
             <t t-call="web.external_layout">
-                <t t-set="docs" t-value="env['imex.inventory.details.report'].browse(detail_ids)"/>
                 <t t-set="show_price" t-value="env.user.has_group('imex_inventory_report.group_imex_inventory_price')"/>
                 <div class="o_inventory_reports_page">
                     <link href="/imex_inventory_report/static/src/css/report.css" rel="stylesheet" />
@@ -30,47 +29,52 @@
             </div>
             <!-- Display filters -->
             <t t-call="imex_inventory_report.report_imex_inventory_details_report_filters" />
-            <!-- Display Inventory table -->
-            <div class="act_as_table data_table mt4" style="width: 100%;">
-                <!-- Display header line-->
-                <t t-call="imex_inventory_report.report_imex_inventory_details_lines_header" />
-                <!-- Display initial lines -->
-                <t t-if="docs">
-                    <t t-set="line_initial" t-value="docs.filtered(lambda l: not l.product_id)"/>
-                    <t t-set="lines" t-value="docs.filtered(lambda l: l.product_id)"/>
-                    <t t-if="line_initial">
-                        <div class="act_as_row lines">
-                            <div class="act_as_cell" />
-                            <div class="act_as_cell">
-                            Initial
-                            </div>
-                            <div class="act_as_cell" />
-                            <div class="act_as_cell" />
-                            <div class="act_as_cell" />
-                            <div class="act_as_cell" />
-                            <div class="act_as_cell" />
-                            <div class="act_as_cell right">
-                                <t t-out="'{0:,.2f}'.format(line_initial[0].initial)"/>
-                            </div>
-                            <div class="act_as_cell" />
-                            <div class="act_as_cell" />
-                            <div t-if="show_price" class="act_as_cell right">
-                                <t t-out="'{0:,.2f}'.format(line_initial[0].initial_amount)"/>
-                            </div>
+            <!-- Display one table per location -->
+            <t t-foreach="location_groups" t-as="location_group">
+                <div class="row mt4">
+                    <h5>
+                        <t t-out="location_group['location_name'] or 'N/A'" />
+                    </h5>
+                </div>
+                <div class="act_as_table data_table" style="width: 100%;">
+                    <!-- Display header line-->
+                    <t t-call="imex_inventory_report.report_imex_inventory_details_lines_header" />
+                    <!-- Display initial line. Values come straight from the
+                    location_groups dict (the t-foreach loop variable), not a
+                    t-set: a t-set placed after the t-call above does not
+                    survive into the nodes rendered after it, since the
+                    t-call splits this loop iteration into separate compiled
+                    scopes. -->
+                    <t t-set="lines" t-value="env['imex.inventory.details.report'].browse(location_group['line_ids'])"/>
+                    <div class="act_as_row lines">
+                        <div class="act_as_cell" />
+                        <div class="act_as_cell">
+                        Initial
                         </div>
-                        <!-- Display each lines -->
-                        <t t-set="product_balance" t-value="line_initial[0].initial" />
-                        <t t-set="product_amount" t-value="line_initial[0].initial_amount" />
-                        <t t-if="lines">
-                            <t t-foreach="lines" t-as="product_line">
-                                <t t-set="product_balance" t-value="product_balance + product_line.product_in - product_line.product_out" />
-                                <t t-set="product_amount" t-value="product_amount + product_line.product_in * product_line.unit_cost - product_line.product_out * product_line.unit_cost" />
-                                <t t-call="imex_inventory_report.report_imex_inventory_details_lines" />
-                            </t>
-                        </t>
+                        <div class="act_as_cell" />
+                        <div class="act_as_cell" />
+                        <div class="act_as_cell" />
+                        <div class="act_as_cell" />
+                        <div t-if="show_price" class="act_as_cell" />
+                        <div class="act_as_cell" />
+                        <div class="act_as_cell" />
+                        <div class="act_as_cell right">
+                            <t t-out="'%.2f' % location_group['initial']"/>
+                        </div>
+                        <div t-if="show_price" class="act_as_cell right">
+                            <t t-out="'%.2f' % location_group['initial_amount']"/>
+                        </div>
+                    </div>
+                    <!-- Display each line, running balance reset per location -->
+                    <t t-set="product_balance" t-value="location_group['initial']" />
+                    <t t-set="product_amount" t-value="location_group['initial_amount']" />
+                    <t t-foreach="lines" t-as="product_line">
+                        <t t-set="product_balance" t-value="product_balance + product_line.product_in - product_line.product_out" />
+                        <t t-set="product_amount" t-value="product_amount + product_line.product_in * product_line.unit_cost - product_line.product_out * product_line.unit_cost" />
+                        <t t-call="imex_inventory_report.report_imex_inventory_details_lines" />
                     </t>
-                </t>
-            </div>
+                </div>
+            </t>
             <p style="page-break-before:always;" />
         </div>
     </template>
