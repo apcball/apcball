@@ -92,25 +92,18 @@
                         
                          <!-- Order Lines -->
                          <t t-set="move_list" t-value="o.move_ids"/>
-                         <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                         <t t-set="groups_of_3" t-value="[move_list[i:i+3] for i in range(0, len(move_list), 3)]"/>
                          <t t-set="page_number" t-value="1"/>
                          <t t-set="line_number" t-value="1"/>
-                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
-                         <t t-foreach="groups_of_7" t-as="group">
+                         <t t-set="total_pages" t-value="groups_of_3 and len(groups_of_3) or 0"/>
+                         <t t-foreach="groups_of_3" t-as="group">
                             
                              <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
-                          <t t-if="groups_of_7">
+                          <t t-if="groups_of_3">
                               <div>
                              <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
-                                    <t t-if="total_pages &gt; 1">
-                                        <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
-                                            หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
-                                        </div>
-                                    </t>
-                     
-
-                         <!-- Company Info Section -->
+<!-- Company Info Section -->
                          <div class="row mb-1">
                             <div class="col-8">
                                 <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;margin-bottom: -10px;">
@@ -140,6 +133,9 @@
                                   <div style="font-size: 18px;">
                                       <span>เลขที่: </span>
                                       <span t-esc="o.name"/>
+                                  </div>
+                                  <div style="font-size: 18px; margin-top: 2px; margin-bottom: 3px;">
+                                      หน้า <t t-esc="page_number"/>/<t t-esc="total_pages"/>
                                   </div>
                                   <div style="width: 5cm; height: 1cm; border: 1px solid black; display: flex; flex-direction: column; float: right; margin-bottom: 0;">
                                       <!-- ช่องบน -->
@@ -259,7 +255,7 @@
                             </thead>
                         
                             <tbody>
-                                <t t-set="line_number" t-value="((page_number - 1) * 7) + 1"/>
+                                <t t-set="line_number" t-value="((page_number - 1) * 3) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
                                 <t t-foreach="group" t-as="move">
                                 <tr style="padding-top:0px; padding-bottom:0px;">
@@ -291,9 +287,9 @@
                                 <t t-set="line_number" t-value="line_number + 1"/>
                                            </t>
 
-                                           <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
-                                           <t t-if="len(group) == 7">
-                                            <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                           <!-- เติมแถวเปล่าให้ครบ 3 แถวต่อหน้า -->
+                                           <t t-if="len(group) == 3">
+                                            <t t-set="empty_rows" t-value="3 - len(group)"/>
                                             <t t-foreach="range(empty_rows)" t-as="i">
                                                 <tr class="data-row" style="height: 50px;">
                                                     <td style="border: 1px solid black;"></td>
@@ -421,7 +417,7 @@
                                <t t-set="page_number" t-value="page_number + 1"/></t>
 
                                    <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
-                                   <t t-if="page_number == len(groups_of_7)">
+                                   <t t-if="page_number == len(groups_of_3)">
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
 
