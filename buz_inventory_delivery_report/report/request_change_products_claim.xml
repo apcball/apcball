@@ -466,18 +466,13 @@
                                 
                                 </div>
 
-                                <div style="position: relative; min-height: 20mm; padding-bottom: 15mm;">
-                                    <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
-            
-                                    <!-- Footer fixed bottom -->
+                                <div style="margin-top: 2mm; page-break-inside: avoid;">
                                     <div style="
-                                      position: absolute;
-                                      bottom: 0; left: 0; width: 100%;
+                                      width: 100%;
                                       display: flex; justify-content: space-between;
                                       font-size: 10px;
                                       padding-left: 4mm; padding-right: 4mm;
                                       line-height: 1.2;
-                                      page-break-inside: avoid;
                                       ">
                                       <div>
                                         <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
