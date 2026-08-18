@@ -45,7 +45,7 @@
                     survive into the nodes rendered after it, since the
                     t-call splits this loop iteration into separate compiled
                     scopes. -->
-                    <t t-set="lines" t-value="env['imex.inventory.details.report'].browse(location_group['line_ids'])"/>
+                    <t t-set="lines" t-value="location_group['lines']"/>
                     <div class="act_as_row lines">
                         <div class="act_as_cell" />
                         <div class="act_as_cell">

@@ -300,13 +300,30 @@ class ImexInventoryDetailsReport(models.Model):
 
     def view_report_details(self, filters):
         report = self.env["imex.inventory.report.wizard"].create(filters)
-        #init details view
-        self.env["imex.inventory.details.report"].init_results(report)
-        #search all details view records, pre-ordered by location (row_number()
-        #in init_results already sorted the underlying rows by
-        #report_location_id, date, reference, so 'id' order matches)
-        details = self.env["imex.inventory.details.report"].search(
-            [], order="id")
+        # The report is rendered as a second, separate HTTP request (the web
+        # client opens /report/html/...), so nothing computed here survives
+        # into that request. Only the wizard id needs to travel through the
+        # report URL - passing the full details recordset ids there (as this
+        # report used to) makes the URL grow with the number of stock moves
+        # on the product and blows past nginx's request-line size limit
+        # (414) for products with heavy transaction history. The wizard
+        # record itself carries the filters, so the render-time hook
+        # (report.imex_inventory_report.imex_inventory_details_report_html
+        # below) can redo the lookup from a single small id.
+        return self.env.ref('imex_inventory_report.action_imex_inventory_details_report_html').report_action(report.ids)
+
+
+class ReportImexInventoryDetailsReportHtml(models.AbstractModel):
+    # Must be named exactly "report.<report_name>" - this is the hook Odoo's
+    # report engine (ir_actions_report._get_rendering_context) looks up by
+    # convention; a _get_report_values defined anywhere else is never called.
+    _name = "report.imex_inventory_report.imex_inventory_details_report_html"
+    _description = "Imex Inventory Details Report Renderer"
+
+    def _group_details_by_location(self, details):
+        """Group an already-fetched details recordset by report_location_id,
+        keeping actual recordsets (not id lists) so callers never need to
+        re-browse from ids serialized through a report URL."""
         location_groups = []
         for _location_id, group in itertools.groupby(
                 details, key=lambda rec: rec.report_location_id.id):
@@ -315,22 +332,27 @@ class ImexInventoryDetailsReport(models.Model):
             initial_line = group_lines.filtered(lambda l: not l.product_id)
             lines = group_lines.filtered(lambda l: l.product_id)
             location_groups.append({
-                'location': group_lines[0].report_location_id,
-                'initial_line': initial_line[:1],
+                'location_name': group_lines[0].report_location_id.complete_name,
+                'initial': initial_line[:1].initial or 0.0,
+                'initial_amount': initial_line[:1].initial_amount or 0.0,
                 'lines': lines,
             })
-        data = {
-            'product_default_code': report.product_ids.default_code,
-            'product_name': report.product_ids.name,
-            'date_from': report.date_from or None,
-            'date_to': report.date_to or fields.Date.context_today(self),
-            'location': report.location_id.complete_name or None,
-            'category': report.product_ids.categ_id.complete_name or None,
-            'location_groups': [{
-                'location_name': g['location'].complete_name,
-                'initial': g['initial_line'].initial or 0.0,
-                'initial_amount': g['initial_line'].initial_amount or 0.0,
-                'line_ids': g['lines'].ids,
-            } for g in location_groups],
+        return location_groups
+
+    def _get_report_values(self, docids, data=None):
+        wizard = self.env["imex.inventory.report.wizard"].browse(docids[0])
+        details_model = self.env["imex.inventory.details.report"]
+        details_model.init_results(wizard)
+        details = details_model.search([], order="id")
+        return {
+            'doc_ids': docids,
+            'doc_model': 'imex.inventory.report.wizard',
+            'docs': wizard,
+            'product_default_code': wizard.product_ids.default_code,
+            'product_name': wizard.product_ids.name,
+            'date_from': wizard.date_from or None,
+            'date_to': wizard.date_to or fields.Date.context_today(self),
+            'location': wizard.location_id.complete_name or None,
+            'category': wizard.product_ids.categ_id.complete_name or None,
+            'location_groups': self._group_details_by_location(details),
         }
-        return self.env.ref('imex_inventory_report.action_imex_inventory_details_report_html').with_context(active_model="imex.inventory.details.report").report_action(details.ids,data=data)
