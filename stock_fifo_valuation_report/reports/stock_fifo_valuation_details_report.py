@@ -9,6 +9,13 @@ BANGKOK_UTC_OFFSET = timedelta(hours=7)
 class StockFifoValuationDetailsReport(models.Model):
     """One row per stock.valuation.layer (not per stock.move), so MO
     consumption can be traced to the exact FIFO layer/origin it drew from.
+
+    When a move's stock.move.lines span more than one source/dest location
+    (e.g. manually edited "Detailed Operations"), the layer's qty/value are
+    split across one row per move line, proportional to each line's share
+    of the move's total quantity, so location_id/location_dest_id are
+    always the actual pick/put location instead of falling back to the
+    move header's location.
     """
     _name = "stock.fifo.valuation.details.report"
     _description = "Stock FIFO Valuation Details Report"
@@ -167,11 +174,11 @@ class StockFifoValuationDetailsReport(models.Model):
                     uom_prod.id AS product_uom,
                     template.categ_id AS product_category,
                     svl.warehouse_id,
-                    svl.quantity,
+                    svl.quantity * mline.ratio AS quantity,
                     svl.unit_cost,
-                    svl.value,
-                    svl.remaining_qty,
-                    svl.remaining_value,
+                    svl.value * mline.ratio AS value,
+                    svl.remaining_qty * mline.ratio AS remaining_qty,
+                    svl.remaining_value * mline.ratio AS remaining_value,
                     svl.is_position_layer,
                     svl.origin_valuation_layer_id,
                     svl.origin_remaining_qty,
@@ -180,8 +187,8 @@ class StockFifoValuationDetailsReport(models.Model):
                     move.reference,
                     move.origin,
                     move.partner_id,
-                    COALESCE(mline_loc.location_id, move.location_id) AS location_id,
-                    COALESCE(mline_loc.location_dest_id, move.location_dest_id) AS location_dest_id,
+                    mline.location_id AS location_id,
+                    mline.location_dest_id AS location_dest_id,
                     move.picking_id,
                     move.production_id,
                     svl.stock_landed_cost_id,
@@ -195,16 +202,28 @@ class StockFifoValuationDetailsReport(models.Model):
                     NULL::bigint AS lc_line_count
                 FROM stock_valuation_layer svl
                     LEFT JOIN stock_move move ON svl.stock_move_id = move.id
-                    LEFT JOIN (
+                    LEFT JOIN LATERAL (
                         SELECT
-                            move_id,
-                            CASE WHEN COUNT(DISTINCT location_id) = 1
-                                THEN MIN(location_id) END AS location_id,
-                            CASE WHEN COUNT(DISTINCT location_dest_id) = 1
-                                THEN MIN(location_dest_id) END AS location_dest_id
-                        FROM stock_move_line
-                        GROUP BY move_id
-                    ) mline_loc ON mline_loc.move_id = move.id
+                            sml.location_id,
+                            sml.location_dest_id,
+                            sml.quantity / NULLIF(mtot.total_qty, 0) AS ratio
+                        FROM stock_move_line sml
+                            CROSS JOIN LATERAL (
+                                SELECT SUM(quantity) AS total_qty
+                                FROM stock_move_line
+                                WHERE move_id = move.id AND quantity != 0
+                            ) mtot
+                        WHERE sml.move_id = move.id AND sml.quantity != 0
+                            AND mtot.total_qty != 0
+                        UNION ALL
+                        SELECT move.location_id, move.location_dest_id, 1
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM stock_move_line sml2
+                            WHERE sml2.move_id = move.id AND sml2.quantity != 0
+                            GROUP BY sml2.move_id
+                            HAVING SUM(sml2.quantity) != 0
+                        )
+                    ) mline ON true
                     LEFT JOIN product_product product ON svl.product_id = product.id
                     LEFT JOIN product_template template ON product.product_tmpl_id = template.id
                     LEFT JOIN uom_uom uom_prod ON template.uom_id = uom_prod.id

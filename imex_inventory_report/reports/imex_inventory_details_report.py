@@ -105,22 +105,50 @@ class ImexInventoryDetailsReport(models.Model):
         # pattern. This lets a transfer between two in-scope locations show
         # up as two lines: an out under the source location, an in under the
         # destination, instead of netting to a single zero-sum row.
+        #
+        # Within each leg, a move whose stock.move.lines span more than one
+        # actual location (e.g. manually edited "Detailed Operations") is
+        # further fanned out one row per move line, with quantity split
+        # proportional to that line's share of the move's total quantity, so
+        # location_id/location_dest_id/report_location_id always reflect the
+        # real pick/put location instead of the move header's location.
+        mline_join = """
+                    LEFT JOIN LATERAL (
+                        SELECT sml.location_id, sml.location_dest_id,
+                            sml.quantity / NULLIF(mtot.total_qty, 0) AS ratio
+                        FROM stock_move_line sml
+                            CROSS JOIN LATERAL (
+                                SELECT SUM(quantity) AS total_qty
+                                FROM stock_move_line
+                                WHERE move_id = move.id AND quantity != 0
+                            ) mtot
+                        WHERE sml.move_id = move.id AND sml.quantity != 0
+                            AND mtot.total_qty != 0
+                        UNION ALL
+                        SELECT move.location_id, move.location_dest_id, 1
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM stock_move_line sml2
+                            WHERE sml2.move_id = move.id AND sml2.quantity != 0
+                            GROUP BY sml2.move_id HAVING SUM(sml2.quantity) != 0
+                        )
+                    ) mline ON true
+        """
         query_ = """
             WITH move_leg AS (
                 SELECT
                     move.id as move_id,
                     (move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date,
                     move.product_id,
-                    move.quantity / uom_move.factor * uom_prod.factor as quantity,
+                    (move.quantity / uom_move.factor * uom_prod.factor) * mline.ratio as quantity,
                     move.product_uom,
                     template.categ_id as product_category,
                     COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) as unit_cost,
                     move.reference,
                     move.partner_id,
                     move.origin,
-                    move.location_id,
-                    move.location_dest_id,
-                    move.location_id as report_location_id,
+                    mline.location_id as location_id,
+                    mline.location_dest_id as location_dest_id,
+                    mline.location_id as report_location_id,
                     'out' as leg,
                     move.picking_id
                 FROM stock_move move
@@ -133,8 +161,9 @@ class ImexInventoryDetailsReport(models.Model):
                         WHERE quantity != 0
                         GROUP BY stock_move_id
                     ) svl on move.id = svl.stock_move_id
-                    LEFT JOIN stock_location location_i on move.location_id = location_i.id
-                    LEFT JOIN stock_location location_d on move.location_dest_id = location_d.id
+                    """ + mline_join + """
+                    LEFT JOIN stock_location location_i on mline.location_id = location_i.id
+                    LEFT JOIN stock_location location_d on mline.location_dest_id = location_d.id
                     LEFT JOIN product_product product on move.product_id = product.id
                         LEFT JOIN product_template template on product.product_tmpl_id = template.id
                     LEFT JOIN uom_uom uom_move on move.product_uom = uom_move.id
@@ -149,7 +178,7 @@ class ImexInventoryDetailsReport(models.Model):
                             AND svl2.create_date <= move.date
                     ) wh_fallback ON true
                 WHERE
-                    move.location_id in %s
+                    mline.location_id in %s
                     and move.state = 'done'
                     and move.product_id in %s
                     and move.date >= %s
@@ -159,16 +188,16 @@ class ImexInventoryDetailsReport(models.Model):
                     move.id as move_id,
                     (move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date,
                     move.product_id,
-                    move.quantity / uom_move.factor * uom_prod.factor as quantity,
+                    (move.quantity / uom_move.factor * uom_prod.factor) * mline.ratio as quantity,
                     move.product_uom,
                     template.categ_id as product_category,
                     COALESCE(svl.unit_cost, wh_fallback.wh_unit_cost, 0) as unit_cost,
                     move.reference,
                     move.partner_id,
                     move.origin,
-                    move.location_id,
-                    move.location_dest_id,
-                    move.location_dest_id as report_location_id,
+                    mline.location_id as location_id,
+                    mline.location_dest_id as location_dest_id,
+                    mline.location_dest_id as report_location_id,
                     'in' as leg,
                     move.picking_id
                 FROM stock_move move
@@ -181,8 +210,9 @@ class ImexInventoryDetailsReport(models.Model):
                         WHERE quantity != 0
                         GROUP BY stock_move_id
                     ) svl on move.id = svl.stock_move_id
-                    LEFT JOIN stock_location location_i on move.location_id = location_i.id
-                    LEFT JOIN stock_location location_d on move.location_dest_id = location_d.id
+                    """ + mline_join + """
+                    LEFT JOIN stock_location location_i on mline.location_id = location_i.id
+                    LEFT JOIN stock_location location_d on mline.location_dest_id = location_d.id
                     LEFT JOIN product_product product on move.product_id = product.id
                         LEFT JOIN product_template template on product.product_tmpl_id = template.id
                     LEFT JOIN uom_uom uom_move on move.product_uom = uom_move.id
@@ -197,7 +227,7 @@ class ImexInventoryDetailsReport(models.Model):
                             AND svl2.create_date <= move.date
                     ) wh_fallback ON true
                 WHERE
-                    move.location_dest_id in %s
+                    mline.location_dest_id in %s
                     and move.state = 'done'
                     and move.product_id in %s
                     and move.date >= %s
