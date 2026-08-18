@@ -158,16 +158,16 @@
                         
                          <!-- Order Lines -->
                          <t t-set="move_list" t-value="o.move_ids"/>
-                         <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                         <t t-set="groups_of_4" t-value="[move_list[i:i+4] for i in range(0, len(move_list), 4)]"/>
                          <t t-set="page_number" t-value="1"/>
                          <t t-set="line_number" t-value="1"/>
-                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
-                         <t t-foreach="groups_of_7" t-as="group">
+                         <t t-set="total_pages" t-value="groups_of_4 and len(groups_of_4) or 0"/>
+                         <t t-foreach="groups_of_4" t-as="group">
                             
                              <div class="page report-page"
                                   t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
-                          <t t-if="groups_of_7">
+                          <t t-if="groups_of_4">
                               <div>
                          <div class="report-page-header">
                          <!-- Company Info Section -->
@@ -325,7 +325,7 @@
                             </thead>
                         
                             <tbody>
-                                <t t-set="line_number" t-value="((page_number - 1) * 7) + 1"/>
+                                <t t-set="line_number" t-value="((page_number - 1) * 4) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
                                 <t t-foreach="group" t-as="move">
                                 <tr style="padding-top:0px; padding-bottom:0px;">
@@ -357,9 +357,9 @@
                                 <t t-set="line_number" t-value="line_number + 1"/>
                                            </t>
 
-                                           <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
-                                           <t t-if="len(group) == 7">
-                                            <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                           <!-- เติมแถวเปล่าให้ครบ 4 แถวต่อหน้า -->
+                                           <t t-if="len(group) == 4">
+                                            <t t-set="empty_rows" t-value="4 - len(group)"/>
                                             <t t-foreach="range(empty_rows)" t-as="i">
                                                 <tr class="data-row" style="height: 50px;">
                                                     <td style="border: 1px solid black;"></td>
@@ -487,7 +487,7 @@
                                <t t-set="page_number" t-value="page_number + 1"/></t>
 
                                    <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
-                                   <t t-if="page_number == len(groups_of_7)">
+                                   <t t-if="page_number == len(groups_of_4)">
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
                       </div>
