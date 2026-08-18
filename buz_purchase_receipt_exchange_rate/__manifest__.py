@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Purchase Receipt Exchange Rate',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Warehouse',
     'summary': 'Set a manual Exchange Rate Date/Rate on a Receipt and use it for Stock Valuation',
     'description': """
@@ -12,6 +12,8 @@ currency Receipt (stock.picking) coming from a Purchase Order, so that the
 Stock Valuation Layer and its Accounting Entry use that rate instead of the
 rate implied by the receipt processing date.
 
+* Set Exchange Rate Date directly on the Purchase Order; confirming the PO
+  copies it onto the created Receipt(s) and auto-fetches the rate
 * Adds "Foreign Currency Costing" section on the Receipt form
 * "Get Exchange Rate" button pulls the Odoo currency rate at the chosen date
 * "Recalculate Cost" button previews the estimated cost before Validate
@@ -30,6 +32,7 @@ rate implied by the receipt processing date.
     'data': [
         'security/security.xml',
         'views/stock_picking_views.xml',
+        'views/purchase_order_views.xml',
     ],
     'installable': True,
     'application': False,

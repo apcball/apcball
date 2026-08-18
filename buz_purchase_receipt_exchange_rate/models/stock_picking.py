@@ -137,6 +137,25 @@ class StockPicking(models.Model):
         rate = currency._convert(1.0, company_currency, company, actual_date, round=False)
         return rate, actual_date
 
+    def _set_exchange_rate_date_from_po(self, po_exchange_rate_date):
+        """Propagate the PO's customs date onto foreign-currency incoming
+        pickings and auto-fetch the rate, so the user doesn't have to repeat
+        the step on the receipt. Called on PO confirm and again for any
+        backorder pickings created later."""
+        for picking in self.filtered(
+            lambda p: p.is_foreign_currency_receipt and not p.exchange_rate_date
+        ):
+            picking.exchange_rate_date = po_exchange_rate_date
+            picking.action_get_exchange_rate()
+
+    def _create_backorder(self):
+        backorders = super()._create_backorder()
+        for backorder in backorders:
+            order = backorder.move_ids.purchase_line_id.order_id
+            if order and order.exchange_rate_date:
+                backorder._set_exchange_rate_date_from_po(order.exchange_rate_date)
+        return backorders
+
     def action_get_exchange_rate(self):
         self.ensure_one()
         if not self.is_foreign_currency_receipt:
