@@ -134,6 +134,17 @@
                                 border: none !important;
                             }
 
+                            .report-note-content,
+                            .report-note-content * {
+                                line-height: 1.25 !important;
+                            }
+
+                            .report-note-content p,
+                            .report-note-content div {
+                                margin: 0 0 2px 0 !important;
+                                padding: 0 !important;
+                            }
+
 .vendor-info, .delivery-info {
                                 font-size: 14px;
                             }
@@ -385,7 +396,7 @@
                                      <!-- หมายเหตุ -->
                                   <div style="padding: 15px; font-size: 20px;  margin-top: 6px; line-height: 1.6;">
                                     <strong>หมายเหตุ: </strong>
-                                    <div t-if="o.note" style="margin-top: 6px; margin-left: 10px;">
+                                    <div t-if="o.note" class="report-note-content" style="margin-top: 4px; margin-left: 10px;">
                                         <span t-field="o.note"/>
                                     </div>
                                 </div>
