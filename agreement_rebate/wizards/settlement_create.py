@@ -3,7 +3,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from collections import defaultdict
 
-from odoo import api, fields, models
+from odoo import Command, api, fields, models
 from odoo.exceptions import UserError
 from odoo.osv import expression
 from odoo.tools.safe_eval import safe_eval
@@ -73,7 +73,10 @@ class AgreementSettlementCreateWiz(models.TransientModel):
             )
         else:
             domain.extend([("agreement_type_id.domain", "=", self.domain)])
-        if self.discard_settled_agreement:
+        # For sale settlements, duplicate prevention is handled at invoice/credit
+        # note line level, so the agreement-level discard is not applied. The
+        # purchase flow keeps its original behavior.
+        if self.domain != "sale" and self.discard_settled_agreement:
             settlements = self._get_existing_settlement(settlement_domain)
             if settlements:
                 domain.extend(
@@ -95,44 +98,203 @@ class AgreementSettlementCreateWiz(models.TransientModel):
             domain.extend([("journal_id", "in", self.journal_ids.ids)])
         else:
             domain.extend([("journal_id.type", "=", self.domain)])
-        if self.date_from:
-            domain.extend(
-                [
-                    (
-                        "invoice_date",
-                        ">=",
-                        fields.Date.to_string(self.date_from),
-                    )
-                ]
-            )
-        if self.date_to:
-            domain.extend(
-                [
-                    (
-                        "invoice_date",
-                        "<=",
-                        fields.Date.to_string(self.date_to),
-                    )
-                ]
-            )
+        # Sale period is driven by the delivery order completion date. The period
+        # filter is applied to the qualifying invoice lines instead.
+        if self.domain != "sale":
+            if self.date_from:
+                domain.extend(
+                    [
+                        (
+                            "invoice_date",
+                            ">=",
+                            fields.Date.to_string(self.date_from),
+                        )
+                    ]
+                )
+            if self.date_to:
+                domain.extend(
+                    [
+                        (
+                            "invoice_date",
+                            "<=",
+                            fields.Date.to_string(self.date_to),
+                        )
+                    ]
+                )
         return domain
 
     def _get_settled_invoice_line_ids(self):
-        domain = []
-        if self.date_from:
-            domain.append(("date_to", ">=", self.date_from))
-        if self.date_to:
-            domain.append(("date_to", "<=", self.date_to))
-        settlements = self.env["agreement.rebate.settlement"].with_context(
+        # Invoice and credit note lines already used by any settlement (active or
+        # archived) are never eligible again, regardless of the selected period.
+        lines = self.env["agreement.rebate.settlement.line"].with_context(
             active_test=False
-        ).search(domain)
-        return settlements.mapped("line_ids.invoice_line_ids").ids
+        ).search([])
+        return lines.mapped("source_invoice_line_ids").ids
 
-    def _get_matching_section(self, agreement, amount):
+    def _check_sales_ready(self):
+        """Check that the standard Sales + Inventory relationships are available."""
+        checks = [
+            ("account.move.line", "sale_line_ids", "Sales"),
+            ("sale.order.line", "move_ids", "Sale Stock"),
+            ("stock.move", "picking_id", "Inventory"),
+            ("stock.picking", "picking_type_code", "Inventory"),
+            ("stock.picking", "state", "Inventory"),
+            ("stock.picking", "date_done", "Inventory"),
+        ]
+        missing = []
+        for model, field, module in checks:
+            if model not in self.env:
+                missing.append("%s (%s module)" % (model, module))
+            elif field not in self.env[model]._fields:
+                missing.append("%s.%s (%s module)" % (model, field, module))
+        if missing:
+            raise UserError(
+                "Sales rebate settlement requires the following fields, which "
+                "need the Sales and Inventory (Sale Stock) modules to be "
+                "installed first: %s" % ", ".join(missing)
+            )
+
+    def _get_invoice_line_last_do_date(self, invoice_line):
+        """Return the completion date of the last delivery order of an invoice
+        line, or False when the line cannot be settled yet.
+
+        Only non-cancelled outgoing delivery pickings are considered, and every
+        one of them must be `done`.
+        """
+        moves = invoice_line.sale_line_ids.move_ids.filtered(
+            lambda move: move.picking_id
+            and move.picking_id.picking_type_code == "outgoing"
+            and move.state != "cancel"
+            and move.picking_id.state != "cancel"
+        )
+        pickings = moves.picking_id
+        if not pickings:
+            return False
+        if any(picking.state != "done" for picking in pickings):
+            return False
+        dates = [picking.date_done.date() for picking in pickings if picking.date_done]
+        if not dates:
+            return False
+        return max(dates)
+
+    def _get_qualifying_invoice_lines(self, agreement, settled_ids=None):
+        """Return the posted customer invoice lines eligible for a sale settlement."""
+        if settled_ids is None:
+            settled_ids = self._get_settled_invoice_line_ids()
+        domain = [
+            ("move_id.move_type", "=", "out_invoice"),
+            ("parent_state", "=", "posted"),
+            ("display_type", "=", "product"),
+            ("sale_line_ids", "!=", False),
+        ]
+        if self.journal_ids:
+            domain.append(("move_id.journal_id", "in", self.journal_ids.ids))
+        else:
+            domain.append(("move_id.journal_id.type", "=", self.domain))
+        if agreement.company_id:
+            domain.append(("company_id", "=", agreement.company_id.id))
+        domain += self._partner_domain(agreement)
+        if settled_ids:
+            domain.append(("id", "not in", settled_ids))
+        lines = self.env["account.move.line"].search(domain)
+        qualifying = self.env["account.move.line"]
+        for line in lines:
+            last_date = self._get_invoice_line_last_do_date(line)
+            if not last_date:
+                continue
+            if self.date_from and last_date < self.date_from:
+                continue
+            if self.date_to and last_date > self.date_to:
+                continue
+            if agreement.start_date and last_date < agreement.start_date:
+                continue
+            if agreement.end_date and last_date > agreement.end_date:
+                continue
+            qualifying |= line
+        return qualifying
+
+    def _get_linked_refund_lines(self, invoice_lines):
+        """Posted customer credit note lines directly linked to invoice lines."""
+        if not invoice_lines:
+            return self.env["account.move.line"]
+        return self.env["account.move.line"].search(
+            [
+                ("move_id.move_type", "=", "out_refund"),
+                ("parent_state", "=", "posted"),
+                ("origin_line_id", "in", invoice_lines.ids),
+            ]
+        )
+
+    def _check_returns(self, invoice_lines):
+        """Block the settlement when a done return has no linked posted credit note."""
+        for line in invoice_lines:
+            moves = line.sale_line_ids.move_ids.filtered(
+                lambda move: move.picking_id
+                and move.picking_id.picking_type_code == "outgoing"
+                and move.state != "cancel"
+                and move.picking_id.state != "cancel"
+            )
+            if not moves:
+                continue
+            returns = self.env["stock.move"].search(
+                [
+                    ("origin_returned_move_id", "in", moves.ids),
+                    ("state", "=", "done"),
+                ]
+            )
+            if not returns:
+                continue
+            if self._get_linked_refund_lines(line):
+                continue
+            deliveries = ", ".join(moves.mapped("picking_id").mapped("name"))
+            return_pickings = ", ".join(returns.mapped("picking_id").mapped("name"))
+            raise UserError(
+                "Invoice %s has done returns on Delivery Order(s) %s (return %s) "
+                "without a directly linked posted Credit Note. Please create or "
+                "verify the Credit Note before creating the settlement."
+                % (line.move_id.name, deliveries, return_pickings)
+            )
+
+    def _validate_sections(self, agreement):
+        """Validate that a `section_total` tier configuration is unambiguous."""
+        sections = agreement.rebate_section_ids
+        if len(sections) <= 1:
+            return
+        open_ended = sections.filtered(lambda section: not section.amount_to)
+        if len(open_ended) > 1:
+            raise UserError(
+                "Agreement %s has more than one open-ended rebate section."
+                % agreement.display_name
+            )
+        ordered = sections.sorted(key=lambda section: (section.amount_from, section.amount_to))
+        for idx, section in enumerate(ordered[:-1]):
+            next_section = ordered[idx + 1]
+            effective_to = section.amount_to or float("inf")
+            if next_section.amount_from < effective_to:
+                raise UserError(
+                    "Rebate sections overlap for agreement %s."
+                    % agreement.display_name
+                )
+
+    def _get_matching_section(self, agreement, amount, strict=False):
         sections = agreement.rebate_section_ids.filtered(
             lambda section: section.amount_from <= amount
             and (not section.amount_to or amount <= section.amount_to)
         )
+        if strict:
+            self._validate_sections(agreement)
+            if len(sections) > 1:
+                raise UserError(
+                    "More than one rebate section matches the net amount %s for "
+                    "agreement %s." % (amount, agreement.display_name)
+                )
+            if not sections:
+                raise UserError(
+                    "No rebate section matches the net amount %s for agreement %s. "
+                    "Check the rebate sections for a gap or a missing tier."
+                    % (amount, agreement.display_name)
+                )
+            return sections[:1]
         if len(sections) > 1:
             raise UserError(
                 "Rebate sections overlap for agreement %s." % agreement.display_name
@@ -141,22 +303,25 @@ class AgreementSettlementCreateWiz(models.TransientModel):
 
     def _target_line_domain(self, agreement_domain, agreement, line=False):
         domain = agreement_domain.copy()
-        if agreement.start_date:
-            domain.append(
-                (
-                    "invoice_date",
-                    ">=",
-                    fields.Date.to_string(agreement.start_date),
+        # For sale settlements the period and the agreement date range are applied
+        # on the delivery order completion date, not on the invoice date.
+        if self.domain != "sale":
+            if agreement.start_date:
+                domain.append(
+                    (
+                        "invoice_date",
+                        ">=",
+                        fields.Date.to_string(agreement.start_date),
+                    )
                 )
-            )
-        if agreement.end_date:
-            domain.append(
-                (
-                    "invoice_date",
-                    "<=",
-                    fields.Date.to_string(agreement.end_date),
+            if agreement.end_date:
+                domain.append(
+                    (
+                        "invoice_date",
+                        "<=",
+                        fields.Date.to_string(agreement.end_date),
+                    )
                 )
-            )
         if line:
             domain += safe_eval(line.rebate_domain)
         elif agreement.rebate_line_ids:
@@ -179,7 +344,14 @@ class AgreementSettlementCreateWiz(models.TransientModel):
         return "price_subtotal"
 
     def _prepare_settlement_line(
-        self, domain, group, agreement, line=False, section=False
+        self,
+        domain,
+        group,
+        agreement,
+        line=False,
+        section=False,
+        strict_sections=False,
+        source_invoice_lines=False,
     ):
         amount = group[self._get_amount_field()] or 0.0
         if self.domain == "purchase":
@@ -213,7 +385,10 @@ class AgreementSettlementCreateWiz(models.TransientModel):
             rebate = amount * agreement.rebate_discount / 100
             vals.update({"percent": agreement.rebate_discount})
         elif agreement.rebate_type == "section_total":
-            section = self._get_matching_section(agreement, amount)
+            if not section:
+                section = self._get_matching_section(
+                    agreement, amount, strict=strict_sections
+                )
             rebate = amount * section.rebate_discount / 100 if section else 0.0
             vals.update(
                 {
@@ -231,6 +406,8 @@ class AgreementSettlementCreateWiz(models.TransientModel):
                 "amount_rebate": agreement.company_id.currency_id.round(rebate),
             }
         )
+        if source_invoice_lines:
+            vals["source_invoice_line_ids"] = [Command.set(source_invoice_lines.ids)]
         return vals
 
     def _get_rebate_discount(self, agreement, amount):
@@ -252,6 +429,8 @@ class AgreementSettlementCreateWiz(models.TransientModel):
         self.ensure_one()
         Agreement = self.env["agreement"]
         target_model = self._get_target_model()
+        if self.domain == "sale":
+            self._check_sales_ready()
         orig_domain = self._prepare_target_domain()
         settled_invoice_line_ids = self._get_settled_invoice_line_ids()
         if settled_invoice_line_ids:
@@ -261,10 +440,27 @@ class AgreementSettlementCreateWiz(models.TransientModel):
         for agreement in agreements:
             key = self.get_settlement_key(agreement)
             if key not in settlement_dic:
-                settlement_dic[key]["amount_rebate"] = 0.0
-                settlement_dic[key]["amount_invoiced"] = 0.0
-                settlement_dic[key]["partner_id"] = agreement.partner_id.id
+                settlement_dic[key].update(
+                    {
+                        "amount_rebate": 0.0,
+                        "amount_invoiced": 0.0,
+                        "partner_id": agreement.partner_id.id,
+                        "used_invoice_line_ids": [],
+                    }
+                )
             agreement_domain = orig_domain + self._partner_domain(agreement)
+            evidence = self.env["account.move.line"]
+            if self.domain == "sale":
+                qualifying_lines = self._get_qualifying_invoice_lines(
+                    agreement, settled_invoice_line_ids
+                )
+                if not qualifying_lines:
+                    continue
+                self._check_returns(qualifying_lines)
+                refund_lines = self._get_linked_refund_lines(qualifying_lines)
+                evidence = qualifying_lines + refund_lines
+                agreement_domain.append(("id", "in", evidence.ids))
+                settlement_dic[key]["used_invoice_line_ids"].extend(evidence.ids)
             if agreement.rebate_type == "line":
                 if not agreement.rebate_line_ids:
                     continue
@@ -286,7 +482,11 @@ class AgreementSettlementCreateWiz(models.TransientModel):
                         continue
                     for group in groups:
                         vals = self._prepare_settlement_line(
-                            domain, group, agreement, line=line
+                            domain,
+                            group,
+                            agreement,
+                            line=line,
+                            source_invoice_lines=evidence,
                         )
                         settlement_dic[key]["amount_rebate"] += vals["amount_rebate"]
                         settlement_dic[key]["amount_invoiced"] += vals[
@@ -313,7 +513,11 @@ class AgreementSettlementCreateWiz(models.TransientModel):
                         break
                     for group in groups:
                         vals = self._prepare_settlement_line(
-                            domain, group, agreement, section=section
+                            domain,
+                            group,
+                            agreement,
+                            section=section,
+                            source_invoice_lines=evidence,
                         )
                         settlement_dic[key]["amount_rebate"] += vals["amount_rebate"]
                         settlement_dic[key]["lines"].append((0, 0, vals))
@@ -332,11 +536,32 @@ class AgreementSettlementCreateWiz(models.TransientModel):
                     and not agreement.additional_consumption
                 ):
                     continue
-                for group in groups:
-                    vals = self._prepare_settlement_line(domain, group, agreement)
-                    settlement_dic[key]["lines"].append((0, 0, vals))
-                    settlement_dic[key]["amount_rebate"] += vals["amount_rebate"]
-                    settlement_dic[key]["amount_invoiced"] += vals["amount_invoiced"]
+                if self.domain == "sale" and agreement.rebate_type == "section_total":
+                    total = sum(g[self._get_amount_field()] or 0.0 for g in groups)
+                    section = self._get_matching_section(agreement, total, strict=True)
+                    for group in groups:
+                        vals = self._prepare_settlement_line(
+                            domain,
+                            group,
+                            agreement,
+                            section=section,
+                            strict_sections=True,
+                            source_invoice_lines=evidence,
+                        )
+                        settlement_dic[key]["amount_rebate"] += vals["amount_rebate"]
+                        settlement_dic[key]["lines"].append((0, 0, vals))
+                    settlement_dic[key]["amount_invoiced"] += total
+                else:
+                    for group in groups:
+                        vals = self._prepare_settlement_line(
+                            domain,
+                            group,
+                            agreement,
+                            source_invoice_lines=evidence,
+                        )
+                        settlement_dic[key]["lines"].append((0, 0, vals))
+                        settlement_dic[key]["amount_rebate"] += vals["amount_rebate"]
+                        settlement_dic[key]["amount_invoiced"] += vals["amount_invoiced"]
         settlements = self._create_settlement(settlement_dic)
         return settlements.action_show_settlement()
 
@@ -355,6 +580,14 @@ class AgreementSettlementCreateWiz(models.TransientModel):
         lines = self._filter_settlement_lines(settlement_lines["lines"])
         if not lines:
             return {}
+        used_ids = settlement_lines.get("used_invoice_line_ids", [])
+        if used_ids:
+            duplicates = set(used_ids) & set(self._get_settled_invoice_line_ids())
+            if duplicates:
+                raise UserError(
+                    "One or more invoice/credit note lines are already included in "
+                    "another settlement. Please adjust the period and try again."
+                )
         return {
             "date": self.date,
             "date_from": self.date_from,

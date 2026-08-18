@@ -17,7 +17,7 @@
                         <field name="date_to" />
                     </group>
                     <group>
-                        <field name="discard_settled_agreement" />
+                        <field name="discard_settled_agreement" invisible="1" />
                     </group>
                 </group>
                 <group string="Journals">

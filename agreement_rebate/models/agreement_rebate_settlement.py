@@ -191,6 +191,12 @@ class AgreementRebateSettlementLine(models.Model):
         column2="invoice_line_id",
         string="Invoice lines",
     )
+    source_invoice_line_ids = fields.Many2many(
+        comodel_name="account.move.line",
+        string="Source invoice lines",
+        help="Customer invoice and credit note lines used to compute this "
+        "settlement line. They become ineligible for any other settlement.",
+    )
     invoice_status = fields.Selection(
         [
             ("invoiced", "Fully Invoiced"),

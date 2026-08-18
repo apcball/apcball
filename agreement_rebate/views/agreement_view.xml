@@ -7,14 +7,19 @@
             <notebook position="inside">
                 <page name="rebate" string="Rebate" invisible="not is_rebate">
                     <field name="is_rebate" invisible="1" />
+                    <field name="rebate_approval_state" invisible="1" />
                     <group>
                         <group>
-                            <field name="rebate_type" />
+                            <field
+                                name="rebate_type"
+                                readonly="rebate_approval_state == 'approved'"
+                            />
                         </group>
                         <group>
                             <field
                                 name="rebate_discount"
                                 invisible="rebate_type != 'global'"
+                                readonly="rebate_approval_state == 'approved'"
                             />
                         </group>
                     </group>
@@ -27,6 +32,7 @@
                         <field
                             name="rebate_line_ids"
                             context="{'hide_rebate_discount': rebate_type != 'line'}"
+                            readonly="rebate_approval_state == 'approved'"
                             nolabel="1"
                             colspan="2"
                         >
@@ -47,7 +53,12 @@
                         string="Sections"
                         invisible="rebate_type not in ['section_total', 'section_prorated']"
                     >
-                        <field name="rebate_section_ids" nolabel="1" colspan="2" />
+                        <field
+                            name="rebate_section_ids"
+                            readonly="rebate_approval_state == 'approved'"
+                            nolabel="1"
+                            colspan="2"
+                        />
                     </group>
                 </page>
             </notebook>

@@ -72,6 +72,54 @@ class Agreement(models.Model):
             if not agreement.is_rebate:
                 raise UserError("Only rebate agreements can use this approval workflow.")
 
+    def _get_rebate_locked_fields(self):
+        """Business fields that cannot be changed while the agreement is approved."""
+        return [
+            "partner_id",
+            "agreement_type_id",
+            "domain",
+            "signature_date",
+            "start_date",
+            "end_date",
+            "rebate_type",
+            "rebate_discount",
+            "rebate_line_ids",
+            "rebate_section_ids",
+        ]
+
+    def _get_rebate_approval_fields(self):
+        return [
+            "rebate_approval_state",
+            "rebate_prepared_by_id",
+            "rebate_reviewer_id",
+            "rebate_approver_id",
+            "rebate_submitted_at",
+            "rebate_reviewed_at",
+            "rebate_approved_at",
+        ]
+
+    def write(self, vals):
+        for agreement in self:
+            if agreement.rebate_approval_state != "approved":
+                continue
+            locked_fields = set(vals) & set(self._get_rebate_locked_fields())
+            if locked_fields:
+                raise UserError(
+                    "You cannot modify the business data of an approved rebate "
+                    "agreement (%s). Reset the agreement to draft first."
+                    % agreement.display_name
+                )
+            approval_fields = set(vals) & set(self._get_rebate_approval_fields())
+            if approval_fields and not self.env.context.get(
+                "agreement_rebate_reset"
+            ):
+                raise UserError(
+                    "You cannot change the approval data of an approved rebate "
+                    "agreement (%s) directly. Use the Reset action instead."
+                    % agreement.display_name
+                )
+        return super().write(vals)
+
     def action_submit_rebate(self):
         self._ensure_rebate_agreement()
         for agreement in self:
@@ -122,6 +170,10 @@ class Agreement(models.Model):
 
     def action_reset_rebate(self):
         self._ensure_rebate_agreement()
+        # Internal context: allows only the approval state/data changes of the
+        # reset action. Business fields stay locked for approved agreements even
+        # when this context flag is forged through RPC/Import.
+        self = self.with_context(agreement_rebate_reset=True)
         for agreement in self:
             agreement.write({
                 "rebate_approval_state": "draft",
@@ -172,6 +224,36 @@ class AgreementRebateLine(models.Model):
     )
     rebate_discount = fields.Float()
 
+    def _check_agreement_not_approved(self):
+        for line in self:
+            if line.agreement_id.rebate_approval_state == "approved":
+                raise UserError(
+                    "You cannot modify the rebate lines of an approved agreement "
+                    "(%s). Reset the agreement to draft first."
+                    % line.agreement_id.display_name
+                )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get("agreement_id"):
+                agreement = self.env["agreement"].browse(vals["agreement_id"])
+                if agreement.rebate_approval_state == "approved":
+                    raise UserError(
+                        "You cannot add rebate lines to an approved agreement "
+                        "(%s). Reset the agreement to draft first."
+                        % agreement.display_name
+                    )
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._check_agreement_not_approved()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_agreement_not_approved()
+        return super().unlink()
+
     @api.depends(
         "rebate_target",
         "rebate_product_ids",
@@ -217,3 +299,33 @@ class AgreementRebateSection(models.Model):
     amount_from = fields.Float(string="From")
     amount_to = fields.Float(string="To")
     rebate_discount = fields.Float(string="% Dto")
+
+    def _check_agreement_not_approved(self):
+        for section in self:
+            if section.agreement_id.rebate_approval_state == "approved":
+                raise UserError(
+                    "You cannot modify the rebate sections of an approved "
+                    "agreement (%s). Reset the agreement to draft first."
+                    % section.agreement_id.display_name
+                )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get("agreement_id"):
+                agreement = self.env["agreement"].browse(vals["agreement_id"])
+                if agreement.rebate_approval_state == "approved":
+                    raise UserError(
+                        "You cannot add rebate sections to an approved agreement "
+                        "(%s). Reset the agreement to draft first."
+                        % agreement.display_name
+                    )
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._check_agreement_not_approved()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_agreement_not_approved()
+        return super().unlink()
