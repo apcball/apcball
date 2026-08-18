@@ -180,8 +180,8 @@ class StockFifoValuationDetailsReport(models.Model):
                     move.reference,
                     move.origin,
                     move.partner_id,
-                    move.location_id,
-                    move.location_dest_id,
+                    COALESCE(mline_loc.location_id, move.location_id) AS location_id,
+                    COALESCE(mline_loc.location_dest_id, move.location_dest_id) AS location_dest_id,
                     move.picking_id,
                     move.production_id,
                     svl.stock_landed_cost_id,
@@ -195,6 +195,16 @@ class StockFifoValuationDetailsReport(models.Model):
                     NULL::bigint AS lc_line_count
                 FROM stock_valuation_layer svl
                     LEFT JOIN stock_move move ON svl.stock_move_id = move.id
+                    LEFT JOIN (
+                        SELECT
+                            move_id,
+                            CASE WHEN COUNT(DISTINCT location_id) = 1
+                                THEN MIN(location_id) END AS location_id,
+                            CASE WHEN COUNT(DISTINCT location_dest_id) = 1
+                                THEN MIN(location_dest_id) END AS location_dest_id
+                        FROM stock_move_line
+                        GROUP BY move_id
+                    ) mline_loc ON mline_loc.move_id = move.id
                     LEFT JOIN product_product product ON svl.product_id = product.id
                     LEFT JOIN product_template template ON product.product_tmpl_id = template.id
                     LEFT JOIN uom_uom uom_prod ON template.uom_id = uom_prod.id
