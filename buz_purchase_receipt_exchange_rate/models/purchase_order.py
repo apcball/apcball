@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class PurchaseOrder(models.Model):
@@ -30,3 +31,11 @@ class PurchaseOrder(models.Model):
         for order in self.filtered('exchange_rate_date'):
             order.picking_ids._set_exchange_rate_date_from_po(order.exchange_rate_date)
         return res
+
+    def action_submit_for_review(self):
+        for order in self:
+            if order.is_foreign_currency_po and not order.exchange_rate_date:
+                raise UserError(_(
+                    "กรุณาระบุ Exchange Rate Date (วันที่ใบขนสินค้า) ก่อนส่งตรวจสอบ "
+                    "เนื่องจาก PO นี้เป็นสกุลเงินต่างประเทศ."))
+        return super().action_submit_for_review()
