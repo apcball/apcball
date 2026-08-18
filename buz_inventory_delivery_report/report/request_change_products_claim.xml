@@ -36,6 +36,59 @@
                                 margin: 0 !important;
                                 padding: 0 !important;
                             }
+
+                            .report-page-header {
+                                position: relative;
+                                width: 100%;
+                                height: 180px;
+                                box-sizing: border-box;
+                            }
+
+                            .report-header-top {
+                                display: flex;
+                                width: 100%;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                            }
+
+                            .report-header-top > .col-8 {
+                                flex: 0 0 66.666667%;
+                                width: 66.666667%;
+                                max-width: 66.666667%;
+                            }
+
+                            .report-header-top > .col-4,
+                            .report-header-details > .col-4 {
+                                flex: 0 0 33.333333%;
+                                width: 33.333333%;
+                                max-width: 33.333333%;
+                            }
+
+                            .report-header-details > .offset-4 {
+                                margin-left: 33.333333%;
+                            }
+
+                            .report-header-top .company-header,
+                            .report-header-top .company-info {
+                                margin: 0 !important;
+                                line-height: 1.2;
+                            }
+
+                            .report-header-details {
+                                position: absolute;
+                                top: 60px;
+                                left: 0;
+                                right: 0;
+                                display: flex;
+                                width: 100%;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                            }
+
+                            .report-page {
+                                box-sizing: border-box;
+                                padding-top: 15mm !important;
+                            }
                             
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
                                 font-family: 'Sarabun', sans-serif !important;
@@ -98,20 +151,14 @@
                          <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
                          <t t-foreach="groups_of_7" t-as="group">
                             
-                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                             <div class="report-page"
+                                  t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
                           <t t-if="groups_of_7">
                               <div>
-                             <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
-                                    <t t-if="total_pages &gt; 1">
-                                        <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
-                                            หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
-                                        </div>
-                                    </t>
-                     
-
+                         <div class="report-page-header">
                          <!-- Company Info Section -->
-                         <div class="row mb-1">
+                         <div class="report-header-top">
                             <div class="col-8">
                                 <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;margin-bottom: -10px;">
                                     บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
@@ -130,7 +177,7 @@
                         </div>
 
                          <!-- Document Title -->
-                            <div class="row mb-3" style="margin-top: -130px;">
+                            <div class="report-header-details">
                                <div class="col-4 offset-4 text-center">
                                    <div class="doc-title" style="padding: 14px; font-size: 26px;">
                                      ⃞ ใบคืนสินค้าเคลม ⃞ ใบขออนุมัติคืนสินค้า (ลดหนี้)
@@ -138,8 +185,11 @@
                                </div>
                                <div class="col-4 text-end" style="">
                                   <div style="font-size: 18px;">
-                                      <span>เลขที่: </span>
-                                      <span t-esc="o.name"/>
+                                      <span style="font-size: inherit;">เลขที่: </span>
+                                      <span style="font-size: inherit;" t-esc="o.name"/>
+                                  </div>
+                                  <div style="font-size: 18px; margin-top: 2px; margin-bottom: 3px;">
+                                      หน้า <t t-esc="page_number"/>/<t t-esc="total_pages"/>
                                   </div>
                                   <div style="width: 5cm; height: 1cm; border: 1px solid black; display: flex; flex-direction: column; float: right; margin-bottom: 0;">
                                       <!-- ช่องบน -->
@@ -151,6 +201,7 @@
                                   </div>
                                </div>
                             </div>
+                         </div>
 
                          
 
