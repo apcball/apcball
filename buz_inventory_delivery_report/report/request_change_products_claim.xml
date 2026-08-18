@@ -87,7 +87,7 @@
 
                             .report-page {
                                 box-sizing: border-box;
-                                padding-top: 15mm !important;
+                                padding-top: 3mm !important;
                             }
                             
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
