@@ -18,8 +18,12 @@
     <template id="request_change_products_claim_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-call="web.external_layout">
-                    <div class="page">
+                <t t-if="True">
+                    <div class="article report-article"
+                         t-att-data-oe-model="o and o._name"
+                         t-att-data-oe-id="o and o.id"
+                         t-att-data-oe-lang="o and o.env.context.get('lang')">
+                      <div class="report-container">
 
                         <style>
                             @font-face {
@@ -27,12 +31,15 @@
                                 src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
                             }
                             
-                            @page {
-                                size: A4 landscape;
-                                margin: 3mm 3mm 3mm 3mm;
-                            }
-                            
-                            body, .page, .row {
+                            html,
+                            body,
+                            #wrapwrap,
+                            main,
+                            .o_report_layout_standard,
+                            .report-article,
+                            .report-container,
+                            .page,
+                            .row {
                                 margin: 0 !important;
                                 padding: 0 !important;
                             }
@@ -85,9 +92,10 @@
                                 padding: 0 !important;
                             }
 
-                            .report-page {
+                            .page.report-page {
                                 box-sizing: border-box;
-                                padding-top: 3mm !important;
+                                padding-top: 15mm !important;
+                                page-break-after: auto !important;
                             }
                             
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
@@ -126,18 +134,7 @@
                                 border: none !important;
                             }
 
-                            .page {
-                                page-break-after: always;
-                            }
-                            .page:last-child {
-                                page-break-after: auto;
-                            }
-
-                            .page-break {
-                                page-break-after: always;
-                              }
-
-                            .vendor-info, .delivery-info {
+.vendor-info, .delivery-info {
                                 font-size: 14px;
                             }
                         </style>
@@ -151,7 +148,7 @@
                          <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
                          <t t-foreach="groups_of_7" t-as="group">
                             
-                             <div class="report-page"
+                             <div class="page report-page"
                                   t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
                           <t t-if="groups_of_7">
@@ -209,7 +206,6 @@
 
 
 
-                         <div style="height: 15px;"></div>
                          <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black;">
                             <!-- กล่องที่ 1: 35% -->
                             <div style="width: 35%; border-right: 1px solid black; padding: 8px;">
@@ -273,7 +269,7 @@
                                 <div>วันที่ดำเนินการ: <t t-esc="o.date_done.strftime('%d/%m/%Y') if o.date_done else ''"/></div>
                                 <div>ผู้ติดต่อพนักงาน: <t t-esc="o.employee_contact_id.name or ''"/></div>
                                 <div>Sale ผู้ดูแล: <t t-esc="o.employee_contact_id.name or ''"/></div>
-                                <div>สถานที่รับกลับ: <t t-esc="o.note or ''"/></div>
+                                <div style="line-height: 1.5;">สถานที่รับกลับ: <t t-esc="o.note or ''"/></div>
                             </div>
                         </div>
 
@@ -478,6 +474,7 @@
                                    <t t-if="page_number == len(groups_of_7)">
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
+                      </div>
 
 
                            
