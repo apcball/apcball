@@ -90,9 +90,10 @@ class WipManufacturingController(http.Controller):
         sheet.set_column("H:H", 8)   # UOM
         sheet.set_column("I:I", 14)  # Unit Cost
         sheet.set_column("J:J", 16)  # Amount
+        sheet.set_column("K:K", 20)  # MRP Request No.
 
         row = 0
-        sheet.merge_range(row, 0, row, 9, "WIP MANUFACTURING REPORT", fmts["title"])
+        sheet.merge_range(row, 0, row, 10, "WIP MANUFACTURING REPORT", fmts["title"])
         row += 1
         sheet.write(row, 0, f"Date From : {date_from}", fmts["sub"])
         sheet.write(row, 3, f"Date To : {date_to}", fmts["sub"])
@@ -107,6 +108,7 @@ class WipManufacturingController(http.Controller):
         headers = [
             "MO No.", "MO Date", "Item", "Product Code", "Product Name",
             "Store / Location", "Quantity", "UOM", "Unit Cost", "Amount",
+            "MRP Request No.",
         ]
         for col, label in enumerate(headers):
             sheet.write(header_row, col, label, fmts["header"])
@@ -114,10 +116,10 @@ class WipManufacturingController(http.Controller):
         data_start_row = row
 
         for mo in data["data"]:
-            sheet.merge_range(row, 0, row, 9, f"{mo['mo_name']}  ({mo['mo_date']})", fmts["mo_row"])
+            sheet.merge_range(row, 0, row, 10, f"{mo['mo_name']}  ({mo['mo_date']})", fmts["mo_row"])
             row += 1
             for idx, material in enumerate(mo["materials"], start=1):
-                sheet.write(row, 0, "", fmts["text"])
+                sheet.write(row, 0, mo["mo_name"], fmts["text"])
                 sheet.write(row, 1, mo["mo_date"], fmts["text"])
                 sheet.write(row, 2, idx, fmts["text"])
                 sheet.write(row, 3, material["product_code"], fmts["text"])
@@ -127,6 +129,7 @@ class WipManufacturingController(http.Controller):
                 sheet.write(row, 7, material["uom"], fmts["text"])
                 sheet.write(row, 8, material["unit_cost"], fmts["num"])
                 sheet.write(row, 9, material["amount"], fmts["num"])
+                sheet.write(row, 10, material["mrp_request_name"], fmts["text"])
                 row += 1
             sheet.write(row, 5, "MO Total", fmts["num_bold"])
             sheet.write(row, 6, mo["subtotal_qty"], fmts["num_bold"])
@@ -140,5 +143,5 @@ class WipManufacturingController(http.Controller):
 
         sheet.freeze_panes(data_start_row, 0)
         sheet.repeat_rows(header_row, header_row)
-        sheet.print_area(0, 0, final_row, 9)
-        sheet.autofilter(header_row, 0, final_row, 9)
+        sheet.print_area(0, 0, final_row, 10)
+        sheet.autofilter(header_row, 0, final_row, 10)

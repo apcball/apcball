@@ -10,6 +10,7 @@
         "stock",
         "product",
         "web",
+        "buz_mrp_stock_request",
     ],
     "data": [
         "security/security.xml",

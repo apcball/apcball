@@ -63,6 +63,19 @@
                                 </td>
                                 <td class="text-end fw-bold" t-esc="fmt(mo.subtotal_amount)"/>
                             </tr>
+                            <tr t-if="mo.stock_requests and mo.stock_requests.length" class="o_wip_stock_requests_row">
+                                <td colspan="2"/>
+                                <td colspan="9" class="py-1">
+                                    <span class="small text-muted me-2">Stock Requests:</span>
+                                    <t t-foreach="mo.stock_requests" t-as="sr" t-key="sr.id">
+                                        <span class="badge me-1">
+                                            <a href="#" t-on-click.prevent="() => props.openRecord('mrp.stock.request', sr.id)"
+                                               class="text-white text-decoration-none" t-esc="sr.name"/>
+                                            <span class="small ms-1" t-esc="sr.state_label"/>
+                                        </span>
+                                    </t>
+                                </td>
+                            </tr>
                             <t t-if="isExpanded(mo.mo_id)">
                                 <tr t-foreach="mo.materials" t-as="material" t-key="material.move_id" class="o_wip_material_row">
                                     <td/>

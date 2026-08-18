@@ -167,3 +167,59 @@ class TestWipManufacturingReport(TransactionCase):
         self.assertEqual(len(data["data"]), 1)
         self.assertEqual(data["summary"]["total_mos"], 3)
         self.assertAlmostEqual(data["summary"]["total_wip_value"], 600.0)
+
+    def test_10_progress_only_status_excludes_done(self):
+        mo_progress = self._make_mo(self.finished, state="progress")
+        mo_done = self._make_mo(self.finished, state="done")
+        self._make_raw_move(mo_progress, self.comp_a, 4.0, state="assigned", price_unit=120.0)
+        move_done = self._make_raw_move(mo_done, self.comp_a, 5.0)
+        self._make_svl(move_done, self.comp_a, -5.0, -500.0)
+
+        data = self.engine.get_wip_data(
+            mo_ids=[mo_progress.id, mo_done.id], status_list=["progress", "to_close"],
+        )
+        self.assertEqual(len(data["data"]), 1)
+        self.assertEqual(data["data"][0]["mo_id"], mo_progress.id)
+
+    def test_11_stock_requests_key_present(self):
+        mo = self._make_mo(self.finished)
+        move = self._make_raw_move(mo, self.comp_a, 5.0)
+        self._make_svl(move, self.comp_a, -5.0, -500.0)
+
+        data = self.engine.get_wip_data(mo_ids=[mo.id], status_list=["done"])
+        row = data["data"][0]
+        self.assertEqual(row["stock_requests"], [])
+        self.assertEqual(row["stock_requests_count"], 0)
+
+    def test_12_material_carries_mrp_request_allocation(self):
+        mo = self._make_mo(self.finished)
+        move = self._make_raw_move(mo, self.comp_a, 5.0)
+        self._make_svl(move, self.comp_a, -5.0, -500.0)
+
+        picking_type = self.env["stock.picking.type"].search(
+            [("code", "=", "internal"), ("company_id", "=", self.company.id)], limit=1,
+        )
+        stock_request = self.env["mrp.stock.request"].create({
+            "picking_type_id": picking_type.id,
+            "location_id": self.location.id,
+            "location_dest_id": self.env.ref("stock.stock_location_locations_production").id,
+            "mo_ids": [(6, 0, [mo.id])],
+        })
+        request_line = self.env["mrp.stock.request.line"].create({
+            "request_id": stock_request.id,
+            "product_id": self.comp_a.id,
+            "uom_id": self.uom_unit.id,
+            "qty_requested": 5.0,
+            "move_ids": [(6, 0, [move.id])],
+        })
+        self.env["mrp.stock.request.allocation"].create({
+            "request_line_id": request_line.id,
+            "mo_id": mo.id,
+            "uom_id": self.uom_unit.id,
+            "qty_consumed": 3.0,
+        })
+
+        data = self.engine.get_wip_data(mo_ids=[mo.id], status_list=["done"])
+        material = data["data"][0]["materials"][0]
+        self.assertEqual(material["mrp_request_name"], stock_request.name)
+        self.assertAlmostEqual(material["qty_allocated_to_job"], 3.0)

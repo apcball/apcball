@@ -238,16 +238,78 @@ class WipManufacturingReport(models.AbstractModel):
 
         return moves
 
+    def _fetch_stock_requests_by_mo(self, mo_ids):
+        """Batch-fetch non-cancelled mrp.stock.request records linked to
+        mo_ids, grouped by MO id, avoiding a per-MO search."""
+        requests_by_mo = {mo_id: [] for mo_id in mo_ids}
+        requests = self.env["mrp.stock.request"].search([
+            ("mo_ids", "in", mo_ids), ("state", "!=", "cancel"),
+        ])
+        state_selection = dict(requests._fields["state"].selection) if requests else {}
+        for req in requests:
+            data = {
+                "id": req.id,
+                "name": req.name,
+                "date": fields.Date.to_string(req.request_date) if req.request_date else "",
+                "state": req.state,
+                "state_label": state_selection.get(req.state, req.state),
+                "requested_by": req.requested_by.name if req.requested_by else "",
+            }
+            for mo in req.mo_ids:
+                if mo.id in requests_by_mo:
+                    requests_by_mo[mo.id].append(data)
+        return requests_by_mo
+
+    def _fetch_request_allocations_by_move_mo(self, move_ids):
+        """Batch-fetch actual consumed qty for each (move_id, mo_id) pair,
+        via mrp.stock.request.line -> ...allocation. A move can in theory
+        span multiple request lines, so quantities are summed."""
+        result = {}
+        if not move_ids:
+            return result
+
+        lines = self.env["mrp.stock.request.line"].search_read(
+            [("move_ids", "in", move_ids)], ["id", "move_ids"],
+        )
+        if not lines:
+            return result
+
+        line_ids = [l["id"] for l in lines]
+        allocations = self.env["mrp.stock.request.allocation"].search_read(
+            [("request_line_id", "in", line_ids)], ["request_line_id", "mo_id", "qty_consumed"],
+        )
+        allocs_by_line = {}
+        for alloc in allocations:
+            allocs_by_line.setdefault(alloc["request_line_id"][0], []).append(alloc)
+
+        for line in lines:
+            for alloc in allocs_by_line.get(line["id"], []):
+                if not alloc["mo_id"]:
+                    continue
+                mo_id = alloc["mo_id"][0]
+                for move_id in line["move_ids"]:
+                    key = (move_id, mo_id)
+                    result[key] = result.get(key, 0.0) + alloc["qty_consumed"]
+
+        return result
+
     def _build_mo_rows(self, mo_ids, moves_by_mo, show_valuation_detail):
         if not mo_ids:
             return []
 
         productions = self.env["mrp.production"].browse(mo_ids)
+        stock_requests_by_mo = self._fetch_stock_requests_by_mo(mo_ids)
+        all_move_ids = [move["id"] for moves in moves_by_mo.values() for move in moves]
+        allocations_by_move_mo = self._fetch_request_allocations_by_move_mo(all_move_ids)
         rows = []
         for mo in productions:
             mo_moves = moves_by_mo.get(mo.id, [])
+            mo_request_names = ", ".join(
+                sr["name"] for sr in stock_requests_by_mo.get(mo.id, [])
+            )
             materials = []
             for move in mo_moves:
+                qty_allocated = allocations_by_move_mo.get((move["id"], mo.id), 0.0)
                 material = {
                     "move_id": move["id"],
                     "product_id": move["product_id"][0],
@@ -260,6 +322,8 @@ class WipManufacturingReport(models.AbstractModel):
                     "unit_cost": move["unit_cost"],
                     "amount": move["amount"],
                     "cost_source": move["cost_source"],
+                    "mrp_request_name": mo_request_names,
+                    "qty_allocated_to_job": qty_allocated,
                 }
                 if show_valuation_detail:
                     material["svl_count"] = move["svl_count"]
@@ -281,5 +345,7 @@ class WipManufacturingReport(models.AbstractModel):
                 "materials": materials,
                 "subtotal_qty": sum(m["quantity"] for m in materials),
                 "subtotal_amount": sum(m["amount"] for m in materials),
+                "stock_requests": stock_requests_by_mo.get(mo.id, []),
+                "stock_requests_count": len(stock_requests_by_mo.get(mo.id, [])),
             })
         return rows

@@ -27,6 +27,7 @@ class WipManufacturingExportWizard(models.TransientModel):
     )
     status_list = fields.Selection(
         [
+            ("progress", "In Progress Only"),
             ("progress_done", "In Progress + Done"),
             ("done", "Done Only"),
             ("all", "All (except cancelled)"),
@@ -45,6 +46,7 @@ class WipManufacturingExportWizard(models.TransientModel):
 
     def _status_list_values(self):
         return {
+            "progress": ["progress", "to_close"],
             "progress_done": ["progress", "to_close", "done"],
             "done": ["done"],
             "all": ["draft", "confirmed", "progress", "to_close", "done"],

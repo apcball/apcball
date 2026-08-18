@@ -112,6 +112,25 @@
             border-top: 1px solid #f0f0f0;
         }
 
+        .o_wip_stock_requests_row {
+            background: rgba(23, 162, 184, 0.05);
+
+            td {
+                border-left: 3px solid #17a2b8;
+            }
+
+            .badge {
+                cursor: pointer;
+                background-color: #17a2b8;
+                color: #fff;
+                transition: opacity 0.2s;
+
+                &:hover {
+                    opacity: 0.8;
+                }
+            }
+        }
+
         .o_wip_grand_total_row td {
             background: #fdf0d5;
             border-top: 2px solid #f0a03c;
