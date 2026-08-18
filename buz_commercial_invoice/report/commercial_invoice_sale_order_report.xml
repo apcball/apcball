@@ -13,7 +13,7 @@
                         }
                         .page {
                             font-family: 'Sarabun', Arial, sans-serif;
-                            font-size: 13px;
+                            font-size: 18px;
                             color: #000;
                         }
                         .table-sm th, .table-sm td {
