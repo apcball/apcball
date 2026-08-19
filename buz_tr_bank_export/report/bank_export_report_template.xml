@@ -33,6 +33,16 @@
                                 border-right: 1px solid black;
                                 padding: 4px;
                             }
+                            .be-table thead tr {
+                                border-bottom: 1px solid black;
+                            }
+                            .be-table .summary-rows td {
+                                padding: 1px 4px;
+                                line-height: 1.1;
+                            }
+                            .summary-table {
+                                table-layout: fixed;
+                            }
                             .be-table th {
                                 text-align: center;
                                 font-weight: normal;
@@ -58,6 +68,10 @@
                             }
                         </style>
 
+                        <t t-set="idx" t-value="1"/>
+                        <t t-set="line_pages" t-value="o.get_line_pages(20)"/>
+                        <t t-foreach="line_pages" t-as="line_page">
+                            <div t-att-style="'page-break-after: always;' if not line_page['is_last'] else ''">
                         <div class="row">
                             <div class="col-4">
                                 <h1 style="font-weight: normal; margin: 0; padding-top: 0;">MOGEN</h1>
@@ -113,10 +127,7 @@
                             <span>Terms of payment: <span t-field="o.terms_of_payment"/></span>
                         </div>
                         
-                                                                                <t t-set="idx" t-value="1"/>
-                            <t t-set="line_pages" t-value="o.get_line_pages(20)"/>
-                            <t t-foreach="line_pages" t-as="line_page">
-                                <div t-att-style="'page-break-after: always;' if not line_page['is_last'] else ''">
+
                                     <table class="be-table" style="font-size: 16px;">
                                         <thead style="display: table-header-group;">
                                             <tr>
@@ -144,12 +155,23 @@
                                                 </tr>
                                                 <t t-set="idx" t-value="idx + 1"/>
                                             </t>
+                                            <t t-if="len(line_page['lines']) &lt; 20">
+                                                <t t-foreach="range(len(line_page['lines']), 20)" t-as="pad">
+                                                    <tr>
+                                                        <td>&#160;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                                                    </tr>
+                                                </t>
+                                            </t>
                                         </tbody>
                                     </table>
-                                </div>
-                            </t>
+                            </div>
+                        </t>
 
-                            <table class="be-table" style="font-size: 16px;">
+                            <table class="be-table summary-table" style="font-size: 16px;">
+                                <colgroup>
+                                    <col style="width: 5%;"/><col style="width: 10%;"/><col style="width: 12%;"/><col style="width: 12%;"/>
+                                    <col style="width: 15%;"/><col style="width: 16%;"/><col style="width: 15%;"/><col style="width: 15%;"/>
+                                </colgroup>
                                 <tbody class="summary-rows">
                                     <tr>
                                         <td colspan="6" style="border-right: none; border-bottom: none;"></td>

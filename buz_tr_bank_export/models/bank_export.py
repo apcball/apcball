@@ -49,6 +49,8 @@ class BuzTrBankExport(models.Model):
         """Return ordered export lines in fixed-size report pages."""
         self.ensure_one()
         lines = self.line_ids.sorted(key=lambda line: (line.sequence, line.id))
+        if not lines:
+            return [{'lines': lines, 'is_last': True}]
         return [
             {
                 'lines': lines[index:index + page_size],
