@@ -43,6 +43,7 @@
                             .summary-table {
                                 table-layout: fixed;
                                 margin-top: -10px;
+                                border-top: none;
                             }
                             .be-table th {
                                 text-align: center;
