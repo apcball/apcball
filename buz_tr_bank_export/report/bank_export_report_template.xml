@@ -4,8 +4,21 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.basic_layout">
-                    <div class="page" style="font-size: 14px; font-family: 'Sarabun', 'Arial', sans-serif;">
+                    <div class="page" style="font-size: 14px; font-family: 'Sarabun', sans-serif;">
                         <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_tr_bank_export/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                font-weight: 400;
+                                font-style: normal;
+                            }
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_tr_bank_export/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: 700;
+                                font-style: normal;
+                            }
+
                             .be-table {
                                 width: 100%;
                                 border-collapse: collapse;
@@ -51,12 +64,12 @@
                         </div>
                         
                         <div class="row" style="margin-bottom: 5px;">
-                            <div class="col-12 text-end">
+                            <div class="col-12 text-end" style="font-size: 16px;">
                                 <span>Issued Date : <span t-esc="datetime.datetime.now().strftime('%d/%m/%Y')"/></span>
                             </div>
                         </div>
                         
-                        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0;">
+                        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0; font-size: 16px;">
                             <table class="header-table">
                                 <tr>
                                     <td style="width: 15%; text-align: right;">Transfer date:</td>
@@ -91,11 +104,11 @@
                             </table>
                         </div>
                         
-                        <div style="padding: 5px 0;">
+                        <div style="padding: 5px 0; font-size: 16px;">
                             <span>Terms of payment: <span t-field="o.terms_of_payment"/></span>
                         </div>
                         
-                        <table class="be-table">
+                        <table class="be-table" style="font-size: 16px;">
                             <thead>
                                 <tr>
                                     <th style="width: 5%;">No.</th>
@@ -150,15 +163,15 @@
                             </tbody>
                         </table>
                         
-                        <div style="margin-top: 10px;">
+                        <div style="margin-top: 10px; font-size: 16px;">
                             <span>Say: <span t-field="o.amount_text"/></span>
                         </div>
                         
-                        <div style="margin-top: 10px;">
+                        <div style="margin-top: 10px; font-size: 16px;">
                             <span>Remark: <span t-field="o.remark"/></span>
                         </div>
                         
-                        <table class="signature-table">
+                        <table class="signature-table" style="font-size: 16px;">
                             <tr>
                                 <td style="width: 25%; text-align: right;">Issued By:</td>
                                 <td style="width: 45%;"><span class="underline"></span></td>
@@ -186,7 +199,7 @@
                             </tr>
                         </table>
                         
-                        <div class="row" style="margin-top: 30px; font-size: 10px;">
+                        <div class="row" style="margin-top: 30px; font-size: 16px;">
                             <div class="col-6">
                                 <span>อนุมัติใช้วันที่ 01/04/2561</span>
                             </div>
