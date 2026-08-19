@@ -42,6 +42,7 @@
                             }
                             .summary-table {
                                 table-layout: fixed;
+                                margin-top: -10px;
                             }
                             .be-table th {
                                 text-align: center;
@@ -179,9 +180,9 @@
                                         <td class="text-end" style="border-bottom: none;"><span t-esc="o.total_amount" t-options='{"widget": "float", "precision": 2}'/></td>
                                     </tr>
                                     <tr>
-                                        <td colspan="6" style="border-right: none; border-top: none;"></td>
-                                        <td class="text-end" style="border-left: none; border-top: none;">Add/Reduce</td>
-                                        <td class="text-end" style="border-top: none;"><span t-esc="o.add_reduce_amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                        <td colspan="6" style="border-right: none; border-top: none; border-bottom: 1px solid black;"></td>
+                                        <td class="text-end" style="border-left: none; border-top: none; border-bottom: 1px solid black;">Add/Reduce</td>
+                                        <td class="text-end" style="border-top: none; border-bottom: 1px solid black;"><span t-esc="o.add_reduce_amount" t-options='{"widget": "float", "precision": 2}'/></td>
                                     </tr>
                                     <tr>
                                         <td colspan="6" style="border-right: none;"></td>
