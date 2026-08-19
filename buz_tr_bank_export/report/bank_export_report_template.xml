@@ -60,9 +60,9 @@
 
                         <div class="row">
                             <div class="col-4">
-                                <h1 style="font-weight: normal; margin: 0; padding-top: 10px;">MOGEN</h1>
+                                <h1 style="font-weight: normal; margin: 0; padding-top: 0;">MOGEN</h1>
                             </div>
-                            <div class="col-8 text-center" style="padding-top: 10px;">
+                            <div class="col-8 text-center" style="padding-top: 0;">
                                 <h4 style="margin: 0; font-weight: normal;">Document of transfer money abroad</h4>
                                 <h4 style="margin: 0; font-weight: normal;">เอกสารแนบการโอนเงินต่างประเทศ</h4>
                             </div>
