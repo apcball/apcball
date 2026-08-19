@@ -5,14 +5,12 @@
         <field name="name">mrp.unbuild.component.line.tree</field>
         <field name="model">mrp.unbuild.component.line</field>
         <field name="arch" type="xml">
-            <tree decoration-muted="not receive"
-                  decoration-danger="scrap_qty &gt; quantity">
+            <tree decoration-muted="not receive">
                 <field name="unbuild_id"/>
                 <field name="product_id"/>
                 <field name="quantity"/>
                 <field name="product_uom_id" groups="uom.group_uom"/>
                 <field name="receive" widget="boolean_toggle"/>
-                <field name="scrap_qty"/>
                 <field name="cost_share" optional="show"/>
                 <field name="destination_location_id"/>
                 <field name="lot_id" optional="show"/>
@@ -54,6 +52,13 @@
                         invisible="scrap_count == 0">
                     <field name="scrap_count" widget="statinfo" string="Scraps"/>
                 </button>
+                <button class="oe_stat_button" name="action_view_unbuild_overview"
+                        type="object" icon="fa-bars"
+                        invisible="state != 'done'">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Overview</span>
+                    </div>
+                </button>
             </xpath>
 
             <!-- Components notebook page -->
@@ -63,8 +68,7 @@
                         <field name="component_line_ids"
                                readonly="state != 'draft'">
                             <tree editable="bottom"
-                                  decoration-muted="not receive"
-                                  decoration-danger="scrap_qty &gt; quantity">
+                                  decoration-muted="not receive">
                                 <field name="sequence" widget="handle"/>
                                 <field name="is_unbuild_manager" column_invisible="1"/>
                                 <field name="state" column_invisible="1"/>
@@ -82,9 +86,6 @@
                                        readonly="1" force_save="1"
                                        options="{'no_open': True, 'no_create': True}"/>
                                 <field name="receive" widget="boolean_toggle"/>
-                                <field name="scrap_qty"
-                                       readonly="not is_unbuild_manager"
-                                       force_save="1"/>
                                 <field name="cost_share"
                                        readonly="not is_unbuild_manager"
                                        force_save="1"/>
@@ -115,8 +116,6 @@
             <filter name="done" position="after">
                 <filter name="partial_return" string="Partial Return"
                         domain="[('component_line_ids.receive', '=', False)]"/>
-                <filter name="has_scrap" string="Has Scrap"
-                        domain="[('component_line_ids.scrap_qty', '&gt;', 0)]"/>
             </filter>
         </field>
     </record>

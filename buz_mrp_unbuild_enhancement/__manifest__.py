@@ -39,6 +39,7 @@ Enhance Manufacturing Unbuild Orders for real manufacturing environments:
         'security/ir.model.access.csv',
         'views/mrp_bom_views.xml',
         'views/mrp_unbuild_views.xml',
+        'report/unbuild_overview_report.xml',
     ],
     'installable': True,
     'application': False,
