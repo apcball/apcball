@@ -45,6 +45,20 @@ class BuzTrBankExport(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('buz.tr.bank.export') or _('New')
         return super().create(vals_list)
 
+    def get_line_groups(self):
+        """Group contiguous lines by the latest non-empty Lot No."""
+        self.ensure_one()
+        groups = []
+        current_lot = ''
+        empty_lines = self.env['buz.tr.bank.export.line']
+        lines = self.line_ids.sorted(key=lambda line: (line.sequence, line.id))
+        for line in lines:
+            if line.lot_no:
+                current_lot = line.lot_no
+            if not groups or groups[-1][0] != current_lot:
+                groups.append([current_lot, empty_lines])
+            groups[-1][1] |= line
+        return [(lot_no, grouped_lines) for lot_no, grouped_lines in groups]
     @api.depends('line_ids.transfer_amount', 'add_reduce_amount')
     def _compute_totals(self):
         for record in self:
