@@ -45,6 +45,18 @@ class BuzTrBankExport(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('buz.tr.bank.export') or _('New')
         return super().create(vals_list)
 
+    def get_line_pages(self, page_size=20):
+        """Return ordered export lines in fixed-size report pages."""
+        self.ensure_one()
+        lines = self.line_ids.sorted(key=lambda line: (line.sequence, line.id))
+        return [
+            {
+                'lines': lines[index:index + page_size],
+                'is_last': index + page_size >= len(lines),
+            }
+            for index in range(0, len(lines), page_size)
+        ]
+
     def get_line_groups(self):
         """Group contiguous lines by the latest non-empty Lot No."""
         self.ensure_one()

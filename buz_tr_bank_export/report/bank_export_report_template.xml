@@ -49,7 +49,7 @@
                                 margin-top: 20px;
                             }
                             .signature-table td {
-                                padding: 4px 5px;
+                                padding: 6px 5px;
                             }
                             .underline {
                                 border-bottom: 1px solid black;
@@ -113,47 +113,44 @@
                             <span>Terms of payment: <span t-field="o.terms_of_payment"/></span>
                         </div>
                         
-                                                    <t t-set="idx" t-value="1"/>
-                            <table class="be-table" style="font-size: 16px;">
-                                <thead style="display: table-header-group;">
-                                    <tr>
-                                        <th style="width: 5%;">No.</th>
-                                        <th style="width: 10%;">Lot No.</th>
-                                        <th style="width: 12%;">Import date</th>
-                                        <th style="width: 12%;">ETDDATE</th>
-                                        <th style="width: 15%;">PO No.</th>
-                                        <th style="width: 16%;">Ref.No.</th>
-                                        <th style="width: 15%; text-align: right;">PO Amount</th>
-                                        <th style="width: 15%; text-align: right;">Transfer Amount</th>
-                                    </tr>
-                                </thead>
-                                <t t-foreach="o.get_line_groups()" t-as="lot_group">
-                                    <tbody class="lot-group" style="page-break-inside: avoid; break-inside: avoid;">
-                                        <t t-set="lot_first_row" t-value="True"/>
-                                        <t t-foreach="lot_group[1]" t-as="line">
-                                            <tr t-att-class="'lot-start' if lot_first_row else ''">
-                                                <td class="text-center"><span t-esc="idx"/></td>
-                                                <td><span t-field="line.lot_no"/></td>
-                                                <td><span t-field="line.import_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
-                                                <td><span t-field="line.etd_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
-                                                <td><span t-field="line.purchase_id.name"/></td>
-                                                <td><span t-field="line.po_ref"/></td>
-                                                <td class="text-end"><span t-esc="line.po_amount" t-options='{"widget": "float", "precision": 2}'/></td>
-                                                <td class="text-end"><span t-esc="line.transfer_amount" t-options='{"widget": "float", "precision": 2}'/></td>
-                                            </tr>
-                                            <t t-if="lot_first_row"><t t-set="lot_first_row" t-value="False"/></t>
-                                            <t t-set="idx" t-value="idx + 1"/>
-                                        </t>
-                                    </tbody>
-                                </t>
-                                <tbody class="summary-rows">
-                                    <t t-if="idx &lt; 10">
-                                        <t t-foreach="range(idx, 10)" t-as="pad">
+                                                                                <t t-set="idx" t-value="1"/>
+                            <t t-set="line_pages" t-value="o.get_line_pages(20)"/>
+                            <t t-foreach="line_pages" t-as="line_page">
+                                <div t-att-style="'page-break-after: always;' if not line_page['is_last'] else ''">
+                                    <table class="be-table" style="font-size: 16px;">
+                                        <thead style="display: table-header-group;">
                                             <tr>
-                                                <td>&#160;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                                                <th style="width: 5%;">No.</th>
+                                                <th style="width: 10%;">Lot No.</th>
+                                                <th style="width: 12%;">Import date</th>
+                                                <th style="width: 12%;">ETDDATE</th>
+                                                <th style="width: 15%;">PO No.</th>
+                                                <th style="width: 16%;">Ref.No.</th>
+                                                <th style="width: 15%; text-align: right;">PO Amount</th>
+                                                <th style="width: 15%; text-align: right;">Transfer Amount</th>
                                             </tr>
-                                        </t>
-                                    </t>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="line_page['lines']" t-as="line">
+                                                <tr t-att-class="'lot-start' if line.lot_no else ''">
+                                                    <td class="text-center"><span t-esc="idx"/></td>
+                                                    <td><span t-field="line.lot_no"/></td>
+                                                    <td><span t-field="line.import_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
+                                                    <td><span t-field="line.etd_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
+                                                    <td><span t-field="line.purchase_id.name"/></td>
+                                                    <td><span t-field="line.po_ref"/></td>
+                                                    <td class="text-end"><span t-esc="line.po_amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                                    <td class="text-end"><span t-esc="line.transfer_amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                                </tr>
+                                                <t t-set="idx" t-value="idx + 1"/>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </t>
+
+                            <table class="be-table" style="font-size: 16px;">
+                                <tbody class="summary-rows">
                                     <tr>
                                         <td colspan="6" style="border-right: none; border-bottom: none;"></td>
                                         <td class="text-end" style="border-left: none; border-bottom: none;">Total</td>
@@ -208,7 +205,7 @@
                             </tr>
                         </table>
                         
-                        <div class="row" style="margin-top: 30px; font-size: 16px;">
+                        <div class="row" style="margin-top: 10px; font-size: 16px;">
                             <div class="col-6">
                                 <span>อนุมัติใช้วันที่ 01/04/2561</span>
                             </div>
