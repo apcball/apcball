@@ -59,7 +59,7 @@
                                 margin-top: 20px;
                             }
                             .signature-table td {
-                                padding: 6px 5px;
+                                padding: 10px 5px;
                             }
                             .underline {
                                 border-bottom: 1px solid black;
@@ -227,7 +227,7 @@
                             </tr>
                         </table>
                         
-                        <div class="row" style="margin-top: 30px; font-size: 16px;">
+                        <div class="row" style="margin-top: 15px; font-size: 16px;">
                             <div class="col-6">
                                 <span>อนุมัติใช้วันที่ 01/04/2561</span>
                             </div>
