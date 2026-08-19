@@ -61,11 +61,11 @@ class ServiceClaimXlsx(models.AbstractModel):
 
         headers = [
             'เลขที่ใบขอ', 'เลขที่ใบแจ้ง', 'ลูกค้า',
-            'วันที่เบิก', 'เลขที่เอกสารเบิก', 'สินค้า (เบิก)', 'จำนวน (เบิก)',
-            'วันที่คืน', 'เลขที่เอกสารคืน', 'สินค้า (คืน)', 'จำนวน (คืน)',
+            'วันที่เบิก', 'เลขที่เอกสารเบิก', 'รหัสสินค้า (เบิก)', 'ชื่อสินค้า (เบิก)', 'จำนวน (เบิก)',
+            'วันที่คืน', 'เลขที่เอกสารคืน', 'รหัสสินค้า (คืน)', 'ชื่อสินค้า (คืน)', 'จำนวน (คืน)',
             'คงเหลือ', 'ผู้ทำรายการ', 'สถานะ',
         ]
-        widths = [16, 16, 24, 14, 18, 28, 12, 14, 18, 28, 12, 12, 20, 16]
+        widths = [16, 16, 24, 14, 18, 14, 22, 12, 14, 18, 14, 22, 12, 12, 20, 16]
         for col, width in enumerate(widths):
             sheet.set_column(col, col, width)
 
@@ -104,16 +104,18 @@ class ServiceClaimXlsx(models.AbstractModel):
                 else:
                     sheet.write(row, 3, '')
                 sheet.write(row, 4, claim.replacement_picking_id.name or '')
-                sheet.write(row, 5, line.replacement_product_id.display_name or '')
-                sheet.write(row, 6, line.replacement_qty or 0.0, number)
+                sheet.write(row, 5, line.replacement_product_id.default_code or '')
+                sheet.write(row, 6, line.replacement_product_id.name or '')
+                sheet.write(row, 7, line.replacement_qty or 0.0, number)
                 if return_date:
-                    sheet.write(row, 7, return_date, date_format)
+                    sheet.write(row, 8, return_date, date_format)
                 else:
-                    sheet.write(row, 7, '')
-                sheet.write(row, 8, claim.return_picking_id.name or '')
-                sheet.write(row, 9, line.product_id.display_name or '')
-                sheet.write(row, 10, line.quantity or 0.0, number)
-                sheet.write(row, 11, remaining, number)
-                sheet.write(row, 12, requester)
-                sheet.write(row, 13, self._get_state_label(claim))
+                    sheet.write(row, 8, '')
+                sheet.write(row, 9, claim.return_picking_id.name or '')
+                sheet.write(row, 10, line.product_id.default_code or '')
+                sheet.write(row, 11, line.product_id.name or '')
+                sheet.write(row, 12, line.quantity or 0.0, number)
+                sheet.write(row, 13, remaining, number)
+                sheet.write(row, 14, requester)
+                sheet.write(row, 15, self._get_state_label(claim))
                 row += 1
