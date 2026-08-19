@@ -453,7 +453,4 @@ class MrpUnbuild(models.Model):
                 'total_value': sum(
                     role_moves.mapped('unbuild_valuation_value')),
             })
-        return {
-            'sections': sections,
-            'grand_total_value': sum(moves.mapped('unbuild_valuation_value')),
-        }
+        return {'sections': sections}
