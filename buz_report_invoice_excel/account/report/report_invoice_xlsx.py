@@ -39,6 +39,15 @@ class ReportInvoiceExcel(models.AbstractModel):
                 sale_lines = line.sale_line_ids
                 sale_order = sale_lines[0].order_id if sale_lines else self.env["sale.order"]
 
+                pos_line = getattr(line, "pos_lite_order_line_id", False)
+                pos_order = pos_line.order_id if pos_line else self.env["pos.lite.order"]
+                # Fallback: if no pos_line link, check if invoice itself is from a POS order
+                if not pos_order and invoice.id:
+                    pos_order_search = self.env["pos.lite.order"].search(
+                        [("invoice_id", "=", invoice.id)], limit=1
+                    )
+                    pos_order = pos_order_search if pos_order_search else self.env["pos.lite.order"]
+
                 pickings = self.env["stock.picking"]
                 has_bom_line = False
                 parent_bom_text = ""
@@ -65,31 +74,69 @@ class ReportInvoiceExcel(models.AbstractModel):
 
                 uom = line.product_uom_id or (product.uom_id if product else self.env["uom.uom"])
 
-                # Extract purchase price / margin from first linked sale order line
-                sale_line = sale_lines[:1] if sale_lines else self.env["sale.order.line"]
-                purchase_price = sale_line.purchase_price if sale_line else 0.0
-                margin_percent = sale_line.margin_percent if sale_line else 0.0
-                margin = sale_line.margin if sale_line else 0.0
+                # Extract purchase price / margin from first linked sale order line or POS line
+                if sale_lines:
+                    sale_line = sale_lines[:1]
+                    purchase_price = sale_line.purchase_price
+                    margin_percent = sale_line.margin_percent
+                    margin = sale_line.margin
+                elif pos_line:
+                    purchase_price = pos_line.standard_cost_price or 0.0
+                    margin = pos_line.margin or 0.0
+                    margin_percent = (pos_line.margin / pos_line.price_subtotal) if pos_line.price_subtotal else 0.0
+                else:
+                    purchase_price = 0.0
+                    margin_percent = 0.0
+                    margin = 0.0
+
+                # Determine sales reference (sale.order or pos.lite.order)
+                if sale_order:
+                    ref_order = sale_order
+                    ref_is_sale = True
+                elif pos_order:
+                    ref_order = pos_order
+                    ref_is_sale = False
+                else:
+                    ref_order = self.env["sale.order"]
+                    ref_is_sale = True
+
+                # Add picking from POS order if applicable
+                if pos_order and pos_order.picking_id:
+                    pickings |= pos_order.picking_id
+
+                # Build row with fallback logic
+                so_ref = ""
+                salesperson = self._safe_text(invoice.invoice_user_id.name)
+                sale_team = self._safe_text(invoice.team_id.name)
+                shipping_address = ""
+                if ref_is_sale and ref_order:
+                    so_ref = self._safe_text(ref_order.client_order_ref)
+                    shipping_address = self._safe_text(ref_order.partner_shipping_id.contact_address)
+                elif not ref_is_sale and ref_order:
+                    so_ref = self._safe_text(ref_order.name)
+                    sale_team = self._safe_text(ref_order.location_id.display_name or sale_team)
+                    shipping_address = self._safe_text(
+                        ref_order.partner_shipping_id.contact_address if ref_order.partner_shipping_id else ""
+                    )
 
                 rows.append({
                     "sequence": sequence,
                     "date": self._format_date(invoice.invoice_date),
                     "iv_number": self._safe_text(invoice.name),
                     "sale_order": self._safe_text(sale_order.name) if sale_order else "",
+                    "pos_order": self._safe_text(pos_order.name) if pos_order else "",
                     "dp_no": ", ".join(filter(None, pickings.mapped("name"))),
                     "dispatch_doc": ", ".join(filter(None, pickings.mapped("buz_dispatch_document_name"))),
                     "partner_code": self._safe_text(
-                        sale_order.partner_id.partner_code
-                    ) if sale_order else self._safe_text(invoice.partner_id.partner_code),
+                        ref_order.partner_id.partner_code if ref_order else invoice.partner_id.partner_code
+                    ),
                     "customer": self._safe_text(
-                        sale_order.partner_id.name
-                    ) if sale_order else self._safe_text(invoice.partner_id.name),
-                    "salesperson": self._safe_text(sale_order.user_id.name) if sale_order else "",
-                    "sale_team": self._safe_text(sale_order.team_id.name) if sale_order else "",
-                    "so_ref": self._safe_text(sale_order.client_order_ref) if sale_order else "",
-                    "shipping_address": self._safe_text(
-                        sale_order.partner_shipping_id.contact_address
-                    ) if sale_order else "",
+                        ref_order.partner_id.name if ref_order else invoice.partner_id.name
+                    ),
+                    "salesperson": salesperson,
+                    "sale_team": sale_team,
+                    "so_ref": so_ref,
+                    "shipping_address": shipping_address,
                     "parent_bom": self._safe_text(parent_bom_text),
                     "product_code": self._safe_text(product.default_code) if product else "",
                     "description": self._safe_text(
@@ -217,31 +264,41 @@ class ReportInvoiceExcel(models.AbstractModel):
             }
         )
 
+        show_cost = self.env.user.has_group(
+            "buz_report_invoice_excel.group_invoice_report_manager"
+        )
+
         columns = [
-            ("No.", 8),
-            ("Date", 14),
-            ("IV number", 18),
-            ("SALE ORDER", 16),
-            ("Picking Doc", 18),
-            ("Dispatch Doc", 18),
-            ("Partner Code", 16),
-            ("Customer", 24),
-            ("Salesperson", 18),
-            ("Sale Team", 18),
-            ("SO.ref No.", 18),
-            ("Shipping Address", 30),
-            ("Parent BOM", 34),
-            ("Product Code", 16),
-            ("Description", 34),
-            ("Quantity", 12),
-            ("UoM", 10),
-            ("Unit Price", 14),
-            ("Cost", 14),
-            ("Margin %", 12),
-            ("Margin", 14),
-            ("SUM", 14),
-            ("Note", 24),
-            ("Trade Channel", 16),
+            ("No.", 8, "sequence", center_format, False),
+            ("Date", 14, "date", center_format, False),
+            ("IV number", 18, "iv_number", text_format, False),
+            ("SALE ORDER", 16, "sale_order", text_format, False),
+            ("POS Order", 16, "pos_order", text_format, False),
+            ("Picking Doc", 18, "dp_no", text_format, False),
+            ("Dispatch Doc", 18, "dispatch_doc", text_format, False),
+            ("Partner Code", 16, "partner_code", text_format, False),
+            ("Customer", 24, "customer", text_format, False),
+            ("Salesperson", 18, "salesperson", text_format, False),
+            ("Sale Team", 18, "sale_team", text_format, False),
+            ("SO.ref No.", 18, "so_ref", text_format, False),
+            ("Shipping Address", 30, "shipping_address", text_format, False),
+            ("Parent BOM", 34, "parent_bom", text_format, False),
+            ("Product Code", 16, "product_code", text_format, False),
+            ("Description", 34, "description", text_format, False),
+            ("Quantity", 12, "quantity", number_format, True),
+            ("UoM", 10, "uom", center_format, False),
+            ("Unit Price", 14, "unit_price", number_format, True),
+        ]
+        if show_cost:
+            columns += [
+                ("Cost", 14, "purchase_price", number_format, True),
+                ("Margin %", 12, "margin_percent", percent_format, True),
+                ("Margin", 14, "margin", number_format, True),
+            ]
+        columns += [
+            ("SUM", 14, "sum_amount", number_format, True),
+            ("Note", 24, "note", text_format, False),
+            ("Trade Channel", 16, "trade_channel", text_format, False),
         ]
 
         sheet = workbook.add_worksheet("Invoice Report")
@@ -253,40 +310,22 @@ class ReportInvoiceExcel(models.AbstractModel):
         sheet.set_row(0, 28)
         sheet.set_row(1, 24)
 
-        for index, (_, width) in enumerate(columns):
-            sheet.set_column(index, index, width)
+        for index, col in enumerate(columns):
+            sheet.set_column(index, index, col[1])
 
         last_col = len(columns) - 1
         sheet.merge_range(0, 0, 0, last_col, "รายงาน Invoice", title_format)
-        for col, (label, _) in enumerate(columns):
-            sheet.write(1, col, label, header_format)
+        for col, entry in enumerate(columns):
+            sheet.write(1, col, entry[0], header_format)
 
         row_idx = 2
         for row in rows:
-            sheet.write(row_idx, 0, row["sequence"], center_format)
-            sheet.write(row_idx, 1, row["date"], center_format)
-            sheet.write(row_idx, 2, row["iv_number"], text_format)
-            sheet.write(row_idx, 3, row["sale_order"], text_format)
-            sheet.write(row_idx, 4, row["dp_no"], text_format)
-            sheet.write(row_idx, 5, row["dispatch_doc"], text_format)
-            sheet.write(row_idx, 6, row["partner_code"], text_format)
-            sheet.write(row_idx, 7, row["customer"], text_format)
-            sheet.write(row_idx, 8, row["salesperson"], text_format)
-            sheet.write(row_idx, 9, row["sale_team"], text_format)
-            sheet.write(row_idx, 10, row["so_ref"], text_format)
-            sheet.write(row_idx, 11, row["shipping_address"], text_format)
-            sheet.write(row_idx, 12, row["parent_bom"], text_format)
-            sheet.write(row_idx, 13, row["product_code"], text_format)
-            sheet.write(row_idx, 14, row["description"], text_format)
-            sheet.write_number(row_idx, 15, row["quantity"] or 0.0, number_format)
-            sheet.write(row_idx, 16, row["uom"], center_format)
-            sheet.write_number(row_idx, 17, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 18, row["purchase_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 19, row["margin_percent"] or 0.0, percent_format)
-            sheet.write_number(row_idx, 20, row["margin"] or 0.0, number_format)
-            sheet.write_number(row_idx, 21, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 22, row["note"], text_format)
-            sheet.write(row_idx, 23, row["trade_channel"], text_format)
+            for col, (_label, _width, key, fmt, is_num) in enumerate(columns):
+                value = row.get(key, "")
+                if is_num:
+                    sheet.write_number(row_idx, col, value or 0.0, fmt)
+                else:
+                    sheet.write(row_idx, col, value, fmt)
             row_idx += 1
 
         if not rows:
