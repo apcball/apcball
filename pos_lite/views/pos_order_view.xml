@@ -15,14 +15,14 @@
                 <field name="warehouse_id"/>
                 <field name="location_id" optional="show"/>
                 <field name="amount_total" sum="Total" widget="monetary"/>
-                <field name="amount_paid" sum="Paid" widget="monetary"/>
+                <field name="amount_paid" sum="Paid" widget="monetary" optional="hide"/>
                 <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0"/>
-                <field name="margin" sum="Margin" widget="monetary"/>
+                <field name="margin" sum="Margin" widget="monetary" optional="hide"/>
                 <field name="return_status" widget="badge" decoration-danger="return_status == 'Return'" decoration-success="return_status == 'Sale'" optional="show"/>
-                <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="show"/>
+                <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="hide"/>
                 <field name="return_of_order_id" optional="hide"/>
-                <field name="return_count" invisible="1"/>
-                <field name="invoice_id" optional="hide"/>
+                <field name="return_count" invisible="1" optional="hide"/>
+                <field name="invoice_id" optional="show"/>
                 <field name="picking_id" optional="hide"/>
                 <field name="session_id" optional="hide"/>
                 <field name="employee_id" optional="hide" string="Employee"/>
@@ -36,6 +36,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
+                 <field name="invoice_id"/>
                 <field name="partner_id" context="{'pos_lite_partner_search': 1}"/>
                 <field name="partner_phone"/>
                 <field name="warehouse_id"/>
