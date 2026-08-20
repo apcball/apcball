@@ -25,20 +25,32 @@
                 </FileInput>
             </div>
         </div>
-        <div t-if="previewState.file" class="modal d-block" role="dialog" aria-modal="true" t-on-click="closePreview">
+        <div t-if="previewState.file" class="modal d-block o_buz_attachment_preview_modal" role="dialog" aria-modal="true" t-on-click="closePreview">
             <div class="modal-dialog modal-xl modal-dialog-centered" t-on-click.stop="">
                 <div class="modal-content bg-dark text-white">
                     <div class="modal-header border-secondary">
-                        <h5 class="modal-title"><t t-esc="previewState.file.name"/></h5>
+                        <h5 class="modal-title text-truncate"><t t-esc="getFileName(previewState.file)"/></h5>
                         <button type="button" class="btn-close btn-close-white" aria-label="Close" t-on-click="closePreview"/>
                     </div>
-                    <div class="modal-body text-center overflow-auto" style="max-height: 75vh;">
-                        <img class="img-fluid" alt="Preview" t-att-src="getPreviewUrl(previewState.file)" t-att-style="'max-height: 70vh; transform: scale(' + previewState.zoom + '); transform-origin: center; transition: transform 0.2s ease;'"/>
+                    <div t-attf-class="modal-body o_buz_attachment_preview_body {{previewState.zoom &gt; 1 ? 'is-pannable' : ''}} {{previewState.dragging ? 'is-dragging' : ''}}"
+                         t-ref="previewViewport"
+                         t-on-wheel.stop.prevent="onPreviewWheel"
+                         t-on-pointerdown="onPreviewPointerDown"
+                         t-on-pointermove="onPreviewPointerMove"
+                         t-on-pointerup="onPreviewPointerUp"
+                         t-on-pointercancel="onPreviewPointerUp">
+                        <div class="o_buz_attachment_preview_canvas">
+                            <img class="o_buz_attachment_preview_image" alt="Preview" draggable="false"
+                                 t-ref="previewImage" t-att-src="getPreviewUrl(previewState.file)"
+                                 t-att-style="'transform: ' + getImageTransform() + ';'"
+                                 t-on-load="onPreviewImageLoad"/>
+                        </div>
                     </div>
                     <div class="modal-footer border-secondary justify-content-center">
-                        <button type="button" class="btn btn-light" aria-label="Zoom out" t-on-click="zoomOut">-</button>
-                        <button type="button" class="btn btn-light" t-on-click="resetZoom">100%</button>
-                        <button type="button" class="btn btn-light" aria-label="Zoom in" t-on-click="zoomIn">+</button>
+                        <span class="o_buz_attachment_preview_hint">Scroll / Ctrl+Scroll: Zoom · Drag: Pan</span>
+                        <button type="button" class="btn btn-light" title="Zoom out (-)" aria-label="Zoom out" t-on-click="zoomOut" t-att-disabled="previewState.zoom &lt;= 0.5">-</button>
+                        <button type="button" class="btn btn-light o_buz_attachment_zoom_value" title="Reset zoom (0)" aria-label="Reset zoom" t-on-click="resetZoom"><t t-esc="Math.round(previewState.zoom * 100)"/>%</button>
+                        <button type="button" class="btn btn-light" title="Zoom in (+)" aria-label="Zoom in" t-on-click="zoomIn" t-att-disabled="previewState.zoom &gt;= 4">+</button>
                         <button type="button" class="btn btn-secondary" t-on-click="closePreview">Close</button>
                     </div>
                 </div>

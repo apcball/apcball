@@ -22,6 +22,8 @@
     }
 
     .o_image_box {
+        background: transparent;
+        border: 0;
         flex: 0 0 3rem;
         height: 3rem;
         overflow: hidden;
@@ -29,7 +31,8 @@
     }
 
     .o_image {
-        background-color: #fff;
+        background-color: transparent;
+        border: 0;
         border-radius: 0.375rem;
         display: block;
         height: 3rem;
@@ -53,6 +56,118 @@
         .badge {
             margin-left: 0 !important;
             margin-top: 0.25rem;
+        }
+    }
+}
+
+.o_buz_attachment_preview_modal {
+    background: rgba(0, 0, 0, 0.55);
+    padding: 1.5rem;
+
+    .modal-dialog {
+        height: 82vh;
+        margin: 0 auto;
+        max-width: 72rem;
+        width: calc(100vw - 3rem);
+    }
+
+    .modal-content {
+        height: 100%;
+        min-height: 0;
+    }
+
+    .modal-header,
+    .modal-footer {
+        flex: 0 0 auto;
+    }
+
+    .modal-title {
+        min-width: 0;
+    }
+
+    .o_buz_attachment_preview_body {
+        cursor: default;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0.75rem;
+        touch-action: none;
+        user-select: none;
+
+        &.is-pannable {
+            cursor: grab;
+        }
+
+        &.is-dragging {
+            cursor: grabbing;
+        }
+    }
+
+    .o_buz_attachment_preview_canvas {
+        align-items: center;
+        display: flex;
+        height: 100%;
+        justify-content: center;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .o_buz_attachment_preview_image {
+        background: #fff;
+        display: block;
+        max-height: calc(100% - 1rem);
+        max-width: calc(100% - 1rem);
+        object-fit: contain;
+        pointer-events: none;
+        transform-origin: center;
+        transition: transform 100ms ease-out;
+        will-change: transform;
+    }
+
+    .o_buz_attachment_preview_hint {
+        color: #adb5bd;
+        font-size: 0.75rem;
+        margin-right: 0.5rem;
+    }
+
+    .o_buz_attachment_zoom_value {
+        min-width: 4rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .o_buz_attachment_preview_modal {
+        padding: 0.75rem;
+
+        .modal-dialog {
+            height: 88vh;
+            width: calc(100vw - 1.5rem);
+        }
+
+        .o_buz_attachment_preview_hint {
+            display: none;
+        }
+    }
+}
+
+@media (max-width: 575.98px) {
+    .o_buz_attachment_preview_modal {
+        padding: 0;
+
+        .modal-dialog {
+            height: 100vh;
+            max-width: none;
+            width: 100vw;
+        }
+
+        .modal-footer {
+            gap: 0.25rem;
+            padding: 0.5rem;
+        }
+
+        .modal-footer .btn {
+            flex: 1 1 auto;
+            min-height: 2.5rem;
         }
     }
 }
