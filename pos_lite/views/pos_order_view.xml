@@ -16,7 +16,7 @@
                 <field name="location_id" optional="show"/>
                 <field name="amount_total" sum="Total" widget="monetary"/>
                 <field name="amount_paid" sum="Paid" widget="monetary" optional="hide"/>
-                <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0"/>
+                <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0" optional="hide"/>
                 <field name="margin" sum="Margin" widget="monetary" optional="hide"/>
                 <field name="return_status" widget="badge" decoration-danger="return_status == 'Return'" decoration-success="return_status == 'Sale'" optional="show"/>
                 <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="hide"/>
