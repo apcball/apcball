@@ -7,7 +7,7 @@
                     <div name="attachment" t-attf-class="o_attachment o_attachment_many2many {{!props.readonly ? 'o_attachment_editable' : ''}}">
                         <div class="o_attachment_wrap">
                             <div class="o_image_box float-start" role="button" tabindex="0" t-att-title="getFileName(file)" t-on-click="() => this.openPreview(file)" t-on-keydown="(event) => this.onPreviewKeydown(event, file)">
-                                <img t-if="isImage(file) &amp;&amp; file.id" class="o_image o_hover" t-att-src="getPreviewUrl(file)" t-att-alt="getFileName(file)"/>
+                                <img t-if="isImage(file) &amp;&amp; file.id" class="o_buz_attachment_thumbnail o_hover" t-att-src="getPreviewUrl(file)" t-att-alt="getFileName(file)"/>
                                 <span t-else="" class="o_image o_hover" t-att-data-mimetype="file.mimetype || ''" t-att-data-ext="getExtension(file)" role="img"/>
                             </div>
                             <div class="caption">

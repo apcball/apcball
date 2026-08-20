@@ -16,6 +16,9 @@
 
     .o_attachment_wrap {
         align-items: center;
+        background-color: transparent;
+        border-bottom: 0;
+        box-shadow: none;
         display: flex;
         gap: 0.75rem;
         min-height: 3.5rem;
@@ -24,9 +27,22 @@
     .o_image_box {
         background: transparent;
         border: 0;
+        box-shadow: none;
         flex: 0 0 3rem;
         height: 3rem;
         overflow: hidden;
+        width: 3rem;
+    }
+
+    .o_buz_attachment_thumbnail {
+        background: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        display: block;
+        height: 3rem;
+        object-fit: contain;
+        outline: 0;
         width: 3rem;
     }
 
