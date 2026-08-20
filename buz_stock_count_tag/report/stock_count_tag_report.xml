@@ -120,7 +120,7 @@
                         table-layout: fixed;
                         border-collapse: separate;
                         font-family: 'Sarabun', sans-serif;
-                        font-size: 14pt;
+                        font-size: 18pt;
                     }
                     .tag-page:last-child { page-break-after: avoid; }
                     .tag-page > tr > td {
