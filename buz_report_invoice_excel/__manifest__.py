@@ -7,6 +7,7 @@
     "license": "LGPL-3",
     "depends": [
         "sale_management",
+        "buz_custom_quotation",
         "account",
         "stock",
         "report_xlsx",

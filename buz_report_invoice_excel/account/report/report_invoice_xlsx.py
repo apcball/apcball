@@ -137,6 +137,7 @@ class ReportInvoiceExcel(models.AbstractModel):
                     "sale_team": sale_team,
                     "so_ref": so_ref,
                     "shipping_address": shipping_address,
+                    "project_name": self._safe_text(sale_order.project_name) if sale_order else "",
                     "parent_bom": self._safe_text(parent_bom_text),
                     "product_code": self._safe_text(product.default_code) if product else "",
                     "description": self._safe_text(
@@ -282,6 +283,7 @@ class ReportInvoiceExcel(models.AbstractModel):
             ("Sale Team", 18, "sale_team", text_format, False),
             ("SO.ref No.", 18, "so_ref", text_format, False),
             ("Shipping Address", 30, "shipping_address", text_format, False),
+            ("Project Name", 34, "project_name", text_format, False),
             ("Parent BOM", 34, "parent_bom", text_format, False),
             ("Product Code", 16, "product_code", text_format, False),
             ("Description", 34, "description", text_format, False),
