@@ -72,7 +72,28 @@
                 font-size: 20px !important;
                 border: 1px solid #000 !important;
                 padding: 10px;
+                box-sizing: border-box;
+                min-height: 200px;
+                height: auto !important;
               }
+              .document-info-row > .col-6 {
+                display: flex;
+              }
+              .document-info-row .info-box {
+                width: 100%;
+                height: 100%;
+              }
+              .info-box .address-row {
+                display: flex;
+                align-items: flex-start;
+              }
+              .info-box .address-label {
+                flex: 0 0 10%;
+              }
+              .info-box .address-value {
+                flex: 1 1 auto;
+                min-width: 0;
+                line-height: 1.35;
               .table-content {
                 font-size: 18px;
                 color: #000000;
@@ -148,20 +169,20 @@
             </div>
 
             <!-- Document Info -->
-            <div class="row mb-3">
+            <div class="row mb-3 document-info-row">
                 <!-- Left: Vendor Info -->
                 <div class="col-6">
-                    <div class="info-box" style="height: 200px;">
+                    <div class="info-box">
                         <div class="mb-2">
-                            <strong style="width: 10%; display: inline-block;">ผู้ขาย:</strong>
+                            <strong>ผู้ขาย:</strong>
                             <span t-field="doc.partner_id.name"/>
                         </div>
-                        <div class="mb-2">
-                            <strong style="width: 10%; display: inline-block;">ที่อยู่:</strong>
-                            <span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
+                        <div class="mb-2 address-row">
+                            <strong class="address-label">ที่อยู่:</strong>
+                            <span class="address-value"><span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
                             <br/>
                             <span t-field="doc.partner_id.city"/> <span t-field="doc.partner_id.state_id.name"/>
-                            <span t-field="doc.partner_id.zip"/>
+                            <span t-field="doc.partner_id.zip"/></span>
                         </div>
                         <div class="mb-2">
                             <strong style="width: 20%; display: inline-block;">โทรศัพท์:</strong>
@@ -175,7 +196,7 @@
                 </div>
                 <!-- Right: Document Details -->
                 <div class="col-6">
-                    <div class="info-box" style="height: 200px;">
+                    <div class="info-box">
                         <div class="mb-2">
                             <strong style="width: 20%; display: inline-block;">วันที่ Effective Date:</strong>
                             <span t-field="doc.date_done" t-options='{"widget": "date"}'/>
