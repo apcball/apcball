@@ -123,6 +123,26 @@ class MrpProduction(models.Model):
         
         return picking_type
 
+    def do_unreserve(self):
+        """Block unreserve while material allocation records exist for the MO.
+
+        Allocation records physically reserve staging-location quants
+        (see MrpStockRequestLine._reserve_for_mo) and are permanent
+        (mrp.stock.request.allocation.mo_id is ondelete=restrict), so
+        silently dropping that reservation here would leave the audit
+        trail claiming a reservation that no longer exists.
+        """
+        allocations = self.env['mrp.stock.request.allocation'].search([
+            ('mo_id', 'in', self.ids)
+        ])
+        if allocations:
+            mo_names = ", ".join(allocations.mapped('mo_id.name'))
+            raise UserError(_(
+                "Cannot unreserve: %d material allocation(s) from stock request(s) "
+                "have physically reserved stock for MO(s) %s."
+            ) % (len(allocations), mo_names))
+        return super().do_unreserve()
+
 
 class StockPicking(models.Model):
     _inherit = "stock.picking"
@@ -205,6 +225,13 @@ class StockPicking(models.Model):
                                 ) % request.name,
                                 summary=_("Allocate Materials from %s") % request.name,
                             )
+
+                # Auto-close the request once its transfer picking is validated -
+                # allocation to MOs still works on 'done' requests (see
+                # action_mark_as_done() in the allocate wizards), so this no
+                # longer requires the manual Mark as Done step.
+                if request.state == 'requested':
+                    request.write({"state": "done"})
 
         return res
 
@@ -450,9 +477,10 @@ class MrpStockRequest(models.Model):
                 # Calculate reserved if policy requires
                 reserved_qty = 0.0
                 if policy == 'subtract_done_and_reserved':
-                    # reserved_availability shows reserved qty that's not yet consumed
+                    # Odoo 17 removed reserved_availability; move.quantity holds the
+                    # reserved qty for non-done moves (same value core used to expose there)
                     reserved_qty = move.product_uom._compute_quantity(
-                        move.reserved_availability,
+                        move.quantity,
                         uom
                     )
 
@@ -918,6 +946,84 @@ class MrpStockRequestLine(models.Model):
             if line.qty_requested <= 0:
                 raise ValidationError(_("Requested quantity must be positive."))
 
+    def _reserve_for_mo(self, mo, qty_to_reserve, uom_id, lot_id=None):
+        """Physically reserve qty_to_reserve of this line's product at the
+        request's staging location (location_dest_id) for mo, via Odoo's
+        quant reservation engine. This is what actually blocks another MO
+        from grabbing the same units on its own action_assign - an
+        allocation record alone is only bookkeeping.
+        """
+        self.ensure_one()
+        staging_location = self.request_id.location_dest_id
+        product = self.product_id
+
+        if mo.state in ('done', 'cancel'):
+            raise UserError(
+                _("Cannot reserve materials for MO %s (state: %s).") % (mo.name, mo.state)
+            )
+
+        raw_move = mo.move_raw_ids.filtered(
+            lambda m: m.product_id == product and m.state not in ('done', 'cancel')
+        )
+        if raw_move:
+            raw_move = raw_move[0]
+        else:
+            qty_prod_uom = uom_id._compute_quantity(qty_to_reserve, product.uom_id)
+            raw_move = self.env['stock.move'].create({
+                'name': product.display_name,
+                'product_id': product.id,
+                'product_uom_qty': qty_prod_uom,
+                'product_uom': product.uom_id.id,
+                'location_id': mo.location_src_id.id,
+                'location_dest_id': product.property_stock_production.id,
+                'raw_material_production_id': mo.id,
+                'company_id': mo.company_id.id,
+                'origin': mo.name,
+            })
+            raw_move._action_confirm()
+
+        qty_prod_uom = uom_id._compute_quantity(qty_to_reserve, product.uom_id)
+
+        taken = self.env['stock.quant']._update_reserved_quantity(
+            product, staging_location, qty_prod_uom, lot_id=lot_id, strict=False
+        )
+        if sum(q for _, q in taken) + 1e-6 < qty_prod_uom:
+            for quant, q in taken:
+                self.env['stock.quant']._update_reserved_quantity(
+                    product, staging_location, -q, lot_id=quant.lot_id,
+                    package_id=quant.package_id, owner_id=quant.owner_id, strict=True
+                )
+            raise UserError(_(
+                "Not enough physically available stock of %s at %s to reserve %.2f %s for MO %s."
+            ) % (product.display_name, staging_location.display_name, qty_to_reserve, uom_id.name, mo.name))
+
+        for quant, q in taken:
+            existing_line = raw_move.move_line_ids.filtered(
+                lambda ml: ml.location_id == quant.location_id
+                and ml.lot_id == quant.lot_id
+                and ml.package_id == quant.package_id
+                and ml.owner_id == quant.owner_id
+                and not ml.picked
+            )
+            if existing_line:
+                existing_line[0].quantity += q
+            else:
+                self.env['stock.move.line'].create({
+                    'move_id': raw_move.id,
+                    'product_id': product.id,
+                    'product_uom_id': product.uom_id.id,
+                    'quantity': q,
+                    'location_id': quant.location_id.id,
+                    'location_dest_id': product.property_stock_production.id,
+                    'lot_id': quant.lot_id.id if quant.lot_id else False,
+                    'package_id': quant.package_id.id if quant.package_id else False,
+                    'owner_id': quant.owner_id.id if quant.owner_id else False,
+                    'company_id': mo.company_id.id,
+                    'picked': False,
+                })
+
+        return qty_to_reserve
+
 
 class MrpStockRequestAllocation(models.Model):
     _name = "mrp.stock.request.allocation"
@@ -976,3 +1082,22 @@ class MrpStockRequestAllocation(models.Model):
         required=True,
     )
     notes = fields.Text(string="Notes")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Creating an allocation record physically reserves the stock it
+        represents, so any other MO sharing the staging location can no
+        longer reserve those same units on its own action_assign.
+        """
+        allocations = super().create(vals_list)
+        for allocation in allocations:
+            qty_prod_uom = allocation.uom_id._compute_quantity(
+                allocation.qty_consumed, allocation.product_id.uom_id
+            )
+            allocation.request_line_id._reserve_for_mo(
+                mo=allocation.mo_id,
+                qty_to_reserve=qty_prod_uom,
+                uom_id=allocation.product_id.uom_id,
+                lot_id=allocation.lot_id,
+            )
+        return allocations
