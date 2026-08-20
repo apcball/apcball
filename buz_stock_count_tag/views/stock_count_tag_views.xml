@@ -34,7 +34,7 @@
                     <button name="action_generate_excel" type="object"
                             string="Re-export Excel"
                             invisible="state not in ('generated', 'printed')"/>
-                    <button name="action_generate_pdf" type="object"
+                    <button name="action_open_pdf_export_wizard" type="object"
                             string="Export PDF" class="oe_highlight"
                             invisible="state not in ('imported', 'generated', 'printed')"/>
                     <button name="action_printed" type="object"

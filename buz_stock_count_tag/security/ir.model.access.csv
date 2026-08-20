@@ -7,3 +7,5 @@ access_buz_stock_count_tag_manager,buz.stock.count.tag manager,model_buz_stock_c
 access_buz_stock_count_tag_line_manager,buz.stock.count.tag.line manager,model_buz_stock_count_tag_line,group_stock_count_tag_manager,1,1,1,1
 access_buz_stock_count_tag_import_wizard_manager,buz.stock.count.tag.import.wizard manager,model_buz_stock_count_tag_import_wizard,group_stock_count_tag_manager,1,1,1,1
 access_buz_stock_count_tag_import_preview_manager,buz.stock.count.tag.import.preview manager,model_buz_stock_count_tag_import_preview,group_stock_count_tag_manager,1,1,1,1
+access_buz_stock_count_tag_pdf_export_wizard_user,buz.stock.count.tag.pdf.export.wizard user,model_buz_stock_count_tag_pdf_export_wizard,group_stock_count_tag_user,1,1,1,1
+access_buz_stock_count_tag_pdf_export_wizard_manager,buz.stock.count.tag.pdf.export.wizard manager,model_buz_stock_count_tag_pdf_export_wizard,group_stock_count_tag_manager,1,1,1,1

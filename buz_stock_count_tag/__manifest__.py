@@ -22,6 +22,7 @@ using the company's existing TAG template. 1 product = 1 form = 1 printed page.
         "security/ir.model.access.csv",
         "data/sequence.xml",
         "wizard/stock_count_tag_import_wizard_views.xml",
+        "wizard/stock_count_tag_pdf_export_wizard_views.xml",
         "report/stock_count_tag_report.xml",
         "views/stock_count_tag_views.xml",
         "views/stock_count_tag_menu.xml",

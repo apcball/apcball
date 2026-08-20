@@ -114,6 +114,17 @@ class StockCountTag(models.Model):
             "context": {"default_tag_id": self.id},
         }
 
+    def action_open_pdf_export_wizard(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Export Stock Count Tag PDF"),
+            "res_model": "buz.stock.count.tag.pdf.export.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_tag_id": self.id},
+        }
+
     def action_download_template(self):
         self.ensure_one()
         if not openpyxl:
@@ -172,6 +183,15 @@ class StockCountTag(models.Model):
         if self.sort_by == "import_order":
             return lines.sorted(key=lambda l: (l.sequence, l.id))
         return lines.sorted(key=key_map[self.sort_by])
+
+    def _get_pdf_lines(self, doc_no_from=None, doc_no_to=None):
+        self.ensure_one()
+        lines = self._sorted_lines()
+        if doc_no_from and doc_no_to:
+            lines = lines.filtered(
+                lambda l: doc_no_from <= (l.doc_no or "") <= doc_no_to
+            )
+        return lines
 
     @staticmethod
     def _strip_style_from_blank_cells(ws):
@@ -331,12 +351,14 @@ class StockCountTag(models.Model):
             "target": "self",
         }
 
-    def action_generate_pdf(self):
+    def action_generate_pdf(self, doc_no_from=None, doc_no_to=None):
         self.ensure_one()
         if self.state not in ("imported", "generated", "printed"):
             raise UserError(_("Tag must be imported before generating the PDF file."))
         if not self.line_ids:
             raise UserError(_("There are no lines to generate."))
+        if doc_no_from and doc_no_to and not self._get_pdf_lines(doc_no_from, doc_no_to):
+            raise UserError(_("No lines found in that Tag No. range."))
 
         # Large tag batches (1000+ pages) time out or crash the browser's
         # inline PDF preview (ir.actions.report's default qweb-pdf action).
@@ -345,11 +367,15 @@ class StockCountTag(models.Model):
         report = self.env["ir.actions.report"]._get_report_from_name(
             "buz_stock_count_tag.report_stock_count_tag_document"
         )
+        data = {"doc_no_from": doc_no_from, "doc_no_to": doc_no_to}
         pdf_content, _report_type = report._render_qweb_pdf(
-            "buz_stock_count_tag.report_stock_count_tag_document", self.ids
+            "buz_stock_count_tag.report_stock_count_tag_document", self.ids, data=data
         )
 
         file_name = f"{self.name.replace('/', '_')}_stock_count_tag.pdf"
+        if doc_no_from and doc_no_to:
+            suffix = f"{doc_no_from}-{doc_no_to}".replace("/", "_")
+            file_name = f"{self.name.replace('/', '_')}_{suffix}_stock_count_tag.pdf"
         attachment = self.env["ir.attachment"].create(
             {
                 "name": file_name,
