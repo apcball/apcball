@@ -330,3 +330,38 @@ class StockCountTag(models.Model):
             "url": f"/web/content/{attachment.id}?download=true",
             "target": "self",
         }
+
+    def action_generate_pdf(self):
+        self.ensure_one()
+        if self.state not in ("imported", "generated", "printed"):
+            raise UserError(_("Tag must be imported before generating the PDF file."))
+        if not self.line_ids:
+            raise UserError(_("There are no lines to generate."))
+
+        # Large tag batches (1000+ pages) time out or crash the browser's
+        # inline PDF preview (ir.actions.report's default qweb-pdf action).
+        # Render server-side instead and hand back a plain attachment
+        # download, same pattern as action_generate_excel above.
+        report = self.env["ir.actions.report"]._get_report_from_name(
+            "buz_stock_count_tag.report_stock_count_tag_document"
+        )
+        pdf_content, _report_type = report._render_qweb_pdf(
+            "buz_stock_count_tag.report_stock_count_tag_document", self.ids
+        )
+
+        file_name = f"{self.name.replace('/', '_')}_stock_count_tag.pdf"
+        attachment = self.env["ir.attachment"].create(
+            {
+                "name": file_name,
+                "datas": base64.b64encode(pdf_content),
+                "res_model": self._name,
+                "res_id": self.id,
+                "mimetype": "application/pdf",
+            }
+        )
+
+        return {
+            "type": "ir.actions.act_url",
+            "url": f"/web/content/{attachment.id}?download=true",
+            "target": "self",
+        }

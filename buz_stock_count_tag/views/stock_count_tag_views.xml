@@ -29,14 +29,17 @@
                             string="Download Template"
                             invisible="state != 'draft'"/>
                     <button name="action_generate_excel" type="object"
-                            string="Generate Excel" class="oe_highlight"
+                            string="Export Excel" class="oe_highlight"
                             invisible="state != 'imported'"/>
                     <button name="action_generate_excel" type="object"
-                            string="Re-generate Excel"
+                            string="Re-export Excel"
                             invisible="state not in ('generated', 'printed')"/>
+                    <button name="action_generate_pdf" type="object"
+                            string="Export PDF" class="oe_highlight"
+                            invisible="state not in ('imported', 'generated', 'printed')"/>
                     <button name="action_printed" type="object"
                             string="Mark Printed"
-                            invisible="state != 'generated'"/>
+                            invisible="state not in ('imported', 'generated')"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,imported,generated,printed"/>
                 </header>
