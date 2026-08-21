@@ -21,6 +21,9 @@ class TestAgreement(TransactionCase):
         cls.partner = cls.env["res.partner"].create(
             {"name": "Agreement Partner", "ref": "C-TEST-001"}
         )
+        cls.other_partner = cls.env["res.partner"].create(
+            {"name": "Other Partner", "ref": "X-TEST-001"}
+        )
 
     def test_domain_selection(self):
         domain_agreement_type = self.env["agreement.type"]._domain_selection()
@@ -39,7 +42,12 @@ class TestAgreement(TransactionCase):
         agreement1 = self.agreement.copy(default={"code": "Test Code"})
         agreement2 = self.agreement.copy()
         self.assertEqual(agreement1.code, "Test Code")
-        self.assertEqual(agreement2.code, f"{self.agreement.code} (copy)")
+        self.assertNotEqual(agreement2.code, self.agreement.code)
+        self.assertTrue(agreement2.code.startswith("AGR/"))
+
+    def test_code_is_generated_automatically(self):
+        agreement = self.env["agreement"].create({"name": "Generated Code Test"})
+        self.assertRegex(agreement.code, r"^AGR/\d{4}/\d{2}/\d{4}$")
 
     def test_partner_code_syncs_in_both_directions(self):
         agreement = self.env["agreement"].new({"code": "AGR-TEST", "name": "Test"})
@@ -71,3 +79,13 @@ class TestAgreement(TransactionCase):
                     "partner_code": "C-OTHER-001",
                 }
             )
+
+    def test_partner_code_autocomplete_filters_by_ref(self):
+        Partner = self.env["res.partner"].with_context(agreement_partner_code=True)
+        result = Partner.name_search()
+        result_ids = {partner_id for partner_id, _name in result}
+        self.assertIn(self.partner.id, result_ids)
+        self.assertNotIn(self.other_partner.id, result_ids)
+
+        result = Partner.name_search("TEST-001")
+        self.assertEqual(result, [(self.partner.id, "C-TEST-001")])

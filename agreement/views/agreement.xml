@@ -30,15 +30,19 @@
                     </div>
                     <group name="main">
                         <group name="left">
-                            <field name="code" />
+                            <field name="code" readonly="1" />
                             <field name="is_template" invisible="1" />
                             <field
-                                name="partner_code"
+                                name="partner_code_partner_id"
+                                context="{'agreement_partner_code': True}"
+                                domain="[('ref', '=like', 'C%')]"
+                                options="{'no_create': True, 'no_quick_create': True}"
                                 placeholder="C..."
                             />
                             <field
                                 name="partner_id"
                                 domain="[('ref', '=like', 'C%')]"
+                                options="{'no_create': True, 'no_quick_create': True}"
                                 required="not is_template"
                             />
                             <field

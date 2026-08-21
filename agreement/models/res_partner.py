@@ -10,6 +10,22 @@ class Partner(models.Model):
     agreement_ids = fields.One2many("agreement", "partner_id", string="Agreements")
     agreements_count = fields.Integer(compute="_compute_agreements_count")
 
+    @api.model
+    def _name_search(
+        self, name="", args=None, operator="ilike", limit=100, order=None
+    ):
+        if self.env.context.get("agreement_partner_code"):
+            domain = list(args or []) + [("ref", "=like", "C%")]
+            if name:
+                domain.append(("ref", operator, name))
+            return self._search(domain, limit=limit, order=order)
+        return super()._name_search(name, args, operator, limit, order)
+
+    def name_get(self):
+        if self.env.context.get("agreement_partner_code"):
+            return [(partner.id, partner.ref or partner.display_name) for partner in self]
+        return super().name_get()
+
     @api.depends("agreement_ids")
     def _compute_agreements_count(self):
         domain = [("partner_id", "in", self.ids)]

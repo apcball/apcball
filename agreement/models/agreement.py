@@ -11,7 +11,13 @@ class Agreement(models.Model):
     _description = "Agreement"
     _inherit = ["mail.thread", "mail.activity.mixin"]
 
-    code = fields.Char(required=True, tracking=True)
+    code = fields.Char(
+        required=True,
+        readonly=True,
+        copy=False,
+        default=lambda self: _("New"),
+        tracking=True,
+    )
     name = fields.Char(required=True, tracking=True)
     partner_id = fields.Many2one(
         "res.partner",
@@ -25,6 +31,12 @@ class Agreement(models.Model):
         tracking=True,
         help="The partner's internal reference. Only codes starting with C "
         "can be used on an agreement.",
+    )
+    partner_code_partner_id = fields.Many2one(
+        related="partner_id",
+        string="Partner Code",
+        readonly=False,
+        help="Select a Partner by its code.",
     )
     commercial_partner_id = fields.Many2one(
         "res.partner",
@@ -82,6 +94,12 @@ class Agreement(models.Model):
         else:
             self.partner_code = False
 
+    @api.onchange("partner_code_partner_id")
+    def _onchange_partner_code_partner_id_field(self):
+        """Keep the legacy stored code aligned when selecting by code."""
+        self.partner_id = self.partner_code_partner_id
+        self.partner_code = self.partner_id.ref if self.partner_id else False
+
     @api.onchange("partner_code")
     def _onchange_partner_code_partner_id(self):
         """Allow users to find the partner by entering its exact code."""
@@ -131,6 +149,13 @@ class Agreement(models.Model):
         for rec in self:
             rec.display_name = f"[{rec.code}] {rec.name}"
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get("code") or vals["code"] == _("New"):
+                vals["code"] = self.env["ir.sequence"].next_by_code("agreement")
+        return super().create(vals_list)
+
     _sql_constraints = [
         (
             "code_partner_company_unique",
@@ -140,9 +165,8 @@ class Agreement(models.Model):
     ]
 
     def copy(self, default=None):
-        """Always assign a value for code because is required"""
+        """Let create() generate a new code for the copied agreement."""
         default = dict(default or {})
-        if default.get("code", False):
-            return super().copy(default)
-        default.setdefault("code", _("%(code)s (copy)", code=self.code))
+        if not default.get("code"):
+            default.pop("code", None)
         return super().copy(default)

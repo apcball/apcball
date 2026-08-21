@@ -13,6 +13,7 @@
     "license": "AGPL-3",
     "depends": ["mail"],
     "data": [
+        "data/sequence.xml",
         "security/ir.model.access.csv",
         "security/agreement_security.xml",
         "views/agreement.xml",

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record id="seq_agreement" model="ir.sequence">
+        <field name="name">Agreement</field>
+        <field name="code">agreement</field>
+        <field name="prefix">AGR/%(year)s/%(month)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False" />
+    </record>
+</odoo>
