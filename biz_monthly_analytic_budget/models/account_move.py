@@ -76,9 +76,10 @@ class AccountMove(models.Model):
             target_date = move._get_bill_target_date()
             if target_date:
                 analytic_totals = {}
+                sign = -1 if move.move_type == 'in_refund' else 1
                 for line in move.invoice_line_ids:
                     for account_id, amount in extract_analytic_amounts(line, self.env['monthly.budget.line']):
-                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + sign * amount
                 grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                     self.env, target_date, move.company_id.id, analytic_totals,
                 )
@@ -226,9 +227,10 @@ class AccountMove(models.Model):
                 continue
 
             analytic_totals = {}
+            sign = -1 if move.move_type == 'in_refund' else 1
             for line in move.invoice_line_ids:
                 for account_id, amount in extract_analytic_amounts(line, BudgetLine):
-                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + sign * amount
 
             grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                 self.env, target_date, move.company_id.id, analytic_totals,
