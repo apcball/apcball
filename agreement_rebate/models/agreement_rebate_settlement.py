@@ -1,7 +1,7 @@
 # Copyright 2020 Tecnativa - Carlos Dauden
 # Copyright 2020 Tecnativa - Sergio Teruel
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-from odoo import Command, api, fields, models
+from odoo import _, Command, api, fields, models
 from odoo.exceptions import UserError
 from odoo.osv import expression
 from odoo.tools.safe_eval import safe_eval
@@ -96,7 +96,7 @@ class AgreementRebateSettlement(models.Model):
         target_domains = self.line_ids.mapped("target_domain")
         domain = expression.OR([safe_eval(d) for d in set(target_domains)])
         return {
-            "name": self.env._("Details"),
+            "name": _("Details"),
             "type": "ir.actions.act_window",
             "res_model": "account.invoice.report",
             "view_mode": "pivot,list",
@@ -294,7 +294,7 @@ class AgreementRebateSettlementLine(models.Model):
 
     def action_show_detail(self):
         return {
-            "name": self.env._("Details"),
+            "name": _("Details"),
             "type": "ir.actions.act_window",
             "res_model": "account.invoice.report",
             "view_mode": "pivot,list",
