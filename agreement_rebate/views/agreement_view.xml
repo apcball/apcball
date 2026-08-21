@@ -18,6 +18,9 @@
                         <group>
                             <field
                                 name="rebate_discount"
+                                string="Rebate Discount (%)"
+                                widget="percentage"
+                                placeholder="เช่น 5 = 5%"
                                 invisible="rebate_type != 'global'"
                                 readonly="rebate_approval_state == 'approved'"
                             />
@@ -44,6 +47,8 @@
                                 />
                                 <field
                                     name="rebate_discount"
+                                    string="Rebate Discount (%)"
+                                    widget="percentage"
                                     column_invisible="parent.rebate_type != 'line'"
                                 />
                             </tree>
@@ -84,7 +89,7 @@
             <tree>
                 <field name="rebate_target" />
                 <field name="rebate_domain" groups="base.group_no_one" />
-                <field name="rebate_discount" />
+                <field name="rebate_discount" string="Rebate Discount (%)" widget="percentage" />
             </tree>
         </field>
     </record>
@@ -101,6 +106,9 @@
                         <group>
                             <field
                                 name="rebate_discount"
+                                string="Rebate Discount (%)"
+                                widget="percentage"
+                                placeholder="เช่น 5 = 5%"
                                 invisible="context.get('hide_rebate_discount')"
                             />
                         </group>
@@ -148,7 +156,7 @@
             <tree editable="bottom">
                 <field name="amount_from" />
                 <field name="amount_to" />
-                <field name="rebate_discount" />
+                <field name="rebate_discount" string="Rebate Discount (%)" widget="percentage" />
             </tree>
         </field>
     </record>

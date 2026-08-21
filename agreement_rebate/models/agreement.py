@@ -61,7 +61,9 @@ class Agreement(models.Model):
         inverse_name="agreement_id",
         copy=True,
     )
-    rebate_discount = fields.Float(digits="Discount", default=0.0)
+    rebate_discount = fields.Float(
+        string="Rebate Discount (%)", digits=(16, 2), default=0.0
+    )
     is_rebate = fields.Boolean(
         related="agreement_type_id.is_rebate", string="Is rebate agreement type"
     )
@@ -222,7 +224,7 @@ class AgreementRebateLine(models.Model):
         store=True,
         readonly=False,
     )
-    rebate_discount = fields.Float()
+    rebate_discount = fields.Float(string="Rebate Discount (%)", digits=(16, 2))
 
     def _check_agreement_not_approved(self):
         for line in self:
@@ -298,7 +300,7 @@ class AgreementRebateSection(models.Model):
     agreement_id = fields.Many2one(comodel_name="agreement", string="Agreement")
     amount_from = fields.Float(string="From")
     amount_to = fields.Float(string="To")
-    rebate_discount = fields.Float(string="% Dto")
+    rebate_discount = fields.Float(string="Rebate Discount (%)", digits=(16, 2))
 
     def _check_agreement_not_approved(self):
         for section in self:
