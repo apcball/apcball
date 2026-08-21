@@ -14,16 +14,21 @@ class Partner(models.Model):
     def _name_search(
         self, name="", args=None, operator="ilike", limit=100, order=None
     ):
-        if self.env.context.get("agreement_partner_code"):
-            domain = list(args or []) + [("ref", "=like", "C%")]
-            if name:
-                domain.append(("ref", operator, name))
+        if self.env.context.get("agreement_partner_code") and name:
+            domain = list(args or []) + [
+                "|",
+                ("partner_code", operator, name),
+                ("name", operator, name),
+            ]
             return self._search(domain, limit=limit, order=order)
         return super()._name_search(name, args, operator, limit, order)
 
     def name_get(self):
         if self.env.context.get("agreement_partner_code"):
-            return [(partner.id, partner.ref or partner.display_name) for partner in self]
+            return [
+                (partner.id, partner.partner_code or partner.display_name)
+                for partner in self
+            ]
         return super().name_get()
 
     @api.depends("agreement_ids")

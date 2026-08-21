@@ -19,10 +19,10 @@ class TestAgreement(TransactionCase):
         )
         cls.agreement = cls.env.ref("agreement.market1")
         cls.partner = cls.env["res.partner"].create(
-            {"name": "Agreement Partner", "ref": "C-TEST-001"}
+            {"name": "Agreement Partner", "partner_code": "C-TEST-001"}
         )
         cls.other_partner = cls.env["res.partner"].create(
-            {"name": "Other Partner", "ref": "X-TEST-001"}
+            {"name": "Other Partner", "partner_code": "X-TEST-001"}
         )
 
     def test_domain_selection(self):
@@ -60,16 +60,16 @@ class TestAgreement(TransactionCase):
         agreement._onchange_partner_code_partner_id()
         self.assertEqual(agreement.partner_id, self.partner)
 
-    def test_partner_code_must_start_with_c_and_match_partner(self):
-        with self.assertRaises(ValidationError):
-            self.env["agreement"].create(
-                {
-                    "code": "AGR-BAD",
-                    "name": "Invalid",
-                    "partner_id": self.partner.id,
-                    "partner_code": "X-TEST-001",
-                }
-            )
+    def test_partner_code_must_match_partner(self):
+        agreement = self.env["agreement"].create(
+            {
+                "code": "AGR-NON-C",
+                "name": "Non C Code",
+                "partner_id": self.other_partner.id,
+                "partner_code": "X-TEST-001",
+            }
+        )
+        self.assertEqual(agreement.partner_code, "X-TEST-001")
         with self.assertRaises(ValidationError):
             self.env["agreement"].create(
                 {
@@ -80,12 +80,12 @@ class TestAgreement(TransactionCase):
                 }
             )
 
-    def test_partner_code_autocomplete_filters_by_ref(self):
+    def test_partner_autocomplete_shows_all_partners(self):
         Partner = self.env["res.partner"].with_context(agreement_partner_code=True)
         result = Partner.name_search()
         result_ids = {partner_id for partner_id, _name in result}
         self.assertIn(self.partner.id, result_ids)
-        self.assertNotIn(self.other_partner.id, result_ids)
+        self.assertIn(self.other_partner.id, result_ids)
 
-        result = Partner.name_search("TEST-001")
-        self.assertEqual(result, [(self.partner.id, "C-TEST-001")])
+        result = Partner.name_search("Other")
+        self.assertIn((self.other_partner.id, "X-TEST-001"), result)

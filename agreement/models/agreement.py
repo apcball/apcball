@@ -29,8 +29,7 @@ class Agreement(models.Model):
         string="Partner Code",
         index=True,
         tracking=True,
-        help="The partner's internal reference. Only codes starting with C "
-        "can be used on an agreement.",
+        help="The partner's Partner Code.",
     )
     partner_code_partner_id = fields.Many2one(
         related="partner_id",
@@ -90,7 +89,7 @@ class Agreement(models.Model):
     def _onchange_partner_id_partner_code(self):
         """Keep the manually editable code aligned with the selected partner."""
         if self.partner_id:
-            self.partner_code = self.partner_id.ref or False
+            self.partner_code = self.partner_id.partner_code or False
         else:
             self.partner_code = False
 
@@ -98,7 +97,9 @@ class Agreement(models.Model):
     def _onchange_partner_code_partner_id_field(self):
         """Keep the legacy stored code aligned when selecting by code."""
         self.partner_id = self.partner_code_partner_id
-        self.partner_code = self.partner_id.ref if self.partner_id else False
+        self.partner_code = (
+            self.partner_id.partner_code if self.partner_id else False
+        )
 
     @api.onchange("partner_code")
     def _onchange_partner_code_partner_id(self):
@@ -108,15 +109,9 @@ class Agreement(models.Model):
         if not code:
             self.partner_id = False
             return
-        if not code.startswith("C"):
-            self.partner_id = False
-            return {
-                "warning": {
-                    "title": _("Invalid Partner Code"),
-                    "message": _("Partner Code must start with C."),
-                }
-            }
-        partners = self.env["res.partner"].search([("ref", "=", code)], limit=2)
+        partners = self.env["res.partner"].search(
+            [("partner_code", "=", code)], limit=2
+        )
         if len(partners) == 1:
             self.partner_id = partners
         else:
@@ -130,9 +125,7 @@ class Agreement(models.Model):
             # through the form are validated strictly below.
             if not code:
                 continue
-            if not code.startswith("C"):
-                raise ValidationError(_("Partner Code must start with C."))
-            if not rec.partner_id or rec.partner_id.ref != code:
+            if not rec.partner_id or rec.partner_id.partner_code != code:
                 raise ValidationError(
                     _("Partner Code must match the selected Partner.")
                 )
