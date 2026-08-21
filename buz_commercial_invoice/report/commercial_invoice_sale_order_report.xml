@@ -244,7 +244,7 @@
                                         <td style="border: none;"></td>
                                         <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
                                         <td class="text-right" style="border: 1px solid #000;">
-                                            <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
+                                            <span t-esc="o.get_total_bom_quantity()" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                         <td class="text-center" style="border: 1px solid #000;">
                                             <span t-field="o.currency_id.name"/>
