@@ -32,7 +32,15 @@
                         <group name="left">
                             <field name="code" />
                             <field name="is_template" invisible="1" />
-                            <field name="partner_id" required="not is_template" />
+                            <field
+                                name="partner_code"
+                                placeholder="C..."
+                            />
+                            <field
+                                name="partner_id"
+                                domain="[('ref', '=like', 'C%')]"
+                                required="not is_template"
+                            />
                             <field
                                 name="agreement_type_id"
                                 groups="agreement.group_use_agreement_type"
@@ -67,6 +75,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="partner_id" />
+                <field name="partner_code" />
                 <field name="code" />
                 <field name="name" />
                 <field name="signature_date" />
@@ -88,6 +97,7 @@
                     string="Name or Number"
                 />
                 <field name="partner_id" />
+                <field name="partner_code" />
                 <separator />
                 <filter name="sale" string="Sale" domain="[('domain', '=', 'sale')]" />
                 <filter

@@ -2,6 +2,7 @@
 # Copyright 2021 Sergio Teruel - Tecnativa
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -17,6 +18,9 @@ class TestAgreement(TransactionCase):
             }
         )
         cls.agreement = cls.env.ref("agreement.market1")
+        cls.partner = cls.env["res.partner"].create(
+            {"name": "Agreement Partner", "ref": "C-TEST-001"}
+        )
 
     def test_domain_selection(self):
         domain_agreement_type = self.env["agreement.type"]._domain_selection()
@@ -36,3 +40,34 @@ class TestAgreement(TransactionCase):
         agreement2 = self.agreement.copy()
         self.assertEqual(agreement1.code, "Test Code")
         self.assertEqual(agreement2.code, f"{self.agreement.code} (copy)")
+
+    def test_partner_code_syncs_in_both_directions(self):
+        agreement = self.env["agreement"].new({"code": "AGR-TEST", "name": "Test"})
+        agreement.partner_id = self.partner
+        agreement._onchange_partner_id_partner_code()
+        self.assertEqual(agreement.partner_code, "C-TEST-001")
+
+        agreement.partner_id = False
+        agreement.partner_code = "C-TEST-001"
+        agreement._onchange_partner_code_partner_id()
+        self.assertEqual(agreement.partner_id, self.partner)
+
+    def test_partner_code_must_start_with_c_and_match_partner(self):
+        with self.assertRaises(ValidationError):
+            self.env["agreement"].create(
+                {
+                    "code": "AGR-BAD",
+                    "name": "Invalid",
+                    "partner_id": self.partner.id,
+                    "partner_code": "X-TEST-001",
+                }
+            )
+        with self.assertRaises(ValidationError):
+            self.env["agreement"].create(
+                {
+                    "code": "AGR-MISMATCH",
+                    "name": "Mismatch",
+                    "partner_id": self.partner.id,
+                    "partner_code": "C-OTHER-001",
+                }
+            )
