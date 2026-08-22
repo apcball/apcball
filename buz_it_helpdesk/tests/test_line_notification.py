@@ -289,6 +289,105 @@ class TestHelpdeskLineNotification(TransactionCase):
             ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_pending_user')
         )
 
+    def _prepare_resolution_ticket(self):
+        ticket = self._ticket('Resolution confirmation')
+        ticket.with_user(self.manager).with_context(
+            buz_helpdesk_transition=True,
+        ).write({
+            'assigned_user_id': self.support.id,
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+        })
+        self.parameters.set_param(
+            'buz_it_helpdesk.line_user_id.%s' % self.requester.id,
+            'U' + '7' * 32,
+        )
+        self._configure()
+        return ticket
+
+    def test_mark_resolved_notifies_requester_and_requires_confirmation(self):
+        ticket = self._prepare_resolution_ticket()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            return_value=self._response(200),
+        ) as request:
+            ticket.with_user(self.support).action_mark_resolved()
+
+        self.assertEqual(
+            ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_resolved')
+        )
+        confirmation = self.env['mail.activity'].search([
+            ('res_model', '=', ticket._name),
+            ('res_id', '=', ticket.id),
+            ('user_id', '=', self.requester.id),
+            ('summary', '=', 'Confirm IT Resolution'),
+            ('date_done', '=', False),
+        ])
+        self.assertTrue(confirmation)
+        message = request.call_args.kwargs['json']['messages'][0]['text']
+        self.assertIn('Status: Resolved', message)
+        self.assertIn('/web#id=%s' % ticket.id, message)
+
+    def test_line_failure_does_not_roll_back_resolved_workflow(self):
+        ticket = self._prepare_resolution_ticket()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            side_effect=requests.exceptions.Timeout('LINE timeout'),
+        ):
+            self.assertTrue(
+                ticket.with_user(self.support).action_mark_resolved()
+            )
+        self.assertEqual(
+            ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_resolved')
+        )
+        self.assertTrue(ticket._resolution_confirmation_activities())
+
+    def test_assigned_it_cannot_close_before_requester_confirmation(self):
+        ticket = self._prepare_resolution_ticket()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            return_value=self._response(200),
+        ):
+            ticket.with_user(self.support).action_mark_resolved()
+        with self.assertRaises(UserError):
+            ticket.with_user(self.support).action_close_ticket()
+
+    def test_requester_confirmation_allows_assigned_it_to_close(self):
+        ticket = self._prepare_resolution_ticket()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            return_value=self._response(200),
+        ):
+            ticket.with_user(self.support).action_mark_resolved()
+
+        ticket.with_user(self.requester).action_confirm_resolution()
+        self.assertFalse(ticket._resolution_confirmation_activities())
+        ticket.with_user(self.support).action_close_ticket()
+        self.assertEqual(
+            ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_closed')
+        )
+
+    def test_only_requester_can_confirm_resolution(self):
+        ticket = self._prepare_resolution_ticket()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            return_value=self._response(200),
+        ):
+            ticket.with_user(self.support).action_mark_resolved()
+        with self.assertRaises(UserError):
+            ticket.with_user(self.support).action_confirm_resolution()
+
+    def test_manager_can_close_without_requester_confirmation(self):
+        ticket = self._prepare_resolution_ticket()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            return_value=self._response(200),
+        ):
+            ticket.with_user(self.support).action_mark_resolved()
+        ticket.with_user(self.manager).action_close_ticket()
+        self.assertEqual(
+            ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_closed')
+        )
+
     def test_settings_reject_company_outside_allowed_companies(self):
         with self.assertRaises(AccessError):
             self._manager_service().get_line_settings(
