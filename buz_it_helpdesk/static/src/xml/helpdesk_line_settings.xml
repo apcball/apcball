@@ -32,6 +32,16 @@
 
                 <div class="o_line_settings_field">
                     <div class="o_line_settings_label_row">
+                        <label for="line_secret">Channel Secret</label>
+                        <span t-if="state.secretConfigured" class="badge text-bg-success"><i class="fa fa-check-circle me-1"/> Configured</span>
+                        <span t-else="" class="badge text-bg-warning">Not configured</span>
+                    </div>
+                    <input id="line_secret" type="password" class="form-control" autocomplete="new-password" placeholder="Leave blank to keep the current secret" t-att-value="state.secret" t-on-input="onSecretInput" t-att-disabled="state.saving or state.testing"/>
+                    <small>Used only to validate LINE webhook signatures. The saved secret is never returned.</small>
+                </div>
+
+                <div class="o_line_settings_field">
+                    <div class="o_line_settings_label_row">
                         <label for="line_token">Channel Access Token</label>
                         <span t-if="state.tokenConfigured" class="badge text-bg-success">
                             <i class="fa fa-check-circle me-1"/> Configured

@@ -1,4 +1,7 @@
 from datetime import datetime
+import base64
+import hashlib
+import hmac
 from unittest.mock import Mock, patch
 
 import requests
@@ -46,7 +49,7 @@ class TestHelpdeskLineNotification(TransactionCase):
                 group_requester.id,
             ])],
         })
-        cls.env['res.users'].create({
+        cls.support = cls.env['res.users'].create({
             'name': 'LINE Test Support',
             'login': 'line-test-support',
             'email': 'line-support@example.com',
@@ -94,6 +97,9 @@ class TestHelpdeskLineNotification(TransactionCase):
             allowed_company_ids=[self.company.id, self.company_two.id]
         )
 
+    def _requester_service(self):
+        return self.env['buz.helpdesk.line.service'].with_user(self.requester)
+
     def _configure(self, company=None, token='test-token', group_id=None):
         company = company or self.company
         group_id = group_id or LINE_GROUP_ID
@@ -126,6 +132,162 @@ class TestHelpdeskLineNotification(TransactionCase):
                 'secret-token',
                 LINE_GROUP_ID,
             )
+
+    def test_webhook_signature_accepts_only_channel_secret_signature(self):
+        body = b'{"events":[]}'
+        secret = 'channel-secret'
+        self.parameters.set_param(
+            'buz_it_helpdesk.line_channel_secret', secret
+        )
+        signature = base64.b64encode(
+            hmac.new(secret.encode(), body, hashlib.sha256).digest()
+        ).decode()
+        service = self.env['buz.helpdesk.line.service'].sudo()
+        self.assertTrue(service.validate_webhook_signature(body, signature))
+        self.assertFalse(service.validate_webhook_signature(body, 'invalid'))
+
+    def test_connection_code_is_one_time_and_expired_code_is_ignored(self):
+        service = self._requester_service()
+        result = service.create_line_connection_code()
+        self.assertEqual(len(result['code']), 8)
+        raw = self.parameters.get_param(
+            service._code_key(self.requester.id)
+        )
+        self.assertNotIn(result['code'], raw)
+        self.parameters.set_param(
+            service._code_key(self.requester.id),
+            '%s|1' % service._hash_value(result['code']),
+        )
+        with patch.object(service, '_send_reply') as reply:
+            self.assertFalse(service.process_webhook_event({
+                'replyToken': 'reply-token',
+                'source': {'userId': 'U' + '1' * 32},
+                'message': {'type': 'text', 'text': result['code']},
+            }))
+        reply.assert_called_once()
+        self.assertFalse(self.parameters.get_param(
+            service._user_key(self.requester.id)
+        ))
+
+    def test_group_id_command_replies_without_persisting_group_id(self):
+        service = self.env['buz.helpdesk.line.service'].sudo()
+        event = {
+            'replyToken': 'reply-token',
+            'source': {
+                'type': 'group',
+                'groupId': LINE_GROUP_ID,
+                'userId': 'U' + '5' * 32,
+            },
+            'message': {'type': 'text', 'text': ' group_id '},
+        }
+        with patch.object(service, '_send_reply') as reply:
+            self.assertTrue(service.process_webhook_event(event))
+        reply.assert_called_once_with(
+            'reply-token',
+            'LINE Group ID:\n%s' % LINE_GROUP_ID,
+        )
+
+    def test_group_message_does_not_reply_or_enter_connection_flow(self):
+        service = self.env['buz.helpdesk.line.service'].sudo()
+        event = {
+            'replyToken': 'reply-token',
+            'source': {
+                'type': 'group',
+                'groupId': LINE_GROUP_ID,
+                'userId': 'U' + '6' * 32,
+            },
+            'message': {'type': 'text', 'text': 'normal group message'},
+        }
+        with patch.object(service, '_send_reply') as reply:
+            self.assertFalse(service.process_webhook_event(event))
+        reply.assert_not_called()
+
+    def test_connection_code_is_consumed_after_successful_mapping(self):
+        service = self.env['buz.helpdesk.line.service'].sudo()
+        code = 'C0DE1234'
+        line_user_id = 'U' + '4' * 32
+        self.parameters.set_param(
+            service._code_key(self.requester.id),
+            '%s|9999999999' % service._hash_value(code),
+        )
+        with patch.object(service, '_send_reply'):
+            event = {
+                'replyToken': 'reply-token',
+                'source': {'userId': line_user_id},
+                'message': {'type': 'text', 'text': code.lower()},
+            }
+            self.assertTrue(service.process_webhook_event(event))
+            self.assertFalse(service.process_webhook_event(event))
+        self.assertEqual(
+            self.parameters.get_param(service._user_key(self.requester.id)),
+            line_user_id,
+        )
+
+    def test_connection_rejects_line_mapping_already_owned_by_other_user(self):
+        service = self.env['buz.helpdesk.line.service'].sudo()
+        code = 'A1B2C3D4'
+        line_user_id = 'U' + '2' * 32
+        self.parameters.set_param(
+            service._code_key(self.requester.id),
+            '%s|9999999999' % service._hash_value(code),
+        )
+        self.parameters.set_param(service._reverse_key(line_user_id), '999')
+        with self.assertRaises(ValidationError):
+            service.process_webhook_event({
+                'replyToken': 'reply-token',
+                'source': {'userId': line_user_id},
+                'message': {'type': 'text', 'text': code},
+            })
+
+    def test_requester_can_create_code_but_cannot_change_manager_settings(self):
+        result = self._requester_service().create_line_connection_code()
+        self.assertEqual(result['expires_in'], 600)
+        with self.assertRaises(AccessError):
+            self._requester_service().save_line_settings(
+                self.company.id, 'token', LINE_GROUP_ID, 'channel-secret'
+            )
+
+    def test_contact_line_requires_connected_requester_and_keeps_stage_on_failure(self):
+        ticket = self._ticket('Contact User')
+        ticket.with_user(self.manager).with_context(
+            buz_helpdesk_transition=True,
+        ).write({
+            'assigned_user_id': self.support.id,
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+        })
+        with self.assertRaises(UserError):
+            ticket.with_user(self.manager).action_send_line_message('Hello')
+        self.assertEqual(
+            ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_in_progress')
+        )
+
+    def test_contact_line_sends_sanitized_message_then_pending_user(self):
+        ticket = self._ticket('Contact User')
+        ticket.with_user(self.manager).with_context(
+            buz_helpdesk_transition=True,
+        ).write({
+            'assigned_user_id': self.support.id,
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+        })
+        line_user_id = 'U' + '3' * 32
+        self.parameters.set_param(
+            'buz_it_helpdesk.line_user_id.%s' % self.requester.id,
+            line_user_id,
+        )
+        self._configure()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            return_value=self._response(200),
+        ) as request:
+            ticket.with_user(self.manager).action_send_line_message(
+                '<p>Hello <b>Requester</b></p>'
+            )
+        message = request.call_args.kwargs['json']['messages'][0]['text']
+        self.assertIn('Hello Requester', message)
+        self.assertNotIn('<b>', message)
+        self.assertEqual(
+            ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_pending_user')
+        )
 
     def test_settings_reject_company_outside_allowed_companies(self):
         with self.assertRaises(AccessError):

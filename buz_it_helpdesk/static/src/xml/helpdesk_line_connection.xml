@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_it_helpdesk.HelpdeskLineConnection">
+        <div class="o_helpdesk_line_settings">
+            <div class="o_line_settings_header"><div><h1>LINE Connection</h1><p>Connect your Odoo user to the IT LINE Official Account.</p></div><span class="badge text-bg-light">Private mapping</span></div>
+            <div t-if="state.loading" class="o_helpdesk_line_settings_loading">Loading LINE connection...</div>
+            <div t-else="" class="o_helpdesk_line_settings_card">
+                <div t-if="state.error" class="alert alert-danger"><t t-esc="state.error"/></div>
+                <div t-if="state.connected" class="alert alert-success">Connected LINE account: <span class="font-monospace"><t t-esc="state.masked"/></span></div>
+                <div t-else="" class="alert alert-info">Not connected. Add the OA as a friend, then send the one-time code to the Bot.</div>
+                <div t-if="state.code" class="alert alert-warning">Send this code to the Bot: <strong class="font-monospace fs-3"><t t-esc="state.code"/></strong><br/>It expires in <t t-esc="state.expires"/> seconds and can be used once.</div>
+                <div class="o_line_settings_actions">
+                    <button type="button" class="btn btn-primary" t-on-click="createCode" t-if="!state.connected">Create connection code</button>
+                    <button type="button" class="btn btn-outline-danger" t-on-click="cancel" t-if="state.connected">Disconnect LINE</button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

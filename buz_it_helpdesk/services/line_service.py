@@ -1,5 +1,10 @@
 import logging
+import base64
+import hashlib
+import hmac
 import re
+import secrets
+import time
 
 import requests
 
@@ -11,8 +16,14 @@ _logger = logging.getLogger(__name__)
 LINE_INFO_URL = 'https://api.line.me/v2/bot/info'
 LINE_GROUP_SUMMARY_URL = 'https://api.line.me/v2/bot/group/%s/summary'
 LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
+LINE_REPLY_URL = 'https://api.line.me/v2/bot/message/reply'
 TOKEN_PARAMETER = 'buz_it_helpdesk.line_channel_access_token'
+SECRET_PARAMETER = 'buz_it_helpdesk.line_channel_secret'
 GROUP_PARAMETER_PREFIX = 'buz_it_helpdesk.line_group_id'
+USER_PARAMETER_PREFIX = 'buz_it_helpdesk.line_user_id'
+REVERSE_PARAMETER_PREFIX = 'buz_it_helpdesk.line_user_hash'
+CODE_PARAMETER_PREFIX = 'buz_it_helpdesk.line_connection_code'
+CODE_TTL = 600
 LINE_GROUP_RE = re.compile(r'^C[0-9a-fA-F]{32}$')
 REQUEST_TIMEOUT = 10
 
@@ -50,6 +61,29 @@ class HelpdeskLineService(models.AbstractModel):
         return (
             self.env['ir.config_parameter'].sudo().get_param(key, '') or ''
         ).strip()
+
+    @api.model
+    def _user_key(self, user_id):
+        return '%s.%s' % (USER_PARAMETER_PREFIX, int(user_id))
+
+    @api.model
+    def _reverse_key(self, line_user_id):
+        digest = hashlib.sha256(line_user_id.encode('utf-8')).hexdigest()
+        return '%s.%s' % (REVERSE_PARAMETER_PREFIX, digest)
+
+    @api.model
+    def _code_key(self, user_id):
+        return '%s.%s' % (CODE_PARAMETER_PREFIX, int(user_id))
+
+    @api.model
+    def _hash_value(self, value):
+        return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+    @api.model
+    def _own_user(self):
+        if not self.env.user.has_group('buz_it_helpdesk.group_it_requester'):
+            raise AccessError(_('Only Helpdesk Requesters can manage LINE.'))
+        return self.env.user
 
     @api.model
     def _group_parameter_key(self, company):
@@ -91,6 +125,28 @@ class HelpdeskLineService(models.AbstractModel):
             'Authorization': 'Bearer %s' % token,
             'Content-Type': 'application/json',
         }
+
+    @api.model
+    def _send_user_message(self, line_user_id, message, token=None):
+        self._request(
+            'POST', LINE_PUSH_URL, 'push',
+            headers=self._headers(token or self._parameter(TOKEN_PARAMETER)),
+            json={'to': line_user_id, 'messages': [
+                {'type': 'text', 'text': message[:5000]},
+            ]},
+        )
+        return True
+
+    @api.model
+    def _send_reply(self, reply_token, message, token=None):
+        self._request(
+            'POST', LINE_REPLY_URL, 'reply',
+            headers=self._headers(token or self._parameter(TOKEN_PARAMETER)),
+            json={'replyToken': reply_token, 'messages': [
+                {'type': 'text', 'text': message[:5000]},
+            ]},
+        )
+        return True
 
     @api.model
     def _response_detail(self, response):
@@ -255,10 +311,13 @@ class HelpdeskLineService(models.AbstractModel):
             'company_name': company.display_name,
             'group_id': self._parameter(self._group_parameter_key(company)),
             'token_configured': bool(self._parameter(TOKEN_PARAMETER)),
+            'secret_configured': bool(self._parameter(SECRET_PARAMETER)),
         }
 
     @api.model
-    def save_line_settings(self, company_id, token='', group_id=''):
+    def save_line_settings(
+        self, company_id, token='', group_id='', channel_secret=''
+    ):
         self._check_manager()
         company = self._allowed_company(company_id)
         token = (token or '').strip()
@@ -266,13 +325,124 @@ class HelpdeskLineService(models.AbstractModel):
         parameters = self.env['ir.config_parameter'].sudo()
         if token:
             parameters.set_param(TOKEN_PARAMETER, token)
+        if (channel_secret or '').strip():
+            parameters.set_param(SECRET_PARAMETER, channel_secret.strip())
         parameters.set_param(self._group_parameter_key(company), group_id)
         return {
             'company_id': company.id,
             'company_name': company.display_name,
             'group_id': group_id,
             'token_configured': bool(token or self._parameter(TOKEN_PARAMETER)),
+            'secret_configured': bool(
+                (channel_secret or '').strip()
+                or self._parameter(SECRET_PARAMETER)
+            ),
         }
+
+    @api.model
+    def get_line_connection_status(self):
+        user = self._own_user()
+        line_user_id = self._parameter(self._user_key(user.id))
+        masked = '%s...%s' % (line_user_id[:4], line_user_id[-4:]) \
+            if line_user_id else ''
+        return {'connected': bool(line_user_id), 'line_user_masked': masked}
+
+    @api.model
+    def create_line_connection_code(self):
+        user = self._own_user()
+        parameters = self.env['ir.config_parameter'].sudo()
+        parameters.set_param(self._code_key(user.id), '')
+        code = secrets.token_hex(4).upper()
+        parameters.set_param(
+            self._code_key(user.id),
+            '%s|%s' % (self._hash_value(code), int(time.time()) + CODE_TTL),
+        )
+        return {'code': code, 'expires_in': CODE_TTL}
+
+    @api.model
+    def cancel_line_connection(self):
+        user = self._own_user()
+        parameters = self.env['ir.config_parameter'].sudo()
+        line_user_id = self._parameter(self._user_key(user.id))
+        if line_user_id:
+            parameters.set_param(self._reverse_key(line_user_id), '')
+        parameters.set_param(self._user_key(user.id), '')
+        parameters.set_param(self._code_key(user.id), '')
+        return self.get_line_connection_status()
+
+    @api.model
+    def validate_webhook_signature(self, body, signature):
+        secret = self._parameter(SECRET_PARAMETER).encode('utf-8')
+        expected = base64.b64encode(
+            hmac.new(secret, body, hashlib.sha256).digest()
+        ).decode('ascii')
+        return bool(secret) and bool(signature) and hmac.compare_digest(
+            expected, signature
+        )
+
+    @api.model
+    def process_webhook_event(self, event):
+        source = event.get('source') or {}
+        source_type = source.get('type')
+        group_id = source.get('groupId')
+        line_user_id = source.get('userId')
+        message = event.get('message') or {}
+        if message.get('type') != 'text':
+            return False
+        text = (message.get('text') or '').strip().upper()
+
+        if source_type == 'group':
+            if text != 'GROUP_ID' or not group_id:
+                return False
+            reply_token = event.get('replyToken')
+            if not reply_token:
+                _logger.warning(
+                    'LINE Group ID command did not include a reply token.'
+                )
+                return False
+            self._send_reply(
+                reply_token,
+                _('LINE Group ID:\n%s') % group_id,
+            )
+            return True
+
+        if not line_user_id:
+            return False
+        parameters = self.env['ir.config_parameter'].sudo()
+        users = self.env['res.users'].sudo().search([('active', '=', True)])
+        for user in users:
+            raw = parameters.get_param(self._code_key(user.id), '') or ''
+            code_hash, separator, expiry = raw.partition('|')
+            if not separator or not expiry or int(expiry) < int(time.time()):
+                if raw:
+                    parameters.set_param(self._code_key(user.id), '')
+                continue
+            if not hmac.compare_digest(code_hash, self._hash_value(text)):
+                continue
+            reverse_key = self._reverse_key(line_user_id)
+            linked_user_id = parameters.get_param(reverse_key, '')
+            if linked_user_id and linked_user_id != str(user.id):
+                raise ValidationError(_('This LINE account is already connected.'))
+            previous_line_user_id = parameters.get_param(
+                self._user_key(user.id), ''
+            )
+            if previous_line_user_id and previous_line_user_id != line_user_id:
+                parameters.set_param(
+                    self._reverse_key(previous_line_user_id), ''
+                )
+            parameters.set_param(self._user_key(user.id), line_user_id)
+            parameters.set_param(reverse_key, str(user.id))
+            parameters.set_param(self._code_key(user.id), '')
+            self._send_reply(
+                event.get('replyToken'),
+                _('LINE account connected to Odoo user %s.') % user.display_name,
+            )
+            return True
+        self._send_reply(
+            event.get('replyToken'),
+            _('Invalid connection code. Open Helpdesk > LINE Connection in Odoo.'),
+        )
+        return False
 
     @api.model
     def save_and_test_line_settings(
@@ -280,6 +450,7 @@ class HelpdeskLineService(models.AbstractModel):
         company_id,
         token='',
         group_id='',
+        channel_secret='',
     ):
         self._check_manager()
         company = self._allowed_company(company_id)
@@ -330,6 +501,7 @@ class HelpdeskLineService(models.AbstractModel):
             company.id,
             token=token,
             group_id=values['group_id'],
+            channel_secret=channel_secret,
         )
         saved.update({
             'bot_name': bot.get('displayName') or '',
