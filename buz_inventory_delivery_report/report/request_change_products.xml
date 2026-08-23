@@ -17,6 +17,10 @@
     
     <template id="request_change_products_page_header">
         <div class="report-page-header">
+                            <div class="report-page-number">
+                                หน้า <t t-esc="page_number"/>/<t t-esc="total_pages"/>
+                            </div>
+
 <!-- Company Info Section -->
                          <div class="report-header-top">
                             <div class="col-8">
@@ -44,12 +48,9 @@
                                    </div>
                                </div>
                                <div class="col-4 text-end" style="">
-                                  <div style="font-size: 18px;">
+                                  <div style="font-size: 24px;">
                                       <span style="font-size: inherit;">เลขที่: </span>
-                                      <span style="font-size: inherit;" t-esc="o.name"/>
-                                  </div>
-                                  <div style="font-size: 18px; margin-top: 2px; margin-bottom: 3px;">
-                                      หน้า <t t-esc="page_number"/>/<t t-esc="total_pages"/>
+                                      <span style="font-size: 24px; font-weight: bold;" t-esc="o.name"/>
                                   </div>
                                   <div style="width: 5cm; height: 1cm; border: 1px solid black; display: flex; flex-direction: column; float: right; margin-bottom: 0;">
                                       <!-- ช่องบน -->
@@ -109,11 +110,25 @@
                                 box-sizing: border-box;
                             }
 
+                            .report-page-number {
+                                display: flex;
+                                justify-content: flex-end;
+                                align-items: flex-start;
+                                width: 100%;
+                                height: 25px;
+                                box-sizing: border-box;
+                                font-size: 18px;
+                                font-weight: bold;
+                                line-height: 1.2;
+                                white-space: nowrap;
+                            }
+
                             .report-header-top {
                                 display: flex;
                                 width: 100%;
                                 margin: 0 !important;
                                 padding: 0 !important;
+                                box-sizing: border-box;
                             }
 
                             .report-header-top > .col-8 {
@@ -129,6 +144,11 @@
                                 max-width: 33.333333%;
                             }
 
+                            .report-header-top > .col-4 {
+                                padding-right: 0;
+                                box-sizing: border-box;
+                            }
+
                             .report-header-details > .offset-4 {
                                 margin-left: 33.333333%;
                             }
@@ -141,7 +161,7 @@
 
                             .report-header-details {
                                 position: absolute;
-                                top: 60px;
+                                top: 85px;
                                 left: 0;
                                 right: 0;
                                 display: flex;
@@ -187,7 +207,7 @@
 
                             .page.report-page {
                                 box-sizing: border-box;
-                                padding-top: 15mm !important;
+                                padding-top: 5mm !important;
                                 page-break-after: auto !important;
                             }
 
