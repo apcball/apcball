@@ -22,19 +22,21 @@
                 <separator string="Repair Summary / สรุปการซ่อม" invisible="not show_repair_process"/>
                 <group invisible="not show_repair_process">
                     <group>
-                        <field name="repair_outcome_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="repair_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
-                        <field name="repair_instructions" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="repair_outcome_id" invisible="not can_edit_repair_details and not repair_outcome_id" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="repair_result" invisible="not can_edit_repair_details and not repair_result" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <field name="repair_instructions" invisible="not can_edit_repair_details and not repair_instructions" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                    </group>
+                    <group>
+                        <field name="diagnosis" invisible="not can_edit_repair_details and not diagnosis" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
+                        <separator string="IT Attachments / ไฟล์แนบทีม IT" invisible="not can_edit_repair_details and not it_attachment_ids"/>
+                        <field name="it_attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1" invisible="not can_edit_repair_details and not it_attachment_ids" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                     </group>
                     <group groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
-                        <field name="diagnosis" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="replacement_asset_id" domain="[('company_id', '=', company_id), ('id', '!=', asset_id), ('active', '=', True), ('state', 'not in', ['retired', 'lost'])]" options="{'no_create': True}" invisible="repair_outcome_behavior != 'asset_replaced'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="retire_reason" invisible="repair_outcome_behavior != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="retire_reason_detail" invisible="repair_outcome_behavior != 'retired'" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                         <field name="retire_approved_by_id" invisible="repair_outcome_behavior != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
                         <field name="retire_approved_date" invisible="repair_outcome_behavior != 'retired'" readonly="1" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
-                        <separator string="IT Attachments / ไฟล์แนบทีม IT"/>
-                        <field name="it_attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1" readonly="not can_edit_repair_details or not is_editable or is_closed_stage"/>
                     </group>
                 </group>
 

@@ -19,7 +19,6 @@ class HelpdeskTicketRepair(models.Model):
         'attachment_id',
         string='IT Attachments',
         copy=False,
-        groups=IT_GROUPS,
     )
     requester_asset_ids = fields.Many2many(
         'buz.it.asset',
@@ -60,7 +59,7 @@ class HelpdeskTicketRepair(models.Model):
         ('retire_pending', 'Retirement Approval Pending'),
         ('ready_close', 'Ready to Close'),
     ], string='Repair Progress', default='diagnosis', tracking=True, groups=IT_GROUPS)
-    diagnosis = fields.Text(string='Inspection / Diagnosis', groups=IT_GROUPS)
+    diagnosis = fields.Text(string='Inspection / Diagnosis')
     repair_instructions = fields.Text(string='Recommendations')
     repair_result = fields.Text(string='Repair Result')
     repair_outcome_id = fields.Many2one(
@@ -158,7 +157,8 @@ class HelpdeskTicketRepair(models.Model):
             )
 
     @api.depends(
-        'repair_outcome_id', 'repair_result', 'repair_instructions', 'stage_id',
+        'diagnosis', 'it_attachment_ids', 'repair_outcome_id', 'repair_result',
+        'repair_instructions', 'stage_id',
     )
     @api.depends_context('uid')
     def _compute_show_repair_process(self):
@@ -166,7 +166,8 @@ class HelpdeskTicketRepair(models.Model):
         for ticket in self:
             ticket.show_repair_process = bool(
                 is_it_user or ticket.repair_outcome_id or ticket.repair_result
-                or ticket.repair_instructions
+                or ticket.repair_instructions or ticket.diagnosis
+                or ticket.it_attachment_ids
             )
     _repair_management_fields = {
         'diagnosis', 'repair_route', 'repair_substate', 'repair_instructions',
