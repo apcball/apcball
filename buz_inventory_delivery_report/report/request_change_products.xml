@@ -52,7 +52,7 @@
                                       <span style="font-size: inherit;">เลขที่: </span>
                                       <span style="font-size: 24px; font-weight: bold;" t-esc="o.name"/>
                                   </div>
-                                  <div style="width: 5cm; height: 1cm; border: 1px solid black; display: flex; flex-direction: column; float: right; margin-bottom: 0;">
+                                  <div style="width: 5cm; height: 1cm; border: 1px solid black; display: flex; flex-direction: column; float: right; margin-bottom: 15px;">
                                       <!-- ช่องบน -->
                                       <div style="flex: 1; border-bottom: 1px solid black; display: flex; justify-content: center; align-items: center; font-size: 18px;">
                                           บัญชีตรวจสอบเอกสาร
@@ -256,7 +256,7 @@
                               <div>
                              <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
                          <t t-call="buz_inventory_delivery_report.request_change_products_page_header"/>
-                         <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black; align-items: stretch;">
+                         <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black; margin-top: 15px; align-items: stretch;">
                             <!-- กล่องที่ 1: 35% -->
                             <div style="width: 35%; border-right: 1px solid black; padding: 8px;">
                                 <div><strong>รายละเอียดลูกค้า</strong></div>
