@@ -224,9 +224,7 @@
                          <!-- Document Title -->
                             <div class="report-header-details">
                                <div class="col-4 offset-4 text-center">
-                                   <div class="doc-title" style="padding: 14px; font-size: 26px;">
-                                       ใบคืนสินค้าเคลม/ใบขออนุมัติคืนสินค้า (ลดหนี้)
-                                   </div>
+                                   <div class="doc-title" style="padding: 14px; font-size: 22px; white-space: nowrap;">☐ ใบคืนสินค้าเคลม&#160;&#160;&#160;☐ ใบขออนุมัติคืนสินค้า(ลดหนี้)</div>
                                </div>
                                <div class="col-4 text-end" style="">
                                   <div style="font-size: 24px;">
