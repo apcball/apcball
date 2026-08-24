@@ -283,8 +283,8 @@
     <div class="col-6" style="text-align: center; padding: 0 5px;">
         <p style="margin-bottom: 5px; color: #000;">ผู้มีอำนาจเสนอขาย</p>
         <p style="margin-bottom: 5px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE OF THE SELLER)</p>
-        <img t-att-src="'/buz_custom_quotation/static/img/signature/signature.png'"
-             style="height: 45px; margin-bottom: 5px;"/>
+        <img t-att-src="'/buz_custom_quotation/static/img/signature/signature1.png'"
+             style="height: 60px; margin-bottom: 5px;"/>
         <div style="border-bottom: 1px dashed #000; width: 50%; margin: 0 auto;"></div>
         <div style="margin-top: 5px; font-size: 16px;">
             (รณภพ เตชะวิวัฒน์วงศ์)
