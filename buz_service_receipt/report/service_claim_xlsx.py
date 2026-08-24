@@ -106,7 +106,7 @@ class ServiceClaimXlsx(models.AbstractModel):
                 sheet.write(row, 4, claim.replacement_picking_id.name or '')
                 sheet.write(row, 5, line.replacement_product_id.default_code or '')
                 sheet.write(row, 6, line.replacement_product_id.name or '')
-                sheet.write(row, 7, line.replacement_qty or 0.0, number)
+                sheet.write(row, 7, done_withdraw_qty or line.replacement_qty or 0.0, number)
                 if return_date:
                     sheet.write(row, 8, return_date, date_format)
                 else:
@@ -114,7 +114,7 @@ class ServiceClaimXlsx(models.AbstractModel):
                 sheet.write(row, 9, claim.return_picking_id.name or '')
                 sheet.write(row, 10, line.product_id.default_code or '')
                 sheet.write(row, 11, line.product_id.name or '')
-                sheet.write(row, 12, line.quantity or 0.0, number)
+                sheet.write(row, 12, done_return_qty or line.quantity or 0.0, number)
                 sheet.write(row, 13, remaining, number)
                 sheet.write(row, 14, requester)
                 sheet.write(row, 15, self._get_state_label(claim))
