@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_ac_trial_balance.TbFilterBar">
+    <div class="tb-filter-bar">
+        <div class="tb-filter-group">
+            <label class="tb-filter-label">แสดงข้อมูล</label>
+            <select class="form-select form-select-sm tb-filter-select"
+                    t-att-value="props.options.closing_mode"
+                    t-on-change="(ev) => this.onSelectChange('closing_mode', ev)">
+                <option value="before">
+                    ก่อนปิดบัญชีรายได้-ค่าใช้จ่าย
+                </option>
+                <option value="after">
+                    หลังปิดบัญชีรายได้-ค่าใช้จ่าย
+                </option>
+            </select>
+        </div>
+
+        <div class="tb-filter-group">
+            <label class="tb-filter-label">ช่วงเวลา</label>
+            <input type="date" class="form-control form-control-sm tb-filter-date"
+                   t-att-value="props.options.date_from"
+                   t-on-change="(ev) => this.onDateChange('date_from', ev)"/>
+            <span class="tb-filter-dash">–</span>
+            <input type="date" class="form-control form-control-sm tb-filter-date"
+                   t-att-value="props.options.date_to"
+                   t-on-change="(ev) => this.onDateChange('date_to', ev)"/>
+        </div>
+
+        <div class="tb-filter-group tb-presets">
+            <button t-foreach="presets" t-as="preset" t-key="preset.id"
+                    class="btn btn-sm btn-link tb-preset"
+                    t-on-click="() => this.applyPreset(preset.id)"
+                    t-esc="preset.label"/>
+        </div>
+
+        <div class="tb-filter-group" t-if="hasCompanyChoice">
+            <div class="tb-company-picker" t-on-click.stop="() => {}">
+                <button class="btn btn-sm btn-outline-secondary tb-company-toggle"
+                        t-on-click.stop="toggleCompanyMenu">
+                    <i class="fa fa-building-o me-1"/>
+                    <span t-esc="companyLabel"/>
+                    <i class="fa fa-caret-down ms-1"/>
+                </button>
+                <div class="tb-company-menu" t-if="state.companyMenuOpen">
+                    <label t-foreach="props.companies" t-as="company" t-key="company.id"
+                           class="tb-company-option">
+                        <input type="checkbox"
+                               t-att-checked="isCompanySelected(company.id)"
+                               t-on-change="() => this.toggleCompany(company.id)"/>
+                        <span t-esc="company.name"/>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="tb-filter-group">
+            <button class="btn btn-sm"
+                    t-att-class="props.options.group_by_type ? 'btn-primary' : 'btn-outline-secondary'"
+                    t-on-click="() => this.toggle('group_by_type')">
+                <i class="fa fa-th-list me-1"/>แยกหมวดบัญชี
+            </button>
+            <button t-if="isMultiCompany" class="btn btn-sm"
+                    t-att-class="props.options.company_mode === 'split' ? 'btn-primary' : 'btn-outline-secondary'"
+                    t-att-title="props.options.company_mode === 'split' ? 'กำลังแยกแถวตามบริษัท' : 'กำลังรวมทุกบริษัทเป็นงบเดียว'"
+                    t-on-click="toggleCompanyMode">
+                <i class="fa fa-building-o me-1"/>แยกตามบริษัท
+            </button>
+        </div>
+
+        <div class="tb-filter-group tb-filter-right">
+            <select class="form-select form-select-sm tb-filter-select"
+                    t-att-value="props.options.opening_basis"
+                    t-on-change="(ev) => this.onSelectChange('opening_basis', ev)">
+                <option value="fiscalyear">
+                    ยอดยกมา: ต้นปีบัญชี
+                </option>
+                <option value="inception">
+                    ยอดยกมา: ทุกรายการก่อนงวด
+                </option>
+            </select>
+            <select class="form-select form-select-sm tb-filter-select"
+                    t-att-value="props.options.target_move"
+                    t-on-change="(ev) => this.onSelectChange('target_move', ev)">
+                <option value="posted">
+                    เฉพาะที่ผ่านรายการแล้ว
+                </option>
+                <option value="all">
+                    รวมรายการที่ยังไม่ผ่าน
+                </option>
+            </select>
+            <select class="form-select form-select-sm tb-filter-select"
+                    t-att-value="props.options.display_account"
+                    t-on-change="(ev) => this.onSelectChange('display_account', ev)">
+                <option value="movement">
+                    บัญชีที่มีความเคลื่อนไหว
+                </option>
+                <option value="not_zero">
+                    บัญชีที่ยอดไม่เป็นศูนย์
+                </option>
+                <option value="all">
+                    ทุกบัญชี
+                </option>
+            </select>
+            <select class="form-select form-select-sm tb-filter-select"
+                    t-att-value="props.options.compare"
+                    t-on-change="(ev) => this.onSelectChange('compare', ev)">
+                <option value="none">
+                    ไม่เปรียบเทียบ
+                </option>
+                <option value="previous_period">
+                    เทียบงวดก่อน
+                </option>
+                <option value="previous_year">
+                    เทียบปีก่อน
+                </option>
+            </select>
+
+            <button class="btn btn-sm btn-outline-secondary"
+                    t-on-click="() => props.onPrint('pdf')">
+                <i class="fa fa-file-pdf-o me-1"/>PDF
+            </button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    t-on-click="() => props.onPrint('xlsx')">
+                <i class="fa fa-file-excel-o me-1"/>Excel
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="โหลดใหม่"
+                    t-att-disabled="props.loading or undefined"
+                    t-on-click="() => props.onRefresh()">
+                <i class="fa fa-refresh" t-att-class="props.loading ? 'fa-spin' : ''"/>
+            </button>
+        </div>
+    </div>
+</t>
+
+</templates>

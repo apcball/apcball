@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- สไตล์แยกไว้ต่างหากเพื่อให้รายงานอื่นในโมดูลนี้เรียกซ้ำได้ -->
+    <template id="trial_balance_thai_style">
+        <style type="text/css">
+            <t t-out="font_css"/>
+            .tb-report { font-family: Sarabun, sans-serif; font-size: 10px; color: #101828; }
+            .tb-report h1 { font-size: 17px; font-weight: bold; margin: 0 0 2px 0; }
+            .tb-report h2 { font-size: 13px; font-weight: bold; margin: 0 0 6px 0; }
+            .tb-meta { font-size: 9px; color: #475467; margin-bottom: 6px; line-height: 1.5; }
+            .tb-meta span { margin-right: 14px; }
+            .tb-warn {
+                font-size: 9px; font-weight: bold; color: #B42318;
+                border: 1px solid #FDA29B; background: #FEF3F2;
+                padding: 3px 6px; margin-bottom: 6px;
+            }
+            .tb-table { width: 100%; border-collapse: collapse; }
+            /* ทำให้หัวตารางซ้ำทุกหน้า และห้ามตัดแถวคาหน้า — งบทดลองยาวหลายหน้าเสมอ */
+            .tb-table thead { display: table-header-group; }
+            .tb-table tfoot { display: table-row-group; }
+            .tb-table tr { page-break-inside: avoid; }
+            .tb-table th {
+                border: 1px solid #98A2B3; background: #F2F4F7;
+                padding: 3px 4px; font-weight: bold; text-align: center;
+            }
+            .tb-table td { border: 1px solid #D0D5DD; padding: 2px 4px; }
+            .tb-num { text-align: right; white-space: nowrap; }
+            .tb-code { white-space: nowrap; }
+            .tb-section td { background: #EAECF0; font-weight: bold; }
+            .tb-section-total td {
+                background: #F9FAFB; font-weight: bold; border-top: 1px solid #667085;
+            }
+            .tb-grand td {
+                background: #D1E9FF; font-weight: bold;
+                border-top: 2px solid #1570EF; border-bottom: 2px double #1570EF;
+            }
+            .tb-abnormal { color: #B42318; font-weight: bold; }
+            .tb-sign { margin-top: 26px; width: 100%; border-collapse: collapse; }
+            .tb-sign td {
+                width: 33.33%; text-align: center; font-size: 10px;
+                padding-top: 30px; vertical-align: bottom;
+            }
+            .tb-sign .tb-sign-line {
+                border-top: 1px dotted #101828; margin: 0 12px; padding-top: 3px;
+            }
+        </style>
+    </template>
+
+    <template id="report_trial_balance_doc">
+        <t t-call="web.html_container">
+            <t t-call="web.internal_layout">
+                <div class="page tb-report">
+                    <t t-set="opt" t-value="d['options']"/>
+                    <t t-set="checks" t-value="d['checks']"/>
+                    <t t-call="biz_ac_trial_balance.trial_balance_thai_style"/>
+
+                    <h1 t-out="d['company']['names']"/>
+                    <h2>
+                        <t t-out="d['labels']['title']"/>
+                        <t t-out="d['labels']['period']"/>
+                    </h2>
+                    <div class="tb-meta">
+                        <span>แสดงข้อมูล: <t t-out="d['labels']['closing_mode']"/></span>
+                        <span>เกณฑ์ยอดยกมา: <t t-out="d['labels']['opening_basis']"/></span>
+                        <span>สถานะรายการ: <t t-out="d['labels']['target_move']"/></span>
+                        <span>แสดงบัญชี: <t t-out="d['labels']['display_account']"/></span>
+                        <t t-if="d['labels']['company_mode']">
+                            <span>งบหลายบริษัท: <t t-out="d['labels']['company_mode']"/></span>
+                        </t>
+                        <t t-if="d['labels']['compare']">
+                            <span t-out="d['labels']['compare']"/>
+                        </t>
+                        <span>พิมพ์เมื่อ: <t t-out="printed_on"/> โดย <t t-out="printed_by"/></span>
+                    </div>
+
+                    <div t-if="checks['include_draft']" class="tb-warn">
+                        คำเตือน: รายงานนี้รวมรายการที่ยังไม่ผ่านรายการ (Draft) — ห้ามใช้ยื่นงบการเงิน
+                    </div>
+                    <div t-if="checks['mixed_currency']" class="tb-warn">
+                        คำเตือน: มีบริษัทที่ใช้สกุลเงินต่างจากรายงานนี้ ยอดถูกบวกกันตรง ๆ โดยไม่แปลงค่า —
+                        <t t-foreach="checks['mixed_currency']" t-as="c">
+                            <span t-out="c['name']"/> (<span t-out="c['currency']"/>)
+                        </t>
+                    </div>
+                    <div t-if="not checks['is_balanced']" class="tb-warn">
+                        คำเตือน: เดบิตรวมไม่เท่ากับเครดิตรวม ผลต่าง
+                        <span t-out="checks['difference']"
+                              t-options="{'widget': 'float', 'precision': 2}"/>
+                    </div>
+
+                    <table class="tb-table">
+                        <thead>
+                            <tr>
+                                <t t-foreach="columns" t-as="col">
+                                    <th t-if="not col['group'] and col['group_first']"
+                                        rowspan="2"
+                                        t-att-style="col.get('width') and ('width:%s' % col['width'])"
+                                        t-out="col['label']"/>
+                                    <th t-elif="col['group'] and col['group_span']"
+                                        t-att-colspan="col['group_span']"
+                                        t-out="col['group']"/>
+                                </t>
+                            </tr>
+                            <tr>
+                                <t t-foreach="columns" t-as="col">
+                                    <th t-if="col['group']" t-out="col['label']"/>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="d['lines']" t-as="line"
+                                t-att-class="
+                                    line['kind'] == 'section' and 'tb-section'
+                                    or line['kind'] == 'section_total' and 'tb-section-total'
+                                    or ''">
+                                <t t-foreach="columns" t-as="col">
+                                    <td t-if="col['type'] == 'text'" class="tb-code"
+                                        t-out="line.get(col['key']) or ''"/>
+                                    <td t-elif="col['type'] == 'name'"
+                                        t-att-style="'padding-left:%spx' % (4 + 12 * (line.get('level') or 0))">
+                                        <span t-att-class="line.get('flag') == 'abnormal' and 'tb-abnormal' or ''"
+                                              t-out="line.get('name') or ''"/>
+                                    </td>
+                                    <td t-elif="col['type'] == 'pct'" class="tb-num">
+                                        <t t-if="line['kind'] != 'section' and line.get('change_pct') is not None">
+                                            <span t-out="line['change_pct']"
+                                                  t-options="{'widget': 'float', 'precision': 1}"/>%
+                                        </t>
+                                    </td>
+                                    <td t-else="" class="tb-num">
+                                        <t t-if="line['kind'] != 'section'">
+                                            <t t-set="amount" t-value="line.get(col['key']) or 0.0"/>
+                                            <span t-if="amount" t-out="amount"
+                                                  t-options="{'widget': 'float', 'precision': 2}"/>
+                                            <span t-else="">-</span>
+                                        </t>
+                                    </td>
+                                </t>
+                            </tr>
+                            <tr class="tb-grand">
+                                <t t-foreach="columns" t-as="col">
+                                    <td t-if="col['type'] == 'text'"/>
+                                    <td t-elif="col['type'] == 'name'">
+                                        รวมทั้งสิ้น
+                                        <span t-if="checks['is_balanced']"> (สมดุล)</span>
+                                        <span t-else="" class="tb-abnormal"> (ไม่สมดุล)</span>
+                                    </td>
+                                    <td t-elif="col['type'] == 'pct'" class="tb-num"/>
+                                    <td t-else="" class="tb-num">
+                                        <span t-out="d['totals'].get(col['key']) or 0.0"
+                                              t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- ช่องลงนามอยู่ท้ายรายงานหน้าสุดท้ายเท่านั้น -->
+                    <table class="tb-sign">
+                        <tr>
+                            <td><div class="tb-sign-line">ผู้จัดทำ</div></td>
+                            <td><div class="tb-sign-line">ผู้ตรวจสอบ</div></td>
+                            <td><div class="tb-sign-line">ผู้อนุมัติ</div></td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

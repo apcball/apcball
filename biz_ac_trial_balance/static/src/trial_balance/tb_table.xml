@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_ac_trial_balance.TbTable">
+    <div class="tb-table-wrap">
+        <table class="tb-table">
+            <thead>
+                <tr class="tb-head-groups">
+                    <th t-foreach="headerGroups" t-as="group" t-key="group_index"
+                        t-att-colspan="group.span"
+                        t-att-rowspan="group.isGroup ? 1 : 2"
+                        t-att-class="group.isGroup ? 'tb-th-group' : 'tb-th-plain'"
+                        t-esc="group.label"/>
+                </tr>
+                <tr class="tb-head-subs">
+                    <t t-foreach="columns" t-as="col" t-key="col.key">
+                        <th t-if="col.group" class="tb-th-sub" t-esc="col.label"/>
+                    </t>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="props.data.lines" t-as="line" t-key="line.id"
+                    t-att-class="rowClass(line)"
+                    t-on-click="() => this.onRowClick(line)">
+                    <t t-foreach="columns" t-as="col" t-key="col.key">
+                        <td t-if="col.type === 'code'" class="tb-cell-code" t-esc="line.code"/>
+                        <td t-elif="col.type === 'text'" class="tb-cell-company"
+                            t-esc="line[col.key] || ''"/>
+                        <td t-elif="col.type === 'name'" class="tb-cell-name"
+                            t-att-style="'padding-left:' + (8 + 16 * (line.level || 0)) + 'px'">
+                            <span t-esc="line.name"/>
+                        </td>
+                        <td t-elif="col.type === 'flag'" class="tb-cell-flag">
+                            <span t-if="line.flag === 'abnormal'" class="tb-chip tb-chip-warn"
+                                  title="ยอดคงเหลืออยู่ผิดด้านของหมวดบัญชีนี้">ยอดผิดด้าน</span>
+                        </td>
+                        <td t-elif="col.type === 'pct'" class="tb-cell-num tb-cell-pct"
+                            t-esc="cellValue(line, col)"/>
+                        <td t-else="" class="tb-cell-num" t-esc="cellValue(line, col)"/>
+                    </t>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="tb-row-grand">
+                    <t t-foreach="columns" t-as="col" t-key="col.key">
+                        <td t-if="col.type === 'code'"/>
+                        <td t-elif="col.type === 'text'"/>
+                        <td t-elif="col.type === 'name'" class="tb-cell-name">รวมทั้งสิ้น</td>
+                        <td t-elif="col.type === 'flag'" class="tb-cell-flag">
+                            <span t-if="props.data.checks.is_balanced"
+                                  class="tb-chip tb-chip-ok">สมดุล</span>
+                            <span t-else="" class="tb-chip tb-chip-bad">ไม่สมดุล</span>
+                        </td>
+                        <td t-elif="col.type === 'pct'" class="tb-cell-num tb-cell-pct"
+                            t-esc="cellValue(props.data.totals, col)"/>
+                        <td t-else="" class="tb-cell-num"
+                            t-esc="cellValue(props.data.totals, col)"/>
+                    </t>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</t>
+
+</templates>

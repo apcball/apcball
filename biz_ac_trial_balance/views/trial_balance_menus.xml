@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_trial_balance_screen"
+              name="งบทดลอง (Trial Balance)"
+              parent="account.menu_finance_reports"
+              action="action_trial_balance_screen"
+              sequence="15"
+              groups="account.group_account_user,account.group_account_manager"/>
+
+    <menuitem id="menu_trial_balance_wizard"
+              name="พิมพ์งบทดลอง (PDF / Excel)"
+              parent="account.menu_finance_reports"
+              action="action_trial_balance_wizard"
+              sequence="16"
+              groups="account.group_account_user,account.group_account_manager"/>
+
+</odoo>

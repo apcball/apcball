@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_trial_balance_screen" model="ir.actions.client">
+        <field name="name">งบทดลอง</field>
+        <field name="tag">biz_ac_trial_balance.trial_balance</field>
+    </record>
+
+</odoo>

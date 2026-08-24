@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- แนวนอน: 6 คอลัมน์ตัวเงินขึ้นไป ใส่ A4 ตั้งไม่พอ ตัวเลขจะถูกตัดขอบ -->
+    <record id="paperformat_trial_balance" model="report.paperformat">
+        <field name="name">งบทดลอง A4 แนวนอน</field>
+        <field name="default">False</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">22</field>
+        <field name="margin_bottom">14</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
+        <field name="header_line">False</field>
+        <field name="header_spacing">10</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_trial_balance" model="ir.actions.report">
+        <field name="name">งบทดลอง (Trial Balance)</field>
+        <field name="model">biz.trial.balance.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">biz_ac_trial_balance.report_trial_balance_doc</field>
+        <field name="report_file">biz_ac_trial_balance.report_trial_balance_doc</field>
+        <field name="paperformat_id" ref="paperformat_trial_balance"/>
+        <field name="print_report_name">'Trial-Balance-%s' % (object.date_to or '')</field>
+    </record>
+
+</odoo>

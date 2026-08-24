@@ -1,0 +1,267 @@
+// งบทดลอง — design token ประกาศไว้ในตัวเอง โมดูลนี้จึงติดตั้งได้ลำพัง
+.tb-root {
+    --tb-primary: #6c5ce7;
+    --tb-primary-soft: rgba(108, 92, 231, 0.12);
+    --tb-up: #2da44e;
+    --tb-up-soft: rgba(45, 164, 78, 0.12);
+    --tb-down: #e5484d;
+    --tb-down-soft: rgba(229, 72, 77, 0.12);
+    --tb-warn-soft: rgba(245, 166, 35, 0.14);
+    --tb-card-bg: var(--o-view-background-color, #fff);
+    --tb-page-bg: #f4f5fa;
+    --tb-text: #1f2430;
+    --tb-text-muted: #7a8194;
+    --tb-border: #e6e8f0;
+    --tb-radius: 12px;
+
+    background: var(--tb-page-bg);
+    color: var(--tb-text);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    padding: 0.75rem 1rem 0;
+    font-size: 0.85rem;
+}
+
+.tb-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.tb-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.tb-subtitle {
+    color: var(--tb-text-muted);
+    font-size: 0.8rem;
+
+    .tb-sep { margin: 0 0.4rem; opacity: 0.5; }
+}
+
+.tb-summary {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.tb-summary-item {
+    text-align: right;
+
+    .tb-summary-label {
+        font-size: 0.72rem;
+        color: var(--tb-text-muted);
+    }
+
+    .tb-summary-value {
+        font-size: 1rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.tb-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--tb-card-bg);
+    border: 1px solid var(--tb-border);
+    border-radius: var(--tb-radius);
+    margin-bottom: 0.5rem;
+}
+
+.tb-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.tb-filter-right {
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.tb-filter-label {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--tb-text-muted);
+    white-space: nowrap;
+}
+
+.tb-filter-select { width: auto; min-width: 9rem; }
+.tb-filter-date { width: 9.5rem; }
+.tb-filter-dash { color: var(--tb-text-muted); }
+
+.tb-company-picker {
+    position: relative;
+
+    .tb-company-toggle { white-space: nowrap; }
+}
+
+.tb-company-menu {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    min-width: 15rem;
+    max-height: 18rem;
+    overflow-y: auto;
+    padding: 0.35rem 0;
+    background: var(--tb-card-bg);
+    border: 1px solid var(--tb-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 14px rgba(20, 20, 40, 0.14);
+}
+
+.tb-company-option {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0.3rem 0.75rem;
+    cursor: pointer;
+    font-weight: 400;
+
+    &:hover { background: var(--tb-primary-soft); }
+}
+
+.tb-presets .tb-preset {
+    padding: 0 0.35rem;
+    font-size: 0.75rem;
+    text-decoration: none;
+}
+
+.tb-alert {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+
+    &.tb-alert-warn {
+        background: var(--tb-warn-soft);
+        color: #8a5a00;
+    }
+
+    &.tb-alert-bad {
+        background: var(--tb-down-soft);
+        color: var(--tb-down);
+    }
+
+    .tb-badge {
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 4px;
+        padding: 0 0.3rem;
+        margin-left: 0.25rem;
+    }
+}
+
+.tb-body {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0.75rem;
+}
+
+.tb-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 12rem;
+    color: var(--tb-text-muted);
+}
+
+.tb-table-wrap {
+    height: 100%;
+    overflow: auto;
+    background: var(--tb-card-bg);
+    border: 1px solid var(--tb-border);
+    border-radius: var(--tb-radius);
+}
+
+.tb-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-variant-numeric: tabular-nums;
+
+    th, td {
+        border-bottom: 1px solid var(--tb-border);
+        padding: 0.25rem 0.5rem;
+        white-space: nowrap;
+    }
+
+    // หัวตารางสองชั้นต้องลอยค้างไว้ตอนเลื่อน ไม่งั้นดูงบยาว ๆ แล้วหลงคอลัมน์
+    thead th {
+        position: sticky;
+        background: #f2f4f7;
+        font-weight: 700;
+        text-align: center;
+        z-index: 2;
+    }
+
+    // ระยะ top ของหัวแถวล่างต้องเท่ากับความสูงจริงของหัวแถวบนเป๊ะ ๆ
+    // ไม่งั้นเวลาเลื่อนตารางจะเห็นแถวข้อมูลแลบออกมาระหว่างหัวสองชั้น
+    .tb-head-groups th { top: 0; height: 1.85rem; }
+    .tb-head-subs th { top: 1.85rem; }
+
+    .tb-th-plain { vertical-align: middle; }
+
+    tfoot td {
+        position: sticky;
+        bottom: 0;
+        background: #d1e9ff;
+        font-weight: 700;
+        border-top: 2px solid #1570ef;
+        z-index: 2;
+    }
+}
+
+.tb-cell-num { text-align: right; }
+.tb-cell-pct { color: var(--tb-text-muted); }
+.tb-cell-code { color: var(--tb-text-muted); }
+.tb-cell-company { color: var(--tb-text-muted); white-space: nowrap; }
+.tb-cell-flag { text-align: center; }
+.tb-cell-name { max-width: 28rem; overflow: hidden; text-overflow: ellipsis; }
+
+.tb-row-clickable {
+    cursor: pointer;
+
+    &:hover { background: var(--tb-primary-soft); }
+}
+
+.tb-row-section td {
+    background: #eaecf0;
+    font-weight: 700;
+}
+
+.tb-row-section_total td {
+    background: #f9fafb;
+    font-weight: 700;
+    border-top: 1px solid #98a2b3;
+}
+
+.tb-row-abnormal .tb-cell-name { color: var(--tb-down); }
+
+.tb-chip {
+    display: inline-block;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+
+    &.tb-chip-ok { background: var(--tb-up-soft); color: var(--tb-up); }
+    &.tb-chip-warn { background: var(--tb-warn-soft); color: #8a5a00; }
+    &.tb-chip-bad { background: var(--tb-down-soft); color: var(--tb-down); }
+}

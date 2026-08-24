@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_ac_trial_balance.TrialBalance">
+    <div class="tb-root">
+        <div class="tb-header">
+            <div class="tb-title-block">
+                <h1 class="tb-title">งบทดลอง</h1>
+                <div class="tb-subtitle" t-if="state.data">
+                    <span t-esc="state.data.company.names"/>
+                    <span class="tb-sep">·</span>
+                    <span t-esc="state.data.labels.period"/>
+                    <span class="tb-sep">·</span>
+                    <span t-esc="state.data.labels.opening_basis"/>
+                </div>
+            </div>
+            <div class="tb-summary" t-if="state.data">
+                <div class="tb-summary-item" t-foreach="summary" t-as="item" t-key="item.label">
+                    <div class="tb-summary-label" t-esc="item.label"/>
+                    <div class="tb-summary-value" t-esc="item.value"/>
+                </div>
+            </div>
+        </div>
+
+        <TbFilterBar options="state.options"
+                     companies="state.data ? state.data.allowed_companies : []"
+                     loading="state.loading"
+                     onChange.bind="updateOptions"
+                     onRefresh.bind="load"
+                     onPrint.bind="print"/>
+
+        <t t-if="state.data">
+            <div class="tb-alert tb-alert-warn" t-if="state.data.checks.include_draft">
+                <i class="fa fa-exclamation-triangle me-2"/>
+                รายงานนี้รวมรายการที่ยังไม่ผ่านรายการ (Draft) — ห้ามใช้ยื่นงบการเงิน
+            </div>
+            <div class="tb-alert tb-alert-warn"
+                 t-if="state.data.checks.mixed_currency.length">
+                <i class="fa fa-exclamation-triangle me-2"/>
+                มีบริษัทที่ใช้สกุลเงินต่างจากรายงานนี้ ยอดถูกบวกกันตรง ๆ โดยไม่แปลงค่า:
+                <t t-foreach="state.data.checks.mixed_currency" t-as="c" t-key="c.id">
+                    <span class="tb-badge"><t t-esc="c.name"/> (<t t-esc="c.currency"/>)</span>
+                </t>
+            </div>
+            <div class="tb-alert tb-alert-bad" t-if="!state.data.checks.is_balanced">
+                <i class="fa fa-times-circle me-2"/>
+                เดบิตรวมไม่เท่ากับเครดิตรวม ผลต่าง
+                <strong t-esc="state.data.checks.difference"/>
+            </div>
+            <div class="tb-alert tb-alert-bad"
+                 t-if="state.data.checks.unbalanced_moves.length">
+                <i class="fa fa-times-circle me-2"/>
+                พบรายการที่เดบิตไม่เท่าเครดิต:
+                <t t-foreach="state.data.checks.unbalanced_moves" t-as="move" t-key="move.id">
+                    <span class="tb-badge" t-esc="move.name"/>
+                </t>
+            </div>
+        </t>
+
+        <div class="tb-body">
+            <div class="tb-loading" t-if="state.loading">
+                <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+            </div>
+            <TbTable t-elif="state.data"
+                     data="state.data"
+                     onDrillDown.bind="drillDown"/>
+        </div>
+    </div>
+</t>
+
+</templates>
