@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_exchange_rate" model="ir.ui.view">
+        <field name="name">stock.picking.form.exchange.rate</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="before">
+                <field name="is_foreign_currency_receipt" invisible="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Foreign Currency Costing" name="foreign_currency_costing"
+                      invisible="not is_foreign_currency_receipt">
+                    <group>
+                        <group>
+                            <field name="purchase_currency_id" readonly="1"/>
+                            <field name="exchange_rate_date"
+                                   readonly="state == 'done'"/>
+                            <field name="exchange_rate"
+                                   readonly="state == 'done'"/>
+                            <field name="exchange_rate_source" readonly="1"/>
+                            <field name="actual_rate_date" readonly="1"
+                                   invisible="not actual_rate_date"/>
+                        </group>
+                        <group>
+                            <field name="foreign_total_amount"/>
+                            <field name="estimated_cost"/>
+                        </group>
+                    </group>
+                    <button name="action_get_exchange_rate" type="object"
+                            string="Get Exchange Rate" class="btn-secondary"
+                            invisible="state == 'done'"/>
+                    <button name="action_recalculate_cost" type="object"
+                            string="Recalculate Cost" class="btn-secondary"
+                            invisible="state == 'done'"
+                            groups="buz_purchase_receipt_exchange_rate.group_foreign_currency_cost_manager"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

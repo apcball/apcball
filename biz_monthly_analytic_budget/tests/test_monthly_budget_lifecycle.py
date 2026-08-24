@@ -62,6 +62,26 @@ class TestMonthlyBudgetLifecycle(TransactionCase, BudgetTestMixin):
         ])
         self.assertTrue(reserved)
 
+    def test_pr_payment_date_change_moves_commitment_to_new_plan_month(self):
+        target_month1 = fields.Date.today() + timedelta(days=15)
+        target_month2 = target_month1 + timedelta(days=31)
+        plan1 = self._create_confirmed_plan(target_month1)
+        plan2 = self._create_confirmed_plan(target_month2)
+        pr = self._create_pr(target=target_month1, state='waiting_purchase_approval')
+
+        commitment = self.env['budget.commitment'].sudo().search([
+            ('document_model', '=', 'employee.purchase.requisition'),
+            ('document_id', '=', pr.id),
+            ('budget_source', '=', 'monthly'),
+            ('state', '=', 'reserved'),
+        ])
+        self.assertTrue(commitment)
+        self.assertEqual(commitment.date, target_month1)
+
+        pr.write({'payment_date': target_month2, 'payment_date_manual': target_month2})
+        commitment.invalidate_recordset()
+        self.assertEqual(commitment.date, target_month2)
+
     def test_cancel_confirmed_po_releases_budget(self):
         target = fields.Date.today() + timedelta(days=15)
         plan = self._create_confirmed_plan(target, budget_amount=100000)

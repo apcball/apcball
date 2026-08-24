@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_picking_form_transfer_department" model="ir.ui.view">
+        <field name="name">stock.picking.form.transfer.department</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='extra']//group[@name='other_infos']/field[@name='user_id']" position="after">
+                <field name="employee_id" readonly="1"/>
+                <field name="department_id" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="vpicktree_transfer_department" model="ir.ui.view">
+        <field name="name">stock.picking.tree.transfer.department</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="employee_id" optional="hide" readonly="1"/>
+                <field name="department_id" optional="hide" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

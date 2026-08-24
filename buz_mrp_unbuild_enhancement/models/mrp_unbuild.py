@@ -12,6 +12,20 @@ _logger = logging.getLogger(__name__)
 class MrpUnbuild(models.Model):
     _inherit = 'mrp.unbuild'
 
+    bom_id = fields.Many2one(
+        'mrp.bom', 'Bill of Material',
+        domain="""[
+        '|',
+            ('product_id', '=', product_id),
+            '&',
+                ('product_tmpl_id.product_variant_ids', '=', product_id),
+                ('product_id','=',False),
+        ('type', 'in', ('normal', 'unbuild')),
+        '|',
+            ('company_id', '=', company_id),
+            ('company_id', '=', False)
+        ]""",
+        check_company=True)
     component_line_ids = fields.One2many(
         'mrp.unbuild.component.line',
         'unbuild_id',
@@ -109,6 +123,7 @@ class MrpUnbuild(models.Model):
                 'quantity': line_data['qty'],
                 'receive': True,
                 'scrap_qty': 0.0,
+                'cost_share': bom_line.cost_share or 0.0,
                 'destination_location_id': destination.id,
             }))
             sequence += 10
@@ -372,3 +387,70 @@ class MrpUnbuild(models.Model):
                 '.mrp_unbuild_component_line_tree_view').id, 'tree')],
             'domain': [('unbuild_id', '=', self.id)],
         }
+
+    def action_view_unbuild_overview(self):
+        """Cost breakdown + real stock moves of this unbuild: the finished
+        product's consume move, every component receipt move (with its
+        Cost Share % and actual valuation), and the resulting scrap-out
+        moves — rendered as an HTML report page (styled like the core MO
+        Overview) instead of just linking to the source MO's Overview."""
+        self.ensure_one()
+        return self.env.ref(
+            'buz_mrp_unbuild_enhancement.action_report_unbuild_overview'
+        ).report_action(self)
+
+    _OVERVIEW_STATE_LABELS = {
+        'draft': 'Draft',
+        'waiting': 'Waiting',
+        'confirmed': 'Waiting',
+        'partially_available': 'Partially Available',
+        'assigned': 'Ready',
+        'done': 'Done',
+        'cancel': 'Cancelled',
+    }
+    _OVERVIEW_STATE_CSS = {
+        'draft': 'muted',
+        'waiting': 'info',
+        'confirmed': 'info',
+        'partially_available': 'warning',
+        'assigned': 'info',
+        'done': 'success',
+        'cancel': 'danger',
+    }
+
+    def _get_unbuild_overview_values(self):
+        """Group this unbuild's real stock moves (finished-good consume,
+        returned components, scrap) into report sections with per-section
+        and grand totals, for the Unbuild Overview HTML report."""
+        self.ensure_one()
+        move_ids = self.produce_line_ids.ids + self.scrap_ids.move_ids.ids
+        moves = self.env['stock.move'].browse(move_ids)
+        role_labels = dict(moves._fields['unbuild_move_role'].selection)
+        sections = []
+        for role in ('consume', 'component', 'scrap'):
+            role_moves = moves.filtered(
+                lambda m: m.unbuild_move_role == role)
+            if not role_moves:
+                continue
+            rows = [{
+                'product': move.product_id.display_name,
+                'status_label': _(self._OVERVIEW_STATE_LABELS.get(
+                    move.state, move.state)),
+                'status_css': self._OVERVIEW_STATE_CSS.get(
+                    move.state, 'muted'),
+                'quantity': move.product_uom_qty,
+                'uom': move.product_uom.name,
+                'source': move.location_id.display_name,
+                'destination': move.location_dest_id.display_name,
+                'cost_share': move.unbuild_cost_share,
+                'unit_cost': move.unbuild_unit_cost,
+                'value': move.unbuild_valuation_value,
+            } for move in role_moves]
+            sections.append({
+                'label': role_labels.get(role, role),
+                'rows': rows,
+                'total_qty': sum(role_moves.mapped('product_uom_qty')),
+                'total_value': sum(
+                    role_moves.mapped('unbuild_valuation_value')),
+            })
+        return {'sections': sections}

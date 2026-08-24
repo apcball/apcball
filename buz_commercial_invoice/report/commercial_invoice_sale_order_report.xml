@@ -13,7 +13,7 @@
                         }
                         .page {
                             font-family: 'Sarabun', Arial, sans-serif;
-                            font-size: 13px;
+                            font-size: 18px;
                             color: #000;
                         }
                         .table-sm th, .table-sm td {
@@ -187,25 +187,53 @@
                             <tbody>
                                 <t t-set="current_line_number" t-value="((page_number - 1) * 10) + 1"/>
                                 <t t-foreach="group" t-as="line">
-                                    <tr>
-                                        <td class="text-center"><span t-esc="current_line_number"/></td>
-                                        <td>
-                                            <span t-field="line.product_id.name_eng"/>
-                                        </td>
-                                        <td class="text-center">
-                                            <span t-field="line.hscode"/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                        </td>
+                                    <t t-set="bom_components" t-value="o.get_bom_components(line.product_id, line.product_uom_qty, line.hscode)"/>
+                                    <t t-if="bom_components">
+                                        <!-- Display BOM components: Unit Price/Amount cells merged (rowspan) across the group -->
+                                        <t t-foreach="bom_components" t-as="component">
+                                            <tr>
+                                                <td class="text-center"><span t-esc="current_line_number"/></td>
+                                                <td>
+                                                    <span t-esc="component['product'].name_eng if component['product'].name_eng else component['product'].name"/>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span t-esc="component['hscode']"/>
+                                                </td>
+                                                <td class="text-right">
+                                                    <span t-esc="component['quantity']" t-options='{"widget": "float", "precision": 2}'/>
+                                                </td>
+                                                <td t-if="component_index == 0" class="text-right" style="vertical-align: middle;" t-attf-rowspan="#{len(bom_components)}">
+                                                    <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                                <td t-if="component_index == 0" class="text-right" style="vertical-align: middle;" t-attf-rowspan="#{len(bom_components)}">
+                                                    <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                            </tr>
+                                            <t t-set="current_line_number" t-value="current_line_number + 1"/>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <!-- Display normal product line -->
+                                        <tr>
+                                            <td class="text-center"><span t-esc="current_line_number"/></td>
+                                            <td>
+                                                <span t-field="line.product_id.name_eng"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span t-field="line.hscode"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                        </tr>
                                         <t t-set="current_line_number" t-value="current_line_number + 1"/>
-                                    </tr>
+                                    </t>
                                 </t>
                             </tbody>
                             <t t-if="page_number == total_pages">
@@ -216,7 +244,7 @@
                                         <td style="border: none;"></td>
                                         <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
                                         <td class="text-right" style="border: 1px solid #000;">
-                                            <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
+                                            <span t-esc="o.get_total_bom_quantity()" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                         <td class="text-center" style="border: 1px solid #000;">
                                             <span t-field="o.currency_id.name"/>

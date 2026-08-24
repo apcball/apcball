@@ -122,13 +122,13 @@ class StockFifoValuationReport(models.Model):
                     svl.warehouse_id,
                     SUM(CASE WHEN svl.create_date < %s THEN svl.quantity ELSE 0 END) as opening_qty,
                     SUM(CASE WHEN svl.create_date < %s THEN svl.value ELSE 0 END) as opening_value,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.value > 0
+                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity > 0
                         THEN svl.quantity ELSE 0 END) as in_qty,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.value > 0
+                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity > 0
                         THEN svl.value ELSE 0 END) as in_value,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.value < 0
+                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity < 0
                         THEN svl.quantity ELSE 0 END) as out_qty,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.value < 0
+                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity < 0
                         THEN svl.value ELSE 0 END) as out_value,
                     SUM(CASE WHEN svl.create_date < %s AND svl.remaining_qty > 0
                         THEN svl.remaining_value ELSE 0 END) as remaining_value_check

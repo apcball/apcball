@@ -15,14 +15,14 @@
                 <field name="warehouse_id"/>
                 <field name="location_id" optional="show"/>
                 <field name="amount_total" sum="Total" widget="monetary"/>
-                <field name="amount_paid" sum="Paid" widget="monetary"/>
-                <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0"/>
-                <field name="margin" sum="Margin" widget="monetary"/>
+                <field name="amount_paid" sum="Paid" widget="monetary" optional="hide"/>
+                <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0" optional="hide"/>
+                <field name="margin" sum="Margin" widget="monetary" optional="hide"/>
                 <field name="return_status" widget="badge" decoration-danger="return_status == 'Return'" decoration-success="return_status == 'Sale'" optional="show"/>
-                <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="show"/>
+                <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="hide"/>
                 <field name="return_of_order_id" optional="hide"/>
-                <field name="return_count" invisible="1"/>
-                <field name="invoice_id" optional="hide"/>
+                <field name="return_count" invisible="1" optional="hide"/>
+                <field name="invoice_id" optional="show"/>
                 <field name="picking_id" optional="hide"/>
                 <field name="session_id" optional="hide"/>
                 <field name="employee_id" optional="hide" string="Employee"/>
@@ -36,6 +36,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
+                 <field name="invoice_id"/>
                 <field name="partner_id" context="{'pos_lite_partner_search': 1}"/>
                 <field name="partner_phone"/>
                 <field name="warehouse_id"/>
@@ -148,31 +149,31 @@
                     <group col="3" colspan="2">
                         <!-- Col 1: Customer -->
                         <group string="Customer">
-                            <field name="partner_id" context="{'pos_lite_partner_search': 1}" options="{'no_create_edit': False}" placeholder="Search or create customer..."/>
+                            <field name="partner_id" context="{'pos_lite_partner_search': 1}" options="{'no_create_edit': False}" placeholder="Search or create customer..." readonly="state == 'done'"/>
                             <field name="customer_name" placeholder="Customer Name" readonly="1"/>
                         </group>
                         <!-- Col 2: Invoice Address -->
                         <group string="Invoice Address">
-                            <field name="partner_invoice_id" options="{'no_create_edit': False}" placeholder="Auto-filled from customer"/>
+                            <field name="partner_invoice_id" options="{'no_create_edit': False}" placeholder="Auto-filled from customer" readonly="state == 'done'"/>
                         </group>
                         <!-- Col 3: Delivery Address -->
                         <group string="Delivery Address">
-                            <field name="partner_shipping_id" options="{'no_create_edit': False}" placeholder="Auto-filled from customer"/>
+                            <field name="partner_shipping_id" options="{'no_create_edit': False}" placeholder="Auto-filled from customer" readonly="state == 'done'"/>
                         </group>
                     </group>
 
                     <!-- ═══ Order Details: 2 columns ═══ -->
                     <group col="2" colspan="2">
                         <group string="Order Info">
-                            <field name="channel"/>
-                            <field name="trade_channel"/>
+                            <field name="channel" readonly="state == 'done'"/>
+                            <field name="trade_channel" readonly="state == 'done'"/>
                             <field name="date_order" readonly="state != 'draft'"/>
-                            <field name="warehouse_id" options="{'no_create': True}"/>
+                            <field name="warehouse_id" options="{'no_create': True}" readonly="state == 'done'"/>
                             <field name="location_id" options="{'no_create': True}"/>
-                            <field name="pricelist_id"/>
+                            <field name="pricelist_id" readonly="state == 'done'"/>
                         </group>
                         <group string="Session">
-                            <field name="session_id" options="{'no_create': True}"/>
+                            <field name="session_id" options="{'no_create': True}" readonly="state == 'done'"/>
                             <field name="employee_id" readonly="state not in ('draft', 'held')"/>
                             <field name="company_id" invisible="1"/>
                             <field name="is_return" invisible="1"/>
@@ -238,7 +239,7 @@
                     <!-- ═══ Notebook ═══ -->
                     <notebook>
                         <page string="Order Lines">
-                            <field name="line_ids" mode="tree" nolabel="1">
+                            <field name="line_ids" mode="tree" nolabel="1" readonly="state == 'done'">
                                 <tree editable="bottom" decoration-danger="is_low_stock" decoration-warning="qty_available &gt; 0 and qty_available &lt; qty">
                                     <field name="company_id" invisible="1"/>
                                     <field name="product_image" widget="image" class="oe_avatar" options="{'size': [40, 40]}" string=" "/>
@@ -291,7 +292,7 @@
                             </group>
                         </page>
                         <page string="Notes">
-                            <field name="note" placeholder="Add notes, delivery instructions, LINE message details..."/>
+                            <field name="note" placeholder="Add notes, delivery instructions, LINE message details..." readonly="state == 'done'"/>
                         </page>
                     </notebook>
                 </sheet>

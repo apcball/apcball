@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_new_stock_card.LocationTree">
+        <ul class="o_location_tree list-unstyled ps-2 mb-0">
+            <t t-foreach="props.nodes" t-as="node" t-key="node.id">
+                <li class="o_location_tree_node">
+                    <div class="d-flex align-items-center gap-1 py-1 px-1 rounded"
+                         t-att-class="{'bg-primary text-white': node.id === props.selectedId}"
+                         style="cursor: pointer;">
+                        <span t-if="node.children and node.children.length"
+                              t-on-click="() => this.toggle(node.id)"
+                              style="width: 14px; display:inline-block;">
+                            <t t-esc="isExpanded(node.id) ? '▼' : '▶'"/>
+                        </span>
+                        <span t-else="" style="width: 14px; display:inline-block;"/>
+                        <span class="flex-grow-1 small" t-att-class="{'fw-bold text-muted': !node.selectable}"
+                              t-on-click="() => this.select(node)" t-esc="node.name"/>
+                        <span t-if="getCount(node.id)" class="badge bg-secondary rounded-pill">
+                            <t t-esc="getCount(node.id)"/>
+                        </span>
+                    </div>
+                    <t t-if="node.children and node.children.length and isExpanded(node.id)">
+                        <LocationTree nodes="node.children" counts="props.counts"
+                                      selectedId="props.selectedId" onSelect="props.onSelect"/>
+                    </t>
+                </li>
+            </t>
+        </ul>
+    </t>
+</templates>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_count_tag_import_wizard_form" model="ir.ui.view">
+        <field name="name">buz.stock.count.tag.import.wizard.form</field>
+        <field name="model">buz.stock.count.tag.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Stock Count Tags">
+                <field name="tag_id" invisible="1"/>
+                <field name="state" invisible="1"/>
+
+                <group invisible="state != 'upload'">
+                    <field name="file_data" filename="file_name" required="1"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="has_header"/>
+                </group>
+
+                <group invisible="state != 'preview'">
+                    <group>
+                        <field name="valid_count" readonly="1"/>
+                        <field name="warning_count" readonly="1"/>
+                        <field name="error_count" readonly="1"/>
+                    </group>
+                    <field name="preview_ids" readonly="1">
+                        <tree decoration-danger="status == 'error'" decoration-warning="status == 'warning'">
+                            <field name="row_number"/>
+                            <field name="doc_no" optional="show"/>
+                            <field name="product_code"/>
+                            <field name="product_name"/>
+                            <field name="warehouse"/>
+                            <field name="layout"/>
+                            <field name="lac"/>
+                            <field name="quantity"/>
+                            <field name="status" widget="badge"/>
+                            <field name="message"/>
+                        </tree>
+                    </field>
+                </group>
+
+                <footer>
+                    <button name="action_preview" type="object" string="Validate"
+                            invisible="state != 'upload'" class="oe_highlight"/>
+                    <button name="action_import" type="object" string="Import"
+                            invisible="state != 'preview'" class="oe_highlight"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

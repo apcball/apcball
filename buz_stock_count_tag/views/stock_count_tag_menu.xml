@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_stock_count_tag"
+              name="Stock Count TAG"
+              parent="stock.menu_stock_warehouse_mgmt"
+              action="action_stock_count_tag"
+              groups="buz_stock_count_tag.group_stock_count_tag_user"
+              sequence="30"/>
+</odoo>

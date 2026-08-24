@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- XLSX Report Action for Claims -->
+    <record id="action_report_service_claim_xlsx" model="ir.actions.report">
+        <field name="name">Claims (XLSX)</field>
+        <field name="model">service.receipt</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_service_receipt.report_service_claim_xlsx</field>
+        <field name="report_file">buz_service_receipt.report_service_claim_xlsx</field>
+        <field name="print_report_name">'Claims Report'</field>
+    </record>
+</odoo>

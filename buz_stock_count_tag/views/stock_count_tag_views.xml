@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_count_tag_list" model="ir.ui.view">
+        <field name="name">buz.stock.count.tag.list</field>
+        <field name="model">buz.stock.count.tag</field>
+        <field name="arch" type="xml">
+            <tree string="Stock Count Tags">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="tag_count" string="Tags"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'printed'"
+                       decoration-info="state == 'generated'"/>
+                <field name="create_uid"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_count_tag_form" model="ir.ui.view">
+        <field name="name">buz.stock.count.tag.form</field>
+        <field name="model">buz.stock.count.tag</field>
+        <field name="arch" type="xml">
+            <form string="Stock Count Tag">
+                <header>
+                    <button name="action_open_import_wizard" type="object"
+                            string="Import Excel" class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_download_template" type="object"
+                            string="Download Template"
+                            invisible="state != 'draft'"/>
+                    <button name="action_generate_excel" type="object"
+                            string="Export Excel" class="oe_highlight"
+                            invisible="state != 'imported'"/>
+                    <button name="action_generate_excel" type="object"
+                            string="Re-export Excel"
+                            invisible="state not in ('generated', 'printed')"/>
+                    <button name="action_open_pdf_export_wizard" type="object"
+                            string="Export PDF" class="oe_highlight"
+                            invisible="state not in ('imported', 'generated', 'printed')"/>
+                    <button name="action_printed" type="object"
+                            string="Mark Printed"
+                            invisible="state not in ('imported', 'generated')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,imported,generated,printed"/>
+                </header>
+                <sheet>
+                    <h1><field name="name"/></h1>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="sort_by" invisible="state != 'imported'"/>
+                        </group>
+                        <group>
+                            <field name="tag_count" readonly="1"/>
+                            <field name="page_count" readonly="1"/>
+                            <field name="generated_file_id" readonly="1" invisible="not generated_file_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Lines" name="lines">
+                            <field name="line_ids">
+                                <tree editable="bottom" decoration-danger="import_status == 'error'"
+                                      decoration-warning="import_status == 'warning'">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="doc_no"/>
+                                    <field name="product_code"/>
+                                    <field name="product_name"/>
+                                    <field name="product_status"/>
+                                    <field name="warehouse"/>
+                                    <field name="layout"/>
+                                    <field name="lac"/>
+                                    <field name="quantity"/>
+                                    <field name="import_status" widget="badge" optional="hide"/>
+                                    <field name="import_message" optional="hide"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stock_count_tag" model="ir.actions.act_window">
+        <field name="name">Stock Count Tags</field>
+        <field name="res_model">buz.stock.count.tag</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

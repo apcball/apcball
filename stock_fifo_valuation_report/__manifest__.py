@@ -23,11 +23,12 @@ this report reads stock.valuation.layer directly:
     "license": "LGPL-3",
     'author': "APC Ball",
     'category': 'Warehouse',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.1',
 
     'depends': ['base', 'stock', 'stock_account', 'product', 'stock_fifo_by_location'],
 
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'reports/stock_fifo_valuation_report_views.xml',
         'reports/stock_fifo_valuation_details_report_views.xml',

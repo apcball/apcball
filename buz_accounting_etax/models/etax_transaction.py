@@ -432,12 +432,14 @@ class EtaxTransaction(models.Model):
                 "H05-CREATE_PURPOSE_CODE": (
                     self.substitute_reason_code if self.document_type == 'T03' and self.is_substitute
                     else self.remark_cdn if self.document_type == '81'
+                    else self.remark_dbn if self.document_type == '80'
                     else ''
                 ),  # เหตุผลในการเพิ่ม/ลดหนี้
                 "H06-CREATE_PURPOSE": (
                     (self.substitute_reason if self.substitute_reason_code == 'TIVC99' else (dict(self._fields['substitute_reason_code'].selection).get(self.substitute_reason_code) or ''))
                     if self.document_type == 'T03' and self.is_substitute
                     else cdn_label if self.document_type == '81'
+                    else dbn_label if self.document_type == '80'
                     else ''
                 ), # เหตุผลในการเพิ่ม/ลดหนี้
 
@@ -987,7 +989,7 @@ class EtaxTransaction(models.Model):
             else:
                 record.net_amount_total = round((record.total_after_deposit or 0.0) + (record.amount_vat or 0.0), 2)
 
-    @api.depends('invoice_id.amount_untaxed', 'invoice_id.original_tax_invoice_amount')
+    @api.depends('selected_invoice_id.amount_untaxed', 'invoice_id.amount_untaxed', 'invoice_id.original_tax_invoice_amount')
     def _compute_original_amount(self):
         for record in self:
             invoice = record.selected_invoice_id if record.selected_invoice_id else False

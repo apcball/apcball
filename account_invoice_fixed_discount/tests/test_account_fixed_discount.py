@@ -12,7 +12,9 @@ class TestInvoiceFixedDiscount(TransactionCase):
 
         cls.env.user.groups_id |= cls.env.ref("account.group_account_invoice")
         cls.partner = cls.env["res.partner"].create({"name": "Test"})
-        cls.product = cls.env.ref("product.product_product_3")
+        cls.product = cls.env["product.product"].search(
+            [("sale_ok", "=", True)], limit=1
+        )
         cls.account = cls.env["account.account"].search(
             [("account_type", "=", "income")],
             limit=1,
@@ -137,6 +139,22 @@ class TestInvoiceFixedDiscount(TransactionCase):
         self.assertEqual(self.invoice.amount_total, 143)
         self.assertEqual(self.invoice.invoice_line_ids.price_unit, 200.00)
         self.assertEqual(self.invoice.invoice_line_ids.price_subtotal, 143)
+
+    def test_05_discount_fixed_set_via_create(self):
+        """discount_fixed passed directly in create() vals (no Form/onchange,
+        e.g. POS invoice generation) must still sync the % `discount` field so
+        the aggregated tax base is computed net of the fixed discount.
+        """
+        invoice = self._create_invoice(discount_fixed=57.00)
+        line = invoice.invoice_line_ids
+        # discount % must be in sync even though no onchange ever fired
+        self.assertEqual(line.discount, 28.5)
+        self.assertEqual(line.price_subtotal, 143.00)
+        # tax must be computed on the discounted base (143.00), not 200.00
+        tax_line = invoice.line_ids.filtered("tax_line_id")
+        self.assertEqual(tax_line.tax_base_amount, 143.00)
+        self.assertEqual(invoice.amount_tax, 14.30)
+        self.assertEqual(invoice.amount_total, 157.30)
 
     def test_04_base_line_set_to_none(self):
         self.vat._convert_to_tax_base_line_dict(

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_stock_card_export_wizard_form" model="ir.ui.view">
+        <field name="name">buz.stock.card.export.wizard.form</field>
+        <field name="model">buz.stock.card.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Stock Card Export">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="warehouse_ids" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <field name="product_id"/>
+                        <field name="location_ids" widget="many2many_tags"/>
+                        <field name="show_movements_only"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx" type="object" string="Export Excel"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stock_card_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export Stock Card</field>
+        <field name="res_model">buz.stock.card.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

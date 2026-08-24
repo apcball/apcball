@@ -344,7 +344,7 @@ class StockCurrentReport(models.Model):
                             AND (bom.product_id IS NULL OR bom.product_id = pp.id)
                         JOIN mrp_bom_line bl ON bl.bom_id = bom.id
                         WHERE bom.active = true
-                        AND bom.type IN ('normal', 'phantom')
+                        AND bom.type = 'phantom'
                         AND NOT EXISTS (
                             SELECT 1 FROM products_with_stock ps WHERE ps.product_id = pp.id)
                         GROUP BY pp.id, bl.bom_id, bl.product_id

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_unbuild_overview_document">
+        <t t-foreach="docs" t-as="doc">
+            <t t-set="vals" t-value="doc._get_unbuild_overview_values()"/>
+            <div class="buz-uo-page">
+                <style>
+                    .buz-uo-page { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #4c4c4c; padding: 24px 32px; }
+                    .buz-uo-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+                    .buz-uo-header h1 { font-size: 15px; font-weight: 500; color: #8a8a8a; margin: 0; }
+                    .buz-uo-header h2 { font-size: 20px; font-weight: 600; color: #2c2c2c; margin: 2px 0 0 0; }
+                    .buz-uo-crumb { color: #714b67; }
+                    table.buz-uo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                    table.buz-uo-table th { text-align: right; font-weight: 600; color: #6c6c6c; padding: 10px 12px; border-bottom: 2px solid #e3e3e3; }
+                    table.buz-uo-table th:first-child { text-align: left; }
+                    table.buz-uo-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #eee; }
+                    table.buz-uo-table td:first-child { text-align: left; }
+                    tr.buz-uo-section td { background: #f6f4f8; font-weight: 600; color: #2c2c2c; border-bottom: 1px solid #e3e3e3; }
+                    tr.buz-uo-section .buz-uo-caret { color: #714b67; margin-right: 6px; }
+                    .buz-uo-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
+                    .buz-uo-badge.success { background: #2AA02A; }
+                    .buz-uo-badge.info { background: #61B7CF; }
+                    .buz-uo-badge.warning { background: #E0AC00; }
+                    .buz-uo-badge.danger { background: #d9534f; }
+                    .buz-uo-badge.muted { background: #b8b8b8; }
+                </style>
+                <div class="buz-uo-header">
+                    <div>
+                        <h1>
+                            <span class="buz-uo-crumb">Unbuild Orders</span>
+                            <t t-esc="' / '"/>
+                            <t t-esc="doc.name"/>
+                        </h1>
+                        <h2>Unbuild Overview</h2>
+                    </div>
+                </div>
+                <table class="buz-uo-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Quantity</th>
+                            <th>UoM</th>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Cost Share (%)</th>
+                            <th>Unit Cost</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="vals['sections']" t-as="section">
+                            <tr class="buz-uo-section">
+                                <td colspan="6">
+                                    <span class="buz-uo-caret">▾</span>
+                                    <t t-esc="section['label']"/>
+                                </td>
+                                <td/>
+                                <td/>
+                                <td><t t-esc="'%.2f' % section['total_value']"/> ฿</td>
+                            </tr>
+                            <tr t-foreach="section['rows']" t-as="row">
+                                <td><t t-esc="row['product']"/></td>
+                                <td>
+                                    <span t-attf-class="buz-uo-badge #{row['status_css']}">
+                                        <t t-esc="row['status_label']"/>
+                                    </span>
+                                </td>
+                                <td><t t-esc="'%.2f' % row['quantity']"/></td>
+                                <td><t t-esc="row['uom']"/></td>
+                                <td><t t-esc="row['source']"/></td>
+                                <td><t t-esc="row['destination']"/></td>
+                                <td>
+                                    <t t-if="row['cost_share']"><t t-esc="'%.2f' % row['cost_share']"/></t>
+                                    <t t-if="not row['cost_share']">-</t>
+                                </td>
+                                <td><t t-esc="'%.2f' % row['unit_cost']"/> ฿</td>
+                                <td><t t-esc="'%.2f' % row['value']"/> ฿</td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_unbuild_overview">
+        <t t-call="web.html_container">
+            <t t-call="buz_mrp_unbuild_enhancement.report_unbuild_overview_document"/>
+        </t>
+    </template>
+
+    <record id="action_report_unbuild_overview" model="ir.actions.report">
+        <field name="name">Unbuild Overview</field>
+        <field name="model">mrp.unbuild</field>
+        <field name="report_type">qweb-html</field>
+        <field name="report_name">buz_mrp_unbuild_enhancement.report_unbuild_overview</field>
+        <field name="print_report_name">'Unbuild Overview - %s' % (object.name)</field>
+        <field name="binding_model_id" eval="False"/>
+    </record>
+</odoo>

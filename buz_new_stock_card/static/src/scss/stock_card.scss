@@ -1,0 +1,111 @@
+.o_stock_card_action {
+    background-color: #f5f6fb;
+
+    .o_stock_card_header {
+        background-color: #fff;
+    }
+
+    .o_stock_card_logo {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background-color: #4f5fe0;
+        color: #fff;
+        font-size: 16px;
+    }
+
+    .o_stock_card_sidebar {
+        background-color: #fff;
+    }
+
+    .o_sidebar_section_title {
+        color: #6b7280;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: .03em;
+    }
+
+    .o_stock_card_main {
+        background-color: #f5f6fb;
+    }
+
+    .o_report_title {
+        .text-primary {
+            color: #4f5fe0 !important;
+            letter-spacing: .02em;
+        }
+    }
+
+    .o_summary_card {
+        border-radius: 8px;
+        border: none;
+    }
+    .o_card_opening {
+        background-color: #eaefff;
+        .fs-4 { color: #3d55d6; }
+    }
+    .o_card_in {
+        background-color: #e6f7ec;
+        .fs-4 { color: #1a9e5c; }
+    }
+    .o_card_out {
+        background-color: #fdecee;
+        .fs-4 { color: #e0455f; }
+    }
+    .o_card_balance {
+        background-color: #f0ecfd;
+        .fs-4 { color: #7c5ce0; }
+    }
+
+    .o_pill_toggle .btn {
+        border-radius: 4px;
+    }
+
+    .o_stock_card_table {
+        background-color: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+
+        thead th {
+            background-color: #f4f5fa;
+            color: #6b7280;
+            font-weight: 600;
+            border-bottom: none;
+            white-space: nowrap;
+        }
+        td, th {
+            vertical-align: middle;
+        }
+        tbody tr:hover {
+            background-color: #f9faff;
+        }
+    }
+
+    .o_doc_link_icon {
+        cursor: pointer;
+        color: #4f5fe0;
+        &:hover {
+            color: #3d4bc0;
+        }
+    }
+
+    .o_location_tree_node > div:hover {
+        background-color: rgba(79, 95, 224, 0.08);
+    }
+    .o_location_tree_node .bg-primary {
+        background-color: #4f5fe0 !important;
+    }
+    .o_location_tree_node .badge {
+        background-color: #eaefff !important;
+        color: #4f5fe0 !important;
+    }
+
+    .btn-primary {
+        background-color: #4f5fe0;
+        border-color: #4f5fe0;
+        &:hover {
+            background-color: #3d4bc0;
+            border-color: #3d4bc0;
+        }
+    }
+}

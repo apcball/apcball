@@ -402,6 +402,13 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             for rec in self:
                 if rec.state in RESERVED_PR_STATES and prev_states.get(rec.id) != rec.state:
                     rec._reserve_monthly_analytic_budget()
+        # Re-reserve budget when payment_date changes on a PR already in a
+        # reserved state, so the existing commitment moves to the plan/month
+        # matching the new target date instead of staying on the stale one.
+        if 'payment_date' in vals:
+            for rec in self:
+                if rec.state in RESERVED_PR_STATES and prev_states.get(rec.id) == rec.state:
+                    rec._reserve_monthly_analytic_budget()
         # Sync expected payment to linked POs (and cascade to Bills via PO)
         if 'payment_date' in vals and not self.env.context.get('skip_expected_payment_sync'):
             for rec in self:

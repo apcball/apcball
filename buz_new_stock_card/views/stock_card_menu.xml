@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_stock_card_dashboard" model="ir.actions.client">
+        <field name="name">Stock Card</field>
+        <field name="tag">buz_new_stock_card</field>
+    </record>
+
+    <menuitem id="menu_stock_card_dashboard"
+              name="Stock Card"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_card_dashboard"
+              groups="stock.group_stock_user"
+              sequence="20"/>
+</odoo>

@@ -7,7 +7,7 @@ to valuation layers during inventory moves.
 """
 
 from odoo import models, fields, api
-from odoo.tools import float_round, float_compare
+from odoo.tools import float_round, float_compare, float_is_zero
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -22,7 +22,33 @@ class StockMove(models.Model):
     """
     
     _inherit = 'stock.move'
-    
+
+    def _get_valued_qty(self):
+        """Quantity that valuation must use, in the product's UoM.
+
+        `product_qty` is the *demand* converted to product UoM. On a done move
+        the demand can legitimately be 0 while stock actually moved (extra or
+        unplanned lines added during validation), which collapses every
+        valuation derived from it to zero — layers get created with
+        quantity=0 / value=0 while the goods physically changed warehouse.
+
+        For done moves the quantity comes off the move lines instead. A done
+        move with no lines at all is no evidence that anything moved, so it
+        values at zero rather than falling back to the demand — on MOG_LIVE
+        every such move (1394 of them, all inter-warehouse) already carries no
+        valuation layer, and reading the demand there would invent one.
+
+        Moves that are not done yet still answer with the demand: that is what
+        the planning-time callers expect.
+        """
+        self.ensure_one()
+        if self.state == 'done':
+            return float_round(
+                sum(self.move_line_ids.mapped('quantity_product_uom')),
+                precision_rounding=self.product_id.uom_id.rounding,
+            )
+        return self.product_qty
+
     @api.model
     def create(self, vals):
         """
@@ -174,7 +200,7 @@ class StockMove(models.Model):
                 # Transfer ≠ Consumption: create out SVL with origin layer link
                 # _run_fifo will reduce remaining_qty but NOT origin_remaining_qty
                 fifo_result = self.env['fifo.service'].calculate_fifo_cost_with_landed_cost(
-                    move.product_id, source_wh, forced_quantity or move.product_qty, move.company_id.id
+                    move.product_id, source_wh, forced_quantity or move._get_valued_qty(), move.company_id.id
                 )
                 move_vals = []
                 for layer_info in fifo_result.get('layers', []):
@@ -370,15 +396,21 @@ class StockMove(models.Model):
             
             is_return_move = bool(move.origin_returned_move_id)
             move_type = "RETURN" if is_return_move else "TRANSFER"
-            
+
+            valued_qty = move._get_valued_qty()
+            if float_is_zero(valued_qty, precision_rounding=product.uom_id.rounding):
+                # Nothing actually moved — creating a layer pair here would only
+                # produce quantity=0 / value=0 rows (core skips valuation the same way).
+                continue
+
             existing_layers = valuation_layer_model.search([
                 ('stock_move_id', '=', move.id),
             ])
-            
+
             _logger.info(
                 f"📦 Inter-warehouse {move_type} {move.name}: "
                 f"{source_wh.name} → {dest_wh.name}, "
-                f"Product: {product.name}, Qty: {move.product_qty}, "
+                f"Product: {product.name}, Qty: {valued_qty}, "
                 f"Existing layers: {len(existing_layers)}"
             )
             
@@ -410,17 +442,17 @@ class StockMove(models.Model):
             if unit_cost <= 0:
                 fifo_service = self.env['fifo.service']
                 fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
-                    product, source_wh, move.product_qty, company.id
+                    product, source_wh, valued_qty, company.id
                 )
                 if isinstance(fifo_result, dict):
                     unit_cost = fifo_result.get('unit_cost', 0.0)
                 else:
                     unit_cost = float(fifo_result) if fifo_result else 0.0
-            
+
             if unit_cost <= 0:
                 unit_cost = product.standard_price or 0.0
-            
-            total_cost = unit_cost * move.product_qty
+
+            total_cost = unit_cost * valued_qty
             
             # ── Handle NEGATIVE layer at source warehouse ──
             negative_layers = existing_layers.filtered(lambda l: l.quantity < 0)
@@ -434,7 +466,7 @@ class StockMove(models.Model):
                     'stock_move_id': move.id,
                     'product_id': product.id,
                     'warehouse_id': source_wh.id,
-                    'quantity': -move.product_qty,
+                    'quantity': -valued_qty,
                     'unit_cost': unit_cost,
                     'value': -total_cost,
                     'remaining_qty': 0.0,
@@ -443,7 +475,7 @@ class StockMove(models.Model):
                     'description': f'{move_type} OUT: {source_wh.name} → {dest_wh.name}',
                 })
                 # _run_fifo will consume remaining_qty but NOT origin_remaining_qty
-                neg_layer._run_fifo(-move.product_qty, company)
+                neg_layer._run_fifo(-valued_qty, company)
                 negative_layers = neg_layer
                 _logger.info(f"✅ Created negative layer at {source_wh.name}")
             else:
@@ -484,10 +516,10 @@ class StockMove(models.Model):
                     'stock_move_id': move.id,
                     'product_id': product.id,
                     'warehouse_id': dest_wh.id,
-                    'quantity': move.product_qty,
+                    'quantity': valued_qty,
                     'unit_cost': unit_cost,
                     'value': total_cost,
-                    'remaining_qty': move.product_qty,
+                    'remaining_qty': valued_qty,
                     'remaining_value': total_cost,
                     'company_id': company.id,
                     'description': f'{move_type} IN: {source_wh.name} → {dest_wh.name}',
@@ -516,7 +548,7 @@ class StockMove(models.Model):
             
             _logger.info(
                 f"🎉 Inter-warehouse {move_type} complete: "
-                f"{move.product_qty} x {product.name} @ {unit_cost:.4f}/unit "
+                f"{valued_qty} x {product.name} @ {unit_cost:.4f}/unit "
                 f"from {source_wh.name} to {dest_wh.name}"
             )
     
@@ -603,7 +635,7 @@ class StockMove(models.Model):
                                 unit_lc = lc_value / lc_qty if lc_qty > 0 else 0.0
                             
                             return_unit_cost = base_delivery_unit_cost + unit_lc
-                            return_total_cost = return_unit_cost * move.product_qty
+                            return_total_cost = return_unit_cost * move._get_valued_qty()
                             
                             _logger.info(
                                 f"Return move {move.name}: "
@@ -635,7 +667,7 @@ class StockMove(models.Model):
                                     unit_lc = lc_value / lc_qty if lc_qty > 0 else 0.0
                                 
                                 return_unit_cost = base_receipt_unit_cost + unit_lc
-                                return_total_cost = return_unit_cost * move.product_qty
+                                return_total_cost = return_unit_cost * move._get_valued_qty()
                                 
                                 _logger.info(
                                     f"Return move {move.name}: "
@@ -654,7 +686,7 @@ class StockMove(models.Model):
                                 fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
                                     move.product_id,
                                     original_wh,
-                                    move.product_qty,
+                                    move._get_valued_qty(),
                                     move.company_id.id
                                 )
                                 
@@ -673,7 +705,7 @@ class StockMove(models.Model):
                                     original_price = abs(original_move.price_unit) if original_move.price_unit else 0.0
                                     if original_price > 0:
                                         return_unit_cost = original_price
-                                        return_total_cost = return_unit_cost * move.product_qty
+                                        return_total_cost = return_unit_cost * move._get_valued_qty()
                                         _logger.info(
                                             f"Return move {move.name}: "
                                             f"Using original move price_unit fallback: {return_unit_cost}/unit"
@@ -924,7 +956,7 @@ class StockMove(models.Model):
         dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
         product = move.product_id
         company = move.company_id
-        qty_transferred = move.product_qty
+        qty_transferred = move._get_valued_qty()
         
         if not (source_wh and dest_wh):
             return
@@ -1064,7 +1096,7 @@ class StockMove(models.Model):
             )
             
             if total_qty_available > 0:
-                proportion = return_move.product_qty / total_qty_available
+                proportion = return_move._get_valued_qty() / total_qty_available
                 lc_to_allocate = total_lc_available * proportion
                 lc_to_allocate = float_round(lc_to_allocate, precision_digits=precision)
             else:

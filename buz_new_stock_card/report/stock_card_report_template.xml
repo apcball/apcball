@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_stock_card_pdf">
+        <t t-call="web.html_container">
+            <t t-set="o" t-value="docs"/>
+            <t t-call="web.internal_layout">
+            <div class="page">
+                <div class="row mb-3">
+                    <div class="col-8">
+                        <h2 t-esc="o.default_code and ('%s - %s' % (o.default_code, o.name)) or o.name"/>
+                    </div>
+                    <div class="col-4 text-end">
+                        <img t-if="o.image_128" t-att-src="image_data_uri(o.image_128)"
+                             style="max-height: 60px;"/>
+                    </div>
+                </div>
+                <table class="table table-sm mb-2">
+                    <tr>
+                        <td><strong>Location:</strong> <span t-esc="location_name"/></td>
+                        <td><strong>Period:</strong>
+                            <span t-esc="date_from"/> - <span t-esc="date_to"/>
+                        </td>
+                        <td><strong>UoM:</strong> <span t-esc="o.uom_id.name"/></td>
+                    </tr>
+                </table>
+                <table class="table table-sm mb-3">
+                    <tr>
+                        <td><strong>ยอดยกมา:</strong> <t t-esc="'%.2f' % card_data['opening_balance']"/></td>
+                        <td><strong>รับทั้งหมด:</strong> <t t-esc="'%.2f' % card_data['total_in']"/></td>
+                        <td><strong>จ่ายทั้งหมด:</strong> <t t-esc="'%.2f' % card_data['total_out']"/></td>
+                        <td><strong>คงเหลือ:</strong> <t t-esc="'%.2f' % card_data['closing_balance']"/></td>
+                    </tr>
+                </table>
+
+                <table class="table table-bordered table-sm" style="font-size: 10px;">
+                    <thead>
+                        <tr>
+                            <th>ลำดับ</th>
+                            <th>วันที่</th>
+                            <th>เอกสาร</th>
+                            <th>เลขที่</th>
+                            <th>อ้างอิง</th>
+                            <th class="text-end">ยอดยกมา</th>
+                            <th class="text-end">รับ</th>
+                            <th class="text-end">จ่าย</th>
+                            <th class="text-end">คงเหลือ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>-</td>
+                            <td colspan="2">ยอดยกมา</td>
+                            <td>-</td>
+                            <td class="text-end" t-esc="'%.2f' % card_data['opening_balance']"/>
+                            <td class="text-end">0.00</td>
+                            <td class="text-end">0.00</td>
+                            <td class="text-end" t-esc="'%.2f' % card_data['opening_balance']"/>
+                        </tr>
+                        <t t-foreach="card_data['lines']" t-as="line">
+                            <tr>
+                                <td t-esc="line['seq']"/>
+                                <td t-esc="line['date']"/>
+                                <td t-esc="line['doc_type']"/>
+                                <td t-esc="line['doc_number']"/>
+                                <td t-esc="line['reference']"/>
+                                <td class="text-end" t-esc="'%.2f' % line['opening']"/>
+                                <td class="text-end" t-esc="'%.2f' % line['in']"/>
+                                <td class="text-end" t-esc="'%.2f' % line['out']"/>
+                                <td class="text-end" t-esc="'%.2f' % line['balance']"/>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+
+                <div class="mt-3" style="font-size: 9px;">
+                    Generated: <span t-esc="generated_at"/>
+                </div>
+            </div>
+            </t>
+        </t>
+    </template>
+</odoo>

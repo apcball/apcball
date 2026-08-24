@@ -220,7 +220,25 @@ class PosLiteOrder(models.Model):
                     raise UserError(_(
                         'Invalid state transition: %s → %s. Use the proper action buttons.'
                     ) % (order.state, new_state))
+        # Once an order is Done, it is locked — no field may change except the
+        # state itself moving off 'done' via an allowed transition (there is
+        # none today, but this keeps the guard symmetric with _ALLOWED_TRANSITIONS
+        # rather than special-casing 'done').
+        if set(vals.keys()) - {'state'}:
+            for order in self:
+                if order.state == 'done':
+                    raise UserError(_(
+                        'Order %s is Done and can no longer be edited.'
+                    ) % order.name)
         return super().write(vals)
+
+    def unlink(self):
+        for order in self:
+            if order.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and cannot be deleted.'
+                ) % order.name)
+        return super().unlink()
 
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Order number must be unique.'),
@@ -467,7 +485,15 @@ class PosLiteOrder(models.Model):
     def _prepare_invoice_vals(self):
         self.ensure_one()
         partner = self._get_or_create_customer_partner()
-        journal = self.env['account.journal'].search([
+        # Resolve config the same way _prepare_picking_vals does: session config
+        # first, then the company default. Lets each POS Lite location issue
+        # invoices on its own sales journal/sequence, separate from standard invoices.
+        config = (
+            self.session_id.config_id
+            if self.session_id and self.session_id.config_id
+            else self.env['pos.lite.config'].get_default_config(self.company_id)
+        )
+        journal = config.sale_journal_id if config and config.sale_journal_id else self.env['account.journal'].search([
             ('company_id', '=', self.company_id.id),
             ('type', '=', 'sale'),
         ], limit=1)
@@ -586,6 +612,25 @@ class PosLiteOrder(models.Model):
     def _process_stock_picking(self, picking):
         picking.action_confirm()
         picking.action_assign()
+        # Re-verify reservation actually succeeded: action_assign() takes the
+        # real row lock on stock.quant, so this catches the case where another
+        # order grabbed the stock between our earlier advisory qty_available
+        # check and now. Without this, a picking with nothing reserved still
+        # validates "successfully" with 0 done qty and the order silently
+        # completes as if stock was shipped.
+        if not self.is_return:
+            unfulfilled = picking.move_ids_without_package.filtered(
+                lambda m: m.product_id.type != 'service' and m.state != 'assigned'
+            )
+            if unfulfilled:
+                names = ', '.join(
+                    m.product_id.display_name for m in unfulfilled[:5]
+                )
+                raise UserError(_(
+                    'Stock for "%s" is no longer available (reserved/taken by '
+                    'another order). Order %s cannot be processed — refresh '
+                    'and check stock before trying again.'
+                ) % (names, picking.origin or picking.name))
         # Products tracked by lot/serial must be assigned manually — auto-filling
         # whatever Odoo reserved would silently mis-assign lots.
         tracked = picking.move_ids_without_package.filtered(
@@ -1042,6 +1087,35 @@ class PosLiteOrderLine(models.Model):
         currency_field='currency_id',
         help="Line margin = price subtotal − (standard cost × qty).",
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        order_ids = {v['order_id'] for v in vals_list if v.get('order_id')}
+        if order_ids:
+            done_orders = self.env['pos.lite.order'].sudo().search([
+                ('id', 'in', list(order_ids)), ('state', '=', 'done'),
+            ])
+            if done_orders:
+                raise UserError(_(
+                    'Order %s is Done and can no longer be edited.'
+                ) % done_orders[0].name)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        for line in self:
+            if line.order_id.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and can no longer be edited.'
+                ) % line.order_id.name)
+        return super().write(vals)
+
+    def unlink(self):
+        for line in self:
+            if line.order_id.state == 'done':
+                raise UserError(_(
+                    'Order %s is Done and cannot be deleted.'
+                ) % line.order_id.name)
+        return super().unlink()
 
     @api.depends('return_line_ids.qty')
     def _compute_returned_qty(self):

@@ -248,8 +248,7 @@ class MrpStockRequestMarkDoneWizard(models.TransientModel):
             # For simplicity, create move lines without lot tracking
             # In production, you might need lot selection logic
             if move.state == 'assigned':
-                for move_line in move.move_line_ids:
-                    move_line.quantity = move_line.reserved_qty or move_line.product_uom_qty
+                move.move_line_ids.picked = True
             else:
                 # Create move line manually if not assigned
                 move_line_vals = {

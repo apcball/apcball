@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_wip_manufacturing_export_wizard_form" model="ir.ui.view">
+        <field name="name">buz.wip.manufacturing.export.wizard.form</field>
+        <field name="model">buz.wip.manufacturing.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export WIP Manufacturing Report">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="status_list"/>
+                        <field name="cost_source"/>
+                        <field name="show_valuation_detail"/>
+                    </group>
+                    <group>
+                        <field name="mo_ids" widget="many2many_tags"/>
+                        <field name="product_ids" widget="many2many_tags"/>
+                        <field name="component_ids" widget="many2many_tags"/>
+                        <field name="location_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx" type="object" string="Export Excel"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wip_manufacturing_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export WIP Manufacturing Report</field>
+        <field name="res_model">buz.wip.manufacturing.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

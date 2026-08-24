@@ -135,9 +135,16 @@ class AccountMoveInherit(models.Model):
         terms = move.narration
         narration = html2plaintext(terms) if terms else ""
 
-        # ค้นหา invoice จากชื่อที่อยู่ใน move.ref
+        # ค้นหา invoice ต้นทาง: ลำดับความน่าเชื่อถือจากมากไปน้อย
+        # 1) reversed_entry_id (ฟิลด์มาตรฐานของ Odoo เชื่อมโยงตรงจาก reversal wizard
+        #    หรือถูกตั้งค่าโดยโมดูลอื่น เช่น pos_lite เมื่อสร้างใบลดหนี้จากการคืนสินค้า)
         selected_invoice_id = False
-        if move.ref:
+        if move.reversed_entry_id and move.reversed_entry_id.state == 'posted':
+            selected_invoice_id = move.reversed_entry_id.id
+
+        # 2) ค้นหา invoice จากชื่อที่อยู่ใน move.ref (ใช้เมื่อไม่มี reversed_entry_id เช่น
+        #    เอกสารเก่าที่สร้างผ่าน reversal wizard แต่ฟิลด์ reversed_entry_id ไม่ถูกตั้งค่า)
+        if not selected_invoice_id and move.ref:
             # พยายามดึงชื่อ invoice จาก ref (เช่น "Reversal of: MIV-25120074, test")
             invoice_name = None
             if ': ' in move.ref:
@@ -156,7 +163,7 @@ class AccountMoveInherit(models.Model):
                 if related_invoice:
                     selected_invoice_id = related_invoice.id
 
-        # Fallback: credit note ที่ไม่มี reversal (ป้อน original_invoice_number จาก buz_custom_invoice)
+        # 3) Fallback: credit note ที่ไม่มี reversal (ป้อน original_invoice_number จาก buz_custom_invoice)
         if not selected_invoice_id and move.move_type == 'out_refund':
             if hasattr(move, 'original_invoice_number') and move.original_invoice_number:
                 related_invoice = self.env['account.move'].sudo().search([

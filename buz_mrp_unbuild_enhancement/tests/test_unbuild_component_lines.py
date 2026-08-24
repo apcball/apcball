@@ -339,3 +339,88 @@ class TestUnbuildComponentLines(TransactionCase):
         unbuild = self._create_fifo_unbuild()
         with self.assertRaises(ValidationError):
             self._line(unbuild, self.fifo_panel).cost_share = 120.0
+
+    # ------------------------------------------------------------------
+    # BOM type "unbuild" + template cost_share
+    # ------------------------------------------------------------------
+
+    def _create_unbuild_type_bom(self, panel_share, screw_share):
+        product = self.env["product.product"].create({
+            "name": "Enh Unbuild-Type Finished",
+            "detailed_type": "product",
+            "categ_id": self.env.ref("product.product_category_all").id,
+        })
+        bom = self.env["mrp.bom"].create({
+            "product_tmpl_id": product.product_tmpl_id.id,
+            "product_qty": 1.0,
+            "type": "unbuild",
+            "bom_line_ids": [
+                Command.create({
+                    "product_id": self.panel.id,
+                    "product_qty": 1.0,
+                    "product_uom_id": self.panel.uom_id.id,
+                    "cost_share": panel_share,
+                }),
+                Command.create({
+                    "product_id": self.screw.id,
+                    "product_qty": 1.0,
+                    "product_uom_id": self.screw.uom_id.id,
+                    "cost_share": screw_share,
+                }),
+            ],
+        })
+        return product, bom
+
+    def test_17_unbuild_bom_valid_cost_share_sum(self):
+        _product, bom = self._create_unbuild_type_bom(60.0, 40.0)
+        self.assertEqual(bom.unbuild_cost_share_total, 100.0)
+
+    def test_18_unbuild_bom_invalid_cost_share_sum_raises(self):
+        with self.assertRaises(ValidationError):
+            self._create_unbuild_type_bom(60.0, 35.0)
+
+    def test_19_normal_bom_cost_share_not_enforced(self):
+        # Existing setUpClass BOM is type='normal' with cost_share left at
+        # 0 on both lines: must save/exist fine (constraint scoped to
+        # type='unbuild' only).
+        self.assertEqual(self.bom.type, "normal")
+        self.assertEqual(
+            sum(self.bom.bom_line_ids.mapped("cost_share")), 0.0)
+
+    def test_20_unbuild_order_prefills_cost_share_from_bom(self):
+        product, bom = self._create_unbuild_type_bom(70.0, 30.0)
+        self.env["stock.quant"]._update_available_quantity(
+            product, self.stock_location, 10.0)
+        unbuild = self.env["mrp.unbuild"].create({
+            "product_id": product.id,
+            "bom_id": bom.id,
+            "product_qty": 1.0,
+            "product_uom_id": product.uom_id.id,
+            "location_id": self.stock_location.id,
+            "location_dest_id": self.stock_location.id,
+            "company_id": self.company.id,
+        })
+        unbuild.action_generate_component_lines()
+        panel_line = self._line(unbuild, self.panel)
+        screw_line = self._line(unbuild, self.screw)
+        self.assertEqual(panel_line.cost_share, 70.0)
+        self.assertEqual(screw_line.cost_share, 30.0)
+        # Still editable afterward.
+        panel_line.cost_share = 50.0
+        self.assertEqual(panel_line.cost_share, 50.0)
+
+    def test_21_unbuild_order_bom_domain_includes_unbuild_type(self):
+        product, unbuild_bom = self._create_unbuild_type_bom(60.0, 40.0)
+        domain = [
+            ('product_tmpl_id', '=', product.product_tmpl_id.id),
+            ('type', 'in', ('normal', 'unbuild')),
+        ]
+        self.assertIn(unbuild_bom, self.env["mrp.bom"].search(domain))
+
+    def test_22_normal_bom_unbuild_order_still_works(self):
+        # Regression guard: normal-type BOM flow is unaffected.
+        unbuild = self._create_unbuild()
+        self._line(unbuild, self.panel).cost_share = 50.0
+        self._line(unbuild, self.screw).cost_share = 50.0
+        unbuild.action_unbuild()
+        self.assertEqual(unbuild.state, "done")

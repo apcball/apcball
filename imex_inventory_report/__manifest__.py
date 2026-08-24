@@ -13,13 +13,14 @@
     'website': "https://github.com/longvm91/odoo-custom-modules/tree/17.0/imex_inventory_report",
     'email': "longvm91@gmail.com",
     'category': 'Warehouse',
-    'version': '17.0.1.6.0',
+    'version': '17.0.1.6.1',
 
     # any module necessary for this one to work correctly
     'depends': ['base', 'stock', 'stock_account', 'product', 'buz_dispatch_document'],
 
     # always loaded
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'reports/imex_inventory_report_views.xml',
         'reports/imex_inventory_details_report_views.xml',

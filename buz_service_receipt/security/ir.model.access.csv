@@ -5,3 +5,5 @@ access_service_receipt_line_user,service.receipt.line.user,model_service_receipt
 access_service_receipt_line_manager,service.receipt.line.manager,model_service_receipt_line,group_service_receipt_manager,1,1,1,1
 access_service_team_user,service.team.user,model_service_team,group_service_receipt_user,1,0,0,0
 access_service_team_manager,service.team.manager,model_service_team,group_service_receipt_manager,1,1,1,1
+access_service_claim_xlsx_wizard_user,buz.service.claim.xlsx.wizard.user,model_buz_service_claim_xlsx_wizard,group_service_receipt_user,1,1,1,1
+access_service_claim_xlsx_wizard_manager,buz.service.claim.xlsx.wizard.manager,model_buz_service_claim_xlsx_wizard,group_service_receipt_manager,1,1,1,1

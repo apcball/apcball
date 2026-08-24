@@ -143,7 +143,7 @@
                                         <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">เลขที่ Job</td>
                                         <td style="width:30%;"><t t-esc="doc.name or ''"/></td>
                                         <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">วันที่</td>
-                                        <td style="width:30%;"><t t-esc="doc.create_date.strftime('%d/%m/%Y') if doc.create_date else ''"/></td>
+                                        <td style="width:30%;"><t t-esc="doc.date_finished.strftime('%d/%m/%Y') if doc.date_finished else ''"/></td>
                                     </tr>
                                     <tr>
                                         <td style="background-color:#f0f0f0; font-weight:bold;">สถานะ</td>
@@ -164,6 +164,10 @@
                                         <td><t t-esc="doc.product_id.display_name if doc.product_id else ''"/></td>
                                         <td style="background-color:#f0f0f0; font-weight:bold;">จำนวน</td>
                                         <td><t t-esc="'%.2f' % finished_qty"/> <t t-esc="doc.product_uom_id.name if doc.product_uom_id else ''"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">คลังปลายทาง</td>
+                                        <td colspan="3"><t t-esc="doc.location_dest_id.display_name if doc.location_dest_id else '-'"/></td>
                                     </tr>
                                     <tr>
                                         <td style="background-color:#f0f0f0; font-weight:bold;">BOM Code</td>

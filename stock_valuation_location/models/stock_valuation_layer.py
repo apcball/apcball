@@ -80,19 +80,28 @@ class StockValuationLayer(models.Model):
             move = move_dict.get(svl.stock_move_id.id)
             if not move:
                 continue
-            
-            # Check source location (accept internal and transit locations)
-            if move['location_id']:
-                loc_id = move['location_id'][0]
-                if location_usage.get(loc_id) in ('internal', 'transit'):
-                    svl.location_id = loc_id
-                    continue
-            
-            # Check destination location (accept internal and transit locations)
-            if move['location_dest_id']:
-                loc_id = move['location_dest_id'][0]
-                if location_usage.get(loc_id) in ('internal', 'transit'):
-                    svl.location_id = loc_id
+
+            src_id = move['location_id'][0] if move['location_id'] else False
+            dest_id = move['location_dest_id'][0] if move['location_dest_id'] else False
+            src_ok = src_id and location_usage.get(src_id) in ('internal', 'transit')
+            dest_ok = dest_id and location_usage.get(dest_id) in ('internal', 'transit')
+
+            # A single move can generate a matched pair of SVLs (out-leg at
+            # source, in-leg at destination) sharing the same stock_move_id
+            # (e.g. internal transfers with a cost change). The sign of the
+            # SVL's own quantity tells us which leg this record is, so the
+            # in-leg lands under destination instead of always source.
+            if svl.quantity < 0:
+                first, second = (src_id, src_ok), (dest_id, dest_ok)
+            elif svl.quantity > 0:
+                first, second = (dest_id, dest_ok), (src_id, src_ok)
+            else:
+                first, second = (src_id, src_ok), (dest_id, dest_ok)
+
+            if first[1]:
+                svl.location_id = first[0]
+            elif second[1]:
+                svl.location_id = second[0]
 
     def action_recompute_location(self):
         """

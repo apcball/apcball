@@ -210,11 +210,23 @@
                     </t>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <span t-esc="line.discount or 0"/>%
+                    <t t-if="line.normal_price and line.normal_price > 0 and (line.discount_percent or 0) &gt; 0">
+                        <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
+                        <span t-esc="discount_percent"/>%
+                    </t>
+                    <t t-else="">
+                        <span t-esc="line.discount_percent"/>%
+                    </t>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <span t-esc="line.price_unit * (1 - (line.discount or 0) / 100.0)"
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    <t t-if="line.normal_price and line.normal_price != 0 and (line.discount_percent or 0) &gt; 0">
+                        <span t-field="line.price_unit"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
+                    <t t-else="">
+                        <span t-esc="line.price_unit * (1 - (line.discount_percent or 0) / 100.0)"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.price_subtotal"
@@ -292,8 +304,8 @@
     <div class="col-6" style="text-align: center; padding: 0 5px;">
         <p style="margin-bottom: 5px; color: #000;">ผู้มีอำนาจเสนอขาย</p>
         <p style="margin-bottom: 5px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE OF THE SELLER)</p>
-        <img t-att-src="'/buz_custom_quotation/static/img/signature/signature.png'"
-             style="height: 45px; margin-bottom: 5px;"/>
+        <img t-att-src="'/buz_custom_quotation/static/img/signature/signature1.png'"
+             style="height: 60px; margin-bottom: 5px;"/>
         <div style="border-bottom: 1px dashed #000; width: 50%; margin: 0 auto;"></div>
         <div style="margin-top: 5px; font-size: 16px;">
             (รณภพ เตชะวิวัฒน์วงศ์)

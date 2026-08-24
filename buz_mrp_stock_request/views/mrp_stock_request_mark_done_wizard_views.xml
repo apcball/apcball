@@ -28,8 +28,8 @@
                                     <field name="available_qty" readonly="1" string="Available"/>
                                     <field name="qty_to_transfer" readonly="1" string="To Transfer"/>
                                     <field name="uom_id" readonly="1"/>
-                                    <field name="request_line_id" column_invisible="1"/>
-                                    <field name="wizard_id" column_invisible="1"/>
+                                    <field name="request_line_id" invisible="1"/>
+                                    <field name="wizard_id" invisible="1"/>
                                 </tree>
                             </field>
                         </page>

@@ -542,13 +542,13 @@ class FifoRecalculationWizard(models.TransientModel):
         # 1. Supplier/Production/Inventory → Internal/Transit
         if location_from_usage in ('supplier', 'production', 'inventory') and \
            location_to_usage in ('internal', 'transit'):
-            qty = move.product_uom_qty
+            qty = move._get_valued_qty()
             unit_cost = move.price_unit if move.price_unit > 0 else product.standard_price
             return 'in', qty, unit_cost, qty * unit_cost
         
         # 2. Customer returns
         if location_from_usage == 'customer' and location_to_usage == 'internal':
-            qty = move.product_uom_qty
+            qty = move._get_valued_qty()
             unit_cost = 0
             # Check cost_cache first (apply phase, old SVLs deleted)
             if cost_cache and move.id in cost_cache:
@@ -566,7 +566,7 @@ class FifoRecalculationWizard(models.TransientModel):
         if location_from_usage in ('internal', 'transit') and location_to_usage == 'internal':
             if source_wh and dest_wh and source_wh.id != dest_wh.id:
                 if move_warehouse and move_warehouse.id == dest_wh.id:
-                    qty = move.product_uom_qty
+                    qty = move._get_valued_qty()
                     unit_cost = 0
                     # Check cost_cache first (apply phase, old SVLs deleted)
                     if cost_cache and move.id in cost_cache:
@@ -595,7 +595,7 @@ class FifoRecalculationWizard(models.TransientModel):
         # 4. Return moves (positive layer at destination)
         if move.origin_returned_move_id and location_to_usage == 'internal' and dest_wh:
             if move_warehouse and move_warehouse.id == dest_wh.id:
-                qty = move.product_uom_qty
+                qty = move._get_valued_qty()
                 unit_cost = 0
                 # Check cost_cache first (apply phase, old SVLs deleted)
                 if cost_cache and move.id in cost_cache:
@@ -613,20 +613,20 @@ class FifoRecalculationWizard(models.TransientModel):
         # 1. Sales/Consumption (internal → customer/production/inventory)
         if location_from_usage == 'internal' and \
            location_to_usage in ('customer', 'production', 'inventory'):
-            qty = move.product_uom_qty
+            qty = move._get_valued_qty()
             return 'out', qty, 0, 0  # Cost calculated by FIFO
         
         # 2. Inter-warehouse transfer SHIPMENT (negative layer at source)
         if location_from_usage == 'internal' and location_to_usage in ('internal', 'transit'):
             if source_wh and dest_wh and source_wh.id != dest_wh.id:
                 if move_warehouse and move_warehouse.id == source_wh.id:
-                    qty = move.product_uom_qty
+                    qty = move._get_valued_qty()
                     return 'out', qty, 0, 0  # Cost from FIFO
         
         # 3. Return shipment (negative at source of return)
         if move.origin_returned_move_id and location_from_usage == 'internal' and source_wh:
             if move_warehouse and move_warehouse.id == source_wh.id:
-                qty = move.product_uom_qty
+                qty = move._get_valued_qty()
                 return 'out', qty, 0, 0
         
         # NEUTRAL MOVES (same warehouse internal)

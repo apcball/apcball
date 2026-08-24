@@ -1,0 +1,12 @@
+<odoo>
+    <record id="module_category_stock_fifo_valuation_report" model="ir.module.category">
+        <field name="name">Stock FIFO Valuation Report</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="group_stock_fifo_valuation_price" model="res.groups">
+        <field name="name">FIFO Report See Amount</field>
+        <field name="category_id" ref="module_category_stock_fifo_valuation_report"/>
+        <field name="comment">Users in this group can see cost/value columns (Unit Cost, Value, Running Value, Landed Cost Doc) on the Stock FIFO Valuation Report (list and printed reports). Users outside this group see quantities only.</field>
+    </record>
+</odoo>
