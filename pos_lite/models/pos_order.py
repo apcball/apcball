@@ -612,6 +612,25 @@ class PosLiteOrder(models.Model):
     def _process_stock_picking(self, picking):
         picking.action_confirm()
         picking.action_assign()
+        # Re-verify reservation actually succeeded: action_assign() takes the
+        # real row lock on stock.quant, so this catches the case where another
+        # order grabbed the stock between our earlier advisory qty_available
+        # check and now. Without this, a picking with nothing reserved still
+        # validates "successfully" with 0 done qty and the order silently
+        # completes as if stock was shipped.
+        if not self.is_return:
+            unfulfilled = picking.move_ids_without_package.filtered(
+                lambda m: m.product_id.type != 'service' and m.state != 'assigned'
+            )
+            if unfulfilled:
+                names = ', '.join(
+                    m.product_id.display_name for m in unfulfilled[:5]
+                )
+                raise UserError(_(
+                    'Stock for "%s" is no longer available (reserved/taken by '
+                    'another order). Order %s cannot be processed — refresh '
+                    'and check stock before trying again.'
+                ) % (names, picking.origin or picking.name))
         # Products tracked by lot/serial must be assigned manually — auto-filling
         # whatever Odoo reserved would silently mis-assign lots.
         tracked = picking.move_ids_without_package.filtered(
