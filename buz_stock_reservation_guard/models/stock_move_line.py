@@ -10,12 +10,14 @@ class StockMoveLine(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             self._check_manual_reservation_availability(vals=vals)
+            self._check_operation_type_location(vals=vals)
         return super().create(vals_list)
 
     def write(self, vals):
         tracked_fields = {
             "product_id",
             "location_id",
+            "location_dest_id",
             "lot_id",
             "package_id",
             "owner_id",
@@ -26,6 +28,7 @@ class StockMoveLine(models.Model):
         if tracked_fields.intersection(vals):
             for line in self:
                 line._check_manual_reservation_availability(vals=vals)
+                line._check_operation_type_location(vals=vals)
         return super().write(vals)
 
     def _check_manual_reservation_availability(self, vals=None):
@@ -75,6 +78,63 @@ class StockMoveLine(models.Model):
                             "available": available_qty,
                         }
                     )
+
+    def _check_operation_type_location(self, vals=None):
+        """Lock move-line pick/put locations to the transfer's own source/destination
+        location tree (picking.location_id / picking.location_dest_id) - the same
+        root Odoo's core "Pick From" (quant_id) and location_dest_id domains already
+        use. Checking against picking_type default locations instead would be wrong:
+        inter-warehouse transfers (e.g. AS01 -> FG10) deliberately override those
+        defaults on the picking header.
+        """
+        vals = vals or {}
+        line = self if self else self.browse()
+
+        move = self.env["stock.move"].browse(vals.get("move_id")) if vals.get("move_id") else line.move_id
+        picking = self.env["stock.picking"].browse(vals.get("picking_id")) if vals.get("picking_id") else line.picking_id
+        if not picking and move:
+            picking = move.picking_id
+        if not picking:
+            return
+        if picking.bypass_location_lock:
+            return
+
+        state = vals.get("state", line.state)
+        if state in ("done", "cancel"):
+            return
+
+        location = self.env["stock.location"].browse(vals.get("location_id")) if "location_id" in vals else line.location_id
+        location_dest = (
+            self.env["stock.location"].browse(vals.get("location_dest_id"))
+            if "location_dest_id" in vals
+            else line.location_dest_id
+        )
+
+        errors = []
+        if location and picking.location_id and not location._child_of(picking.location_id):
+            errors.append(
+                _(
+                    "Location ต้นทาง %(location)s ไม่อยู่ภายใต้ %(allowed)s ตามที่กำหนดในใบโอนย้าย %(picking)s"
+                )
+                % {
+                    "location": location.complete_name,
+                    "allowed": picking.location_id.complete_name,
+                    "picking": picking.name,
+                }
+            )
+        if location_dest and picking.location_dest_id and not location_dest._child_of(picking.location_dest_id):
+            errors.append(
+                _(
+                    "Location ปลายทาง %(location)s ไม่อยู่ภายใต้ %(allowed)s ตามที่กำหนดในใบโอนย้าย %(picking)s"
+                )
+                % {
+                    "location": location_dest.complete_name,
+                    "allowed": picking.location_dest_id.complete_name,
+                    "picking": picking.name,
+                }
+            )
+        if errors:
+            raise UserError("\n".join(errors))
 
     def _reservation_guard_target(self, vals):
         move = self.env["stock.move"].browse(vals.get("move_id")) if vals.get("move_id") else self.move_id

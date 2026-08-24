@@ -235,6 +235,85 @@ class TestStockReservationGuard(TransactionCase):
         picking.action_assign()
         self.assertIn(picking.state, ('assigned', 'confirmed'))
 
+    def test_block_write_location_outside_picking_tree(self):
+        """Move line location must stay under the picking's own location_id tree,
+        not just anywhere the operation type would otherwise allow."""
+        other_warehouse_location = self.env["stock.location"].create(
+            {
+                "name": "Other Warehouse Stock",
+                "location_id": self.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        # Give it stock so the location-lock check (not the availability
+        # guard) is what raises here.
+        self.env["stock.quant"]._update_available_quantity(
+            self.product, other_warehouse_location, 5.0
+        )
+        picking, move = self._create_picking(self.source_with_stock)
+        picking.action_assign()
+        move_line = picking.move_line_ids
+        self.assertTrue(move_line, "Expected a reserved line after assignment")
+
+        with self.assertRaises(UserError):
+            move_line.write({"location_id": other_warehouse_location.id})
+
+    def test_block_write_location_dest_outside_picking_tree(self):
+        other_dest_location = self.env["stock.location"].create(
+            {
+                "name": "Other Dest",
+                "location_id": self.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        picking, move = self._create_picking(self.source_with_stock)
+        picking.action_assign()
+        move_line = picking.move_line_ids
+        self.assertTrue(move_line, "Expected a reserved line after assignment")
+
+        with self.assertRaises(UserError):
+            move_line.write({"location_dest_id": other_dest_location.id})
+
+    def test_allow_write_location_under_picking_tree(self):
+        """Sub-locations under the picking's own source location remain allowed."""
+        sub_location = self.env["stock.location"].create(
+            {
+                "name": "Sub Bin",
+                "location_id": self.source_with_stock.id,
+                "usage": "internal",
+            }
+        )
+        self.env["stock.quant"]._update_available_quantity(
+            self.product, sub_location, 5.0
+        )
+        picking, move = self._create_picking(self.source_with_stock)
+        picking.action_assign()
+        move_line = picking.move_line_ids
+        self.assertTrue(move_line, "Expected a reserved line after assignment")
+
+        move_line.write({"location_id": sub_location.id})
+        self.assertEqual(move_line.location_id, sub_location)
+
+    def test_bypass_location_lock_allows_outside_picking_tree(self):
+        other_warehouse_location = self.env["stock.location"].create(
+            {
+                "name": "Bypass Lock Location",
+                "location_id": self.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        self.env["stock.quant"]._update_available_quantity(
+            self.product, other_warehouse_location, 5.0
+        )
+        picking, move = self._create_picking(self.source_with_stock)
+        picking.action_assign()
+        move_line = picking.move_line_ids
+        self.assertTrue(move_line, "Expected a reserved line after assignment")
+
+        picking.write({"bypass_location_lock": True})
+        move_line.write({"location_id": other_warehouse_location.id})
+        self.assertEqual(move_line.location_id, other_warehouse_location)
+
     def test_bypass_location_skips_validation_block(self):
         """Bypass location skips button_validate guard for empty location."""
         bypass_loc = self.env['stock.location'].create({

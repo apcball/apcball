@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Buz Stock Reservation Guard",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "category": "Inventory",
     "summary": "Block manual reservations from source locations without stock",
     "description": """
@@ -16,6 +16,7 @@
     ],
     "data": [
         "views/res_config_settings_views.xml",
+        "views/stock_picking_views.xml",
     ],
     "installable": True,
     "application": False,

@@ -10,6 +10,11 @@ class StockPicking(models.Model):
         default=False,
         help="Bypass stock reservation guard checks for this picking.",
     )
+    bypass_location_lock = fields.Boolean(
+        default=False,
+        help="Allow detailed-operation lines to use locations outside the "
+        "operation type's source/destination location tree.",
+    )
 
     def action_assign(self):
         self._check_exact_source_availability_for_assignment()
