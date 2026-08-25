@@ -6,7 +6,7 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">3</field>
+        <field name="margin_top">5</field>
         <field name="margin_bottom">3</field>
         <field name="margin_left">3</field>
         <field name="margin_right">3</field>
@@ -32,18 +32,13 @@
                                 src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
                             }
                             
-                            @page {
-                                size: A4 portrait;
-                                margin: 3mm 3mm 3mm 3mm;
-                            }
-
                             .footer-fixed {
                                 position: absolute;
                                 bottom: 0;
                                 width: 100%;
                             }
                             
-                            body, .page, .row {
+                            body, .row {
                                 margin: 0 !important;
                                 padding: 0 !important;
                             }
@@ -177,7 +172,6 @@
                     </div>
                  </div>
                         </div>
-                        <t t-if="page_number == 1">
                   <!-- Document Title -->
                   <div class="row mb ">
                     <div class="text-center">
@@ -185,8 +179,9 @@
                             ตามที่ บริษัท โมเก้น (ประเทศไทย) จำกัด มีความประสงค์จะนำสินค้าให้ยืมโชว์ตามสถานที่ดังนี้ คือ
                         </div>
                     </div>
-                </div>
+                 </div>
 
+                        <t t-if="page_number == 1">
                 <div style="display: flex; width: 100%; margin-top: 10px; font-size: 20px; line-height: 1;margin-bottom: 5px;">
                     <!-- ฝั่งซ้าย 10% -->
                     <div style="width: 10%; text-align: left;margin-bottom: -5px;">
