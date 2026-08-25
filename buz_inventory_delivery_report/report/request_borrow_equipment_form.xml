@@ -19,7 +19,12 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                    <t t-set="move_list" t-value="o.move_ids_without_package"/>
+                    <t t-set="groups_of_20" t-value="move_list and [move_list[i:i+20] for i in range(0, len(move_list), 20)] or [[]]"/>
+                    <t t-set="page_number" t-value="1"/>
+                    <t t-set="total_pages" t-value="len(groups_of_20)"/>
+                    <t t-foreach="groups_of_20" t-as="group">
+                    <div class="page" t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
 
                         <style>
                             @font-face {
@@ -88,9 +93,19 @@
                                 vertical-align: middle;
                                 margin: 0 10px 0 15px;
                             }
+
+                            .o_report_layout_standard,
+                            .article,
+                            .page,
+                            table,
+                            th,
+                            td {
+                                background-color: transparent !important;
+                                background-image: none !important;
+                            }
                         </style>
 
-
+                        <div>
                        <!-- Company Info Section -->
                        <div class="row mb-1">
                         <div class="col-8">
@@ -161,8 +176,8 @@
                         </div>
                     </div>
                  </div>
-
-
+                        </div>
+                        <t t-if="page_number == 1">
                   <!-- Document Title -->
                   <div class="row mb ">
                     <div class="text-center">
@@ -302,6 +317,8 @@
                 </div>
 
 
+                        </t>
+
                 <!-- Order Lines -->
                 <div style="min-height:420px; position:relative; box-sizing:border-box; display: flex; flex-direction: column;">
                     <!-- กำหนด min-height เพื่อให้ตารางไม่สูงเกินเฟรม A4 ประมาณ 297mm แต่เหลือที่ให้ footer -->
@@ -315,9 +332,9 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <t t-set="line_number" t-value="1"/>
+                        <t t-set="line_number" t-value="((page_number - 1) * 20) + 1"/>
                         <t t-set="total_qty" t-value="0.0"/>
-                        <t t-foreach="o.move_ids_without_package" t-as="move">
+                        <t t-foreach="group" t-as="move">
                           <tr>
                             <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-esc="line_number"/></td>
                             <td style="vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_id.display_name"/></td>
@@ -332,6 +349,7 @@
                 </div>
 
                     <!-- หมายเหตุ -->
+                    <t t-if="page_number == total_pages">
                     <div style="padding: 20px; min-height: 30px; font-size: 22px;">
                         <strong style="font-size: 20px;">หมายเหตุ:</strong>
                        <span t-field="o.note" style="font-size: 22px;"/>
@@ -386,8 +404,11 @@
                             <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
                          </div>
                         </div>
-                      </div>   
+                       </div>
+                    </t>
                     </div>
+                    <t t-set="page_number" t-value="page_number + 1"/>
+                    </t>
                 </t>        
              </t>     
            </t>                 
