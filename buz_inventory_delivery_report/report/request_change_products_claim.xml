@@ -6,7 +6,7 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Landscape</field>
-        <field name="margin_top">3</field>
+        <field name="margin_top">0</field>
         <field name="margin_bottom">3</field>
         <field name="margin_left">5</field>
         <field name="margin_right">5</field>
@@ -187,16 +187,16 @@
                         
                          <!-- Order Lines -->
                          <t t-set="move_list" t-value="o.move_ids"/>
-                         <t t-set="groups_of_4" t-value="[move_list[i:i+4] for i in range(0, len(move_list), 4)]"/>
+                         <t t-set="groups_of_6" t-value="[move_list[i:i+6] for i in range(0, len(move_list), 6)]"/>
                          <t t-set="page_number" t-value="1"/>
                          <t t-set="line_number" t-value="1"/>
-                         <t t-set="total_pages" t-value="groups_of_4 and len(groups_of_4) or 0"/>
-                         <t t-foreach="groups_of_4" t-as="group">
+                         <t t-set="total_pages" t-value="groups_of_6 and len(groups_of_6) or 0"/>
+                         <t t-foreach="groups_of_6" t-as="group">
                             
                              <div class="page report-page"
                                   t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
-                          <t t-if="groups_of_4">
+                          <t t-if="groups_of_6">
                               <div>
                          <div class="report-page-header">
                          <div class="report-page-number">
@@ -352,7 +352,7 @@
                             </thead>
                         
                             <tbody>
-                                <t t-set="line_number" t-value="((page_number - 1) * 4) + 1"/>
+                                <t t-set="line_number" t-value="((page_number - 1) * 6) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
                                 <t t-foreach="group" t-as="move">
                                 <tr style="padding-top:0px; padding-bottom:0px;">
@@ -482,7 +482,7 @@
                                 
                                 </div>
 
-                                <div style="margin-top: 2mm; page-break-inside: avoid;">
+                                <div style="margin-top: 5px; page-break-inside: avoid;">
                                     <div style="
                                       width: 100%;
                                       display: flex; justify-content: space-between;
@@ -509,7 +509,7 @@
                                <t t-set="page_number" t-value="page_number + 1"/></t>
 
                                    <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
-                                   <t t-if="page_number == len(groups_of_4)">
+                                   <t t-if="page_number == len(groups_of_6)">
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
                       </div>
