@@ -576,6 +576,23 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 if not budget_line:
                     continue
 
+                # A linked PO already owns the reservation for this analytic once it
+                # has taken over (consumed) the budget commitment. Re-reserving here
+                # (e.g. triggered by a payment_date sync write) would double-count
+                # the same amount on both the PR and the PO. Skip and release any
+                # stale PR-side commitment instead.
+                if self._has_linked_po_commitment(account_id):
+                    stale = self.env['budget.commitment'].sudo().search([
+                        ('document_model', '=', self._name),
+                        ('document_id', '=', self.id),
+                        ('analytic_account_id', '=', account_id),
+                        ('budget_source', '=', 'monthly'),
+                        ('state', '=', 'reserved'),
+                    ])
+                    if stale:
+                        stale.action_release()
+                    continue
+
                 commitments = self.env['budget.commitment'].sudo().search([
                     ('document_model', '=', self._name),
                     ('document_id', '=', self.id),
@@ -608,6 +625,28 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 )
 
             plan._refresh_budget_snapshot(refresh_report=True)
+
+    def _has_linked_po_commitment(self, account_id):
+        """True when a PO linked to this PR already holds an active monthly
+        commitment for the given analytic account (i.e. the PO has taken over
+        ownership of the reservation)."""
+        self.ensure_one()
+        POs = self.env['purchase.order'].sudo().search([
+            ('company_id', '=', self.company_id.id),
+            '|', '|',
+            ('requisition_order', '=', self.name),
+            ('pr_number', '=', self.name),
+            ('origin', '=', self.name),
+        ])
+        if not POs:
+            return False
+        return bool(self.env['budget.commitment'].sudo().search([
+            ('document_model', '=', 'purchase.order'),
+            ('document_id', 'in', POs.ids),
+            ('analytic_account_id', '=', account_id),
+            ('budget_source', '=', 'monthly'),
+            ('state', 'in', ('reserved', 'used')),
+        ], limit=1))
 
     def action_head_cancel(self):
         """Release monthly budget reservations when head cancels PR."""
