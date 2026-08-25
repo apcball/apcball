@@ -273,7 +273,7 @@
                                 <div class="text-center signature-section">
                                     <br/><br/><br/>
                                     <p>________________________</p>
-                                    <p>ผู้โอน / Transferred By</p>
+                                    <p>ผู้โอน/ผู้ส่งของ / Handed Over By</p>
                                     <p>วันที่ / Date: ___________</p>
                                 </div>
                             </div>
@@ -281,7 +281,7 @@
                                 <div class="text-center signature-section">
                                     <br/><br/><br/>
                                     <p>________________________</p>
-                                    <p>ผู้ส่งของ / Delivered By</p>
+                                    <p>ผู้รับของ / Received By</p>
                                     <p>วันที่ / Date: ___________</p>
                                 </div>
                             </div>
