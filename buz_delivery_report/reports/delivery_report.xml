@@ -6,7 +6,7 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">10</field>
+        <field name="margin_top">5</field>
         <field name="margin_bottom">10</field>
         <field name="margin_left">6</field>
         <field name="margin_right">6</field>
@@ -33,7 +33,6 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
-                <div class="page">
                     <style>
                       @font-face {
                         font-family: 'Sarabun';
@@ -47,6 +46,14 @@
                         height: 100%;
                         margin: 0;
                         color: #000000;
+                      }
+                      /* Let the paper format control the top margin. */
+                      .header {
+                        display: none !important;
+                      }
+                      .article {
+                        margin-top: 0 !important;
+                        padding-top: 0 !important;
                       }
                       .company-header {
                         font-size: 20px;
@@ -112,7 +119,7 @@
                     <t t-set="line_number" t-value="1"/>
                     <t t-set="total_delivered_total" t-value="0"/>
                     <t t-foreach="groups_of_16" t-as="group">
-                        <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                        <div class="page" t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
                             <t t-if="groups_of_16">
                                 <div>
                                     <!-- Page header if more than 1 page -->
@@ -241,10 +248,7 @@
                                     </table>
                                 </div>
                             </t>
-                            <t t-set="page_number" t-value="page_number + 1"/>
-                        </div>
-                    </t>
-                    <t t-if="page_number > total_pages">
+                    <t t-if="page_number == total_pages">
                         <!-- Total Section -->
                         <div class="row mt-3">
                             <div class="col-12">
@@ -303,7 +307,9 @@
                             </div>
                         </div>
                     </t>
+                    <t t-set="page_number" t-value="page_number + 1"/>
                 </div>
+                </t>
                 </t>
             </t>
         </t>
