@@ -243,16 +243,16 @@
                         
                          <!-- Order Lines -->
                          <t t-set="move_list" t-value="o.move_ids"/>
-                         <t t-set="groups_of_3" t-value="[move_list[i:i+3] for i in range(0, len(move_list), 3)]"/>
+                         <t t-set="groups_of_5" t-value="[move_list[i:i+5] for i in range(0, len(move_list), 5)]"/>
                          <t t-set="page_number" t-value="1"/>
                          <t t-set="line_number" t-value="1"/>
-                         <t t-set="total_pages" t-value="groups_of_3 and len(groups_of_3) or 0"/>
-                         <t t-foreach="groups_of_3" t-as="group">
+                         <t t-set="total_pages" t-value="groups_of_5 and len(groups_of_5) or 0"/>
+                         <t t-foreach="groups_of_5" t-as="group">
                             
                              <div class="page report-page"
                                   t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
-                          <t t-if="groups_of_3">
+                          <t t-if="groups_of_5">
                               <div>
                              <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
                          <t t-call="buz_inventory_delivery_report.request_change_products_page_header"/>
@@ -356,7 +356,7 @@
                             </thead>
                         
                             <tbody>
-                                <t t-set="line_number" t-value="((page_number - 1) * 3) + 1"/>
+                                <t t-set="line_number" t-value="((page_number - 1) * 5) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
                                 <t t-foreach="group" t-as="move">
                                 <tr style="padding-top:0px; padding-bottom:0px;">
@@ -517,7 +517,7 @@
                                <t t-set="page_number" t-value="page_number + 1"/></t>
 
                                    <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
-                                   <t t-if="page_number == len(groups_of_3)">
+                                   <t t-if="page_number == len(groups_of_5)">
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
 
