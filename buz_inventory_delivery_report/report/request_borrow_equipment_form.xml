@@ -66,6 +66,32 @@
                                 border: 1px solid #000 !important;
                             }
 
+                            #order-line-table {
+                                table-layout: fixed;
+                            }
+
+                            #order-line-table tbody td {
+                                vertical-align: top !important;
+                                height: 20px;
+                                line-height: 16px;
+                                padding-top: 2px;
+                                padding-bottom: 2px;
+                            }
+
+                            #order-line-table tbody td.product-name {
+                                white-space: normal;
+                                overflow-wrap: break-word;
+                                word-wrap: break-word;
+                            }
+
+                            #order-line-table tbody td.product-name > span {
+                                display: block;
+                                line-height: 16px;
+                                white-space: normal;
+                                overflow-wrap: break-word;
+                                word-wrap: break-word;
+                            }
+
                             thead th {
                                 font-size: 18px;
                                 font-weight: bold;
@@ -332,10 +358,10 @@
                     <table id="order-line-table" style="margin-top: 6px;">
                       <thead>
                         <tr>
-                          <th style="width: 5%; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
-                          <th style="width: 40%; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
-                          <th style="width: 15%; padding-top:2px; padding-bottom:2px;">จำนวน</th>
-                          <th style="width: 10%; padding-top:2px; padding-bottom:2px;">หน่วย</th>
+                          <th style="width: 8%; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
+                          <th style="width: 58%; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
+                          <th style="width: 22%; padding-top:2px; padding-bottom:2px;">จำนวน</th>
+                          <th style="width: 12%; padding-top:2px; padding-bottom:2px;">หน่วย</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -343,10 +369,10 @@
                         <t t-set="total_qty" t-value="0.0"/>
                         <t t-foreach="group" t-as="move">
                           <tr>
-                            <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-esc="line_number"/></td>
-                            <td style="vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_id.display_name"/></td>
-                            <td style="text-align: right; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom_qty"/></td>
-                            <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom"/></td>
+                            <td style="text-align: center; vertical-align: top; line-height:16px; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-esc="line_number"/></td>
+                            <td class="product-name" style="vertical-align: top; line-height:16px; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_id.display_name"/></td>
+                            <td style="text-align: right; vertical-align: top; line-height:16px; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom_qty"/></td>
+                            <td style="text-align: center; vertical-align: top; line-height:16px; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom"/></td>
                           </tr>
                           <t t-set="line_number" t-value="line_number + 1"/>
                           <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
