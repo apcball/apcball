@@ -28,7 +28,7 @@
                     <t t-set="page_number" t-value="1"/>
                     <t t-set="total_pages" t-value="len(groups_of_9)"/>
                     <t t-foreach="groups_of_9" t-as="group">
-                    <div class="page" t-attf-style="position: relative; min-height: 286mm; padding-bottom: 15mm; box-sizing: border-box; #{page_number != 1 and 'page-break-before: always;' or ''}">
+                    <div class="page" t-attf-style="position: relative; height: 286mm; box-sizing: border-box; #{page_number != 1 and 'page-break-before: always;' or ''}">
 
                         <style>
                             @font-face {
@@ -36,12 +36,6 @@
                                 src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
                             }
                             
-                            .footer-fixed {
-                                position: absolute;
-                                bottom: 0;
-                                width: 100%;
-                            }
-
                             .first-page-options,
                             .final-content-block,
                             #order-line-table tr {
@@ -86,10 +80,19 @@
                             }
 
                             #order-line-table tbody tr.empty-line td {
+                                vertical-align: top !important;
                                 height: 20px;
                                 line-height: 16px;
                                 padding-top: 2px;
                                 padding-bottom: 2px;
+                                border: none !important;
+                                background: transparent !important;
+                            }
+
+                            #order-line-table tbody tr.empty-line {
+                                height: 20px;
+                                border: none !important;
+                                background: transparent !important;
                             }
 
                             #order-line-table tbody td.product-name {
@@ -393,6 +396,7 @@
                             <t t-set="line_number" t-value="line_number + 1"/>
                             <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
                         </t>
+                        <t t-if="page_number != total_pages">
                         <t t-foreach="range(9 - len(group))" t-as="blank_index">
                           <tr class="empty-line">
                             <td>&#160;</td>
@@ -400,6 +404,7 @@
                             <td>&#160;</td>
                             <td>&#160;</td>
                           </tr>
+                        </t>
                         </t>
                       </tbody>
                     </table>
@@ -441,22 +446,10 @@
                         </div>
                     </div>
 
-                        <div style="
-                          position: absolute;
-                          bottom: 0; left: 0; width: 100%;
-                          display: flex; justify-content: space-between;
-                          font-size: 10px;
-                          padding-left: 4mm; padding-right: 4mm;
-                          line-height: 1.2;
-                          page-break-inside: avoid;
-                          ">
-                          <div>
-                            <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
-                          </div>
-                          <div>
-                            <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
-                         </div>
-                        </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 15px; width: 100%; font-size: 10px; line-height: 1.2; page-break-inside: avoid;">
+                        <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
+                        <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
+                    </div>
                     </div>
                     </t>
                     </div>
