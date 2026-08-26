@@ -139,6 +139,19 @@
                         table-layout: fixed;
                         border-collapse: collapse;
                       }
+                      .signature-table {
+                        border: none !important;
+                      }
+                      .signature-table td {
+                        border-top: none !important;
+                        border-bottom: none !important;
+                      }
+                      .signature-table td:first-child {
+                        border-left: none !important;
+                      }
+                      .signature-table td:last-child {
+                        border-right: none !important;
+                      }
                       .signature-table td {
                         width: 25%;
                         padding: 0 15px;
@@ -152,15 +165,15 @@
                       }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
-                    <t t-set="groups_of_16" t-value="[move_list[i:i+16] for i in range(0, len(move_list), 16)]"/>
-                    <t t-set="total_pages" t-value="len(groups_of_16)"/>
+                    <t t-set="groups_of_17" t-value="[move_list[i:i+17] for i in range(0, len(move_list), 17)]"/>
+                    <t t-set="total_pages" t-value="len(groups_of_17)"/>
                     <t t-set="page_number" t-value="1"/>
                     <t t-set="line_number" t-value="1"/>
                     <t t-set="total_delivered_total" t-value="0"/>
-                    <t t-foreach="groups_of_16" t-as="group">
+                    <t t-foreach="groups_of_17" t-as="group">
                         <div t-attf-class="page #{page_number != 1 and 'page-following' or ''}"
                              t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
-                            <t t-if="groups_of_16">
+                            <t t-if="groups_of_17">
                                 <div>
                                     <div class="report-header">
                                     <!-- Page header if more than 1 page -->
