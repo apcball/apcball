@@ -1,0 +1,16 @@
+<odoo>
+    <record id="res_config_settings_view_form_buz_deferred_reconcile" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.buz.deferred.reconcile</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <block id="invoicing_settings" position="inside">
+                <setting id="buz_deferred_credit_note_reconcile_setting"
+                         string="Deferred Credit Note Reconciliation"
+                         help="Prevent invoices and credit notes from being automatically reconciled when a reversal is created. Reconciliation must be performed manually by accounting users.">
+                    <field name="buz_deferred_credit_note_reconcile"/>
+                </setting>
+            </block>
+        </field>
+    </record>
+</odoo>
