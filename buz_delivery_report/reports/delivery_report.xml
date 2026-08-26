@@ -98,8 +98,10 @@
                       }
                       .table-product {
                         width: 100%;
+                        table-layout: fixed;
                         border-collapse: collapse;
                         font-size: 20px !important;
+                        white-space: nowrap !important;
                       }
                       .table-product th {
                         border: 1px solid #000;
@@ -112,8 +114,23 @@
                       .table-product td {
                         border: 1px solid #000;
                         padding: 8px 10px;
+                        height: 30px;
                         font-size: 20px !important;
                         vertical-align: middle;
+                        white-space: nowrap !important;
+                      }
+                      .table-product tbody td {
+                        overflow: hidden;
+                      }
+                      .table-product tbody tr {
+                        height: 30px !important;
+                      }
+                      .table-product tbody td:nth-child(2) {
+                        text-overflow: ellipsis;
+                      }
+                      .table-product td:nth-child(2) {
+                        overflow-wrap: anywhere;
+                        word-break: break-word;
                       }
                       .table-product .product-code {
                         font-weight: bold;
@@ -177,15 +194,15 @@
                       }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
-                    <t t-set="groups_of_17" t-value="[move_list[i:i+17] for i in range(0, len(move_list), 17)]"/>
-                    <t t-set="total_pages" t-value="len(groups_of_17)"/>
+                    <t t-set="groups_of_16" t-value="[move_list[i:i+16] for i in range(0, len(move_list), 16)]"/>
+                    <t t-set="total_pages" t-value="len(groups_of_16)"/>
                     <t t-set="page_number" t-value="1"/>
                     <t t-set="line_number" t-value="1"/>
                     <t t-set="total_delivered_total" t-value="0"/>
-                    <t t-foreach="groups_of_17" t-as="group">
+                    <t t-foreach="groups_of_16" t-as="group">
                         <div t-attf-class="page #{page_number != 1 and 'page-following' or ''}"
                              t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
-                            <t t-if="groups_of_17">
+                            <t t-if="groups_of_16">
                                 <div>
                                     <div class="report-header">
                                     <!-- Page header if more than 1 page -->
