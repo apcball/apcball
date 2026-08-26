@@ -56,6 +56,29 @@
                                 text-align: center;
                                 margin-bottom: 10px;
                             }
+                            /* Company header follows the delivery report layout. */
+                            .mc-company-header {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 8px;
+                            }
+                            .mc-company-header td {
+                                padding: 0;
+                                border: 0;
+                                vertical-align: top;
+                            }
+                            .mc-company-header .mc-company-name {
+                                font-size: 20px;
+                                font-weight: bold;
+                                line-height: 1.1;
+                            }
+                            .mc-company-header .mc-company-info {
+                                font-size: 18px;
+                                line-height: 1.1;
+                            }
+                            .mc-company-header .mc-logo-space {
+                                width: 32%;
+                            }
                             .mc-info-table {
                                 width: 100%;
                                 border-collapse: collapse;
@@ -126,6 +149,18 @@
                         </style>
 
                         <div class="page">
+                            <!-- Company header; the right column is reserved for a future logo asset. -->
+                            <table class="mc-company-header">
+                                <tr>
+                                    <td>
+                                        <div class="mc-company-name">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                        <div class="mc-company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                        <div class="mc-company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                    </td>
+                                    <td class="mc-logo-space"></td>
+                                </tr>
+                            </table>
+
                             <!-- Title -->
                             <div class="mc-title">ใบปิด Job (MO)</div>
 
