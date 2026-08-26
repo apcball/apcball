@@ -113,13 +113,18 @@
                       }
                       .table-product td {
                         border: 1px solid #000;
-                        padding: 8px 10px;
+                        padding: 0 10px;
                         height: 30px;
                         font-size: 20px !important;
                         vertical-align: middle;
+                        line-height: 30px !important;
                         white-space: nowrap !important;
                       }
                       .table-product tbody td {
+                        height: 30px !important;
+                        padding: 0 10px !important;
+                        line-height: 30px !important;
+                        vertical-align: middle;
                         overflow: hidden;
                       }
                       .table-product tbody tr {
@@ -307,25 +312,37 @@
                                             <t t-set="total_delivered" t-value="0"/>
                                             <t t-foreach="group" t-as="move">
                                                 <tr>
-                                                    <td class="text-center" style="padding-top: 2px; padding-bottom: 2px;">
+                                                    <td class="text-center">
                                                         <span t-esc="line_number"/>
                                                         <t t-set="line_number" t-value="line_number + 1"/>
                                                     </td>
-                                                    <td style="padding-top: 2px; padding-bottom: 2px;">
+                                                    <td>
                                                         <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span>
                                                         <span t-field="move.product_id.name"/>
                                                     </td>
-                                                    <td class="quantity" style="padding-top: 2px; padding-bottom: 2px;">
+                                                    <td class="quantity">
                                                         <span t-field="move.product_uom_qty"/>
                                                         <span t-field="move.product_uom.name"/>
                                                     </td>
-                                                    <td class="quantity" style="padding-top: 2px; padding-bottom: 2px;">
+                                                    <td class="quantity">
                                                         <t t-set="delivered_qty" t-value="sum((ml.quantity or 0) for ml in move.move_line_ids)"/>
                                                         <t t-set="total_delivered" t-value="total_delivered + delivered_qty"/>
                                                         <span t-esc="delivered_qty"/>
                                                         <span t-field="move.product_uom.name"/>
                                                     </td>
                                                 </tr>
+                                            </t>
+                                            <!-- Fill the last page to 16 table rows. -->
+                                            <t t-if="page_number == total_pages and len(group) &lt; 16">
+                                                <t t-set="empty_rows" t-value="16 - len(group)"/>
+                                                <t t-foreach="range(empty_rows)" t-as="empty_row">
+                                                    <tr>
+                                                        <td class="text-center">&#160;</td>
+                                                        <td>&#160;</td>
+                                                        <td>&#160;</td>
+                                                        <td>&#160;</td>
+                                                    </tr>
+                                                </t>
                                             </t>
                                             <t t-set="total_delivered_total" t-value="total_delivered_total + total_delivered"/>
                                         </tbody>
