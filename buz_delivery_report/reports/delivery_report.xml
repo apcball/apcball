@@ -199,15 +199,15 @@
                       }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
-                    <t t-set="groups_of_16" t-value="[move_list[i:i+16] for i in range(0, len(move_list), 16)]"/>
-                    <t t-set="total_pages" t-value="len(groups_of_16)"/>
+                    <t t-set="groups_of_18" t-value="[move_list[i:i+18] for i in range(0, len(move_list), 18)]"/>
+                    <t t-set="total_pages" t-value="len(groups_of_18)"/>
                     <t t-set="page_number" t-value="1"/>
                     <t t-set="line_number" t-value="1"/>
                     <t t-set="total_delivered_total" t-value="0"/>
-                    <t t-foreach="groups_of_16" t-as="group">
+                    <t t-foreach="groups_of_18" t-as="group">
                         <div t-attf-class="page #{page_number != 1 and 'page-following' or ''}"
                              t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
-                            <t t-if="groups_of_16">
+                            <t t-if="groups_of_18">
                                 <div>
                                     <div class="report-header">
                                     <!-- Page header if more than 1 page -->
@@ -332,9 +332,9 @@
                                                     </td>
                                                 </tr>
                                             </t>
-                                            <!-- Fill the last page to 16 table rows. -->
-                                            <t t-if="page_number == total_pages and len(group) &lt; 16">
-                                                <t t-set="empty_rows" t-value="16 - len(group)"/>
+                                            <!-- Fill the last page to 18 table rows. -->
+                                            <t t-if="page_number == total_pages and len(group) &lt; 18">
+                                                <t t-set="empty_rows" t-value="18 - len(group)"/>
                                                 <t t-foreach="range(empty_rows)" t-as="empty_row">
                                                     <tr>
                                                         <td class="text-center">&#160;</td>
