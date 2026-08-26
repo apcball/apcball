@@ -51,7 +51,8 @@ class ResPartner(models.Model):
         }
         if company_type != 'company':
             required_field_map = {
-                k: v for k, v in required_field_map.items() if k != 'branch'
+                k: v for k, v in required_field_map.items()
+                if k not in ('branch', 'vat')
             }
 
         for field_name, field_label in required_field_map.items():
