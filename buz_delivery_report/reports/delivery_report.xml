@@ -121,6 +121,19 @@
                       .table-product .quantity {
                         text-align: right;
                       }
+                      .note-section {
+                        margin-top: 10px !important;
+                        line-height: 1.1;
+                      }
+                      .note-content {
+                        display: block;
+                        margin-left: 20px;
+                      }
+                      .note-section p {
+                        margin-top: 0;
+                        margin-bottom: 2px;
+                        line-height: 1.1;
+                      }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
                     <t t-set="groups_of_16" t-value="[move_list[i:i+16] for i in range(0, len(move_list), 16)]"/>
@@ -277,10 +290,10 @@
                         </div>
                         <!-- เพิ่มหมายเหตุ -->
                         <t t-if="doc.note">
-                            <div class="row mt-3">
+                            <div class="row mt-3 note-section">
                                 <div class="col-12">
                                     <strong>หมายเหตุ:</strong>
-                                    <span t-field="doc.note"/>
+                                    <span class="note-content" t-field="doc.note"/>
                                 </div>
                             </div>
                         </t>
