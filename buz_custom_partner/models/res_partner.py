@@ -14,8 +14,31 @@ class ResPartner(models.Model):
     )
     old_code_partner = fields.Char(string='Old Code Partner')
     office = fields.Char(string='Office')
-    partner_group = fields.Char(string='Partner Group')
-    partner_type = fields.Char(string='Partner Type')
+    partner_group_id = fields.Many2one(
+        'buz.partner.group',
+        string='Partner Group',
+        ondelete='restrict',
+        index=True,
+        help="Select a predefined partner group (managed under Contacts > Configuration).",
+    )
+    partner_type_id = fields.Many2one(
+        'buz.partner.type',
+        string='Partner Type',
+        ondelete='restrict',
+        index=True,
+        help="Select a predefined partner type (managed under Contacts > Configuration).",
+    )
+    buz_partner_kind = fields.Selection(
+        [('customer', 'Customer'), ('vendor', 'Vendor')],
+        string='Partner Kind',
+        compute='_compute_buz_partner_kind',
+        help="Technical: used to filter Partner Group / Type lists per customer or vendor.",
+    )
+
+    @api.depends('supplier_rank', 'customer_rank')
+    def _compute_buz_partner_kind(self):
+        for partner in self:
+            partner.buz_partner_kind = 'vendor' if partner.supplier_rank else 'customer'
 
     _sql_constraints = [
         ('partner_code_uniq', 'unique(partner_code)', 'Partner Code must be unique!')

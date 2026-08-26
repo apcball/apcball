@@ -1,19 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_partner_form_inherit" model="ir.ui.view">
         <field name="name">res.partner.form.inherit.buz</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
-            
-            <!-- แทรก fields ใต้ VAT -->
-            <xpath expr="//field[@name='vat']" position="after">
-                <field name="partner_code" readonly="1" placeholder="Auto-generated" />
-                <field name="old_code_partner" placeholder="Enter Old Partner Code"/>
-                <field name="office" placeholder="Enter Office"/>
-                <field name="partner_group" placeholder="Enter Partner Group"/>
-                <field name="partner_type" placeholder="Enter Partner Type"/>
+
+            <!-- technical field for dynamic dropdown domain -->
+            <xpath expr="//field[@name='vat']" position="before">
+                <field name="buz_partner_kind" invisible="1"/>
             </xpath>
 
+            <!-- แทรก fields ใต้ VAT -->
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="partner_code" readonly="1" placeholder="Auto-generated"/>
+                <field name="old_code_partner" placeholder="Enter Old Partner Code"/>
+                <field name="office" placeholder="Enter Office"/>
+                <field name="partner_group_id"
+                       placeholder="Select Partner Group"
+                       options="{'no_quick_create': True}"
+                       domain="[('apply_to', 'in', [buz_partner_kind, 'both'])]"/>
+                <field name="partner_type_id"
+                       placeholder="Select Partner Type"
+                       options="{'no_quick_create': True}"
+                       domain="[('apply_to', 'in', [buz_partner_kind, 'both'])]"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Search: group by partner group / type -->
+    <record id="view_partner_filter_inherit" model="ir.ui.view">
+        <field name="name">res.partner.select.inherit.buz</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='group_company']" position="after">
+                <filter string="Partner Group" name="group_buz_partner_group"
+                        context="{'group_by': 'partner_group_id'}"/>
+                <filter string="Partner Type" name="group_buz_partner_type"
+                        context="{'group_by': 'partner_type_id'}"/>
+            </xpath>
         </field>
     </record>
 </odoo>

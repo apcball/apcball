@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================= Partner Group ======================= -->
+    <record id="view_buz_partner_group_tree" model="ir.ui.view">
+        <field name="name">buz.partner.group.tree</field>
+        <field name="model">buz.partner.group</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="apply_to"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_partner_group_form" model="ir.ui.view">
+        <field name="name">buz.partner.group.form</field>
+        <field name="model">buz.partner.group</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="apply_to"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_partner_group" model="ir.actions.act_window">
+        <field name="name">Partner Groups</field>
+        <field name="res_model">buz.partner.group</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Partner Group
+            </p>
+            <p>
+                Set "Apply To" to control whether the group is selectable for
+                Customers, Vendors, or both.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_buz_partner_group"
+              name="Partner Groups"
+              parent="contacts.res_partner_menu_config"
+              action="action_buz_partner_group"
+              sequence="10"/>
+
+    <!-- ======================= Partner Type ======================= -->
+    <record id="view_buz_partner_type_tree" model="ir.ui.view">
+        <field name="name">buz.partner.type.tree</field>
+        <field name="model">buz.partner.type</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="apply_to"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_partner_type_form" model="ir.ui.view">
+        <field name="name">buz.partner.type.form</field>
+        <field name="model">buz.partner.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="apply_to"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_partner_type" model="ir.actions.act_window">
+        <field name="name">Partner Types</field>
+        <field name="res_model">buz.partner.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Partner Type
+            </p>
+            <p>
+                Set "Apply To" to control whether the type is selectable for
+                Customers, Vendors, or both.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_buz_partner_type"
+              name="Partner Types"
+              parent="contacts.res_partner_menu_config"
+              action="action_buz_partner_type"
+              sequence="11"/>
+</odoo>
