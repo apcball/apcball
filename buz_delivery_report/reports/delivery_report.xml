@@ -48,8 +48,10 @@
                         color: #000000;
                       }
                       .page-following {
-                        padding-top: 24px;
+                        padding-top: 36px;
                         box-sizing: border-box;
+                        position: relative;
+                        top: 12px;
                       }
                       /* Let the paper format control the top margin. */
                       .header {
