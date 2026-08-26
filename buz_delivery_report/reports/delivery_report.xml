@@ -6,7 +6,7 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">5</field>
+        <field name="margin_top">0</field>
         <field name="margin_bottom">10</field>
         <field name="margin_left">6</field>
         <field name="margin_right">6</field>
@@ -47,9 +47,17 @@
                         margin: 0;
                         color: #000000;
                       }
+                      .page-following {
+                        padding-top: 24px;
+                        box-sizing: border-box;
+                      }
                       /* Let the paper format control the top margin. */
                       .header {
                         display: none !important;
+                      }
+                      .report-header {
+                        position: relative;
+                        top: -4px;
                       }
                       .article {
                         margin-top: 0 !important;
@@ -119,9 +127,11 @@
                     <t t-set="line_number" t-value="1"/>
                     <t t-set="total_delivered_total" t-value="0"/>
                     <t t-foreach="groups_of_16" t-as="group">
-                        <div class="page" t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                        <div t-attf-class="page #{page_number != 1 and 'page-following' or ''}"
+                             t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
                             <t t-if="groups_of_16">
                                 <div>
+                                    <div class="report-header">
                                     <!-- Page header if more than 1 page -->
                                     <t t-if="total_pages &gt; 1">
                                         <div style="text-align: right; font-weight: bold; font-size: 18px; margin-bottom: 5px;">
@@ -162,8 +172,9 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- Document Title -->
-                                    <div class="row mb-3">
+                                </div>
+                                <!-- Document Title -->
+                                <div class="row mb-3">
                                         <div class="col-12">
                                             <div class="row">
                                                 <div class="col-12 text-center" style="margin-bottom: -10px;">
