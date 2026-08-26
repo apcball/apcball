@@ -129,6 +129,22 @@
                         display: block;
                         margin-left: 20px;
                       }
+                      .signature-box {
+                        width: 100%;
+                        page-break-inside: avoid;
+                        margin-top: 0 !important;
+                      }
+                      .signature-table {
+                        width: 100%;
+                        table-layout: fixed;
+                        border-collapse: collapse;
+                      }
+                      .signature-table td {
+                        width: 25%;
+                        padding: 0 15px;
+                        text-align: center;
+                        vertical-align: top;
+                      }
                       .note-section p {
                         margin-top: 0;
                         margin-bottom: 2px;
@@ -298,39 +314,45 @@
                             </div>
                         </t>
                         <!-- Signatures (Internal Transfer Only) -->
-                        <div class="row mt-4">
-                            <div class="col-3">
-                                <div class="text-center signature-section">
-                                    <br/><br/><br/>
-                                    <p>________________________</p>
-                                    <p>ผู้โอน / Transferred By</p>
-                                    <p>วันที่ / Date: ___________</p>
-                                </div>
-                            </div>
-                            <div class="col-3">
-                                <div class="text-center signature-section">
-                                    <br/><br/><br/>
-                                    <p>________________________</p>
-                                    <p>ผู้ส่งของ / Delivered By</p>
-                                    <p>วันที่ / Date: ___________</p>
-                                </div>
-                            </div>
-                            <div class="col-3">
-                                <div class="text-center signature-section">
-                                    <br/><br/><br/>
-                                    <p>________________________</p>
-                                    <p>ผู้ตรวจสอบ / Checked By</p>
-                                    <p>วันที่ / Date: ___________</p>
-                                </div>
-                            </div>
-                            <div class="col-3">
-                                <div class="text-center signature-section">
-                                    <br/><br/><br/>
-                                    <p>________________________</p>
-                                    <p>ผู้อนุมัติ / Approved By</p>
-                                    <p>วันที่ / Date: ___________</p>
-                                </div>
-                            </div>
+                        <div class="signature-box">
+                            <table class="signature-table">
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="text-center signature-section">
+                                                <br/><br/><br/>
+                                                <p>________________________</p>
+                                                <p>ผู้โอน / Transferred By</p>
+                                                <p>วันที่ / Date: ___________</p>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="text-center signature-section">
+                                                <br/><br/><br/>
+                                                <p>________________________</p>
+                                                <p>ผู้ส่งของ / Delivered By</p>
+                                                <p>วันที่ / Date: ___________</p>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="text-center signature-section">
+                                                <br/><br/><br/>
+                                                <p>________________________</p>
+                                                <p>ผู้ตรวจสอบ / Checked By</p>
+                                                <p>วันที่ / Date: ___________</p>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="text-center signature-section">
+                                                <br/><br/><br/>
+                                                <p>________________________</p>
+                                                <p>ผู้อนุมัติ / Approved By</p>
+                                                <p>วันที่ / Date: ___________</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </t>
                     <t t-set="page_number" t-value="page_number + 1"/>
