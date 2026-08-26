@@ -235,34 +235,13 @@ class MrpProductionAllocateWizard(models.TransientModel):
                     (line.qty_to_consume, line.available_qty, line.product_id.name)
                 )
 
-        # Create allocation tracking records.
-        # Physical stock movement (reservation → consumption) is already handled by
-        # standard Odoo MRP (action_assign + button_mark_done on the MO).
-        # This wizard only records WHICH stock request materials were approved for
-        # each MO — driving qty_allocated / qty_available_to_allocate on request lines.
+        # Create allocation records - this physically reserves the stock
+        # (see MrpStockRequestAllocation.create / MrpStockRequestLine._reserve_for_mo),
+        # which also ensures a raw move exists on the MO for the product.
         summary_lines = []
         for line in lines_to_process:
             req_line = line.request_line_id
-            raw_move = self.mo_id.move_raw_ids.filtered(
-                lambda m: m.product_id == line.product_id and m.state not in ['done', 'cancel']
-            )
-            if not raw_move and self.mo_id.state not in ['done', 'cancel']:
-                # No raw move from BOM — create one so MO can track this component
-                raw_move = self.env['stock.move'].create({
-                    'name': line.product_id.display_name,
-                    'product_id': line.product_id.id,
-                    'product_uom_qty': line.qty_to_consume,
-                    'product_uom': line.uom_id.id,
-                    'location_id': self.mo_id.location_src_id.id,
-                    'location_dest_id': line.product_id.property_stock_production.id,
-                    'raw_material_production_id': self.mo_id.id,
-                    'company_id': self.mo_id.company_id.id,
-                    'origin': self.mo_id.name,
-                })
-                raw_move._action_confirm()
 
-            # Create allocation tracking record only.
-            # Physical consumption is handled by standard Odoo MRP when MO is marked done.
             self.env['mrp.stock.request.allocation'].create({
                 'request_line_id': req_line.id,
                 'mo_id': self.mo_id.id,
