@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_freeze_period_tree" model="ir.ui.view">
+        <field name="name">stock.freeze.period.tree</field>
+        <field name="model">stock.freeze.period</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="state == 'draft'"
+                  decoration-danger="state == 'active'"
+                  decoration-success="state == 'done'"
+                  decoration-muted="state == 'cancel'">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="warehouse_id"/>
+                <field name="location_ids" widget="many2many_tags" optional="show"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="started_by_id" optional="show"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_freeze_period_form" model="ir.ui.view">
+        <field name="name">stock.freeze.period.form</field>
+        <field name="model">stock.freeze.period</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_start_freeze" type="object"
+                            string="Start Freeze" class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_end_freeze" type="object"
+                            string="End Freeze" class="oe_highlight"
+                            invisible="state != 'active'"/>
+                    <button name="action_cancel" type="object"
+                            string="Cancel"
+                            invisible="state not in ('draft', 'active')"/>
+                    <button name="action_reset_to_draft" type="object"
+                            string="Reset to Draft"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,active,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="e.g. Annual Stock Count 2026"/></h1>
+                    </div>
+                    <group>
+                        <group string="General">
+                            <field name="company_id"/>
+                            <field name="warehouse_id"/>
+                            <field name="location_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group string="Freeze Period">
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                        <group string="Options">
+                            <field name="allow_inventory_adjustment"/>
+                            <field name="allow_manager_override"/>
+                        </group>
+                        <group string="Audit">
+                            <field name="started_by_id"/>
+                            <field name="started_at"/>
+                            <field name="ended_by_id"/>
+                            <field name="ended_at"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="reason" nolabel="1" placeholder="Reason for this freeze..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_stock_freeze_period_search" model="ir.ui.view">
+        <field name="name">stock.freeze.period.search</field>
+        <field name="model">stock.freeze.period</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="warehouse_id"/>
+                <field name="location_ids"/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="active" string="Active" domain="[('state', '=', 'active')]"/>
+                <filter name="done" string="Ended" domain="[('state', '=', 'done')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_stock_freeze_period" model="ir.actions.act_window">
+        <field name="name">Stock Freeze Periods</field>
+        <field name="res_model">stock.freeze.period</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1, 'search_default_draft': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a stock freeze period
+            </p><p>
+                Lock stock movements for selected warehouses or locations while
+                a physical inventory count is in progress.
+            </p>
+        </field>
+    </record>
+</odoo>
