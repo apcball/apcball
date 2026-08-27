@@ -164,6 +164,9 @@
                                         <img src="/buz_mrp_stock_request/static/img/logo_mogen.png"
                                              style="width: 150px; height: auto; object-fit: contain;"
                                              alt="MOGEN Logo"/>
+                                        <div style="text-align: right; font-size: 18px; line-height: 1; margin-top: 10px;">
+                                            หน้า 1/1
+                                        </div>
                                     </td>
                                 </tr>
                             </table>
@@ -283,7 +286,7 @@
                             <table class="mc-sign-table">
                                 <tr>
                                     <td>
-                                        <div style="font-weight:bold;">ผู้ผลิต</div>
+                                        <div style="font-weight:bold;">ผู้บันทึก</div>
                                         <div class="mc-sign-line"></div>
                                         <div>(
                                             <span style="display:inline-block; width:120px;">&#160;</span>
@@ -293,7 +296,7 @@
                                         <div>วันที่: ......./......./...........</div>
                                     </td>
                                     <td>
-                                        <div style="font-weight:bold;">ผู้ตรวจสอบ</div>
+                                        <div style="font-weight:bold;">ผู้รับของ</div>
                                         <div class="mc-sign-line"></div>
                                         <div>(
                                             <span style="display:inline-block; width:120px;">&#160;</span>
