@@ -2,6 +2,7 @@
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import float_is_zero
 
 
 class MrpUnbuild(models.Model):
@@ -144,20 +145,45 @@ class MrpUnbuild(models.Model):
             "target": "current",
         }
 
+    def _check_component_cost(self):
+        """Block unbuild if any BOM component has zero standard cost — a zero-cost
+        component would silently produce stock at zero value and corrupt valuation."""
+        for record in self:
+            bom = record.bom_id or record.mo_bom_id
+            if not bom:
+                continue
+            zero_cost_lines = bom.bom_line_ids.filtered(
+                lambda l: not float_is_zero(l.product_qty, precision_digits=2)
+                and float_is_zero(l.product_id.standard_price, precision_digits=2)
+            )
+            if zero_cost_lines:
+                names = ", ".join(zero_cost_lines.mapped("product_id.display_name"))
+                raise UserError(
+                    _(
+                        "ไม่สามารถ Unbuild ได้ เนื่องจาก Component ใน BOM ยังไม่ได้กำหนดต้นทุน (Cost = 0)\n"
+                        "กรุณากำหนดต้นทุนสินค้า (Cost) ให้กับ: %s"
+                    )
+                    % names
+                )
+
     def _perform_done(self):
         """Run standard Odoo unbuild logic (BOM explosion + stock moves).
 
         Before calling super().action_unbuild(), sync location_id to where
         the product actually is after the picking was validated — otherwise
         the standard unbuild will try to consume from the original location
-        which is now empty.
+        which is now empty. Only applies to the picking-confirm route; a
+        direct unbuild (state stays 'draft') has no picking to sync against.
         """
+        self._check_component_cost()
+
         for record in self:
-            if record.picking_id and record.picking_id.state != "done":
-                raise UserError(_("Please validate the linked picking first."))
-            # Product was moved by picking to destination — unbuild must consume from there
-            if record.picking_id:
-                record.write({"location_id": record.picking_id.location_dest_id.id})
+            if record.state == "confirm":
+                if record.picking_id and record.picking_id.state != "done":
+                    raise UserError(_("Please validate the linked picking first."))
+                # Product was moved by picking to destination — unbuild must consume from there
+                if record.picking_id:
+                    record.write({"location_id": record.picking_id.location_dest_id.id})
 
         # Standard Odoo: BOM explosion + produce components + consume product
         res = super().action_unbuild()
@@ -170,16 +196,38 @@ class MrpUnbuild(models.Model):
                 raise UserError(_("You can only confirm done from the Confirmed state."))
         return self._perform_done()
 
+    def action_direct_unbuild(self):
+        """Draft → Done directly, skipping the picking/confirm steps — for cases
+        where stock is already physically available and no formal issuance is needed."""
+        self.ensure_one()
+        if self.state != "draft":
+            raise UserError(_("Direct unbuild is only available from Draft."))
+        if self.picking_id and self.picking_id.state != "cancel":
+            raise UserError(
+                _("A picking is linked to this order. Cancel it first, or complete it via 'Confirm Done'.")
+            )
+        return self.with_context(buz_allow_direct_unbuild=True).action_validate()
+
     def action_unbuild(self):
-        """Block direct unbuild — must go through picking flow or confirm."""
-        confirmed = self.filtered(lambda r: r.state == "confirm")
-        if confirmed:
-            return confirmed._perform_done()
-        raise UserError(_("Use the linked picking to complete this unbuild order."))
+        """Allow direct unbuild only via action_direct_unbuild (context-flagged) or
+        the picking-confirm flow — block any other caller."""
+        allowed = self.filtered(
+            lambda r: r.state == "confirm"
+            or (r.state == "draft" and self.env.context.get("buz_allow_direct_unbuild"))
+        )
+        blocked = self - allowed
+        if blocked:
+            raise UserError(_("Use the linked picking to complete this unbuild order, or use 'Unbuild Directly'."))
+        return allowed._perform_done()
 
     def action_done(self):
-        """Block direct done — must go through picking flow or confirm."""
-        confirmed = self.filtered(lambda r: r.state == "confirm")
-        if confirmed:
-            return confirmed._perform_done()
-        raise UserError(_("Use the linked picking to complete this unbuild order."))
+        """Mirror action_unbuild's guard for symmetry (core has no action_done on
+        mrp.unbuild in v17; kept in case another module still calls it)."""
+        allowed = self.filtered(
+            lambda r: r.state == "confirm"
+            or (r.state == "draft" and self.env.context.get("buz_allow_direct_unbuild"))
+        )
+        blocked = self - allowed
+        if blocked:
+            raise UserError(_("Use the linked picking to complete this unbuild order, or use 'Unbuild Directly'."))
+        return allowed._perform_done()

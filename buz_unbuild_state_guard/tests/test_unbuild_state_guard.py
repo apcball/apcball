@@ -10,7 +10,31 @@ class TestUnbuildStateGuard(TransactionCase):
         super().setUpClass()
         cls.company = cls.env.company
         cls.stock_location = cls.env.ref("stock.stock_location_stock")
-        cls.production_location = cls.env.ref("stock.stock_location_production")
+        cls.production_location = cls.env["stock.location"].search(
+            [("usage", "=", "production"), ("company_id", "in", [False, cls.company.id])],
+            limit=1,
+        )
+        # Destination for produced components: must be distinct from both the
+        # source stock location AND property_stock_production, otherwise the
+        # BOM-line produce move has location_id == location_dest_id (both
+        # resolve to the product's own production location) and nets to zero.
+        cls.destination_location = cls.env["stock.location"].search(
+            [
+                ("usage", "=", "internal"),
+                ("company_id", "in", [False, cls.company.id]),
+                ("id", "!=", cls.stock_location.id),
+            ],
+            limit=1,
+        )
+        if not cls.destination_location:
+            cls.destination_location = cls.env["stock.location"].create(
+                {
+                    "name": "Guarded Unbuild Destination",
+                    "usage": "internal",
+                    "location_id": cls.stock_location.location_id.id,
+                    "company_id": cls.company.id,
+                }
+            )
 
         cls.product = cls.env["product.product"].create(
             {
@@ -24,6 +48,7 @@ class TestUnbuildStateGuard(TransactionCase):
                 "name": "Guarded Unbuild Component",
                 "detailed_type": "product",
                 "categ_id": cls.env.ref("product.product_category_all").id,
+                "standard_price": 10.0,
             }
         )
         # Put product in stock so unbuild can consume it
@@ -56,7 +81,7 @@ class TestUnbuildStateGuard(TransactionCase):
             "product_qty": 1.0,
             "company_id": self.company.id,
             "location_id": self.stock_location.id,
-            "location_dest_id": self.production_location.id,
+            "location_dest_id": self.destination_location.id,
         }
         if "product_uom_id" in self.env["mrp.unbuild"]._fields:
             vals["product_uom_id"] = self.product.uom_id.id
@@ -100,33 +125,32 @@ class TestUnbuildStateGuard(TransactionCase):
 
         self.assertEqual(unbuild.state, "confirm")
 
-        # location_id is synced to picking destination before unbuild runs
-        self.assertEqual(unbuild.location_id, picking.location_dest_id)
-
         # Confirm done — triggers standard action_unbuild (BOM explosion)
         unbuild.action_confirm_done()
 
         self.assertEqual(unbuild.state, "done")
 
-        # Component is produced at location_dest_id (production_location)
+        # location_id was synced to picking destination before unbuild ran
+        self.assertEqual(unbuild.location_id, picking.location_dest_id)
+
+        # Component is produced at location_dest_id (destination_location)
         component_qty = self.env["stock.quant"]._get_available_quantity(
-            self.component, self.production_location
+            self.component, self.destination_location
         )
         self.assertEqual(
             component_qty, 1.0,
             "Component should be produced at location_dest after BOM explosion",
         )
 
-        # Product was consumed from the picking destination (where it was moved to)
+        # The unbuild's finished-product consume move deposits the product into
+        # the virtual Production location (Odoo core behavior, not real stock) —
+        # it does not net back to zero there.
         product_qty = self.env["stock.quant"]._get_available_quantity(
             self.product, self.production_location
         )
-        # After picking: product moved to production_location (qty 1)
-        # After unbuild: product consumed from production_location (qty -1)
-        # Net = 0 at production_location, 9 left at stock_location
         self.assertEqual(
-            product_qty, 0.0,
-            "Product should be consumed from production_location after unbuild",
+            product_qty, 1.0,
+            "Product consume move lands in the virtual Production location",
         )
 
         # Original stock should have 9 left (10 - 1 moved out by picking)
@@ -169,3 +193,45 @@ class TestUnbuildStateGuard(TransactionCase):
 
         with self.assertRaises(UserError):
             unbuild.action_confirm_done()
+
+    def test_08_direct_unbuild_from_draft_succeeds(self):
+        """Draft → Done directly when stock is available and no picking was created."""
+        unbuild = self._create_unbuild()
+
+        unbuild.action_direct_unbuild()
+
+        self.assertEqual(unbuild.state, "done")
+        component_qty = self.env["stock.quant"]._get_available_quantity(
+            self.component, self.destination_location
+        )
+        self.assertEqual(component_qty, 1.0)
+
+    def test_09_direct_unbuild_blocked_with_open_picking(self):
+        """Direct unbuild is blocked once a (non-cancelled) picking is linked."""
+        unbuild = self._create_unbuild()
+        unbuild.action_create_picking()
+
+        with self.assertRaises(UserError):
+            unbuild.action_direct_unbuild()
+
+    def test_10_component_zero_cost_blocks_confirm_done(self):
+        """Zero-cost component blocks the picking-confirm route."""
+        self.component.standard_price = 0.0
+        unbuild = self._create_unbuild()
+        unbuild.action_create_picking()
+
+        picking = unbuild.picking_id
+        picking.action_confirm()
+        picking.action_assign()
+        picking.button_validate()
+
+        with self.assertRaises(UserError):
+            unbuild.action_confirm_done()
+
+    def test_11_component_zero_cost_blocks_direct_unbuild(self):
+        """Zero-cost component blocks the direct-unbuild route."""
+        self.component.standard_price = 0.0
+        unbuild = self._create_unbuild()
+
+        with self.assertRaises(UserError):
+            unbuild.action_direct_unbuild()
