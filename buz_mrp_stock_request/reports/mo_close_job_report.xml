@@ -50,6 +50,20 @@
                                 font-family: 'Sarabun', sans-serif !important;
                                 font-size: 20px;
                             }
+                            .mc-report-header {
+                                font-family: 'Sarabun', sans-serif !important;
+                            }
+                            .mc-report-header > .col-8 {
+                                padding-left: 0 !important;
+                            }
+                            .mc-report-header > .col-4 {
+                                padding-right: 0 !important;
+                            }
+                            .mc-report-header img {
+                                width: 150px;
+                                height: auto;
+                                object-fit: contain;
+                            }
                             .mc-title {
                                 font-size: 28px;
                                 font-weight: bold;
@@ -152,26 +166,22 @@
                         </style>
 
                         <div class="page">
-                            <!-- Company header; the right column is reserved for a future logo asset. -->
-                            <table class="mc-company-header" style="border: none !important; background: transparent !important; box-shadow: none !important; border-spacing: 0;">
-                                <tr>
-                                    <td style="border: none !important; background: transparent !important; box-shadow: none !important;">
-                                        <div class="mc-company-name">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
-                                        <div class="mc-company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
-                                        <div class="mc-company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
-                                    </td>
-                                    <td class="mc-logo-space" style="text-align: right; border: none !important; background: transparent !important; box-shadow: none !important;">
-                                        <img src="/buz_mrp_stock_request/static/img/logo_mogen.png"
+                            <!-- Company header follows delivery_report.xml layout. -->
+                            <div class="row mb-1 mc-report-header" style="width: 100%; margin: 0; border: 0; background: transparent;">
+                                <div class="col-8">
+                                    <div style="font-size: 20px; font-weight: bold; line-height: 1;">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                    <div style="font-size: 18px; line-height: 1;">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                    <div style="font-size: 18px; line-height: 1;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <img src="/buz_mrp_stock_request/static/img/logo_mogen.png"
                                              style="width: 150px; height: auto; object-fit: contain;"
                                              alt="MOGEN Logo"/>
-                                        <div style="text-align: right; font-size: 18px; line-height: 1; margin-top: 10px;">
-                                            หน้า 1/1
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <!-- Title -->
+                                    <div style="text-align: right; font-size: 18px; line-height: 1; margin-top: 10px;">
+                                        หน้า 1/1
+                                    </div>
+                                </div>
+                            </div>                            <!-- Title -->
                             <div class="mc-title">ใบปิด Job (MO)</div>
 
                             <t t-set="doc" t-value="mo"/>
