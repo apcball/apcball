@@ -69,25 +69,19 @@ class StockCardController(http.Controller):
                     ],
                 )
 
-            product_id = int(product_id_param)
-            product = request.env["product.product"].browse(product_id)
+            loc_ids = [int(x) for x in location_ids_param.split(",") if x] if location_ids_param else []
+            wh_ids = [int(x) for x in warehouse_ids_param.split(",") if x] if warehouse_ids_param else []
 
             sheets = []  # list of (label, scope_ids)
-            if location_ids_param or warehouse_ids_param:
-                loc_ids = [int(x) for x in location_ids_param.split(",") if x] if location_ids_param else []
-                wh_ids = [int(x) for x in warehouse_ids_param.split(",") if x] if warehouse_ids_param else []
-                for warehouse in request.env["stock.warehouse"].browse(wh_ids):
-                    scope_ids = engine.resolve_multi_location_scope([], [warehouse.id])
-                    sheets.append((warehouse.name, scope_ids))
-                for location in request.env["stock.location"].browse(loc_ids):
-                    scope_ids = engine.resolve_multi_location_scope([location.id], [])
-                    sheets.append((location.display_name, scope_ids))
-            else:
-                location_id = int(kw["location_id"])
-                include_children = kw.get("include_children") in ("1", "true", "True")
-                scope_ids = engine.resolve_location_scope(location_id, include_children)
-                location_label = request.env["stock.location"].browse(location_id).display_name
-                sheets.append((location_label, scope_ids))
+            for warehouse in request.env["stock.warehouse"].browse(wh_ids):
+                scope_ids = engine.resolve_multi_location_scope([], [warehouse.id])
+                sheets.append((warehouse.name, scope_ids))
+            for location in request.env["stock.location"].browse(loc_ids):
+                scope_ids = engine.resolve_multi_location_scope([location.id], [])
+                sheets.append((location.display_name, scope_ids))
+
+            if not sheets:
+                raise ValueError("ไม่พบคลังสินค้าหรือ Location ที่เลือก")
 
             output = io.BytesIO()
             workbook = xlsxwriter.Workbook(output, {"in_memory": True})
@@ -101,24 +95,38 @@ class StockCardController(http.Controller):
             }
 
             used_names = set()
-            for location_label, scope_ids in sheets:
-                data = engine.get_stock_card_data(
-                    product_id, scope_ids, date_from, date_to,
-                    page_size=0, page=0,
-                    show_movements_only=show_movements_only,
-                    company_ids=company_ids,
+
+            if product_id_param:
+                product_id = int(product_id_param)
+                product = request.env["product.product"].browse(product_id)
+                for location_label, scope_ids in sheets:
+                    data = engine.get_stock_card_data(
+                        product_id, scope_ids, date_from, date_to,
+                        page_size=0, page=0,
+                        show_movements_only=show_movements_only,
+                        company_ids=company_ids,
+                    )
+                    sheet_name = _safe_sheet_name(location_label, used_names)
+                    self._write_stock_card_sheet(
+                        workbook, fmts, sheet_name, product, location_label, data, date_from, date_to,
+                    )
+                filename = "Stock_Card_%s_%s_%s.xlsx" % (
+                    product.default_code or product.id, date_from, date_to,
                 )
-                sheet_name = _safe_sheet_name(location_label, used_names)
-                self._write_stock_card_sheet(
-                    workbook, fmts, sheet_name, product, location_label, data, date_from, date_to,
-                )
+            else:
+                for location_label, scope_ids in sheets:
+                    rows = engine.get_scoped_stock_card_lines(
+                        scope_ids, date_from, date_to, scope_label=location_label,
+                        company_ids=company_ids,
+                        show_movements_only=show_movements_only,
+                    )
+                    sheet_name = _safe_sheet_name(location_label, used_names)
+                    self._write_all_stock_card_sheet(workbook, fmts, rows, sheet_name=sheet_name)
+                filename = "Stock_Card_ByScope_%s_%s.xlsx" % (date_from, date_to)
 
             workbook.close()
             output.seek(0)
 
-            filename = "Stock_Card_%s_%s_%s.xlsx" % (
-                product.default_code or product.id, date_from, date_to,
-            )
             response = request.make_response(
                 output.getvalue(),
                 headers=[
@@ -133,8 +141,8 @@ class StockCardController(http.Controller):
                 json.dumps(error), headers=[("Content-Type", "application/json")], status=400
             )
 
-    def _write_all_stock_card_sheet(self, workbook, fmts, rows):
-        sheet = workbook.add_worksheet("Stock Card")
+    def _write_all_stock_card_sheet(self, workbook, fmts, rows, sheet_name="Stock Card"):
+        sheet = workbook.add_worksheet(sheet_name)
 
         sheet.set_column("A:A", 8)
         sheet.set_column("B:B", 20)

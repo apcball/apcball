@@ -99,14 +99,28 @@ class StockCardReport(models.AbstractModel):
         lines = self.env["stock.move.line"].search_read(
             domain, fields_, order=order, limit=limit, offset=offset
         )
-        uom_obj = self.env["uom.uom"]
-        product_obj = self.env["product.product"]
+        if not lines:
+            return lines
+
+        # Batch: one browse for every UoM / product touched, instead of one
+        # browse per line (this method is called once per product in the
+        # scoped multi-product export - the per-line N+1 does not scale).
+        uom_ids = {line["product_uom_id"][0] for line in lines if line["product_uom_id"]}
+        product_ids = {line["product_id"][0] for line in lines if line["product_id"]}
+        uoms = self.env["uom.uom"].browse(list(uom_ids))
+        products = self.env["product.product"].browse(list(product_ids))
+        uom_map = {uom.id: uom for uom in uoms}
+        product_uom_map = {product.id: product.uom_id for product in products}
+
         for line in lines:
-            src_uom = uom_obj.browse(line["product_uom_id"][0])
-            product = product_obj.browse(line["product_id"][0])
-            line["_qty_base_uom"] = src_uom._compute_quantity(
-                line["quantity"], product.uom_id
-            )
+            src_uom = uom_map.get(line["product_uom_id"][0])
+            target_uom = product_uom_map.get(line["product_id"][0])
+            if src_uom and target_uom:
+                line["_qty_base_uom"] = src_uom._compute_quantity(
+                    line["quantity"], target_uom
+                )
+            else:
+                line["_qty_base_uom"] = line["quantity"]
         return lines
 
     # ------------------------------------------------------------------
@@ -126,6 +140,26 @@ class StockCardReport(models.AbstractModel):
             balance += in_qty - out_qty
         return balance
 
+    def _get_opening_balances_by_product(self, product_ids, scope_location_ids, start_utc, company_ids):
+        """Opening balance for many products at once: one search_read over all
+        pre-range done moves that cross the scope boundary, aggregated per
+        product in Python (keeps the base-UoM conversion the single-product
+        path uses, without a query per product)."""
+        if not product_ids:
+            return {}
+        domain = [
+            ("state", "=", "done"),
+            ("product_id", "in", list(product_ids)),
+            ("company_id", "in", company_ids),
+            ("date", "<", start_utc),
+        ] + self._scope_domain(scope_location_ids)
+        lines = self._read_lines_with_base_qty(domain)
+        balances = dict.fromkeys(product_ids, 0.0)
+        for line in lines:
+            in_qty, out_qty = self._direction_qty(line, scope_location_ids)
+            balances[line["product_id"][0]] = balances.get(line["product_id"][0], 0.0) + in_qty - out_qty
+        return balances
+
     def _get_prefix_delta(self, detail_domain, order, offset, scope_location_ids):
         if offset <= 0:
             return 0.0
@@ -139,6 +173,20 @@ class StockCardReport(models.AbstractModel):
     # ------------------------------------------------------------------
     # Document resolution
     # ------------------------------------------------------------------
+
+    def _prefetch_documents(self, lines):
+        """Warm the ORM cache for every picking / production / move referenced
+        by ``lines`` so the per-line _resolve_document calls do not each fire
+        their own browse (matters for the multi-product scoped export)."""
+        picking_ids = {l["picking_id"][0] for l in lines if l.get("picking_id")}
+        production_ids = {l["production_id"][0] for l in lines if l.get("production_id")}
+        move_ids = {l["move_id"][0] for l in lines if l.get("move_id")}
+        if picking_ids:
+            self.env["stock.picking"].browse(list(picking_ids)).mapped("picking_type_id")
+        if production_ids:
+            self.env["mrp.production"].browse(list(production_ids)).mapped("name")
+        if move_ids:
+            self.env["stock.move"].browse(list(move_ids)).mapped("reference")
 
     def _resolve_document(self, line_vals):
         """Return (doc_type_label, doc_number, res_model, res_id, source_document)."""
@@ -278,6 +326,69 @@ class StockCardReport(models.AbstractModel):
             "has_prev": page > 0,
         }
 
+    def _build_product_scope_rows(
+        self, scope_location_ids, product_id, opening_balance,
+        start_utc, end_utc, company_ids, show_movements_only,
+        internal_location_ids, location_label, default_code, product_name,
+    ):
+        """Flat ledger rows for one product over one scope (a list of location
+        ids). Shared by get_all_stock_card_lines (scope = one location) and
+        get_scoped_stock_card_lines (scope = a whole warehouse/location)."""
+        Location = self.env["stock.location"]
+        detail_domain = [
+            ("state", "=", "done"),
+            ("product_id", "=", product_id),
+            ("company_id", "in", company_ids),
+            ("date", ">=", start_utc),
+            ("date", "<", end_utc),
+        ] + self._scope_domain(scope_location_ids)
+        if show_movements_only:
+            detail_domain += [("quantity", "!=", 0)]
+
+        lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
+        self._prefetch_documents(lines)
+
+        # Batch the counterpart-location names (one browse, not one per row).
+        counterpart_ids = set()
+        for line in lines:
+            counterpart_ids.add(line["location_id"][0])
+            counterpart_ids.add(line["location_dest_id"][0])
+        loc_names = {
+            loc.id: loc.display_name
+            for loc in Location.browse(list(counterpart_ids))
+        }
+
+        rows = []
+        running_balance = opening_balance
+        for line in lines:
+            in_qty, out_qty = self._direction_qty(line, scope_location_ids)
+            row_opening = running_balance
+            running_balance += in_qty - out_qty
+            doc_type, doc_number, _res_model, _res_id, source_document = self._resolve_document(line)
+
+            src_id = line["location_id"][0]
+            dest_id = line["location_dest_id"][0]
+            from_location = loc_names.get(src_id, "") if in_qty and src_id in internal_location_ids else ""
+            to_location = loc_names.get(dest_id, "") if out_qty and dest_id in internal_location_ids else ""
+
+            rows.append({
+                "location_label": location_label,
+                "product_default_code": default_code,
+                "product_name": product_name,
+                "date": self._to_user_tz_str(line["date"]),
+                "doc_type": doc_type,
+                "doc_number": doc_number,
+                "opening": row_opening,
+                "in": in_qty,
+                "out": out_qty,
+                "balance": running_balance,
+                "from_location": from_location,
+                "to_location": to_location,
+                "note": source_document,
+                "_sort_key": (location_label, default_code or "", product_name or "", str(line["date"]), line["id"]),
+            })
+        return rows, running_balance
+
     @api.model
     def get_all_stock_card_lines(self, date_from, date_to, company_ids=None, show_movements_only=False):
         """Flat rows for every (product, internal location) pair that has a
@@ -330,46 +441,107 @@ class StockCardReport(models.AbstractModel):
 
             scope_location_ids = [location_id]
             opening_balance = self._get_opening_balance(product_id, scope_location_ids, start_utc)
+            default_code, product_name = product_info[product_id]
+            product_rows, _closing = self._build_product_scope_rows(
+                scope_location_ids, product_id, opening_balance,
+                start_utc, end_utc, company_ids, show_movements_only,
+                internal_location_ids, location_names[location_id],
+                default_code, product_name,
+            )
+            rows.extend(product_rows)
 
-            detail_domain = [
-                ("state", "=", "done"),
-                ("product_id", "=", product_id),
+        rows.sort(key=lambda r: r["_sort_key"])
+        for idx, row in enumerate(rows):
+            row["seq"] = idx + 1
+            del row["_sort_key"]
+        return rows
+
+    @api.model
+    def get_scoped_stock_card_lines(
+        self, scope_location_ids, date_from, date_to, scope_label=None,
+        company_ids=None, show_movements_only=False,
+    ):
+        """Flat rows for every product that moved through ``scope_location_ids``
+        in the date range OR currently holds non-zero qty there. One row per
+        transaction; products with stock but no movement in range get a single
+        opening=closing row. Used when the export wizard is run with a
+        warehouse/location but no product."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+        scope_location_ids = list(scope_location_ids)
+        if not scope_location_ids:
+            return []
+
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        internal_location_ids = set(self.env["stock.location"].search([
+            ("usage", "=", "internal"),
+            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
+        ]).ids)
+
+        MoveLine = self.env["stock.move.line"]
+        range_domain = [
+            ("state", "=", "done"),
+            ("company_id", "in", company_ids),
+            ("date", ">=", start_utc),
+            ("date", "<", end_utc),
+        ] + self._scope_domain(scope_location_ids)
+
+        moved_product_ids = {
+            g["product_id"][0]
+            for g in MoveLine.read_group(range_domain, ["product_id"], ["product_id"])
+            if g["product_id"]
+        }
+        onhand_product_ids = {
+            q["product_id"][0]
+            for q in self.env["stock.quant"].search_read([
+                ("location_id", "in", scope_location_ids),
+                ("quantity", "!=", 0),
                 ("company_id", "in", company_ids),
-                ("date", ">=", start_utc),
-                ("date", "<", end_utc),
-            ] + self._scope_domain(scope_location_ids)
-            if show_movements_only:
-                detail_domain += [("quantity", "!=", 0)]
+            ], ["product_id"])
+            if q["product_id"]
+        }
+        product_ids = moved_product_ids | onhand_product_ids
+        if not product_ids:
+            return []
 
-            lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
-            running_balance = opening_balance
-            for line in lines:
-                in_qty, out_qty = self._direction_qty(line, scope_location_ids)
-                row_opening = running_balance
-                running_balance += in_qty - out_qty
-                doc_type, doc_number, res_model, res_id, source_document = self._resolve_document(line)
+        opening_by_product = self._get_opening_balances_by_product(
+            product_ids, scope_location_ids, start_utc, company_ids,
+        )
 
-                src_id = line["location_id"][0]
-                dest_id = line["location_dest_id"][0]
-                from_location = Location.browse(src_id).display_name if in_qty and src_id in internal_location_ids else ""
-                to_location = Location.browse(dest_id).display_name if out_qty and dest_id in internal_location_ids else ""
+        Product = self.env["product.product"]
+        products = Product.browse(list(product_ids))
+        product_info = {p.id: (p.default_code or "", p.name) for p in products}
+        label = scope_label or ""
 
-                default_code, product_name = product_info[product_id]
+        rows = []
+        for product_id in product_ids:
+            default_code, product_name = product_info.get(product_id, ("", ""))
+            opening_balance = opening_by_product.get(product_id, 0.0)
+            product_rows, _closing = self._build_product_scope_rows(
+                scope_location_ids, product_id, opening_balance,
+                start_utc, end_utc, company_ids, show_movements_only,
+                internal_location_ids, label, default_code, product_name,
+            )
+            if product_rows:
+                rows.extend(product_rows)
+            elif not show_movements_only:
+                # No movement in range: single marker row so the product still
+                # appears on the sheet. With no in-range lines, closing == opening.
                 rows.append({
-                    "location_label": location_names[location_id],
+                    "location_label": label,
                     "product_default_code": default_code,
                     "product_name": product_name,
-                    "date": self._to_user_tz_str(line["date"]),
-                    "doc_type": doc_type,
-                    "doc_number": doc_number,
-                    "opening": row_opening,
-                    "in": in_qty,
-                    "out": out_qty,
-                    "balance": running_balance,
-                    "from_location": from_location,
-                    "to_location": to_location,
-                    "note": source_document,
-                    "_sort_key": (location_names[location_id], default_code, line["date"], line["id"]),
+                    "date": "",
+                    "doc_type": "",
+                    "doc_number": "",
+                    "opening": opening_balance,
+                    "in": 0.0,
+                    "out": 0.0,
+                    "balance": opening_balance,
+                    "from_location": "",
+                    "to_location": "",
+                    "note": "",
+                    "_sort_key": (label, default_code or "", product_name or "", "", 0),
                 })
 
         rows.sort(key=lambda r: r["_sort_key"])
@@ -544,7 +716,9 @@ class StockCardReport(models.AbstractModel):
         for loc_id in location_ids or []:
             location = Location.browse(loc_id)
             if location.exists():
-                ids.add(location.id)
+                ids |= set(Location.search(
+                    [("id", "child_of", location.id), ("usage", "=", "internal")]
+                ).ids)
         for wh_id in warehouse_ids or []:
             warehouse = self.env["stock.warehouse"].browse(wh_id)
             if warehouse.exists():

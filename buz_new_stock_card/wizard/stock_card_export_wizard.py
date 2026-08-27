@@ -23,11 +23,9 @@ class StockCardExportWizard(models.TransientModel):
     def action_export_xlsx(self):
         self.ensure_one()
         all_mode = not self.product_id and not self.warehouse_ids and not self.location_ids
-        if not all_mode:
-            if not self.warehouse_ids and not self.location_ids:
-                raise UserError("กรุณาเลือกคลังสินค้าหรือ Location อย่างน้อย 1 รายการ")
-            if not self.product_id:
-                raise UserError("กรุณาเลือกสินค้า")
+        if not all_mode and not self.warehouse_ids and not self.location_ids:
+            # product only, no scope: not supported - needs a scope to bound the report
+            raise UserError("กรุณาเลือกคลังสินค้าหรือ Location อย่างน้อย 1 รายการ")
         params = {
             "date_from": self.date_from,
             "date_to": self.date_to,
@@ -35,7 +33,8 @@ class StockCardExportWizard(models.TransientModel):
             "company_id": self.env.company.id,
         }
         if not all_mode:
-            params["product_id"] = self.product_id.id
+            if self.product_id:
+                params["product_id"] = self.product_id.id
             params["warehouse_ids"] = ",".join(str(i) for i in self.warehouse_ids.ids)
             params["location_ids"] = ",".join(str(i) for i in self.location_ids.ids)
         return {
