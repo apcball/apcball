@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Trial Balance (งบทดลอง)",
-    "version": "17.0.1.3.0",
+    "version": "17.0.1.4.0",
     "category": "Accounting",
     "summary": "งบทดลองแบบไทย — ยอดยกมา / เปลี่ยนแปลง / คงเหลือ รองรับหลายบริษัท พร้อมออก PDF และ Excel",
     "description": """
@@ -24,6 +24,7 @@
     ],
     "external_dependencies": {"python": ["xlsxwriter"]},
     "data": [
+        "security/trial_balance_security.xml",
         "security/ir.model.access.csv",
         "wizard/trial_balance_wizard_views.xml",
         "report/trial_balance_templates.xml",

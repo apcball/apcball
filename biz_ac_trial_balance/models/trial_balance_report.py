@@ -54,7 +54,7 @@ class TrialBalanceReport(models.AbstractModel):
 
         :return: dict {options, company, lines, totals, checks, labels}
         """
-        if not self.env.user.has_group("account.group_account_readonly"):
+        if not self.env.user.has_group("biz_ac_trial_balance.group_trial_balance_user"):
             raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานทางบัญชี"))
 
         opt = self._normalize_options(options)
