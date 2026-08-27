@@ -28,10 +28,35 @@
             <field name="binding_type">report</field>
         </record>
 
+        <template id="report_unbuild_job_layout">
+            <div class="header">
+                <div class="report-header">
+                    <div class="row mb-1">
+                        <div class="col-8">
+                            <div class="company-name">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                            <div class="company-detail">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                            <div class="company-detail">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                        </div>
+                        <div class="col-4 text-end" style="font-size: 18px;">
+                            <img src="/buz_unbuild_state_guard/static/img/LOGO MOGEN.png"
+                                 style="width: 150px; height: auto; object-fit: contain;"
+                                 alt="MOGEN Logo"/>
+                            <div class="report-page-number" style="font-size: 14px; font-weight: normal; margin-top: 2px;">
+                                หน้า <span class="page"/> / <span class="topage"/>
+                            </div>
+                        </div>
+                    </div>
+                    <hr style="border-top: 2px solid #333; margin: 3px 0;"/>
+                </div>
+            </div>
+            <div class="article">
+                <t t-out="0"/>
+            </div>
+        </template>
         <template id="report_unbuild_job_document">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="doc">
-                    <t t-call="web.basic_layout">
+                    <t t-call="buz_unbuild_state_guard.report_unbuild_job_layout">
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
@@ -63,25 +88,12 @@
                                 line-height: 1;
                                 font-weight: normal !important;
                             }
+                            .report-page-number .page, .report-page-number .topage {
+                                font-size: 14px !important;
+                            }
                         </style>
                         <div class="page">
 
-                            <!-- Company Header -->
-                            <div class="report-header">
-                                <div class="row mb-1">
-                                    <div class="col-8">
-                                        <div class="company-name">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
-                                        <div class="company-detail">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
-                                        <div class="company-detail">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
-                                    </div>
-                                    <div class="col-4 text-end" style="font-size: 18px;">
-                                        <img src="/buz_unbuild_state_guard/static/img/LOGO MOGEN.png"
-                                             style="width: 150px; height: auto; object-fit: contain;"
-                                             alt="MOGEN Logo"/>
-                                    </div>
-                                </div>
-                                <hr style="border-top: 2px solid #333; margin: 3px 0;"/>
-                            </div>
 
                             <!-- Title -->
                             <div class="text-center mb-4">
