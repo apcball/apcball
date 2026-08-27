@@ -59,12 +59,15 @@
                             /* Company header follows the delivery report layout. */
                             .mc-company-header {
                                 width: 100%;
+                                border: 0;
                                 border-collapse: collapse;
+                                background: transparent;
                                 margin-bottom: 8px;
                             }
                             .mc-company-header td {
                                 padding: 0;
                                 border: 0;
+                                background: transparent;
                                 vertical-align: top;
                             }
                             .mc-company-header .mc-company-name {
@@ -150,14 +153,14 @@
 
                         <div class="page">
                             <!-- Company header; the right column is reserved for a future logo asset. -->
-                            <table class="mc-company-header">
+                            <table class="mc-company-header" style="border: none !important; background: transparent !important; box-shadow: none !important; border-spacing: 0;">
                                 <tr>
-                                    <td>
+                                    <td style="border: none !important; background: transparent !important; box-shadow: none !important;">
                                         <div class="mc-company-name">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
                                         <div class="mc-company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
                                         <div class="mc-company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                                     </td>
-                                    <td class="mc-logo-space" style="text-align: right;">
+                                    <td class="mc-logo-space" style="text-align: right; border: none !important; background: transparent !important; box-shadow: none !important;">
                                         <img src="/buz_mrp_stock_request/static/img/logo_mogen.png"
                                              style="width: 150px; height: auto; object-fit: contain;"
                                              alt="MOGEN Logo"/>
