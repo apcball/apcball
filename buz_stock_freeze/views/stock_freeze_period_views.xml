@@ -10,6 +10,7 @@
                   decoration-muted="state == 'cancel'">
                 <field name="name"/>
                 <field name="company_id"/>
+                <field name="freeze_all_warehouses" optional="hide"/>
                 <field name="warehouse_id"/>
                 <field name="location_ids" widget="many2many_tags" optional="show"/>
                 <field name="date_start"/>
@@ -48,9 +49,12 @@
                     <group>
                         <group string="General">
                             <field name="company_id"/>
-                            <field name="warehouse_id"/>
+                            <field name="freeze_all_warehouses"/>
+                            <field name="warehouse_id"
+                                   invisible="freeze_all_warehouses"/>
                             <field name="location_ids" widget="many2many_tags"
-                                   options="{'no_create': True}"/>
+                                   options="{'no_create': True}"
+                                   invisible="freeze_all_warehouses"/>
                         </group>
                         <group string="Freeze Period">
                             <field name="date_start"/>

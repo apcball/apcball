@@ -11,7 +11,6 @@ class TestStockFreeze(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.company = cls.env.company
 
         # Some deployments enforce required partner fields on every create;
         # bypass that for the throw-away test users if the group exists.
@@ -21,6 +20,13 @@ class TestStockFreeze(TransactionCase):
         )
         if bypass_group:
             cls.env.user.groups_id = [(4, bypass_group.id)]
+
+        # Dedicated company + its auto-created warehouse, so tests never collide
+        # with real freeze periods / stock on the live DB.
+        cls.company = cls.env["res.company"].create({"name": "FZ Test Co"})
+        cls.env.user.company_ids = [(4, cls.company.id)]
+        cls.env = cls.env(context=dict(cls.env.context, allowed_company_ids=[cls.company.id]))
+        cls.env.user.company_id = cls.company
         cls.warehouse = cls.env["stock.warehouse"].search(
             [("company_id", "=", cls.company.id)], limit=1
         )
@@ -82,6 +88,9 @@ class TestStockFreeze(TransactionCase):
                 "groups_id": [(6, 0, [cls.env.ref("stock.group_stock_manager").id])],
             }
         )
+        (cls.override_user | cls.plain_user).write(
+            {"company_ids": [(4, cls.company.id)], "company_id": cls.company.id}
+        )
 
     # ------------------------------------------------------------------
     # helpers
@@ -102,7 +111,14 @@ class TestStockFreeze(TransactionCase):
 
     def _do_move(self, src, dest, qty=5.0, user=None, product=None):
         product = product or self.product
-        env = self.env(user=user) if user else self.env
+        env = self.env
+        if user:
+            env = self.env(
+                user=user,
+                context=dict(
+                    self.env.context, allowed_company_ids=[self.company.id]
+                ),
+            )
         move = env["stock.move"].create(
             {
                 "name": product.name,
@@ -414,6 +430,15 @@ class TestStockFreeze(TransactionCase):
         p.action_start_freeze()
         with self.assertRaises(UserError):
             p.date_start = fields.Datetime.now()
+
+    def test_20_freeze_all_warehouses(self):
+        self._seed(self.stock_location)
+        p = self._make_period(freeze_all_warehouses=True)
+        p.action_start_freeze()
+        self.assertTrue(len(p._get_frozen_location_ids()) > 0)
+        self.assertIn(self.stock_location.id, p._get_frozen_location_ids())
+        with self.assertRaises(UserError):
+            self._do_move(self.stock_location, self.customer_location)
 
     def test_19_end_date_before_start_rejected(self):
         with self.assertRaises(ValidationError):

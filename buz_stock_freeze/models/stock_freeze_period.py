@@ -20,6 +20,11 @@ class StockFreezePeriod(models.Model):
         default=lambda self: self.env.company,
         tracking=True,
     )
+    freeze_all_warehouses = fields.Boolean(
+        string="Freeze All Warehouses",
+        tracking=True,
+        help="Freeze every internal location of every warehouse in the company.",
+    )
     warehouse_id = fields.Many2one(
         "stock.warehouse",
         string="Warehouse",
@@ -72,13 +77,15 @@ class StockFreezePeriod(models.Model):
     # ------------------------------------------------------------------
     # Compute / helpers
     # ------------------------------------------------------------------
-    @api.depends("warehouse_id", "location_ids")
+    @api.depends("warehouse_id", "location_ids", "freeze_all_warehouses")
     def _compute_location_summary(self):
         for period in self:
             if period.location_ids:
                 period.location_summary = ", ".join(
                     period.location_ids.mapped("display_name")
                 )
+            elif period.freeze_all_warehouses:
+                period.location_summary = _("All warehouses")
             elif period.warehouse_id:
                 period.location_summary = period.warehouse_id.display_name
             else:
@@ -91,11 +98,17 @@ class StockFreezePeriod(models.Model):
         locations created after the period was saved are still covered.
         """
         self.ensure_one()
-        if self.location_ids:
+        if self.freeze_all_warehouses:
+            base = self.env["stock.warehouse"].search(
+                [("company_id", "=", self.company_id.id)]
+            ).view_location_id
+        elif self.location_ids:
             base = self.location_ids
         elif self.warehouse_id:
             base = self.warehouse_id.view_location_id
         else:
+            return []
+        if not base:
             return []
         locations = self.env["stock.location"].search(
             [("id", "child_of", base.ids), ("usage", "=", "internal")]
@@ -113,12 +126,19 @@ class StockFreezePeriod(models.Model):
                     _("End Date/Time must be later than Start Date/Time.")
                 )
 
-    @api.constrains("warehouse_id", "location_ids")
+    @api.constrains("warehouse_id", "location_ids", "freeze_all_warehouses")
     def _check_scope_defined(self):
         for period in self:
-            if not period.warehouse_id and not period.location_ids:
+            if (
+                not period.freeze_all_warehouses
+                and not period.warehouse_id
+                and not period.location_ids
+            ):
                 raise ValidationError(
-                    _("Define a warehouse or at least one location to freeze.")
+                    _(
+                        "Define a warehouse, at least one location, or tick "
+                        "Freeze All Warehouses."
+                    )
                 )
 
     @api.constrains(
@@ -126,6 +146,7 @@ class StockFreezePeriod(models.Model):
         "date_end",
         "warehouse_id",
         "location_ids",
+        "freeze_all_warehouses",
         "state",
         "company_id",
     )
@@ -165,6 +186,7 @@ class StockFreezePeriod(models.Model):
         "company_id",
         "warehouse_id",
         "location_ids",
+        "freeze_all_warehouses",
         "date_start",
     )
 
