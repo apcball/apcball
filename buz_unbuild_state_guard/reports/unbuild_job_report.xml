@@ -35,7 +35,13 @@
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
+                                src: url('/buz_unbuild_state_guard/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                font-weight: 400;
+                            }
+                            @font-face {
+                                font-family: 'Sarabun';
                                 src: url('/buz_unbuild_state_guard/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: 700;
                             }
                             .page {
                                 font-family: 'Sarabun', sans-serif;
@@ -43,7 +49,6 @@
                             }
                             table, td, th, div, span, h2, h5, body {
                                 font-family: 'Sarabun', sans-serif !important;
-                                font-weight: bold;
                             }
                             .report-header {
                                 margin-bottom: 4px;
@@ -56,6 +61,7 @@
                             .report-header .company-detail {
                                 font-size: 18px;
                                 line-height: 1;
+                                font-weight: normal !important;
                             }
                         </style>
                         <div class="page">
