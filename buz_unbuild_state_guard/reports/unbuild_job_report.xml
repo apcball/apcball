@@ -75,7 +75,9 @@
                                         <div class="company-detail">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                                     </div>
                                     <div class="col-4 text-end" style="font-size: 18px;">
-                                        <!-- Logo placeholder: ยังไม่ใส่รูป -->
+                                        <img src="/buz_unbuild_state_guard/static/img/LOGO MOGEN.png"
+                                             style="width: 150px; height: auto; object-fit: contain;"
+                                             alt="MOGEN Logo"/>
                                     </div>
                                 </div>
                                 <hr style="border-top: 2px solid #333; margin: 3px 0;"/>
