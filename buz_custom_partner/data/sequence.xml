@@ -18,4 +18,13 @@
         <field name="padding">5</field>
         <field name="implementation">no_gap</field>
     </record>
+
+    <!-- Construction Vendor Code: K00001, K00002, ... -->
+    <record id="seq_partner_code_construction_vendor" model="ir.sequence">
+        <field name="name">Partner Code (Construction Vendor)</field>
+        <field name="code">custom_partner_code.construction_vendor</field>
+        <field name="prefix">K</field>
+        <field name="padding">5</field>
+        <field name="implementation">no_gap</field>
+    </record>
 </odoo>

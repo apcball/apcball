@@ -15,6 +15,7 @@
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="partner_code" readonly="1" placeholder="Auto-generated"/>
                 <field name="old_code_partner" placeholder="Enter Old Partner Code"/>
+                <field name="is_construction_vendor"/>
                 <field name="office" placeholder="Enter Office"/>
                 <field name="partner_group_id"
                        placeholder="Select Partner Group"

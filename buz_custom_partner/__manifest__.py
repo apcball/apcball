@@ -1,6 +1,6 @@
 {
     'name': 'Buz Custom Partner',
-    'version': '17.0.2.0',
+    'version': '17.0.2.1',
     'category': 'Customers',
     'summary': 'Add Partner Code and Additional Fields to res.partner',
     'description': """
