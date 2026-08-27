@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cron_shopee_sync_stock" model="ir.cron">
+        <field name="name">Shopee: Sync Stock</field>
+        <field name="model_id" ref="model_shopee_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sync_stock()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">False</field>
+        <!-- Start disabled: enable once you've authorized a shop -->
+    </record>
+
+    <record id="cron_shopee_sync_orders" model="ir.cron">
+        <field name="name">Shopee: Sync Orders</field>
+        <field name="model_id" ref="model_shopee_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sync_orders()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">False</field>
+    </record>
+
+    <record id="cron_shopee_push_stock" model="ir.cron">
+        <field name="name">Shopee: Push Stock</field>
+        <field name="model_id" ref="model_shopee_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_push_stock()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">False</field>
+        <!-- Enable only after 'Push Stock to Shopee' is set on a shop -->
+    </record>
+
+    <record id="cron_shopee_refresh_tokens" model="ir.cron">
+        <field name="name">Shopee: Refresh Access Tokens</field>
+        <field name="model_id" ref="model_shopee_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_refresh_tokens()</field>
+        <field name="interval_number">3</field>
+        <field name="interval_type">hours</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

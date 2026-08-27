@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_shopee_root" name="Shopee" sequence="60"/>
+    <menuitem id="menu_shopee_orders" name="Orders" parent="menu_shopee_root"
+              action="action_shopee_orders" sequence="10"/>
+    <menuitem id="menu_shopee_config" name="Shop Connections" parent="menu_shopee_root"
+              action="action_shopee_config" sequence="20"/>
+</odoo>

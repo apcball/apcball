@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- shopee_item_id / shopee_stock live on product.product (variant level,
+         since Shopee SKUs are matched against product.default_code which is
+         variant-specific). Extend the variant form, not the template form. -->
+    <record id="view_product_product_form_shopee" model="ir.ui.view">
+        <field name="name">product.product.form.shopee</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Shopee" name="shopee_group">
+                    <field name="shopee_item_id" readonly="1"/>
+                    <field name="shopee_model_id" readonly="1"/>
+                    <field name="shopee_stock" readonly="1"/>
+                    <field name="shopee_last_sync" readonly="1"/>
+                    <field name="shopee_sync_stock_out"/>
+                    <field name="shopee_pushed_stock" readonly="1"/>
+                    <field name="shopee_stock_push_date" readonly="1"/>
+                    <button name="action_push_shopee_stock" type="object"
+                            string="Push Stock to Shopee" class="btn-secondary"
+                            invisible="not shopee_item_id"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_push_shopee_stock_server" model="ir.actions.server">
+        <field name="name">Push Stock to Shopee</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">records.action_push_shopee_stock()</field>
+    </record>
+</odoo>

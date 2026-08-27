@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_shopee" model="ir.ui.view">
+        <field name="name">sale.order.form.shopee</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='client_order_ref']" position="after">
+                <field name="shopee_order_sn" readonly="1" force_save="1"
+                       invisible="not is_shopee_order"/>
+                <field name="shopee_order_status" readonly="1"
+                       invisible="not is_shopee_order"/>
+                <field name="is_shopee_order" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_shopee_orders" model="ir.actions.act_window">
+        <field name="name">Shopee Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_shopee_order', '=', True)]</field>
+    </record>
+</odoo>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopee_config_form" model="ir.ui.view">
+        <field name="name">shopee.config.form</field>
+        <field name="model">shopee.config</field>
+        <field name="arch" type="xml">
+            <form string="Shopee Shop Connection">
+                <header>
+                    <button name="action_get_authorization_url" type="object"
+                            string="1. Get Authorization Link" class="btn-primary"/>
+                    <button name="action_exchange_token" type="object"
+                            string="2. Exchange Token" class="btn-primary"/>
+                    <button name="action_test_connection" type="object"
+                            string="Test Connection" class="btn-secondary"/>
+                    <button name="action_save_manual_tokens" type="object"
+                            string="Save Manual Tokens" class="btn-secondary"/>
+                    <button name="action_sync_stock" type="object"
+                            string="Sync Stock Now" class="btn-secondary"/>
+                    <button name="action_sync_orders" type="object"
+                            string="Sync Orders Now" class="btn-secondary"/>
+                    <button name="action_push_stock" type="object"
+                            string="Push Stock Now" class="btn-secondary"
+                            invisible="not shopee_push_stock"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="active"/>
+                        <field name="environment"/>
+                        <field name="company_id" options="{'no_create': True}"/>
+                    </group>
+                    <group string="Credentials (from Shopee Open Platform App Detail)">
+                        <field name="partner_id"/>
+                        <field name="partner_key" password="True"/>
+                        <field name="shop_id"/>
+                        <field name="redirect_url"
+                               placeholder="https://yourdomain.com/shopee/callback"/>
+                    </group>
+                    <group string="Order Import">
+                        <field name="customer_partner_id"/>
+                    </group>
+                    <group string="Authorization">
+                        <field name="temp_auth_code"
+                               placeholder="Paste 'code' or the whole redirect URL here"/>
+                    </group>
+                    <group string="Manual Tokens (optional - if you have a token from elsewhere)">
+                        <field name="temp_access_token" password="True"/>
+                        <field name="temp_refresh_token" password="True"/>
+                        <field name="temp_token_expires_at"/>
+                    </group>
+                    <group string="Stock Push (Odoo -&gt; Shopee)">
+                        <field name="shopee_push_stock"/>
+                        <field name="shopee_warehouse_id"
+                               invisible="not shopee_push_stock"
+                               required="shopee_push_stock"/>
+                        <field name="last_stock_push" readonly="1"/>
+                    </group>
+                    <group string="Token Status">
+                        <field name="access_token" readonly="1"/>
+                        <field name="token_expires_at" readonly="1"/>
+                    </group>
+                    <group string="Sync Status">
+                        <field name="last_stock_sync" readonly="1"/>
+                        <field name="last_order_sync" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_shopee_config_list" model="ir.ui.view">
+        <field name="name">shopee.config.list</field>
+        <field name="model">shopee.config</field>
+        <field name="arch" type="xml">
+            <tree string="Shopee Shop Connections">
+                <field name="name"/>
+                <field name="environment"/>
+                <field name="shop_id"/>
+                <field name="last_stock_sync"/>
+                <field name="last_order_sync"/>
+                <field name="last_stock_push"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_shopee_config" model="ir.actions.act_window">
+        <field name="name">Shopee Shop Connections</field>
+        <field name="res_model">shopee.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>
