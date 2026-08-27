@@ -157,7 +157,11 @@
                                         <div class="mc-company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
                                         <div class="mc-company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                                     </td>
-                                    <td class="mc-logo-space"></td>
+                                    <td class="mc-logo-space" style="text-align: right;">
+                                        <img src="/buz_mrp_stock_request/static/img/logo_mogen.png"
+                                             style="width: 150px; height: auto; object-fit: contain;"
+                                             alt="MOGEN Logo"/>
+                                    </td>
                                 </tr>
                             </table>
 
