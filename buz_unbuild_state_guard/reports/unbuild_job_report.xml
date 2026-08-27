@@ -7,12 +7,12 @@
             <field name="default" eval="True"/>
             <field name="format">A4</field>
             <field name="orientation">Portrait</field>
-            <field name="margin_top">10</field>
-            <field name="margin_bottom">10</field>
+            <field name="margin_top">25</field>
+            <field name="margin_bottom">15</field>
             <field name="margin_left">6</field>
             <field name="margin_right">6</field>
             <field name="header_line" eval="False"/>
-            <field name="header_spacing">0</field>
+            <field name="header_spacing">15</field>
             <field name="dpi">90</field>
         </record>
 
@@ -31,7 +31,7 @@
         <template id="report_unbuild_job_document">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="doc">
-                    <t t-call="web.external_layout">
+                    <t t-call="web.basic_layout">
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
@@ -45,8 +45,35 @@
                                 font-family: 'Sarabun', sans-serif !important;
                                 font-weight: bold;
                             }
+                            .report-header {
+                                margin-bottom: 4px;
+                            }
+                            .report-header .company-name {
+                                font-size: 20px;
+                                font-weight: bold;
+                                line-height: 1;
+                            }
+                            .report-header .company-detail {
+                                font-size: 18px;
+                                line-height: 1;
+                            }
                         </style>
                         <div class="page">
+
+                            <!-- Company Header -->
+                            <div class="report-header">
+                                <div class="row mb-1">
+                                    <div class="col-8">
+                                        <div class="company-name">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                        <div class="company-detail">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                                        <div class="company-detail">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                    </div>
+                                    <div class="col-4 text-end" style="font-size: 18px;">
+                                        <!-- Logo placeholder: ยังไม่ใส่รูป -->
+                                    </div>
+                                </div>
+                                <hr style="border-top: 2px solid #333; margin: 3px 0;"/>
+                            </div>
 
                             <!-- Title -->
                             <div class="text-center mb-4">
@@ -110,63 +137,129 @@
                             <div class="mt-3">
                                 <h5 t-if="doc.state == 'done'" style="margin:0; font-weight:bold;">รายการส่วนประกอบที่ได้</h5>
                                 <h5 t-else="" style="margin:0; font-weight:bold;">รายการส่วนประกอบที่คาดว่าจะได้</h5>
-                                <table class="table table-sm table-bordered">
-                                    <thead>
-                                        <tr style="background-color:#f0f0f0;">
-                                            <th style="width:5%; text-align:center;">ลำดับ</th>
-                                            <th style="width:35%;">ส่วนประกอบ</th>
-                                            <th style="width:10%; text-align:center;">จำนวน</th>
-                                            <th style="width:10%; text-align:center;">หน่วย</th>
-                                            <th style="width:15%;">ตำแหน่งปลายทาง</th>
-                                            <th style="width:25%;">หมายเหตุ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- ใบปิด Job: แสดงตาม stock move จริงที่เกิดจากการแตก unbuild
-                                             อิงตาม produce_line_ids แทน bom_line_ids เพราะการแตก BOM
-                                             อาจได้ส่วนประกอบต่างจากใน BOM (phantom/sub-assembly/substitute) -->
-                                        <t t-if="doc.produce_line_ids">
-                                            <!-- แสดงเฉพาะตัวลูกที่แยกออกมา ไม่แสดงตัวแม่ (สินค้าที่ถูกแยก = doc.product_id) -->
-                                            <t t-set="line_num" t-value="0"/>
-                                            <t t-foreach="doc.produce_line_ids" t-as="move">
-                                                <t t-if="move.product_id != doc.product_id">
-                                                    <t t-set="line_num" t-value="line_num + 1"/>
-                                                    <tr>
-                                                        <td class="text-center"><t t-esc="line_num"/></td>
-                                                        <td><span t-field="move.product_id"/></td>
-                                                        <td class="text-center"><span t-field="move.quantity"/></td>
-                                                        <td class="text-center"><span t-field="move.product_uom"/></td>
-                                                        <td><span t-field="move.location_dest_id"/></td>
-                                                        <td><span t-esc="', '.join(move.move_line_ids.mapped('lot_id').mapped('name'))"/></td>
-                                                    </tr>
-                                                </t>
-                                            </t>
-                                            <t t-if="not line_num">
+
+                                <!-- ใบปิด Job: แสดงตาม stock move จริง -->
+                                <t t-if="doc.produce_line_ids">
+                                    <t t-set="comp_lines" t-value="doc.produce_line_ids.filtered(lambda m: m.product_id != doc.product_id)"/>
+                                    <t t-if="comp_lines">
+                                        <t t-set="items_per_page" t-value="12"/>
+                                        <t t-set="total_pages" t-value="(len(comp_lines) + items_per_page - 1) // items_per_page"/>
+                                        <t t-set="page_num" t-value="0"/>
+                                        <t t-foreach="range(total_pages)" t-as="p">
+                                            <div t-attf-style="#{p != 0 and 'page-break-before: always;' or ''}">
+                                                <div t-if="total_pages > 1" style="text-align: right; font-size: 18px; font-weight: bold; margin-bottom: 5px;">
+                                                    หน้า <t t-esc="p + 1"/> / <t t-esc="total_pages"/>
+                                                </div>
+                                                <table class="table table-sm table-bordered">
+                                                    <thead>
+                                                        <tr style="background-color:#f0f0f0;">
+                                                            <th style="width:5%; text-align:center;">ลำดับ</th>
+                                                            <th style="width:35%;">ส่วนประกอบ</th>
+                                                            <th style="width:10%; text-align:center;">จำนวน</th>
+                                                            <th style="width:10%; text-align:center;">หน่วย</th>
+                                                            <th style="width:15%;">ตำแหน่งปลายทาง</th>
+                                                            <th style="width:25%;">หมายเหตุ</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <t t-set="line_num" t-value="p * items_per_page"/>
+                                                        <t t-foreach="comp_lines[p * items_per_page:(p + 1) * items_per_page]" t-as="move">
+                                                            <t t-set="line_num" t-value="line_num + 1"/>
+                                                            <tr>
+                                                                <td class="text-center"><t t-esc="line_num"/></td>
+                                                                <td><span t-field="move.product_id"/></td>
+                                                                <td class="text-center"><span t-field="move.quantity"/></td>
+                                                                <td class="text-center"><span t-field="move.product_uom"/></td>
+                                                                <td><span t-field="move.location_dest_id"/></td>
+                                                                <td><span t-esc="', '.join(move.move_line_ids.mapped('lot_id').mapped('name'))"/></td>
+                                                            </tr>
+                                                        </t>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <table class="table table-sm table-bordered">
+                                            <thead>
+                                                <tr style="background-color:#f0f0f0;">
+                                                    <th style="width:5%; text-align:center;">ลำดับ</th>
+                                                    <th style="width:35%;">ส่วนประกอบ</th>
+                                                    <th style="width:10%; text-align:center;">จำนวน</th>
+                                                    <th style="width:10%; text-align:center;">หน่วย</th>
+                                                    <th style="width:15%;">ตำแหน่งปลายทาง</th>
+                                                    <th style="width:25%;">หมายเหตุ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
                                                 <tr>
                                                     <td colspan="6" class="text-center text-muted">ไม่มีข้อมูลส่วนประกอบที่แยกได้</td>
                                                 </tr>
-                                            </t>
-                                        </t>
-                                        <!-- ใบเปิด Job (ยังไม่ done): ยังไม่มี stock move จริง จึงประมาณการจาก BOM -->
-                                        <t t-elif="doc.bom_id and doc.bom_id.bom_line_ids">
-                                            <t t-set="line_num" t-value="0"/>
-                                            <tr t-foreach="doc.bom_id.bom_line_ids" t-as="line">
-                                                <t t-set="line_num" t-value="line_num + 1"/>
-                                                <td class="text-center"><t t-esc="line_num"/></td>
-                                                <td><span t-field="line.product_id"/></td>
-                                                <td class="text-center"><span t-esc="line.product_qty * doc.product_qty"/></td>
-                                                <td class="text-center"><span t-field="line.product_uom_id"/></td>
-                                                <td><span t-field="doc.location_dest_id"/></td>
-                                                <td></td>
+                                            </tbody>
+                                        </table>
+                                    </t>
+                                </t>
+
+                                <!-- ใบเปิด Job: ประมาณการจาก BOM -->
+                                <t t-elif="doc.bom_id and doc.bom_id.bom_line_ids">
+                                    <t t-set="bom_lines" t-value="doc.bom_id.bom_line_ids"/>
+                                    <t t-set="items_per_page" t-value="12"/>
+                                    <t t-set="total_pages" t-value="(len(bom_lines) + items_per_page - 1) // items_per_page"/>
+                                    <t t-set="page_num" t-value="0"/>
+                                    <t t-foreach="range(total_pages)" t-as="p">
+                                        <div t-attf-style="#{p != 0 and 'page-break-before: always;' or ''}">
+                                            <div t-if="total_pages > 1" style="text-align: right; font-size: 18px; font-weight: bold; margin-bottom: 5px;">
+                                                หน้า <t t-esc="p + 1"/> / <t t-esc="total_pages"/>
+                                            </div>
+                                            <table class="table table-sm table-bordered">
+                                                <thead>
+                                                    <tr style="background-color:#f0f0f0;">
+                                                        <th style="width:5%; text-align:center;">ลำดับ</th>
+                                                        <th style="width:35%;">ส่วนประกอบ</th>
+                                                        <th style="width:10%; text-align:center;">จำนวน</th>
+                                                        <th style="width:10%; text-align:center;">หน่วย</th>
+                                                        <th style="width:15%;">ตำแหน่งปลายทาง</th>
+                                                        <th style="width:25%;">หมายเหตุ</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-set="line_num" t-value="p * items_per_page"/>
+                                                    <t t-foreach="bom_lines[p * items_per_page:(p + 1) * items_per_page]" t-as="line">
+                                                        <t t-set="line_num" t-value="line_num + 1"/>
+                                                        <tr>
+                                                            <td class="text-center"><t t-esc="line_num"/></td>
+                                                            <td><span t-field="line.product_id"/></td>
+                                                            <td class="text-center"><span t-esc="line.product_qty * doc.product_qty"/></td>
+                                                            <td class="text-center"><span t-field="line.product_uom_id"/></td>
+                                                            <td><span t-field="doc.location_dest_id"/></td>
+                                                            <td></td>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </t>
+                                </t>
+
+                                <t t-else="">
+                                    <table class="table table-sm table-bordered">
+                                        <thead>
+                                            <tr style="background-color:#f0f0f0;">
+                                                <th style="width:5%; text-align:center;">ลำดับ</th>
+                                                <th style="width:35%;">ส่วนประกอบ</th>
+                                                <th style="width:10%; text-align:center;">จำนวน</th>
+                                                <th style="width:10%; text-align:center;">หน่วย</th>
+                                                <th style="width:15%;">ตำแหน่งปลายทาง</th>
+                                                <th style="width:25%;">หมายเหตุ</th>
                                             </tr>
-                                        </t>
-                                        <t t-else="">
+                                        </thead>
+                                        <tbody>
                                             <tr>
                                                 <td colspan="6" class="text-center text-muted">ไม่มีข้อมูลส่วนประกอบ</td>
                                             </tr>
-                                        </t>
-                                    </tbody>
-                                </table>
+                                        </tbody>
+                                    </table>
+                                </t>
                             </div>
 
                             <!-- Picking Info -->
