@@ -7,12 +7,12 @@
             <field name="default" eval="True"/>
             <field name="format">A4</field>
             <field name="orientation">Portrait</field>
-            <field name="margin_top">25</field>
+            <field name="margin_top">5</field>
             <field name="margin_bottom">15</field>
             <field name="margin_left">6</field>
             <field name="margin_right">6</field>
             <field name="header_line" eval="False"/>
-            <field name="header_spacing">15</field>
+            <field name="header_spacing">0</field>
             <field name="dpi">90</field>
         </record>
 
@@ -29,8 +29,8 @@
         </record>
 
         <template id="report_unbuild_job_layout">
-            <div class="header">
-                <div class="report-header">
+            <div class="unbuild-report-header">
+                <div class="unbuild-report-header-content">
                     <div class="row mb-1">
                         <div class="col-8">
                             <div class="company-name">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
@@ -42,21 +42,18 @@
                                  style="width: 150px; height: auto; object-fit: contain;"
                                  alt="MOGEN Logo"/>
                             <div class="report-page-number" style="font-size: 14px; font-weight: normal; margin-top: 2px;">
-                                หน้า <span class="page"/> / <span class="topage"/>
+                                หน้า 1 / <t t-esc="report_total_pages"/>
                             </div>
                         </div>
                     </div>
                     <hr style="border-top: 2px solid #333; margin: 3px 0;"/>
                 </div>
             </div>
-            <div class="article">
-                <t t-out="0"/>
-            </div>
         </template>
         <template id="report_unbuild_job_document">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="doc">
-                    <t t-call="buz_unbuild_state_guard.report_unbuild_job_layout">
+                    <t t-call="web.external_layout">
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
@@ -75,15 +72,16 @@
                             table, td, th, div, span, h2, h5, body {
                                 font-family: 'Sarabun', sans-serif !important;
                             }
-                            .report-header {
+                            /* แสดงหัวรายงานในเนื้อหาเพื่อให้ wkhtmltopdf render ได้แน่นอน */
+                            .unbuild-report-header-content {
                                 margin-bottom: 4px;
                             }
-                            .report-header .company-name {
+                            .unbuild-report-header-content .company-name {
                                 font-size: 20px;
                                 font-weight: bold;
                                 line-height: 1;
                             }
-                            .report-header .company-detail {
+                            .unbuild-report-header-content .company-detail {
                                 font-size: 18px;
                                 line-height: 1;
                                 font-weight: normal !important;
@@ -93,6 +91,11 @@
                             }
                         </style>
                         <div class="page">
+                            <t t-set="report_line_count"
+                               t-value="len(doc.produce_line_ids.filtered(lambda m: m.product_id != doc.product_id)) if doc.produce_line_ids else (len(doc.bom_id.bom_line_ids) if doc.bom_id else 0)"/>
+                            <t t-set="report_total_pages"
+                               t-value="((report_line_count + 11) // 12) if report_line_count else 1"/>
+                            <t t-call="buz_unbuild_state_guard.report_unbuild_job_layout"/>
 
 
                             <!-- Title -->

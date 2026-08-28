@@ -57,7 +57,8 @@
                       .header {
                         display: none !important;
                       }
-                      .report-header {
+                      /* ใช้ชื่อเฉพาะโมดูล ป้องกันชนกับ CSS ของ web.external_layout */
+                      .delivery-report-header {
                         position: relative;
                         top: -4px;
                       }
@@ -209,7 +210,7 @@
                              t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
                             <t t-if="groups_of_18">
                                 <div>
-                                    <div class="report-header">
+                                    <div class="delivery-report-header">
                                     <!-- Page header if more than 1 page -->
                                     <t t-if="total_pages &gt; 1">
                                         <div style="text-align: right; font-weight: bold; font-size: 18px; margin-bottom: 5px;">
