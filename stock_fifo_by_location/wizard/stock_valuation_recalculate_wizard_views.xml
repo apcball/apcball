@@ -34,67 +34,70 @@
                         </group>
                     </group>
                     
+                    <group string="Mode" invisible="state != 'draft'">
+                        <field name="dry_run"/>
+                    </group>
+
                     <group string="Operations to Perform" invisible="state != 'draft'">
+                        <field name="diagnose_value_residual"/>
+                        <field name="recalculate_remaining"/>
                         <field name="fix_null_remaining"/>
                         <field name="fix_negative_remaining"/>
                         <field name="fix_excess_remaining"/>
-                        <field name="recalculate_remaining"/>
-                        <field name="fix_value_mismatch"/>
-                        <field name="fix_value_mismatch_per_warehouse"/>
                     </group>
                     
                     <notebook invisible="state != 'draft'">
                         <page string="ℹ️ Information">
                             <group>
-                                <div style="padding: 10px; background: #f0f8ff; border-left: 4px solid #2196F3; margin: 10px 0;">
-                                    <h4 style="margin-top: 0; color: #1976D2;">
-                                        <i class="fa fa-info-circle"/> What does this wizard do?
-                                    </h4>
-                                    <p>
-                                        This wizard recalculates stock valuation layers to ensure FIFO is correctly 
-                                        applied per warehouse. It fixes six common issues:
-                                    </p>
-                                    <ol>
-                                        <li><b>NULL remaining values:</b> Sets remaining_value=0.0 for negative layers</li>
-                                        <li><b>Negative remaining qty:</b> Fixes positive layers with negative remaining (impossible)</li>
-                                        <li><b>Excess remaining qty:</b> Fixes layers where remaining > quantity (over-consumed)</li>
-                                        <li><b>Incorrect remaining qty:</b> Recalculates remaining_qty using FIFO per warehouse</li>
-                                        <li><b>Value mismatch (Product):</b> Fixes products where qty=0 but value≠0 globally</li>
-                                        <li><b>Value mismatch (Warehouse):</b> Fixes qty=0 but value≠0 per warehouse (recommended!)</li>
-                                    </ol>
-                                </div>
-                                
-                                <div style="padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; margin: 10px 0;">
-                                    <h4 style="margin-top: 0; color: #ff9800;">
-                                        <i class="fa fa-exclamation-triangle"/> When to use?
-                                    </h4>
-                                    <ul>
-                                        <li>After upgrading to a new version of stock_fifo_by_location</li>
-                                        <li>When valuation reports show incorrect remaining quantities</li>
-                                        <li>After importing historical stock data</li>
-                                        <li>When products show value but no quantity</li>
-                                    </ul>
-                                </div>
-                                
-                                <div style="padding: 10px; background: #d4edda; border-left: 4px solid #28a745; margin: 10px 0;">
-                                    <h4 style="margin-top: 0; color: #155724;">
-                                        <i class="fa fa-check-circle"/> Safe to run
-                                    </h4>
-                                    <p>
-                                        ✅ This operation is <b>safe</b> and can be run multiple times<br/>
-                                        ✅ Changes are committed in batches (every 100 products)<br/>
-                                        ✅ No data is deleted, only recalculated
-                                    </p>
-                                </div>
-                                
                                 <div style="padding: 10px; background: #f8d7da; border-left: 4px solid #dc3545; margin: 10px 0;">
                                     <h4 style="margin-top: 0; color: #721c24;">
-                                        <i class="fa fa-warning"/> Important Notes
+                                        <i class="fa fa-warning"/> Read this before unticking Dry Run
+                                    </h4>
+                                    <p>
+                                        This wizard writes directly to <b>stock_valuation_layer</b>. On this
+                                        database that table is the <b>only</b> book of record for stock value —
+                                        product categories are FIFO with manual periodic valuation, so no
+                                        journal entry will ever contradict a bad write. There is no undo.
+                                    </p>
+                                    <p>
+                                        Run it with <b>Dry Run</b> on first and read the before → after list.
+                                        Take a database backup before applying anything on production.
+                                    </p>
+                                </div>
+
+                                <div style="padding: 10px; background: #f0f8ff; border-left: 4px solid #2196F3; margin: 10px 0;">
+                                    <h4 style="margin-top: 0; color: #1976D2;">
+                                        <i class="fa fa-info-circle"/> What each operation does
                                     </h4>
                                     <ul>
-                                        <li>⏱️ Processing time depends on the number of products and layers</li>
-                                        <li>🔒 Backup your database before running on production</li>
-                                        <li>👥 Other users can continue working during recalculation</li>
+                                        <li><b>Report Value Residual:</b> read-only. Lists product/warehouse pairs
+                                            holding value with no quantity behind it, after allowing for
+                                            landed-cost and revaluation layers, which leave value on purpose.</li>
+                                        <li><b>Rebuild Remaining Qty/Value:</b> replays FIFO chronologically per
+                                            product per warehouse and rewrites remaining_qty / remaining_value.
+                                            Landed-cost layers are replayed at their own date, matching what the
+                                            engine did originally.</li>
+                                        <li><b>NULL Remaining Value:</b> outgoing layers should carry 0, not NULL.</li>
+                                        <li><b>Negative / Excess Remaining:</b> narrow resets for layers whose
+                                            remaining quantity is outside [0, quantity].</li>
+                                    </ul>
+                                </div>
+
+                                <div style="padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; margin: 10px 0;">
+                                    <h4 style="margin-top: 0; color: #ff9800;">
+                                        <i class="fa fa-exclamation-triangle"/> Limits
+                                    </h4>
+                                    <ul>
+                                        <li>Warehouses are required — they bound both the write transaction and
+                                            the blast radius.</li>
+                                        <li><b>origin_remaining_qty / origin_remaining_value are not rebuilt.</b>
+                                            Replaying them needs to know, per move, whether it was an internal
+                                            transfer or a real outgoing move.</li>
+                                        <li>Where outgoing quantity exceeded everything ever received at a
+                                            warehouse, the replay cannot invent the missing stock. Receive it
+                                            first, then re-run.</li>
+                                        <li>Value on outgoing layers is never rewritten. Forcing totals to zero
+                                            fabricates COGS; residuals are reported instead.</li>
                                     </ul>
                                 </div>
                             </group>
@@ -124,6 +127,9 @@
         <field name="res_model">stock.valuation.recalculate.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
+        <!-- Gate the action too, not just the menu: without this the wizard is
+             still reachable by URL for anyone who knows the action id. -->
+        <field name="groups_id" eval="[(6, 0, [ref('stock_fifo_by_location.group_stock_valuation_repair')])]"/>
     </record>
     
     <!-- Menu -->
@@ -132,6 +138,6 @@
               parent="stock.menu_warehouse_config"
               action="action_stock_valuation_recalculate"
               sequence="100"
-              groups="stock.group_stock_manager"/>
+              groups="stock_fifo_by_location.group_stock_valuation_repair"/>
     
 </odoo>

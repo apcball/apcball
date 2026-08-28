@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            The recalculation wizard writes straight to stock_valuation_layer,
+            which is the sole book of record for stock value here (FIFO +
+            manual_periodic categories, so no journal entries would ever
+            contradict a bad write). stock.group_stock_manager is far too wide
+            for that - it has 19 members on production - so the wizard gets its
+            own group, deliberately created with no members.
+
+            noupdate="1" keeps the membership list from being reset on upgrade.
+        -->
+        <record id="group_stock_valuation_repair" model="res.groups">
+            <field name="name">Stock Valuation Repair</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+            <field name="users" eval="[(5, 0, 0)]"/>
+        </record>
+
+    </data>
+</odoo>

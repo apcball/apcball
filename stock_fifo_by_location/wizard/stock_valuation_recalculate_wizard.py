@@ -5,152 +5,139 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+# Quantity below which a layer counts as exhausted. Matches the clamp in
+# stock.valuation.layer._run_fifo().
+QTY_EPSILON = 1e-4
+
+# Money rounding tolerance used when reporting differences.
+VALUE_EPSILON = 0.01
+
 
 class StockValuationRecalculateWizard(models.TransientModel):
+    """Rebuild remaining_qty / remaining_value from the valuation layer history.
+
+    This wizard is a repair tool, not routine maintenance. It writes directly to
+    stock_valuation_layer, the sole book of record for stock value on this
+    database (product categories are FIFO + manual_periodic, so there are no
+    journal entries that would ever surface a bad write). Everything therefore
+    defaults to a dry run, and every operation is opt-in.
+    """
     _name = 'stock.valuation.recalculate.wizard'
     _description = 'Recalculate Stock Valuation by Warehouse'
 
     warehouse_ids = fields.Many2many(
         'stock.warehouse',
         string='Warehouses',
-        help='Select warehouses to recalculate. Leave empty to process all warehouses.'
+        required=True,
+        help='Warehouses to process. Required: it bounds both the write '
+             'transaction and the blast radius.'
     )
-    
+
+    dry_run = fields.Boolean(
+        string='Dry Run (report only, change nothing)',
+        default=True,
+        help='Leave enabled to see exactly which layers would change, and to '
+             'what, without writing anything.'
+    )
+
     recalculate_remaining = fields.Boolean(
-        string='Recalculate Remaining Qty/Value',
-        default=True,
-        help='Recalculate remaining_qty and remaining_value using FIFO per warehouse'
-    )
-    
-    fix_value_mismatch = fields.Boolean(
-        string='Fix Value Mismatch (Product Level)',
+        string='Rebuild Remaining Qty/Value',
         default=False,
-        help='Fix products where total_qty=0 but total_value≠0 across all warehouses'
+        help='Replay FIFO chronologically per product per warehouse and rewrite '
+             'remaining_qty / remaining_value to match.'
     )
-    
-    fix_value_mismatch_per_warehouse = fields.Boolean(
-        string='Fix Value Mismatch Per Warehouse',
-        default=True,
-        help='Fix products where qty=0 but value≠0 in each warehouse separately'
-    )
-    
+
     fix_null_remaining = fields.Boolean(
-        string='Fix NULL Remaining Values',
-        default=True,
-        help='Set remaining_value=0.0 for negative layers with NULL values'
+        string='Set NULL Remaining Value to 0 (outgoing layers)',
+        default=False,
+        help='Outgoing layers should carry remaining_value = 0, not NULL.'
     )
-    
+
     fix_negative_remaining = fields.Boolean(
-        string='Fix Negative Remaining',
-        default=True,
-        help='Fix positive layers with negative remaining_qty (should never happen)'
+        string='Reset Incoming Layers With Negative Remaining',
+        default=False,
+        help='An incoming layer with remaining_qty < 0 means more was consumed '
+             'from it than it ever held. Resetting it to its original quantity '
+             'hides the over-consumption rather than explaining it, so read the '
+             'dry run before enabling this.'
     )
-    
+
     fix_excess_remaining = fields.Boolean(
-        string='Fix Excess Remaining',
-        default=True,
-        help='Fix layers where remaining_qty > quantity (consumed more than received)'
+        string='Cap Incoming Layers With Excess Remaining',
+        default=False,
+        help='Cap remaining_qty at the layer quantity where it somehow exceeds it.'
     )
-    
-    fix_rounding_errors = fields.Boolean(
-        string='Fix Rounding Errors',
+
+    diagnose_value_residual = fields.Boolean(
+        string='Report Value Residual (read-only)',
         default=True,
-        help='Fix small value differences (< 0.10) where qty=0 per warehouse'
+        help='List product/warehouse pairs whose net quantity is ~0 but whose '
+             'value is not explained by zero-quantity layers. Reports only.'
     )
-    
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('processing', 'Processing'),
         ('done', 'Done'),
     ], default='draft')
-    
+
     result_message = fields.Html(
         string='Result',
         readonly=True
     )
-    
+
+    # ------------------------------------------------------------------
+    # Entry point
+    # ------------------------------------------------------------------
+
     def action_recalculate(self):
-        """Execute recalculation process"""
         self.ensure_one()
-        
-        if not any([self.recalculate_remaining, self.fix_value_mismatch, 
-                    self.fix_value_mismatch_per_warehouse, self.fix_rounding_errors,
-                    self.fix_null_remaining, self.fix_negative_remaining, 
-                    self.fix_excess_remaining]):
+
+        operations = [
+            self.recalculate_remaining, self.fix_null_remaining,
+            self.fix_negative_remaining, self.fix_excess_remaining,
+            self.diagnose_value_residual,
+        ]
+        if not any(operations):
             raise UserError(_('Please select at least one operation to perform.'))
-        
+
+        if not self.warehouse_ids:
+            raise UserError(_('Please select at least one warehouse.'))
+
         self.state = 'processing'
-        
-        result_html = '<div style="font-family: monospace;">'
-        result_html += '<h3>🔄 Recalculation Results</h3>'
-        
-        try:
-            # Step 1: Fix NULL remaining values
-            if self.fix_null_remaining:
-                result_html += '<h4>Step 1: Fix NULL Remaining Values</h4>'
-                null_count = self._fix_null_remaining_values()
-                result_html += f'<p>✅ Fixed {null_count} negative layers with NULL remaining_value</p>'
-            
-            # Step 2: Fix negative remaining qty (should never happen)
-            if self.fix_negative_remaining:
-                result_html += '<h4>Step 2: Fix Negative Remaining</h4>'
-                neg_count = self._fix_negative_remaining()
-                result_html += f'<p>✅ Fixed {neg_count} layers with negative remaining_qty</p>'
-            
-            # Step 3: Fix excess remaining (remaining > quantity)
-            if self.fix_excess_remaining:
-                result_html += '<h4>Step 3: Fix Excess Remaining</h4>'
-                excess_count = self._fix_excess_remaining()
-                result_html += f'<p>✅ Fixed {excess_count} layers with excess remaining_qty</p>'
-            
-            # Step 4: Recalculate remaining qty/value
-            if self.recalculate_remaining:
-                result_html += '<h4>Step 4: Recalculate Remaining Qty/Value</h4>'
-                products_fixed, layers_updated = self._recalculate_remaining_by_warehouse()
-                result_html += f'<p>✅ Processed {products_fixed} products, updated {layers_updated} layers</p>'
-            
-            # Step 5: Fix value mismatch (product level)
-            if self.fix_value_mismatch:
-                result_html += '<h4>Step 5: Fix Value Mismatch (Product Level)</h4>'
-                value_fixed = self._fix_value_mismatch()
-                result_html += f'<p>✅ Fixed {value_fixed} products with value mismatch</p>'
-            
-            # Step 6: Fix value mismatch per warehouse
-            if self.fix_value_mismatch_per_warehouse:
-                result_html += '<h4>Step 6: Fix Value Mismatch Per Warehouse</h4>'
-                value_fixed_wh = self._fix_value_mismatch_per_warehouse()
-                result_html += f'<p>✅ Fixed {value_fixed_wh} product-warehouse combinations</p>'
-            
-            # Step 7: Fix rounding errors
-            if self.fix_rounding_errors:
-                result_html += '<h4>Step 7: Fix Rounding Errors</h4>'
-                rounding_fixed = self._fix_rounding_errors()
-                result_html += f'<p>✅ Fixed {rounding_fixed} small value differences</p>'
-            
-            # Verification
-            result_html += '<h4>Verification</h4>'
-            verification = self._verify_database()
-            result_html += f'<p>Total products: {verification["total_products"]}</p>'
-            result_html += f'<p>Value mismatch: {verification["value_mismatch"]} ✅</p>'
-            result_html += f'<p>Value mismatch per WH: {verification["value_mismatch_per_wh"]} ✅</p>'
-            result_html += f'<p>Remaining mismatch: {verification["remain_mismatch"]} ✅</p>'
-            result_html += f'<p>Negative remaining: {verification["negative_remaining"]} ✅</p>'
-            result_html += f'<p>Excess remaining: {verification["excess_remaining"]} ✅</p>'
-            
-            result_html += '<h4 style="color: green;">✅ Recalculation completed successfully!</h4>'
-            
-        except Exception as e:
-            _logger.error(f"Recalculation error: {e}", exc_info=True)
-            result_html += f'<h4 style="color: red;">❌ Error: {str(e)}</h4>'
-            raise
-        
-        result_html += '</div>'
-        
-        self.write({
-            'state': 'done',
-            'result_message': result_html,
-        })
-        
+
+        mode = 'DRY RUN — nothing was written' if self.dry_run else 'APPLIED'
+        html = ['<div style="font-family: monospace;">']
+        html.append('<h3>Valuation Recalculation — %s</h3>' % mode)
+        html.append('<p>Warehouses: %s</p>' % ', '.join(self.warehouse_ids.mapped('name')))
+
+        if self.fix_null_remaining:
+            html += self._run_fix_null_remaining()
+
+        if self.fix_negative_remaining:
+            html += self._run_simple_fix(
+                'Incoming layers with negative remaining',
+                "quantity > 0 AND remaining_qty < 0",
+                lambda qty, value, rq, rv: (qty, value),
+            )
+
+        if self.fix_excess_remaining:
+            html += self._run_simple_fix(
+                'Incoming layers with remaining above quantity',
+                "quantity > 0 AND remaining_qty > quantity",
+                lambda qty, value, rq, rv: (qty, value),
+            )
+
+        if self.recalculate_remaining:
+            html += self._run_rebuild_remaining()
+
+        if self.diagnose_value_residual:
+            html += self._run_diagnose_value_residual()
+
+        html.append('</div>')
+
+        self.write({'state': 'done', 'result_message': ''.join(html)})
+
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'stock.valuation.recalculate.wizard',
@@ -158,402 +145,282 @@ class StockValuationRecalculateWizard(models.TransientModel):
             'view_mode': 'form',
             'target': 'new',
         }
-    
-    def _fix_null_remaining_values(self):
-        """Fix NULL remaining_value in negative layers"""
-        query = """
-            UPDATE stock_valuation_layer
-            SET remaining_value = 0.0
-            WHERE quantity < 0
-              AND remaining_value IS NULL
+
+    # ------------------------------------------------------------------
+    # FIFO replay
+    # ------------------------------------------------------------------
+
+    def _replay_fifo(self, warehouse_id, product_id):
+        """Replay the FIFO engine for one product at one warehouse.
+
+        Mirrors stock.valuation.layer._run_fifo(): candidates are consumed in
+        (create_date, id) order within the warehouse, and each consumption is
+        priced at the candidate's *live* remaining rate,
+        remaining_value / remaining_qty. That rate is what carries landed cost
+        into COGS, so the replay has to carry it too.
+
+        Landed-cost layers hold quantity = 0 and point at the layer whose
+        remaining_value they topped up through stock_valuation_layer_id. They
+        are replayed at their own create_date rather than folded into the
+        opening seed: 76% of them land more than a day after the layer they
+        adjust, by which time part of that layer may already be consumed.
+        Seeding them upfront would credit stock that no longer existed.
+
+        Returns (expected, shortage) where expected maps layer id to the
+        (remaining_qty, remaining_value) the engine should be holding.
         """
-        self.env.cr.execute(query)
-        return self.env.cr.rowcount
-    
-    def _fix_negative_remaining(self):
-        """Fix positive layers with negative remaining_qty (should never happen)"""
-        query = """
-            SELECT id, quantity, remaining_qty, value, remaining_value
+        self.env.cr.execute("""
+            SELECT id, quantity, value, stock_landed_cost_id, stock_valuation_layer_id
             FROM stock_valuation_layer
-            WHERE quantity > 0 AND remaining_qty < 0
-        """
-        self.env.cr.execute(query)
-        layers_with_issue = self.env.cr.fetchall()
-        
-        fixed_count = 0
-        for layer_id, qty, remain_qty, value, remain_value in layers_with_issue:
-            # Reset to original values (nothing consumed yet)
-            self.env.cr.execute("""
-                UPDATE stock_valuation_layer
-                SET remaining_qty = quantity,
-                    remaining_value = value
-                WHERE id = %s
-            """, (layer_id,))
-            fixed_count += 1
-            
-            _logger.warning(f"Fixed negative remaining: layer_id={layer_id}, "
-                          f"qty={qty}, remain_qty={remain_qty} -> {qty}")
-        
-        return fixed_count
-    
-    def _fix_excess_remaining(self):
-        """Fix layers where remaining_qty > quantity"""
-        query = """
-            SELECT id, quantity, remaining_qty, value, remaining_value
-            FROM stock_valuation_layer
-            WHERE quantity > 0 AND remaining_qty > quantity
-        """
-        self.env.cr.execute(query)
-        layers_with_issue = self.env.cr.fetchall()
-        
-        fixed_count = 0
-        for layer_id, qty, remain_qty, value, remain_value in layers_with_issue:
-            # Cap remaining to original quantity
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+            ORDER BY create_date, id
+        """, (product_id, warehouse_id, self.env.company.id))
+        rows = self.env.cr.fetchall()
+
+        pool = {}       # layer id -> {'qty', 'value'}, insertion order == FIFO order
+        expected = {}
+        shortage = 0.0
+
+        for layer_id, qty, value, lc_id, target_id in rows:
             if qty > 0:
-                unit_cost = value / qty
-                new_remain_qty = qty
-                new_remain_value = qty * unit_cost
+                pool[layer_id] = {'qty': qty, 'value': value}
+                expected[layer_id] = None  # filled in at the end from the pool
+            elif qty < 0:
+                to_consume = -qty
+                for pool_id in list(pool):
+                    if to_consume <= QTY_EPSILON:
+                        break
+                    entry = pool[pool_id]
+                    available = entry['qty']
+                    if available <= 0:
+                        del pool[pool_id]
+                        continue
+                    taken = min(available, to_consume)
+                    unit_cost = entry['value'] / available
+                    entry['qty'] -= taken
+                    entry['value'] -= taken * unit_cost
+                    to_consume -= taken
+                    if entry['qty'] <= QTY_EPSILON:
+                        del pool[pool_id]
+                shortage += to_consume
+                # Outgoing layers never hold remaining (see _run_fifo, final write).
+                expected[layer_id] = (0.0, 0.0)
             else:
-                new_remain_qty = 0.0
-                new_remain_value = 0.0
-            
+                # quantity == 0: landed cost or manual revaluation.
+                if lc_id and target_id in pool:
+                    pool[target_id]['value'] += value
+                expected[layer_id] = (0.0, 0.0)
+
+        for layer_id in expected:
+            if expected[layer_id] is None:
+                entry = pool.get(layer_id)
+                expected[layer_id] = (entry['qty'], entry['value']) if entry else (0.0, 0.0)
+
+        return expected, shortage
+
+    def _run_rebuild_remaining(self):
+        html = ['<h4>Rebuild Remaining Qty/Value</h4>']
+
+        changes = []
+        shortages = []
+        products_seen = 0
+
+        for warehouse in self.warehouse_ids:
             self.env.cr.execute("""
-                UPDATE stock_valuation_layer
-                SET remaining_qty = %s,
-                    remaining_value = %s
-                WHERE id = %s
-            """, (new_remain_qty, new_remain_value, layer_id))
-            fixed_count += 1
-            
-            _logger.warning(f"Fixed excess remaining: layer_id={layer_id}, "
-                          f"qty={qty}, remain_qty={remain_qty} -> {new_remain_qty}")
-        
-        return fixed_count
-    
-    def _recalculate_remaining_by_warehouse(self):
-        """Recalculate remaining_qty and remaining_value per warehouse"""
-        warehouses = self.warehouse_ids if self.warehouse_ids else self.env['stock.warehouse'].search([])
-        
-        total_products = 0
-        total_layers = 0
-        
-        for warehouse in warehouses:
-            _logger.info(f"Processing warehouse: {warehouse.name} ({warehouse.code})")
-            
-            # Get all products in this warehouse
-            query = """
                 SELECT DISTINCT product_id
                 FROM stock_valuation_layer
-                WHERE warehouse_id = %s
+                WHERE warehouse_id = %s AND company_id = %s
                 ORDER BY product_id
-            """
-            self.env.cr.execute(query, (warehouse.id,))
-            product_ids = [row[0] for row in self.env.cr.fetchall()]
-            
+            """, (warehouse.id, self.env.company.id))
+            product_ids = [r[0] for r in self.env.cr.fetchall()]
+
             for product_id in product_ids:
-                # Get all layers for this product in this warehouse
+                products_seen += 1
+                expected, shortage = self._replay_fifo(warehouse.id, product_id)
+                if shortage > QTY_EPSILON:
+                    shortages.append((warehouse.id, product_id, shortage))
+
+                if not expected:
+                    continue
+
                 self.env.cr.execute("""
-                    SELECT id, quantity, value
+                    SELECT id, remaining_qty, remaining_value
                     FROM stock_valuation_layer
-                    WHERE product_id = %s AND warehouse_id = %s
-                    ORDER BY create_date, id
-                """, (product_id, warehouse.id))
-                
-                layers = self.env.cr.fetchall()
-                
-                # Simulate FIFO
-                remaining_stock = {}  # layer_id -> {'qty': float, 'value': float}
-                
-                for layer_id, qty, value in layers:
-                    if qty > 0:
-                        # Positive layer
-                        remaining_stock[layer_id] = {'qty': qty, 'value': value}
-                    elif qty < 0:
-                        # Negative layer: consume from FIFO queue
-                        qty_to_consume = abs(qty)
-                        
-                        for pos_layer_id in list(remaining_stock.keys()):
-                            if qty_to_consume <= 0:
-                                break
-                            
-                            available = remaining_stock[pos_layer_id]['qty']
-                            consumed_qty = min(available, qty_to_consume)
-                            
-                            if available > 0:
-                                unit_cost = remaining_stock[pos_layer_id]['value'] / available
-                                consumed_value = consumed_qty * unit_cost
-                            else:
-                                consumed_value = 0
-                            
-                            remaining_stock[pos_layer_id]['qty'] -= consumed_qty
-                            remaining_stock[pos_layer_id]['value'] -= consumed_value
-                            qty_to_consume -= consumed_qty
-                            
-                            if remaining_stock[pos_layer_id]['qty'] <= 0.0001:
-                                del remaining_stock[pos_layer_id]
-                
-                # Update database
-                for layer_id, qty, value in layers:
-                    if qty > 0:
-                        new_qty = remaining_stock.get(layer_id, {}).get('qty', 0.0)
-                        new_value = remaining_stock.get(layer_id, {}).get('value', 0.0)
-                    else:
-                        new_qty = 0.0
-                        new_value = 0.0
-                    
-                    self.env.cr.execute("""
-                        UPDATE stock_valuation_layer
-                        SET remaining_qty = %s, remaining_value = %s
-                        WHERE id = %s
-                    """, (new_qty, new_value, layer_id))
-                    
-                    total_layers += 1
-                
-                total_products += 1
-                
-                # Commit every 100 products
-                if total_products % 100 == 0:
-                    self.env.cr.commit()
-        
-        return total_products, total_layers
-    
-    def _fix_value_mismatch(self):
-        """Fix products where total_qty=0 but total_value≠0"""
-        query = """
-            SELECT 
-                pp.id as product_id,
-                SUM(svl.quantity) as total_qty,
-                SUM(svl.value) as total_value
-            FROM stock_valuation_layer svl
-            JOIN product_product pp ON pp.id = svl.product_id
-            GROUP BY pp.id
-            HAVING ABS(SUM(svl.quantity)) < 0.01
-               AND ABS(SUM(svl.value)) > 0.01
-        """
-        self.env.cr.execute(query)
-        products_with_issue = self.env.cr.fetchall()
-        
-        fixed_count = 0
-        
-        for product_id, total_qty, total_value in products_with_issue:
-            # Get all layers
-            self.env.cr.execute("""
-                SELECT id, quantity, value, warehouse_id
-                FROM stock_valuation_layer
-                WHERE product_id = %s
-                ORDER BY create_date, id
-            """, (product_id,))
-            
-            layers = self.env.cr.fetchall()
-            
-            positive_layers = [(lid, qty, val, wh) for lid, qty, val, wh in layers if qty > 0]
-            negative_layers = [(lid, qty, val, wh) for lid, qty, val, wh in layers if qty < 0]
-            
-            positive_value = sum(val for _, _, val, _ in positive_layers)
-            negative_value = sum(val for _, _, val, _ in negative_layers)
-            
-            value_diff = positive_value + negative_value
-            
-            if abs(value_diff) < 0.01:
-                continue
-            
-            # Distribute adjustment across negative layers
-            total_negative_qty = abs(sum(qty for _, qty, _, _ in negative_layers))
-            
-            if total_negative_qty < 0.01:
-                continue
-            
-            for layer_id, qty, val, wh in negative_layers:
-                proportion = abs(qty) / total_negative_qty
-                adjustment = -value_diff * proportion
-                new_value = val + adjustment
-                
+                    WHERE id IN %s
+                """, (tuple(expected),))
+                for layer_id, cur_qty, cur_value in self.env.cr.fetchall():
+                    new_qty, new_value = expected[layer_id]
+                    cur_qty = cur_qty or 0.0
+                    cur_value = cur_value or 0.0
+                    if (abs(float(cur_qty) - new_qty) > QTY_EPSILON
+                            or abs(float(cur_value) - new_value) > VALUE_EPSILON):
+                        changes.append((layer_id, float(cur_qty), float(cur_value),
+                                        new_qty, new_value))
+
+        html.append('<p>Scanned %s product/warehouse combinations.</p>' % products_seen)
+        html.append('<p>Layers that differ from the replay: <b>%s</b></p>' % len(changes))
+
+        if shortages:
+            html.append(
+                '<p style="color:#b35c00;">FIFO shortage detected on %s '
+                'product/warehouse combinations — outgoing quantity exceeded '
+                'everything ever received at that warehouse. The replay cannot '
+                'invent the missing stock, so those layers rebuild to zero. '
+                'Receive the stock first, then re-run.</p>' % len(shortages)
+            )
+
+        html.append(self._render_change_sample(changes))
+
+        if changes and not self.dry_run:
+            for layer_id, _cq, _cv, new_qty, new_value in changes:
                 self.env.cr.execute("""
                     UPDATE stock_valuation_layer
-                    SET value = %s
+                    SET remaining_qty = %s, remaining_value = %s
                     WHERE id = %s
-                """, (new_value, layer_id))
-            
-            fixed_count += 1
-        
-        return fixed_count
-    
-    def _fix_value_mismatch_per_warehouse(self):
-        """Fix products where qty=0 but value≠0 in each warehouse"""
-        query = """
-            SELECT 
-                svl.warehouse_id,
-                svl.product_id,
-                SUM(svl.quantity) as total_qty,
-                SUM(svl.value) as total_value
-            FROM stock_valuation_layer svl
-            GROUP BY svl.warehouse_id, svl.product_id
-            HAVING ABS(SUM(svl.quantity)) < 0.01
-               AND ABS(SUM(svl.value)) > 0.01
-        """
-        self.env.cr.execute(query)
-        issues = self.env.cr.fetchall()
-        
-        fixed_count = 0
-        
-        for warehouse_id, product_id, total_qty, total_value in issues:
-            # Get all layers for this product-warehouse combination
+                """, (new_qty, new_value, layer_id))
+                _logger.info(
+                    "recalculate wizard: layer %s remaining %.4f/%.2f -> %.4f/%.2f",
+                    layer_id, _cq, _cv, new_qty, new_value)
+            html.append('<p><b>Applied %s updates.</b></p>' % len(changes))
+            html.append(
+                '<p style="color:#b35c00;">origin_remaining_qty / '
+                'origin_remaining_value were NOT rebuilt. Replaying those needs '
+                'to know, per move, whether it was an internal transfer or a '
+                'real outgoing move, which the layer alone does not record.</p>'
+            )
+
+        return html
+
+    # ------------------------------------------------------------------
+    # Narrow fixes
+    # ------------------------------------------------------------------
+
+    def _run_fix_null_remaining(self):
+        html = ['<h4>NULL Remaining Value on Outgoing Layers</h4>']
+        self.env.cr.execute("""
+            SELECT count(*) FROM stock_valuation_layer
+            WHERE quantity < 0 AND remaining_value IS NULL AND warehouse_id IN %s
+        """, (tuple(self.warehouse_ids.ids),))
+        count = self.env.cr.fetchone()[0]
+        html.append('<p>Layers affected: <b>%s</b></p>' % count)
+
+        if count and not self.dry_run:
             self.env.cr.execute("""
-                SELECT id, quantity, value
-                FROM stock_valuation_layer
-                WHERE product_id = %s AND warehouse_id = %s
-                ORDER BY create_date, id
-            """, (product_id, warehouse_id))
-            
-            layers = self.env.cr.fetchall()
-            
-            positive_layers = [(lid, qty, val) for lid, qty, val in layers if qty > 0]
-            negative_layers = [(lid, qty, val) for lid, qty, val in layers if qty < 0]
-            
-            if not negative_layers:
-                continue
-            
-            positive_value = sum(val for _, _, val in positive_layers)
-            negative_value = sum(val for _, _, val in negative_layers)
-            value_diff = positive_value + negative_value
-            
-            if abs(value_diff) < 0.01:
-                continue
-            
-            # Distribute adjustment across negative layers
-            total_negative_qty = abs(sum(qty for _, qty, _ in negative_layers))
-            
-            if total_negative_qty < 0.01:
-                continue
-            
-            for layer_id, qty, val in negative_layers:
-                proportion = abs(qty) / total_negative_qty
-                adjustment = -value_diff * proportion
-                new_value = val + adjustment
-                
+                UPDATE stock_valuation_layer SET remaining_value = 0.0
+                WHERE quantity < 0 AND remaining_value IS NULL AND warehouse_id IN %s
+            """, (tuple(self.warehouse_ids.ids),))
+            html.append('<p><b>Applied.</b></p>')
+        return html
+
+    def _run_simple_fix(self, title, condition, new_values):
+        """Report, and optionally apply, a per-layer reset described by `condition`.
+
+        `new_values(quantity, value, remaining_qty, remaining_value)` returns the
+        (remaining_qty, remaining_value) to write.
+        """
+        html = ['<h4>%s</h4>' % title]
+        self.env.cr.execute("""
+            SELECT id, quantity, value, remaining_qty, remaining_value
+            FROM stock_valuation_layer
+            WHERE %s AND warehouse_id IN %%s
+            ORDER BY id
+        """ % condition, (tuple(self.warehouse_ids.ids),))
+        rows = self.env.cr.fetchall()
+
+        changes = []
+        for layer_id, qty, value, rem_qty, rem_value in rows:
+            new_qty, new_value = new_values(
+                float(qty or 0), float(value or 0),
+                float(rem_qty or 0), float(rem_value or 0))
+            changes.append((layer_id, float(rem_qty or 0), float(rem_value or 0),
+                            new_qty, new_value))
+
+        html.append('<p>Layers affected: <b>%s</b></p>' % len(changes))
+        html.append(self._render_change_sample(changes))
+
+        if changes and not self.dry_run:
+            for layer_id, _cq, _cv, new_qty, new_value in changes:
                 self.env.cr.execute("""
                     UPDATE stock_valuation_layer
-                    SET value = %s
+                    SET remaining_qty = %s, remaining_value = %s
                     WHERE id = %s
-                """, (new_value, layer_id))
-            
-            fixed_count += 1
-            _logger.info(f"Fixed value mismatch for warehouse_id={warehouse_id}, "
-                        f"product_id={product_id}, value_diff={value_diff:.2f}")
-        
-        return fixed_count
-    
-    def _fix_rounding_errors(self):
-        """Fix small value differences (< 1.00) where qty≈0 per warehouse"""
-        query = """
-            SELECT 
-                svl.warehouse_id,
-                svl.product_id,
-                SUM(svl.quantity) as total_qty,
-                SUM(svl.value) as total_value
-            FROM stock_valuation_layer svl
-            GROUP BY svl.warehouse_id, svl.product_id
-            HAVING ABS(SUM(svl.quantity)) < 0.01
-               AND ABS(SUM(svl.value)) > 0.0001
-               AND ABS(SUM(svl.value)) < 1.00
+                """, (new_qty, new_value, layer_id))
+                _logger.info(
+                    "recalculate wizard: layer %s remaining %.4f/%.2f -> %.4f/%.2f",
+                    layer_id, _cq, _cv, new_qty, new_value)
+            html.append('<p><b>Applied %s updates.</b></p>' % len(changes))
+        return html
+
+    # ------------------------------------------------------------------
+    # Diagnostics
+    # ------------------------------------------------------------------
+
+    def _run_diagnose_value_residual(self):
+        """Report product/warehouse pairs holding value with no quantity behind it.
+
+        This used to rewrite `value` on outgoing layers until the totals summed
+        to zero. That fabricates COGS, and because these layers carry no
+        account_move_id there is no journal entry that would ever contradict it.
+        The premise was wrong as well: a landed-cost or revaluation layer leaves
+        value behind on purpose, so the expected residual is the sum of those
+        zero-quantity layers, not zero.
         """
-        self.env.cr.execute(query)
-        issues = self.env.cr.fetchall()
-        
-        fixed_count = 0
-        
-        for warehouse_id, product_id, total_qty, total_value in issues:
-            # Get the last negative layer to adjust
-            self.env.cr.execute("""
-                SELECT id, value
-                FROM stock_valuation_layer
-                WHERE product_id = %s AND warehouse_id = %s AND quantity < 0
-                ORDER BY create_date DESC, id DESC
-                LIMIT 1
-            """, (product_id, warehouse_id))
-            
-            result = self.env.cr.fetchone()
-            if not result:
-                continue
-            
-            layer_id, current_value = result
-            
-            # Adjust to make total = 0
-            new_value = current_value - total_value
-            
-            self.env.cr.execute("""
-                UPDATE stock_valuation_layer
-                SET value = %s
-                WHERE id = %s
-            """, (new_value, layer_id))
-            
-            fixed_count += 1
-            _logger.info(f"Fixed rounding error for warehouse_id={warehouse_id}, "
-                        f"product_id={product_id}, adjusted={total_value:.4f}")
-        
-        return fixed_count
-    
-    def _verify_database(self):
-        """Verify database consistency"""
-        query = """
-            SELECT 
-                COUNT(*) as total_products,
-                COUNT(CASE WHEN ABS(total_qty) < 0.01 AND ABS(total_value) > 0.01 THEN 1 END) as value_mismatch,
-                COUNT(CASE WHEN ABS(moved_remain_diff) > 0.01 THEN 1 END) as remain_mismatch
-            FROM (
-                SELECT 
-                    pp.id,
-                    SUM(svl.quantity) as total_qty,
-                    SUM(svl.value) as total_value,
-                    SUM(svl.quantity) - SUM(svl.remaining_qty) as moved_remain_diff
-                FROM stock_valuation_layer svl
-                JOIN product_product pp ON pp.id = svl.product_id
-                GROUP BY pp.id
-            ) sub
-        """
-        self.env.cr.execute(query)
-        result = self.env.cr.fetchone()
-        
-        # Check for negative remaining
+        html = ['<h4>Value Residual (read-only)</h4>']
         self.env.cr.execute("""
-            SELECT COUNT(*)
+            SELECT warehouse_id, product_id,
+                   SUM(value) AS total_value,
+                   SUM(value) FILTER (WHERE quantity = 0) AS zero_qty_value
             FROM stock_valuation_layer
-            WHERE quantity > 0 AND remaining_qty < 0
-        """)
-        negative_remaining = self.env.cr.fetchone()[0]
-        
-        # Check for excess remaining
-        self.env.cr.execute("""
-            SELECT COUNT(*)
-            FROM stock_valuation_layer
-            WHERE quantity > 0 AND remaining_qty > quantity
-        """)
-        excess_remaining = self.env.cr.fetchone()[0]
-        
-        # Check for value mismatch per warehouse
-        self.env.cr.execute("""
-            SELECT COUNT(*)
-            FROM (
-                SELECT 
-                    svl.warehouse_id,
-                    svl.product_id
-                FROM stock_valuation_layer svl
-                GROUP BY svl.warehouse_id, svl.product_id
-                HAVING ABS(SUM(svl.quantity)) < 0.01
-                   AND ABS(SUM(svl.value)) > 0.01
-            ) sub
-        """)
-        value_mismatch_per_wh = self.env.cr.fetchone()[0]
-        
-        return {
-            'total_products': result[0],
-            'value_mismatch': result[1],
-            'remain_mismatch': result[2],
-            'negative_remaining': negative_remaining,
-            'excess_remaining': excess_remaining,
-            'value_mismatch_per_wh': value_mismatch_per_wh,
-        }
-    
+            WHERE warehouse_id IN %s AND company_id = %s
+            GROUP BY warehouse_id, product_id
+            HAVING ABS(SUM(quantity)) < 0.01
+               AND ABS(SUM(value) - COALESCE(SUM(value) FILTER (WHERE quantity = 0), 0)) > 0.01
+            ORDER BY ABS(SUM(value) - COALESCE(SUM(value) FILTER (WHERE quantity = 0), 0)) DESC
+        """, (tuple(self.warehouse_ids.ids), self.env.company.id))
+        rows = self.env.cr.fetchall()
+
+        html.append('<p>Product/warehouse pairs with unexplained residual value: '
+                    '<b>%s</b></p>' % len(rows))
+        if rows:
+            html.append('<table border="1" cellpadding="3" style="border-collapse:collapse;">')
+            html.append('<tr><th>Warehouse</th><th>Product</th><th>Total value</th>'
+                        '<th>Zero-qty value</th><th>Unexplained</th></tr>')
+            for warehouse_id, product_id, total_value, zero_qty_value in rows[:50]:
+                zero_qty_value = zero_qty_value or 0.0
+                warehouse = self.env['stock.warehouse'].browse(warehouse_id)
+                product = self.env['product.product'].browse(product_id)
+                html.append(
+                    '<tr><td>%s</td><td>%s</td><td align="right">%.2f</td>'
+                    '<td align="right">%.2f</td><td align="right">%.2f</td></tr>' % (
+                        warehouse.name or '-', product.display_name,
+                        total_value, zero_qty_value, total_value - zero_qty_value))
+            html.append('</table>')
+            if len(rows) > 50:
+                html.append('<p>... and %s more.</p>' % (len(rows) - 50))
+            html.append(
+                '<p>These are reported, never auto-corrected: the fix depends on '
+                'why the residual is there, and rewriting outgoing values to '
+                'force a zero total would only hide it.</p>')
+        return html
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _render_change_sample(self, changes, limit=25):
+        if not changes:
+            return ''
+        html = ['<table border="1" cellpadding="3" style="border-collapse:collapse;">']
+        html.append('<tr><th>Layer</th><th>remaining_qty</th><th>remaining_value</th></tr>')
+        for layer_id, cur_qty, cur_value, new_qty, new_value in changes[:limit]:
+            html.append(
+                '<tr><td>%s</td><td align="right">%.4f &rarr; %.4f</td>'
+                '<td align="right">%.2f &rarr; %.2f</td></tr>' % (
+                    layer_id, cur_qty, new_qty, cur_value, new_value))
+        html.append('</table>')
+        if len(changes) > limit:
+            html.append('<p>... and %s more.</p>' % (len(changes) - limit))
+        return ''.join(html)
+
     def action_close(self):
-        """Close wizard"""
         return {'type': 'ir.actions.act_window_close'}
