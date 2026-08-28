@@ -58,13 +58,14 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box"/>
                     <div class="oe_title"><h1><field name="name" string="ชื่ออุปกรณ์ (Item Name)" placeholder="ชื่ออุปกรณ์"/></h1></div>
-                    <group>
-                        <group string="ข้อมูลประจำทรัพย์สิน (Asset Identification)">
-                            <field name="asset_tag" string="รหัสทรัพย์สิน (Asset Code)"/>
+                    <group class="buz-asset-form-details">
+                        <group class="buz-asset-identification" string="ข้อมูลประจำทรัพย์สิน (Asset Identification)">
+                            <field name="asset_tag" string="รหัสทรัพย์สิน (Asset IT Code)"/>
+                            <field name="asset_acc_code" string="รหัสทรัพย์สินบัญชี (Asset Acc Code)"/>
                             <field name="type_id" string="ประเภทอุปกรณ์ (Type)" required="1" domain="[('active', '=', True)]" options="{'no_create_edit': True}"/>
                             <field name="category_id" string="หมวดหมู่ (Category)" readonly="1"/>
                         </group>
-                        <group string="ข้อมูลอุปกรณ์ (Device Information)">
+                        <group class="buz-asset-device-information" string="ข้อมูลอุปกรณ์ (Device Information)">
                             <field name="manufacturer" string="ยี่ห้อ (Brand / Manufacturer)"/>
                             <field name="model" string="รุ่น (Model)"/>
                             <field name="serial_number" string="หมายเลขเครื่อง (Serial Number)" required="1"/>

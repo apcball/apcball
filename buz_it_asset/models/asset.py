@@ -151,7 +151,12 @@ class ITAsset(models.Model):
 
     name = fields.Char(required=True, tracking=True)
     asset_tag = fields.Char(
+        string='รหัสทรัพย์สิน (Asset IT Code)',
         required=True, readonly=True, copy=False, default='New', tracking=True,
+    )
+    asset_acc_code = fields.Char(
+        string='รหัสทรัพย์สินบัญชี (Asset Acc Code)',
+        tracking=True,
     )
     legacy_asset_tag = fields.Char(
         string='Legacy Asset Tag', readonly=True, copy=False, index=True,

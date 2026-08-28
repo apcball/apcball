@@ -65,3 +65,23 @@
     .it-dashboard-grid>.it-panel{min-height:0}
     .recent-panel{min-height:0;padding:12px}
 }
+
+/* จัดพื้นที่ label ของฟอร์ม Asset โดยไม่กระทบฟอร์ม Odoo อื่น */
+.o_form_view .buz-asset-form-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.o_form_view .buz-asset-form-details .o_inner_group {
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 12px;
+}
+
+.o_form_view .buz-asset-form-details .o_form_label {
+    white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+    .o_form_view .buz-asset-form-details {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
