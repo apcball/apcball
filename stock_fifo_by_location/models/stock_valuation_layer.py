@@ -401,7 +401,116 @@ class StockValuationLayer(models.Model):
         
         layers = self._get_fifo_queue(product_id, warehouse_id, company_id)
         return sum(layer.remaining_qty for layer in layers)
-    
+
+    # ------------------------------------------------------------------
+    # Shared FIFO replay engine
+    # ------------------------------------------------------------------
+    # Two repair wizards need to know what the FIFO queue *should* be holding:
+    # stock_valuation_recalculate_wizard here, and the fifo.recalculation.wizard
+    # in stock_fifo_by_warehouse_recal. They must not carry two different
+    # answers to that question, so the replay lives on the model and both call
+    # it. Read-only: it computes, it never writes.
+
+    # Quantity below which a layer counts as exhausted. Matches _run_fifo().
+    FIFO_QTY_EPSILON = 1e-4
+
+    @api.model
+    def _fifo_replay_remaining(self, product_id, warehouse_id, company_id=None):
+        """Replay the FIFO engine for one product at one warehouse.
+
+        Mirrors _run_fifo(): candidates are consumed in (create_date, id) order
+        within the warehouse, and each consumption is priced at the candidate's
+        *live* remaining rate, remaining_value / remaining_qty. That rate is
+        what carries landed cost into COGS, so the replay has to carry it too.
+
+        Landed-cost layers hold quantity = 0 and point at the layer whose
+        remaining_value they topped up through stock_valuation_layer_id. They
+        are replayed at their own create_date rather than folded into the
+        opening seed: most of them land more than a day after the layer they
+        adjust, by which time part of that layer may already be consumed.
+        Seeding them upfront would credit stock that no longer existed.
+
+        Returns a dict:
+            'expected'   {layer_id: (remaining_qty, remaining_value)}
+            'cogs'       {layer_id: value the outgoing layer should carry}
+                         reporting only — see the wizards, which never write it
+            'shortage'   quantity consumed with nothing left to consume it from
+            'inverted'   number of layers whose id order disagrees with
+                         create_date order, i.e. the queue was reordered after
+                         the fact (backdating) and this replay cannot know what
+                         _run_fifo consumed at the time
+        """
+        company_id = company_id or self.env.company.id
+        wh_id = warehouse_id.id if hasattr(warehouse_id, 'id') else warehouse_id
+        prod_id = product_id.id if hasattr(product_id, 'id') else product_id
+
+        self.env.cr.execute("""
+            SELECT id, quantity, value, stock_landed_cost_id, stock_valuation_layer_id
+            FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+            ORDER BY create_date, id
+        """, (prod_id, wh_id, company_id))
+        rows = self.env.cr.fetchall()
+
+        epsilon = self.FIFO_QTY_EPSILON
+        pool = {}       # layer id -> {'qty', 'value'}, insertion order == FIFO order
+        expected = {}
+        cogs = {}
+        shortage = 0.0
+        inverted = 0
+        previous_id = 0
+
+        for layer_id, qty, value, lc_id, target_id in rows:
+            if layer_id < previous_id:
+                inverted += 1
+            previous_id = max(previous_id, layer_id)
+            qty = float(qty or 0.0)
+            value = float(value or 0.0)
+
+            if qty > 0:
+                pool[layer_id] = {'qty': qty, 'value': value}
+                expected[layer_id] = None  # filled in at the end from the pool
+            elif qty < 0:
+                to_consume = -qty
+                consumed_value = 0.0
+                for pool_id in list(pool):
+                    if to_consume <= epsilon:
+                        break
+                    entry = pool[pool_id]
+                    available = entry['qty']
+                    if available <= 0:
+                        del pool[pool_id]
+                        continue
+                    taken = min(available, to_consume)
+                    unit_cost = entry['value'] / available
+                    entry['qty'] -= taken
+                    entry['value'] -= taken * unit_cost
+                    to_consume -= taken
+                    consumed_value += taken * unit_cost
+                    if entry['qty'] <= epsilon:
+                        del pool[pool_id]
+                shortage += to_consume
+                cogs[layer_id] = -consumed_value
+                # Outgoing layers never hold remaining (see _run_fifo, final write).
+                expected[layer_id] = (0.0, 0.0)
+            else:
+                # quantity == 0: landed cost or manual revaluation.
+                if lc_id and target_id in pool:
+                    pool[target_id]['value'] += value
+                expected[layer_id] = (0.0, 0.0)
+
+        for layer_id in expected:
+            if expected[layer_id] is None:
+                entry = pool.get(layer_id)
+                expected[layer_id] = (entry['qty'], entry['value']) if entry else (0.0, 0.0)
+
+        return {
+            'expected': expected,
+            'cogs': cogs,
+            'shortage': shortage,
+            'inverted': inverted,
+        }
+
     @api.depends('landed_cost_ids.landed_cost_value')
     def _compute_total_landed_cost(self):
         """Compute total landed cost for this layer across all locations."""

@@ -106,6 +106,13 @@ class StockValuationRecalculateWizard(models.TransientModel):
 
         self.state = 'processing'
 
+        # Everything below reads and writes stock_valuation_layer with raw SQL,
+        # which neither sees nor is seen by the ORM cache. Flush first so the
+        # report is about the data as it actually stands.
+        self.env['stock.valuation.layer'].flush_model(
+            ['quantity', 'value', 'remaining_qty', 'remaining_value',
+             'stock_landed_cost_id', 'stock_valuation_layer_id'])
+
         mode = 'DRY RUN — nothing was written' if self.dry_run else 'APPLIED'
         html = ['<div style="font-family: monospace;">']
         html.append('<h3>Valuation Recalculation — %s</h3>' % mode)
@@ -136,6 +143,12 @@ class StockValuationRecalculateWizard(models.TransientModel):
 
         html.append('</div>')
 
+        if not self.dry_run:
+            # The UPDATEs went round the ORM; drop any cached copy so a later
+            # flush in this transaction cannot write the old values back.
+            self.env['stock.valuation.layer'].invalidate_model(
+                ['remaining_qty', 'remaining_value'])
+
         self.write({'state': 'done', 'result_message': ''.join(html)})
 
         return {
@@ -153,76 +166,34 @@ class StockValuationRecalculateWizard(models.TransientModel):
     def _replay_fifo(self, warehouse_id, product_id):
         """Replay the FIFO engine for one product at one warehouse.
 
-        Mirrors stock.valuation.layer._run_fifo(): candidates are consumed in
-        (create_date, id) order within the warehouse, and each consumption is
-        priced at the candidate's *live* remaining rate,
-        remaining_value / remaining_qty. That rate is what carries landed cost
-        into COGS, so the replay has to carry it too.
-
-        Landed-cost layers hold quantity = 0 and point at the layer whose
-        remaining_value they topped up through stock_valuation_layer_id. They
-        are replayed at their own create_date rather than folded into the
-        opening seed: 76% of them land more than a day after the layer they
-        adjust, by which time part of that layer may already be consumed.
-        Seeding them upfront would credit stock that no longer existed.
+        The replay itself lives on stock.valuation.layer so that this wizard
+        and fifo.recalculation.wizard cannot drift apart on what the queue
+        should be holding. See _fifo_replay_remaining() for the semantics.
 
         Returns (expected, shortage) where expected maps layer id to the
         (remaining_qty, remaining_value) the engine should be holding.
         """
-        self.env.cr.execute("""
-            SELECT id, quantity, value, stock_landed_cost_id, stock_valuation_layer_id
-            FROM stock_valuation_layer
-            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
-            ORDER BY create_date, id
-        """, (product_id, warehouse_id, self.env.company.id))
-        rows = self.env.cr.fetchall()
+        result = self.env['stock.valuation.layer']._fifo_replay_remaining(
+            product_id, warehouse_id, self.env.company.id)
+        return result['expected'], result['shortage']
 
-        pool = {}       # layer id -> {'qty', 'value'}, insertion order == FIFO order
-        expected = {}
-        shortage = 0.0
-
-        for layer_id, qty, value, lc_id, target_id in rows:
-            if qty > 0:
-                pool[layer_id] = {'qty': qty, 'value': value}
-                expected[layer_id] = None  # filled in at the end from the pool
-            elif qty < 0:
-                to_consume = -qty
-                for pool_id in list(pool):
-                    if to_consume <= QTY_EPSILON:
-                        break
-                    entry = pool[pool_id]
-                    available = entry['qty']
-                    if available <= 0:
-                        del pool[pool_id]
-                        continue
-                    taken = min(available, to_consume)
-                    unit_cost = entry['value'] / available
-                    entry['qty'] -= taken
-                    entry['value'] -= taken * unit_cost
-                    to_consume -= taken
-                    if entry['qty'] <= QTY_EPSILON:
-                        del pool[pool_id]
-                shortage += to_consume
-                # Outgoing layers never hold remaining (see _run_fifo, final write).
-                expected[layer_id] = (0.0, 0.0)
-            else:
-                # quantity == 0: landed cost or manual revaluation.
-                if lc_id and target_id in pool:
-                    pool[target_id]['value'] += value
-                expected[layer_id] = (0.0, 0.0)
-
-        for layer_id in expected:
-            if expected[layer_id] is None:
-                entry = pool.get(layer_id)
-                expected[layer_id] = (entry['qty'], entry['value']) if entry else (0.0, 0.0)
-
-        return expected, shortage
+    def _cogs_gap(self, cogs):
+        """How far the stored outgoing values sit from the replayed ones."""
+        if not cogs:
+            return 0.0
+        self.env.cr.execute(
+            'SELECT id, value FROM stock_valuation_layer WHERE id IN %s',
+            (tuple(cogs),))
+        stored = {row[0]: float(row[1] or 0.0) for row in self.env.cr.fetchall()}
+        return sum(expected - stored.get(layer_id, 0.0)
+                   for layer_id, expected in cogs.items())
 
     def _run_rebuild_remaining(self):
         html = ['<h4>Rebuild Remaining Qty/Value</h4>']
 
         changes = []
         shortages = []
+        desynced = []
         products_seen = 0
 
         for warehouse in self.warehouse_ids:
@@ -236,11 +207,28 @@ class StockValuationRecalculateWizard(models.TransientModel):
 
             for product_id in product_ids:
                 products_seen += 1
-                expected, shortage = self._replay_fifo(warehouse.id, product_id)
+                result = self.env['stock.valuation.layer']._fifo_replay_remaining(
+                    product_id, warehouse.id, self.env.company.id)
+                expected, shortage = result['expected'], result['shortage']
                 if shortage > QTY_EPSILON:
                     shortages.append((warehouse.id, product_id, shortage))
 
                 if not expected:
+                    continue
+
+                # Per product/warehouse:
+                #     book   B = SUM(value)           = IN + LC - COGS_stored
+                #     replay R = SUM(remaining_value) = IN + LC - COGS_replay
+                #     R - B = COGS_stored - COGS_replay
+                # So where the stored outgoing value disagrees with the replay,
+                # writing remaining_value pushes the queue out of step with the
+                # book by exactly that amount. Correcting `value` instead is not
+                # an option — it is the P&L number, and on this database no
+                # journal entry would ever contradict a wrong one. Skip the pair
+                # and let a person settle the COGS first.
+                cogs_gap = self._cogs_gap(result['cogs'])
+                if abs(cogs_gap) > VALUE_EPSILON:
+                    desynced.append((warehouse.id, product_id, cogs_gap))
                     continue
 
                 self.env.cr.execute("""
@@ -259,6 +247,17 @@ class StockValuationRecalculateWizard(models.TransientModel):
 
         html.append('<p>Scanned %s product/warehouse combinations.</p>' % products_seen)
         html.append('<p>Layers that differ from the replay: <b>%s</b></p>' % len(changes))
+
+        if desynced:
+            total = sum(gap for _wh, _prod, gap in desynced)
+            html.append(
+                '<p style="color:#b35c00;">Skipped %s product/warehouse '
+                'combinations (%.2f in total) whose stored outgoing value '
+                'disagrees with the replay. Rebuilding remaining_value there '
+                'would push the FIFO queue out of step with the book by that '
+                'amount. The outgoing values have to be settled first, by a '
+                'person — this wizard will not rewrite them.</p>'
+                % (len(desynced), total))
 
         if shortages:
             html.append(
