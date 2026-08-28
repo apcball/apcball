@@ -1,6 +1,6 @@
 {
     'name': 'Buz Custom Partner',
-    'version': '17.0.2.1',
+    'version': '17.0.2.2',
     'category': 'Customers',
     'summary': 'Add Partner Code and Additional Fields to res.partner',
     'description': """
@@ -20,11 +20,12 @@ Features:
 - Integration with existing partner form view
     """,
     'author': 'Your Name',
-    'depends': ['base', 'contacts', 'account'],
+    'depends': ['base', 'contacts', 'account', 'purchase'],
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_views.xml',
         'views/res_partner_config_views.xml',
+        'views/purchase_order_views.xml',
         'data/sequence.xml',
     ],
     'installable': True,

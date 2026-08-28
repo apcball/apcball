@@ -13,6 +13,13 @@ class ResPartner(models.Model):
         help="Auto-generated code: Customer -> Cxxxxx, Vendor -> Vxxxxx."
     )
     old_code_partner = fields.Char(string='Old Code Partner')
+
+    # Extend name/autocomplete search (e.g. PO Vendor field) to match partner_code.
+    # Mirrors odoo.addons.base res.partner._rec_names_search + partner_code / old_code_partner.
+    _rec_names_search = [
+        'complete_name', 'email', 'ref', 'vat', 'company_registry',
+        'partner_code', 'old_code_partner',
+    ]
     is_construction_vendor = fields.Boolean(
         string='Is Construction Vendor',
         copy=False,
