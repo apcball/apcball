@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Manufacturing Backdate/Forcedate',
-    'version': '17.0.2.0.0',
+    'version': '17.0.2.1.0',
     'category': 'Manufacturing',
     'summary': 'Allow backdating for Manufacturing Orders and Unbuild Orders with remark support',
     'description': """
