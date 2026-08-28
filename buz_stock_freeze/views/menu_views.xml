@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_stock_freeze_period"
+              name="Stock Freeze Periods"
+              parent="stock.menu_stock_warehouse_mgmt"
+              action="action_stock_freeze_period"
+              groups="group_stock_freeze_manager"
+              sequence="90"/>
+</odoo>
