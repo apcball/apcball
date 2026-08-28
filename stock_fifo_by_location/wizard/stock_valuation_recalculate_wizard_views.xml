@@ -139,5 +139,14 @@
               action="action_stock_valuation_recalculate"
               sequence="100"
               groups="stock_fifo_by_location.group_stock_valuation_repair"/>
+
+    <!-- menuitem's groups= adds to groups_id rather than replacing it, so an
+         upgrade from a version that pointed at stock.group_stock_manager would
+         leave that group attached and keep the menu visible to all 19 of its
+         members. Force the replacement. -->
+    <record id="menu_stock_valuation_recalculate" model="ir.ui.menu">
+        <field name="groups_id"
+               eval="[(6, 0, [ref('stock_fifo_by_location.group_stock_valuation_repair')])]"/>
+    </record>
     
 </odoo>
