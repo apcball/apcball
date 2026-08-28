@@ -30,20 +30,17 @@
             action="action_stock_valuation_layer_location"
             sequence="120"/>
 
-  <!-- Action to recompute all SVL locations -->
-  <record id="action_recompute_all_svl_location" model="ir.actions.server">
-    <field name="name">Recompute All SVL Locations</field>
-    <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
-    <field name="state">code</field>
-    <field name="code">
-action = model.action_recompute_location()
-    </field>
-  </record>
+  <!-- "Recompute SVL Locations" used to sit under Inventory > Configuration,
+       pointing at a server action that called
+       stock.valuation.layer.action_recompute_location() with no record
+       selection, i.e. every layer on the database. It commits per batch, so a
+       misfire cannot be rolled back, and it is one click away for anyone who
+       reaches Configuration.
 
-  <!-- Menu item under Inventory > Configuration -->
-  <menuitem id="menu_recompute_svl_location"
-            name="Recompute SVL Locations"
-            parent="stock.menu_stock_config_settings"
-            action="action_recompute_all_svl_location"
-            sequence="100"/>
+       The menu and its server action are gone. The method itself is kept —
+       recomputing location_id is occasionally the right thing to do, and it is
+       still reachable deliberately from odoo shell:
+
+           env['stock.valuation.layer'].search([...]).action_recompute_location()
+  -->
 </odoo>
