@@ -107,13 +107,19 @@ class MrpProduction(models.Model):
             ])
             
             if valuation_layers:
-                # Update using SQL to bypass ORM restrictions on create_date
-                self.env.cr.execute("""
-                    UPDATE stock_valuation_layer 
-                    SET create_date = %s 
-                    WHERE id IN %s
-                """, (production.backdate, tuple(valuation_layers.ids)))
-                
+                # create_date is deliberately left alone. It is the key
+                # stock.valuation.layer._run_fifo() orders its candidate queue
+                # by, so rewriting it silently reorders the FIFO queue after
+                # the fact — components already consumed at their original cost
+                # end up behind a layer that did not exist when they were
+                # consumed. 11,286 layers on production have an id order that
+                # disagrees with their create_date order because of this.
+                #
+                # The valuation reports bucket by accounting date, derived from
+                # the move date, so the MO still lands in the right period. See
+                # ACCOUNTING_DATE_CTE in
+                # stock_fifo_valuation_report/reports/stock_fifo_valuation_report.py.
+
                 # Add remark to description
                 if production.backdate_remark:
                     for layer in valuation_layers:

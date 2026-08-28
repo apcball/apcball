@@ -3,6 +3,8 @@ from datetime import datetime, time, timedelta
 
 from odoo import api, fields, models, tools
 
+from .stock_fifo_valuation_report import ACCOUNTING_DATE_CTE
+
 BANGKOK_UTC_OFFSET = timedelta(hours=7)
 
 
@@ -134,13 +136,14 @@ class StockFifoValuationDetailsReport(models.Model):
         utc_date_from = self._bangkok_day_start_to_utc(date_from)
         utc_date_to_excl = self._bangkok_day_start_to_utc(date_to + timedelta(days=1))
 
-        query_ = """
-            SELECT row_number() OVER (ORDER BY a.create_date, a.layer_id) AS id, * FROM (
+        query_ = ACCOUNTING_DATE_CTE + """
+            SELECT row_number() OVER (ORDER BY a.acct_date, a.layer_id) AS id, * FROM (
                 SELECT
                     SUM(svl.quantity) AS opening_qty,
                     SUM(svl.value) AS opening_value,
                     NULL AS layer_id,
                     NULL AS create_date,
+                    NULL AS acct_date,
                     NULL AS product_id,
                     NULL AS product_uom,
                     NULL AS product_category,
@@ -165,21 +168,22 @@ class StockFifoValuationDetailsReport(models.Model):
                     NULL AS stock_landed_cost_id,
                     NULL::numeric AS all_in_unit_cost,
                     NULL::bigint AS lc_line_count
-                FROM stock_valuation_layer svl
+                FROM svl
                     LEFT JOIN product_product product ON svl.product_id = product.id
                     LEFT JOIN product_template template ON product.product_tmpl_id = template.id
                 WHERE
                     """ + warehouse_clause + """
                     and svl.product_id in %s
                     and template.categ_id in %s
-                    and svl.create_date >= %s
-                    and svl.create_date < %s
+                    and svl.acct_date >= %s
+                    and svl.acct_date < %s
                 UNION ALL
                 SELECT
                     NULL AS opening_qty,
                     NULL AS opening_value,
                     svl.id AS layer_id,
                     svl.create_date,
+                    svl.acct_date,
                     svl.product_id,
                     uom_prod.id AS product_uom,
                     template.categ_id AS product_category,
@@ -210,7 +214,7 @@ class StockFifoValuationDetailsReport(models.Model):
                         ), 0)) / svl.quantity
                     ELSE NULL END AS all_in_unit_cost,
                     NULL::bigint AS lc_line_count
-                FROM stock_valuation_layer svl
+                FROM svl
                     LEFT JOIN stock_move move ON svl.stock_move_id = move.id
                     LEFT JOIN LATERAL (
                         SELECT
@@ -242,14 +246,15 @@ class StockFifoValuationDetailsReport(models.Model):
                     and """ + warehouse_clause + """
                     and svl.product_id in %s
                     and template.categ_id in %s
-                    and svl.create_date >= %s
-                    and svl.create_date < %s
+                    and svl.acct_date >= %s
+                    and svl.acct_date < %s
                 UNION ALL
                 SELECT
                     NULL AS opening_qty,
                     NULL AS opening_value,
                     MIN(svl.id) AS layer_id,
                     MAX(svl.create_date) AS create_date,
+                    MAX(svl.acct_date) AS acct_date,
                     svl.product_id,
                     uom_prod.id AS product_uom,
                     template.categ_id AS product_category,
@@ -274,7 +279,7 @@ class StockFifoValuationDetailsReport(models.Model):
                     svl.stock_landed_cost_id,
                     NULL::numeric AS all_in_unit_cost,
                     count(*) AS lc_line_count
-                FROM stock_valuation_layer svl
+                FROM svl
                     LEFT JOIN stock_landed_cost lc ON svl.stock_landed_cost_id = lc.id
                     LEFT JOIN product_product product ON svl.product_id = product.id
                     LEFT JOIN product_template template ON product.product_tmpl_id = template.id
@@ -284,13 +289,13 @@ class StockFifoValuationDetailsReport(models.Model):
                     and """ + warehouse_clause + """
                     and svl.product_id in %s
                     and template.categ_id in %s
-                    and svl.create_date >= %s
-                    and svl.create_date < %s
+                    and svl.acct_date >= %s
+                    and svl.acct_date < %s
                 GROUP BY svl.product_id, uom_prod.id, template.categ_id,
                     svl.warehouse_id, svl.origin_valuation_layer_id,
                     svl.stock_landed_cost_id, lc.name
             ) AS a
-            ORDER BY a.create_date, a.layer_id
+            ORDER BY a.acct_date, a.layer_id
         """
         params = (
             warehouse_ids, product_ids, product_category_ids, utc_cutoff, utc_date_from,

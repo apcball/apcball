@@ -6,6 +6,35 @@ from odoo import fields, models, tools
 # Thailand has no DST, so Bangkok is always a fixed UTC+7 offset.
 BANGKOK_UTC_OFFSET = timedelta(hours=7)
 
+# Every period boundary in these reports is measured against the *accounting*
+# date, not svl.create_date.
+#
+# create_date is when the row was inserted, and it is also the key
+# stock.valuation.layer._run_fifo() orders its candidate queue by. The backdate
+# wizards used to overwrite it so that transactions landed in the right period,
+# which silently reordered the FIFO queue as a side effect — 11,286 layers on
+# production have an id order that disagrees with their create_date order
+# because of it. Those wizards now leave create_date alone and set the move
+# date, so the two concerns are separated: create_date orders the FIFO queue,
+# this expression buckets the period.
+#
+# Order matters. A landed-cost layer carries the stock_move_id of the receipt it
+# adjusts, so falling through to m.date would drag the cost back to the receipt
+# date; lc.date is the date the cost was actually recognised. lc.date is a Date,
+# and `D::timestamp` is D 00:00 UTC, which is D 07:00 in Bangkok — inside
+# Bangkok day D, so it buckets correctly against the UTC bounds computed by
+# _bangkok_day_range_to_utc(). Do NOT subtract the Bangkok offset here; that
+# would push every landed cost back a day.
+ACCOUNTING_DATE_CTE = """
+    WITH svl AS (
+        SELECT l.*,
+            COALESCE(lc.date::timestamp, m.date, l.create_date) AS acct_date
+        FROM stock_valuation_layer l
+            LEFT JOIN stock_move m ON m.id = l.stock_move_id
+            LEFT JOIN stock_landed_cost lc ON lc.id = l.stock_landed_cost_id
+    )
+"""
+
 
 class StockFifoValuationReport(models.Model):
     """Warehouse valuation summary sourced directly from stock.valuation.layer
@@ -44,7 +73,7 @@ class StockFifoValuationReport(models.Model):
     remaining_value_check = fields.Float(
         readonly=True,
         help="SUM(remaining_value) of layers that are still open TODAY, "
-             "restricted to those created before date_to. remaining_qty / "
+             "restricted to those accounted before date_to. remaining_qty / "
              "remaining_value are mutated in place by the FIFO engine and "
              "there is no point-in-time snapshot, so this column only "
              "reconciles against Ending Value when date_to is today. On a "
@@ -141,7 +170,7 @@ class StockFifoValuationReport(models.Model):
         product_ids = self._get_product_ids(filters.product_ids, filters.product_category_ids)
         warehouse_clause = self._get_warehouse_clause(filters.warehouse_ids)
 
-        query_ = """
+        query_ = ACCOUNTING_DATE_CTE + """
             SELECT *, (a.opening_value + a.in_value + a.out_value
                     + a.landed_cost_value + a.revaluation_value) as ending_value,
                 (a.opening_qty + a.in_qty + a.out_qty) as ending_qty
@@ -151,25 +180,25 @@ class StockFifoValuationReport(models.Model):
                     uom_prod.id as product_uom,
                     template.categ_id as product_category,
                     svl.warehouse_id,
-                    SUM(CASE WHEN svl.create_date < %s THEN svl.quantity ELSE 0 END) as opening_qty,
-                    SUM(CASE WHEN svl.create_date < %s THEN svl.value ELSE 0 END) as opening_value,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity > 0
+                    SUM(CASE WHEN svl.acct_date < %s THEN svl.quantity ELSE 0 END) as opening_qty,
+                    SUM(CASE WHEN svl.acct_date < %s THEN svl.value ELSE 0 END) as opening_value,
+                    SUM(CASE WHEN svl.acct_date >= %s AND svl.acct_date < %s AND svl.quantity > 0
                         THEN svl.quantity ELSE 0 END) as in_qty,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity > 0
+                    SUM(CASE WHEN svl.acct_date >= %s AND svl.acct_date < %s AND svl.quantity > 0
                         THEN svl.value ELSE 0 END) as in_value,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity < 0
+                    SUM(CASE WHEN svl.acct_date >= %s AND svl.acct_date < %s AND svl.quantity < 0
                         THEN svl.quantity ELSE 0 END) as out_qty,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity < 0
+                    SUM(CASE WHEN svl.acct_date >= %s AND svl.acct_date < %s AND svl.quantity < 0
                         THEN svl.value ELSE 0 END) as out_value,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity = 0
+                    SUM(CASE WHEN svl.acct_date >= %s AND svl.acct_date < %s AND svl.quantity = 0
                         AND svl.stock_landed_cost_id IS NOT NULL
                         THEN svl.value ELSE 0 END) as landed_cost_value,
-                    SUM(CASE WHEN svl.create_date >= %s AND svl.create_date < %s AND svl.quantity = 0
+                    SUM(CASE WHEN svl.acct_date >= %s AND svl.acct_date < %s AND svl.quantity = 0
                         AND svl.stock_landed_cost_id IS NULL
                         THEN svl.value ELSE 0 END) as revaluation_value,
-                    SUM(CASE WHEN svl.create_date < %s AND svl.remaining_qty > 0
+                    SUM(CASE WHEN svl.acct_date < %s AND svl.remaining_qty > 0
                         THEN svl.remaining_value ELSE 0 END) as remaining_value_check
-                FROM stock_valuation_layer svl
+                FROM svl
                     LEFT JOIN product_product product ON svl.product_id = product.id
                     LEFT JOIN product_template template ON product.product_tmpl_id = template.id
                     LEFT JOIN uom_uom uom_prod ON template.uom_id = uom_prod.id
@@ -177,8 +206,8 @@ class StockFifoValuationReport(models.Model):
                     """ + warehouse_clause + """
                     and svl.product_id in %s
                     and template.categ_id in %s
-                    and svl.create_date >= %s
-                    and svl.create_date < %s
+                    and svl.acct_date >= %s
+                    and svl.acct_date < %s
                 GROUP BY svl.product_id, uom_prod.id, template.categ_id, svl.warehouse_id
                 ORDER BY svl.product_id, svl.warehouse_id
             ) as a
