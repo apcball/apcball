@@ -43,8 +43,10 @@ class PickingBackDate(models.TransientModel):
             moveObj = self.env['stock.move'].search([('picking_id','=',picking.id)])
             accmoveObj = self.env['account.move'].search([('stock_move_id','in',moveObj.ids)])
             for acc_mv in accmoveObj:
+                # Keep the entry's number. Clearing `name` before re-posting
+                # makes Odoo allocate a fresh one from the sequence, so the
+                # document silently changes number every time it is backdated.
                 acc_mv.button_draft()
-                acc_mv.name = False
                 acc_mv.date = self.date
                 acc_mv.action_post()
 
@@ -52,13 +54,20 @@ class PickingBackDate(models.TransientModel):
                 move.update({
                     'date':self.date,
                 })
-                valuationObj = self.env['stock.valuation.layer'].search([('stock_move_id','=',move.id)])
-
-                for val in valuationObj:
-                    _logger.info("==============va==========%s",val.create_date)
-                    self.env.cr.execute('update stock_valuation_layer set create_date=%s where id=%s', (self.date, val.id))                 
-                    _logger.info("==============va==========%s",val.create_date)
-
+                # stock_valuation_layer.create_date is deliberately NOT touched
+                # here. It is the key stock.valuation.layer._run_fifo() orders
+                # its candidate queue by, so rewriting it silently reorders the
+                # FIFO queue after the fact - layers that were already consumed
+                # at their original cost end up behind a receipt that did not
+                # exist when they were consumed. 11,286 layers on production
+                # have an id order that disagrees with their create_date order
+                # because of this.
+                #
+                # The valuation reports bucket by accounting date, which is
+                # derived from move.date (set just above), so backdating still
+                # lands the transaction in the right period. See
+                # ACCOUNTING_DATE_CTE in
+                # stock_fifo_valuation_report/reports/stock_fifo_valuation_report.py.
 
                 movelineObj = self.env['stock.move.line'].search([('move_id','=',move.id)])
 

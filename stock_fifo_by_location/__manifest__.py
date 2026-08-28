@@ -1,6 +1,6 @@
 {
     'name': 'Stock FIFO by Warehouse (Transfer ≠ Consumption)',
-    'version': '17.0.2.0.0',
+    'version': '17.0.2.2.0',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -12,6 +12,7 @@
         'account',
     ],
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'data/config_parameters.xml',
         'data/edge_case_config.xml',

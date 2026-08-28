@@ -1,6 +1,6 @@
 {
     "name": "buz Stock Valuation Location",
-    "version": "17.0.1.1.0",
+    "version": "17.0.1.2.0",
     "summary": "Stock Valuation Analysis by Location with Pivot & Graph Views",
     "category": "Inventory/Accounting",
     "author": "Apcball",

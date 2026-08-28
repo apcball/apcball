@@ -2,189 +2,122 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-import json
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class FifoRecalculationBackup(models.Model):
-    """Backup of valuation layers before recalculation."""
+    """Snapshot of the layers a repair run is about to change.
+
+    The repair only ever writes remaining_qty / remaining_value, so a restore
+    only ever puts those two columns back. Nothing is deleted by the wizard, so
+    nothing has to be recreated here — an earlier version recreated missing
+    layers with fresh ids, which quietly forked the FIFO queue.
+    """
     _name = 'fifo.recalculation.backup'
     _description = 'FIFO Recalculation Backup'
     _order = 'create_date desc'
 
-    name = fields.Char(
-        string='Backup Name',
-        compute='_compute_name',
-        store=True
-    )
-    date_from = fields.Datetime(
-        string='Date From',
-        required=True
-    )
-    date_to = fields.Datetime(
-        string='Date To',
-        required=True
-    )
-    company_id = fields.Many2one(
-        'res.company',
-        string='Company',
-        required=True
-    )
-    layer_count = fields.Integer(
-        string='Layer Count',
-        readonly=True
-    )
+    name = fields.Char(string='Backup Name', compute='_compute_name', store=True)
+    company_id = fields.Many2one('res.company', string='Company', required=True)
+    warehouse_ids = fields.Many2many('stock.warehouse', string='Warehouses')
+    layer_count = fields.Integer(string='Layer Count', readonly=True)
     state = fields.Selection([
         ('active', 'Active'),
         ('restored', 'Restored'),
         ('expired', 'Expired'),
     ], default='active', string='State')
     line_ids = fields.One2many(
-        'fifo.recalculation.backup.line',
-        'backup_id',
-        string='Backup Lines'
-    )
-    restore_date = fields.Datetime(
-        string='Restore Date',
-        readonly=True
-    )
+        'fifo.recalculation.backup.line', 'backup_id', string='Backup Lines')
+    restore_date = fields.Datetime(string='Restore Date', readonly=True)
+    restore_log = fields.Text(readonly=True)
 
     @api.depends('create_date', 'company_id')
     def _compute_name(self):
         for record in self:
-            if record.create_date:
-                record.name = f"Backup {record.company_id.name} - {record.create_date.strftime('%Y-%m-%d %H:%M:%S')}"
-            else:
-                record.name = f"Backup {record.company_id.name}"
+            stamp = (record.create_date.strftime('%Y-%m-%d %H:%M:%S')
+                     if record.create_date else 'new')
+            record.name = 'Backup %s - %s' % (record.company_id.name, stamp)
 
     def action_restore(self):
-        """Restore backed up layers."""
+        """Put remaining_qty / remaining_value back exactly as they were."""
         self.ensure_one()
-        
+
         if self.state != 'active':
             raise UserError(_('This backup has already been restored or expired.'))
-        
-        log = []
-        log.append(f"=== Restoring Backup: {self.name} ===")
-        log.append(f"Layers to restore: {len(self.line_ids)}")
-        log.append("")
-        
-        restored_count = 0
-        recreated_count = 0
-        failed_count = 0
-        
-        for line in self.line_ids:
-            try:
-                # Check if layer still exists
-                layer = self.env['stock.valuation.layer'].browse(line.layer_id.id)
-                if layer.exists():
-                    # Restore original values to existing layer
-                    layer.write({
-                        'quantity': line.quantity,
-                        'unit_cost': line.unit_cost,
-                        'value': line.value,
-                        'remaining_qty': line.remaining_qty,
-                        'remaining_value': line.remaining_value,
-                    })
-                    restored_count += 1
-                else:
-                    # Layer was deleted, recreate it
-                    layer_vals = {
-                        'product_id': line.product_id.id,
-                        'company_id': self.company_id.id,
-                        'warehouse_id': line.warehouse_id.id if line.warehouse_id else False,
-                        'quantity': line.quantity,
-                        'unit_cost': line.unit_cost,
-                        'value': line.value,
-                        'remaining_qty': line.remaining_qty,
-                        'remaining_value': line.remaining_value,
-                        'stock_move_id': line.stock_move_id.id if line.stock_move_id else False,
-                        'description': line.description or 'Restored from backup',
-                    }
-                    new_layer = self.env['stock.valuation.layer'].create(layer_vals)
-                    recreated_count += 1
-                    log.append(f"  Recreated layer for {line.product_id.display_name} (original ID: {line.layer_id.id}, new ID: {new_layer.id})")
-            except Exception as e:
-                log.append(f"ERROR restoring layer {line.layer_id.id}: {str(e)}")
-                failed_count += 1
-        
-        log.append("")
-        log.append(f"Restored (updated existing): {restored_count} layers")
-        log.append(f"Recreated (deleted layers): {recreated_count} layers")
-        log.append(f"Failed: {failed_count} layers")
-        
-        # Update backup state
+
+        # Counted in SQL, not through line_ids: the lines are written with an
+        # INSERT ... SELECT, so a cached recordset can be stale.
+        self.env.cr.execute(
+            'SELECT count(*) FROM fifo_recalculation_backup_line WHERE backup_id = %s',
+            (self.id,))
+        line_count = self.env.cr.fetchone()[0]
+        if not line_count:
+            raise UserError(_('This backup holds no layers.'))
+
+        SVL = self.env['stock.valuation.layer']
+        SVL.flush_model(['remaining_qty', 'remaining_value'])
+        self.env.cr.execute("""
+            UPDATE stock_valuation_layer l
+            SET remaining_qty = b.remaining_qty,
+                remaining_value = b.remaining_value
+            FROM fifo_recalculation_backup_line b
+            WHERE b.backup_id = %s AND b.layer_id = l.id
+        """, (self.id,))
+        restored = self.env.cr.rowcount
+        SVL.invalidate_model(['remaining_qty', 'remaining_value'])
+
+        missing = line_count - restored
+        log = [
+            'Restored %s layers.' % restored,
+            'Layers no longer present: %s.' % missing,
+        ]
+        if missing:
+            log.append('Those layers were deleted by something other than this '
+                       'wizard, which never deletes. They are not recreated: a '
+                       'new id would sit in the wrong place in the FIFO queue.')
+        _logger.info('fifo recalculation backup %s restored %s layers (%s missing)',
+                     self.id, restored, missing)
+
         self.write({
             'state': 'restored',
-            'restore_date': fields.Datetime.now()
+            'restore_date': fields.Datetime.now(),
+            'restore_log': '\n'.join(log),
         })
-        
-        # Also delete usage records that were created during recalculation
-        # to clean up the audit trail
-        if restored_count > 0 or recreated_count > 0:
-            # Find usage records created after this backup
-            usage_to_delete = self.env['stock.valuation.layer.usage'].search([
-                ('create_date', '>', self.create_date),
-                ('stock_valuation_layer_id.product_id', 'in', self.line_ids.mapped('product_id').ids),
-                ('stock_valuation_layer_id.warehouse_id', 'in', self.line_ids.mapped('warehouse_id').ids),
-            ])
-            if usage_to_delete:
-                log.append(f"Deleted {len(usage_to_delete)} usage records created after backup")
-                usage_to_delete.unlink()
-        
+
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': _('Rollback Complete'),
-                'message': _('Restored: %d layers\\nRecreated: %d layers\\nFailed: %d') % (restored_count, recreated_count, failed_count),
-                'type': 'success' if failed_count == 0 else 'warning',
+                'message': '\n'.join(log),
+                'type': 'success' if not missing else 'warning',
                 'sticky': True,
             }
         }
 
 
 class FifoRecalculationBackupLine(models.Model):
-    """Individual layer backup line."""
+    """The pre-repair state of one valuation layer."""
     _name = 'fifo.recalculation.backup.line'
     _description = 'FIFO Recalculation Backup Line'
 
     backup_id = fields.Many2one(
-        'fifo.recalculation.backup',
-        required=True,
-        ondelete='cascade'
-    )
+        'fifo.recalculation.backup', required=True, ondelete='cascade', index=True)
     layer_id = fields.Many2one(
-        'stock.valuation.layer',
-        string='Original Layer',
-        required=False,
-        ondelete='set null',
-    )
-    product_id = fields.Many2one(
-        'product.product',
-        required=True
-    )
-    warehouse_id = fields.Many2one(
-        'stock.warehouse'
-    )
-    quantity = fields.Float(
-        digits='Product Unit of Measure'
-    )
-    unit_cost = fields.Float(
-        digits='Product Price'
-    )
-    value = fields.Float(
-        digits='Product Price'
-    )
-    remaining_qty = fields.Float(
-        digits='Product Unit of Measure'
-    )
-    remaining_value = fields.Float(
-        digits='Product Price'
-    )
-    stock_move_id = fields.Many2one(
-        'stock.move'
-    )
+        'stock.valuation.layer', string='Original Layer',
+        ondelete='set null', index=True)
+    product_id = fields.Many2one('product.product', required=True)
+    warehouse_id = fields.Many2one('stock.warehouse')
+
+    # quantity / unit_cost / value are recorded for the audit trail only. The
+    # repair never writes them, so a restore never puts them back.
+    quantity = fields.Float(digits='Product Unit of Measure')
+    unit_cost = fields.Float(digits='Product Price')
+    value = fields.Float(digits='Product Price')
+
+    remaining_qty = fields.Float(digits='Product Unit of Measure')
+    remaining_value = fields.Float(digits='Product Price')
+    stock_move_id = fields.Many2one('stock.move')
     description = fields.Char()
-    layer_data = fields.Text(
-        help='JSON data of additional layer information'
-    )

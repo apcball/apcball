@@ -37,10 +37,14 @@
                 <field name="out_qty" string="Out Qty" optional="show"/>
                 <field name="out_value" string="Out Value" optional="show"
                     groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
+                <field name="landed_cost_value" string="Landed Cost Value" optional="show"
+                    groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
+                <field name="revaluation_value" string="Revaluation Value" optional="show"
+                    groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
                 <field name="ending_qty" string="Ending Qty" optional="show"/>
                 <field name="ending_value" string="Ending Value" optional="show"
                     groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
-                <field name="remaining_value_check" string="Remaining Check" optional="show"
+                <field name="remaining_value_check" string="Remaining Check (as of today)" optional="show"
                     groups="stock_fifo_valuation_report.group_stock_fifo_valuation_price"/>
                 <button name="report_details" type="object" title="View Detail" class="fa fa-search"/>
             </tree>

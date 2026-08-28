@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Deliberately NOT noupdate. The group's name and category have to be
+         able to change on upgrade, and the `users` field is simply never
+         written here — a group is created empty, so seeding it with (5, 0, 0)
+         bought nothing and only forced noupdate to protect the membership an
+         upgrade would otherwise have wiped. -->
     <data>
-        
-        <!-- FIFO Recalculation Access Group -->
+
         <record id="group_fifo_recalculation" model="res.groups">
-            <field name="name">FIFO Recalculation Access</field>
-            <field name="category_id" ref="base.module_category_inventory_inventory"/>
-            <field name="comment">Allows users to run FIFO recalculation wizard for fixing valuation layers</field>
+            <field name="name">FIFO Repair</field>
+            <!-- Hidden category, so this renders as its own checkbox under
+                 "Other" on the user form. In an application category Odoo
+                 renders the groups of that app as a single ordered selection,
+                 which made this one impossible to grant without also moving
+                 the user up the Inventory ladder. -->
+            <field name="category_id" ref="base.module_category_hidden"/>
+            <field name="comment">Grants access to the FIFO queue repair wizard, which
+writes remaining_qty and remaining_value directly on stock.valuation.layer — the
+sole book of record for stock value. Add people deliberately; being a stock
+manager is not enough and is not meant to be.</field>
+            <!-- The wizard lives under the Inventory root menu, which is only
+                 visible to inventory groups, so a repairer needs one. The
+                 implication runs this way only: being a stock manager does not
+                 grant FIFO Repair. -->
             <field name="implied_ids" eval="[(4, ref('stock.group_stock_manager'))]"/>
         </record>
-        
+
     </data>
 </odoo>
