@@ -48,6 +48,8 @@
                             </div>
                             <div class="act_as_cell"/>
                             <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
+                            <div class="act_as_cell"/>
                             <div t-if="show_cost" class="act_as_cell right">
                                 <t t-esc="line_opening[0].opening_value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
                             </div>
@@ -108,6 +110,8 @@
                 <div t-if="show_cost" class="act_as_cell">Unit Cost</div>
                 <div t-if="show_cost" class="act_as_cell">All-in Unit Cost</div>
                 <div class="act_as_cell">Qty</div>
+                <div class="act_as_cell">In Qty</div>
+                <div class="act_as_cell">Out Qty</div>
                 <div t-if="show_cost" class="act_as_cell">Value</div>
                 <div class="act_as_cell">Origin Layer</div>
                 <div class="act_as_cell">Origin Remain Qty</div>
@@ -144,6 +148,12 @@
             </div>
             <div class="act_as_cell right">
                 <t t-esc="layer.quantity" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-if="layer.quantity &gt; 0" t-esc="layer.quantity" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
+            </div>
+            <div class="act_as_cell right">
+                <t t-if="layer.quantity &lt; 0" t-esc="layer.quantity" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
             </div>
             <div t-if="show_cost" class="act_as_cell right">
                 <t t-esc="layer.value" t-options="{&quot;widget&quot;: &quot;float&quot;, &quot;precision&quot;: 2}"/>
