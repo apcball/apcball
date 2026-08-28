@@ -27,6 +27,16 @@ class AccountPaymentRegister(models.TransientModel):
             payment_voucher = self.env['account.payment.voucher'].browse(payment_voucher_id)
             if payment_voucher.exists():
                 payments.write({'buz_payment_voucher_id': payment_voucher_id})
+                # Link payments to the voucher lines whose bills they pay
+                # (grouped payments cover every line of the voucher)
+                paid_moves = payments.mapped('reconciled_bill_ids')
+                for line in payment_voucher.line_ids:
+                    line_payments = payments.filtered(
+                        lambda p: not paid_moves or line.move_id in p.reconciled_bill_ids
+                    ) or payments
+                    line.write({
+                        'payment_ids': [(4, payment.id) for payment in line_payments]
+                    })
                 payment_voucher.message_post(
                     body=_("Payment(s) %s created and linked to voucher") % ', '.join(payments.mapped('name'))
                 )
