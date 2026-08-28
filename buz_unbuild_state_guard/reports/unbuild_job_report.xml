@@ -41,12 +41,12 @@
                             <img src="/buz_unbuild_state_guard/static/img/LOGO MOGEN.png"
                                  style="width: 150px; height: auto; object-fit: contain;"
                                  alt="MOGEN Logo"/>
-                            <div class="report-page-number" style="font-size: 14px; font-weight: normal; margin-top: 2px;">
+                            <div class="report-page-number" style="font-size: 18px; font-weight: normal; margin-top: 2px;">
                                 หน้า 1 / <t t-esc="report_total_pages"/>
                             </div>
                         </div>
                     </div>
-                    <hr style="border-top: 2px solid #333; margin: 3px 0;"/>
+
                 </div>
             </div>
         </template>
@@ -86,8 +86,8 @@
                                 line-height: 1;
                                 font-weight: normal !important;
                             }
-                            .report-page-number .page, .report-page-number .topage {
-                                font-size: 14px !important;
+                            .report-page-number {
+                                font-size: 18px !important;
                             }
                         </style>
                         <div class="page">
