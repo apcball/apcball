@@ -120,8 +120,15 @@ class StockFifoValuationDetailsReport(models.Model):
             date_from = cutoff_date
         date_to = filter_fields.date_to or fields.Date.context_today(self)
 
-        warehouse_ids = tuple(filter_fields.warehouse_ids.ids) or (-1,)
-        product_ids = tuple(filter_fields.product_ids.ids) or (-1,)
+        # Same defaults as the summary: an empty filter means "everything",
+        # not "nothing".
+        summary = self.env["stock.fifo.valuation.report"]
+        warehouse_ids = summary._get_warehouse_ids(filter_fields.warehouse_ids)
+        product_ids = summary._get_product_ids(
+            filter_fields.product_ids, filter_fields.product_category_ids)
+        product_category_ids = summary._get_product_category_ids(
+            filter_fields.product_category_ids)
+        warehouse_clause = summary._get_warehouse_clause(filter_fields.warehouse_ids)
 
         utc_cutoff = self._bangkok_day_start_to_utc(cutoff_date)
         utc_date_from = self._bangkok_day_start_to_utc(date_from)
@@ -159,9 +166,12 @@ class StockFifoValuationDetailsReport(models.Model):
                     NULL::numeric AS all_in_unit_cost,
                     NULL::bigint AS lc_line_count
                 FROM stock_valuation_layer svl
+                    LEFT JOIN product_product product ON svl.product_id = product.id
+                    LEFT JOIN product_template template ON product.product_tmpl_id = template.id
                 WHERE
-                    svl.warehouse_id in %s
+                    """ + warehouse_clause + """
                     and svl.product_id in %s
+                    and template.categ_id in %s
                     and svl.create_date >= %s
                     and svl.create_date < %s
                 UNION ALL
@@ -229,8 +239,9 @@ class StockFifoValuationDetailsReport(models.Model):
                     LEFT JOIN uom_uom uom_prod ON template.uom_id = uom_prod.id
                 WHERE
                     svl.stock_landed_cost_id IS NULL
-                    and svl.warehouse_id in %s
+                    and """ + warehouse_clause + """
                     and svl.product_id in %s
+                    and template.categ_id in %s
                     and svl.create_date >= %s
                     and svl.create_date < %s
                 UNION ALL
@@ -270,8 +281,9 @@ class StockFifoValuationDetailsReport(models.Model):
                     LEFT JOIN uom_uom uom_prod ON template.uom_id = uom_prod.id
                 WHERE
                     svl.stock_landed_cost_id IS NOT NULL
-                    and svl.warehouse_id in %s
+                    and """ + warehouse_clause + """
                     and svl.product_id in %s
+                    and template.categ_id in %s
                     and svl.create_date >= %s
                     and svl.create_date < %s
                 GROUP BY svl.product_id, uom_prod.id, template.categ_id,
@@ -281,9 +293,9 @@ class StockFifoValuationDetailsReport(models.Model):
             ORDER BY a.create_date, a.layer_id
         """
         params = (
-            warehouse_ids, product_ids, utc_cutoff, utc_date_from,
-            warehouse_ids, product_ids, utc_date_from, utc_date_to_excl,
-            warehouse_ids, product_ids, utc_date_from, utc_date_to_excl,
+            warehouse_ids, product_ids, product_category_ids, utc_cutoff, utc_date_from,
+            warehouse_ids, product_ids, product_category_ids, utc_date_from, utc_date_to_excl,
+            warehouse_ids, product_ids, product_category_ids, utc_date_from, utc_date_to_excl,
         )
 
         tools.drop_view_if_exists(self._cr, self._table)
