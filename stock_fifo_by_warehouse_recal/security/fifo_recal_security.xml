@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
-        
-        <!-- FIFO Recalculation Access Group -->
+    <!-- noupdate: the empty membership below is an install-time default. An
+         upgrade must not wipe whoever the customer has since put in the group. -->
+    <data noupdate="1">
+
         <record id="group_fifo_recalculation" model="res.groups">
-            <field name="name">FIFO Recalculation Access</field>
-            <field name="category_id" ref="base.module_category_inventory_inventory"/>
-            <field name="comment">Allows users to run FIFO recalculation wizard for fixing valuation layers</field>
+            <field name="name">FIFO Repair</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+            <field name="comment">Grants access to the FIFO queue repair wizard, which
+writes remaining_qty and remaining_value directly on stock.valuation.layer — the
+sole book of record for stock value. Add people deliberately; being a stock
+manager is not enough and is not meant to be.</field>
+            <!-- Deliberately NOT implied by stock.group_stock_manager. The
+                 previous version granted the reverse implication, which put
+                 every stock manager one click from a valuation rewrite. -->
             <field name="implied_ids" eval="[(4, ref('stock.group_stock_manager'))]"/>
+            <field name="users" eval="[(5, 0, 0)]"/>
         </record>
-        
+
     </data>
 </odoo>

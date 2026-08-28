@@ -1,164 +1,140 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- Form View for FIFO Recalculation Wizard -->
+
         <record id="view_fifo_recalculation_wizard_form" model="ir.ui.view">
             <field name="name">fifo.recalculation.wizard.form</field>
             <field name="model">fifo.recalculation.wizard</field>
             <field name="arch" type="xml">
-                <form string="Recalculate FIFO by Warehouse">
+                <form string="Repair FIFO Queue by Warehouse">
                     <header>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,preview,processing,done"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,preview,done"/>
                     </header>
                     <sheet>
-                        <!-- Invisible fields used in domain/invisible conditions -->
                         <field name="can_rollback" invisible="1"/>
+                        <field name="can_apply" invisible="1"/>
                         <field name="backup_id" invisible="1"/>
-                        <!-- Success Message (visible when done) -->
-                        <div class="alert alert-success text-center" role="alert" invisible="state != 'done'" style="padding: 20px; margin-bottom: 20px;">
-                            <h3 style="margin-bottom: 15px;">
-                                <i class="fa fa-check-circle fa-2x" style="margin-right: 10px; color: #5cb85c;"/> FIFO Recalculation Completed!
-                            </h3>
-                            <div style="margin: 20px 0;">
-                                <div style="font-size: 16px; font-weight: bold; color: #3c763d;">
-                                    <field name="progress_message" readonly="1" nolabel="1"/>
-                                </div>
-                            </div>
+
+                        <div class="alert alert-info" role="alert">
+                            <b>This tool corrects the FIFO queue in place.</b>
+                            It replays the FIFO engine over the valuation layers that
+                            already exist and rewrites only <code>remaining_qty</code> and
+                            <code>remaining_value</code> where they disagree with the replay.
+                            <br/>
+                            No layer is deleted or created, and <code>value</code> — the
+                            amount that reaches the P&amp;L — is compared and reported but
+                            never written.
                         </div>
-                        
-                        <!-- Progress Indicator (visible when processing) -->
-                        <div class="alert alert-warning text-center" role="alert" invisible="state != 'processing'" style="padding: 20px; margin-bottom: 20px;">
-                            <h3 style="margin-bottom: 15px;">
-                                <i class="fa fa-spinner fa-spin fa-2x" style="margin-right: 10px;"/> Processing FIFO Recalculation...
-                            </h3>
-                            <div style="margin: 20px 0;">
-                                <div style="font-size: 16px; font-weight: bold; color: #8a6d3b; margin-bottom: 15px;">
-                                    <field name="progress_message" readonly="1" nolabel="1"/>
-                                </div>
-                                <div style="margin-top: 15px;">
-                                    <span style="font-size: 48px; font-weight: bold; color: #f0ad4e;">
-                                        <field name="progress_percent" readonly="1" nolabel="1" widget="float" digits="[16,1]"/>%
-                                    </span>
-                                </div>
-                            </div>
-                            <p class="text-muted" style="margin-top: 20px; font-size: 14px;">
-                                <i class="fa fa-info-circle"/> Processing in batches. Please wait until completion.<br/>
-                                Do not close this window or refresh the page.
-                            </p>
+
+                        <div class="alert alert-danger" role="alert" invisible="not block_reason">
+                            <field name="block_reason" nolabel="1" readonly="1"/>
                         </div>
-                        
+
+                        <div class="alert alert-success" role="alert" invisible="state != 'done'">
+                            <b>Applied.</b> Corrected
+                            <field name="layers_changed" nolabel="1" readonly="1" class="oe_inline"/>
+                            layers. Use Rollback to put them back exactly as they were.
+                        </div>
+
                         <group>
-                            <group string="Company &amp; Date Range">
+                            <group string="Scope">
                                 <field name="company_id" options="{'no_create': True}"/>
-                                <field name="date_from"/>
-                                <field name="date_to"/>
-                            </group>
-                            <group string="Filters">
                                 <field name="warehouse_ids" widget="many2many_tags" options="{'no_create': True}"/>
                                 <field name="product_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
-                                <field name="product_categ_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                            </group>
-                        </group>
-                        
-                        <group>
-                            <group string="Recalculation Options">
-                                <field name="clear_old_layers"/>
-                                <field name="lock_after_recal"/>
-                                <field name="batch_size" 
-                                       help="Smaller batches = less memory, longer time. Larger batches = more memory, faster."/>
+                                <field name="product_categ_ids" widget="many2many_tags" options="{'no_create': True}"
+                                       invisible="product_ids != []"/>
                             </group>
                             <group string="Safety">
                                 <field name="dry_run"/>
+                                <field name="include_reordered"/>
+                                <field name="max_mismatch_percent"/>
                             </group>
                         </group>
-                        
-                        <notebook>
+
+                        <group string="Result" invisible="state == 'draft'">
+                            <group>
+                                <field name="layers_scanned"/>
+                                <field name="layers_changed"/>
+                                <field name="pairs_blocked"/>
+                            </group>
+                            <group>
+                                <field name="value_delta"/>
+                                <field name="cogs_mismatch_count"/>
+                                <field name="cogs_mismatch_value"/>
+                            </group>
+                        </group>
+
+                        <notebook invisible="state == 'draft'">
                             <page string="Preview" name="preview">
-                                <field name="line_ids" nolabel="1">
-                                    <tree string="Preview Lines" decoration-success="diff_qty > 0" decoration-danger="diff_qty &lt; 0">
+                                <field name="line_ids" nolabel="1" readonly="1">
+                                    <tree string="Preview Lines"
+                                          decoration-muted="skip_reason != False"
+                                          decoration-warning="shortage_qty &gt; 0"
+                                          decoration-danger="cogs_mismatch_count &gt; 0">
                                         <field name="product_id"/>
                                         <field name="warehouse_id"/>
-                                        <field name="qty_before" sum="total_qty_before"/>
-                                        <field name="value_before" sum="total_value_before"/>
-                                        <field name="qty_after" sum="total_qty_after"/>
-                                        <field name="value_after" sum="total_value_after"/>
-                                        <field name="diff_qty" sum="total_diff_qty"/>
-                                        <field name="diff_value" sum="total_diff_value"/>
+                                        <field name="layer_change_count" sum="Layers"/>
+                                        <field name="qty_before"/>
+                                        <field name="qty_after"/>
+                                        <field name="diff_qty" sum="Qty Diff"/>
+                                        <field name="value_before"/>
+                                        <field name="value_after"/>
+                                        <field name="diff_value" sum="Value Diff"/>
+                                        <field name="shortage_qty" optional="show"/>
+                                        <field name="reordered_layers" optional="show"/>
+                                        <field name="cogs_mismatch_count" optional="show"/>
+                                        <field name="cogs_mismatch_value" optional="show" sum="Mismatch"/>
+                                        <field name="skip_reason"/>
                                     </tree>
                                 </field>
                             </page>
-                            
                             <page string="Log" name="log">
                                 <field name="log_text" nolabel="1" widget="text"/>
                             </page>
                         </notebook>
                     </sheet>
-                    
+
                     <footer>
-                        <button name="action_preview" 
-                                string="Preview" 
-                                type="object" 
-                                class="btn-primary"
-                                invisible="state in ('done', 'processing')"/>
-                        <button name="action_export_excel" 
-                                string="Export to Excel" 
-                                type="object" 
-                                class="btn-info"
-                                invisible="state not in ('preview', 'done')"/>
-                        <button name="action_apply" 
-                                string="Apply Recalculation" 
-                                type="object" 
-                                class="btn-primary"
-                                invisible="state != 'preview'"
-                                confirm="Are you sure you want to apply FIFO recalculation? This will modify valuation layers."/>
-                        <button name="action_rollback" 
-                                string="Rollback" 
-                                type="object" 
-                                class="btn-warning"
-                                invisible="not can_rollback"
-                                confirm="Are you sure you want to rollback this recalculation? This will restore all backed up layers."/>
-                        <button string="Close" special="cancel" class="btn-secondary" invisible="state == 'processing'"/>
-                        <button string="Processing... Please wait" class="btn-secondary" disabled="1" invisible="state != 'processing'"/>
+                        <button name="action_preview" string="Preview" type="object"
+                                class="btn-primary" invisible="state == 'done'"/>
+                        <button name="action_export_excel" string="Export to Excel" type="object"
+                                class="btn-secondary" invisible="state == 'draft'"/>
+                        <button name="action_apply" string="Apply Correction" type="object"
+                                class="btn-danger" invisible="not can_apply or dry_run"
+                                confirm="This writes remaining_qty and remaining_value on the layers listed in the preview. A backup is taken first and Rollback restores it exactly. Continue?"/>
+                        <button name="action_rollback" string="Rollback" type="object"
+                                class="btn-warning" invisible="not can_rollback"
+                                confirm="Restore remaining_qty and remaining_value to their pre-repair values?"/>
+                        <button string="Close" special="cancel" class="btn-secondary"/>
                     </footer>
                 </form>
             </field>
         </record>
-        
-        <!-- Tree View for Preview Lines -->
-        <record id="view_fifo_recalculation_wizard_line_tree" model="ir.ui.view">
-            <field name="name">fifo.recalculation.wizard.line.tree</field>
-            <field name="model">fifo.recalculation.wizard.line</field>
-            <field name="arch" type="xml">
-                <tree string="FIFO Recalculation Preview">
-                    <field name="product_id"/>
-                    <field name="warehouse_id"/>
-                    <field name="qty_before"/>
-                    <field name="value_before"/>
-                    <field name="qty_after"/>
-                    <field name="value_after"/>
-                    <field name="diff_qty"/>
-                    <field name="diff_value"/>
-                </tree>
-            </field>
-        </record>
-        
-        <!-- Action for FIFO Recalculation Wizard -->
+
         <record id="action_fifo_recalculation_wizard" model="ir.actions.act_window">
-            <field name="name">Recalculate FIFO</field>
+            <field name="name">Repair FIFO Queue</field>
             <field name="res_model">fifo.recalculation.wizard</field>
             <field name="view_mode">form</field>
             <field name="target">new</field>
             <field name="view_id" ref="view_fifo_recalculation_wizard_form"/>
+            <!-- Gate the action itself, not only the menu: an action reachable
+                 by URL is reachable by anyone who has the URL. -->
+            <field name="groups_id" eval="[(6, 0, [ref('stock_fifo_by_warehouse_recal.group_fifo_recalculation')])]"/>
         </record>
-        
-        <!-- Menu Item -->
+
         <menuitem id="menu_fifo_recalculation_wizard"
-                  name="Recalculate FIFO"
+                  name="Repair FIFO Queue"
                   parent="stock.menu_stock_warehouse_mgmt"
                   action="action_fifo_recalculation_wizard"
-                  groups="group_fifo_recalculation,base.group_system"
                   sequence="100"/>
-        
+
+        <!-- `groups` on <menuitem> ADDS to groups_id on upgrade rather than
+             replacing it, so a group removed from the menuitem stays granted.
+             An explicit record with (6, 0, [...]) is the only way to make the
+             set authoritative. -->
+        <record id="menu_fifo_recalculation_wizard" model="ir.ui.menu">
+            <field name="groups_id" eval="[(6, 0, [ref('stock_fifo_by_warehouse_recal.group_fifo_recalculation')])]"/>
+        </record>
+
     </data>
 </odoo>

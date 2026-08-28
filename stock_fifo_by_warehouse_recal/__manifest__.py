@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'FIFO Recalculation by Warehouse',
-    'version': '17.0.3.0.0',
+    'name': 'FIFO Queue Repair by Warehouse',
+    'version': '17.0.4.0.0',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -22,37 +22,48 @@
     'auto_install': False,
     'application': False,
     'description': '''
-FIFO Recalculation by Warehouse - IMPROVED
-===========================================
+FIFO Queue Repair by Warehouse
+==============================
 
-This module provides a wizard for recalculating FIFO valuation layers on a per-warehouse basis.
+Corrects the FIFO queue state stored on stock.valuation.layer, one warehouse at
+a time, by replaying the FIFO engine over the layers that already exist.
 
-✅ NEW IMPROVEMENTS:
-- Uses proper warehouse assignment logic from stock_fifo_by_location
-- Correctly handles inter-warehouse transfers (both shipment and receipt)
-- Supports cross-warehouse return moves
-- Creates proper stock.valuation.layer.usage records for audit trail
-- Handles transit locations properly
+What it writes
+--------------
+`remaining_qty` and `remaining_value`, and nothing else. It never deletes a
+layer, never creates one, and never rewrites `value`.
 
-Features:
-- Select date range for recalculation
-- Filter by warehouses, products, or product categories
-- Preview impact before applying changes (Before/After comparison)
-- Delete and rebuild valuation layers based on FIFO logic
-- Lock recalculated layers to prevent duplicate recalculation
-- Multi-company support
-- Dry run mode for testing
-- Detailed logging of all operations
+Why it works that way
+---------------------
+stock.valuation.layer is the sole book of record for stock value here: product
+categories are FIFO + manual_periodic, so most layers carry no journal entry and
+a wrong number would never be contradicted by accounting.
 
-Use Cases:
-- Period-end closing adjustments
-- Fixing corrupted valuation layers from inter-warehouse transfers
-- Data cleanup and reconciliation after warehouse migrations
-- FIFO queue verification and correction
-- Audit trail reconstruction
+Version 3 and earlier deleted layers in a date range and rebuilt them from
+stock.move. That could not work on this database. Landed cost, manual
+revaluation and position layers have no stock move behind them, so a rebuild
+deleted them and had nothing to recreate them from. It also stamped a fresh
+create_date on every recreated layer, which is the FIFO ordering key, scrambling
+the queue it was meant to fix.
 
-Requirements:
-- stock_fifo_by_location module must be installed
-- User must have Stock Manager rights or System Admin
+Safety
+------
+- Dry run by default; Apply is a separate, confirmed step.
+- The FIFO replay lives on stock.valuation.layer and is shared with the wizard
+  in stock_fifo_by_location, so the two tools cannot disagree.
+- A mismatch gate refuses to apply when the replay disagrees with too much of
+  stored state — a replay that cannot reproduce the data cannot correct it.
+- Product/warehouse pairs are skipped when the queue was reordered by a
+  backdating tool, when FIFO ran short, or when any layer is locked.
+- The backup is mandatory. If it cannot be written in full, nothing is written.
+  Rollback restores the two columns exactly.
+- Outgoing `value` differences are measured and reported for a human to judge.
+  Rewriting them would fabricate COGS.
+- The scheduled action reports and emails; it does not apply.
+
+Access
+------
+Restricted to the `FIFO Repair` group, which is empty on install and is not
+granted by being a stock manager. Both the menus and the actions are gated.
     ''',
 }

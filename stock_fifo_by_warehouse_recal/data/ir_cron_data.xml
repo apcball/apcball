@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        
-        <!-- Scheduled Action for FIFO Recalculation -->
+
+        <!-- Report only. run_scheduled_recalculation() forces dry_run and
+             emails the differences; it never writes a valuation layer.
+             Still shipped inactive: it is only useful once a config with a
+             warehouse scope and a notification recipient exists. -->
         <record id="ir_cron_fifo_recalculation" model="ir.cron">
-            <field name="name">FIFO Recalculation by Warehouse - Scheduled</field>
+            <field name="name">FIFO Queue Check (report only)</field>
             <field name="model_id" ref="model_fifo_recalculation_wizard"/>
             <field name="state">code</field>
             <field name="code">model.run_scheduled_recalculation()</field>
@@ -15,6 +18,6 @@
             <field name="doall" eval="False"/>
             <field name="priority">10</field>
         </record>
-        
+
     </data>
 </odoo>

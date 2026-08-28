@@ -5,20 +5,20 @@ from odoo.exceptions import ValidationError
 
 
 class FifoRecalculationConfig(models.Model):
-    """Configuration for scheduled FIFO recalculation."""
+    """Scope for the scheduled FIFO queue check.
+
+    The scheduled run reports; it never writes. The fields that used to make it
+    write unattended — auto_apply, clear_old_layers, lock_after_recal — are
+    gone.
+    """
     _name = 'fifo.recalculation.config'
     _description = 'FIFO Recalculation Configuration'
 
-    name = fields.Char(
-        string='Config Name',
-        required=True
-    )
-    active = fields.Boolean(
-        default=True
-    )
+    name = fields.Char(string='Config Name', required=True)
+    active = fields.Boolean(default=True)
     is_default = fields.Boolean(
         string='Default Config',
-        help='Use this config for scheduled actions when no specific config is provided'
+        help='Used by the scheduled action when no specific config is given.'
     )
     company_id = fields.Many2one(
         'res.company',
@@ -26,48 +26,20 @@ class FifoRecalculationConfig(models.Model):
         default=lambda self: self.env.company,
         required=True
     )
-    date_from = fields.Datetime(
-        string='Start Date',
-        help='Leave empty to use current date'
-    )
-    date_to = fields.Datetime(
-        string='End Date',
-        help='Leave empty to use current date'
-    )
     warehouse_ids = fields.Many2many(
         'stock.warehouse',
-        string='Warehouses'
+        string='Warehouses',
+        required=True,
+        help='Required. Without it the scheduled check has no scope and does '
+             'nothing.'
     )
-    product_ids = fields.Many2many(
-        'product.product',
-        string='Products'
-    )
-    product_categ_ids = fields.Many2many(
-        'product.category',
-        string='Product Categories'
-    )
-    clear_old_layers = fields.Selection([
-        ('none', 'Do not touch existing layers'),
-        ('range', 'Delete & Rebuild in selected date range'),
-        ('all_product', 'Delete all layers for selected products'),
-    ], string='Existing Layers Handling', default='range')
-    lock_after_recal = fields.Boolean(
-        string='Lock new layers',
-        default=True
-    )
-    batch_size = fields.Integer(
-        string='Batch Size',
-        default=100
-    )
-    auto_apply = fields.Boolean(
-        string='Auto Apply',
-        default=False,
-        help='If checked, recalculation will be applied automatically without preview'
-    )
+    product_ids = fields.Many2many('product.product', string='Products')
+    product_categ_ids = fields.Many2many('product.category', string='Product Categories')
     notification_user_ids = fields.Many2many(
         'res.users',
         string='Notify Users',
-        help='Users to notify after scheduled recalculation'
+        help='Who receives the report. With nobody here the check runs and the '
+             'result is never seen.'
     )
 
     @api.constrains('is_default')
