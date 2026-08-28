@@ -81,6 +81,14 @@ Standard Odoo 17: `models/`, `views/`, `security/`, `data/`, `wizard/`, `report/
 - DB names: `^MOG` pattern (MOG_DEV, MOG_TEST)
 - Use `mail.thread` / `mail.activity.mixin` for models needing chatter
 
+## XML/Form Change Review
+
+- เมื่อแก้ไขไฟล์ `.xml` ที่เกี่ยวข้องกับฟอร์ม วิว รายงาน เมนู หรือโครงสร้างหน้าจอ ต้องตรวจสอบไฟล์ XML อื่นที่เกี่ยวข้องใน local repository ก่อนทุกครั้ง
+- เปรียบเทียบโครงสร้างของไฟล์เป้าหมายกับไฟล์ตัวอย่างที่มีรูปแบบใกล้เคียงกัน เช่น การสืบทอดวิว (`inherit_id`), XPath, ตำแหน่ง field, หน่วยแสดงผล, QWeb template และลำดับการโหลดไฟล์
+- วิเคราะห์ความแตกต่างระหว่างโครงสร้างเดิมกับโครงสร้างของไฟล์อ้างอิงก่อนแก้ไข เพื่อให้การเปลี่ยนแปลงแก้เฉพาะจุดและสอดคล้องกับมาตรฐานที่มีอยู่ใน local repository
+- ห้ามเดาโครงสร้าง XML หรือเพิ่มรูปแบบใหม่โดยไม่ตรวจสอบตัวอย่างที่มีอยู่ก่อน หากไม่พบรูปแบบที่เกี่ยวข้อง ให้ระบุข้อจำกัดและตรวจสอบโครงสร้างของโมดูลหรือไฟล์ต้นทางเพิ่มเติมก่อนดำเนินการ
+- หลังแก้ไขต้องตรวจสอบ XML syntax, XML ID, XPath target, ลำดับการโหลดใน manifest และความเข้ากันได้กับโครงสร้างเดิม
+
 ## Testing quirks
 
 - Odoo `--test-enable` runs tests against the **actual DB** — side effects are irreversible
