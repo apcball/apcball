@@ -5,6 +5,10 @@ from odoo import api, fields, models
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
+    _rec_names_search = [
+        'complete_name', 'email', 'ref', 'vat', 'company_registry', 'partner_code',
+    ]
+
     partner_code = fields.Char(
         string='Partner Code',
         readonly=True,
