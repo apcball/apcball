@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Manufacturing Backdate/Forcedate',
-    'version': '17.0.2.1.0',
+    'version': '17.0.2.2.0',
     'category': 'Manufacturing',
     'summary': 'Allow backdating for Manufacturing Orders and Unbuild Orders with remark support',
     'description': """
@@ -19,6 +19,8 @@ Does not affect normal MO/Unbuild confirmation logic.
         'mrp',
         'stock',
         'stock_account',
+        # accounting_date on stock.valuation.layer
+        'stock_fifo_by_location',
     ],
     'data': [
         'security/security.xml',

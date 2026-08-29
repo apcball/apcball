@@ -69,6 +69,19 @@ class PickingBackDate(models.TransientModel):
                 # ACCOUNTING_DATE_CTE in
                 # stock_fifo_valuation_report/reports/stock_fifo_valuation_report.py.
 
+                # accounting_date is the period-facing date on the layer; it is
+                # what the Stock Valuation list and the FIFO valuation reports
+                # read, and it is safe to move because the FIFO queue does not
+                # order by it. See stock_fifo_by_location/models/
+                # stock_valuation_layer.py.
+                layers = self.env['stock.valuation.layer'].search(
+                    [('stock_move_id', '=', move.id)])
+                if layers:
+                    # sudo: this used to be a raw-SQL / no-op path. Backdate
+                    # users hold the wizard's own group, not necessarily
+                    # write access on stock.valuation.layer.
+                    layers.sudo().write({'accounting_date': self.date})
+
                 movelineObj = self.env['stock.move.line'].search([('move_id','=',move.id)])
 
                 for move_line in movelineObj:

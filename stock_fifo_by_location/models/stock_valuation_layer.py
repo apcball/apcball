@@ -40,6 +40,18 @@ class StockValuationLayer(models.Model):
         help='Original receipt/cost layer that this warehouse position comes from.',
     )
 
+    accounting_date = fields.Datetime(
+        string='Accounting Date',
+        index=True,
+        help='Date this layer belongs to for accounting and reporting. Seeded '
+             'from the landed cost date or the stock move date at creation, and '
+             'rewritten by the backdate wizards.\n\n'
+             'This exists because create_date must NOT be touched: it is the key '
+             '_run_fifo() orders its candidate queue by, so rewriting it '
+             'reorders the FIFO queue after the fact. accounting_date carries '
+             'the period a layer belongs to without disturbing that order.',
+    )
+
     def _compute_warehouse_id(self):
         """
         Override Odoo core's compute method.
@@ -317,9 +329,26 @@ class StockValuationLayer(models.Model):
                 f"move_id={vals.get('stock_move_id')}, product_id={vals.get('product_id')}"
             )
         
+        # Seed the accounting date from the document the layer belongs to.
+        # A landed cost carries its own date; everything else follows the move.
+        # Falls back to create_date in the migration/read path when neither is set.
+        if not vals.get('accounting_date'):
+            if vals.get('stock_landed_cost_id'):
+                lc_date = self.env['stock.landed.cost'].browse(
+                    vals['stock_landed_cost_id']).date
+                if lc_date:
+                    vals['accounting_date'] = fields.Datetime.to_datetime(lc_date)
+            elif vals.get('stock_move_id'):
+                move_date = self.env['stock.move'].browse(vals['stock_move_id']).date
+                if move_date:
+                    vals['accounting_date'] = move_date
+
         # 🔴 CRITICAL: Call super with warehouse_id already in vals
         # This ensures warehouse_id is set before _run_fifo() is called
         layer = super().create(vals)
+
+        if not layer.accounting_date:
+            layer.accounting_date = layer.create_date
         
         # 🔴 VERIFY: Log the actual warehouse_id after creation
         if layer.warehouse_id:

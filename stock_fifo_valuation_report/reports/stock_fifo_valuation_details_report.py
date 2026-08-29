@@ -24,7 +24,11 @@ class StockFifoValuationDetailsReport(models.Model):
     _auto = False
 
     layer_id = fields.Integer(readonly=True, string="Layer ID")
-    create_date = fields.Datetime(readonly=True)
+    create_date = fields.Datetime(readonly=True, string="Created On")
+    # The period the layer belongs to. The rows are already ordered by it; it is
+    # also what the drilldown should display, because create_date does not move
+    # when a document is backdated.
+    acct_date = fields.Datetime(readonly=True, string="Accounting Date")
     product_id = fields.Many2one(comodel_name="product.product", readonly=True)
     product_uom = fields.Many2one(comodel_name="uom.uom", readonly=True)
     product_category = fields.Many2one(comodel_name="product.category", readonly=True)
@@ -78,6 +82,7 @@ class StockFifoValuationDetailsReport(models.Model):
                 0 as id,
                 0 as layer_id,
                 cast(null as timestamp) as create_date,
+                cast(null as timestamp) as acct_date,
                 0 as product_id,
                 0 as product_uom,
                 0 as product_category,

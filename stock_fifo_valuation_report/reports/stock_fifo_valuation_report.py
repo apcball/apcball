@@ -18,20 +18,27 @@ BANGKOK_UTC_OFFSET = timedelta(hours=7)
 # date, so the two concerns are separated: create_date orders the FIFO queue,
 # this expression buckets the period.
 #
-# Order matters. A landed-cost layer carries the stock_move_id of the receipt it
-# adjusts, so falling through to m.date would drag the cost back to the receipt
-# date; lc.date is the date the cost was actually recognised. lc.date is a Date,
-# and `D::timestamp` is D 00:00 UTC, which is D 07:00 in Bangkok — inside
-# Bangkok day D, so it buckets correctly against the UTC bounds computed by
-# _bangkok_day_range_to_utc(). Do NOT subtract the Bangkok offset here; that
-# would push every landed cost back a day.
+# The expression itself now lives on the layer as accounting_date (added by
+# stock_fifo_by_location): seeded at create from the landed cost date or the
+# move date, and rewritten by the backdate wizards. Deriving it here by joining
+# stock_move meant the reports and the Stock Valuation list disagreed about a
+# backdated layer's date; a stored column gives both one answer.
+#
+# A landed-cost layer carries the stock_move_id of the receipt it adjusts, so
+# the seed prefers lc.date — the date the cost was actually recognised — over
+# the receipt's move date. lc.date is a Date, and `D::timestamp` is D 00:00 UTC,
+# which is D 07:00 in Bangkok — inside Bangkok day D, so it buckets correctly
+# against the UTC bounds computed by _bangkok_day_range_to_utc(). Do NOT
+# subtract the Bangkok offset when seeding; that would push every landed cost
+# back a day.
+#
+# COALESCE to create_date still guards layers created before the column existed
+# on a database where the backfill migration has not run yet.
 ACCOUNTING_DATE_CTE = """
     WITH svl AS (
         SELECT l.*,
-            COALESCE(lc.date::timestamp, m.date, l.create_date) AS acct_date
+            COALESCE(l.accounting_date, l.create_date) AS acct_date
         FROM stock_valuation_layer l
-            LEFT JOIN stock_move m ON m.id = l.stock_move_id
-            LEFT JOIN stock_landed_cost lc ON lc.id = l.stock_landed_cost_id
     )
 """
 
