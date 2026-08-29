@@ -666,6 +666,15 @@ class PosLiteOrder(models.Model):
         picking.write({'date_done': doc_date})
         picking.move_ids.write({'date': doc_date})
         picking.move_ids.move_line_ids.write({'date': doc_date})
+        # button_validate() already created the valuation layers stamped "now".
+        # Realign their period date too, else the FIFO valuation report (which
+        # reads accounting_date) disagrees with the backdated moves. create_date
+        # is left untouched on purpose — it is the FIFO queue ordering key.
+        svl_model = self.env['stock.valuation.layer']
+        if 'accounting_date' in svl_model._fields:
+            svls = svl_model.search([('stock_move_id', 'in', picking.move_ids.ids)])
+            if svls:
+                svls.write({'accounting_date': doc_date})
 
     # ─── Actions: Flow ──────────────────────────────────────────
 

@@ -126,7 +126,7 @@
     <template id="report_stock_fifo_valuation_details_lines">
         <div class="act_as_row lines">
             <div class="act_as_cell left">
-                <t t-esc="layer.create_date" t-options="{&quot;widget&quot;: &quot;datetime&quot;}"/>
+                <t t-esc="layer.acct_date" t-options="{&quot;widget&quot;: &quot;datetime&quot;}"/>
             </div>
             <div class="act_as_cell left">
                 <t t-out="layer.display_name"/>

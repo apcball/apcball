@@ -85,11 +85,15 @@ class MrpUnbuild(models.Model):
             ])
 
             if valuation_layers:
-                self.env.cr.execute("""
-                    UPDATE stock_valuation_layer
-                    SET create_date = %s
-                    WHERE id IN %s
-                """, (unbuild.backdate, tuple(valuation_layers.ids)))
+                # create_date used to be rewritten here. It must not be: it is
+                # the key stock.valuation.layer._run_fifo() orders its candidate
+                # queue by, so moving it reorders the FIFO queue after the fact
+                # — layers already consumed at their original cost end up behind
+                # a layer that did not exist when they were consumed.
+                # accounting_date carries the period instead; the Stock
+                # Valuation list and the FIFO valuation reports read it.
+                # sudo keeps the old raw-SQL path's access behaviour.
+                valuation_layers.sudo().write({'accounting_date': unbuild.backdate})
 
                 if unbuild.backdate_remark:
                     for layer in valuation_layers:

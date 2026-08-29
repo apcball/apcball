@@ -47,7 +47,28 @@
                             <group string="Safety">
                                 <field name="dry_run"/>
                                 <field name="include_reordered"/>
-                                <field name="max_mismatch_percent"/>
+                                <field name="max_mismatch_percent"
+                                       invisible="not repair_remaining"/>
+                            </group>
+                        </group>
+
+                        <group>
+                            <group string="Operations">
+                                <field name="repair_remaining"/>
+                                <field name="fix_null_remaining"/>
+                                <field name="fix_negative_remaining"/>
+                                <field name="fix_excess_remaining"/>
+                            </group>
+                            <group string="Diagnostics">
+                                <field name="report_value_residual"/>
+                                <div class="text-muted"
+                                     colspan="2"
+                                     invisible="not fix_negative_remaining and not fix_excess_remaining">
+                                    The reset and the cap are clamps, not
+                                    explanations — they make the number look
+                                    right without saying why it was wrong.
+                                    Read the preview before applying them.
+                                </div>
                             </group>
                         </group>
 
@@ -59,8 +80,13 @@
                             </group>
                             <group>
                                 <field name="value_delta"/>
+                                <field name="narrow_fix_count"/>
                                 <field name="cogs_mismatch_count"/>
                                 <field name="cogs_mismatch_value"/>
+                                <field name="residual_pair_count"
+                                       invisible="not report_value_residual"/>
+                                <field name="residual_value"
+                                       invisible="not report_value_residual"/>
                             </group>
                         </group>
 
@@ -74,6 +100,7 @@
                                         <field name="product_id"/>
                                         <field name="warehouse_id"/>
                                         <field name="layer_change_count" sum="Layers"/>
+                                        <field name="narrow_fix_count" sum="Narrow" optional="show"/>
                                         <field name="qty_before"/>
                                         <field name="qty_after"/>
                                         <field name="diff_qty" sum="Qty Diff"/>

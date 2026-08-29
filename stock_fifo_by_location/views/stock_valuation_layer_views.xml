@@ -8,7 +8,8 @@
             <field name="model">stock.valuation.layer</field>
             <field name="arch" type="xml">
                 <tree>
-                    <field name="create_date"/>
+                    <field name="accounting_date"/>
+                    <field name="create_date" string="Created On" optional="hide"/>
                     <field name="product_id"/>
                     <field name="warehouse_id"/>
                     <field name="origin_valuation_layer_id"/>
@@ -37,7 +38,8 @@
                                 <field name="company_id" readonly="1"/>
                             </group>
                             <group>
-                                <field name="create_date" readonly="1"/>
+                                <field name="accounting_date" readonly="1"/>
+                                <field name="create_date" string="Created On" readonly="1"/>
                                 <field name="quantity" readonly="1"/>
                                 <field name="unit_cost" readonly="1"/>
                                 <field name="position_qty_available" readonly="1"/>
@@ -54,6 +56,26 @@
             </field>
         </record>
         
+        <!-- The Stock Valuation list users actually land on is core's
+             stock_account.stock_valuation_layer_tree, not the standalone tree
+             above (same priority, lower id, so core wins the tiebreak). Put the
+             accounting date on it there, otherwise a backdated layer still
+             shows its insertion date. -->
+        <record id="view_stock_valuation_layer_tree_accounting_date" model="ir.ui.view">
+            <field name="name">stock.valuation.layer.tree.accounting.date</field>
+            <field name="model">stock.valuation.layer</field>
+            <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree"/>
+            <field name="arch" type="xml">
+                <field name="create_date" position="before">
+                    <field name="accounting_date" string="Date"/>
+                </field>
+                <field name="create_date" position="attributes">
+                    <attribute name="string">Created On</attribute>
+                    <attribute name="optional">hide</attribute>
+                </field>
+            </field>
+        </record>
+
         <!-- Inherit Search View: Add warehouse filters and group -->
         <record id="view_inventory_valuation_search_inherit_location" model="ir.ui.view">
             <field name="name">stock.valuation.layer.search.warehouse</field>

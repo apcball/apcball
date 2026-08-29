@@ -40,6 +40,18 @@ class StockValuationLayer(models.Model):
         help='Original receipt/cost layer that this warehouse position comes from.',
     )
 
+    accounting_date = fields.Datetime(
+        string='Accounting Date',
+        index=True,
+        help='Date this layer belongs to for accounting and reporting. Seeded '
+             'from the landed cost date or the stock move date at creation, and '
+             'rewritten by the backdate wizards.\n\n'
+             'This exists because create_date must NOT be touched: it is the key '
+             '_run_fifo() orders its candidate queue by, so rewriting it '
+             'reorders the FIFO queue after the fact. accounting_date carries '
+             'the period a layer belongs to without disturbing that order.',
+    )
+
     def _compute_warehouse_id(self):
         """
         Override Odoo core's compute method.
@@ -317,9 +329,26 @@ class StockValuationLayer(models.Model):
                 f"move_id={vals.get('stock_move_id')}, product_id={vals.get('product_id')}"
             )
         
+        # Seed the accounting date from the document the layer belongs to.
+        # A landed cost carries its own date; everything else follows the move.
+        # Falls back to create_date in the migration/read path when neither is set.
+        if not vals.get('accounting_date'):
+            if vals.get('stock_landed_cost_id'):
+                lc_date = self.env['stock.landed.cost'].browse(
+                    vals['stock_landed_cost_id']).date
+                if lc_date:
+                    vals['accounting_date'] = fields.Datetime.to_datetime(lc_date)
+            elif vals.get('stock_move_id'):
+                move_date = self.env['stock.move'].browse(vals['stock_move_id']).date
+                if move_date:
+                    vals['accounting_date'] = move_date
+
         # 🔴 CRITICAL: Call super with warehouse_id already in vals
         # This ensures warehouse_id is set before _run_fifo() is called
         layer = super().create(vals)
+
+        if not layer.accounting_date:
+            layer.accounting_date = layer.create_date
         
         # 🔴 VERIFY: Log the actual warehouse_id after creation
         if layer.warehouse_id:
@@ -405,11 +434,11 @@ class StockValuationLayer(models.Model):
     # ------------------------------------------------------------------
     # Shared FIFO replay engine
     # ------------------------------------------------------------------
-    # Two repair wizards need to know what the FIFO queue *should* be holding:
-    # stock_valuation_recalculate_wizard here, and the fifo.recalculation.wizard
-    # in stock_fifo_by_warehouse_recal. They must not carry two different
-    # answers to that question, so the replay lives on the model and both call
-    # it. Read-only: it computes, it never writes.
+    # The repair tool needs to know what the FIFO queue *should* be holding.
+    # That is fifo.recalculation.wizard in stock_fifo_by_warehouse_recal, which
+    # absorbed the Recalculate Valuation wizard that used to live here. The
+    # replay stays on the model so the engine has one definition regardless of
+    # who asks. Read-only: it computes, it never writes.
 
     # Quantity below which a layer counts as exhausted. Matches _run_fifo().
     FIFO_QTY_EPSILON = 1e-4
@@ -594,19 +623,26 @@ class StockValuationLayer(models.Model):
                     if move.origin_returned_move_id or move.picking_id.picking_type_code == 'incoming':
                         continue
                 
-                # Calculate total remaining qty at this warehouse BEFORE this layer
+                # Net ledger balance at this warehouse from every OTHER layer.
+                # Must sum immutable `quantity`, not `remaining_qty`: Odoo core
+                # `_run_fifo()` already ran inside super().create() and reduced the
+                # consumed candidates' remaining_qty before this constraint fires,
+                # so summing remaining_qty double-counts this outgoing layer and
+                # falsely blocks issuing the last unit in a warehouse.
+                # `id != layer.id` (not `id <`) so sibling negative layers from a
+                # multi-line POS order / multi-move picking are still counted.
                 domain = [
                     ('product_id', '=', layer.product_id.id),
                     ('warehouse_id', '=', layer.warehouse_id.id),
-                    ('id', '<', layer.id),  # Only layers created before this one
+                    ('id', '!=', layer.id),
                 ]
-                previous_layers = self.search(domain)
-                total_remaining_qty = sum(previous_layers.mapped('remaining_qty'))
-                
+                other_layers = self.search(domain)
+                net_warehouse_balance = sum(other_layers.mapped('quantity'))
+
                 # Check if consumption would make warehouse negative
                 precision_qty = self.env['decimal.precision'].precision_get('Product Unit of Measure')
-                
-                qty_after = total_remaining_qty + layer.quantity  # layer.quantity is negative
+
+                qty_after = net_warehouse_balance + layer.quantity  # layer.quantity is negative
                 
                 # Check validation mode from config
                 validation_mode = self.env['ir.config_parameter'].sudo().get_param(
@@ -624,7 +660,7 @@ class StockValuationLayer(models.Model):
                     error_msg = (
                         f"❌ คลัง {layer.warehouse_id.name} จะติดลบ!\n\n"
                         f"สินค้า: {layer.product_id.display_name}\n"
-                        f"จำนวนคงเหลือปัจจุบัน: {total_remaining_qty:.2f} {layer.product_id.uom_id.name}\n"
+                        f"จำนวนคงเหลือปัจจุบัน: {net_warehouse_balance:.2f} {layer.product_id.uom_id.name}\n"
                         f"พยายามตัดออก: {abs(layer.quantity):.2f} {layer.product_id.uom_id.name}\n"
                         f"จะเหลือ: {qty_after:.2f} {layer.product_id.uom_id.name} (ติดลบ!)\n\n"
                         f"⚠️ ไม่สามารถขายหรือโอนสินค้าได้มากกว่าที่มีในคลังนี้\n\n"

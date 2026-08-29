@@ -1,12 +1,17 @@
 {
     'name': 'buz Stock Picking Backdate',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Extra Tools',
     'author': "10 Orbits",
     'website': "https://www.10orbits.com",
     'summary': 'This module allows you to entry the stock accounting details in backdate.',
     'depends': [
-        'stock','account'
+        'stock',
+        'account',
+        # account_move.stock_move_id
+        'stock_account',
+        # accounting_date on stock.valuation.layer
+        'stock_fifo_by_location',
     ],
     'data': [
         'security/security.xml',

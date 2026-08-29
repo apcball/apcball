@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'FIFO Queue Repair by Warehouse',
-    'version': '17.0.4.0.1',
+    'version': '17.0.5.0.0',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',

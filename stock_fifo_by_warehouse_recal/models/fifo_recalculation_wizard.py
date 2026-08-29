@@ -72,6 +72,51 @@ class FifoRecalculationWizard(models.TransientModel):
     )
 
     # ------------------------------------------------------------------
+    # Operations
+    # ------------------------------------------------------------------
+    # The FIFO replay is the main one. The three narrow fixes below came from
+    # the Recalculate Valuation wizard in stock_fifo_by_location, which had no
+    # preview, no backup and no rollback — they are the same repairs, now with
+    # all three.
+
+    repair_remaining = fields.Boolean(
+        string='Rebuild Remaining Qty/Value from the FIFO replay',
+        default=True,
+        help='The main repair. Replays the FIFO engine per product per '
+             'warehouse and corrects remaining_qty / remaining_value where the '
+             'stored queue disagrees.'
+    )
+    fix_null_remaining = fields.Boolean(
+        string='Set NULL Remaining Value to 0 on outgoing layers',
+        default=False,
+        help='Outgoing layers should carry remaining_value = 0, not NULL. '
+             'Data hygiene: SUM() ignores NULL, so no total moves.'
+    )
+    fix_negative_remaining = fields.Boolean(
+        string='Reset incoming layers with negative remaining',
+        default=False,
+        help='An incoming layer with remaining_qty < 0 means more was consumed '
+             'from it than it ever held. Resetting it to its original quantity '
+             'hides the over-consumption rather than explaining it, so read the '
+             'preview before enabling this.'
+    )
+    fix_excess_remaining = fields.Boolean(
+        string='Cap incoming layers whose remaining exceeds their quantity',
+        default=False,
+        help='Caps remaining_qty at the layer quantity where it somehow '
+             'exceeds it. Like the reset above, this is a clamp, not an '
+             'explanation.'
+    )
+    report_value_residual = fields.Boolean(
+        string='Report value residual (read-only)',
+        default=True,
+        help='Lists product/warehouse pairs whose net quantity is ~0 but whose '
+             'value is not explained by zero-quantity layers. Reports only — '
+             'the fix depends on why the residual is there, and forcing the '
+             'total to zero by rewriting outgoing values would only hide it.'
+    )
+
+    # ------------------------------------------------------------------
     # Safety
     # ------------------------------------------------------------------
 
@@ -143,6 +188,19 @@ class FifoRecalculationWizard(models.TransientModel):
         digits='Product Price',
         readonly=True
     )
+    narrow_fix_count = fields.Integer(
+        string='Layers Fixed by the Narrow Repairs',
+        readonly=True
+    )
+    residual_pair_count = fields.Integer(
+        string='Pairs With Unexplained Residual Value',
+        readonly=True
+    )
+    residual_value = fields.Float(
+        string='Unexplained Residual Total',
+        digits='Product Price',
+        readonly=True
+    )
 
     excel_file = fields.Binary(string='Excel Export', readonly=True)
     excel_filename = fields.Char(readonly=True)
@@ -170,6 +228,12 @@ class FifoRecalculationWizard(models.TransientModel):
         for record in self:
             if not 0 < record.max_mismatch_percent <= 100:
                 raise UserError(_('Mismatch gate must be between 0 and 100 percent.'))
+
+    def _write_operations(self):
+        """The enabled operations that would change data."""
+        self.ensure_one()
+        return (self.repair_remaining, self.fix_null_remaining,
+                self.fix_negative_remaining, self.fix_excess_remaining)
 
     # ------------------------------------------------------------------
     # Scope resolution
@@ -220,6 +284,10 @@ class FifoRecalculationWizard(models.TransientModel):
     def action_preview(self):
         """Replay FIFO across the selected scope and report what would change."""
         self.ensure_one()
+
+        if not any(self._write_operations()) and not self.report_value_residual:
+            raise UserError(_('Select at least one operation.'))
+
         self.line_ids.unlink()
 
         log = [
@@ -249,6 +317,9 @@ class FifoRecalculationWizard(models.TransientModel):
             'pairs_blocked': analysis['pairs_blocked'],
             'cogs_mismatch_count': analysis['cogs_mismatch_count'],
             'cogs_mismatch_value': analysis['cogs_mismatch_value'],
+            'narrow_fix_count': analysis['narrow_fix_count'],
+            'residual_pair_count': analysis['residual_pair_count'],
+            'residual_value': analysis['residual_value'],
         })
         return self._reopen()
 
@@ -277,7 +348,12 @@ class FifoRecalculationWizard(models.TransientModel):
         cogs_mismatch_value = 0.0
         value_delta = 0.0
 
-        for warehouse in self.warehouse_ids:
+        if not self.repair_remaining:
+            log.append('FIFO replay is switched off; only the narrow repairs '
+                       'below were considered.')
+
+        for warehouse in (self.warehouse_ids if self.repair_remaining
+                          else self.env['stock.warehouse']):
             product_ids = self._scoped_product_ids(warehouse)
             log.append('--- %s: %s products with layers ---'
                        % (warehouse.name, len(product_ids)))
@@ -378,23 +454,208 @@ class FifoRecalculationWizard(models.TransientModel):
 
         log.append('')
         log.append('Layers scanned: %s' % layers_scanned)
-        log.append('Layers to correct: %s' % len(changes))
+        log.append('Layers to correct from the replay: %s' % len(changes))
         log.append('Product/warehouse pairs skipped: %s' % pairs_blocked)
         log.append('Net change in remaining value: %.2f' % value_delta)
         log.append('Outgoing layers whose value disagrees with the replay: '
                    '%s (%.2f) — reported only, never written'
                    % (cogs_mismatch_count, cogs_mismatch_value))
 
+        # The narrow repairs run after the replay so the replay wins wherever
+        # both would touch the same layer: it derives the answer, they clamp.
+        already = {change[0] for change in changes}
+        replay_change_count = len(changes)
+        narrow, narrow_pairs = self._collect_narrow_fixes(already, log)
+        changes.extend(narrow)
+
+        # Put the narrow repairs on the preview lines too, so what the wizard
+        # would write is visible per product/warehouse and not only as a total
+        # in the log. They touch layers the replay has no answer for, so their
+        # deltas add to the pair's rather than restating it.
+        by_pair = {(vals['product_id'], vals['warehouse_id']): vals
+                   for vals in line_vals}
+        for (product_id, warehouse_id), (count, dqty, dvalue) in narrow_pairs.items():
+            vals = by_pair.get((product_id, warehouse_id))
+            if vals is None:
+                vals = {
+                    'product_id': product_id,
+                    'warehouse_id': warehouse_id,
+                    'qty_before': 0.0,
+                    'value_before': 0.0,
+                    'qty_after': 0.0,
+                    'value_after': 0.0,
+                    'diff_qty': 0.0,
+                    'diff_value': 0.0,
+                    'layer_change_count': 0,
+                    'shortage_qty': 0.0,
+                    'reordered_layers': 0,
+                    'cogs_mismatch_count': 0,
+                    'cogs_mismatch_value': 0.0,
+                    'skip_reason': '',
+                }
+                line_vals.append(vals)
+                by_pair[(product_id, warehouse_id)] = vals
+            vals['narrow_fix_count'] = count
+            vals['qty_after'] += dqty
+            vals['value_after'] += dvalue
+            vals['diff_qty'] += dqty
+            vals['diff_value'] += dvalue
+            vals['layer_change_count'] += count
+            value_delta += dvalue
+
+        if narrow:
+            log.append('Layers to correct from the narrow repairs: %s across '
+                       '%s product/warehouse pairs'
+                       % (len(narrow), len(narrow_pairs)))
+            log.append('Net change in remaining value including them: %.2f'
+                       % value_delta)
+
+        residual_rows = self._collect_value_residual(log)
+
         return {
             'changes': changes,
             'line_vals': line_vals,
             'layers_scanned': layers_scanned,
             'layers_considered': layers_considered,
+            'replay_change_count': replay_change_count,
             'pairs_blocked': pairs_blocked,
             'cogs_mismatch_count': cogs_mismatch_count,
             'cogs_mismatch_value': cogs_mismatch_value,
             'value_delta': value_delta,
+            'narrow_fix_count': len(narrow),
+            'residual_pair_count': len(residual_rows),
+            'residual_value': sum(row[4] for row in residual_rows),
         }
+
+    # ------------------------------------------------------------------
+    # Narrow repairs
+    # ------------------------------------------------------------------
+
+    def _collect_narrow_fixes(self, already, log):
+        """Per-layer clamps that do not come from the replay.
+
+        These were the whole of the old Recalculate Valuation wizard in
+        stock_fifo_by_location, which applied them with no preview and no way
+        back. They are the same repairs, now inside this wizard's backup and
+        rollback. Locked layers are exempt, and any layer the replay already
+        has an answer for is left to the replay.
+
+        Returns (changes, per_pair), where per_pair maps
+        (product_id, warehouse_id) to [layer count, qty delta, value delta] so
+        the caller can put these on the preview lines. They are deliberately
+        not subject to the per-pair gate the replay is: the gate exists because
+        the replay derives a whole queue and can be wrong about it, while these
+        are explicit clamps the user ticked, on one layer at a time.
+        """
+        self.ensure_one()
+        changes = []
+        per_pair = {}
+        warehouse_ids = tuple(self.warehouse_ids.ids)
+
+        specs = []
+        if self.fix_null_remaining:
+            specs.append((
+                'Outgoing layers with NULL remaining_value',
+                'quantity < 0 AND remaining_value IS NULL',
+                lambda qty, value, rem_qty, rem_value: (0.0, 0.0),
+            ))
+        if self.fix_negative_remaining:
+            specs.append((
+                'Incoming layers with negative remaining',
+                'quantity > 0 AND remaining_qty < 0',
+                lambda qty, value, rem_qty, rem_value: (qty, value),
+            ))
+        if self.fix_excess_remaining:
+            specs.append((
+                'Incoming layers with remaining above quantity',
+                'quantity > 0 AND remaining_qty > quantity',
+                lambda qty, value, rem_qty, rem_value: (qty, value),
+            ))
+
+        for title, condition, new_values in specs:
+            self.env.cr.execute("""
+                SELECT id, product_id, warehouse_id,
+                       quantity, value, remaining_qty, remaining_value
+                FROM stock_valuation_layer
+                WHERE %s
+                  AND warehouse_id IN %%s AND company_id = %%s
+                  AND locked IS NOT TRUE
+                ORDER BY id
+            """ % condition, (warehouse_ids, self.company_id.id))
+
+            found = 0
+            for row in self.env.cr.fetchall():
+                (layer_id, product_id, warehouse_id,
+                 qty, value, rem_qty, rem_value) = row
+                if layer_id in already:
+                    continue
+                cur_qty = float(rem_qty or 0.0)
+                cur_value = float(rem_value or 0.0)
+                new_qty, new_value = new_values(
+                    float(qty or 0.0), float(value or 0.0), cur_qty, cur_value)
+                if (abs(cur_qty - new_qty) > QTY_EPSILON
+                        or abs(cur_value - new_value) > VALUE_EPSILON
+                        or rem_value is None):
+                    changes.append((layer_id, cur_qty, cur_value, new_qty, new_value))
+                    already.add(layer_id)
+                    found += 1
+                    pair = per_pair.setdefault(
+                        (product_id, warehouse_id), [0, 0.0, 0.0])
+                    pair[0] += 1
+                    pair[1] += new_qty - cur_qty
+                    pair[2] += new_value - cur_value
+            log.append('%s: %s layers' % (title, found))
+
+        return changes, per_pair
+
+    def _collect_value_residual(self, log):
+        """Pairs holding value with no quantity behind it. Read-only.
+
+        A landed-cost or revaluation layer leaves value behind on purpose, so
+        the expected residual is the sum of the zero-quantity layers, not zero.
+        What is listed here is the part that is not explained that way.
+        """
+        self.ensure_one()
+        if not self.report_value_residual:
+            return []
+
+        self.env.cr.execute("""
+            SELECT warehouse_id, product_id,
+                   SUM(value) AS total_value,
+                   COALESCE(SUM(value) FILTER (WHERE quantity = 0), 0) AS zero_qty_value
+            FROM stock_valuation_layer
+            WHERE warehouse_id IN %s AND company_id = %s
+            GROUP BY warehouse_id, product_id
+            HAVING ABS(SUM(quantity)) < 0.01
+               AND ABS(SUM(value) - COALESCE(SUM(value) FILTER (WHERE quantity = 0), 0)) > 0.01
+            ORDER BY ABS(SUM(value) - COALESCE(SUM(value) FILTER (WHERE quantity = 0), 0)) DESC
+        """, (tuple(self.warehouse_ids.ids), self.company_id.id))
+
+        rows = [
+            (warehouse_id, product_id, float(total), float(zero_qty),
+             float(total) - float(zero_qty))
+            for warehouse_id, product_id, total, zero_qty in self.env.cr.fetchall()
+        ]
+
+        log.append('')
+        log.append('Value residual (read-only): %s product/warehouse pairs, '
+                   '%.2f unexplained' % (len(rows), sum(r[4] for r in rows)))
+        for warehouse_id, product_id, total, zero_qty, unexplained in rows[:25]:
+            log.append('    %-34s %-16s total=%12.2f zero-qty=%12.2f '
+                       'unexplained=%12.2f' % (
+                           self.env['product.product'].browse(
+                               product_id).display_name[:34],
+                           (self.env['stock.warehouse'].browse(
+                               warehouse_id).name or '-')[:16],
+                           total, zero_qty, unexplained))
+        if len(rows) > 25:
+            log.append('    ... and %s more.' % (len(rows) - 25))
+        if rows:
+            log.append('    These are reported, never auto-corrected: the fix '
+                       'depends on why the residual is there, and rewriting '
+                       'outgoing values to force a zero total would only hide '
+                       'it.')
+        return rows
 
     def _read_stored(self, layer_ids):
         if not layer_ids:
@@ -431,7 +692,10 @@ class FifoRecalculationWizard(models.TransientModel):
         if not considered:
             return False
 
-        rate = 100.0 * len(analysis['changes']) / considered
+        # Counted on the replay's own corrections. The narrow repairs are
+        # explicit per-layer clamps the user asked for, not evidence about
+        # whether the replay models the engine correctly.
+        rate = 100.0 * analysis['replay_change_count'] / considered
         log.append('Mismatch rate: %.2f%% (gate: %.2f%%)'
                    % (rate, self.max_mismatch_percent))
 
@@ -467,6 +731,10 @@ class FifoRecalculationWizard(models.TransientModel):
             raise UserError(_('Run Preview first.'))
         if self.block_reason:
             raise UserError(self.block_reason)
+        if not any(self._write_operations()):
+            raise UserError(_(
+                'Only the read-only residual report is selected. There is '
+                'nothing to apply.'))
 
         log = [
             '',
@@ -507,7 +775,10 @@ class FifoRecalculationWizard(models.TransientModel):
         self.env['stock.valuation.layer'].invalidate_model(
             ['remaining_qty', 'remaining_value'])
 
-        log.append('Applied %s layer corrections.' % len(changes))
+        log.append('Applied %s layer corrections (%s from the FIFO replay, '
+                   '%s from the narrow repairs).'
+                   % (len(changes), analysis['replay_change_count'],
+                      analysis['narrow_fix_count']))
         log.append('Net change in remaining value: %.2f' % analysis['value_delta'])
         log.append('`value` was not touched on any layer.')
 
@@ -516,6 +787,7 @@ class FifoRecalculationWizard(models.TransientModel):
             'backup_id': backup.id,
             'layers_changed': len(changes),
             'value_delta': analysis['value_delta'],
+            'narrow_fix_count': analysis['narrow_fix_count'],
             'log_text': (self.log_text or '') + '\n' + '\n'.join(log),
         })
         return self._reopen()
@@ -739,6 +1011,12 @@ class FifoRecalculationWizardLine(models.TransientModel):
     diff_value = fields.Float(string='Value Diff', digits='Product Price')
 
     layer_change_count = fields.Integer(string='Layers to Fix')
+    narrow_fix_count = fields.Integer(
+        string='From Narrow Repairs',
+        help='How many of the layers above come from the NULL / negative / '
+             'excess clamps rather than from the FIFO replay. These are not '
+             'held back by the skip reason: the gate guards the replay, which '
+             'derives a whole queue, not a per-layer clamp the user ticked.')
     shortage_qty = fields.Float(
         string='FIFO Shortage', digits='Product Unit of Measure',
         help='Quantity consumed with nothing left in the queue to consume it '

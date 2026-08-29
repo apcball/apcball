@@ -120,6 +120,11 @@ class MrpProduction(models.Model):
                 # ACCOUNTING_DATE_CTE in
                 # stock_fifo_valuation_report/reports/stock_fifo_valuation_report.py.
 
+                # accounting_date is the period-facing date on the layer: the
+                # Stock Valuation list and the FIFO valuation reports read it,
+                # and moving it does not disturb the FIFO queue.
+                valuation_layers.sudo().write({'accounting_date': production.backdate})
+
                 # Add remark to description
                 if production.backdate_remark:
                     for layer in valuation_layers:
