@@ -1,6 +1,6 @@
 {
     'name': 'Stock FIFO by Warehouse (Transfer ≠ Consumption)',
-    'version': '17.0.2.4.0',
+    'version': '17.0.2.5.0',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -20,7 +20,6 @@
         'data/concurrency_config.xml',
         'views/stock_valuation_layer_views.xml',
         'views/stock_quant_views.xml',
-        'wizard/stock_valuation_recalculate_wizard_views.xml',
         'wizard/stock_shortage_resolution_wizard_views.xml',
         'report/landed_cost_distribution_report_views.xml',
     ],

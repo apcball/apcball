@@ -434,11 +434,11 @@ class StockValuationLayer(models.Model):
     # ------------------------------------------------------------------
     # Shared FIFO replay engine
     # ------------------------------------------------------------------
-    # Two repair wizards need to know what the FIFO queue *should* be holding:
-    # stock_valuation_recalculate_wizard here, and the fifo.recalculation.wizard
-    # in stock_fifo_by_warehouse_recal. They must not carry two different
-    # answers to that question, so the replay lives on the model and both call
-    # it. Read-only: it computes, it never writes.
+    # The repair tool needs to know what the FIFO queue *should* be holding.
+    # That is fifo.recalculation.wizard in stock_fifo_by_warehouse_recal, which
+    # absorbed the Recalculate Valuation wizard that used to live here. The
+    # replay stays on the model so the engine has one definition regardless of
+    # who asks. Read-only: it computes, it never writes.
 
     # Quantity below which a layer counts as exhausted. Matches _run_fifo().
     FIFO_QTY_EPSILON = 1e-4
