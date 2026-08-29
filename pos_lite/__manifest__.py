@@ -1,6 +1,6 @@
 {
     'name': 'POS Lite',
-    'version': '17.0.3.21.0',
+    'version': '17.0.3.21.1',
     'category': 'Sales',
     'summary': 'Lightweight form-based order entry for phone, LINE, and walk-in orders',
     'description': """
