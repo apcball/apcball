@@ -623,19 +623,26 @@ class StockValuationLayer(models.Model):
                     if move.origin_returned_move_id or move.picking_id.picking_type_code == 'incoming':
                         continue
                 
-                # Calculate total remaining qty at this warehouse BEFORE this layer
+                # Net ledger balance at this warehouse from every OTHER layer.
+                # Must sum immutable `quantity`, not `remaining_qty`: Odoo core
+                # `_run_fifo()` already ran inside super().create() and reduced the
+                # consumed candidates' remaining_qty before this constraint fires,
+                # so summing remaining_qty double-counts this outgoing layer and
+                # falsely blocks issuing the last unit in a warehouse.
+                # `id != layer.id` (not `id <`) so sibling negative layers from a
+                # multi-line POS order / multi-move picking are still counted.
                 domain = [
                     ('product_id', '=', layer.product_id.id),
                     ('warehouse_id', '=', layer.warehouse_id.id),
-                    ('id', '<', layer.id),  # Only layers created before this one
+                    ('id', '!=', layer.id),
                 ]
-                previous_layers = self.search(domain)
-                total_remaining_qty = sum(previous_layers.mapped('remaining_qty'))
-                
+                other_layers = self.search(domain)
+                net_warehouse_balance = sum(other_layers.mapped('quantity'))
+
                 # Check if consumption would make warehouse negative
                 precision_qty = self.env['decimal.precision'].precision_get('Product Unit of Measure')
-                
-                qty_after = total_remaining_qty + layer.quantity  # layer.quantity is negative
+
+                qty_after = net_warehouse_balance + layer.quantity  # layer.quantity is negative
                 
                 # Check validation mode from config
                 validation_mode = self.env['ir.config_parameter'].sudo().get_param(
@@ -653,7 +660,7 @@ class StockValuationLayer(models.Model):
                     error_msg = (
                         f"❌ คลัง {layer.warehouse_id.name} จะติดลบ!\n\n"
                         f"สินค้า: {layer.product_id.display_name}\n"
-                        f"จำนวนคงเหลือปัจจุบัน: {total_remaining_qty:.2f} {layer.product_id.uom_id.name}\n"
+                        f"จำนวนคงเหลือปัจจุบัน: {net_warehouse_balance:.2f} {layer.product_id.uom_id.name}\n"
                         f"พยายามตัดออก: {abs(layer.quantity):.2f} {layer.product_id.uom_id.name}\n"
                         f"จะเหลือ: {qty_after:.2f} {layer.product_id.uom_id.name} (ติดลบ!)\n\n"
                         f"⚠️ ไม่สามารถขายหรือโอนสินค้าได้มากกว่าที่มีในคลังนี้\n\n"

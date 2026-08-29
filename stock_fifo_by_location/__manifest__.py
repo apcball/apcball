@@ -1,6 +1,6 @@
 {
     'name': 'Stock FIFO by Warehouse (Transfer ≠ Consumption)',
-    'version': '17.0.2.5.0',
+    'version': '17.0.2.5.1',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
