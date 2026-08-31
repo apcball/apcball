@@ -47,30 +47,23 @@ class StockCardController(http.Controller):
                     company_ids=company_ids,
                     show_movements_only=show_movements_only,
                 )
-
-                output = io.BytesIO()
-                workbook = xlsxwriter.Workbook(output, {"in_memory": True})
-                fmts = {
-                    "header": workbook.add_format({"bold": True, "bg_color": "#D9D9D9", "border": 1}),
-                    "num": workbook.add_format({"num_format": "#,##0.00", "border": 1}),
-                    "date": workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1}),
-                    "text": workbook.add_format({"border": 1}),
-                }
-                self._write_all_stock_card_sheet(workbook, fmts, rows)
-                workbook.close()
-                output.seek(0)
-
                 filename = "Stock_Card_All_%s_%s.xlsx" % (date_from, date_to)
-                return request.make_response(
-                    output.getvalue(),
-                    headers=[
-                        ("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-                        ("Content-Disposition", content_disposition(filename)),
-                    ],
-                )
+                return self._flat_sheet_response(rows, filename)
 
             loc_ids = [int(x) for x in location_ids_param.split(",") if x] if location_ids_param else []
             wh_ids = [int(x) for x in warehouse_ids_param.split(",") if x] if warehouse_ids_param else []
+
+            if product_id_param and not loc_ids and not wh_ids:
+                product = request.env["product.product"].browse(int(product_id_param))
+                rows = engine.get_product_all_locations_lines(
+                    int(product_id_param), date_from, date_to,
+                    company_ids=company_ids,
+                    show_movements_only=show_movements_only,
+                )
+                filename = "Stock_Card_%s_AllLoc_%s_%s.xlsx" % (
+                    product.default_code or product.id, date_from, date_to,
+                )
+                return self._flat_sheet_response(rows, filename)
 
             sheets = []  # list of (label, scope_ids)
             for warehouse in request.env["stock.warehouse"].browse(wh_ids):
@@ -140,6 +133,27 @@ class StockCardController(http.Controller):
             return request.make_response(
                 json.dumps(error), headers=[("Content-Type", "application/json")], status=400
             )
+
+    def _flat_sheet_response(self, rows, filename):
+        """Single-sheet xlsx (14-column 'All' layout) from a flat rows list."""
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+        fmts = {
+            "header": workbook.add_format({"bold": True, "bg_color": "#D9D9D9", "border": 1}),
+            "num": workbook.add_format({"num_format": "#,##0.00", "border": 1}),
+            "date": workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1}),
+            "text": workbook.add_format({"border": 1}),
+        }
+        self._write_all_stock_card_sheet(workbook, fmts, rows)
+        workbook.close()
+        output.seek(0)
+        return request.make_response(
+            output.getvalue(),
+            headers=[
+                ("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                ("Content-Disposition", content_disposition(filename)),
+            ],
+        )
 
     def _write_all_stock_card_sheet(self, workbook, fmts, rows, sheet_name="Stock Card"):
         sheet = workbook.add_worksheet(sheet_name)

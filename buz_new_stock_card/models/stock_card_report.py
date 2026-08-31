@@ -457,6 +457,105 @@ class StockCardReport(models.AbstractModel):
         return rows
 
     @api.model
+    def get_product_all_locations_lines(
+        self, product_id, date_from, date_to,
+        company_ids=None, show_movements_only=False,
+    ):
+        """Flat rows for one product across every internal location where it has
+        a done move in the date range OR currently holds non-zero qty. One sheet,
+        one row per transaction, grouped/sorted by location (same row shape as
+        ``get_all_stock_card_lines``). Used when the export wizard is run with a
+        product but no warehouse/location."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+
+        internal_location_ids = set(self.env["stock.location"].search([
+            ("usage", "=", "internal"),
+            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
+        ]).ids)
+
+        MoveLine = self.env["stock.move.line"]
+        range_domain = [
+            ("state", "=", "done"),
+            ("product_id", "=", product_id),
+            ("company_id", "in", company_ids),
+            ("date", ">=", start_utc),
+            ("date", "<", end_utc),
+        ]
+        moved_location_ids = set()
+        for field_name in ("location_id", "location_dest_id"):
+            groups = MoveLine.read_group(
+                range_domain + [(field_name, "in", list(internal_location_ids))],
+                [field_name], [field_name],
+            )
+            for group in groups:
+                loc = group[field_name]
+                if loc:
+                    moved_location_ids.add(loc[0])
+
+        onhand_location_ids = {
+            q["location_id"][0]
+            for q in self.env["stock.quant"].search_read([
+                ("product_id", "=", product_id),
+                ("quantity", "!=", 0),
+                ("location_id", "in", list(internal_location_ids)),
+                ("company_id", "in", company_ids),
+            ], ["location_id"])
+            if q["location_id"]
+        }
+
+        location_ids = moved_location_ids | onhand_location_ids
+        if not location_ids:
+            return []
+
+        product = self.env["product.product"].browse(product_id)
+        default_code, product_name = product.default_code or "", product.name
+        Location = self.env["stock.location"]
+        location_names = {
+            loc.id: loc.display_name for loc in Location.browse(list(location_ids))
+        }
+
+        rows = []
+        for location_id in location_ids:
+            scope_location_ids = [location_id]
+            location_label = location_names[location_id]
+            opening_balance = self._get_opening_balance(
+                product_id, scope_location_ids, start_utc,
+            )
+            product_rows, _closing = self._build_product_scope_rows(
+                scope_location_ids, product_id, opening_balance,
+                start_utc, end_utc, company_ids, show_movements_only,
+                internal_location_ids, location_label, default_code, product_name,
+            )
+            if product_rows:
+                rows.extend(product_rows)
+            elif not show_movements_only:
+                rows.append({
+                    "location_label": location_label,
+                    "product_default_code": default_code,
+                    "product_name": product_name,
+                    "date": "",
+                    "doc_type": "",
+                    "doc_number": "",
+                    "opening": opening_balance,
+                    "in": 0.0,
+                    "out": 0.0,
+                    "balance": opening_balance,
+                    "from_location": "",
+                    "to_location": "",
+                    "note": "",
+                    "_sort_key": (location_label, default_code or "", product_name or "", "", 0),
+                })
+
+        rows.sort(key=lambda r: r["_sort_key"])
+        for idx, row in enumerate(rows):
+            row["seq"] = idx + 1
+            del row["_sort_key"]
+        return rows
+
+    @api.model
     def get_scoped_stock_card_lines(
         self, scope_location_ids, date_from, date_to, scope_label=None,
         company_ids=None, show_movements_only=False,

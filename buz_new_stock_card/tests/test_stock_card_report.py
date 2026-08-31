@@ -356,6 +356,54 @@ class TestStockCardReport(TransactionCase):
             "%s -> %s queries (%.1f/product)" % (one_product, three_products, per_product),
         )
 
+    # ------------------------------------------------------------------
+    # Product across all locations (product, no warehouse/location)
+    # ------------------------------------------------------------------
+
+    def test_product_all_locations_splits_by_location(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
+        self._mk_move(self.loc_a, self.loc_b, 40.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_b, self.loc_customer, 10.0, self._dt("2024-06-20 08:00:00"))
+
+        rows = self.engine.get_product_all_locations_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        by_loc = {}
+        for row in rows:
+            by_loc.setdefault(row["location_label"], []).append(row)
+
+        self.assertIn("Test Shelf A", " ".join(by_loc))
+        a_rows = [r for k, v in by_loc.items() if "Shelf A" in k for r in v]
+        b_rows = [r for k, v in by_loc.items() if "Shelf B" in k for r in v]
+
+        self.assertEqual(a_rows[0]["opening"], 100.0)
+        self.assertEqual(a_rows[0]["out"], 40.0)
+        self.assertEqual(a_rows[0]["balance"], 60.0)
+
+        self.assertEqual(b_rows[0]["in"], 40.0)
+        self.assertEqual(b_rows[0]["balance"], 40.0)
+        self.assertEqual(b_rows[1]["out"], 10.0)
+        self.assertEqual(b_rows[1]["balance"], 30.0)
+
+        self.assertEqual([r["seq"] for r in rows], list(range(1, len(rows) + 1)))
+
+    def test_product_all_locations_idle_stock_marker_row(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 25.0, self._dt("2024-03-01 08:00:00"))
+        self.env["stock.quant"]._update_available_quantity(self.product, self.loc_a, 25.0)
+
+        rows = self.engine.get_product_all_locations_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["opening"], 25.0)
+        self.assertEqual(rows[0]["balance"], 25.0)
+        self.assertEqual(rows[0]["date"], "")
+
+        rows_moves = self.engine.get_product_all_locations_lines(
+            self.product.id, "2024-06-01", "2024-06-30", show_movements_only=True,
+        )
+        self.assertEqual(rows_moves, [])
+
     def test_resolve_multi_location_scope_expands_parent_location(self):
         scope = self.engine.resolve_multi_location_scope([self.loc_root.id], [])
         self.assertIn(self.loc_a.id, scope)
