@@ -5,6 +5,7 @@
         <field name="model">buz.it.asset</field>
         <field name="arch" type="xml">
             <tree decoration-muted="state == 'retired'" decoration-danger="state in ('lost', 'repair')">
+                <field name="image_1920" widget="image" optional="hide" options="{'preview_image': 'image_1920', 'zoom': true, 'zoom_delay': 0, 'size': [32, 32]}"/>
                 <field name="asset_tag"/>
                 <field name="legacy_asset_tag" optional="hide"/>
                 <field name="name"/>
@@ -57,6 +58,7 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box"/>
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_1920'}"/>
                     <div class="oe_title"><h1><field name="name" string="ชื่ออุปกรณ์ (Item Name)" placeholder="ชื่ออุปกรณ์"/></h1></div>
                     <group class="buz-asset-form-details">
                         <group class="buz-asset-identification" string="ข้อมูลประจำทรัพย์สิน (Asset Identification)">
@@ -68,7 +70,7 @@
                         <group class="buz-asset-device-information" string="ข้อมูลอุปกรณ์ (Device Information)">
                             <field name="manufacturer" string="ยี่ห้อ (Brand / Manufacturer)"/>
                             <field name="model" string="รุ่น (Model)"/>
-                            <field name="serial_number" string="หมายเลขเครื่อง (Serial Number)" required="1"/>
+                            <field name="serial_number" string="หมายเลขเครื่อง (Serial Number)"/>
                         </group>
                     </group>
                     <field name="spec_profile" invisible="1"/>
