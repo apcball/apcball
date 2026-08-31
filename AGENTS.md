@@ -21,26 +21,7 @@ Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service
 Requires SSH aliases in `~/.ssh/config`:
 - `dev` — DEV server (Docker `odoo:17.0`)
 
-### Deploy to DEV without an interactive terminal prompt
-
-From PowerShell, run the repository script directly in the user's terminal:
-
-```powershell
-# .\deploy-dev.ps1 -Module buz_it_helpdesk
-```
-
-The script uses SSH key authentication and non-interactive SSH options. If it
-fails immediately with an SSH error, configure the passwordless key for
-`root@217.216.32.33`; do not remove `BatchMode`, since waiting for a password
-causes automation terminals to appear frozen.
-
-
-
 ```bash
-# Deploy to DEV server from Windows PowerShell (when rsync is unavailable)
-# .\deploy-dev.ps1 -Module <module>
-
-
 # Test on live DB (DEV only) — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.
 ssh -o BatchMode=yes -o ConnectTimeout=15 root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --test-enable --stop-after-init --no-http"
 
