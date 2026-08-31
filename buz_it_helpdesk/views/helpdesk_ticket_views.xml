@@ -147,7 +147,6 @@
                     <button name="action_resume_work" string="Resume Work" type="object" class="btn-primary" invisible="not show_resume_work_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_mark_resolved" string="Mark Resolved" type="object" class="btn-success" invisible="not show_resolve_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_confirm_resolution" string="Confirm Resolution" type="object" class="btn-primary" invisible="not show_confirm_resolution_button" groups="buz_it_helpdesk.group_it_requester"/>
-                    <button name="action_request_rework" string="Request Rework" type="object" class="btn-secondary" invisible="not show_confirm_resolution_button" groups="buz_it_helpdesk.group_it_requester"/>
                     <button name="action_close_ticket" string="Close Ticket" type="object" class="btn-danger" invisible="not show_close_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_contact_user_via_line" string="Contact User via LINE" type="object" class="btn-secondary" invisible="not show_contact_line_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_open_line_connection" string="LINE Connection" type="object" class="btn-secondary" invisible="not show_line_connection_shortcut" groups="buz_it_helpdesk.group_it_requester"/>
@@ -159,7 +158,6 @@
                     <field name="show_resolve_button" invisible="1"/>
                     <field name="show_close_button" invisible="1"/>
                     <field name="show_confirm_resolution_button" invisible="1"/>
-
                     <field name="show_contact_line_button" invisible="1"/>
                     <field name="show_line_connection_shortcut" invisible="1"/>
                     <field name="is_editable" invisible="1"/>

@@ -624,49 +624,6 @@ class HelpdeskTicket(models.Model):
             )
         return True
 
-    def action_request_rework(self):
-        self.ensure_one()
-        if self.requester_id != self.env.user:
-            raise UserError(_(
-                'Only the requester can request more work on this ticket.'
-            ))
-        if self.stage_id != self.env.ref('buz_it_helpdesk.stage_resolved'):
-            raise UserError(_(
-                'Only Resolved tickets can be sent back for more work.'
-            ))
-        activities = self._resolution_confirmation_activities()
-        if not activities:
-            raise UserError(_(
-                'There is no pending resolution confirmation for this ticket.'
-            ))
-
-        activities.action_done()
-        self.with_context(buz_helpdesk_transition=True).write({
-            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
-        })
-        self.message_post(
-            body=_(
-                'The requester reported that the issue is not fully resolved. '
-                'IT should continue working on this ticket.'
-            ),
-            partner_ids=(
-                [self.assigned_user_id.partner_id.id]
-                if self.assigned_user_id else []
-            ),
-            subtype_xmlid='mail.mt_comment',
-        )
-        if self.assigned_user_id:
-            self.activity_schedule(
-                'mail.mail_activity_data_todo',
-                user_id=self.assigned_user_id.id,
-                summary=_('Requester requested more work'),
-                note=_(
-                    'The requester reported that Ticket %s is not fully '
-                    'resolved. Please continue working on it.'
-                ) % self.display_name,
-            )
-        return True
-
     def action_receive_ticket(self):
         self.ensure_one()
         if not self._is_support_agent():
