@@ -4,6 +4,8 @@ from odoo.exceptions import UserError, AccessError
 from odoo.tools.float_utils import float_is_zero
 from odoo.tools import float_compare
 
+from .marketplace_channel import trade_channel_selection
+
 _logger = logging.getLogger(__name__)
 
 
@@ -27,19 +29,9 @@ class MarketplaceSettlement(models.Model):
     # Deduction fields removed - fees should be handled through vendor bills for proper tax documentation
     # This ensures proper VAT recovery and WHT documentation
     company_currency_id = fields.Many2one('res.currency', string='Company Currency', compute='_compute_company_currency')
-    trade_channel = fields.Selection([
-        ('shopee', 'Shopee'), 
-        ('lazada', 'Lazada'), 
-        ('nocnoc', 'Noc Noc'), 
-        ('tiktok', 'Tiktok'), 
-        ('spx', 'SPX'),
-        ('online_line_fb', 'ONLINE/Line + Facebook'),
-        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
-        ('after_sale_service', 'After sale service'),
-        ('installation_service', 'Installation service'),
-        ('own_channel_cdc', 'Own channel ( CDC )'),
-        ('other', 'Other')
-    ], string='Trade Channel', default='shopee')
+    trade_channel = fields.Selection(
+        selection=lambda self: trade_channel_selection(self.env),
+        string='Trade Channel', default='shopee')
     invoice_count = fields.Integer('Invoice Count', compute='_compute_invoice_count')
     total_invoice_amount = fields.Monetary('Total Invoice Amount', currency_field='company_currency_id', compute='_compute_amounts')
     total_deductions = fields.Monetary('Total Deductions', currency_field='company_currency_id', compute='_compute_amounts')

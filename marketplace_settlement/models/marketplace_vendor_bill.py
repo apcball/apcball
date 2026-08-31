@@ -2,6 +2,8 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 import re
 
+from .marketplace_channel import trade_channel_selection
+
 
 class MarketplaceVendorBill(models.Model):
     _name = 'marketplace.vendor.bill'
@@ -26,19 +28,9 @@ class MarketplaceVendorBill(models.Model):
     # Trade Channel Profile (Optional - Users can configure manually)
     profile_id = fields.Many2one('marketplace.settlement.profile', string='Trade Channel Profile',
                                help='Optional profile for default settings. Users can configure manually instead.')
-    trade_channel = fields.Selection([
-        ('shopee', 'Shopee'),
-        ('lazada', 'Lazada'),
-        ('nocnoc', 'Noc Noc'),
-        ('tiktok', 'Tiktok'),
-        ('spx', 'SPX'),
-        ('online_line_fb', 'ONLINE/Line + Facebook'),
-        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
-        ('after_sale_service', 'After sale service'),
-        ('installation_service', 'Installation service'),
-        ('own_channel_cdc', 'Own channel ( CDC )'),
-        ('other', 'Other'),
-    ], string='Trade Channel', help='Trade channel for this vendor bill')
+    trade_channel = fields.Selection(
+        selection=lambda self: trade_channel_selection(self.env),
+        string='Trade Channel', help='Trade channel for this vendor bill')
     
     # Manual Configuration Fields (when not using profile)
     use_manual_config = fields.Boolean('Manual Configuration', default=False,
