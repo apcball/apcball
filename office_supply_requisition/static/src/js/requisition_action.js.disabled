@@ -1,0 +1,16 @@
+odoo.define('office_supply_requisition.requisition_action', function (require) {
+    'use strict';
+
+    const ajax = require('web.ajax');
+    const core = require('web.core');
+    const Widget = require('web.Widget');
+
+    class RequisitionAction extends Widget {
+        start() {
+            this._super.apply(this, arguments);
+            return this;
+        }
+    }
+
+    return RequisitionAction;
+});

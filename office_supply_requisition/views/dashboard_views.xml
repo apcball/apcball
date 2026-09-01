@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Graph: ยอดเบิก (มูลค่า/จำนวน) แยกตามเดือน -->
+    <record id="view_office_supply_requisition_line_graph" model="ir.ui.view">
+        <field name="name">office.supply.requisition.line.graph</field>
+        <field name="model">office.supply.requisition.line</field>
+        <field name="arch" type="xml">
+            <graph string="สรุปยอดเบิกรายเดือน" type="bar" stacked="1">
+                <field name="date" interval="month" type="row"/>
+                <field name="price_subtotal" type="measure"/>
+                <field name="product_uom_qty" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot: ดูละเอียดตามเดือน / สินค้า / ผู้เบิก -->
+    <record id="view_office_supply_requisition_line_pivot" model="ir.ui.view">
+        <field name="name">office.supply.requisition.line.pivot</field>
+        <field name="model">office.supply.requisition.line</field>
+        <field name="arch" type="xml">
+            <pivot string="สรุปยอดเบิกรายเดือน" display_quantity="1">
+                <field name="date" interval="month" type="row"/>
+                <field name="product_id" type="row"/>
+                <field name="employee_id" type="col"/>
+                <field name="product_uom_qty" type="measure"/>
+                <field name="price_subtotal" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Search view สำหรับแดชบอร์ด: กรอง/จัดกลุ่มตามเดือน สินค้า ผู้เบิก -->
+    <record id="view_office_supply_requisition_line_search" model="ir.ui.view">
+        <field name="name">office.supply.requisition.line.search</field>
+        <field name="model">office.supply.requisition.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="employee_id"/>
+                <filter string="เบิกแล้วเท่านั้น" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="เซ็นรับแล้ว" name="signed" domain="[('state', '=', 'signed')]"/>
+                <filter string="เดือนนี้" name="this_month"
+                        domain="[('date', '&gt;=', (context_today()).strftime('%Y-%m-01'))]"/>
+                <group expand="1" string="จัดกลุ่ม">
+                    <filter string="เดือน" name="group_month" context="{'group_by': 'date:month'}"/>
+                    <filter string="สินค้า" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="ผู้เบิก" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action: แดชบอร์ดยอดเบิกรายเดือน -->
+    <record id="action_office_supply_requisition_dashboard" model="ir.actions.act_window">
+        <field name="name">แดชบอร์ดยอดเบิกรายเดือน</field>
+        <field name="res_model">office.supply.requisition.line</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="search_view_id" ref="view_office_supply_requisition_line_search"/>
+        <field name="context">{'search_default_done': 1, 'search_default_group_month': 1}</field>
+        <field name="help">สรุปยอดเบิกของพนักงานตามเดือน/สินค้า/ผู้เบิก เพื่อติดตามการใช้วัสดุสำนักงาน</field>
+    </record>
+
+</odoo>

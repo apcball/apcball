@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_office_supply_requisition_root"
+              name="เบิกของสำนักงาน"
+              sequence="60"
+              groups="office_supply_requisition.group_office_supply_user,office_supply_requisition.group_office_supply_manager"
+              web_icon="office_supply_requisition,static/description/icon.png"/>
+
+    <menuitem id="menu_office_supply_requisition_main"
+              name="ใบเบิกของ"
+              parent="menu_office_supply_requisition_root"
+              action="action_office_supply_requisition"
+              sequence="10"/>
+
+    <menuitem id="menu_office_supply_requisition_dashboard"
+              name="แดชบอร์ด"
+              parent="menu_office_supply_requisition_root"
+              action="action_office_supply_requisition_dashboard"
+              sequence="20"/>
+</odoo>

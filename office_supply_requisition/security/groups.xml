@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_office_supply_requisition" model="ir.module.category">
+        <field name="name">Office Supply Requisition</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="group_office_supply_employee" model="res.groups">
+        <field name="name">Employee</field>
+        <field name="category_id" ref="module_category_office_supply_requisition"/>
+    </record>
+
+    <record id="group_office_supply_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="category_id" ref="module_category_office_supply_requisition"/>
+        <field name="implied_ids" eval="[(4, ref('group_office_supply_employee'))]"/>
+    </record>
+
+    <record id="group_office_supply_warehouse" model="res.groups">
+        <field name="name">Warehouse</field>
+        <field name="category_id" ref="module_category_office_supply_requisition"/>
+        <field name="implied_ids" eval="[(4, ref('group_office_supply_employee'))]"/>
+    </record>
+
+    <record id="group_office_supply_procurement" model="res.groups">
+        <field name="name">Procurement</field>
+        <field name="category_id" ref="module_category_office_supply_requisition"/>
+        <field name="implied_ids" eval="[(4, ref('group_office_supply_employee'))]"/>
+    </record>
+
+    <record id="group_office_supply_admin" model="res.groups">
+        <field name="name">Administrator</field>
+        <field name="category_id" ref="module_category_office_supply_requisition"/>
+        <field name="implied_ids" eval="[(4, ref('group_office_supply_employee')),(4, ref('group_office_supply_manager')),(4, ref('group_office_supply_warehouse')),(4, ref('group_office_supply_procurement'))]"/>
+    </record>
+</odoo>
