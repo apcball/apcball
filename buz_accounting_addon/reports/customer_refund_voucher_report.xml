@@ -20,7 +20,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_accounting_addon.report_buz_customer_refund_voucher</field>
         <field name="report_file">buz_accounting_addon.report_buz_customer_refund_voucher</field>
-        <field name="print_report_name">'CV-%s-Rev%s' % (object.name, object.latest_revision_id.revision if object.latest_revision_id else 0)</field>
+        <field name="print_report_name">'CV-%s' % (object.name)</field>
         <field name="paperformat_id" ref="paperformat_customer_refund_voucher"/>
         <field name="binding_model_id" ref="model_buz_customer_refund_voucher"/>
         <field name="binding_type">report</field>
@@ -38,11 +38,10 @@
                         <strong>CV No:</strong> <span t-field="o.name"/><br/>
                         <strong>CV Date:</strong> <span t-field="o.date"/><br/>
                         <strong>Company:</strong> <span t-field="o.company_id.name"/><br/>
-                        <span t-if="o.latest_revision_id"><strong>Revision:</strong> <span t-field="o.latest_revision_id.revision"/> — <span t-field="o.latest_revision_id.create_date"/></span>
                     </div>
                     <div class="col-6 text-end">
                         <strong>State:</strong> <span t-field="o.state"/><br/>
-                        <strong>Printed By:</strong> <span t-field="o.latest_revision_id.create_uid.name" t-if="o.latest_revision_id"/><br/>
+                        <strong>Customer:</strong> <span t-field="o.partner_id.name"/><br/>
                     </div>
                 </div>
                 <table class="table table-sm table-bordered">
@@ -51,13 +50,21 @@
                             <th>Customer</th>
                             <th>Credit Note</th>
                             <th>Refund Amount</th>
+                            <th>Payment Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                        <tr t-foreach="o.line_ids" t-as="l">
+                            <td><span t-field="l.partner_id.name"/></td>
+                            <td><span t-field="l.credit_note_id.name"/> (<span t-field="l.credit_note_id.invoice_date"/>)</td>
+                            <td class="text-end"><span t-field="l.refund_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                            <td><span t-field="l.payment_state"/></td>
+                        </tr>
+                        <tr t-if="not o.line_ids">
                             <td><span t-field="o.partner_id.name"/></td>
                             <td><span t-field="o.credit_note_id.name"/> (<span t-field="o.credit_note_id.invoice_date"/>)</td>
                             <td class="text-end"><span t-field="o.refund_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                            <td><span t-field="o.credit_note_id.payment_state"/></td>
                         </tr>
                     </tbody>
                 </table>
@@ -88,7 +95,6 @@
                         <div class="col-3"><div style="border-bottom: 1px dotted #000; height: 40px;"></div>Received By</div>
                     </div>
                 </div>
-                <p class="text-muted mt-3" style="font-size: 11px;">Revision <span t-field="o.latest_revision_id.revision" t-if="o.latest_revision_id"/> — Snapshot: <span t-field="o.latest_revision_id.snapshot_json" t-if="o.latest_revision_id"/></p>
             </div>
         </t>
     </template>

@@ -2,7 +2,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 import logging
-import json
 
 _logger = logging.getLogger(__name__)
 
@@ -70,9 +69,7 @@ class BuzCustomerRefundVoucher(models.Model):
     ], default="draft", tracking=True, copy=False)
     payment_id = fields.Many2one("account.payment", string="Refund Payment", readonly=True, copy=False, index=True)
     payment_count = fields.Integer(compute="_compute_payment_count", string="Payments")
-    revision_ids = fields.One2many("buz.customer.refund.voucher.revision", "voucher_id", string="Print Revisions")
-    revision_count = fields.Integer(compute="_compute_revision_count", string="Revisions")
-    latest_revision_id = fields.Many2one("buz.customer.refund.voucher.revision", compute="_compute_latest_revision", string="Latest Revision", store=False)
+    line_ids = fields.One2many("buz.customer.refund.voucher.line", "voucher_id", string="Payment Lines", copy=False)
 
     # Uniqueness enforced via Python _check_one_active_per_cn (avoid btree_gist requirement)
 
@@ -80,19 +77,6 @@ class BuzCustomerRefundVoucher(models.Model):
     def _compute_payment_count(self):
         for rec in self:
             rec.payment_count = 1 if rec.payment_id else 0
-
-    @api.depends("revision_ids")
-    def _compute_revision_count(self):
-        for rec in self:
-            rec.revision_count = len(rec.revision_ids)
-
-    @api.depends("revision_ids.revision")
-    def _compute_latest_revision(self):
-        for rec in self:
-            if rec.revision_ids:
-                rec.latest_revision_id = max(rec.revision_ids, key=lambda r: r.revision)
-            else:
-                rec.latest_revision_id = False
 
     @api.onchange("credit_note_id")
     def _onchange_credit_note_id(self):
@@ -127,6 +111,31 @@ class BuzCustomerRefundVoucher(models.Model):
         if self.partner_id and not self.check_pay_to:
             self.check_pay_to = self.partner_id.name
 
+    def _sync_lines(self):
+        """Ensure single readonly line per CV from CN — future-ready for multiple."""
+        for rec in self:
+            if not rec.credit_note_id:
+                continue
+            residual = abs(rec.credit_note_id.amount_residual_signed) if hasattr(rec.credit_note_id, 'amount_residual_signed') and rec.credit_note_id.amount_residual_signed is not None else abs(rec.credit_note_id.amount_residual)
+            # keep line in sync
+            if not rec.line_ids:
+                self.env["buz.customer.refund.voucher.line"].create({
+                    "voucher_id": rec.id,
+                    "credit_note_id": rec.credit_note_id.id,
+                    "refund_amount": rec.refund_amount or residual,
+                })
+            else:
+                # update existing first line (readonly model — keep data consistent)
+                line = rec.line_ids[0]
+                vals = {}
+                if line.credit_note_id != rec.credit_note_id:
+                    vals["credit_note_id"] = rec.credit_note_id.id
+                if abs((line.refund_amount or 0) - (rec.refund_amount or 0)) > 0.01:
+                    vals["refund_amount"] = rec.refund_amount or residual
+                if vals:
+                    line.write(vals)
+                # if more than one line exists (legacy/manual), keep first only — do not auto-delete to avoid data loss, just sync first
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -146,7 +155,11 @@ class BuzCustomerRefundVoucher(models.Model):
                         vals["partner_id"] = cn.partner_id.id
             if "date" not in vals or not vals["date"]:
                 vals["date"] = fields.Date.context_today(self)
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        # auto create single payment line
+        for rec in records:
+            rec._sync_lines()
+        return records
 
     def write(self, vals):
         # prevent editing refund_amount mismatch
@@ -169,7 +182,12 @@ class BuzCustomerRefundVoucher(models.Model):
         if vals.get("name") == "/":
             for rec in self:
                 vals["name"] = self.env["ir.sequence"].with_company(rec.company_id).next_by_code("buz.customer.refund.voucher", sequence_date=vals.get("date") or rec.date) or "/"
-        return super().write(vals)
+        res = super().write(vals)
+        # keep line in sync when credit_note or amount changes
+        if any(k in vals for k in ("credit_note_id", "refund_amount")):
+            for rec in self:
+                rec._sync_lines()
+        return res
 
     @api.constrains("credit_note_id", "company_id", "partner_id", "refund_amount", "state")
     def _check_credit_note_validity(self):
@@ -227,62 +245,26 @@ class BuzCustomerRefundVoucher(models.Model):
                     raise ValidationError(_("An active CV (%s) already exists for Credit Note %s.") % (others.name, rec.credit_note_id.name))
 
     def action_print_cv(self):
-        """Create immutable revision and return PDF report action. Print allowed in draft/confirmed."""
+        """Print current CV data directly — no revision/snapshot."""
         self.ensure_one()
-        if self.state not in ("draft", "confirmed"):
-            raise UserError(_("Printing is only allowed in Draft or Confirmed."))
-        # company / ACL check
+        if self.state not in ("draft", "confirmed", "registered", "payment_cancelled"):
+            raise UserError(_("Printing is only allowed in Draft/Confirmed/Registered."))
         self._check_company_access()
-        # Create revision snapshot
-        max_rev = max(self.revision_ids.mapped("revision") or [0])
-        rev_vals = {
-            "voucher_id": self.id,
-            "revision": max_rev + 1,
-            "refund_amount": self.refund_amount,
-            "payment_type": self.payment_type,
-            "destination_journal_id": self.destination_journal_id.id if self.destination_journal_id else False,
-            "payment_method_line_id": self.payment_method_line_id.id if self.payment_method_line_id else False,
-            "check_number": self.check_number,
-            "check_date": self.check_date,
-            "check_pay_to": self.check_pay_to,
-            "customer_account_id": self.customer_account_id.id if self.customer_account_id else False,
-            "refund_reason": self.refund_reason,
-            "snapshot_json": json.dumps({
-                "name": self.name,
-                "date": str(self.date),
-                "partner_id": self.partner_id.id,
-                "credit_note_id": self.credit_note_id.id,
-                "credit_note_name": self.credit_note_id.name,
-                "refund_amount": float(self.refund_amount),
-                "payment_type": self.payment_type,
-                "journal_id": self.destination_journal_id.id if self.destination_journal_id else False,
-            }, ensure_ascii=False),
-        }
-        revision = self.env["buz.customer.refund.voucher.revision"].create(rev_vals)
-        self.message_post(body=_("CV printed — Revision %s created.") % revision.revision)
-        # return report action
+        self.message_post(body=_("CV printed — internal copy."))
         return self.env.ref("buz_accounting_addon.action_report_buz_customer_refund_voucher").report_action(self)
 
     def action_confirm(self):
-        """Draft -> Confirmed. Requires latest revision exists. Only latest revision allowed."""
+        """Draft -> Confirmed. No print requirement."""
         for rec in self:
             if rec.state != "draft":
                 continue
             rec._check_company_access()
-            # must have at least one revision and it is the latest (trivially)
-            if not rec.revision_ids:
-                raise UserError(_("Please Print CV before Confirm. At least one print revision is required."))
-            # Confirm only latest revision — if somehow not latest, block (here only check strictly increasing, so always latest after print)
-            # Additional checks: locked period, journal, currency, payment method
+            # No revision requirement — print is optional per updated spec
             if not rec.destination_journal_id and rec.payment_type != "cash":
-                # For cash allow empty journal? But spec says support Cash/Transfer/Cheque with journal etc. We'll require journal except cash.
                 pass
             if rec.payment_type != "cash" and not rec.payment_method_line_id:
-                # Transfer/Cheque require method line
-                # Check if journal has outbound method; if missing raise
                 if rec.destination_journal_id and not rec.destination_journal_id.outbound_payment_method_line_ids:
                     raise UserError(_("Selected journal has no outbound payment methods."))
-            # check ACL: accounting user can confirm (access.csv allows)
             rec.write({"state": "confirmed"})
             rec.message_post(body=_("CV Confirmed."))
         return True
@@ -300,9 +282,6 @@ class BuzCustomerRefundVoucher(models.Model):
             raise UserError(_("Credit Note %s has no residual to refund.") % cn.name)
         if abs(self.refund_amount - residual) > 0.01:
             raise UserError(_("Refund Amount (%.2f) no longer matches Credit Note residual (%.2f). Please cancel and recreate CV.") % (self.refund_amount, residual))
-        # ensure latest revision exists (state confirmed implies)
-        if not self.revision_ids:
-            raise UserError(_("Missing print revision. Please Print CV before registering."))
         ctx = {
             "active_model": "account.move",
             "active_ids": cn.ids,
@@ -391,7 +370,6 @@ class BuzCustomerRefundVoucher(models.Model):
             if rec.company_id not in self.env.companies:
                 raise UserError(_("Access denied for company %s.") % rec.company_id.name)
             # locked period check (fiscal year lock)
-            # Use _is_move_consistent? simple check: if date before lock date
             lock_date = rec.company_id.period_lock_date or rec.company_id.fiscalyear_lock_date
             if lock_date and rec.date and rec.date <= lock_date:
                 raise UserError(_("CV date is in a locked period (lock date: %s).") % lock_date)
@@ -403,33 +381,19 @@ class BuzCustomerRefundVoucher(models.Model):
         return super().unlink()
 
 
-class BuzCustomerRefundVoucherRevision(models.Model):
-    _name = "buz.customer.refund.voucher.revision"
-    _description = "Customer Refund Voucher Revision (Immutable)"
-    _order = "revision desc, id desc"
+class BuzCustomerRefundVoucherLine(models.Model):
+    _name = "buz.customer.refund.voucher.line"
+    _description = "Customer Refund Voucher Line (CV-specific, readonly)"
+    _check_company_auto = True
 
     voucher_id = fields.Many2one("buz.customer.refund.voucher", string="CV", required=True, ondelete="cascade", index=True, readonly=True)
-    revision = fields.Integer(string="Revision", required=True, readonly=True)
-    create_date = fields.Datetime(string="Printed On", readonly=True, default=fields.Datetime.now)
-    create_uid = fields.Many2one("res.users", string="Printed By", readonly=True, default=lambda self: self.env.user)
+    company_id = fields.Many2one(related="voucher_id.company_id", store=True, readonly=True)
+    currency_id = fields.Many2one(related="voucher_id.currency_id", readonly=True)
+    credit_note_id = fields.Many2one("account.move", string="Credit Note", domain="[('move_type','=','out_refund')]", readonly=True, index=True, check_company=True)
+    partner_id = fields.Many2one(related="voucher_id.partner_id", readonly=True, store=False)
     refund_amount = fields.Monetary(string="Refund Amount", currency_field="currency_id", readonly=True)
-    currency_id = fields.Many2one(related="voucher_id.currency_id", readonly=True, store=False)
-    payment_type = fields.Selection(related="voucher_id.payment_type", readonly=True, store=False)
-    destination_journal_id = fields.Many2one("account.journal", string="Journal", readonly=True)
-    payment_method_line_id = fields.Many2one("account.payment.method.line", string="Payment Method", readonly=True)
-    check_number = fields.Char(string="Cheque Number", readonly=True)
-    check_date = fields.Date(string="Cheque Date", readonly=True)
-    check_pay_to = fields.Char(string="Pay to", readonly=True)
-    customer_account_id = fields.Many2one("account.account", string="Customer Account", readonly=True)
-    refund_reason = fields.Text(string="Refund Reason", readonly=True)
-    snapshot_json = fields.Text(string="Snapshot (JSON)", readonly=True)
+    payment_state = fields.Selection(related="credit_note_id.payment_state", string="Payment Status", readonly=True, store=False)
 
     _sql_constraints = [
-        ("uniq_voucher_revision", "unique(voucher_id, revision)", "Revision must be unique per CV."),
+        ("uniq_voucher_credit_note", "unique(voucher_id, credit_note_id)", "Duplicate credit note in CV lines."),
     ]
-
-    def write(self, vals):
-        raise UserError(_("Revisions are immutable and cannot be edited."))
-
-    def unlink(self):
-        raise UserError(_("Revisions are immutable and cannot be deleted."))

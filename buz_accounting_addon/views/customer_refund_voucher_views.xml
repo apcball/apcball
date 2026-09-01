@@ -57,14 +57,14 @@
         </field>
     </record>
 
-    <!-- Form -->
+    <!-- Form — layout close to Vendor Payment Voucher (PV) -->
     <record id="view_buz_customer_refund_voucher_form" model="ir.ui.view">
         <field name="name">buz.customer.refund.voucher.form</field>
         <field name="model">buz.customer.refund.voucher</field>
         <field name="arch" type="xml">
             <form string="Customer Refund Voucher">
                 <header>
-                    <button name="action_print_cv" type="object" string="Print Internal CV" class="oe_highlight" invisible="state not in ['draft','confirmed']"/>
+                    <button name="action_print_cv" type="object" string="Print Internal CV" class="oe_highlight" invisible="state not in ['draft','confirmed','registered','payment_cancelled']"/>
                     <button name="action_confirm" type="object" string="Confirm" class="oe_highlight" invisible="state != 'draft'"/>
                     <button name="action_register_refund" type="object" string="Register Refund" class="oe_highlight" invisible="state != 'confirmed'"/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state not in ['draft','confirmed','payment_cancelled']" groups="account.group_account_manager"/>
@@ -85,12 +85,6 @@
                                 <span class="o_stat_value"><field name="payment_count" widget="statinfo" nolabel="1"/></span>
                             </div>
                         </button>
-                        <button type="object" name="action_print_cv" class="oe_stat_button" icon="fa-print" invisible="revision_count == 0">
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">Revisions</span>
-                                <span class="o_stat_value"><field name="revision_count" widget="statinfo" nolabel="1"/></span>
-                            </div>
-                        </button>
                     </div>
                     <field name="company_id" invisible="1"/>
                     <div class="oe_title">
@@ -98,51 +92,58 @@
                         <h1><field name="name" readonly="1"/></h1>
                     </div>
                     <group>
-                        <group string="Refund Details">
+                        <group name="header_left">
+                            <field name="partner_id" string="Customer" readonly="state != 'draft'" options="{'no_create': True}"/>
                             <field name="credit_note_id" readonly="state != 'draft'" options="{'no_create': True}"/>
-                            <field name="partner_id" readonly="state != 'draft'" options="{'no_create': True}"/>
                             <field name="date" readonly="state not in ['draft','confirmed']"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                        <group name="header_right">
                             <field name="currency_id" invisible="1"/>
                             <field name="refund_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                            <field name="refund_reason" placeholder="Reason for refund..." readonly="state not in ['draft','confirmed']"/>
-                        </group>
-                        <group string="Payment Details">
                             <field name="payment_type" readonly="state not in ['draft','confirmed']"/>
                             <field name="destination_journal_id" readonly="state not in ['draft','confirmed']" options="{'no_create': True}"/>
                             <field name="payment_method_line_id" readonly="state not in ['draft','confirmed']" options="{'no_create': True}" invisible="payment_type == 'cash'"/>
                             <field name="customer_account_id" readonly="state not in ['draft','confirmed']" options="{'no_create': True}"/>
-                            <field name="check_pay_to" readonly="state not in ['draft','confirmed']" invisible="payment_type != 'check'"/>
-                            <field name="check_number" readonly="state not in ['draft','confirmed']" invisible="payment_type != 'check'"/>
-                            <field name="check_date" readonly="state not in ['draft','confirmed']" invisible="payment_type != 'check'"/>
-                            <field name="payment_id" readonly="1" invisible="1"/>
-                            <field name="latest_revision_id" invisible="1"/>
+                            <field name="check_pay_to" string="Pay To" readonly="state not in ['draft','confirmed']" invisible="payment_type != 'check'"/>
+                            <field name="check_number" string="Cheque No." readonly="state not in ['draft','confirmed']" invisible="payment_type != 'check'"/>
                         </group>
                     </group>
-                    <group string="Internal Notes">
-                        <field name="note" readonly="state not in ['draft','confirmed']" placeholder="Internal notes..."/>
+                    <group string="Payment Details" invisible="payment_type != 'check'">
+                        <group>
+                            <field name="check_date" readonly="state not in ['draft','confirmed']"/>
+                        </group>
+                    </group>
+                    <group col="4" colspan="4" name="payment_status_info" string="Payment Information" invisible="state == 'draft'">
+                        <group name="payment_status_group" string="Payment Status" colspan="2">
+                            <field name="state" readonly="1" widget="badge" decoration-info="state=='draft'" decoration-warning="state=='confirmed'" decoration-success="state=='registered'" decoration-danger="state in ['payment_cancelled','cancel']"/>
+                        </group>
+                        <group name="payment_amounts" string="Amounts" colspan="2" col="2">
+                            <field name="refund_amount" readonly="1" string="Refund Amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="payment_id" readonly="1" string="Payment" invisible="1"/>
+                        </group>
                     </group>
                     <notebook>
-                        <page string="Revisions" name="revisions">
-                            <field name="revision_ids" readonly="1">
-                                <tree>
-                                    <field name="revision"/>
-                                    <field name="create_date"/>
-                                    <field name="create_uid"/>
-                                    <field name="refund_amount" widget="monetary"/>
-                                    <field name="payment_type"/>
-                                    <field name="destination_journal_id"/>
+                        <page string="Payment Lines" name="payment_lines">
+                            <field name="line_ids" readonly="state != 'draft'" options="{'no_create': True}">
+                                <tree string="Payment Lines" create="false" delete="false" editable="false">
+                                    <field name="voucher_id" column_invisible="1"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="credit_note_id" readonly="1" string="Credit Note"/>
+                                    <field name="refund_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total"/>
+                                    <field name="payment_state" readonly="1" widget="badge" decoration-success="payment_state=='paid'" decoration-warning="payment_state=='partial'" decoration-info="payment_state=='not_paid'"/>
                                 </tree>
-                                <form>
-                                    <group>
-                                        <field name="revision"/>
-                                        <field name="create_date"/>
-                                        <field name="create_uid"/>
-                                        <field name="refund_amount" widget="monetary"/>
-                                    </group>
-                                </form>
                             </field>
-                            <p class="text-muted">Revisions are immutable — each Print creates a new revision. Confirm requires the latest revision.</p>
+                            <p class="text-muted">One line auto-created from the Credit Note. Full refund only (no partial). Future multi-line support reserved.</p>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <group>
+                                <field name="refund_reason" placeholder="Reason for refund..." readonly="state not in ['draft','confirmed']"/>
+                            </group>
+                            <group string="Internal Notes">
+                                <field name="note" readonly="state not in ['draft','confirmed']" placeholder="Internal notes..."/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
