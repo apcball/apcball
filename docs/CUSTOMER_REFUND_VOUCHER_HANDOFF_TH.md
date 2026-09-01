@@ -1,22 +1,23 @@
 ## อัปเดตงาน Local รอบล่าสุด (2026-09-01)
 
-สถานะรอบนี้: ปรับปรุงและทดสอบบน Local/isolated Docker แล้ว และ Deploy/Upgrade/Restart บน MOG_DEV สำเร็จ โดยยังไม่รวม Browser/PDF/accounting UAT
+สถานะรอบนี้: บันทึกข้อตกลง workflow ใหม่สำหรับรอบถัดไป โดย MOG_DEV ยังเป็น implementation รอบก่อนหน้า และยังไม่รวม Browser/PDF/accounting UAT ของข้อตกลงใหม่นี้
 
-สิ่งที่ปรับปรุงใน CV:
-- Refund Amount ที่ Header เป็นยอดจ่ายจริง และ Payment Line เป็น Readonly พร้อม Sync จาก Header
-- Other Income คำนวณจาก CN Residual - Refund Amount และใช้เป็น Odoo Payment Register Write-off เพื่อ Reconcile กับ CN
-- Partial Refund ต้องเลือก Other Income Account และระบุ Refund Reason; Full Refund ไม่สร้าง Write-off
+ข้อตกลงใหม่สำหรับการปรับปรุง CV รอบถัดไป:
+- CV ต้องสร้างจาก Posted Customer Credit Note โดยระบบดึง Customer, CN Amount และ CN Residual มาให้อัตโนมัติ
+- Refund Amount ที่ Header คือยอดจ่ายจริงที่ฝ่ายบัญชีกำหนดเอง และ Payment Line เป็น Readonly พร้อม Sync จาก Header
+- หากยอดจ่ายจริงต่ำกว่า CN ให้ฝ่ายบัญชีเลือกได้ว่าจะคงยอดคงเหลือไว้ หรือปิด CN ด้วย Adjustment/Write-off
+- Adjustment/Write-off ต้องเลือกบัญชีและระบุเหตุผลเองทุกครั้ง ไม่กำหนดเป็น Other Income อัตโนมัติ
 - Customer Account ดึงจาก Receivable Line ของ CN และ Readonly
 - Payment Journal และ Outbound Payment Method ต้องครบ อยู่บริษัทเดียวกัน และ Method ต้องอยู่ใน Journal ที่เลือก
 - ซ่อน Bank Fee จากฟอร์ม CV ระยะแรก เพราะยังไม่มี Logic ลงบัญชี
 - เพิ่ม guard ป้องกัน Refund Amount เป็นศูนย์/ติดลบ/เกิน CN Residual, Payment ซ้ำ และ Journal Entry Number ซ้ำ
-- CV Number ให้ผู้ใช้บัญชีกรอกเอง ไม่บังคับ Prefix หรือรูปแบบ และห้ามเว้นว่าง
+- CV Number ให้ผู้ใช้บัญชีกรอกเองตั้งแต่สร้าง CV จาก CN ไม่บังคับ Prefix หรือลักษณะรูปแบบ และห้ามเว้นว่าง
 - CV Number แก้ไขได้เฉพาะ Draft และต้องไม่ซ้ำภายในบริษัทเดียวกัน; บริษัทต่างกันใช้เลขเดียวกันได้ตามกติกา multi-company
 - ยกเลิกการเรียก `ir.sequence` อัตโนมัติสำหรับ CV ใหม่ โดยคง sequence configuration เดิมไว้เพื่อไม่ลบหรือเปลี่ยนข้อมูลเดิม
 - ย้ายการตรวจ Duplicate Journal Entry ไปก่อน standard `action_post()` ของ Payment โดยใช้ Payment Journal/sequence เดิม และไม่แก้ข้อมูลบัญชีเดิมอัตโนมัติ
 - CV เท่านั้นที่ถูกแก้ไข ไม่เปลี่ยน Model/View/Logic ของ Vendor PV และไม่ลบข้อมูลหรือโครงสร้าง Revision เดิม
 
-ผลตรวจสอบ:
+ผลตรวจสอบของ implementation รอบก่อนหน้า:
 - Python AST ผ่าน
 - XML parse ผ่าน
 - Isolated Docker Odoo test: `0 failed, 0 error(s)` จาก 12 tests
@@ -28,23 +29,24 @@
 
 เอกสารนี้สรุปขอบเขตและเงื่อนไขที่ตกลงกันล่าสุดสำหรับ Customer Refund Voucher (CV) หากขัดกับข้อความเก่าในเอกสารหรือโค้ดเดิม ให้ถือข้อตกลงล่าสุดด้านล่างเป็นหลัก
 
-**สถานะล่าสุด (2026-09-01):** พัฒนา ทดสอบบน Local/isolated Docker และ Deploy ไปยัง MOG_DEV แล้ว รอ User ทำ UAT เชิงธุรกิจ
+**สถานะล่าสุด (2026-09-01):** ข้อตกลง workflow ล่าสุดด้านล่างเป็น requirement สำหรับรอบถัดไป; implementation ปัจจุบันบน MOG_DEV ยังไม่ถือว่ารองรับข้อตกลงใหม่นี้จนกว่าจะพัฒนาและทดสอบเพิ่มเติม
 
 ## Latest update (2026-09-01)
 
-สถานะปัจจุบัน: CV partial refund, manual CV Number และ preflight Duplicate Journal Entry ถูกพัฒนา ทดสอบบน Local isolated Docker และ Deploy ไปยัง MOG_DEV แล้ว
+สถานะปัจจุบัน: ได้ข้อสรุป workflow ใหม่สำหรับ CV ที่สร้างจาก Customer Credit Note, ใช้ manual CV Number, กำหนด actual refund amount และรองรับการเลือก Adjustment/Write-off โดยยังรอการพัฒนาและทดสอบตามข้อตกลงนี้
 
-สิ่งที่ทำแล้ว:
+สิ่งที่ต้องพัฒนาในรอบถัดไป:
 
 - Refund Amount กรอกได้มากกว่า 0 และไม่เกิน CN Residual
-- Other Income = CN Residual - Refund Amount เป็น readonly และมี Other Income Account ให้เลือกต่อ CV
+- Actual Refund Amount แยกจาก CN Amount/CN Residual และฝ่ายบัญชีกำหนดเองได้ โดยห้ามเกิน CN Residual
+- ส่วนต่างระหว่าง CN Residual กับ Actual Refund Amount ให้เลือกได้ว่าจะคงยอด CN ไว้ หรือใช้ Adjustment/Write-off
+- กรณีใช้ Adjustment/Write-off ฝ่ายบัญชีต้องเลือกบัญชีและระบุเหตุผลเอง ระบบไม่กำหนดบัญชีเป็น Other Income อัตโนมัติ
 - Payment Line เป็น readonly และใช้ยอดเดียวกับ Refund Amount
 - Register Refund ใช้ Odoo account.payment.register สร้าง Customer Outbound Payment และ standard write-off/reconcile
-- จ่ายเต็ม CN ไม่สร้าง Write-off; จ่ายบางส่วนใช้ Other Income Account และตรวจ CN Residual ต้องเป็นศูนย์ก่อน CV เป็น Registered
+- จ่ายเต็ม CN จะ Reconcile ได้เต็มจำนวนโดยไม่ต้องใช้ Write-off; จ่ายบางส่วนจะเหลือ CN Residual เว้นแต่ฝ่ายบัญชีเลือก Adjustment/Write-off เพื่อปิดยอด
 - เพิ่ม regression tests: full refund, partial refund calculation, zero amount rejection และ over-residual rejection
-- Local isolated test ล่าสุด: `0 failed, 0 error(s)` จาก 12 tests
-- MOG_DEV upgrade: สำเร็จ; module state `installed`, version `17.0.3.0.0`
-- MOG_DEV restart: สำเร็จ; container `odoo Up`; HTTP health check `303`
+- ทดสอบ isolated Docker ใหม่ให้ครอบคลุม workflow และกติกา Adjustment/Write-off
+- หลังพัฒนาแล้วจึงค่อย Upgrade/Restart และทำ UAT บน MOG_DEV
 
 ข้อจำกัดที่ยังคงเดิม: ยังไม่รวมหลาย CN ต่อ CV, WHT, Bank Fee, approval หลายระดับ, การส่งเอกสารให้ลูกค้า และการลบ/ย้ายข้อมูล Revision เก่า
 
@@ -55,28 +57,30 @@
 - User นำ **Customer Credit Note (CN)** ที่ผ่านการ Post แล้วมาออกเลข **CV** เพื่อจ่ายเงินคืนให้ลูกค้า
 - CV เป็นเอกสารภายใน ใช้ประกอบการขออนุมัติและบันทึกการจ่ายเงิน ไม่ใช่เอกสารส่งให้ลูกค้า
 - ใช้กลไกมาตรฐานของ Odoo (`account.payment.register`) และ Reconcile ไม่สร้าง Journal Entry เอง
-- CV หนึ่งใบอ้างอิง CN หนึ่งใบ และรองรับการคืนเงินเต็มจำนวนหรือบางส่วนภายใน CN Residual
+- CV หนึ่งใบอ้างอิง CN หนึ่งใบ และรองรับการกำหนดยอดจ่ายจริงเต็มจำนวนหรือบางส่วนภายใน CN Residual
 - ต้องไม่กระทบข้อมูลหรือ workflow เดิมของ Vendor Payment Voucher (PV) และการจ่ายเงินเดิม
 
 ## 2. Workflow ที่ตกลง
 
 ```text
 Posted Customer CN (out_refund, residual > 0)
-    → Create CV → Draft → Confirm → Register Refund
-    → Post Customer Outbound Payment → Reconcile → Registered
+    → Create CV from CN → Enter CV Number and Actual Refund Amount
+    → Draft → Confirm → Register Refund
+    → Customer Outbound Payment → Reconcile payment and optional adjustment → Registered
 ```
 
-- สร้าง CV ได้จาก CN ที่เป็น `out_refund`, Posted และมียอดคงเหลือมากกว่า 0 เท่านั้น
+- สร้าง CV ได้จาก CN ที่เป็น `out_refund`, Posted และมียอดคงเหลือมากกว่า 0 เท่านั้น โดยไม่ควรสร้าง CV ลอยจากเมนูทั่วไป
 - CN เดียวกันมี CV ที่ยังใช้งานอยู่ได้เพียงหนึ่งใบ
 - หลัง Confirm แล้วจะแก้ข้อมูลสำคัญไม่ได้
-- Register Refund ต้องสร้าง Customer Outbound Payment และเชื่อมกับ CN เดิม
-- Payment ถูก Post และ Reconcile สำเร็จแล้ว CV เป็น `Registered`
+- Register Refund ต้องสร้าง Customer Outbound Payment ตาม Actual Refund Amount และเชื่อมกับ CN เดิม
+- หากยอดจ่ายต่ำกว่า CN ระบบต้องรองรับทั้งการปล่อยยอดคงเหลือ หรือการเลือก Adjustment/Write-off เพื่อ Reconcile ให้ครบยอด CN
+- Payment ถูก Post และ Reconcile ตามทางเลือกของบัญชีแล้ว CV เป็น `Registered`
 - หาก Payment ถูกยกเลิก ให้เป็น `Payment Cancelled` และไม่ถือว่าสำเร็จ
 
 ## 3. เลขเอกสาร
 
-- `CV Number` เป็นข้อมูลที่ผู้ใช้บัญชีกรอกเอง
-- ระยะนี้ไม่บังคับ Prefix, ตัวย่อ, ปี, padding หรือรูปแบบใด ๆ
+- `CV Number` เป็นข้อมูลที่ผู้ใช้บัญชีกรอกเองตอนสร้าง CV จาก CN
+- ระยะนี้ไม่บังคับ Prefix, ตัวย่อ, ปี, padding หรือรูปแบบใด ๆ จนกว่าฝ่ายบัญชีจะกำหนดข้อตกลงถาวร
 - CV Number ต้องไม่ว่าง และต้องไม่ซ้ำภายใน `company_id` เดียวกัน
 - CV Number เดียวกันในคนละบริษัทเป็นไปตามกติกา multi-company และไม่ถือว่าซ้ำกัน
 - แก้ไข CV Number ได้เฉพาะสถานะ Draft; หลัง Confirm แล้วห้ามแก้
@@ -114,6 +118,8 @@ Posted Customer CN (out_refund, residual > 0)
 - Payment มี backlink ไป CV แบบ nullable และมี index
 - สิทธิ์แบ่งตามกลุ่มบัญชี: ผู้ใช้บัญชีจัดการ Draft และผู้จัดการบัญชีทำรายการที่ต้องอนุมัติ/ยกเลิก
 - ตรวจสอบบริษัทเดียวกัน วันที่ ยอดคงเหลือ และ CV ซ้ำก่อนบันทึก/ยืนยัน
+- Actual Refund Amount ต้องไม่เกิน CN Residual; หากต่ำกว่า CN ให้เลือกคงยอดค้าง หรือ Adjustment/Write-off
+- Adjustment/Write-off ต้องเก็บบัญชีและเหตุผลที่ผู้ใช้บัญชีเลือกเอง และไม่บังคับใช้บัญชี Other Income
 - ตรวจเลข Journal Entry ของ Payment ใหม่หลังสร้าง Draft Payment แต่ก่อน `action_post()` โดยตรวจตามบริษัทและ Payment Journal
 
 ## 6. การยุติการใช้งาน Revision
