@@ -1,6 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-from datetime import timedelta
+import pytz
 import base64
 import io
 import logging
@@ -478,9 +478,10 @@ class PosLiteOrder(models.Model):
     # ─── Invoice / Picking preparation ─────────────────────────
 
     def _get_document_date(self):
-        """Invoice/stock document date: always order date + 1 day."""
+        """Invoice document date: the POS order date in Asia/Bangkok."""
         self.ensure_one()
-        return self.date_order.date() + timedelta(days=1)
+        tz = pytz.timezone('Asia/Bangkok')
+        return pytz.utc.localize(self.date_order).astimezone(tz).date()
 
     def _prepare_invoice_vals(self):
         self.ensure_one()
@@ -660,21 +661,9 @@ class PosLiteOrder(models.Model):
         elif isinstance(result, dict) and result.get('res_model') == 'stock.backorder.confirmation':
             wizard = self.env['stock.backorder.confirmation'].with_context(result.get('context', {})).create({})
             wizard.process_cancel_backorder()
-        # Stock is validated now, but the transaction/valuation date must reflect
-        # order date + 1 day, not "now" — backdate picking + moves post-validation.
-        doc_date = fields.Datetime.to_datetime(self._get_document_date())
-        picking.write({'date_done': doc_date})
-        picking.move_ids.write({'date': doc_date})
-        picking.move_ids.move_line_ids.write({'date': doc_date})
-        # button_validate() already created the valuation layers stamped "now".
-        # Realign their period date too, else the FIFO valuation report (which
-        # reads accounting_date) disagrees with the backdated moves. create_date
-        # is left untouched on purpose — it is the FIFO queue ordering key.
-        svl_model = self.env['stock.valuation.layer']
-        if 'accounting_date' in svl_model._fields:
-            svls = svl_model.search([('stock_move_id', 'in', picking.move_ids.ids)])
-            if svls:
-                svls.write({'accounting_date': doc_date})
+        # Stock is cut at the real validation moment (ตัด stock ตามจริง):
+        # button_validate() stamps date_done / move.date / move_line.date and the
+        # valuation layers with "now", which is what we want — no backdating.
 
     # ─── Actions: Flow ──────────────────────────────────────────
 
