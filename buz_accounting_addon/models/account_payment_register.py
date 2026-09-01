@@ -37,6 +37,53 @@ class AccountPaymentRegister(models.TransientModel):
                     wizard.writeoff_account_id = False
                     wizard.writeoff_label = False
 
+    def _post_payments(self, to_process, edit_mode=False):
+        """Check the CV payment move number before the standard post.
+
+        Odoo assigns an ``account.move`` number while posting.  Reserving that
+        number on the newly-created draft move lets us report a duplicate
+        against the selected Payment Journal before ``action_post()`` runs.
+        The override is intentionally limited to the CV context; Vendor PV and
+        Receipt Voucher use the standard Odoo path unchanged.
+        """
+        cv_id = self._context.get("buz_cv_id")
+        if cv_id:
+            payments = self.env["account.payment"]
+            for values in to_process:
+                payments |= values.get("payment", self.env["account.payment"])
+            cv = self.env["buz.customer.refund.voucher"].browse(cv_id).exists()
+            if cv and cv.state == "confirmed":
+                seen = set()
+                for payment in payments:
+                    move = payment.move_id
+                    if move and move.state == "draft" and move.name in (False, "/"):
+                        # This uses the selected journal's existing Odoo
+                        # sequence; it does not modify journal configuration or
+                        # any existing Journal Entry.
+                        move._set_next_sequence()
+                    if not move or move.name in (False, "/"):
+                        continue
+                    key = (move.company_id.id, move.journal_id.id, move.name)
+                    if key in seen:
+                        raise UserError(_(
+                            "Duplicate Journal Entry number %s detected in the refund payment.",
+                            move.name,
+                        ))
+                    seen.add(key)
+                    duplicate = self.env["account.move"].search([
+                        ("id", "!=", move.id),
+                        ("company_id", "=", move.company_id.id),
+                        ("journal_id", "=", move.journal_id.id),
+                        ("name", "=", move.name),
+                    ], limit=1)
+                    if duplicate:
+                        raise UserError(_(
+                            "Duplicate Journal Entry number %s detected in Payment Journal %s.",
+                            move.name,
+                            move.journal_id.display_name,
+                        ))
+        return super()._post_payments(to_process, edit_mode=edit_mode)
+
     def _create_payments(self):
         """Override to link created payments to voucher, voucher line and receipt if context provided.
         Also handles Customer Refund Voucher (CV) outbound payment creation + post + reconcile in one transaction.
@@ -94,22 +141,6 @@ class AccountPaymentRegister(models.TransientModel):
                     residual_after = abs(cn.amount_residual_signed) if cn.amount_residual_signed is not None else abs(cn.amount_residual)
                     if float_compare(residual_after, 0.0, precision_rounding=cn.currency_id.rounding) != 0:
                         raise UserError(_("Credit Note %s was not fully reconciled (residual %.2f).") % (cn.name, residual_after))
-                    move_ids = payments.mapped("move_id")
-                    move_names = move_ids.mapped("name")
-                    if len(move_names) != len(set(move_names)):
-                        raise UserError(_("Duplicate Journal Entry number detected in the refund payment."))
-                    for move in move_ids:
-                        duplicate_move = self.env["account.move"].search(
-                            [
-                                ("id", "not in", move_ids.ids),
-                                ("company_id", "=", move.company_id.id),
-                                ("journal_id", "=", move.journal_id.id),
-                                ("name", "=", move.name),
-                            ],
-                            limit=1,
-                        )
-                        if duplicate_move:
-                            raise UserError(_("Duplicate Journal Entry number %s detected.") % move.name)
                     # Mark CV registered only after successful reconcile
                     cv.write({'payment_id': payments[0].id, 'state': 'registered'})
                     cv.message_post(body=_("Refund Payment %s created, posted and reconciled.") % ', '.join(payments.mapped('name')))

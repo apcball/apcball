@@ -13,7 +13,7 @@ class BuzCustomerRefundVoucher(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _check_company_auto = True
 
-    name = fields.Char(string="CV Number", readonly=True, copy=False, default="/", tracking=True)
+    name = fields.Char(string="CV Number", required=True, copy=False, tracking=True)
     date = fields.Date(string="CV Date", default=fields.Date.context_today, required=True, tracking=True)
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, tracking=True)
     currency_id = fields.Many2one("res.currency", related="company_id.currency_id", readonly=True, store=False)
@@ -99,7 +99,13 @@ class BuzCustomerRefundVoucher(models.Model):
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_cv_totals", store=True)
     amount_total_net_display = fields.Monetary(string="Total Net Display", currency_field="currency_id", compute="_compute_cv_display")
 
-    # Uniqueness enforced via Python _check_one_active_per_cn (avoid btree_gist requirement)
+    _sql_constraints = [
+        (
+            "cv_number_company_unique",
+            "unique(company_id, name)",
+            "CV Number must be unique within the company.",
+        ),
+    ]
 
     @api.depends("credit_note_id.amount_residual", "credit_note_id.amount_residual_signed", "credit_note_id.amount_total")
     def _compute_cn_residual(self):
@@ -202,12 +208,7 @@ class BuzCustomerRefundVoucher(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get("name", "/") in ("/", False, None):
-                company = self.env["res.company"].browse(vals.get("company_id")) if vals.get("company_id") else self.env.company
-                # per company yearly sequence: use with_company and sequence_date
-                seq_date = vals.get("date") or fields.Date.context_today(self)
-                seq = self.env["ir.sequence"].with_company(company).next_by_code("buz.customer.refund.voucher", sequence_date=seq_date) or "/"
-                vals["name"] = seq
+            self._validate_cv_number(vals.get("name"))
             # set refund_amount from credit note if not provided
             if vals.get("credit_note_id") and not vals.get("refund_amount"):
                 cn = self.env["account.move"].browse(vals["credit_note_id"])
@@ -250,10 +251,11 @@ class BuzCustomerRefundVoucher(models.Model):
             for rec in self:
                 if rec.state != "draft":
                     raise UserError(_("Cannot change Credit Note after Draft."))
-        # handle name /
-        if vals.get("name") == "/":
+        if "name" in vals:
+            self._validate_cv_number(vals.get("name"))
             for rec in self:
-                vals["name"] = self.env["ir.sequence"].with_company(rec.company_id).next_by_code("buz.customer.refund.voucher", sequence_date=vals.get("date") or rec.date) or "/"
+                if rec.state != "draft":
+                    raise UserError(_("CV Number cannot be changed after Confirmed."))
         res = super().write(vals)
         # keep line in sync when credit_note or amount changes (header -> line)
         if "refund_amount" in vals:
@@ -267,6 +269,18 @@ class BuzCustomerRefundVoucher(models.Model):
             for rec in self:
                 rec._sync_lines()
         return res
+
+    @api.model
+    def _validate_cv_number(self, value):
+        """Validate the manually entered number without imposing a format."""
+        if not value or not str(value).strip():
+            raise ValidationError(_("CV Number is required."))
+        return True
+
+    @api.constrains("name", "company_id")
+    def _check_cv_number(self):
+        for rec in self:
+            self._validate_cv_number(rec.name)
 
     @api.constrains("credit_note_id", "company_id", "partner_id", "refund_amount", "refund_reason", "other_income_account_id", "state", "line_ids")
     def _check_credit_note_validity(self):

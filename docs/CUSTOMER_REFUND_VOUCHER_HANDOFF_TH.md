@@ -1,6 +1,6 @@
 ## อัปเดตงาน Local รอบล่าสุด (2026-09-01)
 
-สถานะรอบนี้: ปรับปรุงและทดสอบบน Local/isolated Docker แล้ว ยังไม่ได้ Deploy, Upgrade หรือ Restart MOG_DEV ตามขอบเขตของแผนนี้ โดย MOG_DEV ยังคงเป็นเวอร์ชันที่ Deploy ในรอบก่อนหน้า จนกว่าจะมีคำสั่ง Deploy ใหม่
+สถานะรอบนี้: ปรับปรุงและทดสอบบน Local/isolated Docker แล้ว และ Deploy/Upgrade/Restart บน MOG_DEV สำเร็จ โดยยังไม่รวม Browser/PDF/accounting UAT
 
 สิ่งที่ปรับปรุงใน CV:
 - Refund Amount ที่ Header เป็นยอดจ่ายจริง และ Payment Line เป็น Readonly พร้อม Sync จาก Header
@@ -10,22 +10,29 @@
 - Payment Journal และ Outbound Payment Method ต้องครบ อยู่บริษัทเดียวกัน และ Method ต้องอยู่ใน Journal ที่เลือก
 - ซ่อน Bank Fee จากฟอร์ม CV ระยะแรก เพราะยังไม่มี Logic ลงบัญชี
 - เพิ่ม guard ป้องกัน Refund Amount เป็นศูนย์/ติดลบ/เกิน CN Residual, Payment ซ้ำ และ Journal Entry Number ซ้ำ
+- CV Number ให้ผู้ใช้บัญชีกรอกเอง ไม่บังคับ Prefix หรือรูปแบบ และห้ามเว้นว่าง
+- CV Number แก้ไขได้เฉพาะ Draft และต้องไม่ซ้ำภายในบริษัทเดียวกัน; บริษัทต่างกันใช้เลขเดียวกันได้ตามกติกา multi-company
+- ยกเลิกการเรียก `ir.sequence` อัตโนมัติสำหรับ CV ใหม่ โดยคง sequence configuration เดิมไว้เพื่อไม่ลบหรือเปลี่ยนข้อมูลเดิม
+- ย้ายการตรวจ Duplicate Journal Entry ไปก่อน standard `action_post()` ของ Payment โดยใช้ Payment Journal/sequence เดิม และไม่แก้ข้อมูลบัญชีเดิมอัตโนมัติ
 - CV เท่านั้นที่ถูกแก้ไข ไม่เปลี่ยน Model/View/Logic ของ Vendor PV และไม่ลบข้อมูลหรือโครงสร้าง Revision เดิม
 
 ผลตรวจสอบ:
-- Python compile ผ่าน
+- Python AST ผ่าน
 - XML parse ผ่าน
-- Isolated Docker Odoo test: 0 failed, 0 error(s) of 10 tests
-- การทดสอบ Register Refund จริงกับรายการบัญชีในฐานข้อมูลใช้งานจริงยังต้องทำเป็น UAT หลัง Deploy รอบถัดไป
+- Isolated Docker Odoo test: `0 failed, 0 error(s)` จาก 12 tests
+- `git diff --check` ผ่าน
+- MOG_DEV module state: `installed`, version `17.0.3.0.0`
+- MOG_DEV container: `odoo Up`; HTTP health check: `303`
+- ยังไม่มี Browser/PDF/accounting UAT จริง
 # Customer Refund Voucher (CV) — Handoff และข้อตกลงล่าสุด
 
 เอกสารนี้สรุปขอบเขตและเงื่อนไขที่ตกลงกันล่าสุดสำหรับ Customer Refund Voucher (CV) หากขัดกับข้อความเก่าในเอกสารหรือโค้ดเดิม ให้ถือข้อตกลงล่าสุดด้านล่างเป็นหลัก
 
-**สถานะล่าสุด (2026-09-01):** พัฒนาและ Deploy บน MOG_DEV แล้ว รอ User ทำ UAT เชิงธุรกิจ
+**สถานะล่าสุด (2026-09-01):** พัฒนา ทดสอบบน Local/isolated Docker และ Deploy ไปยัง MOG_DEV แล้ว รอ User ทำ UAT เชิงธุรกิจ
 
 ## Latest update (2026-09-01)
 
-สถานะปัจจุบัน: CV partial refund และ Other Income ถูกพัฒนา ทดสอบบน Local isolated Docker และ Deploy ไปยัง MOG_DEV แล้ว
+สถานะปัจจุบัน: CV partial refund, manual CV Number และ preflight Duplicate Journal Entry ถูกพัฒนา ทดสอบบน Local isolated Docker และ Deploy ไปยัง MOG_DEV แล้ว
 
 สิ่งที่ทำแล้ว:
 
@@ -35,9 +42,9 @@
 - Register Refund ใช้ Odoo account.payment.register สร้าง Customer Outbound Payment และ standard write-off/reconcile
 - จ่ายเต็ม CN ไม่สร้าง Write-off; จ่ายบางส่วนใช้ Other Income Account และตรวจ CN Residual ต้องเป็นศูนย์ก่อน CV เป็น Registered
 - เพิ่ม regression tests: full refund, partial refund calculation, zero amount rejection และ over-residual rejection
-- Local isolated test: 0 failed, 0 error(s) of 10 tests
-- MOG_DEV upgrade: exit code 0; Module loaded, Modules loaded, Registry loaded, Stopping gracefully
-- MOG_DEV restart สำเร็จ; HTTP health check = 302
+- Local isolated test ล่าสุด: `0 failed, 0 error(s)` จาก 12 tests
+- MOG_DEV upgrade: สำเร็จ; module state `installed`, version `17.0.3.0.0`
+- MOG_DEV restart: สำเร็จ; container `odoo Up`; HTTP health check `303`
 
 ข้อจำกัดที่ยังคงเดิม: ยังไม่รวมหลาย CN ต่อ CV, WHT, Bank Fee, approval หลายระดับ, การส่งเอกสารให้ลูกค้า และการลบ/ย้ายข้อมูล Revision เก่า
 
@@ -48,7 +55,7 @@
 - User นำ **Customer Credit Note (CN)** ที่ผ่านการ Post แล้วมาออกเลข **CV** เพื่อจ่ายเงินคืนให้ลูกค้า
 - CV เป็นเอกสารภายใน ใช้ประกอบการขออนุมัติและบันทึกการจ่ายเงิน ไม่ใช่เอกสารส่งให้ลูกค้า
 - ใช้กลไกมาตรฐานของ Odoo (`account.payment.register`) และ Reconcile ไม่สร้าง Journal Entry เอง
-- CV หนึ่งใบอ้างอิง CN หนึ่งใบ และคืนเงินเต็มยอดคงเหลือของ CN เท่านั้น
+- CV หนึ่งใบอ้างอิง CN หนึ่งใบ และรองรับการคืนเงินเต็มจำนวนหรือบางส่วนภายใน CN Residual
 - ต้องไม่กระทบข้อมูลหรือ workflow เดิมของ Vendor Payment Voucher (PV) และการจ่ายเงินเดิม
 
 ## 2. Workflow ที่ตกลง
@@ -68,10 +75,13 @@ Posted Customer CN (out_refund, residual > 0)
 
 ## 3. เลขเอกสาร
 
-- รูปแบบ `CV/<ปี>/<เลข 4 หลัก>` เช่น `CV/2026/0001`
-- Sequence แยกตามบริษัทและรีเซ็ตตามปี
-- ออกเลขเมื่อสร้าง CV ในสถานะ Draft
-- เลขที่ยกเลิกแล้วไม่ใช้ซ้ำ
+- `CV Number` เป็นข้อมูลที่ผู้ใช้บัญชีกรอกเอง
+- ระยะนี้ไม่บังคับ Prefix, ตัวย่อ, ปี, padding หรือรูปแบบใด ๆ
+- CV Number ต้องไม่ว่าง และต้องไม่ซ้ำภายใน `company_id` เดียวกัน
+- CV Number เดียวกันในคนละบริษัทเป็นไปตามกติกา multi-company และไม่ถือว่าซ้ำกัน
+- แก้ไข CV Number ได้เฉพาะสถานะ Draft; หลัง Confirm แล้วห้ามแก้
+- CV เดิมต้องคงเลขเดิมทั้งหมด ไม่เปลี่ยนเลขและไม่ backfill
+- ไม่เรียก `ir.sequence` อัตโนมัติสำหรับ CV ใหม่; sequence configuration เดิมคงไว้โดยไม่ลบหรือแก้ข้อมูลบัญชี
 
 ## 4. รูปแบบหน้าจอ
 
@@ -104,6 +114,7 @@ Posted Customer CN (out_refund, residual > 0)
 - Payment มี backlink ไป CV แบบ nullable และมี index
 - สิทธิ์แบ่งตามกลุ่มบัญชี: ผู้ใช้บัญชีจัดการ Draft และผู้จัดการบัญชีทำรายการที่ต้องอนุมัติ/ยกเลิก
 - ตรวจสอบบริษัทเดียวกัน วันที่ ยอดคงเหลือ และ CV ซ้ำก่อนบันทึก/ยืนยัน
+- ตรวจเลข Journal Entry ของ Payment ใหม่หลังสร้าง Draft Payment แต่ก่อน `action_post()` โดยตรวจตามบริษัทและ Payment Journal
 
 ## 6. การยุติการใช้งาน Revision
 
@@ -120,11 +131,11 @@ Posted Customer CN (out_refund, residual > 0)
 - ไม่แก้หรือ refactor logic ของ Vendor PV, Receipt Voucher หรือ Payment เดิมโดยไม่จำเป็น
 - ไม่ backfill, recompute หรือลบธุรกรรมเดิม
 - เปลี่ยน schema ได้เฉพาะส่วนเพิ่มเติมที่ CV ต้องใช้ และต้องรองรับฐานข้อมูลเดิม
-- การ Deploy/Upgrade/Restart MOG_DEV ดำเนินการแล้ว; Production ยังอยู่นอกขอบเขต
+- การ Deploy/Upgrade/Restart MOG_DEV ดำเนินการแล้วในรอบนี้; Production อยู่นอกขอบเขต
 
 ## 8. Docker gate ก่อนส่ง UAT
 
-ตรวจสอบบน Docker เครื่องนี้ก่อน โดยใช้ compose สำหรับ CV แยกจากโมดูลอื่น:
+ตรวจสอบบน Docker เครื่องนี้ก่อน โดยใช้ isolated project/database สำหรับ `buz_accounting_addon`:
 
 - Fresh install บนฐานข้อมูลทดสอบใหม่ และ Upgrade ซ้ำได้โดยไม่เกิด traceback
 - Restart แล้วโมดูลโหลดได้และหน้า Odoo ตอบสนอง
@@ -138,13 +149,16 @@ Docker gate นี้ยังไม่ใช่การรับรอง work
 
 หลังพัฒนาและผ่าน Docker gate แล้ว ให้ User ทดสอบเอง โดยครอบคลุมอย่างน้อย:
 
-1. สร้าง CV จาก CN ที่เข้าเงื่อนไขและตรวจเลข CV
-2. ตรวจ layout และ Payment Lines ว่าข้อมูลมาจาก CN และแก้เองไม่ได้
-3. Confirm แล้วข้อมูลสำคัญถูกล็อก
-4. Register Refund สร้าง Customer Outbound Payment ได้
-5. Post/Reconcile สำเร็จ ยอด CN ถูกต้อง และ CV เป็น Registered
-6. ทดสอบ Payment Cancelled และ validation กรณีข้อมูลไม่ครบ
-7. ยืนยันว่า Vendor PV และข้อมูลเดิมยังทำงานเหมือนเดิม
+1. สร้าง CV จาก CN ที่เข้าเงื่อนไขโดยกรอก CV Number เอง
+2. ไม่กรอก CV Number ต้องถูกปฏิเสธ และเลขซ้ำในบริษัทเดียวกันต้องถูกปฏิเสธ
+3. เลขเดียวกันคนละบริษัทต้องเป็นไปตามกติกา multi-company
+4. แก้ CV Number ได้เฉพาะ Draft และหลัง Confirm ต้องแก้ไม่ได้
+5. ตรวจ layout และ Payment Lines ว่าข้อมูลมาจาก CN และแก้เองไม่ได้
+6. Confirm แล้วข้อมูลสำคัญถูกล็อก
+7. Register Refund สร้าง Customer Outbound Payment ได้ และตรวจ Duplicate Journal Entry ก่อน Payment post
+8. Post/Reconcile สำเร็จ ยอด CN ถูกต้อง และ CV เป็น Registered
+9. ทดสอบ Payment Cancelled และ validation กรณีข้อมูลไม่ครบ
+10. ยืนยันว่า Vendor PV, Receipt Voucher และข้อมูลเดิมยังทำงานเหมือนเดิม
 
 ผล UAT และข้อแก้ไขเพิ่มเติมให้บันทึกใน handoff นี้ก่อนขยายขอบเขต
 
