@@ -18,7 +18,63 @@ class AccountPaymentRegister(models.TransientModel):
                 wizard.amount = self._context.get('force_amount')
 
     def _create_payments(self):
-        """Override to link created payments to voucher, voucher line and receipt if context provided"""
+        """Override to link created payments to voucher, voucher line and receipt if context provided.
+        Also handles Customer Refund Voucher (CV) outbound payment creation + post + reconcile in one transaction.
+        """
+        # CV path: intercept before super to enforce validation and rollback on failure
+        buz_cv_id = self._context.get('buz_cv_id')
+        if buz_cv_id:
+            # Early extension: ensure we don't alter non-CV flows
+            cv = self.env['buz.customer.refund.voucher'].browse(buz_cv_id)
+            if cv.exists() and cv.state == 'confirmed':
+                # Validate CV still matches CN residual before creating payment
+                cn = cv.credit_note_id
+                residual = abs(cn.amount_residual_signed) if hasattr(cn, 'amount_residual_signed') and cn.amount_residual_signed is not None else abs(cn.amount_residual)
+                if abs(cv.refund_amount - residual) > 0.01:
+                    from odoo.exceptions import UserError
+                    raise UserError(_("Refund Amount (%.2f) no longer matches Credit Note residual (%.2f).") % (cv.refund_amount, residual))
+                # Let super create payment, then post-process with transactional integrity
+                try:
+                    payments = super()._create_payments()
+                except Exception as e:
+                    # Rollback will be handled by Odoo transaction; ensure CV stays confirmed
+                    _logger.error("CV %s Register Refund failed: %s", cv.name, e)
+                    raise
+                # Post: set backlink, ensure outbound, post if needed, reconcile
+                if payments:
+                    # Enforce outbound customer payment
+                    for p in payments:
+                        if p.payment_type != 'outbound' or p.partner_type != 'customer':
+                            _logger.warning("Correcting payment %s to outbound/customer for CV %s", p.name, cv.name)
+                            p.write({'payment_type': 'outbound', 'partner_type': 'customer'})
+                    payments.write({'buz_customer_refund_voucher_id': cv.id})
+                    # Post if draft
+                    for p in payments:
+                        if p.state == 'draft':
+                            p.action_post()
+                    # Reconcile with credit note (asset_receivable line)
+                    try:
+                        # Find CV payment receivable line and CN receivable line
+                        for p in payments:
+                            p_move_lines = p.move_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled)
+                            cn_lines = cn.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled)
+                            # For out_refund, receivable line is credit; still same account
+                            lines_to_rec = (p_move_lines + cn_lines).filtered(lambda l: not l.reconciled)
+                            if len(lines_to_rec) > 1:
+                                # ensure same account & partner before reconcile
+                                accounts = lines_to_rec.mapped('account_id')
+                                for acc in accounts:
+                                    acc_lines = lines_to_rec.filtered(lambda l: l.account_id == acc)
+                                    if len(acc_lines) > 1:
+                                        acc_lines.reconcile()
+                    except Exception as e:
+                        _logger.error("CV %s reconcile failed: %s", cv.name, e)
+                        raise UserError(_("Payment created but reconciliation failed: %s") % e)
+                    # Mark CV registered only after successful reconcile
+                    cv.write({'payment_id': payments[0].id, 'state': 'registered'})
+                    cv.message_post(body=_("Refund Payment %s created, posted and reconciled.") % ', '.join(payments.mapped('name')))
+                    payments.write({'ref': f"CV {cv.name}"})
+                return payments
         payments = super()._create_payments()
         
         # Link payments to payment voucher if context provided

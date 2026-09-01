@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_customer_refund_voucher" model="report.paperformat">
+        <field name="name">Customer Refund Voucher A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_buz_customer_refund_voucher" model="ir.actions.report">
+        <field name="name">Customer Refund Voucher (Internal)</field>
+        <field name="model">buz.customer.refund.voucher</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_accounting_addon.report_buz_customer_refund_voucher</field>
+        <field name="report_file">buz_accounting_addon.report_buz_customer_refund_voucher</field>
+        <field name="print_report_name">'CV-%s-Rev%s' % (object.name, object.latest_revision_id.revision if object.latest_revision_id else 0)</field>
+        <field name="paperformat_id" ref="paperformat_customer_refund_voucher"/>
+        <field name="binding_model_id" ref="model_buz_customer_refund_voucher"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_buz_customer_refund_voucher_document">
+        <t t-call="web.external_layout">
+            <div class="page" style="font-size: 14px;">
+                <div class="text-center mb-4">
+                    <h3 style="font-weight: bold;">Customer Refund Voucher (Internal)</h3>
+                    <p style="color: #666;">Internal CV — Not for external distribution</p>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <strong>CV No:</strong> <span t-field="o.name"/><br/>
+                        <strong>CV Date:</strong> <span t-field="o.date"/><br/>
+                        <strong>Company:</strong> <span t-field="o.company_id.name"/><br/>
+                        <span t-if="o.latest_revision_id"><strong>Revision:</strong> <span t-field="o.latest_revision_id.revision"/> — <span t-field="o.latest_revision_id.create_date"/></span>
+                    </div>
+                    <div class="col-6 text-end">
+                        <strong>State:</strong> <span t-field="o.state"/><br/>
+                        <strong>Printed By:</strong> <span t-field="o.latest_revision_id.create_uid.name" t-if="o.latest_revision_id"/><br/>
+                    </div>
+                </div>
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Credit Note</th>
+                            <th>Refund Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span t-field="o.partner_id.name"/></td>
+                            <td><span t-field="o.credit_note_id.name"/> (<span t-field="o.credit_note_id.invoice_date"/>)</td>
+                            <td class="text-end"><span t-field="o.refund_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <strong>Refund Method:</strong> <span t-field="o.payment_type"/><br/>
+                        <t t-if="o.payment_type == 'check'">
+                            <strong>Cheque No:</strong> <span t-field="o.check_number"/><br/>
+                            <strong>Cheque Date:</strong> <span t-field="o.check_date"/><br/>
+                            <strong>Pay to:</strong> <span t-field="o.check_pay_to"/><br/>
+                        </t>
+                        <strong>Journal:</strong> <span t-field="o.destination_journal_id.name"/><br/>
+                        <strong>Payment Method:</strong> <span t-field="o.payment_method_line_id.name"/><br/>
+                        <strong>Customer Account:</strong> <span t-field="o.customer_account_id.display_name"/><br/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Reason:</strong><br/>
+                        <span t-field="o.refund_reason"/><br/>
+                        <strong>Note:</strong><br/>
+                        <span t-field="o.note"/>
+                    </div>
+                </div>
+                <div class="mt-4" style="border: 1px solid #000; padding: 10px;">
+                    <div class="row text-center mt-4">
+                        <div class="col-3"><div style="border-bottom: 1px dotted #000; height: 40px;"></div>Prepared By<br/><span t-field="o.create_uid.name"/><br/><span t-field="o.create_date" t-options='{"widget": "date"}'/></div>
+                        <div class="col-3"><div style="border-bottom: 1px dotted #000; height: 40px;"></div>Checked</div>
+                        <div class="col-3"><div style="border-bottom: 1px dotted #000; height: 40px;"></div>Approved</div>
+                        <div class="col-3"><div style="border-bottom: 1px dotted #000; height: 40px;"></div>Received By</div>
+                    </div>
+                </div>
+                <p class="text-muted mt-3" style="font-size: 11px;">Revision <span t-field="o.latest_revision_id.revision" t-if="o.latest_revision_id"/> — Snapshot: <span t-field="o.latest_revision_id.snapshot_json" t-if="o.latest_revision_id"/></p>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_buz_customer_refund_voucher">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="buz_accounting_addon.report_buz_customer_refund_voucher_document" t-lang="o.company_id.partner_id.lang"/>
+            </t>
+        </t>
+    </template>
+</odoo>

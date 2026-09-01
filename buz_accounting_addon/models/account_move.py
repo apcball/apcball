@@ -1,10 +1,65 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, api
+from odoo import models, api, fields, _
+from odoo.exceptions import UserError
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
+
+    buz_cv_count = fields.Integer(compute="_compute_buz_cv_count", string="CV Count")
+    buz_cv_ids = fields.One2many("buz.customer.refund.voucher", "credit_note_id", string="Refund Vouchers")
+
+    def _compute_buz_cv_count(self):
+        for rec in self:
+            rec.buz_cv_count = len(rec.buz_cv_ids)
+
+    def action_create_customer_refund_voucher(self):
+        self.ensure_one()
+        if self.move_type != "out_refund" or self.state != "posted":
+            raise UserError(_("Only Posted Customer Credit Notes can create a CV."))
+        residual = abs(self.amount_residual_signed) if hasattr(self, 'amount_residual_signed') and self.amount_residual_signed is not None else abs(self.amount_residual)
+        if residual < 0.01:
+            raise UserError(_("Credit Note %s has no residual amount.") % self.name)
+        # company access
+        if self.company_id not in self.env.companies:
+            raise UserError(_("Access denied for company %s.") % self.company_id.name)
+        # check existing active CV
+        existing = self.env["buz.customer.refund.voucher"].search([
+            ("credit_note_id", "=", self.id),
+            ("state", "in", ["draft", "confirmed", "registered"]),
+        ], limit=1)
+        if existing:
+            raise UserError(_("An active CV (%s) already exists for this Credit Note.") % existing.name)
+        # create draft CV
+        vals = {
+            "credit_note_id": self.id,
+            "partner_id": self.partner_id.id,
+            "company_id": self.company_id.id,
+        }
+        cv = self.env["buz.customer.refund.voucher"].create(vals)
+        return {
+            "name": _("Customer Refund Voucher"),
+            "type": "ir.actions.act_window",
+            "res_model": "buz.customer.refund.voucher",
+            "view_mode": "form",
+            "res_id": cv.id,
+            "target": "current",
+        }
+
+    def action_open_buz_cvs(self):
+        self.ensure_one()
+        cvs = self.buz_cv_ids
+        action = {
+            "name": _("Refund Vouchers"),
+            "type": "ir.actions.act_window",
+            "res_model": "buz.customer.refund.voucher",
+            "view_mode": "tree,form",
+            "domain": [("id", "in", cvs.ids)],
+        }
+        if len(cvs) == 1:
+            action.update({"view_mode": "form", "res_id": cvs.id})
+        return action
 
     def _auto_init(self):
         # Drop the conflicting constraint from employee_advance if it exists

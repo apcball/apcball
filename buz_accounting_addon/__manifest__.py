@@ -1,6 +1,6 @@
 {
     "name": "BUZ Accounting Addon",
-    "version": "17.0.2.1.0",
+    "version": "17.0.3.0.0",
     "category": "Accounting",
     "summary": "Production-ready grouped customer receipts with RV-ready architecture",
     "description": """
@@ -61,6 +61,7 @@
         "reports/payment_transfer_report.xml",
         "reports/payment_tranfer_cheq_report.xml",
         "reports/account_cheque_report.xml",
+        "reports/customer_refund_voucher_report.xml",
         "views/account_move_views.xml",
         "views/account_receipt_views.xml",
         "views/account_receipt_config_views.xml",
@@ -68,6 +69,7 @@
         "views/account_receipt_voucher_views.xml",
         "views/account_payment_voucher_views.xml",
         "views/account_bank_transfer_views.xml",
+        "views/customer_refund_voucher_views.xml",
         "views/account_payment_register_wizard_views.xml",
         "views/bill_display_wizard_views.xml",
         "views/bill_register_payment_wizard_views.xml",
