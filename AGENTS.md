@@ -33,6 +33,49 @@ pip install pylint pylint-odoo
 pylint --load-plugins=pylint_odoo <module>/
 ```
 
+### Deploy to DEV server
+
+When the user requests a DEV deployment, use the following procedure unless
+the user explicitly requests a different target:
+
+```powershell
+# Copy the selected module from local to DEV and overwrite files with the same names
+scp -r -i "$env:USERPROFILE\.ssh\id_ed25519_2172163233" `
+  -o IdentitiesOnly=yes `
+  .\<module> `
+  root@217.216.32.33:/srv/docker/odoo/custom-addons/
+
+# Update the selected module in the DEV database
+ssh -i "$env:USERPROFILE\.ssh\id_ed25519_2172163233" `
+  -o IdentitiesOnly=yes `
+  root@217.216.32.33 `
+  "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
+```
+
+If `rsync` is available on the local machine, it may be used as an optional
+alternative when exact synchronization and deletion of stale module files are
+required:
+
+```bash
+# Upload the selected module to DEV and remove stale files in that module
+rsync -az --delete "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
+
+# Update the selected module in the DEV database
+ssh -i "$env:USERPROFILE/.ssh/id_ed25519_2172163233" \
+  -o IdentitiesOnly=yes \
+  root@217.216.32.33 \
+  "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
+```
+
+- This procedure targets DEV only (`MOG_DEV`).
+- Use `scp` as the default method because it is available on the local machine.
+- `scp` overwrites matching files but does not remove files that were deleted
+  from the local module. Use the optional `rsync --delete` procedure only when
+  stale-file removal is explicitly required.
+- Do not deploy to PROD or run `systemctl restart instance1` unless the user
+  explicitly requests a PROD deployment.
+- Report the upload result and module-update result separately.
+
 ## CI flow (GitHub Actions + GitLab CI self-hosted)
 
 `detect → lint → test → deploy`
