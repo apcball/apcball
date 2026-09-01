@@ -89,15 +89,16 @@
                             </div>
                         </div>
 
-                        <!-- 1. Customer / Credit Note Table -->
+                        <!-- 1. Customer / Credit Note Table — shows CN Amount vs Refund Amount (Partial supported) -->
                         <table class="table-bordered" style="margin-top: 10px;">
                             <thead>
                                 <tr class="table-header">
-                                    <th style="width: 15%;">รหัสลูกค้า</th>
-                                    <th style="width: 30%;">ชื่อลูกค้า</th>
-                                    <th style="width: 20%;">เอกสาร</th>
-                                    <th style="width: 20%;">เลขที่เอกสาร</th>
-                                    <th style="width: 15%;">จำนวนเงิน</th>
+                                    <th style="width: 12%;">รหัสลูกค้า</th>
+                                    <th style="width: 26%;">ชื่อลูกค้า</th>
+                                    <th style="width: 16%;">เอกสาร</th>
+                                    <th style="width: 18%;">เลขที่เอกสาร</th>
+                                    <th style="width: 14%;">CN Amount</th>
+                                    <th style="width: 14%;">Refund Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -121,6 +122,10 @@
                                             <span t-else="">-</span>
                                         </td>
                                         <td class="text-end" style="vertical-align: middle;">
+                                            <span t-if="line.cn_amount" t-field="line.cn_amount" t-options='{"widget": "float", "precision": 2}'/>
+                                            <span t-else="" t-field="o.cn_amount" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="text-end" style="vertical-align: middle;">
                                             <span t-field="line.refund_amount" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                     </tr>
@@ -141,14 +146,20 @@
                                             <span t-field="o.credit_note_id.name"/>
                                         </td>
                                         <td class="text-end" style="vertical-align: middle;">
+                                            <span t-field="o.cn_amount" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="text-end" style="vertical-align: middle;">
                                             <span t-field="o.refund_amount" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                     </tr>
                                 </t>
-                                <!-- Total Row -->
+                                <!-- Total Row — Refund Amount = payment amount; CN Amount for reference -->
                                 <tr>
                                     <td colspan="4" class="text-end" style="font-weight: bold; padding-right: 10px;">
-                                        จำนวนเงิน
+                                        รวม Refund / CN Total
+                                    </td>
+                                    <td class="text-end" style="font-weight: bold;">
+                                        <span t-field="o.cn_amount" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td class="text-end" style="font-weight: bold;">
                                         <span t-field="o.refund_amount" t-options='{"widget": "float", "precision": 2}'/>

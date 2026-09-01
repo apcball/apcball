@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -16,6 +18,24 @@ class AccountPaymentRegister(models.TransientModel):
             # Check if we have a forced amount from context (e.g. from Payment Voucher WHT)
             if self._context.get('force_amount'):
                 wizard.amount = self._context.get('force_amount')
+            cv_id = self._context.get("buz_cv_id")
+            cv = self.env["buz.customer.refund.voucher"].browse(cv_id).exists() if cv_id else self.env["buz.customer.refund.voucher"]
+            if cv and cv.state == "confirmed":
+                cv.ensure_one()
+                # CV เน€เธยเน€เธยเน€เธย Refund Amount เน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธเธ‘เน€เธโ€ขเน€เธเธ” เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธเน€เธโ€ Residual เน€เธโ€”เน€เธเธ•เน€เธย wizard เน€เธโฌเน€เธโ€ขเน€เธเธ”เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ‘เน€เธโ€ขเน€เธยเน€เธยเน€เธเธเน€เธเธ‘เน€เธโ€ขเน€เธเธ”
+                wizard.amount = cv.refund_amount
+                difference = cv.other_income_dis
+                if float_compare(difference, 0.0, precision_rounding=cv.currency_id.rounding) > 0:
+                    if not cv.other_income_account_id:
+                        raise ValidationError(_("Other Income Account is required for a partial refund."))
+                    wizard.payment_difference_handling = "reconcile"
+                    wizard.writeoff_account_id = cv.other_income_account_id
+                    wizard.writeoff_label = _("Other Income")
+                else:
+                    # เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธโฌเน€เธโ€ขเน€เธยเน€เธเธ CN เน€เธโ€ขเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ•เน€เธเธเน€เธเธ’เน€เธเธเน€เธยเน€เธเธ’เน€เธเธ Write-off
+                    wizard.payment_difference_handling = "open"
+                    wizard.writeoff_account_id = False
+                    wizard.writeoff_label = False
 
     def _create_payments(self):
         """Override to link created payments to voucher, voucher line and receipt if context provided.
@@ -28,11 +48,28 @@ class AccountPaymentRegister(models.TransientModel):
             cv = self.env['buz.customer.refund.voucher'].browse(buz_cv_id)
             if cv.exists() and cv.state == 'confirmed':
                 # Validate CV still matches CN residual before creating payment
+                existing_payment = self.env["account.payment"].search(
+                    [
+                        ("buz_customer_refund_voucher_id", "=", cv.id),
+                        ("state", "!=", "cancel"),
+                    ],
+                    limit=1,
+                )
+                if existing_payment:
+                    raise UserError(_("A non-cancelled refund payment already exists for this CV."))
                 cn = cv.credit_note_id
                 residual = abs(cn.amount_residual_signed) if hasattr(cn, 'amount_residual_signed') and cn.amount_residual_signed is not None else abs(cn.amount_residual)
-                if abs(cv.refund_amount - residual) > 0.01:
+                if cv.refund_amount < 0.01:
                     from odoo.exceptions import UserError
-                    raise UserError(_("Refund Amount (%.2f) no longer matches Credit Note residual (%.2f).") % (cv.refund_amount, residual))
+                    raise UserError(_("Refund Amount must be greater than 0."))
+                if cv.refund_amount - residual > 0.01:
+                    from odoo.exceptions import UserError
+                    raise UserError(_("Refund Amount (%.2f) cannot exceed Credit Note residual (%.2f).") % (cv.refund_amount, residual))
+                expected_difference = max(residual - cv.refund_amount, 0.0)
+                if float_compare(self.amount, cv.refund_amount, precision_rounding=cn.currency_id.rounding) != 0:
+                    raise UserError(_("Payment amount does not match CV Refund Amount."))
+                if float_compare(self.payment_difference, expected_difference, precision_rounding=cn.currency_id.rounding) != 0:
+                    raise UserError(_("Payment difference does not match CN residual minus Refund Amount."))
                 # Let super create payment, then post-process with transactional integrity
                 try:
                     payments = super()._create_payments()
@@ -42,34 +79,37 @@ class AccountPaymentRegister(models.TransientModel):
                     raise
                 # Post: set backlink, ensure outbound, post if needed, reconcile
                 if payments:
-                    # Enforce outbound customer payment
+                    # The wizard context must produce a Customer Outbound Payment.
                     for p in payments:
-                        if p.payment_type != 'outbound' or p.partner_type != 'customer':
-                            _logger.warning("Correcting payment %s to outbound/customer for CV %s", p.name, cv.name)
-                            p.write({'payment_type': 'outbound', 'partner_type': 'customer'})
+                        if p.payment_type != "outbound" or p.partner_type != "customer":
+                            raise UserError(_("Payment must be a Customer Outbound Payment."))
                     payments.write({'buz_customer_refund_voucher_id': cv.id})
                     # Post if draft
                     for p in payments:
                         if p.state == 'draft':
                             p.action_post()
-                    # Reconcile with credit note (asset_receivable line)
-                    try:
-                        # Find CV payment receivable line and CN receivable line
-                        for p in payments:
-                            p_move_lines = p.move_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled)
-                            cn_lines = cn.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled)
-                            # For out_refund, receivable line is credit; still same account
-                            lines_to_rec = (p_move_lines + cn_lines).filtered(lambda l: not l.reconciled)
-                            if len(lines_to_rec) > 1:
-                                # ensure same account & partner before reconcile
-                                accounts = lines_to_rec.mapped('account_id')
-                                for acc in accounts:
-                                    acc_lines = lines_to_rec.filtered(lambda l: l.account_id == acc)
-                                    if len(acc_lines) > 1:
-                                        acc_lines.reconcile()
-                    except Exception as e:
-                        _logger.error("CV %s reconcile failed: %s", cv.name, e)
-                        raise UserError(_("Payment created but reconciliation failed: %s") % e)
+                    # Odoo เน€เธเธเน€เธเธ’เน€เธโ€ขเน€เธเธเน€เธยเน€เธเธ’เน€เธย reconcile Payment เน€เธยเน€เธเธ…เน€เธเธ Write-off เน€เธยเน€เธเธ‘เน€เธย CN เน€เธยเน€เธเธ…เน€เธยเน€เธเธ
+                    # เน€เธโ€ขเน€เธเธเน€เธเธเน€เธยเน€เธยเน€เธเธ…เน€เธเธ…เน€เธเธ‘เน€เธยเน€เธยเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธยเน€เธเธ…เน€เธเธ•เน€เธยเน€เธเธเน€เธย CV เน€เธโฌเน€เธยเน€เธยเน€เธย Registered; เน€เธโ€“เน€เธยเน€เธเธ’เน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธย rollback transaction
+                    cn.invalidate_recordset(["amount_residual", "amount_residual_signed", "payment_state"])
+                    residual_after = abs(cn.amount_residual_signed) if cn.amount_residual_signed is not None else abs(cn.amount_residual)
+                    if float_compare(residual_after, 0.0, precision_rounding=cn.currency_id.rounding) != 0:
+                        raise UserError(_("Credit Note %s was not fully reconciled (residual %.2f).") % (cn.name, residual_after))
+                    move_ids = payments.mapped("move_id")
+                    move_names = move_ids.mapped("name")
+                    if len(move_names) != len(set(move_names)):
+                        raise UserError(_("Duplicate Journal Entry number detected in the refund payment."))
+                    for move in move_ids:
+                        duplicate_move = self.env["account.move"].search(
+                            [
+                                ("id", "not in", move_ids.ids),
+                                ("company_id", "=", move.company_id.id),
+                                ("journal_id", "=", move.journal_id.id),
+                                ("name", "=", move.name),
+                            ],
+                            limit=1,
+                        )
+                        if duplicate_move:
+                            raise UserError(_("Duplicate Journal Entry number %s detected.") % move.name)
                     # Mark CV registered only after successful reconcile
                     cv.write({'payment_id': payments[0].id, 'state': 'registered'})
                     cv.message_post(body=_("Refund Payment %s created, posted and reconciled.") % ', '.join(payments.mapped('name')))

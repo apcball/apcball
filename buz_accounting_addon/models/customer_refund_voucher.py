@@ -27,7 +27,9 @@ class BuzCustomerRefundVoucher(models.Model):
         index=True,
         tracking=True,
     )
-    refund_amount = fields.Monetary(string="Refund Amount", currency_field="currency_id", required=True, readonly=True, tracking=True)
+    cn_amount = fields.Monetary(string="CN Amount", currency_field="currency_id", related="credit_note_id.amount_total", readonly=True)
+    cn_residual = fields.Monetary(string="CN Residual", currency_field="currency_id", compute="_compute_cn_residual", readonly=True, store=False)
+    refund_amount = fields.Monetary(string="Refund Amount", currency_field="currency_id", required=True, tracking=True)
     # Alias for compatibility with reports
     amount_total = fields.Monetary(related="refund_amount", currency_field="currency_id", readonly=True)
     payment_type = fields.Selection([
@@ -53,8 +55,24 @@ class BuzCustomerRefundVoucher(models.Model):
         string="Customer Account",
         domain="[('account_type','=','asset_receivable')]",
         check_company=False,
+        readonly=True,
         tracking=True,
     )
+    billing_note = fields.Char(string="Billing Note", tracking=True)
+    bank_free_dis = fields.Monetary(
+        string="Bank Fee",
+        currency_field="currency_id",
+        help="Optional bank fee deducted by the bank.",
+    )
+    other_income_dis = fields.Monetary(
+        string="Other Income",
+        currency_field="currency_id",
+        compute="_compute_other_income",
+        store=True,
+        readonly=True,
+        help="CN residual less the actual refund amount.",
+    )
+    other_income_account_id = fields.Many2one("account.account", string="Other Income Account", domain="[('account_type', 'in', ['income', 'income_other']), ('company_id', '=', company_id)]", check_company=True, tracking=True, help="Account used for the write-off when the refund is below the CN residual.")
     check_number = fields.Char(string="Cheque Number", tracking=True)
     check_date = fields.Date(string="Cheque Date", tracking=True)
     check_pay_to = fields.Char(string="Pay to", tracking=True)
@@ -70,13 +88,60 @@ class BuzCustomerRefundVoucher(models.Model):
     payment_id = fields.Many2one("account.payment", string="Refund Payment", readonly=True, copy=False, index=True)
     payment_count = fields.Integer(compute="_compute_payment_count", string="Payments")
     line_ids = fields.One2many("buz.customer.refund.voucher.line", "voucher_id", string="Payment Lines", copy=False)
+    bank_transfer_ids = fields.One2many(
+        "account.bank.transfer",
+        "buz_customer_refund_voucher_id",
+        string="Bank Transfers",
+        copy=False,
+    )
+    # PV-parity computed totals (CV-specific logic, nullable/zero-safe)
+    amount_total_gross = fields.Monetary(string="Total Gross", currency_field="currency_id", compute="_compute_cv_totals", store=True)
+    amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_cv_totals", store=True)
+    amount_total_net_display = fields.Monetary(string="Total Net Display", currency_field="currency_id", compute="_compute_cv_display")
 
     # Uniqueness enforced via Python _check_one_active_per_cn (avoid btree_gist requirement)
+
+    @api.depends("credit_note_id.amount_residual", "credit_note_id.amount_residual_signed", "credit_note_id.amount_total")
+    def _compute_cn_residual(self):
+        for rec in self:
+            if rec.credit_note_id:
+                rec.cn_residual = abs(rec.credit_note_id.amount_residual_signed) if hasattr(rec.credit_note_id, 'amount_residual_signed') and rec.credit_note_id.amount_residual_signed is not None else abs(rec.credit_note_id.amount_residual or 0.0)
+            else:
+                rec.cn_residual = 0.0
 
     @api.depends("payment_id")
     def _compute_payment_count(self):
         for rec in self:
             rec.payment_count = 1 if rec.payment_id else 0
+
+    @api.depends("credit_note_id.amount_residual", "credit_note_id.amount_residual_signed", "refund_amount")
+    def _compute_other_income(self):
+        for rec in self:
+            rec.other_income_dis = max((rec.cn_residual or 0.0) - (rec.refund_amount or 0.0), 0.0)
+
+    def _validate_refund_amount(self, residual=None):
+        self.ensure_one()
+        residual = self.cn_residual if residual is None else residual
+        if self.refund_amount < 0.01:
+            raise UserError(_("Refund Amount must be greater than 0."))
+        if self.refund_amount - residual > 0.01:
+            raise UserError(_("Refund Amount (%.2f) cannot exceed Credit Note residual (%.2f).") % (self.refund_amount, residual))
+        return residual
+
+    @api.depends("line_ids.refund_amount", "refund_amount", "bank_free_dis", "other_income_dis")
+    def _compute_cv_totals(self):
+        """CV-specific totals โ€” independent from PV logic. Gross = sum lines or refund_amount."""
+        for rec in self:
+            gross = sum(rec.line_ids.mapped("refund_amount")) if rec.line_ids else (rec.refund_amount or 0.0)
+            rec.amount_total_gross = gross
+            # CV net = gross - bank fee - other income (nullable, zero-safe)
+            rec.amount_total_net = gross - (rec.bank_free_dis or 0.0) - (rec.other_income_dis or 0.0)
+
+    @api.depends("amount_total_net", "bank_transfer_ids.amount", "amount_total_gross")
+    def _compute_cv_display(self):
+        for rec in self:
+            bt_total = sum(rec.bank_transfer_ids.mapped("amount")) if rec.bank_transfer_ids else 0.0
+            rec.amount_total_net_display = rec.amount_total_net or bt_total or rec.amount_total_gross
 
     @api.onchange("credit_note_id")
     def _onchange_credit_note_id(self):
@@ -90,12 +155,8 @@ class BuzCustomerRefundVoucher(models.Model):
             residual = abs(self.credit_note_id.amount_residual_signed) if hasattr(self.credit_note_id, 'amount_residual_signed') else abs(self.credit_note_id.amount_residual)
             self.refund_amount = residual
             # default customer account from credit note receivable line
-            if not self.customer_account_id:
-                rec_line = self.credit_note_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')[:1]
-                if rec_line:
-                    self.customer_account_id = rec_line.account_id
-                else:
-                    self.customer_account_id = self.credit_note_id.partner_id.property_account_receivable_id
+            rec_line = self.credit_note_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')[:1]
+            self.customer_account_id = rec_line.account_id if rec_line else self.credit_note_id.partner_id.property_account_receivable_id
             if not self.check_pay_to and self.partner_id:
                 self.check_pay_to = self.partner_id.name
 
@@ -106,18 +167,22 @@ class BuzCustomerRefundVoucher(models.Model):
             if self.payment_method_line_id and self.payment_method_line_id.journal_id != self.destination_journal_id:
                 self.payment_method_line_id = False
 
+    @api.onchange("refund_amount")
+    def _onchange_refund_amount_sync_line(self):
+        if self.line_ids:
+            self.line_ids[0].refund_amount = self.refund_amount
+
     @api.onchange("partner_id")
     def _onchange_partner_check_pay_to(self):
         if self.partner_id and not self.check_pay_to:
             self.check_pay_to = self.partner_id.name
 
     def _sync_lines(self):
-        """Ensure single readonly line per CV from CN — future-ready for multiple."""
+        """Ensure single line per CV from CN โ€” editable Refund Amount, supports Partial."""
         for rec in self:
             if not rec.credit_note_id:
                 continue
             residual = abs(rec.credit_note_id.amount_residual_signed) if hasattr(rec.credit_note_id, 'amount_residual_signed') and rec.credit_note_id.amount_residual_signed is not None else abs(rec.credit_note_id.amount_residual)
-            # keep line in sync
             if not rec.line_ids:
                 self.env["buz.customer.refund.voucher.line"].create({
                     "voucher_id": rec.id,
@@ -125,16 +190,14 @@ class BuzCustomerRefundVoucher(models.Model):
                     "refund_amount": rec.refund_amount or residual,
                 })
             else:
-                # update existing first line (readonly model — keep data consistent)
+                # Single-CN MVP: keep header and line in sync, but allow Partial (user edits either side)
                 line = rec.line_ids[0]
                 vals = {}
                 if line.credit_note_id != rec.credit_note_id:
                     vals["credit_note_id"] = rec.credit_note_id.id
-                if abs((line.refund_amount or 0) - (rec.refund_amount or 0)) > 0.01:
-                    vals["refund_amount"] = rec.refund_amount or residual
-                if vals:
-                    line.write(vals)
-                # if more than one line exists (legacy/manual), keep first only — do not auto-delete to avoid data loss, just sync first
+                # Do not auto-overwrite if user already set partial within residual; only sync when header changed explicitly
+                vals["refund_amount"] = rec.refund_amount
+                line.write(vals)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -153,6 +216,11 @@ class BuzCustomerRefundVoucher(models.Model):
                     vals["refund_amount"] = residual
                     if not vals.get("partner_id"):
                         vals["partner_id"] = cn.partner_id.id
+            if vals.get("credit_note_id") and not vals.get("customer_account_id"):
+                cn = self.env["account.move"].browse(vals["credit_note_id"])
+                rec_line = cn.line_ids.filtered(lambda line: line.account_id.account_type == "asset_receivable")[:1]
+                vals["customer_account_id"] = (rec_line.account_id if rec_line else cn.partner_id.property_account_receivable_id).id
+
             if "date" not in vals or not vals["date"]:
                 vals["date"] = fields.Date.context_today(self)
         records = super().create(vals_list)
@@ -162,17 +230,21 @@ class BuzCustomerRefundVoucher(models.Model):
         return records
 
     def write(self, vals):
-        # prevent editing refund_amount mismatch
+        # allow Partial: refund_amount must be >0 and <= CN residual
         if "refund_amount" in vals:
             for rec in self:
-                if rec.state != "draft":
-                    raise UserError(_("Refund Amount cannot be changed after Draft."))
-                # if changing, ensure equals residual
-                cn = rec.credit_note_id
-                if cn:
-                    residual = abs(cn.amount_residual_signed) if hasattr(cn, 'amount_residual_signed') else abs(cn.amount_residual)
-                    if abs(vals["refund_amount"] - residual) > 0.01:
-                        raise UserError(_("Refund Amount must equal Credit Note residual (%.2f).") % residual)
+                if rec.state not in ("draft", "confirmed"):
+                    raise UserError(_("Refund Amount cannot be changed after Confirmed."))
+                target_cn = self.env["account.move"].browse(vals.get("credit_note_id")) if vals.get("credit_note_id") else rec.credit_note_id
+                if target_cn:
+                    residual = abs(target_cn.amount_residual_signed) if hasattr(target_cn, 'amount_residual_signed') else abs(target_cn.amount_residual)
+                    new_amount = vals["refund_amount"]
+                    if new_amount < 0.01:
+                        raise UserError(_("Refund Amount must be greater than 0."))
+                    if new_amount - residual > 0.01:
+                        raise UserError(_("Refund Amount (%.2f) cannot exceed Credit Note residual (%.2f).") % (new_amount, residual))
+                # keep line in sync with header for single-CN MVP
+                # will sync after write
         # prevent changing credit_note after creation except draft
         if "credit_note_id" in vals:
             for rec in self:
@@ -183,13 +255,20 @@ class BuzCustomerRefundVoucher(models.Model):
             for rec in self:
                 vals["name"] = self.env["ir.sequence"].with_company(rec.company_id).next_by_code("buz.customer.refund.voucher", sequence_date=vals.get("date") or rec.date) or "/"
         res = super().write(vals)
-        # keep line in sync when credit_note or amount changes
-        if any(k in vals for k in ("credit_note_id", "refund_amount")):
+        # keep line in sync when credit_note or amount changes (header -> line)
+        if "refund_amount" in vals:
+            for rec in self:
+                if rec.line_ids:
+                    # sync first line to header amount (Partial supported โ€” header is source for payment)
+                    line = rec.line_ids[0]
+                    if abs((line.refund_amount or 0) - vals["refund_amount"]) > 0.01:
+                        line.write({"refund_amount": vals["refund_amount"]})
+        if "credit_note_id" in vals:
             for rec in self:
                 rec._sync_lines()
         return res
 
-    @api.constrains("credit_note_id", "company_id", "partner_id", "refund_amount", "state")
+    @api.constrains("credit_note_id", "company_id", "partner_id", "refund_amount", "refund_reason", "other_income_account_id", "state", "line_ids")
     def _check_credit_note_validity(self):
         for rec in self:
             cn = rec.credit_note_id
@@ -204,13 +283,31 @@ class BuzCustomerRefundVoucher(models.Model):
                 raise ValidationError(_("Credit Note %s belongs to company %s, but CV is for %s.") % (cn.name, cn.company_id.name, rec.company_id.name))
             if rec.partner_id and cn.partner_id != rec.partner_id:
                 raise ValidationError(_("CV customer must match Credit Note customer."))
+            cn_receivable = cn.line_ids.filtered(lambda line: line.account_id.account_type == "asset_receivable")[:1]
+            expected_account = cn_receivable.account_id if cn_receivable else cn.partner_id.property_account_receivable_id
+            if rec.customer_account_id and rec.customer_account_id != expected_account:
+                raise ValidationError(_("Customer Account must match the receivable account on the Credit Note."))
             # residual > 0
             residual = abs(cn.amount_residual_signed) if hasattr(cn, 'amount_residual_signed') else abs(cn.amount_residual)
             if residual < 0.01 and rec.state in ("draft", "confirmed"):
                 raise ValidationError(_("Credit Note %s has no residual amount.") % cn.name)
-            # refund amount must equal residual (snapshot at creation; allow if CN residual changed after registered?)
-            if rec.state in ("draft", "confirmed") and abs(rec.refund_amount - residual) > 0.01:
-                raise ValidationError(_("Refund Amount (%.2f) must equal Credit Note residual (%.2f).") % (rec.refund_amount, residual))
+            # Partial support: header must be >0 and <= residual; line sum must also <= residual and = header
+            if rec.state in ("draft", "confirmed"):
+                if rec.refund_amount < 0.01:
+                    raise ValidationError(_("Refund Amount must be greater than 0."))
+                if rec.refund_amount - residual > 0.01:
+                    raise ValidationError(_("Refund Amount (%.2f) cannot exceed Credit Note residual (%.2f).") % (rec.refund_amount, residual))
+                if rec.line_ids:
+                    line_total = sum(rec.line_ids.mapped("refund_amount"))
+                    if abs(line_total - rec.refund_amount) > 0.01:
+                        raise ValidationError(_("Payment Lines total (%.2f) must match Refund Amount (%.2f).") % (line_total, rec.refund_amount))
+                    if line_total - residual > 0.01:
+                        raise ValidationError(_("Payment Lines total (%.2f) cannot exceed Credit Note residual (%.2f).") % (line_total, residual))
+                    for line in rec.line_ids:
+                        if line.refund_amount < 0.01:
+                            raise ValidationError(_("Line Refund Amount must be greater than 0."))
+                        if line.refund_amount - residual > 0.01:
+                            raise ValidationError(_("Line Refund Amount (%.2f) cannot exceed Credit Note residual (%.2f).") % (line.refund_amount, residual))
             # locked period / company_ids check
             if not self.env.user.has_group("base.group_system"):
                 # company access
@@ -220,6 +317,10 @@ class BuzCustomerRefundVoucher(models.Model):
             # currency check
             if rec.currency_id != rec.company_id.currency_id:
                 raise ValidationError(_("Currency must match company currency."))
+            if rec.other_income_dis > 0.01 and not rec.other_income_account_id:
+                raise ValidationError(_("Other Income Account is required for a partial refund."))
+            if rec.other_income_dis > 0.01 and not rec.refund_reason:
+                raise ValidationError(_("Refund Reason is required for a partial refund."))
 
     @api.constrains("destination_journal_id", "payment_method_line_id", "payment_type", "company_id")
     def _check_journal_payment_method(self):
@@ -230,7 +331,10 @@ class BuzCustomerRefundVoucher(models.Model):
                 raise ValidationError(_("Payment Method does not belong to the selected journal."))
             if rec.payment_method_line_id and rec.payment_method_line_id.payment_type != "outbound":
                 raise ValidationError(_("Payment Method must be Outbound."))
-            # required journal/method when confirmed? enforce on confirm
+            if rec.state in ("confirmed", "registered") and not rec.destination_journal_id:
+                raise ValidationError(_("Payment Journal is required before registration."))
+            if rec.state in ("confirmed", "registered") and not rec.payment_method_line_id:
+                raise ValidationError(_("Outbound Payment Method is required before registration."))
 
     @api.constrains("credit_note_id", "state")
     def _check_one_active_per_cn(self):
@@ -245,12 +349,12 @@ class BuzCustomerRefundVoucher(models.Model):
                     raise ValidationError(_("An active CV (%s) already exists for Credit Note %s.") % (others.name, rec.credit_note_id.name))
 
     def action_print_cv(self):
-        """Print current CV data directly — no revision/snapshot."""
+        """Print current CV data directly โ€” no revision/snapshot."""
         self.ensure_one()
         if self.state not in ("draft", "confirmed", "registered", "payment_cancelled"):
             raise UserError(_("Printing is only allowed in Draft/Confirmed/Registered."))
         self._check_company_access()
-        self.message_post(body=_("CV printed — internal copy."))
+        self.message_post(body=_("CV printed โ€” internal copy."))
         return self.env.ref("buz_accounting_addon.action_report_buz_customer_refund_voucher").report_action(self)
 
     def action_confirm(self):
@@ -259,12 +363,15 @@ class BuzCustomerRefundVoucher(models.Model):
             if rec.state != "draft":
                 continue
             rec._check_company_access()
-            # No revision requirement — print is optional per updated spec
-            if not rec.destination_journal_id and rec.payment_type != "cash":
-                pass
-            if rec.payment_type != "cash" and not rec.payment_method_line_id:
-                if rec.destination_journal_id and not rec.destination_journal_id.outbound_payment_method_line_ids:
-                    raise UserError(_("Selected journal has no outbound payment methods."))
+            # No revision requirement โ€” print is optional per updated spec
+            if not rec.destination_journal_id:
+                raise UserError(_("Payment Journal is required before confirming the CV."))
+            if not rec.payment_method_line_id:
+                raise UserError(_("Outbound Payment Method is required before confirming the CV."))
+            if rec.payment_method_line_id.journal_id != rec.destination_journal_id or rec.payment_method_line_id.payment_type != "outbound":
+                raise UserError(_("Select an Outbound Payment Method from the selected journal."))
+            if rec.other_income_dis > 0.01 and not rec.refund_reason:
+                raise UserError(_("Refund Reason is required for a partial refund."))
             rec.write({"state": "confirmed"})
             rec.message_post(body=_("CV Confirmed."))
         return True
@@ -275,13 +382,36 @@ class BuzCustomerRefundVoucher(models.Model):
         if self.state != "confirmed":
             raise UserError(_("Only Confirmed CV can register refund."))
         self._check_company_access()
+        self.env.cr.execute("SELECT id FROM buz_customer_refund_voucher WHERE id = %s FOR UPDATE", (self.id,))
+        self.invalidate_recordset(["payment_id", "state"])
+        existing_payment = self.env["account.payment"].search(
+            [
+                ("buz_customer_refund_voucher_id", "=", self.id),
+                ("state", "!=", "cancel"),
+            ],
+            limit=1,
+        )
+        if existing_payment:
+            raise UserError(_("A non-cancelled refund payment already exists for this CV."))
+        if not self.destination_journal_id:
+            raise UserError(_("Payment Journal is required before registering the refund."))
+        if not self.payment_method_line_id:
+            raise UserError(_("Outbound Payment Method is required before registering the refund."))
+        if self.payment_method_line_id.journal_id != self.destination_journal_id or self.payment_method_line_id.payment_type != "outbound":
+            raise UserError(_("Select an Outbound Payment Method from the selected journal."))
         # ensure CV's credit note still has residual and not already fully reconciled
         cn = self.credit_note_id
         residual = abs(cn.amount_residual_signed) if hasattr(cn, 'amount_residual_signed') else abs(cn.amount_residual)
         if residual < 0.01:
             raise UserError(_("Credit Note %s has no residual to refund.") % cn.name)
-        if abs(self.refund_amount - residual) > 0.01:
-            raise UserError(_("Refund Amount (%.2f) no longer matches Credit Note residual (%.2f). Please cancel and recreate CV.") % (self.refund_amount, residual))
+        if self.refund_amount < 0.01:
+            raise UserError(_("Refund Amount must be greater than 0."))
+        if self.refund_amount - residual > 0.01:
+            raise UserError(_("Refund Amount (%.2f) cannot exceed Credit Note residual (%.2f).") % (self.refund_amount, residual))
+        if residual - self.refund_amount > 0.01 and not self.other_income_account_id:
+            raise UserError(_("Select Other Income Account before registering a partial refund."))
+        if residual - self.refund_amount > 0.01 and not self.refund_reason:
+            raise UserError(_("Refund Reason is required for a partial refund."))
         ctx = {
             "active_model": "account.move",
             "active_ids": cn.ids,
@@ -318,7 +448,7 @@ class BuzCustomerRefundVoucher(models.Model):
         pass
 
     def action_cancel(self):
-        """Cancel CV — only Manager can. Allowed from draft/confirmed."""
+        """Cancel CV โ€” only Manager can. Allowed from draft/confirmed."""
         for rec in self:
             if rec.state not in ("draft", "confirmed", "payment_cancelled"):
                 raise UserError(_("Only Draft/Confirmed/Payment Cancelled CV can be cancelled."))
@@ -331,7 +461,7 @@ class BuzCustomerRefundVoucher(models.Model):
         return True
 
     def action_reset_to_draft(self):
-        """Reset to draft — manager only. From confirmed/cancel/payment_cancelled."""
+        """Reset to draft โ€” manager only. From confirmed/cancel/payment_cancelled."""
         for rec in self:
             if rec.state not in ("confirmed", "cancel", "payment_cancelled"):
                 continue
@@ -383,7 +513,7 @@ class BuzCustomerRefundVoucher(models.Model):
 
 class BuzCustomerRefundVoucherLine(models.Model):
     _name = "buz.customer.refund.voucher.line"
-    _description = "Customer Refund Voucher Line (CV-specific, readonly)"
+    _description = "Customer Refund Voucher Line (editable Refund Amount, Partial)"
     _check_company_auto = True
 
     voucher_id = fields.Many2one("buz.customer.refund.voucher", string="CV", required=True, ondelete="cascade", index=True, readonly=True)
@@ -391,9 +521,38 @@ class BuzCustomerRefundVoucherLine(models.Model):
     currency_id = fields.Many2one(related="voucher_id.currency_id", readonly=True)
     credit_note_id = fields.Many2one("account.move", string="Credit Note", domain="[('move_type','=','out_refund')]", readonly=True, index=True, check_company=True)
     partner_id = fields.Many2one(related="voucher_id.partner_id", readonly=True, store=False)
-    refund_amount = fields.Monetary(string="Refund Amount", currency_field="currency_id", readonly=True)
+    cn_amount = fields.Monetary(string="CN Amount", related="credit_note_id.amount_total", readonly=True, currency_field="currency_id")
+    refund_amount = fields.Monetary(string="Refund Amount", currency_field="currency_id", required=True)
     payment_state = fields.Selection(related="credit_note_id.payment_state", string="Payment Status", readonly=True, store=False)
 
     _sql_constraints = [
         ("uniq_voucher_credit_note", "unique(voucher_id, credit_note_id)", "Duplicate credit note in CV lines."),
     ]
+
+    @api.constrains("refund_amount", "credit_note_id", "voucher_id")
+    def _check_refund_limit(self):
+        for line in self:
+            if not line.credit_note_id or not line.voucher_id:
+                continue
+            cn = line.credit_note_id
+            residual = abs(cn.amount_residual_signed) if hasattr(cn, 'amount_residual_signed') and cn.amount_residual_signed is not None else abs(cn.amount_residual or 0.0)
+            if line.refund_amount < 0.01:
+                raise ValidationError(_("Line Refund Amount must be greater than 0."))
+            if line.refund_amount - residual > 0.01:
+                raise ValidationError(_("Line Refund Amount (%.2f) cannot exceed Credit Note residual (%.2f) (%s).") % (line.refund_amount, residual, cn.name))
+
+    def write(self, vals):
+        # limit refund_amount edits to draft/confirmed only; Partial allowed
+        if "refund_amount" in vals:
+            for line in self:
+                if line.voucher_id.state not in ("draft", "confirmed"):
+                    raise UserError(_("Cannot change Refund Amount after Confirmed."))
+        res = super().write(vals)
+        if "refund_amount" in vals:
+            # keep header in sync (single-CN MVP) โ€” header = line total
+            for vid in self.mapped("voucher_id"):
+                if vid.state in ("draft", "confirmed"):
+                    line_total = sum(vid.line_ids.mapped("refund_amount"))
+                    if abs((vid.refund_amount or 0) - line_total) > 0.01:
+                        vid.write({"refund_amount": line_total})
+        return res

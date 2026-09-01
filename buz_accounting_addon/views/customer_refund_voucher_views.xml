@@ -57,7 +57,7 @@
         </field>
     </record>
 
-    <!-- Form — layout close to Vendor Payment Voucher (PV) -->
+    <!-- Form โ€” layout close to Vendor Payment Voucher (PV) -->
     <record id="view_buz_customer_refund_voucher_form" model="ir.ui.view">
         <field name="name">buz.customer.refund.voucher.form</field>
         <field name="model">buz.customer.refund.voucher</field>
@@ -96,15 +96,23 @@
                             <field name="partner_id" string="Customer" readonly="state != 'draft'" options="{'no_create': True}"/>
                             <field name="credit_note_id" readonly="state != 'draft'" options="{'no_create': True}"/>
                             <field name="date" readonly="state not in ['draft','confirmed']"/>
+                            <field name="billing_note" placeholder="Billing Note..." readonly="state not in ['draft','confirmed']"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="1"/>
                         </group>
                         <group name="header_right">
                             <field name="currency_id" invisible="1"/>
-                            <field name="refund_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="amount_total_gross" invisible="1"/>
+                            <field name="amount_total_net" invisible="1"/>
+                            <field name="amount_total_net_display" invisible="1"/>
+                            <field name="cn_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="cn_residual" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="refund_amount" readonly="state not in ['draft','confirmed']" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="other_income_dis" string="Other Income" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="other_income_account_id" readonly="state not in ['draft','confirmed']" options="{'no_create': True}" invisible="other_income_dis == 0"/>
                             <field name="payment_type" readonly="state not in ['draft','confirmed']"/>
-                            <field name="destination_journal_id" readonly="state not in ['draft','confirmed']" options="{'no_create': True}"/>
-                            <field name="payment_method_line_id" readonly="state not in ['draft','confirmed']" options="{'no_create': True}" invisible="payment_type == 'cash'"/>
-                            <field name="customer_account_id" readonly="state not in ['draft','confirmed']" options="{'no_create': True}"/>
+                            <field name="destination_journal_id" readonly="state not in ['draft','confirmed']" required="state in ['draft','confirmed']" options="{'no_create': True}"/>
+                            <field name="payment_method_line_id" readonly="state not in ['draft','confirmed']" required="state in ['draft','confirmed']" options="{'no_create': True}"/>
+                            <field name="customer_account_id" readonly="1" options="{'no_create': True}"/>
                             <field name="check_pay_to" string="Pay To" readonly="state not in ['draft','confirmed']" invisible="payment_type != 'check'"/>
                             <field name="check_number" string="Cheque No." readonly="state not in ['draft','confirmed']" invisible="payment_type != 'check'"/>
                         </group>
@@ -125,21 +133,42 @@
                     </group>
                     <notebook>
                         <page string="Payment Lines" name="payment_lines">
-                            <field name="line_ids" readonly="state != 'draft'" options="{'no_create': True}">
-                                <tree string="Payment Lines" create="false" delete="false" editable="false">
+                            <field name="line_ids" readonly="state not in ['draft','confirmed']" options="{'no_create': True}">
+                                <tree string="Payment Lines" create="false" delete="false" editable="bottom">
                                     <field name="voucher_id" column_invisible="1"/>
                                     <field name="company_id" column_invisible="1"/>
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="credit_note_id" readonly="1" string="Credit Note"/>
-                                    <field name="refund_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total"/>
+                                    <field name="cn_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}" string="CN Amount"/>
+                                    <field name="refund_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total Refund"/>
                                     <field name="payment_state" readonly="1" widget="badge" decoration-success="payment_state=='paid'" decoration-warning="payment_state=='partial'" decoration-info="payment_state=='not_paid'"/>
                                 </tree>
                             </field>
-                            <p class="text-muted">One line auto-created from the Credit Note. Full refund only (no partial). Future multi-line support reserved.</p>
+                            <p class="text-muted">One line auto-created from the Credit Note. Refund Amount is editable within CN Residual โ€” Partial refund is allowed. Single CN per CV in MVP.</p>
+                        </page>
+                        <page string="Bank Transfers" name="bank_transfers">
+                            <field name="bank_transfer_ids"
+                                   readonly="state not in ['draft','confirmed']"
+                                   context="{
+                                       'default_journal_id': destination_journal_id,
+                                       'default_date': date,
+                                       'default_amount': amount_total_net_display,
+                                       'default_buz_customer_refund_voucher_id': id,
+                                   }">
+                                <tree editable="bottom">
+                                    <field name="date"/>
+                                    <field name="journal_id"/>
+                                    <field name="destination_journal_id"/>
+                                    <field name="amount"/>
+                                    <field name="ref"/>
+                                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'posted'" decoration-muted="state == 'cancel'"/>
+                                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight" invisible="state != 'draft'"/>
+                                </tree>
+                            </field>
                         </page>
                         <page string="Notes" name="notes">
                             <group>
-                                <field name="refund_reason" placeholder="Reason for refund..." readonly="state not in ['draft','confirmed']"/>
+                                <field name="refund_reason" placeholder="Reason for refund..." required="other_income_dis > 0" readonly="state not in ['draft','confirmed']"/>
                             </group>
                             <group string="Internal Notes">
                                 <field name="note" readonly="state not in ['draft','confirmed']" placeholder="Internal notes..."/>

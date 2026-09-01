@@ -1,8 +1,47 @@
-﻿# Customer Refund Voucher (CV) — Handoff และข้อตกลงล่าสุด
+## อัปเดตงาน Local รอบล่าสุด (2026-09-01)
+
+สถานะรอบนี้: ปรับปรุงและทดสอบบน Local/isolated Docker แล้ว ยังไม่ได้ Deploy, Upgrade หรือ Restart MOG_DEV ตามขอบเขตของแผนนี้ โดย MOG_DEV ยังคงเป็นเวอร์ชันที่ Deploy ในรอบก่อนหน้า จนกว่าจะมีคำสั่ง Deploy ใหม่
+
+สิ่งที่ปรับปรุงใน CV:
+- Refund Amount ที่ Header เป็นยอดจ่ายจริง และ Payment Line เป็น Readonly พร้อม Sync จาก Header
+- Other Income คำนวณจาก CN Residual - Refund Amount และใช้เป็น Odoo Payment Register Write-off เพื่อ Reconcile กับ CN
+- Partial Refund ต้องเลือก Other Income Account และระบุ Refund Reason; Full Refund ไม่สร้าง Write-off
+- Customer Account ดึงจาก Receivable Line ของ CN และ Readonly
+- Payment Journal และ Outbound Payment Method ต้องครบ อยู่บริษัทเดียวกัน และ Method ต้องอยู่ใน Journal ที่เลือก
+- ซ่อน Bank Fee จากฟอร์ม CV ระยะแรก เพราะยังไม่มี Logic ลงบัญชี
+- เพิ่ม guard ป้องกัน Refund Amount เป็นศูนย์/ติดลบ/เกิน CN Residual, Payment ซ้ำ และ Journal Entry Number ซ้ำ
+- CV เท่านั้นที่ถูกแก้ไข ไม่เปลี่ยน Model/View/Logic ของ Vendor PV และไม่ลบข้อมูลหรือโครงสร้าง Revision เดิม
+
+ผลตรวจสอบ:
+- Python compile ผ่าน
+- XML parse ผ่าน
+- Isolated Docker Odoo test: 0 failed, 0 error(s) of 10 tests
+- การทดสอบ Register Refund จริงกับรายการบัญชีในฐานข้อมูลใช้งานจริงยังต้องทำเป็น UAT หลัง Deploy รอบถัดไป
+# Customer Refund Voucher (CV) — Handoff และข้อตกลงล่าสุด
 
 เอกสารนี้สรุปขอบเขตและเงื่อนไขที่ตกลงกันล่าสุดสำหรับ Customer Refund Voucher (CV) หากขัดกับข้อความเก่าในเอกสารหรือโค้ดเดิม ให้ถือข้อตกลงล่าสุดด้านล่างเป็นหลัก
 
-**สถานะ:** ตกลงขอบเขตสำหรับพัฒนาใช้งานขั้นต่ำ (MVP) แล้ว ยังไม่อนุญาตให้ติดตั้งหรืออัปเกรดบนระบบจริง
+**สถานะล่าสุด (2026-09-01):** พัฒนาและ Deploy บน MOG_DEV แล้ว รอ User ทำ UAT เชิงธุรกิจ
+
+## Latest update (2026-09-01)
+
+สถานะปัจจุบัน: CV partial refund และ Other Income ถูกพัฒนา ทดสอบบน Local isolated Docker และ Deploy ไปยัง MOG_DEV แล้ว
+
+สิ่งที่ทำแล้ว:
+
+- Refund Amount กรอกได้มากกว่า 0 และไม่เกิน CN Residual
+- Other Income = CN Residual - Refund Amount เป็น readonly และมี Other Income Account ให้เลือกต่อ CV
+- Payment Line เป็น readonly และใช้ยอดเดียวกับ Refund Amount
+- Register Refund ใช้ Odoo account.payment.register สร้าง Customer Outbound Payment และ standard write-off/reconcile
+- จ่ายเต็ม CN ไม่สร้าง Write-off; จ่ายบางส่วนใช้ Other Income Account และตรวจ CN Residual ต้องเป็นศูนย์ก่อน CV เป็น Registered
+- เพิ่ม regression tests: full refund, partial refund calculation, zero amount rejection และ over-residual rejection
+- Local isolated test: 0 failed, 0 error(s) of 10 tests
+- MOG_DEV upgrade: exit code 0; Module loaded, Modules loaded, Registry loaded, Stopping gracefully
+- MOG_DEV restart สำเร็จ; HTTP health check = 302
+
+ข้อจำกัดที่ยังคงเดิม: ยังไม่รวมหลาย CN ต่อ CV, WHT, Bank Fee, approval หลายระดับ, การส่งเอกสารให้ลูกค้า และการลบ/ย้ายข้อมูล Revision เก่า
+
+หมายเหตุ: ข้อความเดิมที่ระบุว่ายังไม่รองรับ Partial Refund หรือยังไม่ Deploy ให้ถือว่าถูกแทนที่ด้วย Latest update นี้
 
 ## 1. เป้าหมายและขอบเขต MVP
 
@@ -50,7 +89,7 @@ Posted Customer CN (out_refund, residual > 0)
 - มีแท็บ **Payment Lines** ให้รูปแบบสอดคล้องกับ PV และรองรับการขยายในอนาคต
 - MVP สร้างบรรทัดอัตโนมัติจาก CN หนึ่งบรรทัดต่อหนึ่ง CV
 - บรรทัดเป็น Readonly ห้าม Add, Delete หรือแก้ไขยอดเอง
-- ไม่เพิ่ม WHT, Bank Fee, Other Income หรือหลายบิลแบบ PV ใน MVP
+- ไม่รวม WHT, Bank Fee หรือหลาย CN ต่อ CV
 - ใช้โมเดลบรรทัดของ CV แยกจาก `account.payment.voucher.line`
 
 ### Notes
@@ -81,7 +120,7 @@ Posted Customer CN (out_refund, residual > 0)
 - ไม่แก้หรือ refactor logic ของ Vendor PV, Receipt Voucher หรือ Payment เดิมโดยไม่จำเป็น
 - ไม่ backfill, recompute หรือลบธุรกรรมเดิม
 - เปลี่ยน schema ได้เฉพาะส่วนเพิ่มเติมที่ CV ต้องใช้ และต้องรองรับฐานข้อมูลเดิม
-- ห้ามติดตั้ง อัปเกรด รีสตาร์ต หรือ deploy ไป MOG_DEV/Production จนกว่าจะมีคำสั่งแยกต่างหาก
+- การ Deploy/Upgrade/Restart MOG_DEV ดำเนินการแล้ว; Production ยังอยู่นอกขอบเขต
 
 ## 8. Docker gate ก่อนส่ง UAT
 
@@ -111,4 +150,4 @@ Docker gate นี้ยังไม่ใช่การรับรอง work
 
 ## 10. ขอบเขตหลัง MVP
 
-ยังไม่รวม Partial Refund, หลาย CN ต่อหนึ่ง CV, หลาย Payment Line ที่ผู้ใช้กรอกเอง, WHT/Bank Fee, approval หลายระดับ, การส่งเอกสารให้ลูกค้า และการลบ/ย้ายข้อมูล Revision เก่า จนกว่าจะมีการตกลงใหม่
+ยังไม่รวมหลาย CN ต่อหนึ่ง CV, หลาย Payment Line ที่ผู้ใช้กรอกเอง, WHT/Bank Fee, approval หลายระดับ, การส่งเอกสารให้ลูกค้า และการลบ/ย้ายข้อมูล Revision เก่า จนกว่าจะมีการตกลงใหม่
