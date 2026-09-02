@@ -16,6 +16,12 @@
                         string="Create CV" class="btn btn-primary"
                         invisible="move_type != 'out_refund' or state != 'posted' or amount_residual &lt;= 0"/>
             </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_buz_cvs" type="object" class="oe_stat_button"
+                        icon="fa-money" invisible="move_type != 'out_refund' or buz_cv_count == 0">
+                    <field name="buz_cv_count" widget="statinfo" string="CV"/>
+                </button>
+            </xpath>
         </field>
     </record>
 

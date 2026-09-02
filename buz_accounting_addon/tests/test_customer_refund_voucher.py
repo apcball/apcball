@@ -35,6 +35,13 @@ class TestCustomerRefundVoucher(TransactionCase):
         self.assertIn("partner_bank_id", model._fields)
         self.assertIn("journal_entry_id", model._fields)
         self.assertEqual(model._fields["journal_entry_id"].related, ("payment_id", "move_id"))
+    def test_credit_note_cv_action_is_scoped_to_credit_note(self):
+        move = self.env["account.move"].new({"move_type": "out_refund"})
+        action = move.action_open_buz_cvs()
+        self.assertEqual(action["res_model"], "buz.customer.refund.voucher")
+        self.assertEqual(action["domain"], [("id", "in", [])])
+        self.assertEqual(action["view_mode"], "tree,form")
+
     def test_cv_number_is_required(self):
         model = self.env["buz.customer.refund.voucher"]
         with self.assertRaises(ValidationError):
@@ -44,5 +51,5 @@ class TestCustomerRefundVoucher(TransactionCase):
 
     def test_cv_number_has_no_format_requirement(self):
         model = self.env["buz.customer.refund.voucher"]
-        self.assertTrue(model._validate_cv_number("เธเนเธฒเธขเธเธฑเธเธเธต-REF-001"))
+        self.assertTrue(model._validate_cv_number("เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธเธ‘เน€เธยเน€เธยเน€เธเธ•-REF-001"))
         self.assertTrue(model._fields["name"].required)

@@ -49,13 +49,17 @@ class AccountMove(models.Model):
 
     def action_open_buz_cvs(self):
         self.ensure_one()
-        cvs = self.buz_cv_ids
+        cvs = self.env["buz.customer.refund.voucher"].search([
+            ("credit_note_id", "=", self.id),
+            ("company_id", "=", self.company_id.id),
+        ])
         action = {
             "name": _("Refund Vouchers"),
             "type": "ir.actions.act_window",
             "res_model": "buz.customer.refund.voucher",
             "view_mode": "tree,form",
             "domain": [("id", "in", cvs.ids)],
+            "context": {"create": False},
         }
         if len(cvs) == 1:
             action.update({"view_mode": "form", "res_id": cvs.id})
