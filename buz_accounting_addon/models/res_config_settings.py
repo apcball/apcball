@@ -5,14 +5,6 @@ from odoo import fields, models
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
-    customer_refund_writeoff_account_id = fields.Many2one(
-        related='company_id.customer_refund_writeoff_account_id',
-        string="Customer Refund Write-off Account",
-        readonly=False,
-        domain=[('internal_group', 'in', ('income', 'expense'))],
-        check_company=True,
-        help="Default Income/Expense account used when a Customer Refund Voucher writes off the remaining CN balance.",
-    )
 
     # Existing receipt settings
     buz_receipt_autopost = fields.Boolean(

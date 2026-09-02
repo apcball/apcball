@@ -9,5 +9,3 @@ from . import account_payment
 from . import res_company
 from . import res_config_settings
 from . import account_bank_transfer
-from . import account_bank_transfer_cv
-from . import customer_refund_voucher

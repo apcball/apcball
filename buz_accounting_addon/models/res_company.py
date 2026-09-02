@@ -2,13 +2,6 @@ from odoo import fields, models
 
 class ResCompany(models.Model):
     _inherit = "res.company"
-    customer_refund_writeoff_account_id = fields.Many2one(
-        "account.account",
-        string="Customer Refund Write-off Account",
-        domain="[('internal_group', 'in', ['income', 'expense'])]",
-        check_company=True,
-        help="Default Income/Expense account for closing a residual Customer Credit Note during a refund.",
-    )
 
     payment_voucher_checker1_id = fields.Many2one(
         "res.users",

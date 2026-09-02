@@ -71,17 +71,6 @@
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
-                                <label for="customer_refund_writeoff_account_id" string="Customer Refund Write-off Account"/>
-                                <div class="text-muted">Default Income/Expense account for closing residual Customer Credit Note balances.</div>
-                                <div class="content-group">
-                                    <field name="customer_refund_writeoff_account_id" options="{'no_create': True}"/>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_left_pane"/>
-                            <div class="o_setting_right_pane">
                                 <label for="payment_voucher_checker1_id" string="Payment Voucher Workflow"/>
                                 <div class="text-muted">
                                     Configure users for each approval step.

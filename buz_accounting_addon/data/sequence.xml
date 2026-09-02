@@ -28,12 +28,5 @@
       <field name="prefix">TR%(y)s</field>
       <field name="padding">4</field>
     </record>
-
-    <record id="seq_buz_customer_refund_voucher" model="ir.sequence">
-      <field name="name">buz Customer Refund Voucher</field>
-      <field name="code">buz.customer.refund.voucher</field>
-      <field name="prefix">CV/%(year)s/</field>
-      <field name="padding">4</field>
-    </record>
   </data>
 </odoo>
