@@ -27,7 +27,7 @@ class AccountMove(models.Model):
         # check existing active CV
         existing = self.env["buz.customer.refund.voucher"].search([
             ("credit_note_id", "=", self.id),
-            ("state", "in", ["draft", "confirmed", "registered"]),
+
         ], limit=1)
         if existing:
             raise UserError(_("An active CV (%s) already exists for this Credit Note.") % existing.name)
