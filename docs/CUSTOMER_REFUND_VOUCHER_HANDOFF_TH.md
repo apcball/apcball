@@ -46,7 +46,7 @@
 - จ่ายเต็ม CN จะ Reconcile ได้เต็มจำนวนโดยไม่ต้องใช้ Write-off; จ่ายบางส่วนจะเหลือ CN Residual เว้นแต่ฝ่ายบัญชีเลือก Adjustment/Write-off เพื่อปิดยอด
 - เพิ่ม regression tests: full refund, partial refund calculation, zero amount rejection และ over-residual rejection
 - ทดสอบ isolated Docker ใหม่ให้ครอบคลุม workflow และกติกา Adjustment/Write-off
-- หลังพัฒนาแล้วจึงค่อย Upgrade/Restart และทำ UAT บน MOG_DEV
+- หลังพัฒนาแล้วให้หยุดรอคำสั่งแยกต่างหากก่อน Upgrade/Restart หรือทำ UAT บน MOG_DEV
 
 ข้อจำกัดที่ยังคงเดิม: ยังไม่รวมหลาย CN ต่อ CV, WHT, Bank Fee, approval หลายระดับ, การส่งเอกสารให้ลูกค้า และการลบ/ย้ายข้อมูล Revision เก่า
 
@@ -137,7 +137,7 @@ Posted Customer CN (out_refund, residual > 0)
 - ไม่แก้หรือ refactor logic ของ Vendor PV, Receipt Voucher หรือ Payment เดิมโดยไม่จำเป็น
 - ไม่ backfill, recompute หรือลบธุรกรรมเดิม
 - เปลี่ยน schema ได้เฉพาะส่วนเพิ่มเติมที่ CV ต้องใช้ และต้องรองรับฐานข้อมูลเดิม
-- การ Deploy/Upgrade/Restart MOG_DEV ดำเนินการแล้วในรอบนี้; Production อยู่นอกขอบเขต
+- การ Deploy/Upgrade/Restart ทุกสภาพแวดล้อมอยู่นอกขอบเขตของแผนนี้ และต้องรอคำสั่งอย่างชัดเจนเท่านั้น; Production อยู่นอกขอบเขต
 
 ## 8. Docker gate ก่อนส่ง UAT
 
