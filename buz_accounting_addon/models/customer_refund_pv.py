@@ -201,6 +201,45 @@ class BuzCustomerRefundPv(models.Model):
             action.update({"view_mode": "form", "res_id": payments.id})
         return action
 
+    def action_register_refund_payment(self):
+        self.ensure_one()
+        # Validations per spec for new button on Refund PV
+        if self.state != 'posted':
+            raise UserError(_("Refund PV must be posted before Register Payment."))
+        if not self.credit_note_id:
+            raise UserError(_("No Credit Note linked."))
+        if self.credit_note_id.move_type != 'out_refund':
+            raise UserError(_("Credit Note must be a Customer Credit Note (out_refund)."))
+        if self.credit_note_id.state != 'posted':
+            raise UserError(_("Credit Note must be Posted."))
+        if not self.refund_amount or self.refund_amount <= 0:
+            raise UserError(_("Refund Amount must be greater than 0."))
+        if self.payment_ids.filtered(lambda p: p.state != 'cancel'):
+            raise UserError(_("Payment already registered for Refund PV %s.") % self.name)
+        try:
+            residual = abs(self.credit_note_id.amount_residual_signed) if hasattr(self.credit_note_id, 'amount_residual_signed') else abs(self.credit_note_id.amount_residual)
+        except Exception:
+            residual = abs(self.credit_note_id.amount_total)
+        if self.refund_amount - residual > 1e-6:
+            raise UserError(_("Refund Amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (self.refund_amount, self.credit_note_id.name, residual))
+        # Open standard payment register wizard with forced refund_amount and linking context
+        # Only this new button sets buz_customer_refund_pv_id / force_amount, old Credit Note button remains standard
+        ctx = dict(self.env.context)
+        ctx.update({
+            'active_model': 'account.move',
+            'active_ids': [self.credit_note_id.id],
+            'active_id': self.credit_note_id.id,
+            'buz_customer_refund_pv_id': self.id,
+            'force_amount': self.refund_amount,
+        })
+        if self.destination_journal_id:
+            ctx['default_journal_id'] = self.destination_journal_id.id
+        if self.date:
+            ctx['default_payment_date'] = self.date
+        if self.payment_method_line_id:
+            ctx['default_payment_method_line_id'] = self.payment_method_line_id.id
+        return self.credit_note_id.with_context(ctx).action_register_payment()
+
     def action_open_credit_note(self):
         self.ensure_one()
         if not self.credit_note_id:
