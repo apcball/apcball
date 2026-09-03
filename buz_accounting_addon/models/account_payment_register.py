@@ -19,6 +19,23 @@ class AccountPaymentRegister(models.TransientModel):
 
     def _create_payments(self):
         """Override to link created payments to voucher, voucher line and receipt if context provided"""
+        # Validate Register Refund Payment: payment amount must not exceed refund_amount (only for new button)
+        refund_pv_id = self._context.get('buz_customer_refund_pv_id')
+        if refund_pv_id:
+            refund_pv = self.env['buz.customer.refund.pv'].browse(refund_pv_id)
+            if refund_pv.exists():
+                for wizard in self:
+                    if wizard.amount - refund_pv.refund_amount > 1e-6:
+                        from odoo.exceptions import UserError
+                        raise UserError(_("Payment amount (%.2f) exceeds Refund Amount (%.2f).") % (wizard.amount, refund_pv.refund_amount))
+                    # Also re-validate not exceed residual (in case residual changed after PV confirm)
+                    try:
+                        residual = abs(refund_pv.credit_note_id.amount_residual_signed) if hasattr(refund_pv.credit_note_id, 'amount_residual_signed') else abs(refund_pv.credit_note_id.amount_residual)
+                    except Exception:
+                        residual = abs(refund_pv.credit_note_id.amount_total)
+                    if wizard.amount - residual > 1e-6:
+                        from odoo.exceptions import UserError
+                        raise UserError(_("Payment amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (wizard.amount, refund_pv.credit_note_id.name, residual))
         payments = super()._create_payments()
         
         # Link payments to payment voucher if context provided

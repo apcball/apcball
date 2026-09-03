@@ -50,7 +50,7 @@ Posted Customer Credit Note (out_refund)
 
 ### 4. Payment Link `buz_accounting_addon/models/account_payment.py:14` + `account_payment_register.py:13`
 - `account.payment:14` เพิ่ม `buz_customer_refund_pv_id Many2one buz.customer.refund.pv`
-- `account.payment.register:13` `_compute_amount` รองรับ `force_amount` อยู่แล้ว, `_create_payments:44` หลัง `super` ตรวจ `buz_customer_refund_pv_id` ใน context (ตั้งเฉพาะจากปุ่มใหม่บน Refund PV) → `refund_pv.write payment_ids [(4)]` + `payments.write buz_customer_refund_pv_id` + `message_post` + log ไม่ใช้ WHT/Bank Fee ใน Phase นี้, Reconcile ใช้กลไกมาตรฐาน
+- `account.payment.register:13` `_compute_amount` รองรับ `force_amount` (ตั้งเฉพาะจากปุ่มใหม่บน Refund PV จึงใช้ `4000` ไม่ใช่ `4990` เต็ม CN) → `_create_payments:20` ก่อน `super` ตรวจ `buz_customer_refund_pv_id` แล้ว `if wizard.amount - refund_amount >1e-6` และ `wizard.amount - residual >1e-6` กันยอดเกิน, หลัง `super` ตรวจ `buz_customer_refund_pv_id` → `refund_pv.write payment_ids [(4)]` + `payments.write buz_customer_refund_pv_id` + `message_post` + log ไม่ใช้ WHT/Bank Fee ใน Phase นี้, Reconcile ใช้กลไกมาตรฐาน
 
 ### 5. View `buz_accounting_addon/views/customer_refund_pv_views.xml`
 - Header `38` ปุ่ม `Confirm invisible draft` + `Print Payment Voucher %(action_report_customer_refund_pv)d invisible posted` + **`Register Refund Payment action_register_refund_payment invisible state!='posted' or not credit_note_id or not refund_amount or payment_count!=0`**
@@ -68,11 +68,11 @@ Posted Customer Credit Note (out_refund)
 - เพิ่ม `reports/customer_refund_pv_report.xml`, `reports/customer_refund_pv_template.xml` ต่อหลัง `payment_voucher` ก่อน `payment_transfer`
 
 ## ผลการ Upgrade และ Restart DEV (ล่าสุด)
-- **Upload 2026-09-03 15:XX:** `scp -r -i dev_server_ed25519` `SCP_EXIT 0`, ตรวจ `models/customer_refund_pv.py` 24114 bytes, `reports/customer_refund_pv_report.xml` 1534 bytes, `customer_refund_pv_template.xml` 23090 bytes, `views/customer_refund_pv_views.xml` 7297→7350 bytes (เพิ่มปุ่ม Register), `grep next_by_code` พบ 2 จุดใน PV เท่านั้น Line ไม่มี, `grep action_register_refund_payment` พบใน PV `204`
-- **Upgrade 2026-09-03 08:34:** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon --stop-after-init --no-http` สำเร็จ `Modules loaded.` `Registry loaded in 40.623s` `Stopping gracefully`
-- **Upgrade ก่อนหน้า 2026-09-03 08:15/07:52:** เคย `SerializationFailure` ต้อง retry 5s แล้วสำเร็จ `34.553s`/`30.789s`
-- **Restart:** `docker restart odoo` → `odoo Up 14s` (ล่าสุด), `odoo Up 23s` ก่อนหน้า, `odoo_dev Up 30h`, `postgres Up 3 days (healthy)`
-- **Verify DB:** `psql MOG_DEV: select name, state from ir_module_module where name='buz_accounting_addon'` → `installed`, `select name from ir_act_report_xml where report_name like '%customer_refund%'` → `Customer Refund Payment Voucher`, `grep action_register_refund_payment` บน DEV พบ
+- **Upload 2026-09-03 15:XX และ 08:45:** `scp -r -i dev_server_ed25519` `SCP_EXIT 0` ทุกรอบ, ตรวจ `models/customer_refund_pv.py` 24114 bytes, `reports/customer_refund_pv_report.xml` 1534 bytes, `customer_refund_pv_template.xml` 23090 bytes, `views/customer_refund_pv_views.xml` 7350 bytes (เพิ่มปุ่ม Register Refund Payment), `models/account_payment_register.py` เพิ่มตรวจ `Payment amount exceeds Refund Amount`, `grep next_by_code` พบ 2 จุดใน PV เท่านั้น Line ไม่มี, `grep action_register_refund_payment` พบใน PV `204`
+- **Upgrade 2026-09-03 08:45:** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon --stop-after-init --no-http` สำเร็จ `Modules loaded.` `Registry loaded in 36.925s` `Stopping gracefully`
+- **Upgrade ก่อนหน้า 2026-09-03 08:34/08:15/07:52:** `40.623s` / `34.553s` / `30.789s` (เคย `SerializationFailure` ต้อง retry 5s)
+- **Restart:** `docker restart odoo` → `odoo Up 14s` (ล่าสุด 08:45), `odoo Up 23s` ก่อนหน้า, `odoo_dev Up 30h`, `postgres Up 3 days (healthy)`
+- **Verify DB:** `psql MOG_DEV: select name, state from ir_module_module where name='buz_accounting_addon'` → `installed`, `select name from ir_act_report_xml where report_name like '%customer_refund%'` → `Customer Refund Payment Voucher`, `grep Payment amount exceeds Refund` บน DEV พบ
 
 ## Error / ข้อจำกัดที่ยังเหลือ
 - **Upgrade concurrent** ยังมีโอกาส `SerializationFailure` เมื่อมี request พร้อมกัน — แก้ด้วย retry
