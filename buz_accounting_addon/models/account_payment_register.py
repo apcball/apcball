@@ -95,5 +95,17 @@ class AccountPaymentRegister(models.TransientModel):
                             _logger.info("Auto-reconciled payment %s with invoices" % payment.name)
                         except Exception as e:
                             _logger.warning("Failed to auto-reconcile payment %s: %s" % (payment.name, str(e)))
+
+        # Customer Refund PV: link payment to PV (Register Payment phase, no WHT/Bank Fee)
+        refund_pv_id = self._context.get('buz_customer_refund_pv_id')
+        if refund_pv_id and payments:
+            refund_pv = self.env['buz.customer.refund.pv'].browse(refund_pv_id)
+            if refund_pv.exists():
+                # Link PV ↔ Payments (Many2many + Many2one)
+                refund_pv.write({'payment_ids': [(4, p.id) for p in payments]})
+                payments.write({'buz_customer_refund_pv_id': refund_pv.id})
+                refund_pv.message_post(body=_("Payment %s registered for refund amount %.2f") % (', '.join(payments.mapped('name')), refund_pv.refund_amount))
+                _logger.info("Linked %d payment(s) to customer refund PV %s", len(payments), refund_pv.name)
+                # Standard Odoo already reconciles payment with source Credit Note via super, no extra WHT/Bank Fee in this phase
         
         return payments

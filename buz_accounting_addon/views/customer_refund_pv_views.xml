@@ -48,6 +48,9 @@
                         <button type="object" name="action_open_credit_note" class="oe_stat_button" icon="fa-money" invisible="not amount_total_net_display">
                             <field name="amount_total_net_display" string="Net Amount" widget="statinfo"/>
                         </button>
+                        <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-credit-card" invisible="payment_count == 0">
+                            <field name="payment_count" widget="statinfo" string="Payments"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <label for="name" string="Refund PV Number" class="oe_edit_only"/>

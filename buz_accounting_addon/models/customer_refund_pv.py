@@ -68,6 +68,10 @@ class BuzCustomerRefundPv(models.Model):
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_net_display = fields.Monetary(string="Total Net Display", currency_field="currency_id", compute="_compute_amount_totals")
 
+    # Payment linkage for Register Payment phase (out of scope for Vendor PV)
+    payment_ids = fields.Many2many('account.payment', 'buz_customer_refund_pv_payment_rel', 'pv_id', 'payment_id', string='Payments', readonly=True, copy=False)
+    payment_count = fields.Integer(string='Payment Count', compute='_compute_payment_count')
+
     @api.onchange("destination_journal_id")
     def _onchange_destination_journal_id(self):
         self.payment_method_line_id = False
@@ -176,6 +180,26 @@ class BuzCustomerRefundPv(models.Model):
             pv.amount_total_wht = line_wht
             pv.amount_total_net = line_net
             pv.amount_total_net_display = line_net
+
+    @api.depends("payment_ids")
+    def _compute_payment_count(self):
+        for pv in self:
+            pv.payment_count = len(pv.payment_ids)
+
+    def action_view_payments(self):
+        self.ensure_one()
+        payments = self.payment_ids
+        action = {
+            "name": _("Payments"),
+            "type": "ir.actions.act_window",
+            "res_model": "account.payment",
+            "view_mode": "tree,form",
+            "domain": [("id", "in", payments.ids)],
+            "context": {"create": False},
+        }
+        if len(payments) == 1:
+            action.update({"view_mode": "form", "res_id": payments.id})
+        return action
 
     def action_open_credit_note(self):
         self.ensure_one()

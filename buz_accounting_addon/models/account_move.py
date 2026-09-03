@@ -84,6 +84,42 @@ class AccountMove(models.Model):
             action.update({"view_mode": "form", "res_id": pvs.id})
         return action
 
+    def action_register_payment(self):
+        # Phase next: For Customer Credit Note with confirmed Refund PV, use refund_amount as initial payment amount
+        # Do not create new button, reuse existing Register Payment button on Credit Note
+        if self:
+            # Only handle single out_refund with linked Refund PV, otherwise fall back to standard
+            moves = self.filtered(lambda m: m.move_type == 'out_refund' and m.customer_refund_pv_ids)
+            if len(moves) == 1 and len(self) == 1:
+                move = moves[0]
+                # Find the latest posted Refund PV with refund_amount
+                refund_pv = move.customer_refund_pv_ids.filtered(lambda r: r.state == 'posted' and r.refund_amount and r.refund_amount > 0).sorted(key=lambda r: r.id, reverse=True)[:1]
+                if refund_pv:
+                    # Validations per spec: must be confirmed, have refund_amount, not already registered, not exceed residual
+                    if refund_pv.payment_ids.filtered(lambda p: p.state != 'cancel'):
+                        raise UserError(_("Payment already registered for Refund PV %s.") % refund_pv.name)
+                    try:
+                        residual = abs(move.amount_residual_signed) if hasattr(move, 'amount_residual_signed') else abs(move.amount_residual)
+                    except Exception:
+                        residual = abs(move.amount_total)
+                    if refund_pv.refund_amount - residual > 1e-6:
+                        raise UserError(_("Refund Amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (refund_pv.refund_amount, move.name, residual))
+                    # Prepare context to force amount and link to PV
+                    ctx = dict(self.env.context)
+                    ctx.update({
+                        'buz_customer_refund_pv_id': refund_pv.id,
+                        'force_amount': refund_pv.refund_amount,
+                    })
+                    if refund_pv.destination_journal_id:
+                        ctx['default_journal_id'] = refund_pv.destination_journal_id.id
+                    if refund_pv.date:
+                        ctx['default_payment_date'] = refund_pv.date
+                    # Use standard mechanism with forced context
+                    return super(AccountMove, self.with_context(ctx)).action_register_payment()
+                elif move.customer_refund_pv_ids.filtered(lambda r: r.state == 'draft'):
+                    raise UserError(_("Refund PV must be confirmed before Register Payment."))
+        return super().action_register_payment()
+
     def _auto_init(self):
         # Drop the conflicting constraint from employee_advance if it exists
         # This fixes the Validation Error: account_move_wht_tax_id_fkey
