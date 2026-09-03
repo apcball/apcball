@@ -1,0 +1,32 @@
+services:
+  postgres-refund-pv-test:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: MOG_REFUND_PV_TEST
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    ports:
+      - "5434:5432"
+
+  odoo-refund-pv-test:
+    image: odoo:17.0
+    depends_on:
+      - postgres-refund-pv-test
+    environment:
+      HOST: postgres-refund-pv-test
+      PORT: 5432
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - ./:/mnt/extra-addons
+    command: >
+      odoo -d MOG_REFUND_PV_TEST
+      --db_host=postgres-refund-pv-test
+      --db_user=odoo
+      --db_password=odoo
+      --addons-path=/mnt/extra-addons
+      -i buz_accounting_addon,l10n_th_account_tax
+      --test-tags /buz_accounting_addon
+      --test-enable
+      --stop-after-init
+      --no-http

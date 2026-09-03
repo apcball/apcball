@@ -240,8 +240,59 @@ Customer Refund PV รองรับทั้งการคืนเต็ม�
 - แก้โครง bullet ของ Write Off, เพิ่ม Reversed ในเงื่อนไขสร้างใบถัดไป และเพิ่ม server-side report validation
 - ระบุ Payment Register integration hooks, module version, ไฟล์/manifest load order และ isolated Compose แยกโดยไม่แก้ test profile กลาง
 - เปลี่ยนหน้าต่าง Register Payment เป็น CV-specific wrapper ที่แก้ได้เฉพาะ Actual Payment Date และเรียก Payment Register มาตรฐานด้านหลัง เพื่อไม่แก้ view หรือแสดง fields ของ Payment flow อื่น
-- การตรวจครั้งนี้เป็นการทบทวนและแก้ไขเอกสารเท่านั้น ยังไม่มีการแก้โค้ด ติดตั้งโมดูล ทดสอบฐานข้อมูล Browser/PDF UAT หรือ Accounting UAT
-- สถานะ: หลังการแก้ไขนี้ข้อกำหนดพร้อมใช้เป็นฐานพัฒนา แต่การรับรองว่าไม่กระทบโมดูลอื่นต้องมีผล isolated co-install regression, Browser/PDF UAT และ Accounting UAT รองรับ
+ - การตรวจครั้งนี้เป็นการทบทวนและแก้ไขเอกสารเท่านั้น ยังไม่มีการแก้โค้ด ติดตั้งโมดูล ทดสอบฐานข้อมูล Browser/PDF UAT หรือ Accounting UAT
+ - สถานะ: หลังการแก้ไขนี้ข้อกำหนดพร้อมใช้เป็นฐานพัฒนา แต่การรับรองว่าไม่กระทบโมดูลอื่นต้องมีผล isolated co-install regression, Browser/PDF UAT และ Accounting UAT รองรับ
+
+### 2026-09-02 — Implementation (Phase 1)
+
+ - สร้าง `models/customer_refund_voucher.py` (`buz.customer.refund.voucher`) พร้อม state/workflow_state แยก, sequence `CV/YYYY/NNNN` แบบ date_range, snapshot, audit, validation, concurrency lock และห้ามลบ
+ - ขยาย `models/account_move.py` เพิ่มปุ่ม Create Refund PV / smart button และ helper สำหรับ Credit Note `out_refund` Posted เท่านั้น
+ - ขยาย `models/account_payment.py` เพิ่ม `buz_customer_refund_voucher_id` (`index=True`, `copy=False`, `ondelete='restrict'`)
+ - ปรับ `models/account_payment_register.py` ให้ guard ด้วย `buz_customer_refund_voucher_id` เท่านั้น, บังคับ amount/journal/method/handling/writeoff จาก CV, ส่ง `skip_wht_deduct=True`, ล็อก Credit Note `SELECT FOR UPDATE` และคง `super()` chain
+ - เพิ่ม `wizard/customer_refund_payment_wizard.py` wrapper ให้แก้ได้เฉพาะ Actual Payment Date และเรียก `account.payment.register` มาตรฐานภายใน transaction เดียว
+ - เพิ่ม `data/sequence.xml` แบบ additive ด้วย annual date_range `buz.customer.refund.voucher`
+ - เพิ่ม `security/customer_refund_voucher_security.xml` (record rule `company_id in company_ids`) ก่อน `security/ir.model.access.csv`
+ - เพิ่ม `views/customer_refund_voucher_views.xml` (menu `Accounting > Customers > Customer Refund PV`, create=false), `views/customer_refund_payment_wizard_views.xml` และ `views/account_move_views.xml` แบบ additive (ตรวจ XPath ของ `account.view_move_form`)
+ - เพิ่ม `reports/customer_refund_pv_report.py` adapter ตรวจ access/state (ให้ render เฉพาะ Confirmed/In Payment/Partially Refunded/Paid แม้เรียกผ่าน URL/RPC), `reports/customer_refund_pv_report.xml` (paperformat A4 ไม่ default), `reports/customer_refund_pv_template.xml` (แยกจาก Vendor PV, ใช้โลโก้/ฟอนต์ Sarabun จาก `buz_accounting_addon`)
+ - อัปเดต `models/__init__.py`, `wizard/__init__.py`, `reports/__init__.py`, `__manifest__.py` เวอร์ชัน `17.0.3.0.0` และลำดับโหลด: sequence → security rules → access CSV → report action/paperformat → report template → Refund PV views → account.move view → CV wizard view
+ - เพิ่ม `docker-compose.accounting-refund-pv.test.yml` แยก project/database/volume (ไม่แก้ `docker-compose.test.yml` กลาง) สำหรับ isolated test
+ - เพิ่ม `tests/test_customer_refund_voucher.py` ครอบคลุม Full Refund, Keep Open, Write Off, sequence/name edit, active uniqueness, wrapper guard, unlink/print validation, multi-company, co-existence กับ Vendor PV
+ - Static checks: Python AST ผ่าน 6 ไฟล์, XML syntax ผ่าน 5 ไฟล์, `git diff --check` ไม่พบ whitespace error, `docker compose config` ผ่าน
+ - Isolated Odoo install/upgrade + test suite ยังไม่ได้รันบน DB จริง (รอการรัน `docker compose -f docker-compose.accounting-refund-pv.test.yml up --abort-on-container-exit` แยกจาก DEV/PROD)
+ - Co-install regression, Browser UAT, PDF UAT, Accounting UAT ยังไม่ได้ทดสอบ — ต้องมีผลจริงก่อนสรุปว่าผ่าน
+ - ไม่มีการ Deploy, SSH, Upgrade DEV/Production, Restart service/container หรือเข้าถึง `MOG_DEV`/`MOG_TEST` เดิม
+ - ข้อจำกัด/งานค้าง: workflow `in_payment` ↔ bank reconciliation ยังใช้ heuristic (`is_matched`/`statement_line_ids`), `reversed`/`exception` จากการยกเลิก payment/bank statement ต้องทดสอบร่วมกับ bank statement จริง, การเลื่อน sequence แบบ date_range ต้องยืนยันกับ `ir.sequence.date_range` จริง, ต้องทดสอบ并发 two transactions แบบตั้งใจ, ต้องทดสอบสิทธิ์ Manager vs User แบบละเอียด
+
+### 2026-09-02 — Odoo 17 Write-off Account Validation Fix
+
+ - แก้ `models/customer_refund_voucher.py` ไม่ให้อ่าน `account.account.active` ซึ่งไม่มีใน Odoo 17 และใช้ `deprecated` ซึ่งเป็น field มาตรฐานสำหรับปิดการใช้งานบัญชีแทน
+ - ยังคงบังคับว่าบัญชี Write-off ต้องอยู่บริษัทเดียวกันและเป็นประเภท Income ตามข้อกำหนดเดิม
+ - เพิ่ม regression test ยืนยันว่าบัญชี Income ที่ใช้งานได้ไม่เกิด `AttributeError` ใน Write-off flow และบัญชีที่ `deprecated=True` ถูกปฏิเสธ
+ - การตรวจ source ยืนยันว่า `odoo:17.0` มี field `account.account.deprecated` และไม่มี `account.account.active`
+ - การรัน isolated test รอบแรกติดที่ test setup เดิมซึ่งพยายามเปลี่ยนสกุลเงินบริษัทหลังมี Journal Items แล้ว ทำให้ Customer Refund tests ทั้ง 12 รายการ error ก่อนเข้า test logic; แก้ setup ให้ใช้ company currency ที่ฐานข้อมูลสร้างไว้โดยไม่เปลี่ยนค่าบริษัท
+ - isolated test รอบถัดมายืนยันว่า regression test ของบัญชี `deprecated=True` ผ่าน และ Write-off flow ผ่าน constraint ที่เคยเกิด `AttributeError`; full suite ยังเหลือปัญหาเดิมคนละจุด 1 failed/3 errors ได้แก่ field `memo` ของ `account.payment`, test แก้ Payment Method หลัง Confirm และ amount guard
+ - regression tests แบบเจาะจงผ่าน 2/2 ด้วยผล `0 failed, 0 error(s)` ครอบคลุมบัญชี Income ที่ใช้งานได้และบัญชี `deprecated=True`
+ - ตัด `currency_id` ซึ่งเป็น readonly related field ออกจาก `@api.constrains`; การเปลี่ยนบริษัทและสกุลเงินยังถูกตรวจผ่าน `company_id` ที่อยู่ใน constraint เดิม
+ - ยังไม่ได้ Deploy หรือแก้ไขฐานข้อมูล DEV/Production; ปัญหา full suite ที่เหลือต้องแก้แยกก่อนรับรอง workflow ทั้งชุด
+
+### 2026-09-02 — DEV Deployment: Write-off Validation Fix
+
+ - อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง DEV ด้วย `scp`; ไม่ได้อัปโหลดโฟลเดอร์ `docs` และไม่ได้แตะ Production
+ - ยืนยันไฟล์บน DEV มี validation `if acc.deprecated` ก่อน upgrade
+ - upgrade เฉพาะโมดูล `buz_accounting_addon` บนฐาน `MOG_DEV` สำเร็จด้วย exit code `0`; registry โหลดสำเร็จ
+ - restart Docker container `odoo` สำเร็จ และหลัง restart container อยู่สถานะ Up, HTTP `/web/login` ตอบ `303`
+ - ตรวจฐานข้อมูลหลัง upgrade ได้ `buz_accounting_addon|installed|17.0.3.0.0`
+ - ระหว่าง upgrade พบ warning/error เดิมจากโมดูลอื่น โดยเฉพาะ `office_supply_requisition` ไม่ installable แต่ไม่ทำให้การ upgrade `buz_accounting_addon` ล้มเหลว
+ - ยังไม่ได้ทำ Browser/PDF/Accounting UAT บน DEV และ full isolated suite ยังมีปัญหาเดิม 1 failed/3 errors คนละส่วนกับบั๊กนี้
+
+### 2026-09-02 — Register Payment Compatibility Fix
+
+ - Fixed the Customer Refund Payment wrapper to provide `cheque_amount` when `account_payment_batch_process` adds this required field to Odoo 17 `account.payment.register`.
+ - Removed unsupported `memo` from generated `account.payment` values and retained the standard `ref` reference.
+ - Enforced the CV refund amount at register-wizard creation and payment creation to prevent client/RPC tampering.
+ - Allowed a subsequent CV when the previous posted payment is already reconciled with the Credit Note but its workflow remains `In Payment` pending bank reconciliation. Draft, Confirmed, Exception, and unreconciled In Payment records remain blocking states.
+ - Isolated Odoo 17 suite result: `0 failed, 0 error(s) of 19 tests`. The temporary test database and containers were removed afterward.
+ - Browser/PDF/Bank Statement/Accounting UAT and any DEV or Production deployment remain separate acceptance gates.
 
 ## Assumptions
 

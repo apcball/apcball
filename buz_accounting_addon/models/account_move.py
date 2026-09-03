@@ -1,10 +1,43 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, api
+from odoo import models, api, fields, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
+
+    def _get_last_sequence_domain(self, relaxed=False):
+        """ใช้เลข Payment เดิมของ Journal ได้แม้ข้อมูลเก่าขาด payment_id.
+
+        Payment บางรายการในฐานข้อมูลเดิมมี account_payment.move_id ครบ แต่
+        account_move.payment_id ไม่ถูกเติมไว้ ทำให้ sequence ของ Odoo 17
+        กรองรายการเหล่านั้นออกและอาจเริ่มเลข Payment ซ้ำจากเลขแรกของปี
+        การปรับนี้ใช้เฉพาะบริบท Customer Refund CV และกรองด้วย prefix ของ
+        Payment Journal โดยตรง จึงไม่เปลี่ยนพฤติกรรมของรายการบัญชีทั่วไป
+        หรือ Payment flow อื่น
+        """
+        where_string, param = super()._get_last_sequence_domain(relaxed=relaxed)
+        if (
+            not relaxed
+            and self.env.context.get('buz_customer_refund_voucher_id')
+            and self.journal_id
+            and self.journal_id.payment_sequence
+        ):
+            # ให้ legacy payment moves ที่ payment_id ว่างยังมีส่วนร่วมในการ
+            # หาเลขล่าสุด แต่ไม่ดึงเลขของรายการบัญชีปกติ (เช่น BNK1/...)
+            where_string = where_string.replace(
+                ' AND payment_id IS NOT NULL ', ' '
+            ).replace(
+                ' AND payment_id IS NULL ', ' '
+            )
+            param['cv_payment_sequence_prefix'] = (
+                f"P{self.journal_id.code}/%"
+            )
+            where_string += (
+                ' AND sequence_prefix LIKE %(cv_payment_sequence_prefix)s'
+            )
+        return where_string, param
 
     def _auto_init(self):
         # Drop the conflicting constraint from employee_advance if it exists
@@ -95,3 +128,70 @@ class AccountMove(models.Model):
                 # consider it paid
                 if has_outstanding_reconcile:
                     move.payment_state = 'paid'
+
+    # Customer Refund PV helpers
+    def _get_cv_active(self):
+        self.ensure_one()
+        CV = self.env['buz.customer.refund.voucher']
+        # active states: draft/confirmed/in_payment/exception
+        candidates = CV.search([('credit_note_id', '=', self.id)])
+        for cv in candidates:
+            if cv.workflow_state in ('draft', 'confirmed', 'in_payment', 'exception'):
+                return cv
+        return CV.browse()
+
+    def action_create_customer_refund_voucher(self):
+        self.ensure_one()
+        if self.move_type != 'out_refund' or self.state != 'posted':
+            raise UserError(_("Only Posted Customer Credit Note can create Refund PV."))
+        residual = abs(self.amount_residual_signed) if hasattr(self, 'amount_residual_signed') else abs(self.amount_residual)
+        if residual < 0.01:
+            raise UserError(_("Credit Note has no residual."))
+        CV = self.env['buz.customer.refund.voucher']
+        active = self._get_cv_active()
+        if active:
+            # open existing instead of creating
+            return {
+                'name': _('Customer Refund PV'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'buz.customer.refund.voucher',
+                'view_mode': 'form',
+                'res_id': active.id,
+                'target': 'current',
+            }
+        # check if there is any non-active that still blocks? Only active blocks, so we can create next if previous is paid/partially etc and residual remains
+        # create new CV
+        cv = CV.create({
+            'credit_note_id': self.id,
+            'partner_id': self.partner_id.id,
+            'company_id': self.company_id.id,
+            'date': fields.Date.context_today(self),
+            'planned_payment_date': fields.Date.context_today(self),
+        })
+        return {
+            'name': _('Customer Refund PV'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'buz.customer.refund.voucher',
+            'view_mode': 'form',
+            'res_id': cv.id,
+            'target': 'current',
+        }
+
+    def action_open_customer_refund_vouchers(self):
+        self.ensure_one()
+        return {
+            'name': _('Customer Refund PVs'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'buz.customer.refund.voucher',
+            'view_mode': 'tree,form',
+            'domain': [('credit_note_id', '=', self.id)],
+            'context': {'create': False},
+        }
+
+    customer_refund_voucher_count = fields.Integer(compute="_compute_cv_count", string="Refund PV Count")
+    customer_refund_voucher_ids = fields.One2many('buz.customer.refund.voucher', 'credit_note_id', string="Refund PVs")
+
+    @api.depends('customer_refund_voucher_ids')
+    def _compute_cv_count(self):
+        for rec in self:
+            rec.customer_refund_voucher_count = len(rec.customer_refund_voucher_ids)

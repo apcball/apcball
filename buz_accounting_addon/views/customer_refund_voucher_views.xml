@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_buz_customer_refund_voucher" model="ir.actions.act_window">
+        <field name="name">Customer Refund PV</field>
+        <field name="res_model">buz.customer.refund.voucher</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create from Customer Credit Note</p>
+        </field>
+    </record>
+
+    <record id="view_buz_customer_refund_voucher_tree" model="ir.ui.view">
+        <field name="name">buz.customer.refund.voucher.tree</field>
+        <field name="model">buz.customer.refund.voucher</field>
+        <field name="arch" type="xml">
+            <tree string="Customer Refund PV" create="false">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="credit_note_id"/>
+                <field name="refund_amount" widget="monetary"/>
+                <field name="state" widget="badge" decoration-info="state=='draft'" decoration-success="state=='confirmed'" decoration-muted="state=='cancel'"/>
+                <field name="workflow_state" widget="badge" decoration-info="workflow_state=='confirmed'" decoration-warning="workflow_state=='in_payment'" decoration-success="workflow_state in ('paid','partially_refunded')" decoration-danger="workflow_state=='exception'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_customer_refund_voucher_form" model="ir.ui.view">
+        <field name="name">buz.customer.refund.voucher.form</field>
+        <field name="model">buz.customer.refund.voucher</field>
+        <field name="arch" type="xml">
+            <form string="Customer Refund PV" create="false">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_print" type="object" string="Print Customer Refund PV" class="oe_highlight" invisible="workflow_state not in ('confirmed','in_payment','partially_refunded','paid')"/>
+                    <button name="action_register_payment" type="object" string="Register Payment" class="oe_highlight" invisible="state != 'confirmed'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','confirmed') or workflow_state in ('in_payment','paid','partially_refunded','exception','reversed')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,cancel"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_payments" type="object" class="oe_stat_button" icon="fa-money">
+                            <field name="payment_count" widget="statinfo" string="Payments"/>
+                        </button>
+                        <button name="action_open_credit_note" type="object" class="oe_stat_button" icon="fa-file-text">
+                            <field name="credit_note_id" widget="statinfo" string="Credit Note"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="CV Number"/>
+                        <h1><field name="name" readonly="state != 'draft'" groups="account.group_account_manager"/></h1>
+                        <h1><field name="name" readonly="1" groups="!account.group_account_manager"/></h1>
+                    </div>
+                    <!-- ต้องมี field นี้แบบ invisible เพื่อให้ domain ของ writeoff_account_id ใช้งานได้ทุกกลุ่ม -->
+                    <field name="company_id" invisible="1"/>
+                    <group>
+                        <group string="Header">
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="state" readonly="1"/>
+                            <field name="workflow_state" readonly="1"/>
+                            <field name="partner_id" readonly="state != 'draft'" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
+                        </group>
+                        <group string="Payment Status">
+                            <field name="payment_type" readonly="state != 'draft'"/>
+                            <field name="planned_payment_date" readonly="state != 'draft'"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Source Document">
+                        <field name="credit_note_id" readonly="state != 'draft'" options="{'no_create': True}"/>
+                        <field name="credit_note_amount" readonly="1" widget="monetary"/>
+                        <field name="amount_residual_before" readonly="1" widget="monetary"/>
+                    </group>
+                    <group string="Payment Planning">
+                        <field name="destination_journal_id" readonly="state != 'draft'" options="{'no_create': True}"/>
+                        <field name="payment_method_line_id" readonly="state != 'draft'"/>
+                        <field name="check_number" readonly="state != 'draft'" invisible="payment_type != 'check'"/>
+                        <field name="check_date" readonly="state != 'draft'" invisible="payment_type != 'check'"/>
+                        <field name="check_pay_to" readonly="state != 'draft'" invisible="payment_type != 'check'"/>
+                    </group>
+                    <group string="Amount Summary">
+                        <field name="refund_amount" readonly="state != 'draft'" widget="monetary"/>
+                        <field name="difference_handling" readonly="state != 'draft'"/>
+                        <field name="difference_amount" readonly="1" widget="monetary"/>
+                    </group>
+                    <group string="Write-off" invisible="difference_handling != 'writeoff'">
+                        <field name="writeoff_account_id" readonly="state != 'draft'" options="{'no_create': True}" domain="[('company_id','=',company_id)]"/>
+                        <field name="writeoff_reason" readonly="state != 'draft'" placeholder="Reason required for Write Off"/>
+                    </group>
+                    <group string="Audit">
+                        <field name="confirmed_by" readonly="1"/>
+                        <field name="confirmed_date" readonly="1"/>
+                        <field name="printed_at" readonly="1"/>
+                        <field name="printed_by" readonly="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Note">
+                            <field name="note" readonly="state == 'cancel'"/>
+                        </page>
+                        <page string="Payments">
+                            <field name="payment_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="amount" widget="monetary"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="journal_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_buz_customer_refund_voucher" name="Customer Refund PV" parent="account.menu_finance_receivables" action="action_buz_customer_refund_voucher" sequence="30"/>
+
+</odoo>

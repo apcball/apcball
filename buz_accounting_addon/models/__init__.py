@@ -3,6 +3,7 @@ from . import account_receipt_config
 from . import account_cheque_config
 from . import account_receipt_voucher
 from . import account_payment_voucher
+from . import customer_refund_voucher
 from . import account_move
 from . import account_payment_register
 from . import account_payment
