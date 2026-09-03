@@ -11,11 +11,4 @@ class AccountPayment(models.Model):
         index=True,
         copy=False,
     )
-    buz_customer_refund_voucher_id = fields.Many2one(
-        'buz.customer.refund.voucher',
-        string='Customer Refund PV',
-        ondelete='restrict',
-        index=True,
-        copy=False,
-    )
 
