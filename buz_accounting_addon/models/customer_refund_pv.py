@@ -71,6 +71,7 @@ class BuzCustomerRefundPv(models.Model):
     # Payment linkage for Register Payment phase (out of scope for Vendor PV)
     payment_ids = fields.Many2many('account.payment', 'buz_customer_refund_pv_payment_rel', 'pv_id', 'payment_id', string='Payments', readonly=True, copy=False)
     payment_count = fields.Integer(string='Payment Count', compute='_compute_payment_count')
+    has_active_payment = fields.Boolean(string='Has Active Payment', compute='_compute_has_active_payment')
 
     @api.onchange("destination_journal_id")
     def _onchange_destination_journal_id(self):
@@ -155,6 +156,15 @@ class BuzCustomerRefundPv(models.Model):
                 raise UserError(_("Net refund amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (pv.amount_total_net, pv.credit_note_id.name, residual))
             if pv.refund_amount - residual > 1e-6:
                 raise UserError(_("Refund Amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (pv.refund_amount, pv.credit_note_id.name, residual))
+            # Partial payment: total of all posted PVs for same CN must not exceed CN total (cancelled PVs excluded, cancelled payments not counted as paid but PV still counts)
+            other_posted = self.search([('credit_note_id', '=', pv.credit_note_id.id), ('state', '=', 'posted'), ('id', '!=', pv.id)])
+            total_other = sum(other_posted.mapped('refund_amount'))
+            try:
+                cn_total = abs(pv.credit_note_id.amount_total)
+            except Exception:
+                cn_total = residual
+            if total_other + pv.refund_amount - cn_total > 1e-6:
+                raise UserError(_("Total Refund Amount (%.2f) for Credit Note %s would exceed its total (%.2f).") % (total_other + pv.refund_amount, pv.credit_note_id.name, cn_total))
         # All validations passed: post the documents
         for pv in self:
             pv.write({"state": "posted"})
@@ -185,6 +195,11 @@ class BuzCustomerRefundPv(models.Model):
     def _compute_payment_count(self):
         for pv in self:
             pv.payment_count = len(pv.payment_ids)
+
+    @api.depends("payment_ids.state")
+    def _compute_has_active_payment(self):
+        for pv in self:
+            pv.has_active_payment = any(p.state != 'cancel' for p in pv.payment_ids)
 
     def action_view_payments(self):
         self.ensure_one()
