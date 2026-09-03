@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_office_supply_requisition" model="ir.sequence">
+            <field name="name">Office Supply Requisition</field>
+            <field name="code">office.supply.requisition</field>
+            <field name="prefix">REQ/%(year)s/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

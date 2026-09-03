@@ -5,9 +5,13 @@ FIFO Service and Helper Classes
 Provides helper methods for per-warehouse FIFO queue management and cost calculations.
 """
 
-from odoo import models, fields, api
+import logging
+
+from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_round
+
+_logger = logging.getLogger(__name__)
 
 
 class FifoService(models.AbstractModel):
@@ -23,7 +27,50 @@ class FifoService(models.AbstractModel):
     
     _name = 'fifo.service'
     _description = 'FIFO Service for Per-Warehouse Cost Calculation'
-    
+
+    def _empty_queue_fallback(self, product, warehouse, quantity, company_id=None):
+        """Consumption from an empty per-warehouse FIFO queue.
+
+        This is where cross-warehouse valuation drift entered the ledger: the
+        old code silently returned the product's standard price here, and with
+        most layers carrying no journal entry the wrong number was never
+        contradicted. It now always leaves a trace, and can be told to block.
+
+        Controlled by `stock_fifo_by_location.empty_queue_fallback_mode`:
+          'warning' (default) - log at ERROR, fall back to standard price
+          'raise'             - block the operation with a UserError
+        """
+        if isinstance(product, int):
+            product = self.env['product.product'].browse(product)
+        if isinstance(warehouse, int):
+            warehouse = self.env['stock.warehouse'].browse(warehouse)
+
+        standard_price = product.standard_price or 0.0
+        mode = self.env['ir.config_parameter'].sudo().get_param(
+            'stock_fifo_by_location.empty_queue_fallback_mode', 'warning')
+
+        if mode == 'raise':
+            raise UserError(_(
+                "คิว FIFO ว่าง — ไม่มีสินค้าในคลังนี้ให้ตัดต้นทุนแบบ FIFO\n\n"
+                "สินค้า: %s\n"
+                "คลัง: %s\n"
+                "พยายามตัดออก: %s\n\n"
+                "💡 รับสินค้าเข้าคลังนี้ก่อน หรือตรวจสอบวันที่ transaction "
+                "(อาจมีรายการย้อนหลังที่ทำให้คิว FIFO ผิดลำดับ)"
+            ) % (product.display_name, warehouse.display_name or '-', quantity))
+
+        _logger.error(
+            "FIFO queue empty for %s at %s: consuming %s unit(s) with no layer "
+            "to cost it against. Falling back to standard price %s.",
+            product.display_name, warehouse.display_name or '-',
+            quantity, standard_price)
+        return {
+            'cost': standard_price * quantity,
+            'qty': quantity,
+            'unit_cost': standard_price,
+            'layers': [],
+        }
+
     @api.model
     def get_valuation_layer_queue(self, product_id, warehouse_id, company_id=None):
         """
@@ -115,15 +162,8 @@ class FifoService(models.AbstractModel):
         queue = self.get_valuation_layer_queue(product_id, warehouse_id, company_id)
         
         if not queue:
-            # No layers available - fallback to product standard price
-            # This prevents 0.00 valuations in inter-warehouse transfers
-            standard_price = product_id.standard_price or 0.0
-            return {
-                'cost': standard_price * quantity,
-                'qty': quantity,
-                'unit_cost': standard_price,
-                'layers': []
-            }
+            return self._empty_queue_fallback(
+                product_id, warehouse_id, quantity, company_id)
         
         precision = self.env['decimal.precision'].precision_get('Product Price')
         qty_remaining = float_round(quantity, precision_digits=precision)
@@ -569,14 +609,8 @@ class FifoService(models.AbstractModel):
             layers = all_layers.get((product_id, warehouse_id), self.env['stock.valuation.layer'])
             
             if not layers:
-                # Fallback to standard price
-                product = self.env['product.product'].browse(product_id)
-                standard_price = product.standard_price or 0.0
-                results[(product_id, warehouse_id)] = {
-                    'cost': standard_price * quantity,
-                    'qty': quantity,
-                    'unit_cost': standard_price,
-                }
+                results[(product_id, warehouse_id)] = self._empty_queue_fallback(
+                    product_id, warehouse_id, quantity, company_id)
                 continue
             
             # Calculate FIFO cost from layers

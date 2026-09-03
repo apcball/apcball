@@ -83,8 +83,10 @@ class ArSettlementLine(models.Model):
                 tc = line.invoice_id.trade_channel
                 # trade_channel may be a selection key – get the label
                 if tc:
+                    # selection may be a dynamic callable – resolve via fields_get
                     selection = dict(
-                        self.env['account.move']._fields['trade_channel'].selection
+                        self.env['account.move']
+                        .fields_get(['trade_channel'])['trade_channel']['selection']
                     )
                     line.trade_channel = selection.get(tc, tc)
                 else:

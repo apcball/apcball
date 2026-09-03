@@ -1,8 +1,12 @@
 import html as html_lib
-from datetime import timedelta
+from datetime import datetime, time, timedelta
+
+import pytz
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+
+BANGKOK_TZ = pytz.timezone('Asia/Bangkok')
 
 
 class BuzDispatchDocument(models.Model):
@@ -349,15 +353,19 @@ class BuzDispatchDocument(models.Model):
             if not record.name:
                 record.name = self.env['ir.sequence'].next_by_code('buz.dispatch.document')
             picking = record.stock_picking_id
+            target_day = record.document_date
             if picking and picking.state == 'done':
-                date_dt = fields.Datetime.to_datetime(record.document_date)
+                local_dt = BANGKOK_TZ.localize(datetime.combine(target_day, time(17, 0)))
+                date_dt = local_dt.astimezone(pytz.utc).replace(tzinfo=None)
                 wiz = self.env['stock.picking.backdate.wiz'].sudo().create({
                     'date': date_dt,
                     'picking_ids': [(6, 0, picking.ids)],
                 })
                 wiz.change_to_backdate()
             record.state = 'done'
-            record.message_post(body=_('Dispatch confirmed. Delivery backdated to %s.') % record.document_date)
+            record.message_post(
+                body=_('Dispatch confirmed. Delivery backdated to %s (17:00 Bangkok).') % target_day
+            )
 
     def action_cancel(self):
         """Cancel dispatch document."""

@@ -1,5 +1,7 @@
 from odoo import models, fields, api, tools
 
+from .marketplace_channel import trade_channel_selection
+
 
 class MarketplaceFeeAllocationReport(models.Model):
     _name = 'marketplace.fee.allocation.report'
@@ -11,19 +13,9 @@ class MarketplaceFeeAllocationReport(models.Model):
     settlement_id = fields.Many2one('marketplace.settlement', string='Settlement', readonly=True)
     settlement_name = fields.Char('Settlement Reference', readonly=True)
     settlement_date = fields.Date('Settlement Date', readonly=True)
-    trade_channel = fields.Selection([
-        ('shopee', 'Shopee'), 
-        ('lazada', 'Lazada'), 
-        ('nocnoc', 'Noc Noc'), 
-        ('tiktok', 'Tiktok'), 
-        ('spx', 'SPX'),
-        ('online_line_fb', 'ONLINE/Line + Facebook'),
-        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
-        ('after_sale_service', 'After sale service'),
-        ('installation_service', 'Installation service'),
-        ('own_channel_cdc', 'Own channel ( CDC )'),
-        ('other', 'Other')
-    ], string='Trade Channel', readonly=True)
+    trade_channel = fields.Selection(
+        selection=lambda self: trade_channel_selection(self.env),
+        string='Trade Channel', readonly=True)
     marketplace_partner_id = fields.Many2one('res.partner', string='Marketplace Partner', readonly=True)
 
     # Invoice information

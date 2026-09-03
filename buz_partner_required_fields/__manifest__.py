@@ -1,6 +1,6 @@
 {
     'name': 'Partner Required Fields for Company',
-    'version': '17.0.1.1.2',
+    'version': '17.0.1.1.5',
     'category': 'Contacts',
     'description': (
         'Enforce required fields (address, phone, email) for company-type '

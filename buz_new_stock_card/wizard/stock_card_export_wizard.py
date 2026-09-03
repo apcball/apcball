@@ -1,7 +1,6 @@
 from urllib.parse import urlencode
 
 from odoo import fields, models
-from odoo.exceptions import UserError
 
 
 class StockCardExportWizard(models.TransientModel):
@@ -23,9 +22,8 @@ class StockCardExportWizard(models.TransientModel):
     def action_export_xlsx(self):
         self.ensure_one()
         all_mode = not self.product_id and not self.warehouse_ids and not self.location_ids
-        if not all_mode and not self.warehouse_ids and not self.location_ids:
-            # product only, no scope: not supported - needs a scope to bound the report
-            raise UserError("กรุณาเลือกคลังสินค้าหรือ Location อย่างน้อย 1 รายการ")
+        # product only (no warehouse/location) is supported: the controller
+        # reports the product across every location where it has stock/movement.
         params = {
             "date_from": self.date_from,
             "date_to": self.date_to,

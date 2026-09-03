@@ -1,0 +1,30 @@
+.office-supply-requisition .o_form_sheet_bg {
+    background: #f7f9fc;
+}
+
+.office-supply-requisition .o_form_header {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.office-supply-requisition .approval-status {
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.office-supply-requisition .approval-status.auto {
+    background: #e7f7ed;
+    color: #0f8f55;
+}
+
+.office-supply-requisition .approval-status.manager {
+    background: #fff4d6;
+    color: #a56a00;
+}
+
+.office-supply-requisition .approval-status.blocked {
+    background: #fde7e7;
+    color: #b42318;
+}

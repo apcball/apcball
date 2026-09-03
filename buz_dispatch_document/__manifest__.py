@@ -1,6 +1,6 @@
 {
     'name': 'Buz Dispatch Document',
-    'version': '17.0.1.0.2',
+    'version': '17.0.1.0.3',
     'category': 'Inventory/Delivery',
     'summary': 'จัดการเอกสาร Dispatch สำหรับควบคุมเลขที่เอกสาร DO',
     'description': """

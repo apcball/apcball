@@ -2,6 +2,8 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_is_zero, float_compare
 
+from .marketplace_channel import trade_channel_selection
+
 
 class MarketplaceFeeAllocation(models.Model):
     _name = 'marketplace.fee.allocation'
@@ -24,7 +26,9 @@ class MarketplaceFeeAllocation(models.Model):
                                          currency_field='company_currency_id', readonly=True, store=True)
     
     # Settlement Information (for form view convenience)
-    trade_channel = fields.Selection(related='settlement_id.trade_channel', string='Trade Channel', readonly=True, store=True)
+    trade_channel = fields.Selection(
+        selection=lambda self: trade_channel_selection(self.env),
+        related='settlement_id.trade_channel', string='Trade Channel', readonly=True, store=True)
     settlement_date = fields.Date(related='settlement_id.date', string='Settlement Date', readonly=True, store=True)
     
     # Fee allocation now works with vendor bills instead of settlement deductions

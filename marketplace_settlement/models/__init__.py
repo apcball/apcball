@@ -1,3 +1,4 @@
+from . import marketplace_channel
 from . import settlement
 from . import settlement_enhanced
 from . import sale_account_extension

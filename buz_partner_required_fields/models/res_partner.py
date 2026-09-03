@@ -7,15 +7,35 @@ class ResPartner(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        for vals in vals_list:
-            self._validate_required_fields(vals)
+        if not self.env.context.get('skip_partner_required_fields'):
+            for vals in vals_list:
+                self._validate_required_fields(vals)
         return super().create(vals_list)
 
+    # Fields whose change can affect required-field validation. A write that
+    # touches none of these is left alone, so unrelated updates (e.g. Odoo
+    # stamping login_date-related data on first login) don't re-validate the
+    # whole record.
+    _REQUIRED_FIELDS_WATCH = frozenset({
+        'company_type', 'parent_id',
+        'street', 'street2', 'city', 'state_id', 'zip', 'country_id',
+        'vat', 'branch', 'phone', 'email',
+    })
+
     def write(self, vals):
-        for partner in self:
-            merged_vals = {**partner.read([], load=False)[0], **vals}
-            self._validate_required_fields(merged_vals)
+        if (
+            not self.env.context.get('skip_partner_required_fields')
+            and self._REQUIRED_FIELDS_WATCH.intersection(vals)
+        ):
+            for partner in self:
+                merged_vals = {**partner.read([], load=False)[0], **vals}
+                self._validate_required_fields(merged_vals)
         return super().write(vals)
+
+    def copy(self, default=None):
+        return super(
+            ResPartner, self.with_context(skip_partner_required_fields=True)
+        ).copy(default)
 
     def _validate_required_fields(self, vals):
         if self.env.user.has_group('buz_partner_required_fields.group_partner_required_fields_bypass'):

@@ -1,6 +1,8 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
+from ..models.marketplace_channel import trade_channel_selection
+
 
 class MarketplaceSettlementWizard(models.TransientModel):
     _name = 'marketplace.settlement.wizard'
@@ -11,19 +13,9 @@ class MarketplaceSettlementWizard(models.TransientModel):
     profile_id = fields.Many2one('marketplace.settlement.profile', string='Profile')
     journal_id = fields.Many2one('account.journal', string='Journal', required=True)
     date = fields.Date('Date', required=True, default=fields.Date.context_today)
-    trade_channel = fields.Selection([
-        ('shopee', 'Shopee'),
-        ('lazada', 'Lazada'),
-        ('nocnoc', 'Noc Noc'),
-        ('tiktok', 'Tiktok'),
-        ('spx', 'SPX'),
-        ('online_line_fb', 'ONLINE/Line + Facebook'),
-        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
-        ('after_sale_service', 'After sale service'),
-        ('installation_service', 'Installation service'),
-        ('own_channel_cdc', 'Own channel ( CDC )'),
-        ('other', 'Other')
-    ], string='Trade Channel', required=True)
+    trade_channel = fields.Selection(
+        selection=lambda self: trade_channel_selection(self.env),
+        string='Trade Channel', required=True)
     invoice_ids = fields.Many2many('account.move', string='Invoices')
     auto_filter = fields.Boolean('Auto Filter Invoices', default=True, help="Automatically filter invoices based on selected trade channel")
     date_from = fields.Date('Date From', help="Filter invoices from this date")
