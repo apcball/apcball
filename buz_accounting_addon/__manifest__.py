@@ -45,7 +45,12 @@
     """,
     "author": "Ball & Manow",
     "website": "https://example.com",
-    "depends": ["account", "mail", "l10n_th_account_tax"],
+    "depends": [
+        "account",
+        "mail",
+        "l10n_th_account_tax",
+        "account_payment_batch_process",
+    ],
     "data": [
         "data/sequence.xml",
         "data/account_receipt_config_data.xml",

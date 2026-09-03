@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -13,29 +14,52 @@ class AccountPaymentRegister(models.TransientModel):
     def _compute_amount(self):
         super()._compute_amount()
         for wizard in self:
-            # Check if we have a forced amount from context (e.g. from Payment Voucher WHT)
-            if self._context.get('force_amount'):
-                wizard.amount = self._context.get('force_amount')
+            refund_pv_id = wizard.env.context.get('buz_customer_refund_pv_id')
+            refund_pv = wizard.env['buz.customer.refund.pv'].browse(refund_pv_id).exists()
+            if refund_pv:
+                # อ่านยอดจาก Refund PV โดยตรง เพื่อไม่เชื่อค่าที่ผู้ใช้แก้ใน context
+                wizard.amount = refund_pv.refund_amount
+            elif wizard.env.context.get('force_amount'):
+                # คงพฤติกรรมเดิมของ Payment Voucher/WHT
+                wizard.amount = wizard.env.context.get('force_amount')
+
+    def make_payments(self):
+        """Route Refund PV away from the optional batch-payment implementation."""
+        if not self.env.context.get('buz_customer_refund_pv_id'):
+            return super().make_payments()
+
+        self.ensure_one()
+        # account_payment_batch_process เปลี่ยนปุ่มมาตรฐานให้เรียก make_payments
+        # จึงล้าง allocation ของ batch แล้วกลับไปใช้ standard Odoo reconciliation
+        if 'invoice_payments' in self._fields and self.invoice_payments:
+            self.invoice_payments = [fields.Command.clear()]
+        return self.with_context(batch=False).action_create_payments()
 
     def _create_payments(self):
         """Override to link created payments to voucher, voucher line and receipt if context provided"""
         # Validate Register Refund Payment: payment amount must equal refund_amount (only for new button) and not exceed residual
         refund_pv_id = self._context.get('buz_customer_refund_pv_id')
         if refund_pv_id:
-            refund_pv = self.env['buz.customer.refund.pv'].browse(refund_pv_id)
-            if refund_pv.exists():
-                for wizard in self:
-                    if abs(wizard.amount - refund_pv.refund_amount) > 1e-6:
-                        from odoo.exceptions import UserError
-                        raise UserError(_("Payment amount (%.2f) must equal Refund Amount (%.2f).") % (wizard.amount, refund_pv.refund_amount))
-                    # Also re-validate not exceed residual (in case residual changed after PV confirm)
-                    try:
-                        residual = abs(refund_pv.credit_note_id.amount_residual_signed) if hasattr(refund_pv.credit_note_id, 'amount_residual_signed') else abs(refund_pv.credit_note_id.amount_residual)
-                    except Exception:
-                        residual = abs(refund_pv.credit_note_id.amount_total)
-                    if wizard.amount - residual > 1e-6:
-                        from odoo.exceptions import UserError
-                        raise UserError(_("Payment amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (wizard.amount, refund_pv.credit_note_id.name, residual))
+            refund_pv = self.env['buz.customer.refund.pv'].browse(refund_pv_id).exists()
+            if not refund_pv:
+                raise UserError(_("Customer Refund PV was not found."))
+            if refund_pv.state != 'posted':
+                raise UserError(_("Refund PV must be posted before Register Payment."))
+            if refund_pv.payment_ids.filtered(lambda payment: payment.state != 'cancel'):
+                raise UserError(_("Payment already registered for Refund PV %s.") % refund_pv.name)
+
+            credit_note = refund_pv.credit_note_id
+            if not credit_note or credit_note.state != 'posted' or credit_note.move_type != 'out_refund':
+                raise UserError(_("A posted Customer Credit Note is required."))
+
+            residual = abs(credit_note.amount_residual)
+            for wizard in self:
+                if refund_pv.currency_id.compare_amounts(wizard.amount, 0.0) <= 0:
+                    raise UserError(_("Payment amount must be greater than 0."))
+                if refund_pv.currency_id.compare_amounts(wizard.amount, refund_pv.refund_amount) != 0:
+                    raise UserError(_("Payment amount (%.2f) must equal Refund Amount (%.2f).") % (wizard.amount, refund_pv.refund_amount))
+                if refund_pv.currency_id.compare_amounts(wizard.amount, residual) > 0:
+                    raise UserError(_("Payment amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (wizard.amount, credit_note.name, residual))
         payments = super()._create_payments()
         
         # Link payments to payment voucher if context provided

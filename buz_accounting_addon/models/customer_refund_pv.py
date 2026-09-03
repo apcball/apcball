@@ -246,6 +246,9 @@ class BuzCustomerRefundPv(models.Model):
             'active_id': self.credit_note_id.id,
             'buz_customer_refund_pv_id': self.id,
             'force_amount': self.refund_amount,
+            # Refund PV ต้องใช้ standard payment flow เท่านั้น ไม่ให้ batch module
+            # สร้างยอดใหม่จากยอดคงเหลือเต็มของ Credit Note
+            'batch': False,
         })
         if self.destination_journal_id:
             ctx['default_journal_id'] = self.destination_journal_id.id
@@ -253,7 +256,16 @@ class BuzCustomerRefundPv(models.Model):
             ctx['default_payment_date'] = self.date
         if self.payment_method_line_id:
             ctx['default_payment_method_line_id'] = self.payment_method_line_id.id
-        return self.credit_note_id.with_context(ctx).action_register_payment()
+        action = self.credit_note_id.with_context(ctx).action_register_payment()
+
+        # action_register_payment() สร้าง context ชุดใหม่สำหรับ wizard จึงต้องรวม
+        # context ของ Refund PV กลับเข้า action โดยตรง เพื่อไม่ให้ force_amount หลุด
+        action_context = action.get('context')
+        if not isinstance(action_context, dict):
+            action_context = {}
+        action_context.update(ctx)
+        action['context'] = action_context
+        return action
 
     def action_open_credit_note(self):
         self.ensure_one()
