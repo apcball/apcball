@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Customer Refund PV Views โ€” Phase 1 (layout mirrors Vendor PV) -->
+
+    <record id="action_buz_customer_refund_pv_tree" model="ir.actions.act_window">
+        <field name="name">Customer Refund PVs</field>
+        <field name="res_model">buz.customer.refund.pv</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a Customer Refund PV from a Posted Customer Credit Note
+            </p>
+        </field>
+    </record>
+
+    <record id="view_buz_customer_refund_pv_tree" model="ir.ui.view">
+        <field name="name">buz.customer.refund.pv.tree</field>
+        <field name="model">buz.customer.refund.pv</field>
+        <field name="arch" type="xml">
+            <tree string="Customer Refund PVs">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="credit_note_id"/>
+                <field name="amount_total_net_display" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="state" widget="badge" decoration-info="state=='draft'" decoration-success="state=='posted'" decoration-muted="state=='cancel'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_customer_refund_pv_form" model="ir.ui.view">
+        <field name="name">buz.customer.refund.pv.form</field>
+        <field name="model">buz.customer.refund.pv</field>
+        <field name="arch" type="xml">
+            <form string="Customer Refund PV">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="%(buz_accounting_addon.action_report_customer_refund_pv)d" type="action" string="Print Payment Voucher" class="oe_highlight" invisible="state != 'posted'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_credit_note" type="object" class="oe_stat_button" icon="fa-file-text-o" invisible="not credit_note_id">
+                            <field name="credit_note_id" widget="statinfo" string="Credit Note"/>
+                        </button>
+                        <button type="object" name="action_open_credit_note" class="oe_stat_button" icon="fa-money" invisible="not amount_total_net_display">
+                            <field name="amount_total_net_display" string="Net Amount" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Refund PV Number" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="Enter Refund PV Number" readonly="state != 'draft'" required="1"/></h1>
+                    </div>
+                    <field name="company_id" invisible="1"/>
+                    <group>
+                        <group name="header_left">
+                            <field name="partner_id" options="{'no_create': True}" readonly="state != 'draft'"/>
+                            <field name="credit_note_id" readonly="1" options="{'no_create': True}"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
+                        </group>
+                        <group name="header_right">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="refund_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="state != 'draft'" required="1" string="Refund Amount"/>
+                            <field name="payment_type" readonly="state != 'draft'"/>
+                            <field name="destination_journal_id" required="1" readonly="state != 'draft'"/>
+                            <field name="payment_method_line_id" required="payment_type != 'cash'" invisible="payment_type == 'cash'" readonly="state != 'draft'"/>
+                            <field name="bank_free_dis" string="Bank Fee" readonly="state != 'draft'"/>
+                            <field name="other_income_dis" string="Other Income" readonly="state != 'draft'"/>
+                            <field name="check_pay_to" string="Pay To" readonly="state != 'draft'"/>
+                            <field name="check_number" string="Cheque No." readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <group string="Payment Details" invisible="payment_type != 'check'">
+                        <group>
+                            <field name="check_date" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Refund Lines">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom">
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="partner_id" column_invisible="1"/>
+                                    <field name="pv_id" column_invisible="1"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                    <field name="move_id" domain="[('partner_id', '=', partner_id), ('move_type', '=', 'out_refund'), ('state', '=', 'posted')]"/>
+                                    <field name="amount_to_pay_gross" sum="Total Gross"/>
+                                    <field name="wht_base_amount" sum="Total Base"/>
+                                    <field name="buz_wht_tax_id"/>
+                                    <field name="wht_rate" column_invisible="1" force_save="1"/>
+                                    <field name="wht_amount" readonly="1" force_save="1" sum="Total WHT"/>
+                                    <field name="amount_to_pay_net" readonly="1" force_save="1" sum="Total Net"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note" readonly="state != 'draft'"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_buz_customer_refund_pv"
+              name="Customer Refund PVs"
+              parent="account.menu_finance_receivables"
+              action="action_buz_customer_refund_pv_tree"
+              sequence="22"/>
+
+</odoo>

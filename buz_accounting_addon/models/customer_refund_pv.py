@@ -10,7 +10,7 @@ class BuzCustomerRefundPv(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _check_company_auto = True
 
-    name = fields.Char(string="Refund PV Number", readonly=True, copy=False, default="/", tracking=True)
+    name = fields.Char(string="Refund PV Number", copy=False, tracking=True, index=True, help="Manual Refund PV number - required before Confirm, used as VOUCHER NO. on report")
     date = fields.Date(string="PV Date", default=fields.Date.context_today, required=True, tracking=True)
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, tracking=True)
     currency_id = fields.Many2one("res.currency", related="company_id.currency_id", readonly=True, store=True)
@@ -30,7 +30,7 @@ class BuzCustomerRefundPv(models.Model):
         ("cancel", "Cancelled"),
     ], default="draft", tracking=True)
 
-    # Payment planning fields — mirror Vendor PV for layout parity
+    # Payment planning fields เนโฌโ€ mirror Vendor PV for layout parity
     payment_type = fields.Selection([
         ("cash", "Cash"),
         ("transfer", "Transfer"),
@@ -59,7 +59,10 @@ class BuzCustomerRefundPv(models.Model):
 
     line_ids = fields.One2many("buz.customer.refund.pv.line", "pv_id", string="Refund Lines")
 
-    # Totals — mirror Vendor PV computations for report/layout parity
+    # Manual refund amount for approval printing (supports partial, e.g. 3,000 of 4,990)
+    refund_amount = fields.Monetary(string="Refund Amount", currency_field="currency_id", tracking=True, help="Amount to be refunded as specified by accounting - shown on report")
+
+    # Totals เนโฌโ€ mirror Vendor PV computations for report/layout parity (not changed)
     amount_total_gross = fields.Monetary(string="Total Gross", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_wht = fields.Monetary(string="Total WHT", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_amount_totals", store=True)
@@ -83,10 +86,85 @@ class BuzCustomerRefundPv(models.Model):
                 vals["date"] = fields.Date.context_today(self)
         return super().create(vals_list)
 
+    @api.constrains("name")
+    def _check_name_unique(self):
+        for rec in self:
+            if not rec.name or rec.name in ("/", False, None):
+                continue
+            dup = self.search([("name", "=", rec.name), ("id", "!=", rec.id)], limit=1)
+            if dup:
+                raise UserError(_("Refund PV Number '%s' already exists.") % rec.name)
+
     def write(self, vals):
         if vals.get("name") == "/":
             vals["name"] = self.env["ir.sequence"].next_by_code("buz.customer.refund.pv") or "/"
+        # Lock critical fields once posted (including manual name and refund_amount)
+        if self and any(rec.state == "posted" for rec in self):
+            protected = {
+                "name", "partner_id", "credit_note_id", "date", "company_id", "currency_id",
+                "payment_type", "destination_journal_id", "payment_method_line_id",
+                "bank_free_dis", "other_income_dis", "check_number", "check_date", "check_pay_to",
+                "line_ids", "note", "refund_amount",
+            }
+            if protected.intersection(vals.keys()) and not (set(vals.keys()) <= {"state", "message_follower_ids", "activity_ids", "message_ids"}):
+                if not (set(vals.keys()) == {"state"} and vals.get("state") == "posted"):
+                    raise UserError(_("Posted Customer Refund PV cannot be edited."))
         return super().write(vals)
+
+    def action_confirm(self):
+        """Current phase: Validate and confirm Draft -> Posted. No payment creation / no reconcile."""
+        for pv in self:
+            if pv.state != "draft":
+                raise UserError(_("Only draft Refund PV can be confirmed. Document %s is already %s.") % (pv.name or "", pv.state))
+            if not pv.name or pv.name in ("/", False, None, ""):
+                raise UserError(_("Refund PV Number is required. Please enter the Refund PV number."))
+            dup = self.search([("name", "=", pv.name), ("id", "!=", pv.id)], limit=1)
+            if dup:
+                raise UserError(_("Refund PV Number '%s' already exists.") % pv.name)
+            if not pv.partner_id:
+                raise UserError(_("Customer is required."))
+            if not pv.date:
+                raise UserError(_("PV Date is required."))
+            if not pv.credit_note_id:
+                raise UserError(_("Customer Credit Note is required."))
+            if pv.credit_note_id.move_type != "out_refund":
+                raise UserError(_("Credit Note must be a Customer Credit Note (out_refund)."))
+            if pv.credit_note_id.state != "posted":
+                raise UserError(_("Customer Credit Note must be Posted."))
+            if not pv.line_ids:
+                raise UserError(_("At least one Refund Line is required."))
+            if not pv.refund_amount or pv.refund_amount <= 0:
+                raise UserError(_("Refund Amount is required and must be greater than 0."))
+            # Amount > 0 checks (gross/net) - keep original formula
+            if pv.amount_total_gross <= 0 and pv.amount_total_net <= 0:
+                raise UserError(_("Refund amount must be greater than 0."))
+            if any(line.amount_to_pay_gross <= 0 for line in pv.line_ids):
+                raise UserError(_("Each refund line amount must be greater than 0."))
+            # Amount must not exceed residual of credit note
+            try:
+                residual = abs(pv.credit_note_id.amount_residual_signed) if hasattr(pv.credit_note_id, "amount_residual_signed") else abs(pv.credit_note_id.amount_residual)
+            except Exception:
+                residual = abs(pv.credit_note_id.amount_total)
+            if pv.amount_total_gross - residual > 1e-6:
+                raise UserError(_("Refund amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (pv.amount_total_gross, pv.credit_note_id.name, residual))
+            if pv.amount_total_net - residual > 1e-6:
+                raise UserError(_("Net refund amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (pv.amount_total_net, pv.credit_note_id.name, residual))
+            if pv.refund_amount - residual > 1e-6:
+                raise UserError(_("Refund Amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (pv.refund_amount, pv.credit_note_id.name, residual))
+        # All validations passed: post the documents
+        for pv in self:
+            pv.write({"state": "posted"})
+            try:
+                pv.message_post(body=_("Refund PV confirmed and posted."))
+            except Exception:
+                pass
+        return True
+
+    def unlink(self):
+        for pv in self:
+            if pv.state == "posted":
+                raise UserError(_("Cannot delete a posted Customer Refund PV."))
+        return super().unlink()
 
     @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount", "bank_free_dis", "other_income_dis")
     def _compute_amount_totals(self):
@@ -111,6 +189,163 @@ class BuzCustomerRefundPv(models.Model):
             "res_id": self.credit_note_id.id,
             "target": "current",
         }
+
+    def get_preview_moves(self):
+        """
+        Compute simulated journal entry lines for Customer Refund PV report.
+        Mirrors Vendor PV (account.payment.voucher.get_preview_moves) but
+        adapted for customer receivable accounts. Returns list of dicts:
+        { 'code', 'name', 'ref', 'date', 'debit', 'credit' }
+        """
+        self.ensure_one()
+        lines = []
+        date = self.date
+        voucher_name = self.name
+        # Use manual refund_amount for report when specified (supports partial approval), otherwise fall back to line sums
+        if self.refund_amount and self.refund_amount > 0:
+            total_gross = self.refund_amount
+            total_wht = sum(line.wht_amount for line in self.line_ids)
+            total_net = total_gross - total_wht
+        else:
+            total_gross = sum(line.amount_to_pay_gross for line in self.line_ids)
+            total_wht = sum(line.wht_amount for line in self.line_ids)
+            total_net = sum(line.amount_to_pay_net for line in self.line_ids)
+        bank_fee = self.bank_free_dis or 0.0
+        other_income = 0.0
+        total_disbursement = total_net + bank_fee
+
+        if total_gross > 0:
+            if self.line_ids and self.line_ids[0].move_id:
+                first_move = self.line_ids[0].move_id
+                receivable_line = first_move.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')[:1]
+                account = receivable_line.account_id or first_move.partner_id.property_account_receivable_id
+            else:
+                account = self.partner_id.property_account_receivable_id or self.env['account.account']
+            lines.append({
+                'code': account.code if account else '',
+                'name': account.name if account else _('Receivable'),
+                'ref': voucher_name,
+                'date': date,
+                'debit': total_gross,
+                'credit': 0.0,
+            })
+
+        if total_wht > 0:
+            wht_account = self.env['account.account'].search([
+                ('code', '=', '213102'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not wht_account:
+                wht_account = self.env['account.account'].search([
+                    ('code', '=ilike', '%wht%payable%'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            if not wht_account:
+                wht_account = self.env['account.account'].search([
+                    ('account_type', '=', 'liability_current'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            lines.append({
+                'code': wht_account.code if wht_account else '213102',
+                'name': wht_account.name if wht_account else 'เน€เธย เน€เธเธ’เน€เธเธเน€เธเธ•เน€เธเธเน€เธเธ‘เน€เธย เน€เธโ€ เน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธยเน€เธเธ’เน€เธยเน€เธยเน€เธยเน€เธเธ’เน€เธเธ',
+                'ref': voucher_name,
+                'date': date,
+                'debit': 0.0,
+                'credit': total_wht,
+            })
+
+        if bank_fee > 0:
+            bank_fee_account = self.env['account.account'].search([
+                ('code', '=', '533201'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not bank_fee_account:
+                bank_fee_account = self.env['account.account'].search([
+                    ('account_type', '=', 'expense'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            lines.append({
+                'code': bank_fee_account.code if bank_fee_account else '533201',
+                'name': bank_fee_account.name if bank_fee_account else _('Bank Fee Expense'),
+                'ref': voucher_name,
+                'date': date,
+                'debit': bank_fee,
+                'credit': 0.0,
+            })
+
+        if other_income > 0:
+            other_income_account = self.env['account.account'].search([
+                ('code', 'in', ['423000', '42300']),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not other_income_account:
+                other_income_account = self.env['account.account'].search([
+                    ('name', 'ilike', 'เน€เธเธเน€เธเธ’เน€เธเธเน€เธยเน€เธโ€เน€เธยเน€เธเธเน€เธเธ—เน€เธยเน€เธย'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            if not other_income_account:
+                other_income_account = self.env['account.account'].search([
+                    ('account_type', '=', 'income'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            lines.append({
+                'code': other_income_account.code if other_income_account else '423000',
+                'name': other_income_account.name if other_income_account else _('เน€เธเธเน€เธเธ’เน€เธเธเน€เธยเน€เธโ€เน€เธยเน€เธเธเน€เธเธ—เน€เธยเน€เธย'),
+                'ref': voucher_name,
+                'date': date,
+                'debit': 0.0,
+                'credit': other_income,
+            })
+
+        is_check = False
+        if self.payment_type == 'check':
+            is_check = True
+        elif self.payment_method_line_id:
+            method_name = self.payment_method_line_id.name or ''
+            method_code = getattr(self.payment_method_line_id, 'code', '') or ''
+            method_pm_code = ''
+            if hasattr(self.payment_method_line_id, 'payment_method_id') and self.payment_method_line_id.payment_method_id:
+                method_pm_code = self.payment_method_line_id.payment_method_id.code or ''
+            if any(term in method_name.lower() or term in method_code.lower() or term in method_pm_code.lower() for term in ['check', 'cheque']):
+                is_check = True
+
+        if is_check:
+            check_payable_account = self.env['account.account'].search([
+                ('code', '=', '211100'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not check_payable_account:
+                check_payable_account = self.env['account.account'].search([
+                    ('name', 'ilike', 'เน€เธโ€ขเน€เธเธ‘เน€เธยเน€เธเธเน€เธโฌเน€เธยเน€เธเธ”เน€เธยเน€เธยเน€เธยเน€เธเธ’เน€เธเธ'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            lines.append({
+                'code': check_payable_account.code if check_payable_account else '211100',
+                'name': check_payable_account.name if check_payable_account else _('เน€เธโ€ขเน€เธเธ‘เน€เธยเน€เธเธเน€เธโฌเน€เธยเน€เธเธ”เน€เธยเน€เธยเน€เธยเน€เธเธ’เน€เธเธ'),
+                'ref': voucher_name,
+                'date': date,
+                'debit': 0.0,
+                'credit': total_disbursement,
+            })
+        else:
+            bank_journal = self.destination_journal_id
+            if bank_journal:
+                bank_account = bank_journal.default_account_id
+                if not bank_account:
+                    try:
+                        bank_account = bank_journal.outbound_payment_method_line_ids[:1].payment_account_id
+                    except Exception:
+                        bank_account = self.env['account.account']
+                lines.append({
+                    'code': bank_account.code if bank_account else '???',
+                    'name': bank_account.name if bank_account else bank_journal.name,
+                    'ref': voucher_name,
+                    'date': date,
+                    'debit': 0.0,
+                    'credit': total_disbursement,
+                })
+
+        return lines
 
 
 class BuzCustomerRefundPvLine(models.Model):
@@ -169,3 +404,23 @@ class BuzCustomerRefundPvLine(models.Model):
     def _compute_amount_to_pay_net(self):
         for line in self:
             line.amount_to_pay_net = line.amount_to_pay_gross - abs(line.wht_amount)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            pv_id = vals.get("pv_id")
+            if pv_id:
+                pv = self.env["buz.customer.refund.pv"].browse(pv_id)
+                if pv.state == "posted":
+                    raise UserError(_("Cannot add lines to a posted Customer Refund PV."))
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if any(line.pv_id.state == "posted" for line in self):
+            raise UserError(_("Cannot edit lines of a posted Customer Refund PV."))
+        return super().write(vals)
+
+    def unlink(self):
+        if any(line.pv_id.state == "posted" for line in self):
+            raise UserError(_("Cannot delete lines of a posted Customer Refund PV."))
+        return super().unlink()
