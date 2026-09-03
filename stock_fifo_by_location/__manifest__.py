@@ -1,6 +1,6 @@
 {
     'name': 'Stock FIFO by Warehouse (Transfer ≠ Consumption)',
-    'version': '17.0.2.5.1',
+    'version': '17.0.2.6.0',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -78,6 +78,15 @@ Requirements:
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.2.6.0: Empty FIFO queue no longer falls back silently
+  * The three duplicated "queue empty -> use standard price" blocks in
+    fifo.service are now one helper, _empty_queue_fallback()
+  * New config parameter stock_fifo_by_location.empty_queue_fallback_mode:
+    'warning' (default) logs at ERROR and falls back; 'raise' blocks the move
+  * This is the path that let cross-warehouse valuation drift into the ledger
+    (a backdated transfer replaying FIFO before its own receipt): the wrong
+    number was silent and, with no journal entry behind the layer, never
+    contradicted
 - 17.0.2.0.0: TRANSFER ≠ CONSUMPTION ARCHITECTURE
   * Dual-quantity tracking: remaining_qty (valuation) vs origin_remaining_qty (cost origin)
   * Internal transfers reduce remaining_qty but NOT origin_remaining_qty

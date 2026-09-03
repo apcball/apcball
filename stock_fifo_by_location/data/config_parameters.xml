@@ -21,6 +21,14 @@
             <field name="key">stock_fifo_by_location.debug_mode</field>
             <field name="value">False</field>
         </record>
-        
+
+        <!-- Consumption from an empty per-warehouse FIFO queue:
+             'warning' = log at ERROR and fall back to standard price
+             'raise'   = block the operation with a UserError -->
+        <record id="config_empty_queue_fallback_mode" model="ir.config_parameter">
+            <field name="key">stock_fifo_by_location.empty_queue_fallback_mode</field>
+            <field name="value">warning</field>
+        </record>
+
     </data>
 </odoo>
