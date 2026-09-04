@@ -191,7 +191,8 @@ class SaleOrderCreditNoteWizard(models.TransientModel):
                     _("Line '%s' does not belong to the selected invoice.") % line.name
                 )
 
-        # Build credit note lines
+        # Build credit note lines — preserve sale_line_ids link per spec
+        # CN line.sale_line_ids -> SO line <- Invoice line.sale_line_ids
         credit_note_lines = []
         for line in selected_lines:
             line_vals = {
@@ -200,8 +201,8 @@ class SaleOrderCreditNoteWizard(models.TransientModel):
                 "quantity": line.credit_qty,
                 "price_unit": line.price_unit,
                 "discount": line.discount,
-                "tax_ids": [(6, 0, line.tax_ids.ids)],
-                "sale_line_ids": [(6, 0, line.sale_line_id.ids)],
+                "tax_ids": [fields.Command.set(line.tax_ids.ids)],
+                "sale_line_ids": [fields.Command.link(line.sale_line_id.id)] if line.sale_line_id else [],
                 "source_sale_line_id": line.sale_line_id.id,
             }
             
