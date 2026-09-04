@@ -474,7 +474,9 @@ class TestReconcileAndFix(common.TransactionCase):
                 'location_dest_id': move.location_dest_id.id,
                 'company_id': self.env.company.id,
             })
-        move.move_line_ids.quantity = 1.0
+        # Odoo 17 only VALUES a move for move-lines with picked=True; an
+        # unpicked line gives _get_valued_qty()==0 and no SVL is booked.
+        move.move_line_ids.write({'quantity': 1.0, 'picked': True})
         move._action_done()
         self.transfer_move = move
         self.bad_move_line = move.move_line_ids[0]
