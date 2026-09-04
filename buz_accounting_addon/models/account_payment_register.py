@@ -62,6 +62,71 @@ class AccountPaymentRegister(models.TransientModel):
                     raise UserError(_("Payment amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (wizard.amount, credit_note.name, residual))
             # Re-validate source invoices (block if status changed after Confirm)
             refund_pv._check_source_invoices_paid()
+            # --- Refund PV: create payment as Draft only (ไม่ Post/Reconcile ทันที) ---
+            # เพื่อให้บัญชีแก้เลข Payment (account.move.name) ก่อน Post ตาม spec ใหม่
+            # ใช้ _init_payments อย่างเดียว ไม่เรียก _post_payments/_reconcile_payments
+            self.ensure_one()
+            # Reuse core logic to build to_process but stop before post
+            # Simplified: use wizard's _get_batches and _create_payment_vals_from_wizard/_batch
+            batches = self._get_batches()
+            # Filter untrusted banks as in core _create_payments
+            filtered_batches = []
+            for batch in batches:
+                batch_account = self._get_batch_account(batch)
+                if self.require_partner_bank_account and not batch_account.allow_out_payment:
+                    continue
+                filtered_batches.append(batch)
+            if not filtered_batches:
+                raise UserError(_("To record payments with %s, the recipient bank account must be manually validated.") % self.payment_method_line_id.name)
+            first_batch_result = filtered_batches[0]
+            edit_mode = self.can_edit_wizard and (len(first_batch_result['lines']) == 1 or self.group_payment)
+            to_process = []
+            if edit_mode:
+                payment_vals = self._create_payment_vals_from_wizard(first_batch_result)
+                to_process.append({
+                    'create_vals': payment_vals,
+                    'to_reconcile': first_batch_result['lines'],
+                    'batch': first_batch_result,
+                })
+            else:
+                # For refund PV this path rarely used (single CN), but keep parity
+                if not self.group_payment:
+                    new_batches = []
+                    for batch_result in filtered_batches:
+                        for line in batch_result['lines']:
+                            new_batches.append({
+                                **batch_result,
+                                'payment_values': {**batch_result['payment_values'], 'payment_type': 'inbound' if line.balance > 0 else 'outbound'},
+                                'lines': line,
+                            })
+                    filtered_batches = new_batches
+                for batch_result in filtered_batches:
+                    to_process.append({
+                        'create_vals': self._create_payment_vals_from_batch(batch_result),
+                        'to_reconcile': batch_result['lines'],
+                        'batch': batch_result,
+                    })
+            # Create payments as Draft
+            payments = self._init_payments(to_process, edit_mode=edit_mode)
+            # Link to PV immediately (ยังไม่ reconcile)
+            refund_pv.write({'payment_ids': [(4, p.id) for p in payments]})
+            payments.write({'buz_customer_refund_pv_id': refund_pv.id})
+            refund_pv.message_post(body=_("Payment %s created as Draft for refund amount %.2f — please edit number then Post") % (', '.join(payments.mapped('name') or ['Draft']), refund_pv.refund_amount))
+            _logger.info("Created %d Draft payment(s) for customer refund PV %s (draft, not yet reconciled)", len(payments), refund_pv.name)
+            # Also keep standard linking for other modules (payment voucher etc.) to not miss
+            # Handle payment_voucher / receipt voucher linking if context also has those (not for refund PV but keep)
+            payment_voucher_id = self._context.get('buz_payment_voucher_id')
+            if payment_voucher_id and payments:
+                payment_voucher = self.env['account.payment.voucher'].browse(payment_voucher_id)
+                if payment_voucher.exists():
+                    payments.write({'buz_payment_voucher_id': payment_voucher_id})
+                    paid_moves = payments.mapped('reconciled_bill_ids')
+                    for line in payment_voucher.line_ids:
+                        line_payments = payments.filtered(lambda p: not paid_moves or line.move_id in p.reconciled_bill_ids) or payments
+                        line.write({'payment_ids': [(4, payment.id) for payment in line_payments]})
+                    payment_voucher.message_post(body=_("Payment(s) %s created and linked to voucher") % ', '.join(payments.mapped('name')))
+            # Return early — do NOT call super, do NOT post/reconcile
+            return payments
         payments = super()._create_payments()
         
         # Link payments to payment voucher if context provided

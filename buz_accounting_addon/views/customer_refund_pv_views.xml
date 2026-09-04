@@ -25,6 +25,8 @@
                 <field name="credit_note_id"/>
                 <field name="amount_total_net_display" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                 <field name="source_status" optional="hide"/>
+                <field name="refund_payment_name" optional="hide"/>
+                <field name="refund_payment_state" optional="hide" widget="badge" decoration-info="refund_payment_state == 'draft'" decoration-success="refund_payment_state == 'posted'"/>
                 <field name="state" widget="badge" decoration-info="state=='draft'" decoration-success="state=='posted'" decoration-muted="state=='cancel'"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
@@ -100,6 +102,19 @@
                         </group>
                         <group>
                             <field name="source_status" readonly="1" string="Source Status" placeholder="Source Invoice Paid / Invoice ยังไม่ Paid / ไม่พบ Invoice ต้นทาง"/>
+                        </group>
+                    </group>
+                    <group string="Refund Payment (Draft → Post) — แก้เลขก่อน Post" invisible="payment_count == 0">
+                        <field name="refund_payment_id" invisible="1"/>
+                        <field name="refund_payment_move_name" invisible="1"/>
+                        <group>
+                            <field name="refund_payment_name" readonly="1" string="Payment / Journal Number" help="เลขเดียวกับ Journal Entry (account.move.name) — แก้ได้เฉพาะตอน Payment Draft"/>
+                            <field name="refund_payment_state" readonly="1" widget="badge" decoration-info="refund_payment_state == 'draft'" decoration-success="refund_payment_state == 'posted'" decoration-danger="refund_payment_state == 'cancel'" string="Payment State"/>
+                        </group>
+                        <group>
+                            <button name="action_view_payments" type="object" string="Open Payment" class="oe_highlight" icon="fa-external-link" invisible="payment_count == 0"/>
+                            <div invisible="refund_payment_state != 'draft'"><span class="text-muted">Draft: เปิด Payment → แก้เลข (เช่น PBNK11/2026/00009) → Post</span></div>
+                            <div invisible="refund_payment_state != 'posted'"><span class="text-success">Posted: Reconcile กับ Credit Note แล้ว</span></div>
                         </group>
                     </group>
                     <notebook>

@@ -73,6 +73,11 @@ class BuzCustomerRefundPv(models.Model):
     payment_ids = fields.Many2many('account.payment', 'buz_customer_refund_pv_payment_rel', 'pv_id', 'payment_id', string='Payments', readonly=True, copy=False)
     payment_count = fields.Integer(string='Payment Count', compute='_compute_payment_count')
     has_active_payment = fields.Boolean(string='Has Active Payment', compute='_compute_has_active_payment')
+    # For draft-payment flow: show first payment's number/state and allow edit before Post
+    refund_payment_id = fields.Many2one('account.payment', string='Refund Payment', compute='_compute_refund_payment', readonly=True, store=False)
+    refund_payment_name = fields.Char(string='Payment Number', compute='_compute_refund_payment', readonly=True)
+    refund_payment_state = fields.Selection(string='Payment State', related='refund_payment_id.state', readonly=True)
+    refund_payment_move_name = fields.Char(string='Journal Entry Number', compute='_compute_refund_payment', readonly=True, help="Same as Payment/Journal Entry number (account.move.name)")
 
     # Source SO / Invoice tracking (read-only, computed from CN sale_line_ids)
     source_sale_order_ids = fields.Many2many('sale.order', compute='_compute_source_documents', string='Source Sale Orders', readonly=True)
@@ -211,6 +216,26 @@ class BuzCustomerRefundPv(models.Model):
     def _compute_has_active_payment(self):
         for pv in self:
             pv.has_active_payment = any(p.state != 'cancel' for p in pv.payment_ids)
+
+    @api.depends("payment_ids", "payment_ids.state", "payment_ids.name", "payment_ids.move_id.name")
+    def _compute_refund_payment(self):
+        for pv in self:
+            # Prefer active payment (not cancel), else first
+            active = pv.payment_ids.filtered(lambda p: p.state != 'cancel')
+            pay = active[:1] or pv.payment_ids[:1] or self.env['account.payment']
+            pv.refund_payment_id = pay.id if pay else False
+            # Payment number is same as Journal Entry number (move_id.name if available, else payment name)
+            if pay:
+                # _inherits: payment name is same as move name; show move name if not '/'
+                move_name = pay.move_id.name if hasattr(pay, 'move_id') and pay.move_id else False
+                pay_name = pay.name if hasattr(pay, 'name') else False
+                # Prefer move name when not Draft placeholder
+                display = move_name if move_name and move_name != '/' else (pay_name if pay_name and pay_name != '/' else (move_name or pay_name or 'Draft'))
+                pv.refund_payment_name = display
+                pv.refund_payment_move_name = move_name or pay_name or ''
+            else:
+                pv.refund_payment_name = False
+                pv.refund_payment_move_name = False
 
     # ------------------------------------------------------------------
     # Source SO / Invoice helpers (central validation)

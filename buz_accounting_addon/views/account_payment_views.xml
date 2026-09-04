@@ -1,5 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- WHT functionality has been removed from this module -->
-    <!-- Use l10n_th_account_tax module for withholding tax features -->
+    <!-- Refund PV Payment: แก้เลข Payment/Journal ได้เฉพาะ Draft -->
+    <record id="view_account_payment_form_inherit_refund_pv_number" model="ir.ui.view">
+        <field name="name">account.payment.form.inherit.refund.pv.number</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <!-- เพิ่ม field สำหรับตรวจว่าเป็น Refund PV payment -->
+            <xpath expr="//field[@name='company_id']" position="before">
+                <field name="buz_customer_refund_pv_id" invisible="1"/>
+            </xpath>
+            <!-- กรณี Draft และเป็น Refund PV: แสดงช่องให้กรอกเลข Payment/Journal (แทนคำว่า Draft) -->
+            <xpath expr="//div[hasclass('oe_title')]/h1[1]" position="attributes">
+                <attribute name="invisible">state != 'draft' or buz_customer_refund_pv_id</attribute>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]/h1[1]" position="after">
+                <h1 invisible="state != 'draft' or not buz_customer_refund_pv_id" class="o_row">
+                    <field name="name" placeholder="PBNK11/2026/00009" class="o_field_highlight" help="Payment/Journal Number — แก้ได้เฉพาะ Draft, ล็อกหลัง Post, ตรวจซ้ำใน Journal+Company"/>
+                    <small class="text-muted ms-2">Refund PV — แก้เลขก่อน Post, เลขเดียวกับ Journal Entry</small>
+                </h1>
+            </xpath>
+            <!-- ทำให้ name ในส่วน posted ยังคง readonly -->
+            <xpath expr="//div[hasclass('oe_title')]/h1[2]/field[@name='name']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <!-- Info box สำหรับ Refund PV -->
+            <xpath expr="//div[@name='button_box']" position="after">
+                <div class="alert alert-info" role="alert" invisible="not buz_customer_refund_pv_id or state != 'draft'">
+                    <i class="fa fa-info-circle"/> Payment นี้สร้างจาก <strong>Customer Refund PV</strong> แบบ Draft — แก้เลขด้านบน (เช่น <code>PBNK11/2026/00009</code>) แล้วกด <strong>Confirm (Post)</strong> เพื่อล็อกเลขและ Reconcile กับ Credit Note
+                </div>
+                <div class="alert alert-success" role="alert" invisible="not buz_customer_refund_pv_id or state != 'posted'">
+                    <i class="fa fa-check"/> Payment Posted แล้ว — เลขถูกล็อกและ Reconcile กับ Credit Note แล้ว
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Journal Entry ที่เป็น Payment ของ Refund PV: เตือนว่าล็อกหลัง Post -->
+    <record id="view_move_form_inherit_refund_pv_payment" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.refund.pv.payment</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="payment_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </xpath>
+        </field>
+    </record>
 </odoo>

@@ -84,6 +84,28 @@ class AccountMove(models.Model):
             action.update({"view_mode": "form", "res_id": pvs.id})
         return action
 
+    def write(self, vals):
+        # ล็อกเลข Journal Entry สำหรับ Refund PV Payment: แก้ได้เฉพาะ Draft
+        if 'name' in vals and vals.get('name'):
+            for move in self:
+                # move ที่เป็น payment ของ Refund PV
+                payment = move.payment_id
+                if payment and payment.buz_customer_refund_pv_id:
+                    if move.state != 'draft':
+                        raise UserError(_("Cannot edit Journal Entry number after posting. Entry %s is %s.") % (move.name or '', move.state))
+                    new_name = vals['name']
+                    if new_name and new_name != '/' and new_name != move.name:
+                        dup = self.search_count([
+                            ('name', '=', new_name),
+                            ('journal_id', '=', move.journal_id.id),
+                            ('company_id', '=', move.company_id.id),
+                            ('id', '!=', move.id),
+                            ('state', '!=', 'cancel'),
+                        ])
+                        if dup:
+                            raise UserError(_("Journal Entry number '%s' already exists in journal '%s' for company '%s'.") % (new_name, move.journal_id.display_name, move.company_id.display_name))
+        return super().write(vals)
+
     def _auto_init(self):
         # Drop the conflicting constraint from employee_advance if it exists
         # This fixes the Validation Error: account_move_wht_tax_id_fkey

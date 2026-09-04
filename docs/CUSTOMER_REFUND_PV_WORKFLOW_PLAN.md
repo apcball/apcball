@@ -1,16 +1,17 @@
 # Customer Refund PV — Workflow Plan (ถึงขั้น Register Refund Payment แยก)
 
-## สรุป Flow ปัจจุบัน
+## สรุป Flow ปัจจุบัน (อัปเดต 2026-09-04 — แก้เลข Payment ก่อน Post)
 ```
 Posted Customer Credit Note (out_refund)
 → Create Refund PV (Draft)
-→ กรอกเลข Refund PV + Refund Amount (ยอดที่จะจ่ายจริง)
+→ กรอกเลข Refund PV (เช่น PV2600300) + Refund Amount (ยอดที่จะจ่ายจริง 4000/4990)
 → Confirm → Posted (ล็อกเอกสาร)
 → Print Refund PV (PDF แยกจาก Vendor PV)
 → Refund PV: Register Refund Payment (ปุ่มใหม่บน Refund PV, ใช้ refund_amount 4000)
-→ Create Payment → Reconcile Payment ↔ Credit Note
+→ Create Payment (Draft) → แก้เลข Payment/Journal (เช่น PBNK11/2026/00009, เลขเดียวกับ account.move.name) → Post Payment → Reconcile Payment ↔ Credit Note
 → [Phase ถัดไป] WHT / Bank Fee / ติดตามยอดจ่ายจริง
 ```
+เลขแยกชัดเจน: `Refund PV (PV2600300)` ≠ `Payment/Journal (PBNK11/2026/00009)` ≠ `Credit Note (RINV/2026/00052)` — Payment สร้างเป็น Draft เพื่อให้แก้เลขได้ก่อน Post, Post แล้วล็อกเลขและ Reconcile
 
 เอกสารเป็นโมเดลแยก `buz.customer.refund.pv` / `buz.customer.refund.pv.line` ใช้ layout เดียวกับ Vendor PV แต่ไม่กระทบ Vendor PV เดิม ปุ่ม `Register Payment` เดิมบน Credit Note ยังใช้ยอดเต็มมาตรฐาน (4990) ไม่ส่ง `refund_amount`
 
@@ -106,15 +107,45 @@ Posted Customer Credit Note (out_refund)
 - **ขอบเขตคงเดิม:** Refund PV แยกจาก Vendor PV, ปุ่ม Register แยกจาก Credit Note, Vendor PV ไม่เปลี่ยน, ไม่แก้ยอด SO/Invoice/CN, ไม่รองรับมัดจำ/ล่วงหน้า, ไม่เปลี่ยน Bank Reconciliation
 - **ข้อควรระวัง:** `buz_accounting_addon/models/account_move.py:101` มี override `_compute_amount` ที่ทำให้ `in_payment + residual 0` กลายเป็น `paid` เมื่อ `ar_outstanding_as_paid=True` — spec ใหม่ถือว่า `Outstanding Payments` ยังไม่ paid ต้องปิด param นี้หรือปรับ logic ให้ strict `payment_state=paid` จริงถึงจะสอดคล้อง `Paid = Reconcile ธนาคารแล้ว`
 
+### 10. แก้เลข Payment ก่อน Post (เพิ่ม 2026-09-04 — แผนปรับ Customer Refund PV ให้แก้เลข Payment ก่อน Post)
+- **Spec:** `Refund PV → Register Refund Payment → Create Payment → แก้เลข Payment → Post Payment → Reconcile` — Payment/Journal สร้างเป็น Draft ก่อน ให้บัญชีแก้เลข `PBNK11/2026/00009` (เลขเดียวกับ `account.move.name` / Journal Entry) แล้วจึง Post, Post แล้วล็อกเลข ห้ามแก้ผ่าน Form/RPC/Import และตรวจเลขซ้ำใน Journal+Company เดียวกัน, คง `refund_amount` และลิ้ง `Refund PV → Payment → Credit Note`
+- **Payment Register `buz_accounting_addon/models/account_payment_register.py:38`**
+  - แยก Refund PV flow ออกจาก flow มาตรฐาน: ถ้า `buz_customer_refund_pv_id` ใน context ให้ทำ validation เดิม (`PV posted`, `has_active_payment`, `CN posted out_refund`, `amount==refund_amount`, `amount<=residual`, `_check_source_invoices_paid`) แล้วสร้าง Payment แบบ **Draft only** โดยเรียก `_get_batches` → `_create_payment_vals_from_wizard/_batch` → `_init_payments` อย่างเดียว **ไม่เรียก `_post_payments`/`_reconcile_payments`** — ทำให้ `payment.state=draft`, `move.state=draft`, `name='/'`, ยังไม่ Reconcile `Credit Note` (`amount_residual` ยัง 4990)
+  - `refund_pv.write payment_ids [(4)]` + `payments.write buz_customer_refund_pv_id` + `message_post` Draft ทันที, return `payments` ให้ `action_create_payments` เปิดฟอร์ม Payment แบบ Draft เพื่อให้แก้เลขแล้ว Post
+  - Flow มาตรฐาน (ไม่มี `buz_customer_refund_pv_id`) ยัง `super()._create_payments()` → `init+post+reconcile` เหมือนเดิม ไม่กระทบ `Credit Note` ปุ่มเดิม, `Vendor PV`, `Batch Payment`
+- **Payment `buz_accounting_addon/models/account_payment.py:14` + `account_move.py:29`**
+  - `account.payment:14` คง `buz_customer_refund_pv_id` + เพิ่ม `write:14` สำหรับ Refund PV: ถ้า `state != 'draft'` ห้ามแก้ `name`, ถ้า Draft ตรวจเลขซ้ำ `account.move search name+journal+company id!=move.id state!=cancel` และ `account.payment search` ซ้ำ → `UserError` (`Payment number already exists`), ใช้ `move_id` ตรวจ Journal/Company เดียวกัน
+  - `account.move:29` เพิ่ม `write:29` กันแก้ `name` ของ Journal Entry ที่เป็น Payment ของ Refund PV หลัง Post และตรวจซ้ำ `journal+company`
+  - `account.payment action_post:60` หลัง `super().action_post()` ถ้า `buz_customer_refund_pv_id` และ `state==posted` ให้หา `credit_note = pv.credit_note_id` แล้ว `reconcile` แบบ `payment_receivable_lines + credit_receivable_lines filtered account_type receivable/payable not reconciled → (p_lines + c_lines).reconcile()` ต่อ `account` — ทำให้ Draft ยัง `4990` หลัง Post จึง `990` และ `payment_state` Credit Note เปลี่ยน
+- **Refund PV `buz_accounting_addon/models/customer_refund_pv.py:72`**
+  - เพิ่ม `refund_payment_id:Many2one compute`, `refund_payment_name:Char compute`, `refund_payment_state:Selection related`, `refund_payment_move_name:Char compute` — `_compute_refund_payment:220` เลือก `payment_ids filtered state!=cancel [:1]` แสดงเลข `move_id.name` หรือ `payment.name` (ถ้า `'/'` ให้แสดง `Draft`) และ `move_name`
+  - `payment_ids` ยัง `Many2many` เดิม, `payment_count/has_active_payment` คงเดิม (นับรวม cancel), `Register` ยัง `has_active_payment` ซ่อนปุ่มหลังสร้าง Draft
+- **Views `buz_accounting_addon/views/customer_refund_pv_views.xml:93` / `account_payment_views.xml:4` / `account_move`**
+  - `customer_refund_pv_views.xml:93` เพิ่ม `group Source Documents` ยังคง, เพิ่ม `group Refund Payment (Draft → Post) invisible payment_count==0` แสดง `refund_payment_name`, `refund_payment_state` badge, ปุ่ม `Open Payment`, hint `Draft: แก้เลข → Post` / `Posted: Reconcile แล้ว`, Tree เพิ่ม `refund_payment_name/state optional hide`
+  - `account_payment_views.xml:4` เพิ่ม `view_account_payment_form_inherit_refund_pv_number` inherit `account.view_account_payment_form`: เพิ่ม `buz_customer_refund_pv_id invisible`, ซ่อน `h1 Draft` เดิมเมื่อเป็น Refund PV (`invisible state !='draft' or buz_customer_refund_pv_id`) แล้วเพิ่ม `h1` ใหม่ `invisible state !='draft' or not buz_customer_refund_pv_id` มี `field name placeholder PBNK11/2026/00009` แก้ได้เฉพาะ Draft, info alert `Draft แก้เลข → Post` / `Posted ล็อกแล้ว`, ใช้ `hasclass('oe_title')` แทน `@class` เพื่อเลี่ยง warning
+  - `account_move` view เพิ่ม `payment_id invisible` และ `name readonly state !='draft'` (คงมาตรฐาน Odoo, ล็อกหลัง Post ผ่าน python write)
+  - `account_payment_register_inherit_views.xml:4` ยัง `readonly context.get('buz_customer_refund_pv_id')` สำหรับ `amount` ใน wizard (คง)
+  - Security: แก้เลข/ Post จำกัดด้วย `account.group_account_invoice` (ปุ่ม `Reset To Draft`/`Confirm` มี groups) + python `UserError` กัน RPC/Import หลัง Post
+- **Tests `buz_accounting_addon/tests/test_customer_refund_payment.py:95`**
+  - อัปเดต `test_refund_payment_is_partial_linked_and_reconciled` ให้ตรวจ `payment.state draft` หลัง `make_payments` (`amount_residual 4990` ยังไม่ reconcile) → `payment.name = PBNK11/2026/00009` ตรวจ `move_id.name` ตรงกัน → `action_post` → `posted` → `amount_residual 990`
+  - เพิ่ม `test_refund_payment_draft_editable_and_post_locks` ตรวจ Draft แก้ได้, Posted ล็อก `UserError`
+  - เพิ่ม `test_refund_payment_duplicate_number_blocked` สร้าง PV2 `990` แล้วตั้งเลขซ้ำ `PBNK11/2026/00012` ใน Journal เดียวกัน → `UserError`
+  - เพิ่ม `test_refund_payment_draft_not_reconciled` ตรวจ Draft ยัง `4990`
+  - รวม `13 tests 0 failed 0 error` บน `docker-compose.test.yml` isolated (`-i buz_accounting_addon,sale`)
+- **ขอบเขตคงเดิม:** Refund PV แยกจาก Vendor PV, ปุ่ม Register แยกจาก Credit Note, Vendor PV ไม่เปลี่ยน, ไม่แก้ยอด SO/Invoice/CN, ไม่รองรับมัดจำ/ล่วงหน้า, ไม่เปลี่ยน Bank Reconciliation ก่อน Post
+- **ทดสอบ:** `docker-compose.test.yml` isolated บนเครื่องนี้ (`docker compose -f docker-compose.test.yml up --abort-on-container-exit` แบบ `-i buz_accounting_addon,sale --test-tags /buz_accounting_addon`) ผล `13 tests 0 failed` — ทดสอบผ่านแล้ว deploy ณ 04:45 ตามคำขอใหม่
+
 ## ผลการ Upgrade และ Restart DEV (ล่าสุด)
-- **Upload ล่าสุด 2026-09-04 03:53 (รอบนี้ — Source Validation):** `scp -r -i dev_server_ed25519` `buz_accounting_addon` → `/srv/docker/odoo/custom-addons/` `SCP_EXIT 0`, `cp -r` ไป `/srv/docker/odoo_dev/custom-addons/` `COPIED`, ตรวจ `models/customer_refund_pv.py` 38950 bytes (เพิ่ม `_check_source_invoices_paid`, `source_*` 6 fields, `float_is_zero`), `views/customer_refund_pv_views.xml` 9574 bytes (เพิ่ม button_box + source group), `models/account_payment_register.py` 8894→~9000 bytes (`+_check_source...`), `__manifest__.py` `+sale`, `tests/test_customer_refund_payment.py` สร้าง SO/Invoice paid ก่อน CN
-- **Upgrade 2026-09-04 03:53 (รอบนี้):** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon --stop-after-init --no-http` สำเร็จ `Module buz_accounting_addon loaded in 5.69s` `Registry loaded in 27.767s` `Modules loaded. Stopping gracefully` (warning `office_supply_requisition not installable`, `fields.states no longer supported` เดิม — ไม่กระทบ Refund PV)
+- **Upload ล่าสุด 2026-09-04 04:45 (รอบนี้ — แก้เลข Payment ก่อน Post):** `scp -r -i dev_server_ed25519` `buz_accounting_addon` → `/srv/docker/odoo/custom-addons/` `SCP_EXIT 0`, `cp -r` ไป `/srv/docker/odoo_dev/custom-addons/` `COPIED`, ตรวจ `models/customer_refund_pv.py` 40925 bytes (เพิ่ม `refund_payment_*` 4 fields, `_compute_refund_payment`), `models/account_payment.py` 4979 bytes (`write` ล็อกเลข + `action_post` reconcile), `views/account_payment_views.xml` 3828 bytes (`hasclass` + แก้เลข Draft), `models/account_payment_register.py` 6 `buz_customer_refund_pv_id` (Draft flow), `models/account_move.py` `write` ล็อก Journal Entry, `views/customer_refund_pv_views.xml` + `Refund Payment (Draft→Post)` group, `tests` 13 tests
+- **Upgrade 2026-09-04 04:45 (รอบนี้):** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon --stop-after-init --no-http` สำเร็จ `Module buz_accounting_addon loaded in 6.95s` `Registry loaded in 43.749s` `Modules loaded. Stopping gracefully` (warning `office_supply_requisition not installable` เดิม — ไม่กระทบ Refund PV)
+- **Upload ก่อนหน้า 2026-09-04 03:53 (Source Validation):** `scp -r -i dev_server_ed25519` `buz_accounting_addon` → `/srv/docker/odoo/custom-addons/` `SCP_EXIT 0`, `cp -r` ไป `/srv/docker/odoo_dev/custom-addons/` `COPIED`, ตรวจ `models/customer_refund_pv.py` 38950 bytes (เพิ่ม `_check_source_invoices_paid`, `source_*` 6 fields, `float_is_zero`), `views/customer_refund_pv_views.xml` 9574 bytes (เพิ่ม button_box + source group), `models/account_payment_register.py` 8894→~9000 bytes (`+_check_source...`), `__manifest__.py` `+sale`, `tests/test_customer_refund_payment.py` สร้าง SO/Invoice paid ก่อน CN
+- **Upgrade ก่อนหน้า 2026-09-04 03:53:** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon --stop-after-init --no-http` สำเร็จ `Module buz_accounting_addon loaded in 5.69s` `Registry loaded in 27.767s` `Modules loaded. Stopping gracefully` (warning `office_supply_requisition not installable`, `fields.states no longer supported` เดิม — ไม่กระทบ Refund PV)
 - **Upload ก่อนหน้า 2026-09-03 16:50:** `scp -r -i dev_server_ed25519` `SCP_EXIT 0`, ตรวจ `models/customer_refund_pv.py` 28359 bytes (เพิ่ม `batch=False` + merge `action_context`), `models/account_payment_register.py` 8894 bytes (`compare_amounts` 3 จุด, `make_payments` override), `tests/test_customer_refund_payment.py` 3.3K (4 tests), `__manifest__` depends `+account_payment_batch_process`
 - **Upgrade ก่อนหน้า 2026-09-03 16:50:** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon --stop-after-init --no-http` สำเร็จ `Module buz_accounting_addon loaded in 10.17s` `Registry loaded in 45.589s` `Modules loaded. Stopping gracefully` `UPGRADE_EXIT 0` (warning `office_supply_requisition not installable`, `fields.states no longer supported` เหมือนเดิม — ไม่กระทบ Refund PV)
 - **Upload ก่อนหน้า 2026-09-03 09:19:** `scp -r` `SCP_EXIT 0`, `models/customer_refund_pv.py` 24114→24700 bytes (เพิ่ม `has_active_payment`), `views/customer_refund_pv_views.xml` 7350 bytes, `views/account_payment_register_inherit_views.xml` 710 bytes
 - **Upgrade ก่อนหน้า 2026-09-03 09:19:** `Registry loaded in 31.221s` `Stopping gracefully` (เคย `ParseError has_active_payment` แก้แล้ว), ก่อนหน้า `08:45/08:34/08:15/07:52` `36.925s/40.623s/34.553s/30.789s`
-- **Restart (รอบนี้):** `docker restart odoo` → `odoo Up 5s` (ณ 03:53) + `docker restart odoo_dev` → `odoo_dev Up 5s`, `postgres Up 4 days (healthy)` `Odoo version 17.0-20260119 HTTP service running on 0.0.0.0:8069 Workers alive`
-- **Verify (รอบนี้):** `wc -c customer_refund_pv.py 38950` `grep -c _check_source_invoices_paid 3` `grep -c source_sale_order_ids 3` `wc -c customer_refund_pv_views.xml 9574` — ยืนยันโค้ดใหม่บน DEV แล้ว; `ir_module_module` `installed` (verify รอบก่อน), `ir_act_report_xml` `Customer Refund Payment Voucher` คงอยู่; `docker-compose.test.yml` isolated `0 failed 0 error of 10 tests`
+- **Restart (รอบนี้):** `docker restart odoo` → `odoo Up 5s` (ณ 04:45) + `docker restart odoo_dev` → `odoo_dev Up 5s`, `postgres Up 4 days (healthy)` `Odoo version 17.0-20260119 HTTP service running on 0.0.0.0:8069 Workers alive`
+- **Verify (รอบนี้):** `wc -c account_payment.py 4979` `grep -c action_post 2` `wc -c customer_refund_pv.py 40925` `grep -c refund_payment_name 3` `wc -c account_payment_views.xml 3828` — ยืนยันโค้ดใหม่บน DEV แล้ว; `docker-compose.test.yml` isolated `13 tests 0 failed 0 error` (รวม draft→post flow)
 
 ## Error / ข้อจำกัดที่ยังเหลือ
 - **Upgrade concurrent** ยังมีโอกาส `SerializationFailure` เมื่อมี request พร้อมกัน — แก้ด้วย retry
@@ -124,7 +155,7 @@ Posted Customer Credit Note (out_refund)
 - **Register แยก** ปุ่มใหม่ `Register Refund Payment` บน Refund PV ใช้ `refund_amount` (เช่น 4000) ส่วนปุ่มเดิมบน Credit Note ใช้ยอดเต็ม CN (4990) ยังแยกกันชัดเจน ไม่กระทบ Invoice/Vendor Bill, ทดสอบ `Draft, ยอดเกิน, ไม่มี CN, Register ซ้ำ` block ครบ, Wizard `amount` ล็อก `readonly` เมื่อมาจาก PV, หลัง `Cancel` Payment กลับมา Register ใหม่ได้
 
 ## ขอบเขต Phase นี้ vs ถัดไป
-- **Phase นี้ทำแล้ว:** `Create → Confirm → Print → Register Refund Payment (ปุ่มใหม่บน Refund PV ใช้ refund_amount) → Create Payment → Reconcile` เก็บ `payment_ids/payment_count (รวม cancel) + has_active_payment` บน Refund PV, Smart Button `Payment` บน Refund PV, `Credit Note ↔ Refund PVs ↔ Payment` ครบ, ปุ่มเดิมบน Credit Note ยังมาตรฐาน, รองรับหลาย PV ต่อ CN ตรวจยอดรวมไม่เกิน CN
-- **ยังอยู่นอก Phase นี้:** ไม่ใช้ `WHT` / `Bank Fee` คำนวณยอดคืน (แม้มี field ยังไม่ผูก), ไม่สร้าง `account.payment` อัตโนมัติตอน Confirm, ไม่แก้ Vendor PV, ไม่รวม `WHT Certificate`, `Bank Transfer`
+- **Phase นี้ทำแล้ว (รวม 2026-09-04 แก้เลขก่อน Post):** `Create → Confirm → Print → Register Refund Payment (ปุ่มใหม่บน Refund PV ใช้ refund_amount) → Create Payment (Draft) → แก้เลข Payment/Journal (PBNK11/2026/00009, เลขเดียวกับ move.name, ตรวจซ้ำ Journal+Company) → Post Payment (ล็อกเลข) → Reconcile` เก็บ `payment_ids/payment_count (รวม cancel) + has_active_payment + refund_payment_name/state` บน Refund PV, Smart Button `Payment` + `Open Payment`, `Credit Note ↔ Refund PVs ↔ Payment (Draft→Posted)` ครบ, เลข PV ≠ เลข Payment/Journal ≠ เลข CN, ปุ่มเดิมบน Credit Note ยัง `Posted` ทันทีมาตรฐาน, รองรับหลาย PV ต่อ CN ตรวจยอดรวมไม่เกิน CN + ตรวจ SO/Invoice Paid ก่อน Confirm/Register
+- **ยังอยู่นอก Phase นี้:** ไม่ใช้ `WHT` / `Bank Fee` คำนวณยอดคืน (แม้มี field ยังไม่ผูก), ไม่สร้าง `account.payment` อัตโนมัติตอน Confirm, ไม่แก้ Vendor PV/Batch Payment, ไม่รวม `WHT Certificate`, `Bank Transfer`
 
-Flow หลัง Fix ใช้งานได้ครบ `Credit Note → Create → Confirm → Print → Register Refund Payment (4000)` → Payment → Reconcile พร้อมขออนุมัติแล้ว
+Flow หลัง Fix ใช้งานได้ครบ `Credit Note → Create → Confirm → Print → Register Refund Payment (4000) → Payment Draft (แก้เลข PBNK11...) → Post → Reconcile` พร้อมขออนุมัติแล้ว — ทดสอบ `13 tests` ผ่านบนเครื่องนี้, deploy แล้ว ณ 04:45 บน DEV (`MOG_DEV`)
