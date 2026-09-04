@@ -832,5 +832,5 @@ class TestEngineEdgeCases(common.TransactionCase):
         doc = self._simple_doc(target_qty=-5.0, target_value=-50.0)
         res = self.engine.run(doc, dry_run=True)
         g = res['groups'][0]
-        self.assertNotEqual(g['state'], 'skipped')
+        self.assertEqual(g['state'], 'previewed')
         self.assertIn('negative', (g.get('note') or '').lower())

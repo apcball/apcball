@@ -736,22 +736,26 @@ class CountAdjustEngine(models.AbstractModel):
                         continue
                     rounding = group.product_id.uom_id.rounding
                     target_sum = sum(group.mapped('target_qty'))
-                    reserved = self._reserved_qty(group)
-                    if float_compare(reserved, target_sum,
-                                     precision_rounding=rounding) > 0:
-                        # No writes for this group -- guard sits before
-                        # _void_and_reseed so nothing is half-applied.
-                        g['state'] = 'error'
-                        g['note'] = _('Reserved qty %.2f exceeds target %.2f') % (
-                            reserved, target_sum)
-                        result['groups'].append(g)
-                        continue
-                    if float_compare(target_sum, 0.0,
-                                     precision_rounding=rounding) < 0:
-                        # Allowed (the counter layer can exceed on-hand); an
-                        # error in the try-block below correctly supersedes this.
+                    negative_target = float_compare(
+                        target_sum, 0.0, precision_rounding=rounding) < 0
+                    if negative_target:
+                        # Spec §8: a negative target sum is explicitly allowed
+                        # (the counter layer can exceed on-hand) -- warn only.
+                        # An error in the try-block below still supersedes this.
                         g['note'] = _('Target qty sums to %.2f (negative)') % (
                             target_sum,)
+                    else:
+                        reserved = self._reserved_qty(group)
+                        if float_compare(reserved, target_sum,
+                                         precision_rounding=rounding) > 0:
+                            # No writes for this group -- guard sits before
+                            # _void_and_reseed so nothing is half-applied.
+                            g['state'] = 'error'
+                            g['note'] = _(
+                                'Reserved qty %.2f exceeds target %.2f') % (
+                                reserved, target_sum)
+                            result['groups'].append(g)
+                            continue
                     q0, v0 = base[(g['product_id'], g['warehouse_id'])]
                     try:
                         reseed = self._void_and_reseed(
