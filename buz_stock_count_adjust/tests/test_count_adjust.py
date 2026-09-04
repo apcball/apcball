@@ -26,9 +26,13 @@ class TestEngineVoidReseed(common.TransactionCase):
             # create_date as a deferred ORM write; flush it before the raw UPDATE
             # so our backdated accounting_date wins.
             svl.flush_recordset()
+            # backdate create_date too: create_date is the FIFO ordering key
+            # (_fifo_consume_rows walks ORDER BY create_date, id), so these two
+            # layers must sort as pre-cutoff history for _scoped_replay.
             self.env.cr.execute(
-                "UPDATE stock_valuation_layer SET accounting_date = %s WHERE id = %s",
-                (acct + ' 00:00:00', svl.id))
+                "UPDATE stock_valuation_layer SET accounting_date = %s, "
+                "create_date = %s WHERE id = %s",
+                (acct + ' 00:00:00', acct + ' 00:00:00', svl.id))
         self.SVL.invalidate_model()
 
     def _doc(self):
@@ -68,6 +72,48 @@ class TestEngineVoidReseed(common.TransactionCase):
         q1, v1 = again[(self.p.id, self.wh.id)]
         self.assertAlmostEqual(q1, 217.0, places=2)
         self.assertAlmostEqual(v1, 78956.2345, places=2)
+
+    def test_scoped_replay_reprices_post_cutoff_out_no_shortage(self):
+        doc = self._doc()  # reuse TestEngineVoidReseed._doc
+        base = self.engine._baseline(doc)
+        q0, v0 = base[(self.p.id, self.wh.id)]
+        group = doc._line_groups()[0]
+        reseed = self.engine._void_and_reseed(group, q0, v0, doc.cutoff_date)
+
+        # a post-cutoff delivery of 20 units, priced wrong on purpose
+        out = self.SVL.create({
+            'product_id': self.p.id, 'company_id': self.env.company.id,
+            'warehouse_id': self.wh.id, 'quantity': -20, 'value': -1.0,
+            'unit_cost': 0.05, 'remaining_qty': 0.0, 'remaining_value': 0.0})
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s WHERE id = %s",
+            ('2026-06-15 03:00:00', out.id))
+        self.SVL.invalidate_model()
+
+        res = self.engine._scoped_replay(group, reseed, doc.cutoff_date)
+        self.assertAlmostEqual(res['shortage'], 0.0, places=3)
+        out.invalidate_recordset()
+        # 20 units at bucket-1 rate 364.2245 -> value ~ -7284.49
+        self.assertAlmostEqual(out.value, -20 * (76851.3771 / 211), places=1)
+        b1 = self.SVL.browse(reseed['bucket_ids'][0])
+        self.assertAlmostEqual(b1.remaining_qty, 191.0, places=3)
+
+    def test_scoped_replay_shortage_raises(self):
+        doc = self._doc()
+        base = self.engine._baseline(doc)
+        q0, v0 = base[(self.p.id, self.wh.id)]
+        group = doc._line_groups()[0]
+        reseed = self.engine._void_and_reseed(group, q0, v0, doc.cutoff_date)
+        out = self.SVL.create({
+            'product_id': self.p.id, 'company_id': self.env.company.id,
+            'warehouse_id': self.wh.id, 'quantity': -500, 'value': -1.0,
+            'unit_cost': 0.002, 'remaining_qty': 0.0, 'remaining_value': 0.0})
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s WHERE id = %s",
+            ('2026-06-15 03:00:00', out.id))
+        self.SVL.invalidate_model()
+        with self.assertRaises(Exception):
+            self.engine._scoped_replay(group, reseed, doc.cutoff_date)
 
 
 @tagged('post_install', '-at_install')

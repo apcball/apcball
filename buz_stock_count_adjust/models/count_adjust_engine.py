@@ -152,6 +152,75 @@ class CountAdjustEngine(models.AbstractModel):
         return {'counter_id': counter_id, 'bucket_ids': bucket_ids,
                 'zeroed_ids': zeroed_ids}
 
+    def _scoped_replay(self, group, reseed, cutoff_date):
+        """Replay the FIFO engine over post-cutoff layers only, starting from
+        the reseeded ending queue, and write back the repriced remaining_* /
+        COGS values via raw SQL.
+
+        Returns {'writes': int, 'cogs_writes': int, 'shortage': float,
+                 'value_delta': float}.
+        """
+        SVL = self.env['stock.valuation.layer']
+        product = group.product_id
+        warehouse = group.warehouse_id
+        company = group.adjustment_id.company_id
+        utc_cutoff, _acct = self._cutoff_instants(cutoff_date)
+        cr = self.env.cr
+
+        SVL.flush_model(['quantity', 'value', 'remaining_qty', 'remaining_value',
+                         'stock_landed_cost_id', 'stock_valuation_layer_id',
+                         'create_date'])
+
+        cr.execute("""
+            SELECT remaining_qty, remaining_value
+            FROM stock_valuation_layer WHERE id IN %s ORDER BY id
+        """, (tuple(reseed['bucket_ids']),))
+        seed = [(bid, float(rq or 0.0), float(rv or 0.0))
+                for bid, (rq, rv) in zip(reseed['bucket_ids'], cr.fetchall())]
+
+        cr.execute("""
+            SELECT id, quantity, value, stock_landed_cost_id, stock_valuation_layer_id
+            FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+              AND create_date > %s
+            ORDER BY create_date, id
+        """, (product.id, warehouse.id, company.id, utc_cutoff))
+        rows = cr.fetchall()
+
+        result = SVL._fifo_consume_rows(rows, seed=seed)
+        if result['shortage'] > 1e-3:
+            raise UserError(_(
+                'FIFO shortage of %.4f units for %s @ %s after the cutoff — more '
+                'was consumed than the target ending queue holds. Line aborted.'
+            ) % (result['shortage'], product.display_name, warehouse.name))
+
+        stored = SVL.browse(list(result['expected']))
+        stored_map = {s.id: (s.remaining_qty, s.remaining_value) for s in stored}
+        writes = 0
+        value_delta = 0.0
+        for layer_id, (nq, nv) in result['expected'].items():
+            cq, cv = stored_map.get(layer_id, (0.0, 0.0))
+            if abs(cq - nq) > 1e-4 or abs(cv - nv) > 1e-2:
+                cr.execute("UPDATE stock_valuation_layer SET remaining_qty=%s, "
+                           "remaining_value=%s WHERE id=%s", (nq, nv, layer_id))
+                writes += 1
+                value_delta += nv - cv
+
+        cogs_writes = 0
+        cogs_stored = SVL.browse(list(result['cogs']))
+        cogs_map = {s.id: (s.value, s.quantity) for s in cogs_stored}
+        for layer_id, new_value in result['cogs'].items():
+            cur_value, qty = cogs_map.get(layer_id, (0.0, 0.0))
+            if abs(cur_value - new_value) > 1e-2:
+                uc = new_value / qty if qty else 0.0
+                cr.execute("UPDATE stock_valuation_layer SET value=%s, unit_cost=%s "
+                           "WHERE id=%s", (new_value, uc, layer_id))
+                cogs_writes += 1
+
+        SVL.invalidate_model(['remaining_qty', 'remaining_value', 'value', 'unit_cost'])
+        return {'writes': writes, 'cogs_writes': cogs_writes,
+                'shortage': result['shortage'], 'value_delta': value_delta}
+
     def run(self, adjustment, dry_run=True):
         """The 6-step void-reseed / scoped-replay engine. Filled in Tasks 4-9."""
         return {}
