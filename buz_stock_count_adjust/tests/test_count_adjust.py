@@ -297,6 +297,16 @@ class TestEngineRunIntegration(common.TransactionCase):
             self.assertEqual((gen_svl.quantity, gen_svl.value,
                               gen_svl.remaining_qty, gen_svl.remaining_value),
                              (0.0, 0.0, 0.0, 0.0))
+        # the ending FIFO queue (bucket layers) must survive the -12 physical
+        # adjustment intact -- this is the module's reported output
+        self.SVL.invalidate_model()
+        buckets = self.SVL.search([
+            ('product_id', '=', self.p.id), ('quantity', '>', 0),
+            ('description', 'like', 'count-adjust %s%%' % doc.name)])
+        self.assertAlmostEqual(sum(buckets.mapped('remaining_qty')), 217.0,
+                               places=2)
+        self.assertAlmostEqual(sum(buckets.mapped('remaining_value')),
+                               78956.2345, places=2)
 
     def test_preview_writes_nothing_to_svl(self):
         doc = self._fixture_229_target_217()

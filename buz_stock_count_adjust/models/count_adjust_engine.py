@@ -374,12 +374,18 @@ class CountAdjustEngine(models.AbstractModel):
                          'stock_landed_cost_id', 'stock_valuation_layer_id',
                          'create_date'])
 
+        # Seed from the IMMUTABLE quantity / value, never remaining_* -- this
+        # method must be idempotent. A second call (after _quant_adjust's
+        # inventory move consumed from the buckets' remaining_*) re-seeds each
+        # bucket to full quantity and rebuilds remaining_* by re-walking the
+        # post-cutoff layers. Key by id, do NOT positionally zip bucket_ids.
         cr.execute("""
-            SELECT remaining_qty, remaining_value
-            FROM stock_valuation_layer WHERE id IN %s ORDER BY id
+            SELECT id, quantity, value
+            FROM stock_valuation_layer WHERE id IN %s
         """, (tuple(reseed['bucket_ids']),))
-        seed = [(bid, float(rq or 0.0), float(rv or 0.0))
-                for bid, (rq, rv) in zip(reseed['bucket_ids'], cr.fetchall())]
+        seed_map = {r[0]: (float(r[1] or 0.0), float(r[2] or 0.0))
+                    for r in cr.fetchall()}
+        seed = [(bid, *seed_map[bid]) for bid in reseed['bucket_ids']]
 
         cr.execute("""
             SELECT id, quantity, value, stock_landed_cost_id, stock_valuation_layer_id
@@ -627,6 +633,13 @@ class CountAdjustEngine(models.AbstractModel):
                             group, reseed, adjustment.cutoff_date)
                         qa = self._quant_adjust(
                             group, adjustment.cutoff_date, backup=backup)
+                        if qa['delta']:
+                            # The inventory move consumed from the bucket
+                            # remaining_* queue; re-walk to restore it (the
+                            # neutralised, qty-0 inventory SVL contributes
+                            # nothing).
+                            r1 = self._scoped_replay(
+                                group, reseed, adjustment.cutoff_date)
                         g['mismatches'] = self._reconcile(
                             group, adjustment.cutoff_date)
                         g['baseline'] = (q0, v0)
