@@ -9,7 +9,6 @@
                 <field name="cutoff_date"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="valuation_delta"/>
-                <field name="cogs_delta"/>
                 <field name="qty_delta"/>
                 <field name="state"/>
             </tree>
@@ -59,7 +58,7 @@
                     </div>
                     <notebook>
                         <page string="Lines" name="lines">
-                            <field name="line_ids">
+                            <field name="line_ids" readonly="state != 'draft'">
                                 <tree editable="bottom">
                                     <field name="company_id" column_invisible="1"/>
                                     <field name="bucket_seq"/>
@@ -110,7 +109,6 @@
                     <group class="oe_subtotal_footer">
                         <field name="qty_delta" readonly="1"/>
                         <field name="valuation_delta" readonly="1"/>
-                        <field name="cogs_delta" readonly="1"/>
                     </group>
                 </sheet>
             </form>

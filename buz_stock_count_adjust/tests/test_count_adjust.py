@@ -336,6 +336,82 @@ class TestEngineRunIntegration(common.TransactionCase):
         with self.assertRaises(Exception):
             doc.action_apply()
 
+    def _apply_fixture(self):
+        doc = self._fixture_229_target_217()
+        doc.action_preview()
+        doc.action_apply()
+        self.assertEqual(doc.state, 'applied')
+        return doc
+
+    def test_line_edit_on_applied_doc_refused(self):
+        # C1: a line edit on an applied doc must NOT demote it to draft, or the
+        # rollback path (state == 'applied') is permanently lost.
+        doc = self._apply_fixture()
+        self.assertTrue(doc.backup_id)
+        doc.line_ids[0].target_qty = 999.0
+        self.assertEqual(doc.state, 'applied')
+        self.assertTrue(doc.backup_id)
+        doc.action_rollback()
+        self.assertEqual(doc.state, 'rolled_back')
+
+    def test_preview_refused_on_applied(self):
+        # C2: preview on an applied doc would overwrite backup_id on re-apply.
+        doc = self._apply_fixture()
+        with self.assertRaises(Exception):
+            doc.action_preview()
+
+    def test_delete_applied_adjustment_refused(self):
+        # C3: deleting an applied doc cascades its backup away.
+        doc = self._apply_fixture()
+        with self.assertRaises(Exception):
+            doc.unlink()
+        doc.action_rollback()
+        with self.assertRaises(Exception):
+            doc.unlink()
+
+    def test_rollback_restores_quant_adjust_generated_rows(self):
+        # C4 / I5: _quant_adjust drives the quant down by 12 and generates an
+        # inventory move + SVL; rollback must undo all of it.
+        Quant = self.env['stock.quant']
+
+        def _onhand():
+            Quant.invalidate_model()
+            return sum(Quant.search([
+                ('product_id', '=', self.p.id),
+                ('location_id', 'child_of', self.wh.lot_stock_id.id),
+            ]).mapped('quantity'))
+
+        doc = self._fixture_229_target_217()
+        self.assertAlmostEqual(_onhand(), 229.0, places=2)
+        self.SVL.flush_model()
+        self.env['stock.move'].flush_model()
+        max_svl = self.SVL.search([], order='id desc', limit=1).id
+        max_move = self.env['stock.move'].search(
+            [], order='id desc', limit=1).id
+
+        doc.action_preview()
+        doc.action_apply()
+        self.assertAlmostEqual(_onhand(), 217.0, places=2)
+
+        doc.action_rollback()
+        self.assertEqual(doc.state, 'rolled_back')
+        self.assertAlmostEqual(_onhand(), 229.0, places=2)
+
+        self.env.cr.execute(
+            "SELECT count(*) FROM stock_valuation_layer "
+            "WHERE id > %s AND product_id = %s", (max_svl, self.p.id))
+        self.assertEqual(self.env.cr.fetchone()[0], 0,
+                         "generated / bucket SVL rows survived rollback")
+        self.env.cr.execute(
+            "SELECT count(*) FROM stock_move WHERE id > %s AND product_id = %s",
+            (max_move, self.p.id))
+        self.assertEqual(self.env.cr.fetchone()[0], 0,
+                         "generated inventory move survived rollback")
+        self.env.cr.execute(
+            "SELECT count(*) FROM stock_valuation_layer WHERE description LIKE %s",
+            ('count-adjust %s%%' % doc.name,))
+        self.assertEqual(self.env.cr.fetchone()[0], 0)
+
 
 @tagged('post_install', '-at_install')
 class TestEngineBaseline(common.TransactionCase):
@@ -388,8 +464,10 @@ class TestEngineBaseline(common.TransactionCase):
         self.assertAlmostEqual(v0, 700.0, places=2)
 
     def test_real_time_category_flagged(self):
-        self.assertTrue(self.engine._check_category(self.prt))
-        self.assertFalse(self.engine._check_category(self.pmp))
+        self.assertTrue(
+            self.engine._check_category(self.prt, self.env.company))
+        self.assertFalse(
+            self.engine._check_category(self.pmp, self.env.company))
 
     def test_real_time_category_skipped(self):
         doc = self.env['stock.count.adjustment'].create({
@@ -531,6 +609,7 @@ class TestReconcileAndFix(common.TransactionCase):
         doc = self._fixture_with_corrupted_transfer()
         res = self.env['count.adjust.engine'].run(doc, dry_run=False)
         doc.backup_id = res['backup_id']       # exercise the self-backup branch
+        doc.write({'state': 'applied'})        # fix is a post-apply action
         m = doc.mismatch_ids
         diff = m.diff
         Quant = self.env['stock.quant']
@@ -580,6 +659,21 @@ class TestReconcileAndFix(common.TransactionCase):
                         'target_value': 500.0})]})
         group = doc._line_groups()[0]
         self.assertEqual(self.engine._reconcile(group, doc.cutoff_date), [])
+
+    def test_fix_move_line_refused_when_not_applied(self):
+        # I2: action_fix_move_line must not write into a doc that is not
+        # applied (or whose backup has already been restored).
+        doc = self._fixture_with_corrupted_transfer()
+        res = self.env['count.adjust.engine'].run(doc, dry_run=False)
+        doc.backup_id = res['backup_id']
+        self.assertEqual(doc.state, 'draft')
+        with self.assertRaises(Exception):
+            doc.mismatch_ids.action_fix_move_line()
+        # applied but backup restored -> still refused
+        doc.write({'state': 'applied'})
+        doc.backup_id.state = 'restored'
+        with self.assertRaises(Exception):
+            doc.mismatch_ids.action_fix_move_line()
 
 
 @tagged('post_install', '-at_install')
@@ -836,3 +930,62 @@ class TestEngineEdgeCases(common.TransactionCase):
         g = res['groups'][0]
         self.assertEqual(g['state'], 'previewed')
         self.assertIn('negative', (g.get('note') or '').lower())
+
+
+@tagged('post_install', '-at_install')
+class TestGlBackedGuard(common.TransactionCase):
+    """C5b: a post-cutoff layer that already carries a journal entry must
+    stop the group -- _scoped_replay would rewrite `value` and desync the GL."""
+
+    def setUp(self):
+        super().setUp()
+        self.engine = self.env['count.adjust.engine']
+        self.SVL = self.env['stock.valuation.layer']
+        self.wh = self.env['stock.warehouse'].search([], limit=1)
+        self.categ = self.env['product.category'].create({
+            'name': 'MP-gl', 'property_valuation': 'manual_periodic',
+            'property_cost_method': 'fifo'})
+        self.p = self.env['product.product'].create({
+            'name': 'gl probe', 'type': 'product', 'categ_id': self.categ.id})
+        svl = self.SVL.create({
+            'product_id': self.p.id, 'company_id': self.env.company.id,
+            'warehouse_id': self.wh.id, 'quantity': 100, 'value': 1000.0,
+            'unit_cost': 10.0, 'remaining_qty': 100, 'remaining_value': 1000.0})
+        svl.flush_recordset()
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET accounting_date = %s, "
+            "create_date = %s WHERE id = %s",
+            ('2026-05-10 00:00:00', '2026-05-10 00:00:00', svl.id))
+        out = self.SVL.create({
+            'product_id': self.p.id, 'company_id': self.env.company.id,
+            'warehouse_id': self.wh.id, 'quantity': -10, 'value': -100.0,
+            'unit_cost': 10.0, 'remaining_qty': 0.0, 'remaining_value': 0.0})
+        out.flush_recordset()
+        am = self.env['account.move'].create({'move_type': 'entry'})
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s, "
+            "account_move_id = %s WHERE id = %s",
+            ('2026-06-15 03:00:00', am.id, out.id))
+        self.SVL.invalidate_model()
+
+    def _snap(self):
+        self.SVL.flush_model()
+        self.env.cr.execute(
+            "SELECT id, remaining_qty, remaining_value, value FROM "
+            "stock_valuation_layer WHERE product_id = %s ORDER BY id",
+            (self.p.id,))
+        return tuple(tuple(r) for r in self.env.cr.fetchall())
+
+    def test_gl_backed_layer_skips_group(self):
+        doc = self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [(0, 0, {'product_id': self.p.id,
+                                 'warehouse_id': self.wh.id,
+                                 'bucket_seq': 10, 'target_qty': 90.0,
+                                 'target_value': 900.0})]})
+        before = self._snap()
+        res = self.engine.run(doc, dry_run=True)
+        g = res['groups'][0]
+        self.assertEqual(g['state'], 'error')
+        self.assertIn('journal', g['note'].lower())
+        self.assertEqual(self._snap(), before)

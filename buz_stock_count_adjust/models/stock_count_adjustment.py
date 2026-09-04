@@ -60,11 +60,23 @@ class StockCountAdjustment(models.Model):
 
     def _reset_hash_if_changed(self):
         for doc in self:
-            if doc.line_hash and doc._line_hash() != doc.line_hash:
+            # Demote ONLY from 'previewed'. Demoting from 'applied' / 'rolled_back'
+            # would strand the backup (action_rollback requires state=='applied').
+            if (doc.state == 'previewed' and doc.line_hash
+                    and doc._line_hash() != doc.line_hash):
                 # plain field assignment, NOT a nested write() — avoids
                 # re-entering this override
                 doc.state = 'draft'
                 doc.line_hash = False
+
+    def unlink(self):
+        for doc in self:
+            if doc.state in ('applied', 'rolled_back'):
+                raise UserError(_(
+                    'Cannot delete an applied or rolled-back count adjustment '
+                    '— its backup is the audit trail. Roll it back first if '
+                    'needed.'))
+        return super().unlink()
 
     def _line_hash(self):
         self.ensure_one()
@@ -140,6 +152,9 @@ class StockCountAdjustment(models.Model):
 
     def action_preview(self):
         self.ensure_one()
+        if self.state not in ('draft', 'previewed'):
+            raise UserError(_(
+                'Preview is only available on a draft or previewed document.'))
         result = self.env['count.adjust.engine'].run(self, dry_run=True)
         self._write_engine_result(result, 'preview_log')
         self.write({'state': 'previewed', 'line_hash': self._line_hash()})

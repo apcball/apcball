@@ -90,7 +90,9 @@ class StockCountAdjustmentImport(models.TransientModel):
             lambda p: not p.company_id
             or p.company_id == self.adjustment_id.company_id
         )
-        return (scoped or products)[:1]
+        # No cross-company fallback: a foreign-company match would trip
+        # check_company at Command.create; return empty so the row is rejected.
+        return scoped[:1]
 
     def _resolve_warehouse(self, code):
         code = code.split("/")[0].strip()
@@ -100,7 +102,7 @@ class StockCountAdjustmentImport(models.TransientModel):
         scoped = whs.filtered(
             lambda w: w.company_id == self.adjustment_id.company_id
         )
-        return (scoped or whs)[:1]
+        return scoped[:1]
 
     def action_do_import(self):
         self.ensure_one()
@@ -204,6 +206,11 @@ class StockCountAdjustmentImport(models.TransientModel):
             log_lines.append(_("Skipped %s row(s):") % len(rejects))
             log_lines.extend(rejects)
         self.write({"result_log": "\n".join(log_lines)})
+
+        # Any reject -> keep the wizard open so the skipped-row list stays
+        # visible instead of navigating away to the adjustment form.
+        if rejects:
+            return self._reopen()
 
         return {
             "type": "ir.actions.act_window",

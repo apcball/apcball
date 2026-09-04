@@ -56,6 +56,12 @@ class StockCountAdjustmentMismatch(models.Model):
         if self.state != 'open':
             raise UserError(_(
                 'Mismatch %s is already %s.') % (self.id, self.state))
+        if self.adjustment_id.state != 'applied' or (
+                self.adjustment_id.backup_id
+                and self.adjustment_id.backup_id.state != 'active'):
+            raise UserError(_(
+                'The parent adjustment must be applied and its backup active '
+                'to fix a mismatch line.'))
         ml = self.move_line_id
         move = self.move_id
         suggested = self.suggested_location_id

@@ -31,13 +31,39 @@ class CountAdjustEngine(models.AbstractModel):
         accounting_dt = datetime.combine(d, time.min)
         return utc_cutoff, accounting_dt
 
-    def _check_category(self, product):
+    def _check_category(self, product, company):
         """Reason string when the product's category posts real-time journal
-        entries (GL reposting is out of scope for v1), else False."""
-        if product.categ_id.property_valuation == 'real_time':
+        entries (GL reposting is out of scope for v1), else False.
+
+        property_valuation is company_dependent -- resolve it against the
+        adjustment's company, never self.env.company.
+        """
+        if product.with_company(company).categ_id.property_valuation == 'real_time':
             return _('Product category %s posts real-time journal entries; '
                      'GL reposting is out of scope for v1.') % product.categ_id.name
         return False
+
+    def _gl_backed_layer_count(self, group, cutoff_date):
+        """Number of in-scope post-cutoff SVL rows for the pair that already
+        carry a journal entry (account_move_id IS NOT NULL).
+
+        A product that was real_time when those moves were booked and later
+        switched to manual_periodic slips past _check_category's current-setting
+        read, yet _scoped_replay would still rewrite `value` on layers with a
+        live account_move_id -- desyncing SVL from the GL. Reposting the GL is
+        out of scope, so such a pair must not be touched.
+        """
+        product = group.product_id
+        warehouse = group.warehouse_id
+        company = group.adjustment_id.company_id
+        utc_cutoff, _acct = self._cutoff_instants(cutoff_date)
+        cr = self.env.cr
+        cr.execute("""
+            SELECT COUNT(*) FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+              AND create_date > %s AND account_move_id IS NOT NULL
+        """, (product.id, warehouse.id, company.id, utc_cutoff))
+        return cr.fetchone()[0]
 
     def _baseline(self, adjustment):
         """dict {(product_id, warehouse_id): (Q0, V0)} at adjustment.cutoff_date.
@@ -372,7 +398,9 @@ class CountAdjustEngine(models.AbstractModel):
             backup.invalidate_recordset(['line_ids'])
 
         return {'counter_id': counter_id, 'bucket_ids': bucket_ids,
-                'zeroed_ids': zeroed_ids}
+                'zeroed_ids': zeroed_ids,
+                'value_delta_reseed': v_target - v0,
+                'qty_delta_reseed': q_target - q0}
 
     def _scoped_replay(self, group, reseed, cutoff_date):
         """Replay the FIFO engine over post-cutoff layers only, starting from
@@ -521,6 +549,20 @@ class CountAdjustEngine(models.AbstractModel):
                     'location_id': lot_stock.id,
                     'company_id': company.id,
                     'quantity': 0.0})
+            # This quant was NOT in _touch_scope's snapshot (it did not exist
+            # yet), so record its pre-image (quantity 0) now. Without this,
+            # action_restore never resets it and a rollback leaves the phantom
+            # on-hand _apply_inventory is about to write.
+            if backup is not None:
+                cr.execute("""
+                    INSERT INTO stock_count_adjustment_backup_quant
+                        (backup_id, quant_id, quantity,
+                         create_uid, create_date, write_uid, write_date)
+                    VALUES (%s, %s, %s,
+                            %s, now() at time zone 'UTC', %s,
+                            now() at time zone 'UTC')
+                """, (backup.id, main.id, 0.0, uid, uid))
+                backup.invalidate_recordset(['quant_line_ids'])
         # Put the whole discrepancy onto the main quant so the pair sum
         # lands exactly on `target`.
         main_target = target - (current - sum(main.mapped('quantity')))
@@ -727,11 +769,22 @@ class CountAdjustEngine(models.AbstractModel):
                     g = {'product_id': group.product_id.id,
                          'warehouse_id': group.warehouse_id.id,
                          'state': 'previewed', 'note': ''}
-                    reason = self._check_category(group.product_id)
+                    reason = self._check_category(
+                        group.product_id, group.adjustment_id.company_id)
                     locked = self._locked_layer_count(group)
                     if reason or locked:
                         g['state'] = 'skipped'
                         g['note'] = reason or _('%s locked layers') % locked
+                        result['groups'].append(g)
+                        continue
+                    gl_backed = self._gl_backed_layer_count(
+                        group, adjustment.cutoff_date)
+                    if gl_backed:
+                        # No writes -- guard sits before _void_and_reseed.
+                        g['state'] = 'error'
+                        g['note'] = _(
+                            '%s post-cutoff layers carry journal entries — GL '
+                            'reposting is out of scope') % gl_backed
                         result['groups'].append(g)
                         continue
                     rounding = group.product_id.uom_id.rounding
@@ -774,10 +827,14 @@ class CountAdjustEngine(models.AbstractModel):
                         g['mismatches'] = self._reconcile(
                             group, adjustment.cutoff_date)
                         g['baseline'] = (q0, v0)
-                        g['value_delta'] = r1['value_delta']
-                        g['qty_delta'] = sum(group.mapped('target_qty')) - q0
+                        # The dominant term is the reseed delta (v_target - v0);
+                        # _scoped_replay only adds the post-cutoff remaining-value
+                        # drift on top. Reporting r1 alone under-counts grossly.
+                        g['value_delta'] = (reseed['value_delta_reseed']
+                                            + r1['value_delta'])
+                        g['qty_delta'] = reseed['qty_delta_reseed']
                         g['quant_delta'] = qa['delta']
-                        result['valuation_delta'] += r1['value_delta']
+                        result['valuation_delta'] += g['value_delta']
                         result['qty_delta'] += g['qty_delta']
                     except UserError as e:
                         g['state'] = 'error'
