@@ -223,6 +223,100 @@ class TestBackupRollback(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install')
+class TestEngineRunIntegration(common.TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.engine = self.env['count.adjust.engine']
+        self.SVL = self.env['stock.valuation.layer']
+        self.wh = self.env['stock.warehouse'].search([], limit=1)
+        self.categ = self.env['product.category'].create({
+            'name': 'MP-run', 'property_valuation': 'manual_periodic',
+            'property_cost_method': 'fifo'})
+        self.p = self.env['product.product'].create({
+            'name': 'run probe', 'type': 'product', 'categ_id': self.categ.id,
+            'standard_price': 344.0})
+
+    def _svl_snapshot(self, product, warehouse):
+        self.SVL.flush_model()
+        self.env.cr.execute(
+            "SELECT id, remaining_qty, remaining_value, value, unit_cost "
+            "FROM stock_valuation_layer "
+            "WHERE product_id = %s AND warehouse_id = %s ORDER BY id",
+            (product.id, warehouse.id))
+        return tuple(tuple(r) for r in self.env.cr.fetchall())
+
+    def _fixture_229_target_217(self):
+        """On-hand quant = 229 (backdated inventory adjustment), but the doc's
+        counted target is 217 and there are no post-cutoff moves -> _quant_adjust
+        must drive the quant down by 12."""
+        quant = self.env['stock.quant'].with_context(
+            skip_warehouse_consistency_check=True).create({
+                'product_id': self.p.id,
+                'location_id': self.wh.lot_stock_id.id,
+                'company_id': self.env.company.id, 'quantity': 0.0})
+        quant.write({'inventory_quantity': 229.0})
+        quant.with_context(
+            skip_warehouse_consistency_check=True)._apply_inventory()
+
+        self.env['stock.move'].flush_model()
+        self.env['stock.move.line'].flush_model()
+        self.SVL.flush_model()
+        self.env.cr.execute(
+            "UPDATE stock_move SET date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', self.p.id))
+        self.env.cr.execute(
+            "UPDATE stock_move_line SET date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', self.p.id))
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s, "
+            "accounting_date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', '2026-05-10 00:00:00', self.p.id))
+        self.env['stock.move'].invalidate_model()
+        self.env['stock.move.line'].invalidate_model()
+        self.SVL.invalidate_model()
+
+        return self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 10, 'target_qty': 217.0,
+                        'target_value': 78956.2345})]})
+
+    def test_quant_adjust_hits_target_and_neutralises_svl(self):
+        doc = self._fixture_229_target_217()
+        self.env['count.adjust.engine'].run(doc, dry_run=False)
+        quant = self.env['stock.quant'].search([
+            ('product_id', '=', self.p.id),
+            ('location_id', 'child_of', self.wh.lot_stock_id.id)])
+        self.assertAlmostEqual(sum(quant.mapped('quantity')), 217.0, places=2)
+        gen_svl = self.env['stock.valuation.layer'].search([
+            ('product_id', '=', self.p.id), ('stock_move_id', '!=', False),
+            ('description', 'ilike', 'Product Quantity Updated')], limit=1)
+        if gen_svl:
+            self.assertEqual((gen_svl.quantity, gen_svl.value,
+                              gen_svl.remaining_qty, gen_svl.remaining_value),
+                             (0.0, 0.0, 0.0, 0.0))
+
+    def test_preview_writes_nothing_to_svl(self):
+        doc = self._fixture_229_target_217()
+        before = self._svl_snapshot(self.p, self.wh)
+        doc.action_preview()
+        self.assertEqual(doc.state, 'previewed')
+        self.assertEqual(self._svl_snapshot(self.p, self.wh), before)
+        self.assertTrue(doc.preview_log)
+
+    def test_apply_requires_preview_and_unchanged_lines(self):
+        doc = self._fixture_229_target_217()
+        with self.assertRaises(Exception):
+            doc.action_apply()               # not previewed yet
+        doc.action_preview()
+        doc.line_ids[0].target_qty = 300.0   # mutate -> hash reset to draft
+        with self.assertRaises(Exception):
+            doc.action_apply()
+
+
+@tagged('post_install', '-at_install')
 class TestEngineBaseline(common.TransactionCase):
 
     def setUp(self):

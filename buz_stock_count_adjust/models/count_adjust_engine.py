@@ -2,9 +2,16 @@ from datetime import datetime, time, timedelta
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import float_compare
 
 # Thailand has no DST, so Bangkok is always a fixed UTC+7 offset.
 BANGKOK_OFFSET = timedelta(hours=7)
+
+
+class _DryRunRollback(Exception):
+    """Private control-flow exception: unwinds the run() savepoint on a
+    dry-run so a preview leaves the database exactly as it found it."""
+    pass
 
 
 class CountAdjustEngine(models.AbstractModel):
@@ -417,6 +424,226 @@ class CountAdjustEngine(models.AbstractModel):
         return {'writes': writes, 'cogs_writes': cogs_writes,
                 'shortage': result['shortage'], 'value_delta': value_delta}
 
+    def _quant_adjust(self, group, cutoff_date, backup=None):
+        """Step 5 -- align the pair's physical on-hand (stock.quant) with the
+        move-history running balance, then neutralise the generated valuation
+        layer (the value correction was already made by _void_and_reseed's
+        bucket layers, so the inventory move must not double-count it).
+
+        Target on-hand = the counted ending queue at the cutoff
+        (sum of target_qty) walked forward through every post-cutoff `done`
+        move-line that crosses the lot_stock_id subtree boundary. That is the
+        quantity the quant *should* read today; if it already does (within
+        Product Unit of Measure precision) this is a no-op.
+
+        Returns {'move_id': int|False, 'svl_id': int|False, 'delta': float}.
+        """
+        product = group.product_id
+        warehouse = group.warehouse_id
+        company = group.adjustment_id.company_id
+        lot_stock = warehouse.lot_stock_id
+        utc_cutoff, _acct = self._cutoff_instants(cutoff_date)
+        cr = self.env.cr
+        uid = self.env.uid
+        Quant = self.env['stock.quant']
+        Move = self.env['stock.move']
+        SVL = self.env['stock.valuation.layer']
+        ML = self.env['stock.move.line']
+        precision = self.env['decimal.precision'].precision_get(
+            'Product Unit of Measure')
+
+        child_ids = tuple(self.env['stock.location'].search(
+            [('id', 'child_of', lot_stock.id)]).ids)
+
+        # Net qty flow across the subtree boundary from post-cutoff done moves.
+        ML.flush_model(['qty_done', 'location_id', 'location_dest_id', 'date'])
+        Move.flush_model(['state', 'date'])
+        cr.execute("""
+            SELECT COALESCE(SUM(
+                CASE
+                  WHEN sml.location_dest_id IN %(loc)s
+                       AND sml.location_id NOT IN %(loc)s THEN sml.qty_done
+                  WHEN sml.location_id IN %(loc)s
+                       AND sml.location_dest_id NOT IN %(loc)s THEN -sml.qty_done
+                  ELSE 0
+                END), 0)
+            FROM stock_move_line sml
+            JOIN stock_move sm ON sm.id = sml.move_id
+            WHERE sml.product_id = %(product)s AND sm.company_id = %(company)s
+              AND sm.state = 'done' AND sml.date > %(cutoff)s
+        """, {'loc': child_ids, 'product': product.id,
+              'company': company.id, 'cutoff': utc_cutoff})
+        post_flow = float(cr.fetchone()[0] or 0.0)
+
+        target = sum(group.mapped('target_qty')) + post_flow
+
+        Quant.flush_model(['quantity'])
+        quants = Quant.search([
+            ('product_id', '=', product.id),
+            ('location_id', 'child_of', lot_stock.id),
+            ('company_id', '=', company.id)])
+        current = sum(quants.mapped('quantity'))
+
+        if float_compare(target, current, precision_digits=precision) == 0:
+            return {'move_id': False, 'svl_id': False, 'delta': 0.0}
+
+        main = quants.filtered(lambda q: q.location_id.id == lot_stock.id)[:1] \
+            or quants[:1]
+        if not main:
+            main = Quant.with_context(
+                skip_warehouse_consistency_check=True).create({
+                    'product_id': product.id,
+                    'location_id': lot_stock.id,
+                    'company_id': company.id,
+                    'quantity': 0.0})
+        # Put the whole discrepancy onto the main quant so the pair sum
+        # lands exactly on `target`.
+        main_target = target - (current - sum(main.mapped('quantity')))
+
+        last_move_id = Move.search(
+            [('company_id', '=', company.id)], order='id desc', limit=1).id or 0
+        last_svl_id = SVL.search(
+            [('company_id', '=', company.id)], order='id desc', limit=1).id or 0
+
+        main.write({'inventory_quantity': main_target})
+        main.with_context(
+            skip_warehouse_consistency_check=True,
+            inventory_date=fields.Date.to_date(cutoff_date))._apply_inventory()
+
+        gen_moves = Move.search(
+            [('company_id', '=', company.id), ('id', '>', last_move_id)])
+        gen_mls = ML.search([('move_id', 'in', gen_moves.ids)]) \
+            if gen_moves else ML.browse()
+        gen_svls = SVL.search(
+            [('company_id', '=', company.id), ('id', '>', last_svl_id)])
+        move_id = gen_moves[:1].id if gen_moves else False
+        svl_id = gen_svls[:1].id if gen_svls else False
+
+        # Record the pre-image BEFORE the backdate UPDATEs -- restore deletes
+        # these rows outright, but the as-generated snapshot keeps the backup
+        # internally consistent.
+        if backup is not None and gen_mls:
+            ML.flush_model(['location_id', 'location_dest_id', 'date'])
+            Move.flush_model(['date'])
+            cr.execute("""
+                INSERT INTO stock_count_adjustment_backup_moveline
+                    (backup_id, move_line_id, move_id, location_id,
+                     location_dest_id, ml_date, move_date, was_generated,
+                     create_uid, create_date, write_uid, write_date)
+                SELECT %s, sml.id, sml.move_id, sml.location_id,
+                       sml.location_dest_id, sml.date, sm.date, true,
+                       %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
+                FROM stock_move_line sml
+                JOIN stock_move sm ON sm.id = sml.move_id
+                WHERE sml.id IN %s
+            """, (backup.id, uid, uid, tuple(gen_mls.ids)))
+            backup.invalidate_recordset(['moveline_line_ids'])
+        if backup is not None and gen_svls:
+            SVL.flush_model(['quantity', 'value', 'unit_cost', 'remaining_qty',
+                             'remaining_value', 'accounting_date'])
+            cr.execute("""
+                INSERT INTO stock_count_adjustment_backup_line
+                    (backup_id, layer_id, product_id, warehouse_id, quantity,
+                     value, unit_cost, remaining_qty, remaining_value,
+                     accounting_date, was_inserted,
+                     create_uid, create_date, write_uid, write_date)
+                SELECT %s, l.id, l.product_id, l.warehouse_id, l.quantity,
+                       l.value, l.unit_cost, l.remaining_qty, l.remaining_value,
+                       l.accounting_date, true,
+                       %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
+                FROM stock_valuation_layer l
+                WHERE l.id IN %s
+            """, (backup.id, uid, uid, tuple(gen_svls.ids)))
+            backup.invalidate_recordset(['line_ids'])
+
+        # Backdate the generated move / move lines, and fully neutralise the
+        # generated valuation layer(s) so FIFO ignores them.
+        Move.flush_model(['date'])
+        ML.flush_model(['date'])
+        SVL.flush_model(['quantity', 'value', 'unit_cost', 'remaining_qty',
+                         'remaining_value', 'origin_remaining_qty',
+                         'origin_remaining_value', 'create_date',
+                         'accounting_date'])
+        if gen_moves:
+            cr.execute("UPDATE stock_move SET date = %s WHERE id IN %s",
+                       (utc_cutoff, tuple(gen_moves.ids)))
+            cr.execute("UPDATE stock_move_line SET date = %s WHERE move_id IN %s",
+                       (utc_cutoff, tuple(gen_moves.ids)))
+        if gen_svls:
+            cr.execute("""
+                UPDATE stock_valuation_layer
+                SET quantity = 0, value = 0, remaining_qty = 0,
+                    remaining_value = 0, unit_cost = 0,
+                    origin_remaining_qty = 0, origin_remaining_value = 0,
+                    create_date = %s, accounting_date = %s
+                WHERE id IN %s
+            """, (utc_cutoff, utc_cutoff, tuple(gen_svls.ids)))
+        Move.invalidate_model()
+        ML.invalidate_model()
+        SVL.invalidate_model()
+
+        return {'move_id': move_id, 'svl_id': svl_id,
+                'delta': target - current}
+
+    def _reconcile(self, group, cutoff_date):
+        """Stub -- Task 9 replaces the body with the SVL-vs-move reconciliation
+        pass. Returns a list of dicts (mismatch vals)."""
+        return []
+
     def run(self, adjustment, dry_run=True):
-        """The 6-step void-reseed / scoped-replay engine. Filled in Tasks 4-9."""
-        return {}
+        """The void-reseed / scoped-replay / quant-adjust engine.
+
+        The savepoint wraps BOTH paths; on a dry run `_DryRunRollback` unwinds
+        it. `result` is a plain dict built inside the savepoint and returned to
+        the caller, which writes it onto the records AFTER the savepoint has
+        unwound -- so a preview survives its own rollback.
+        """
+        result = {'groups': [], 'valuation_delta': 0.0,
+                  'cogs_delta': 0.0, 'qty_delta': 0.0, 'backup_id': False}
+        backup = None
+        try:
+            with self.env.cr.savepoint():
+                base = self._baseline(adjustment)
+                if not dry_run:
+                    scope = self._touch_scope(adjustment, base)
+                    backup = self._snapshot(adjustment, scope)
+                    result['backup_id'] = backup.id
+                for group in adjustment._line_groups():
+                    g = {'product_id': group.product_id.id,
+                         'warehouse_id': group.warehouse_id.id,
+                         'state': 'previewed', 'note': ''}
+                    reason = self._check_category(group.product_id)
+                    locked = self._locked_layer_count(group)
+                    if reason or locked:
+                        g['state'] = 'skipped'
+                        g['note'] = reason or _('%s locked layers') % locked
+                        result['groups'].append(g)
+                        continue
+                    q0, v0 = base[(g['product_id'], g['warehouse_id'])]
+                    try:
+                        reseed = self._void_and_reseed(
+                            group, q0, v0, adjustment.cutoff_date, backup=backup)
+                        r1 = self._scoped_replay(
+                            group, reseed, adjustment.cutoff_date)
+                        qa = self._quant_adjust(
+                            group, adjustment.cutoff_date, backup=backup)
+                        g['mismatches'] = self._reconcile(
+                            group, adjustment.cutoff_date)
+                        g['baseline'] = (q0, v0)
+                        g['value_delta'] = r1['value_delta']
+                        g['qty_delta'] = sum(group.mapped('target_qty')) - q0
+                        g['quant_delta'] = qa['delta']
+                        result['valuation_delta'] += r1['value_delta']
+                        result['qty_delta'] += g['qty_delta']
+                    except UserError as e:
+                        g['state'] = 'error'
+                        g['note'] = str(e)
+                    result['groups'].append(g)
+                if dry_run:
+                    raise _DryRunRollback()
+        except _DryRunRollback:
+            pass
+        # The savepoint rolled the DB back but the ORM cache still holds the
+        # voided / reseeded values and ids of rows that no longer exist.
+        self.env.invalidate_all()
+        return result
