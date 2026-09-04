@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class StockCountAdjustmentLine(models.Model):
@@ -38,3 +38,27 @@ class StockCountAdjustmentLine(models.Model):
          ('error', 'Error')],
         default='pending', required=True, copy=False)
     result_note = fields.Char(readonly=True, copy=False)
+
+    _sql_constraints = [
+        ('bucket_seq_unique',
+         'unique(adjustment_id, product_id, warehouse_id, bucket_seq)',
+         'Bucket sequence must be unique per product/warehouse in a document.'),
+    ]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines.adjustment_id._reset_hash_if_changed()
+        return lines
+
+    def write(self, vals):
+        docs = self.adjustment_id
+        res = super().write(vals)
+        (docs | self.adjustment_id)._reset_hash_if_changed()
+        return res
+
+    def unlink(self):
+        docs = self.adjustment_id
+        res = super().unlink()
+        docs._reset_hash_if_changed()
+        return res

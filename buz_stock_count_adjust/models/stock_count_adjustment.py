@@ -1,3 +1,5 @@
+import hashlib
+
 from odoo import api, fields, models
 
 
@@ -48,6 +50,38 @@ class StockCountAdjustment(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'stock.count.adjustment') or '/'
         return super().create(vals_list)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'line_ids' in vals:
+            self._reset_hash_if_changed()
+        return res
+
+    def _reset_hash_if_changed(self):
+        for doc in self:
+            if doc.line_hash and doc._line_hash() != doc.line_hash:
+                # plain field assignment, NOT a nested write() — avoids
+                # re-entering this override
+                doc.state = 'draft'
+                doc.line_hash = False
+
+    def _line_hash(self):
+        self.ensure_one()
+        payload = sorted(
+            (l.product_id.id, l.warehouse_id.id, l.bucket_seq,
+             round(l.target_qty, 6), round(l.target_value, 6))
+            for l in self.line_ids)
+        return hashlib.sha256(repr(payload).encode()).hexdigest()
+
+    def _line_groups(self):
+        self.ensure_one()
+        groups = {}
+        for line in self.line_ids.sorted(lambda l: (l.bucket_seq, l.id)):
+            groups.setdefault(
+                (line.product_id.id, line.warehouse_id.id),
+                self.env['stock.count.adjustment.line'])
+            groups[(line.product_id.id, line.warehouse_id.id)] |= line
+        return list(groups.values())
 
     def action_preview(self):
         raise NotImplementedError
