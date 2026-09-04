@@ -285,18 +285,21 @@ class TestEngineRunIntegration(common.TransactionCase):
 
     def test_quant_adjust_hits_target_and_neutralises_svl(self):
         doc = self._fixture_229_target_217()
+        last_svl = self.env['stock.valuation.layer'].search(
+            [], order='id desc', limit=1).id
         self.env['count.adjust.engine'].run(doc, dry_run=False)
         quant = self.env['stock.quant'].search([
             ('product_id', '=', self.p.id),
             ('location_id', 'child_of', self.wh.lot_stock_id.id)])
         self.assertAlmostEqual(sum(quant.mapped('quantity')), 217.0, places=2)
         gen_svl = self.env['stock.valuation.layer'].search([
-            ('product_id', '=', self.p.id), ('stock_move_id', '!=', False),
+            ('product_id', '=', self.p.id), ('id', '>', last_svl),
             ('description', 'ilike', 'Product Quantity Updated')], limit=1)
-        if gen_svl:
-            self.assertEqual((gen_svl.quantity, gen_svl.value,
-                              gen_svl.remaining_qty, gen_svl.remaining_value),
-                             (0.0, 0.0, 0.0, 0.0))
+        self.assertTrue(
+            gen_svl, "expected _quant_adjust to generate an inventory SVL")
+        self.assertEqual((gen_svl.quantity, gen_svl.value,
+                          gen_svl.remaining_qty, gen_svl.remaining_value),
+                         (0.0, 0.0, 0.0, 0.0))
         # the ending FIFO queue (bucket layers) must survive the -12 physical
         # adjustment intact -- this is the module's reported output
         self.SVL.invalidate_model()
