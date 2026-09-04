@@ -80,6 +80,28 @@ class StockCountAdjustmentBackup(models.Model):
         """, (self.id,))
         log.append('SVL rows restored: %s' % cr.rowcount)
 
+        # 2a. Clear stock_fifo_by_location's FIFO-consumption link rows for the
+        # inserted layers first -- stock_valuation_layer_usage.stock_valuation_layer_id
+        # is ON DELETE RESTRICT and blocks step 2 whenever the run drove a real
+        # move (e.g. _quant_adjust's inventory move fires _run_fifo). dest_* is
+        # ON DELETE SET NULL but a dangling NULL corrupts origin tracking, so
+        # clean both ends.
+        cr.execute("""
+            SELECT 1 FROM information_schema.tables
+            WHERE table_name = 'stock_valuation_layer_usage'
+        """)
+        if cr.fetchone():
+            cr.execute("""
+                DELETE FROM stock_valuation_layer_usage
+                WHERE stock_valuation_layer_id IN (
+                        SELECT layer_id FROM stock_count_adjustment_backup_line
+                        WHERE backup_id = %s AND was_inserted IS TRUE)
+                   OR dest_stock_valuation_layer_id IN (
+                        SELECT layer_id FROM stock_count_adjustment_backup_line
+                        WHERE backup_id = %s AND was_inserted IS TRUE)
+            """, (self.id, self.id))
+            log.append('SVL usage link rows deleted: %s' % cr.rowcount)
+
         # 2. DELETE the layers the engine inserted (was_inserted = true).
         cr.execute("""
             DELETE FROM stock_valuation_layer
@@ -136,6 +158,8 @@ class StockCountAdjustmentBackup(models.Model):
         # 5. Drop every stale ORM cache and close out the backup.
         for model in (SVL, Quant, Move, ML):
             model.invalidate_model()
+        if 'stock.valuation.layer.usage' in self.env:
+            self.env['stock.valuation.layer.usage'].invalidate_model()
 
         self.state = 'restored'
         self.restore_date = fields.Datetime.now()
