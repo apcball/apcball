@@ -2,6 +2,71 @@ from odoo.tests import common, tagged
 
 
 @tagged('post_install', '-at_install')
+class TestEngineVoidReseed(common.TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.engine = self.env['count.adjust.engine']
+        self.SVL = self.env['stock.valuation.layer']
+        self.wh = self.env['stock.warehouse'].search([], limit=1)
+        self.categ = self.env['product.category'].create({
+            'name': 'MP', 'property_valuation': 'manual_periodic',
+            'property_cost_method': 'fifo'})
+        self.p = self.env['product.product'].create({
+            'name': 'vr probe', 'type': 'product', 'categ_id': self.categ.id})
+        for qty, val, acct in [(441, 157416.65, '2026-05-10'),
+                               (-212, -75758.94, '2026-05-20')]:
+            svl = self.SVL.create({
+                'product_id': self.p.id, 'company_id': self.env.company.id,
+                'warehouse_id': self.wh.id, 'quantity': qty, 'value': val,
+                'unit_cost': abs(val / qty),
+                'remaining_qty': qty if qty > 0 else 0.0,
+                'remaining_value': val if qty > 0 else 0.0})
+            self.env.cr.execute(
+                "UPDATE stock_valuation_layer SET accounting_date = %s WHERE id = %s",
+                (acct + ' 00:00:00', svl.id))
+        self.SVL.invalidate_model()
+
+    def _doc(self):
+        return self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 10, 'target_qty': 211,
+                        'target_value': 76851.3771}),
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 20, 'target_qty': 1,
+                        'target_value': 352.9183}),
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 30, 'target_qty': 5,
+                        'target_value': 1751.9391}),
+            ]})
+
+    def test_void_reseed_hits_target_ending_and_invariant(self):
+        doc = self._doc()
+        base = self.engine._baseline(doc)
+        q0, v0 = base[(self.p.id, self.wh.id)]      # expect 229 / 81658.26
+        group = doc._line_groups()[0]
+        res = self.engine._void_and_reseed(group, q0, v0, doc.cutoff_date)
+
+        self.SVL.invalidate_model()   # raw INSERTs — drop stale ORM cache first
+        inserted = self.SVL.browse([res['counter_id']] + res['bucket_ids'])
+        self.assertAlmostEqual(sum(inserted.mapped('quantity')),
+                               217 - q0, places=3)
+        self.assertAlmostEqual(sum(inserted.mapped('value')),
+                               78956.2345 - v0, places=2)
+        for b in self.SVL.browse(res['bucket_ids']):
+            self.assertAlmostEqual(b.quantity, b.remaining_qty, places=4)
+            self.assertAlmostEqual(b.value, b.remaining_value, places=2)
+
+        # report ending at cutoff now equals target
+        again = self.engine._baseline(doc)
+        q1, v1 = again[(self.p.id, self.wh.id)]
+        self.assertAlmostEqual(q1, 217.0, places=2)
+        self.assertAlmostEqual(v1, 78956.2345, places=2)
+
+
+@tagged('post_install', '-at_install')
 class TestEngineBaseline(common.TransactionCase):
 
     def setUp(self):
