@@ -91,7 +91,7 @@ class ReportGeneralLedger(models.AbstractModel):
             account_move_line.ref, m.name AS move_name, account_move_line.name AS entry_label,
             account_move_line.debit, account_move_line.credit, account_move_line.balance,
             account_move_line.amount_currency, c.symbol AS currency_symbol,
-            NULL AS analytic_account
+            account_move_line.analytic_distribution
             FROM ''' + from_clause + '''
             JOIN account_move m ON (account_move_line.move_id=m.id)
             LEFT JOIN res_currency c ON (account_move_line.currency_id=c.id)
@@ -102,7 +102,50 @@ class ReportGeneralLedger(models.AbstractModel):
         
         cr.execute(sql, where_params)
 
-        for row in cr.dictfetchall():
+        rows = cr.dictfetchall()
+
+        # Resolve analytic_distribution (jsonb: {account_id or "id,id": percent})
+        # into a display label. Collect every referenced analytic account id
+        # first so the names are browsed in a single query.
+        analytic_ids = set()
+        for row in rows:
+            dist = row.get('analytic_distribution') or {}
+            for key in dist:
+                for part in str(key).split(','):
+                    part = part.strip()
+                    if part.isdigit():
+                        analytic_ids.add(int(part))
+
+        analytic_map = {}
+        if analytic_ids:
+            analytic_map = {
+                a.id: a.name
+                for a in self.env['account.analytic.account'].browse(sorted(analytic_ids)).exists()
+            }
+
+        for row in rows:
+            dist = row.get('analytic_distribution') or {}
+            parts = []
+            single_full = len(dist) == 1
+            for key, pct in dist.items():
+                names = [
+                    analytic_map.get(int(p.strip()))
+                    for p in str(key).split(',')
+                    if p.strip().isdigit()
+                ]
+                names = [n for n in names if n]
+                if not names:
+                    continue
+                label = ' + '.join(names)
+                try:
+                    pct_val = float(pct)
+                except (TypeError, ValueError):
+                    pct_val = 0.0
+                if not (single_full and round(pct_val) == 100):
+                    label = '%s (%g%%)' % (label, pct_val)
+                parts.append(label)
+            row['analytic_account'] = ', '.join(parts)
+
             acc_id = row['account_id']
             if acc_id not in move_lines:
                 move_lines[acc_id] = []
