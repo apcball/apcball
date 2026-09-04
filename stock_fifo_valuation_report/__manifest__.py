@@ -23,7 +23,7 @@ this report reads stock.valuation.layer directly:
     "license": "LGPL-3",
     'author': "APC Ball",
     'category': 'Warehouse',
-    'version': '17.0.1.3.0',
+    'version': '17.0.1.4.0',
 
     'depends': ['base', 'stock', 'stock_account', 'product', 'stock_fifo_by_location'],
 
