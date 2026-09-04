@@ -90,10 +90,10 @@
                     <td>_________________</td>
                     <td>_________________</td>
                 </tr>
-                <tr>
-                    <td>วันที่</td>
-                    <td>วันที่</td>
-                    <td>วันที่</td>
+                <tr class="tag-sign-date">
+                    <td>วันที่ <span t-esc="line.date" t-options='{"widget": "date"}'/></td>
+                    <td>วันที่ <span t-esc="line.date" t-options='{"widget": "date"}'/></td>
+                    <td>วันที่ <span t-esc="line.date" t-options='{"widget": "date"}'/></td>
                 </tr>
             </table>
         </div>
@@ -151,11 +151,13 @@
                     .tag-qty-row td { font-size: 18pt; padding-top: 3mm; }
                     .tag-sign-table {
                         width: 100%;
-                        margin-top: 8mm;
+                        margin-top: 6mm;
                         text-align: center;
                         border-collapse: collapse;
+                        page-break-inside: avoid;
                     }
-                    .tag-sign-table td { width: 33%; padding: 2mm 0; }
+                    .tag-sign-table td { width: 33%; padding: 1.5mm 0; }
+                    .tag-sign-table .tag-sign-date td { padding-top: 0; }
             </style>
             <t t-foreach="docs" t-as="doc">
                 <t t-set="lines" t-value="doc._get_pdf_lines(doc_no_from, doc_no_to)"/>

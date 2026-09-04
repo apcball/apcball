@@ -1,4 +1,5 @@
 import base64
+import datetime
 import io
 
 from odoo import _, fields, models
@@ -19,7 +20,22 @@ ALL_COLUMNS = [
     "layout",
     "lac",
     "quantity",
+    "date",
 ]
+
+
+def _parse_date(value):
+    """Coerce an Excel cell into a date, or None when empty/unparseable."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    if isinstance(value, datetime.date):
+        return value
+    try:
+        return fields.Date.to_date(str(value).strip())
+    except (ValueError, TypeError):
+        return None
 
 
 class StockCountTagImportWizard(models.TransientModel):
@@ -134,6 +150,7 @@ class StockCountTagImportWizard(models.TransientModel):
                     "layout": get(row, "layout") or "",
                     "lac": get(row, "lac") or "",
                     "quantity": quantity_raw if isinstance(quantity_raw, (int, float)) else 0.0,
+                    "date": _parse_date(get(row, "date")),
                     "status": status,
                     "message": message,
                 }
@@ -172,6 +189,7 @@ class StockCountTagImportWizard(models.TransientModel):
                 "layout": p.layout,
                 "lac": p.lac,
                 "quantity": p.quantity,
+                "date": p.date,
                 "import_status": p.status,
                 "import_message": p.message,
             }
@@ -199,6 +217,7 @@ class StockCountTagImportPreview(models.TransientModel):
     layout = fields.Char()
     lac = fields.Char()
     quantity = fields.Float()
+    date = fields.Date()
     status = fields.Selection(
         [("ok", "OK"), ("warning", "Warning"), ("error", "Error")]
     )

@@ -30,6 +30,7 @@
                             <field name="layout"/>
                             <field name="lac"/>
                             <field name="quantity"/>
+                            <field name="date" optional="show"/>
                             <field name="status" widget="badge"/>
                             <field name="message"/>
                         </tree>

@@ -19,6 +19,7 @@ class StockCountTagLine(models.Model):
     layout = fields.Char()
     lac = fields.Char()
     quantity = fields.Float(required=True)
+    date = fields.Date(string="Date", help="Per-line date as imported from Excel.")
 
     actual_quantity = fields.Float(
         help="Filled by hand during the physical count. Never written by the system."
