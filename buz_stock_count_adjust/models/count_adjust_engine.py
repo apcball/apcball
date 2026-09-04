@@ -123,6 +123,21 @@ class CountAdjustEngine(models.AbstractModel):
         """, (product.id, warehouse.id, company.id))
         return cr.fetchone()[0]
 
+    def _reserved_qty(self, group):
+        """Total stock.quant.reserved_quantity for the pair over the
+        warehouse lot_stock_id subtree. Uses the SAME search domain
+        _quant_adjust uses so the two never disagree about scope."""
+        product = group.product_id
+        warehouse = group.warehouse_id
+        company = group.adjustment_id.company_id
+        Quant = self.env['stock.quant']
+        Quant.flush_model(['reserved_quantity'])
+        quants = Quant.search([
+            ('product_id', '=', product.id),
+            ('location_id', 'child_of', warehouse.lot_stock_id.id),
+            ('company_id', '=', company.id)])
+        return sum(quants.mapped('reserved_quantity'))
+
     def _touch_scope(self, adjustment, base):
         """Every row a real run WILL touch, enumerated before anything is
         touched. `base` is the _baseline dict (unused here; kept for run()
@@ -719,6 +734,24 @@ class CountAdjustEngine(models.AbstractModel):
                         g['note'] = reason or _('%s locked layers') % locked
                         result['groups'].append(g)
                         continue
+                    rounding = group.product_id.uom_id.rounding
+                    target_sum = sum(group.mapped('target_qty'))
+                    reserved = self._reserved_qty(group)
+                    if float_compare(reserved, target_sum,
+                                     precision_rounding=rounding) > 0:
+                        # No writes for this group -- guard sits before
+                        # _void_and_reseed so nothing is half-applied.
+                        g['state'] = 'error'
+                        g['note'] = _('Reserved qty %.2f exceeds target %.2f') % (
+                            reserved, target_sum)
+                        result['groups'].append(g)
+                        continue
+                    if float_compare(target_sum, 0.0,
+                                     precision_rounding=rounding) < 0:
+                        # Allowed (the counter layer can exceed on-hand); an
+                        # error in the try-block below correctly supersedes this.
+                        g['note'] = _('Target qty sums to %.2f (negative)') % (
+                            target_sum,)
                     q0, v0 = base[(g['product_id'], g['warehouse_id'])]
                     try:
                         reseed = self._void_and_reseed(
@@ -744,7 +777,9 @@ class CountAdjustEngine(models.AbstractModel):
                         result['qty_delta'] += g['qty_delta']
                     except UserError as e:
                         g['state'] = 'error'
-                        g['note'] = str(e)
+                        # keep any pre-try warning (e.g. negative target sum)
+                        g['note'] = (g['note'] + ' | ' if g['note']
+                                     else '') + str(e)
                     result['groups'].append(g)
                 if dry_run:
                     raise _DryRunRollback()

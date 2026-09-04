@@ -45,6 +45,18 @@
                             <field name="line_hash" readonly="1" groups="base.group_no_one"/>
                         </group>
                     </group>
+                    <div class="alert alert-warning" role="alert">
+                        <p>Preview is mandatory before Apply. Apply writes a full
+                        pre-image backup first &#8212; if the backup cannot be
+                        written in full, nothing else runs.</p>
+                        <p>Recommended before Apply on production: an external
+                        table-scoped <code>pg_dump</code> of
+                        <code>stock_valuation_layer account_move
+                        account_move_line stock_move stock_move_line
+                        stock_quant</code> (a full dump blocks on
+                        <code>max_locks_per_transaction</code> on the docker
+                        cluster).</p>
+                    </div>
                     <notebook>
                         <page string="Lines" name="lines">
                             <field name="line_ids">
@@ -109,6 +121,7 @@
         <field name="name">Stock Count Adjustments</field>
         <field name="res_model">stock.count.adjustment</field>
         <field name="view_mode">tree,form</field>
+        <field name="groups_id" eval="[(4, ref('group_stock_count_adjustment'))]"/>
     </record>
 
     <menuitem id="menu_stock_count_adjustment_root"

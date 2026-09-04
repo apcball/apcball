@@ -200,6 +200,7 @@ class TestBackupRollback(common.TransactionCase):
                 group, q0, v0, doc.cutoff_date, backup=backup)
             self.engine._scoped_replay(group, reseed, doc.cutoff_date)
         doc.backup_id = backup
+        doc.state = 'applied'
         return doc, preimage
 
     def test_rollback_restores_every_touched_row(self):
@@ -319,6 +320,13 @@ class TestEngineRunIntegration(common.TransactionCase):
         self.assertEqual(self._svl_snapshot(self.p, self.wh), before)
         self.assertTrue(doc.preview_log)
 
+    def test_no_post_cutoff_layers_is_noop(self):
+        doc = self._fixture_229_target_217()
+        res = self.env['count.adjust.engine'].run(doc, dry_run=True)
+        g = res['groups'][0]
+        self.assertEqual(g['state'], 'previewed')
+        self.assertNotIn('shortage', (g.get('note') or '').lower())
+
     def test_apply_requires_preview_and_unchanged_lines(self):
         doc = self._fixture_229_target_217()
         with self.assertRaises(Exception):
@@ -382,6 +390,18 @@ class TestEngineBaseline(common.TransactionCase):
     def test_real_time_category_flagged(self):
         self.assertTrue(self.engine._check_category(self.prt))
         self.assertFalse(self.engine._check_category(self.pmp))
+
+    def test_real_time_category_skipped(self):
+        doc = self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [(0, 0, {'product_id': self.prt.id,
+                                 'warehouse_id': self.wh.id,
+                                 'bucket_seq': 10, 'target_qty': 5.0,
+                                 'target_value': 50.0})]})
+        doc.action_preview()
+        line = doc.line_ids[0]
+        self.assertEqual(line.state, 'skipped')
+        self.assertIn('real-time', (line.result_note or '').lower())
 
 
 @tagged('post_install', '-at_install')
@@ -713,3 +733,104 @@ class TestImportWizard(common.TransactionCase):
         wiz.action_do_import()
         self.assertEqual(len(doc.line_ids), 2)
         self.assertEqual(doc.line_ids.mapped('bucket_seq'), [10, 20])
+
+
+@tagged('post_install', '-at_install')
+class TestEngineEdgeCases(common.TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.engine = self.env['count.adjust.engine']
+        self.SVL = self.env['stock.valuation.layer']
+        self.wh = self.env['stock.warehouse'].search([], limit=1)
+        self.categ = self.env['product.category'].create({
+            'name': 'MP-edge', 'property_valuation': 'manual_periodic',
+            'property_cost_method': 'fifo'})
+        self.p = self.env['product.product'].create({
+            'name': 'edge probe', 'type': 'product', 'categ_id': self.categ.id})
+        svl = self.SVL.create({
+            'product_id': self.p.id, 'company_id': self.env.company.id,
+            'warehouse_id': self.wh.id, 'quantity': 100, 'value': 1000.0,
+            'unit_cost': 10.0, 'remaining_qty': 100, 'remaining_value': 1000.0})
+        svl.flush_recordset()
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET accounting_date = %s, "
+            "create_date = %s WHERE id = %s",
+            ('2026-05-10 00:00:00', '2026-05-10 00:00:00', svl.id))
+        self.SVL.invalidate_model()
+
+    def _simple_doc(self, target_qty=100.0, target_value=1000.0):
+        return self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 10, 'target_qty': target_qty,
+                        'target_value': target_value})]})
+
+    def _svl_snapshot(self):
+        self.SVL.flush_model()
+        self.env.cr.execute(
+            "SELECT id, remaining_qty, remaining_value, value, unit_cost "
+            "FROM stock_valuation_layer WHERE product_id = %s ORDER BY id",
+            (self.p.id,))
+        return tuple(tuple(r) for r in self.env.cr.fetchall())
+
+    def _locked_column_exists(self):
+        self.env.cr.execute("""
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stock_valuation_layer' AND column_name = 'locked'
+        """)
+        return bool(self.env.cr.fetchone())
+
+    def test_preview_then_edit_resets_state(self):
+        doc = self._simple_doc()
+        doc.action_preview()
+        self.assertEqual(doc.state, 'previewed')
+        doc.line_ids[0].target_qty += 1
+        self.assertEqual(doc.state, 'draft')
+        with self.assertRaises(Exception):
+            doc.action_apply()
+
+    def test_apply_refused_when_not_previewed(self):
+        doc = self._simple_doc()
+        with self.assertRaises(Exception):
+            doc.action_apply()
+
+    def test_locked_layer_skips_pair(self):
+        if not self._locked_column_exists():
+            self.skipTest('stock_valuation_layer.locked column absent')
+        doc = self._simple_doc()
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET locked = TRUE "
+            "WHERE product_id = %s AND warehouse_id = %s",
+            (self.p.id, self.wh.id))
+        self.env['stock.valuation.layer'].invalidate_model(['locked'])
+        doc.action_preview()
+        line = doc.line_ids[0]
+        self.assertEqual(line.state, 'skipped')
+        self.assertIn('locked', (line.result_note or '').lower())
+
+    def test_reserved_gt_target_errors(self):
+        doc = self._simple_doc(target_qty=1.0, target_value=10.0)
+        quant = self.env['stock.quant'].with_context(
+            skip_warehouse_consistency_check=True).create({
+                'product_id': self.p.id,
+                'location_id': self.wh.lot_stock_id.id,
+                'company_id': self.env.company.id, 'quantity': 100.0})
+        self.env.cr.execute(
+            "UPDATE stock_quant SET reserved_quantity = 50 WHERE id = %s",
+            (quant.id,))
+        self.env['stock.quant'].invalidate_model(['reserved_quantity'])
+        before = self._svl_snapshot()
+        res = self.engine.run(doc, dry_run=True)
+        g = res['groups'][0]
+        self.assertEqual(g['state'], 'error')
+        self.assertIn('reserved', g['note'].lower())
+        self.assertEqual(self._svl_snapshot(), before)
+
+    def test_negative_target_sum_warns_not_blocks(self):
+        doc = self._simple_doc(target_qty=-5.0, target_value=-50.0)
+        res = self.engine.run(doc, dry_run=True)
+        g = res['groups'][0]
+        self.assertNotEqual(g['state'], 'skipped')
+        self.assertIn('negative', (g.get('note') or '').lower())

@@ -37,6 +37,7 @@ class StockCountAdjustmentBackup(models.Model):
             base = rec.adjustment_id.name or 'SCA'
             rec.name = '%s / backup %s' % (base, rec.id or '')
 
+    @api.depends('line_ids')
     def _compute_line_count(self):
         for rec in self:
             rec.line_count = len(rec.line_ids)

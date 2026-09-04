@@ -161,6 +161,8 @@ class StockCountAdjustment(models.Model):
 
     def action_rollback(self):
         self.ensure_one()
+        if self.state != 'applied':
+            raise UserError(_('Only an applied adjustment can be rolled back.'))
         if not self.backup_id:
             raise UserError(_('This adjustment has no backup to roll back.'))
         self.backup_id.action_restore()
