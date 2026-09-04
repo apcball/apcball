@@ -121,31 +121,41 @@ Phase 3 is one transaction. Backup tables restore `remaining_*` and remove the
 opening layers; the D4 journal entry is reversed. The report cutoff param is
 deleted. Full `pg_dump` is the last resort.
 
-## 6a. Single-product instance log
+## 6a. Per-product report re-baseline (script)
 
-Applied ad-hoc corrections that follow this plan's spirit (one manual
-`quantity = 0` revaluation layer, `remaining_* = 0`, no GL, report picks it up
-in the `revaluation_value` bucket):
+For finance's product-by-product reconciliation of the FIFO valuation
+**report** (not the engine): use
+`stock_fifo_by_location/scripts/rebaseline_valuation_by_product.py`. It inserts
+**one** `stock.valuation.layer` per product/warehouse — `quantity = Δqty`,
+`value = Δvalue`, `remaining_qty = remaining_value = 0` (engine untouched),
+`accounting_date` = the period-close date, no `stock_move_id`, no
+`account_move_id` (no GL). The report's summary view then shows `ending_qty` /
+`ending_value` = the counted figures; a negative `Δqty` shows up in the
+period's `out_qty` (จ่ายรวม) bucket.
 
-| Date | Product | WH | Period | Before | After | Layer id | Adjust qty / value |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-09-03 | FCA0006100 (id 1408) | FG10 (id 1) | 01/04–31/05/2026 | qty 229 / val 81,658.26 | qty 217 / val 78,956.23 | 262199 | −12 / −2,702.03 |
+Rules the script enforces (and anyone doing this by hand must follow):
 
-Notes: finance-supplied basis 217 @ 363.85 = 78,956.23. The **authoritative
-"before" numbers come from running the summary wizard** (`env['stock.fifo.
-valuation.report'].init_results(wiz)`), NOT a hand SQL — the report converts
-the `cutoff_date` via `_bangkok_day_start_to_utc` (cutoff 2026-03-31 →
-`2026-03-30 17:00:00 UTC`), so a layer stored at exactly `2026-03-30 17:00 UTC`
-(= 31/03 00:00 Bangkok) is in scope. A naive `COALESCE(...)::date >=
-'2026-03-31'` drops it and gives the wrong baseline (first attempt: layer 262198
-+1,532.99 off a bad baseline of 77,423.24 — deleted, then redone as 262199).
-Adjustment layer: `quantity = −12`, `value = −2,702.03`, `unit_cost ≈ 225.17`,
-`accounting_date = 2026-05-31`, `remaining_* = 0`, no move, no GL. Report
-`out_qty` for the period rises 212 → 224 (the −12 lands in the outgoing bucket).
-FIFO engine untouched (`SUM(remaining_qty)` 178 / `SUM(remaining_value)`
-63,818.23 unchanged). Backup: `svl_bak_fca0006100_20260903` +
-`/tmp/MOG_LIVE_pre_fca0006100_20260903.dump` (172M) on mog-prod. Rollback:
-`DELETE FROM stock_valuation_layer WHERE id = 262199;`.
+- **Get the "before" from the summary wizard**, never a hand SQL. The report
+  converts `cutoff_date` via `_bangkok_day_start_to_utc` (cutoff 2026-03-31 →
+  `2026-03-30 17:00:00 UTC`), so a layer at exactly `2026-03-30 17:00 UTC`
+  (= 31/03 00:00 Bangkok) is in scope; a naive `COALESCE(...)::date >=
+  '2026-03-31'` drops it and gives a wrong baseline.
+- `dry_run=True` first; finance signs the reconciliation table; then
+  `dry_run=False`. `pg_dump` before the live run (policy); the script also
+  makes a `svl_bak_rebaseline_<YYYYMMDD>` table.
+- Never touch the global `stock_fifo_valuation_report.cutoff_date`.
+- The net Σ Δvalue is a real P&L event finance books separately (no GL here).
+
+### Run log
+
+| Date | Product | WH | Period close | Before (rpt) | After (rpt) | Layer id | Δqty / Δvalue | Backup |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-09-03 | FCA0006100 (1408) | FG10 | 2026-05-31 | 229 / 81,658.26 | 217 / 78,956.23 | 262199 | −12 / −2,702.03 | `svl_bak_fca0006100_20260903` + `/tmp/MOG_LIVE_pre_fca0006100_20260903.dump` |
+
+(Row above was the manual first instance — first try layer 262198 +1,532.99 was
+off a bad hand-SQL baseline of 77,423.24, deleted, redone as 262199. The script
+exists so this does not recur.) Rollback: `DELETE FROM stock_valuation_layer
+WHERE id = 262199;`.
 
 ## 7. Out of scope
 
