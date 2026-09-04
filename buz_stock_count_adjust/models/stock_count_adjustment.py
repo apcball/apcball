@@ -167,4 +167,14 @@ class StockCountAdjustment(models.Model):
         self.state = 'rolled_back'
 
     def action_import(self):
-        raise NotImplementedError
+        self.ensure_one()
+        if self.state != 'draft':
+            raise UserError(_('Lines can only be imported into a draft adjustment.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Import Adjustment Lines'),
+            'res_model': 'stock.count.adjustment.import',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': dict(self.env.context, default_adjustment_id=self.id),
+        }

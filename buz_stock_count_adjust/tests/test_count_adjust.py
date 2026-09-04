@@ -632,3 +632,84 @@ class TestCountAdjustModel(common.TransactionCase):
                     (0, 0, {'product_id': self.p1.id, 'warehouse_id': self.wh.id,
                             'bucket_seq': 10, 'target_qty': 2, 'target_value': 2}),
                 ]})
+
+
+@tagged('post_install', '-at_install')
+class TestImportWizard(common.TransactionCase):
+
+    def _doc(self):
+        return self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31'})
+
+    def test_csv_import_buckets_by_file_order(self):
+        import base64, io, csv
+        wh = self.env['stock.warehouse'].search([], limit=1)
+        p = self.env['product.product'].create({
+            'name': 'imp probe', 'default_code': 'IMP001', 'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id})
+        doc = self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31'})
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(['product_code', 'warehouse_code', 'target_qty',
+                    'target_value', 'note'])
+        w.writerow(['IMP001', wh.code + '/Stock', '211', '76851.3771', 'b1'])
+        w.writerow(['IMP001', wh.code, '1', '352.9183', 'b2'])
+        w.writerow(['NOPE', wh.code, '5', '10', 'bad'])
+        wiz = self.env['stock.count.adjustment.import'].create({
+            'adjustment_id': doc.id, 'file_format': 'csv',
+            'data_file': base64.b64encode(buf.getvalue().encode()),
+            'filename': 'x.csv', 'import_valid_only': True})
+        wiz.action_do_import()
+        self.assertEqual(len(doc.line_ids), 2)
+        self.assertEqual(doc.line_ids.mapped('bucket_seq'), [10, 20])
+        self.assertIn('NOPE', wiz.result_log)
+
+    def test_import_all_or_nothing_when_not_valid_only(self):
+        import base64, io, csv
+        wh = self.env['stock.warehouse'].search([], limit=1)
+        self.env['product.product'].create({
+            'name': 'imp probe2', 'default_code': 'IMP002', 'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id})
+        doc = self._doc()
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(['product_code', 'warehouse_code', 'target_qty',
+                    'target_value', 'note'])
+        w.writerow(['IMP002', wh.code, '10', '100', 'ok'])
+        w.writerow(['BADCODE', wh.code, '5', '50', 'bad'])
+        wiz = self.env['stock.count.adjustment.import'].create({
+            'adjustment_id': doc.id, 'file_format': 'csv',
+            'data_file': base64.b64encode(buf.getvalue().encode()),
+            'filename': 'x.csv', 'import_valid_only': False})
+        wiz.action_do_import()
+        self.assertEqual(len(doc.line_ids), 0)
+        self.assertIn('BADCODE', wiz.result_log)
+        self.assertIn('Row 3', wiz.result_log)
+
+    def test_xlsx_round_trip(self):
+        try:
+            import openpyxl
+        except ImportError:
+            self.skipTest('openpyxl not available')
+        import base64, io
+        wh = self.env['stock.warehouse'].search([], limit=1)
+        self.env['product.product'].create({
+            'name': 'imp probe3', 'default_code': 'IMP003', 'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id})
+        doc = self._doc()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(['product_code', 'warehouse_code', 'target_qty',
+                   'target_value', 'note'])
+        ws.append(['IMP003', wh.code + '/Stock', 12, 480.5, 'x1'])
+        ws.append(['IMP003', wh.code, 3, 120.0, 'x2'])
+        bio = io.BytesIO()
+        wb.save(bio)
+        wiz = self.env['stock.count.adjustment.import'].create({
+            'adjustment_id': doc.id, 'file_format': 'xlsx',
+            'data_file': base64.b64encode(bio.getvalue()),
+            'filename': 'x.xlsx', 'import_valid_only': False})
+        wiz.action_do_import()
+        self.assertEqual(len(doc.line_ids), 2)
+        self.assertEqual(doc.line_ids.mapped('bucket_seq'), [10, 20])
