@@ -22,6 +22,10 @@ class TestEngineVoidReseed(common.TransactionCase):
                 'unit_cost': abs(val / qty),
                 'remaining_qty': qty if qty > 0 else 0.0,
                 'remaining_value': val if qty > 0 else 0.0})
+            # stock_fifo_by_location's create() override sets accounting_date =
+            # create_date as a deferred ORM write; flush it before the raw UPDATE
+            # so our backdated accounting_date wins.
+            svl.flush_recordset()
             self.env.cr.execute(
                 "UPDATE stock_valuation_layer SET accounting_date = %s WHERE id = %s",
                 (acct + ' 00:00:00', svl.id))
@@ -93,6 +97,10 @@ class TestEngineBaseline(common.TransactionCase):
                 'unit_cost': val / qty if qty else 0.0,
                 'remaining_qty': qty if qty > 0 else 0.0,
                 'remaining_value': val if qty > 0 else 0.0})
+            # stock_fifo_by_location's create() override sets accounting_date =
+            # create_date as a deferred ORM write; flush it before the raw UPDATE
+            # so our backdated accounting_date wins.
+            svl.flush_recordset()
             # accounting_date on cutoff day so the report buckets it as pre-cutoff
             self.env.cr.execute(
                 "UPDATE stock_valuation_layer SET accounting_date = %s WHERE id = %s",
