@@ -58,6 +58,10 @@ class CountAdjustEngine(models.AbstractModel):
         })
         # build the view once from this wizard record's filter fields
         Report.init_results(wiz)
+        # init_results does DROP VIEW / CREATE VIEW but the ORM keeps its cache
+        # for this model, so a second _baseline call in the same transaction
+        # would search_read stale rows. Drop the cache before reading.
+        Report.invalidate_model()
         rows = Report.search_read(
             [('product_id', 'in', product_ids),
              ('warehouse_id', 'in', warehouse_ids)],
@@ -462,15 +466,15 @@ class CountAdjustEngine(models.AbstractModel):
             [('id', 'child_of', lot_stock.id)]).ids)
 
         # Net qty flow across the subtree boundary from post-cutoff done moves.
-        ML.flush_model(['qty_done', 'location_id', 'location_dest_id', 'date'])
+        ML.flush_model(['quantity', 'location_id', 'location_dest_id', 'date'])
         Move.flush_model(['state', 'date'])
         cr.execute("""
             SELECT COALESCE(SUM(
                 CASE
                   WHEN sml.location_dest_id IN %(loc)s
-                       AND sml.location_id NOT IN %(loc)s THEN sml.qty_done
+                       AND sml.location_id NOT IN %(loc)s THEN sml.quantity
                   WHEN sml.location_id IN %(loc)s
-                       AND sml.location_dest_id NOT IN %(loc)s THEN -sml.qty_done
+                       AND sml.location_dest_id NOT IN %(loc)s THEN -sml.quantity
                   ELSE 0
                 END), 0)
             FROM stock_move_line sml
