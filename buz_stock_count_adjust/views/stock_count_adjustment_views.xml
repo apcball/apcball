@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_count_adjustment_tree" model="ir.ui.view">
+        <field name="name">stock.count.adjustment.tree</field>
+        <field name="model">stock.count.adjustment</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="cutoff_date"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_count_adjustment_form" model="ir.ui.view">
+        <field name="name">stock.count.adjustment.form</field>
+        <field name="model">stock.count.adjustment</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_preview" type="object" string="Preview"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_apply" type="object" string="Apply"
+                            class="btn-primary" invisible="state != 'previewed'"/>
+                    <button name="action_rollback" type="object" string="Rollback"
+                            invisible="state != 'applied'"/>
+                    <button name="action_import" type="object" string="Import Lines"
+                            invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="cutoff_date"/>
+                        <field name="backup_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="qty_delta" readonly="1"/>
+                        <field name="valuation_delta" readonly="1"/>
+                        <field name="cogs_delta" readonly="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Lines" name="lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="warehouse_id"/>
+                                    <field name="bucket_seq"/>
+                                    <field name="target_qty"/>
+                                    <field name="target_value"/>
+                                    <field name="baseline_qty" readonly="1"/>
+                                    <field name="baseline_value" readonly="1"/>
+                                    <field name="delta_qty" readonly="1"/>
+                                    <field name="delta_value" readonly="1"/>
+                                    <field name="state"/>
+                                    <field name="result_note" readonly="1"/>
+                                    <field name="note"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Mismatches" name="mismatches">
+                            <field name="mismatch_ids">
+                                <tree>
+                                    <field name="product_id"/>
+                                    <field name="warehouse_id"/>
+                                    <field name="svl_id"/>
+                                    <field name="move_id"/>
+                                    <field name="move_line_id"/>
+                                    <field name="svl_qty"/>
+                                    <field name="move_net_qty"/>
+                                    <field name="diff"/>
+                                    <field name="suggested_location_id"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Preview Log" name="preview_log">
+                            <field name="preview_log" readonly="1"/>
+                        </page>
+                        <page string="Apply Log" name="apply_log">
+                            <field name="apply_log" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stock_count_adjustment" model="ir.actions.act_window">
+        <field name="name">Stock Count Adjustments</field>
+        <field name="res_model">stock.count.adjustment</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_stock_count_adjustment_root"
+              name="Count Adjustment (FIFO)"
+              parent="stock.menu_stock_root"
+              sequence="90"
+              groups="buz_stock_count_adjust.group_stock_count_adjustment"/>
+
+    <menuitem id="menu_stock_count_adjustment"
+              parent="menu_stock_count_adjustment_root"
+              action="action_stock_count_adjustment"
+              sequence="10"
+              groups="buz_stock_count_adjust.group_stock_count_adjustment"/>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="group_stock_count_adjustment" model="res.groups">
+            <field name="name">Stock Count Adjustment</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+            <field name="implied_ids" eval="[(4, ref('stock.group_stock_manager'))]"/>
+            <field name="comment">Grants access to the FIFO count-adjust tool, which
+writes stock.valuation.layer directly. Add people deliberately; being a stock
+manager is not enough.</field>
+        </record>
+    </data>
+</odoo>
