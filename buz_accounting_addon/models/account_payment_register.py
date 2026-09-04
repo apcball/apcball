@@ -60,6 +60,8 @@ class AccountPaymentRegister(models.TransientModel):
                     raise UserError(_("Payment amount (%.2f) must equal Refund Amount (%.2f).") % (wizard.amount, refund_pv.refund_amount))
                 if refund_pv.currency_id.compare_amounts(wizard.amount, residual) > 0:
                     raise UserError(_("Payment amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (wizard.amount, credit_note.name, residual))
+            # Re-validate source invoices (block if status changed after Confirm)
+            refund_pv._check_source_invoices_paid()
         payments = super()._create_payments()
         
         # Link payments to payment voucher if context provided

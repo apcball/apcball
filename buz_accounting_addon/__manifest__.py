@@ -48,6 +48,7 @@
     "depends": [
         "account",
         "mail",
+        "sale",
         "l10n_th_account_tax",
         "account_payment_batch_process",
     ],

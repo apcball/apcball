@@ -24,6 +24,7 @@
                 <field name="partner_id"/>
                 <field name="credit_note_id"/>
                 <field name="amount_total_net_display" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="source_status" optional="hide"/>
                 <field name="state" widget="badge" decoration-info="state=='draft'" decoration-success="state=='posted'" decoration-muted="state=='cancel'"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
@@ -46,6 +47,12 @@
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_credit_note" type="object" class="oe_stat_button" icon="fa-file-text-o" invisible="not credit_note_id">
                             <field name="credit_note_id" widget="statinfo" string="Credit Note"/>
+                        </button>
+                        <button name="action_view_source_sale_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart" invisible="source_sale_order_count == 0">
+                            <field name="source_sale_order_count" widget="statinfo" string="Source SOs"/>
+                        </button>
+                        <button name="action_view_source_invoices" type="object" class="oe_stat_button" icon="fa-file-text" invisible="source_invoice_count == 0">
+                            <field name="source_invoice_count" widget="statinfo" string="Source Invoices"/>
                         </button>
                         <button type="object" name="action_open_credit_note" class="oe_stat_button" icon="fa-money" invisible="not amount_total_net_display">
                             <field name="amount_total_net_display" string="Net Amount" widget="statinfo"/>
@@ -81,6 +88,18 @@
                     <group string="Payment Details" invisible="payment_type != 'check'">
                         <group>
                             <field name="check_date" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <group string="Source Documents (Auto-detected, Readonly)" invisible="not credit_note_id">
+                        <field name="source_sale_order_count" invisible="1"/>
+                        <field name="source_invoice_count" invisible="1"/>
+                        <field name="source_status_is_paid" invisible="1"/>
+                        <group>
+                            <field name="source_sale_order_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}" string="Source Sale Orders"/>
+                            <field name="source_invoice_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}" string="Source Invoices"/>
+                        </group>
+                        <group>
+                            <field name="source_status" readonly="1" string="Source Status" placeholder="Source Invoice Paid / Invoice ยังไม่ Paid / ไม่พบ Invoice ต้นทาง"/>
                         </group>
                     </group>
                     <notebook>

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools import float_is_zero
 
 
 class BuzCustomerRefundPv(models.Model):
@@ -72,6 +73,14 @@ class BuzCustomerRefundPv(models.Model):
     payment_ids = fields.Many2many('account.payment', 'buz_customer_refund_pv_payment_rel', 'pv_id', 'payment_id', string='Payments', readonly=True, copy=False)
     payment_count = fields.Integer(string='Payment Count', compute='_compute_payment_count')
     has_active_payment = fields.Boolean(string='Has Active Payment', compute='_compute_has_active_payment')
+
+    # Source SO / Invoice tracking (read-only, computed from CN sale_line_ids)
+    source_sale_order_ids = fields.Many2many('sale.order', compute='_compute_source_documents', string='Source Sale Orders', readonly=True)
+    source_sale_order_count = fields.Integer(string='Source SO Count', compute='_compute_source_documents', readonly=True)
+    source_invoice_ids = fields.Many2many('account.move', compute='_compute_source_documents', string='Source Invoices', readonly=True)
+    source_invoice_count = fields.Integer(string='Source Invoice Count', compute='_compute_source_documents', readonly=True)
+    source_status = fields.Char(string='Source Status', compute='_compute_source_documents', readonly=True)
+    source_status_is_paid = fields.Boolean(string='Source Invoices Paid', compute='_compute_source_documents', readonly=True)
 
     @api.onchange("destination_journal_id")
     def _onchange_destination_journal_id(self):
@@ -165,6 +174,8 @@ class BuzCustomerRefundPv(models.Model):
                 cn_total = residual
             if total_other + pv.refund_amount - cn_total > 1e-6:
                 raise UserError(_("Total Refund Amount (%.2f) for Credit Note %s would exceed its total (%.2f).") % (total_other + pv.refund_amount, pv.credit_note_id.name, cn_total))
+            # Source SO / Invoice validation (central)
+            pv._check_source_invoices_paid()
         # All validations passed: post the documents
         for pv in self:
             pv.write({"state": "posted"})
@@ -200,6 +211,153 @@ class BuzCustomerRefundPv(models.Model):
     def _compute_has_active_payment(self):
         for pv in self:
             pv.has_active_payment = any(p.state != 'cancel' for p in pv.payment_ids)
+
+    # ------------------------------------------------------------------
+    # Source SO / Invoice helpers (central validation)
+    # ------------------------------------------------------------------
+    def _get_source_sale_lines(self):
+        self.ensure_one()
+        cn = self.credit_note_id
+        if not cn:
+            return self.env["sale.order.line"].browse()
+        # Primary per spec: invoice_line_ids.sale_line_ids (Odoo 17 product lines have display_type='product')
+        sale_lines = cn.invoice_line_ids.mapped("sale_line_ids")
+        if not sale_lines:
+            sale_lines = cn.line_ids.mapped("sale_line_ids")
+        return sale_lines
+
+    def _get_source_sale_orders(self):
+        sale_lines = self._get_source_sale_lines()
+        return sale_lines.mapped("order_id")
+
+    def _get_source_invoices(self):
+        """Find Customer Invoices (out_invoice) sharing sale_line_ids with the Credit Note."""
+        self.ensure_one()
+        sale_lines = self._get_source_sale_lines()
+        if not sale_lines:
+            return self.env["account.move"].browse()
+        # Search via account.move.line sale_line_ids (M2M) – primary relation per spec
+        # In Odoo 17, product lines have display_type='product', so don't filter on False
+        domain = [
+            ("sale_line_ids", "in", sale_lines.ids),
+            ("move_id.move_type", "=", "out_invoice"),
+        ]
+        aml = self.env["account.move.line"].search(domain)
+        invoices = aml.mapped("move_id").filtered(lambda m: m.id != self.credit_note_id.id and m.move_type == "out_invoice")
+        # Deduplicate and keep only those in same company if possible, but do not filter strictly
+        return invoices
+
+    @api.depends("credit_note_id", "credit_note_id.invoice_line_ids.sale_line_ids")
+    def _compute_source_documents(self):
+        for pv in self:
+            cn = pv.credit_note_id
+            if not cn:
+                pv.source_sale_order_ids = [(5, 0, 0)]
+                pv.source_sale_order_count = 0
+                pv.source_invoice_ids = [(5, 0, 0)]
+                pv.source_invoice_count = 0
+                pv.source_status = _("No Credit Note")
+                pv.source_status_is_paid = False
+                continue
+            # Use helper (Odoo 17 product lines have display_type='product', so use direct mapped)
+            sale_lines = cn.invoice_line_ids.mapped("sale_line_ids")
+            if not sale_lines:
+                sale_lines = cn.line_ids.mapped("sale_line_ids")
+            sale_orders = sale_lines.mapped("order_id")
+            pv.source_sale_order_ids = [(6, 0, sale_orders.ids)]
+            pv.source_sale_order_count = len(sale_orders)
+            if not sale_lines:
+                pv.source_invoice_ids = [(5, 0, 0)]
+                pv.source_invoice_count = 0
+                pv.source_status = _("ไม่พบ SO ต้นทาง")
+                pv.source_status_is_paid = False
+                continue
+            # Find source invoices (Odoo 17: display_type='product' for product lines, so no False filter)
+            aml = self.env["account.move.line"].search([
+                ("sale_line_ids", "in", sale_lines.ids),
+                ("move_id.move_type", "=", "out_invoice"),
+            ])
+            invoices = aml.mapped("move_id").filtered(lambda m: m.id != cn.id and m.move_type == "out_invoice")
+            # Unique
+            invoices = self.env["account.move"].browse(list(set(invoices.ids)))
+            pv.source_invoice_ids = [(6, 0, invoices.ids)]
+            pv.source_invoice_count = len(invoices)
+            if not invoices:
+                pv.source_status = _("ไม่พบ Invoice ต้นทาง")
+                pv.source_status_is_paid = False
+                continue
+            # Evaluate paid status for display
+            not_paid = []
+            for inv in invoices:
+                is_paid = (
+                    inv.state == "posted"
+                    and inv.move_type == "out_invoice"
+                    and inv.payment_state == "paid"
+                    and float_is_zero(inv.amount_residual, precision_rounding=inv.currency_id.rounding or self.env.company.currency_id.rounding)
+                )
+                if not is_paid:
+                    not_paid.append(inv)
+            if not_paid:
+                names = ", ".join(not_paid.mapped("name"))
+                pv.source_status = _("Invoice ยังไม่ Paid: %s") % names
+                pv.source_status_is_paid = False
+            else:
+                pv.source_status = _("Source Invoice Paid")
+                pv.source_status_is_paid = True
+
+    def _check_source_invoices_paid(self):
+        """Central validation per spec. Raise UserError if blocked.
+
+        - Uses sale_line_ids as primary relation (not invoice_origin)
+        - All related out_invoice must be posted, payment_state=paid, residual 0
+        - If no SO or no Invoice found -> block
+        - If any invoice not paid -> block with names
+        """
+        for pv in self:
+            cn = pv.credit_note_id
+            if not cn:
+                raise UserError(_("ไม่พบ Credit Note ต้นทาง"))
+            if cn.move_type != "out_refund":
+                raise UserError(_("Credit Note must be a Customer Credit Note (out_refund)."))
+            if cn.state != "posted":
+                raise UserError(_("Customer Credit Note must be Posted."))
+            # Robust sale_line extraction (Odoo 17 uses display_type='product')
+            sale_lines = cn.invoice_line_ids.mapped("sale_line_ids")
+            if not sale_lines:
+                sale_lines = cn.line_ids.mapped("sale_line_ids")
+            if not sale_lines:
+                # Fallback filtered
+                sale_lines = cn.invoice_line_ids.filtered(lambda l: l.display_type == 'product').mapped("sale_line_ids")
+                if not sale_lines:
+                    sale_lines = cn.line_ids.filtered(lambda l: l.display_type == 'product').mapped("sale_line_ids")
+            if not sale_lines:
+                raise UserError(_("ไม่พบ SO ต้นทาง: Credit Note %s ไม่มี sale_line_ids ที่เชื่อมกับ Sale Order") % (cn.name or ""))
+            aml = self.env["account.move.line"].search([
+                ("sale_line_ids", "in", sale_lines.ids),
+                ("move_id.move_type", "=", "out_invoice"),
+            ])
+            invoices = aml.mapped("move_id").filtered(lambda m: m.id != cn.id and m.move_type == "out_invoice")
+            invoices = self.env["account.move"].browse(list(set(invoices.ids)))
+            if not invoices:
+                raise UserError(_("ไม่พบ Invoice ต้นทาง: Credit Note %s ไม่มี Invoice (out_invoice) ที่เชื่อมกับ Sale Order เดียวกัน (sale_line_ids).") % (cn.name or ""))
+            not_paid = []
+            for inv in invoices:
+                rounding = inv.currency_id.rounding or self.env.company.currency_id.rounding
+                is_paid = (
+                    inv.state == "posted"
+                    and inv.move_type == "out_invoice"
+                    and inv.payment_state == "paid"
+                    and float_is_zero(inv.amount_residual, precision_rounding=rounding)
+                )
+                if not is_paid:
+                    not_paid.append(inv)
+            if not_paid:
+                # Build detailed list for message
+                details = []
+                for inv in not_paid:
+                    details.append("%s (state=%s, payment_state=%s, residual=%s)" % (inv.name or inv.id, inv.state, inv.payment_state, inv.amount_residual))
+                names = ", ".join(not_paid.mapped("name") or [str(x.id) for x in not_paid])
+                raise UserError(_("Invoice ยังไม่ Paid: %s ยังไม่ชำระครบ (ต้อง posted / out_invoice / payment_state=paid & residual 0). รายละเอียด: %s") % (names, ", ".join(details)))
 
     def action_view_payments(self):
         self.ensure_one()
@@ -237,6 +395,8 @@ class BuzCustomerRefundPv(models.Model):
             residual = abs(self.credit_note_id.amount_total)
         if self.refund_amount - residual > 1e-6:
             raise UserError(_("Refund Amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (self.refund_amount, self.credit_note_id.name, residual))
+        # Source SO / Invoice re-validation (prevent state change after Confirm)
+        self._check_source_invoices_paid()
         # Open standard payment register wizard with forced refund_amount and linking context
         # Only this new button sets buz_customer_refund_pv_id / force_amount, old Credit Note button remains standard
         ctx = dict(self.env.context)
@@ -279,6 +439,40 @@ class BuzCustomerRefundPv(models.Model):
             "res_id": self.credit_note_id.id,
             "target": "current",
         }
+
+    def action_view_source_invoices(self):
+        self.ensure_one()
+        invoices = self._get_source_invoices()
+        if not invoices:
+            raise UserError(_("ไม่พบ Invoice ต้นทาง"))
+        action = {
+            "name": _("Source Invoices"),
+            "type": "ir.actions.act_window",
+            "res_model": "account.move",
+            "view_mode": "tree,form",
+            "domain": [("id", "in", invoices.ids)],
+            "context": {"create": False},
+        }
+        if len(invoices) == 1:
+            action.update({"view_mode": "form", "res_id": invoices.id})
+        return action
+
+    def action_view_source_sale_orders(self):
+        self.ensure_one()
+        orders = self._get_source_sale_orders()
+        if not orders:
+            raise UserError(_("ไม่พบ SO ต้นทาง"))
+        action = {
+            "name": _("Source Sale Orders"),
+            "type": "ir.actions.act_window",
+            "res_model": "sale.order",
+            "view_mode": "tree,form",
+            "domain": [("id", "in", orders.ids)],
+            "context": {"create": False},
+        }
+        if len(orders) == 1:
+            action.update({"view_mode": "form", "res_id": orders.id})
+        return action
 
     def get_preview_moves(self):
         """

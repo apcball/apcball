@@ -10,16 +10,41 @@ class TestCustomerRefundPayment(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Create SO -> Invoice (paid) -> Credit Note with sale_line_ids linkage per spec
+        cls.sale_order = cls.env["sale.order"].create({
+            "partner_id": cls.partner_a.id,
+            "order_line": [
+                Command.create({
+                    "product_id": cls.product_a.id,
+                    "product_uom_qty": 1.0,
+                    "price_unit": 4990.0,
+                    "tax_id": [Command.clear()],
+                }),
+            ],
+        })
+        cls.sale_order.action_confirm()
+        # Create and post the source invoice
+        cls.source_invoice = cls.sale_order._create_invoices()[0]
+        cls.source_invoice.action_post()
+        # Pay the source invoice fully so payment_state = paid & residual 0
+        pay_ctx = {"active_model": "account.move", "active_ids": cls.source_invoice.ids}
+        pay_wizard = cls.env["account.payment.register"].with_context(**pay_ctx).create({"cheque_amount": cls.source_invoice.amount_residual})
+        pay_wizard._create_payments()
+        cls.source_invoice.invalidate_recordset(["payment_state", "amount_residual"])
+        # Create Credit Note linked via sale_line_ids (primary relation per spec)
         cls.credit_note = cls.env["account.move"].create({
             "move_type": "out_refund",
             "partner_id": cls.partner_a.id,
             "invoice_date": fields.Date.today(),
+            "reversed_entry_id": cls.source_invoice.id,
+            "invoice_origin": cls.sale_order.name,
             "invoice_line_ids": [
                 Command.create({
                     "product_id": cls.product_a.id,
                     "quantity": 1.0,
                     "price_unit": 4990.0,
                     "tax_ids": [Command.clear()],
+                    "sale_line_ids": [Command.set(cls.sale_order.order_line.ids)],
                 }),
             ],
         })
