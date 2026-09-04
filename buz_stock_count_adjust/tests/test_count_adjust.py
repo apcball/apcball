@@ -2,6 +2,57 @@ from odoo.tests import common, tagged
 
 
 @tagged('post_install', '-at_install')
+class TestEngineBaseline(common.TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.engine = self.env['count.adjust.engine']
+        self.wh = self.env['stock.warehouse'].search([], limit=1)
+        self.categ_rt = self.env['product.category'].create({
+            'name': 'RT', 'property_valuation': 'real_time',
+            'property_cost_method': 'fifo'})
+        self.categ_mp = self.env['product.category'].create({
+            'name': 'MP', 'property_valuation': 'manual_periodic',
+            'property_cost_method': 'fifo'})
+        self.prt = self.env['product.product'].create({
+            'name': 'rt probe', 'type': 'product', 'categ_id': self.categ_rt.id})
+        self.pmp = self.env['product.product'].create({
+            'name': 'mp probe', 'type': 'product', 'categ_id': self.categ_mp.id})
+
+    def _seed_layers(self, product, rows, cutoff='2026-05-31'):
+        SVL = self.env['stock.valuation.layer']
+        for i, (qty, val) in enumerate(rows):
+            svl = SVL.create({
+                'product_id': product.id, 'company_id': self.env.company.id,
+                'warehouse_id': self.wh.id, 'quantity': qty, 'value': val,
+                'unit_cost': val / qty if qty else 0.0,
+                'remaining_qty': qty if qty > 0 else 0.0,
+                'remaining_value': val if qty > 0 else 0.0})
+            # accounting_date on cutoff day so the report buckets it as pre-cutoff
+            self.env.cr.execute(
+                "UPDATE stock_valuation_layer SET accounting_date = %s WHERE id = %s",
+                ('2026-05-20 00:00:00', svl.id))
+        SVL.invalidate_model(['accounting_date'])
+
+    def test_baseline_matches_report_wizard(self):
+        self._seed_layers(self.pmp, [(100, 1000.0), (-30, -300.0)])
+        doc = self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [(0, 0, {'product_id': self.pmp.id,
+                                 'warehouse_id': self.wh.id,
+                                 'bucket_seq': 10, 'target_qty': 70,
+                                 'target_value': 700.0})]})
+        base = self.engine._baseline(doc)
+        q0, v0 = base[(self.pmp.id, self.wh.id)]
+        self.assertAlmostEqual(q0, 70.0, places=2)
+        self.assertAlmostEqual(v0, 700.0, places=2)
+
+    def test_real_time_category_flagged(self):
+        self.assertTrue(self.engine._check_category(self.prt))
+        self.assertFalse(self.engine._check_category(self.pmp))
+
+
+@tagged('post_install', '-at_install')
 class TestCountAdjustSkeleton(common.TransactionCase):
 
     def test_models_and_group_exist(self):
