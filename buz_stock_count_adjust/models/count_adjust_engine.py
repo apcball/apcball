@@ -59,7 +59,183 @@ class CountAdjustEngine(models.AbstractModel):
                 (r['ending_qty'], r['ending_value']) for r in rows}
         return {pair: base.get(pair, (0.0, 0.0)) for pair in pairs}
 
-    def _void_and_reseed(self, group, q0, v0, cutoff_date):
+    def _pair_layer_ids(self, group, cutoff_date):
+        """(pre_ids, post_ids) for one (product, warehouse) group.
+
+        pre_ids  -- SVL ids with COALESCE(accounting_date, create_date) < the
+                    UTC cutoff instant (the rows _void_and_reseed step-3 zeroes).
+        post_ids -- SVL ids with create_date > the UTC cutoff instant (the rows
+                    _scoped_replay step-2 reprices).
+        A backdated layer (pre-cutoff accounting_date, post-cutoff create_date)
+        legitimately appears in BOTH lists -- callers must union, never add.
+        """
+        product = group.product_id
+        warehouse = group.warehouse_id
+        company = group.adjustment_id.company_id
+        utc_cutoff, _acct = self._cutoff_instants(cutoff_date)
+        cr = self.env.cr
+        cr.execute("""
+            SELECT id FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+              AND COALESCE(accounting_date, create_date) < %s
+        """, (product.id, warehouse.id, company.id, utc_cutoff))
+        pre_ids = [r[0] for r in cr.fetchall()]
+        cr.execute("""
+            SELECT id FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+              AND create_date > %s
+        """, (product.id, warehouse.id, company.id, utc_cutoff))
+        post_ids = [r[0] for r in cr.fetchall()]
+        return pre_ids, post_ids
+
+    def _locked_layer_count(self, group):
+        """Number of pair SVL rows the user has frozen (locked IS TRUE).
+
+        `locked` is nullable and may not exist at all on a DB that never
+        installed the recal module -- guard with information_schema, and only
+        ever test IS TRUE (NULL is not frozen).
+        """
+        cr = self.env.cr
+        cr.execute("""
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stock_valuation_layer' AND column_name = 'locked'
+        """)
+        if not cr.fetchone():
+            return 0
+        product = group.product_id
+        warehouse = group.warehouse_id
+        company = group.adjustment_id.company_id
+        cr.execute("""
+            SELECT count(*) FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+              AND locked IS TRUE
+        """, (product.id, warehouse.id, company.id))
+        return cr.fetchone()[0]
+
+    def _touch_scope(self, adjustment, base):
+        """Every row a real run WILL touch, enumerated before anything is
+        touched. `base` is the _baseline dict (unused here; kept for run()
+        signature parity).
+
+        Returns {'svl_ids': set, 'quant_ids': set, 'move_ids': set,
+        'move_line_ids': set}.
+        """
+        self.env['stock.valuation.layer'].flush_model()
+        self.env['stock.quant'].flush_model()
+        cr = self.env.cr
+        Quant = self.env['stock.quant']
+        ML = self.env['stock.move.line']
+        scope = {'svl_ids': set(), 'quant_ids': set(),
+                 'move_ids': set(), 'move_line_ids': set()}
+        for group in adjustment._line_groups():
+            pre_ids, post_ids = self._pair_layer_ids(group, adjustment.cutoff_date)
+            scope['svl_ids'].update(pre_ids)
+            scope['svl_ids'].update(post_ids)
+
+            quants = Quant.search([
+                ('product_id', '=', group.product_id.id),
+                ('location_id', 'child_of', group.warehouse_id.lot_stock_id.id),
+                ('company_id', '=', group.adjustment_id.company_id.id)])
+            scope['quant_ids'].update(quants.ids)
+
+            if post_ids:
+                cr.execute("""
+                    SELECT DISTINCT stock_move_id FROM stock_valuation_layer
+                    WHERE id IN %s AND stock_move_id IS NOT NULL
+                """, (tuple(post_ids),))
+                move_ids = [r[0] for r in cr.fetchall()]
+                scope['move_ids'].update(move_ids)
+                if move_ids:
+                    mls = ML.search([('move_id', 'in', move_ids)])
+                    scope['move_line_ids'].update(mls.ids)
+        return scope
+
+    def _snapshot(self, adjustment, scope):
+        """Copy the pre-image of every scope row into the backup line tables
+        (INSERT ... SELECT, never row-by-row ORM create -- a real run touches
+        far too many rows). Raises UserError on any rowcount mismatch, before
+        anything else runs.
+
+        MUST be called BEFORE _void_and_reseed: the counter / bucket layers it
+        inserts carry a pre-cutoff accounting_date, so if _snapshot ran after,
+        they would land in svl_ids tagged was_inserted=false and a rollback
+        would UPDATE-back rather than DELETE them.
+        """
+        cr = self.env.cr
+        uid = self.env.uid
+        backup = self.env['stock.count.adjustment.backup'].create({
+            'company_id': adjustment.company_id.id,
+            'adjustment_id': adjustment.id,
+            'state': 'active',
+        })
+        svl_ids = scope['svl_ids']
+        quant_ids = scope['quant_ids']
+        ml_ids = scope['move_line_ids']
+
+        if svl_ids:
+            self.env['stock.valuation.layer'].flush_model(
+                ['quantity', 'value', 'unit_cost', 'remaining_qty',
+                 'remaining_value', 'accounting_date'])
+            cr.execute("""
+                INSERT INTO stock_count_adjustment_backup_line
+                    (backup_id, layer_id, product_id, warehouse_id, quantity,
+                     value, unit_cost, remaining_qty, remaining_value,
+                     accounting_date, was_inserted,
+                     create_uid, create_date, write_uid, write_date)
+                SELECT %s, l.id, l.product_id, l.warehouse_id, l.quantity,
+                       l.value, l.unit_cost, l.remaining_qty, l.remaining_value,
+                       l.accounting_date, false,
+                       %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
+                FROM stock_valuation_layer l
+                WHERE l.id IN %s
+            """, (backup.id, uid, uid, tuple(svl_ids)))
+            if cr.rowcount != len(svl_ids):
+                raise UserError(_(
+                    'Backup incomplete: %s of %s SVL rows snapshotted. '
+                    'Nothing has been written.') % (cr.rowcount, len(svl_ids)))
+
+        if quant_ids:
+            self.env['stock.quant'].flush_model(['quantity'])
+            cr.execute("""
+                INSERT INTO stock_count_adjustment_backup_quant
+                    (backup_id, quant_id, quantity,
+                     create_uid, create_date, write_uid, write_date)
+                SELECT %s, q.id, q.quantity,
+                       %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
+                FROM stock_quant q
+                WHERE q.id IN %s
+            """, (backup.id, uid, uid, tuple(quant_ids)))
+            if cr.rowcount != len(quant_ids):
+                raise UserError(_(
+                    'Backup incomplete: %s of %s quant rows snapshotted. '
+                    'Nothing has been written.') % (cr.rowcount, len(quant_ids)))
+
+        if ml_ids:
+            self.env['stock.move.line'].flush_model(
+                ['location_id', 'location_dest_id', 'date'])
+            self.env['stock.move'].flush_model(['date'])
+            cr.execute("""
+                INSERT INTO stock_count_adjustment_backup_moveline
+                    (backup_id, move_line_id, move_id, location_id,
+                     location_dest_id, ml_date, move_date, was_generated,
+                     create_uid, create_date, write_uid, write_date)
+                SELECT %s, sml.id, sml.move_id, sml.location_id,
+                       sml.location_dest_id, sml.date, sm.date, false,
+                       %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
+                FROM stock_move_line sml
+                JOIN stock_move sm ON sm.id = sml.move_id
+                WHERE sml.id IN %s
+            """, (backup.id, uid, uid, tuple(ml_ids)))
+            if cr.rowcount != len(ml_ids):
+                raise UserError(_(
+                    'Backup incomplete: %s of %s move-line rows snapshotted. '
+                    'Nothing has been written.') % (cr.rowcount, len(ml_ids)))
+
+        backup.invalidate_recordset(
+            ['line_ids', 'quant_line_ids', 'moveline_line_ids'])
+        return backup
+
+    def _void_and_reseed(self, group, q0, v0, cutoff_date, backup=None):
         """Void the pre-cutoff FIFO queue for one (product, warehouse) group
         and reseed it with one bucket layer per group line, so the ending
         queue at the cutoff instant equals the counted target.
@@ -148,6 +324,26 @@ class CountAdjustEngine(models.AbstractModel):
                 'dq=%.4f dv=%.2f, expected %.4f / %.2f'
             ) % (product.display_name, warehouse.name, dq, dv,
                  q_target - q0, v_target - v0))
+
+        if backup is not None:
+            cr.execute("""
+                INSERT INTO stock_count_adjustment_backup_line
+                    (backup_id, layer_id, product_id, warehouse_id, quantity,
+                     value, unit_cost, remaining_qty, remaining_value,
+                     accounting_date, was_inserted,
+                     create_uid, create_date, write_uid, write_date)
+                SELECT %s, l.id, l.product_id, l.warehouse_id, l.quantity,
+                       l.value, l.unit_cost, l.remaining_qty, l.remaining_value,
+                       l.accounting_date, true,
+                       %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
+                FROM stock_valuation_layer l
+                WHERE l.id IN %s
+            """, (backup.id, uid, uid, inserted))
+            if cr.rowcount != len(inserted):
+                raise UserError(_(
+                    'Backup incomplete: %s of %s inserted layers recorded.'
+                ) % (cr.rowcount, len(inserted)))
+            backup.invalidate_recordset(['line_ids'])
 
         return {'counter_id': counter_id, 'bucket_ids': bucket_ids,
                 'zeroed_ids': zeroed_ids}

@@ -117,6 +117,112 @@ class TestEngineVoidReseed(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install')
+class TestBackupRollback(common.TransactionCase):
+
+    PRE = ['remaining_qty', 'remaining_value', 'value', 'unit_cost']
+
+    def setUp(self):
+        super().setUp()
+        self.engine = self.env['count.adjust.engine']
+        self.SVL = self.env['stock.valuation.layer']
+        self.wh = self.env['stock.warehouse'].search([], limit=1)
+        self.categ = self.env['product.category'].create({
+            'name': 'MP-bk', 'property_valuation': 'manual_periodic',
+            'property_cost_method': 'fifo'})
+        self.p = self.env['product.product'].create({
+            'name': 'bk probe', 'type': 'product', 'categ_id': self.categ.id})
+
+    def _seed(self, qty, val, when):
+        svl = self.SVL.create({
+            'product_id': self.p.id, 'company_id': self.env.company.id,
+            'warehouse_id': self.wh.id, 'quantity': qty, 'value': val,
+            'unit_cost': abs(val / qty),
+            'remaining_qty': qty if qty > 0 else 0.0,
+            'remaining_value': val if qty > 0 else 0.0})
+        # stock_fifo_by_location defers accounting_date = create_date; flush
+        # before the raw UPDATE so our backdate wins. create_date is the FIFO
+        # ordering key, so backdate it too.
+        svl.flush_recordset()
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET accounting_date = %s, "
+            "create_date = %s WHERE id = %s", (when, when, svl.id))
+        self.SVL.invalidate_model()
+        return svl.id
+
+    def _doc(self):
+        return self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 10, 'target_qty': 211,
+                        'target_value': 76851.3771}),
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 20, 'target_qty': 1,
+                        'target_value': 352.9183}),
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 30, 'target_qty': 5,
+                        'target_value': 1751.9391}),
+            ]})
+
+    def _capture(self, ids):
+        out = {}
+        for sid in ids:
+            self.env.cr.execute(
+                "SELECT %s FROM stock_valuation_layer WHERE id = %%s"
+                % ', '.join(self.PRE), (sid,))
+            out[sid] = dict(zip(self.PRE, self.env.cr.fetchone()))
+        return out
+
+    def _apply_and_capture_preimage(self):
+        self._seed(441, 157416.65, '2026-05-10 00:00:00')
+        self._seed(-212, -75758.94, '2026-05-20 00:00:00')
+        # one post-cutoff delivery, deliberately mispriced
+        out = self.SVL.create({
+            'product_id': self.p.id, 'company_id': self.env.company.id,
+            'warehouse_id': self.wh.id, 'quantity': -20, 'value': -1.0,
+            'unit_cost': 0.05, 'remaining_qty': 0.0, 'remaining_value': 0.0})
+        out.flush_recordset()
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s WHERE id = %s",
+            ('2026-06-15 03:00:00', out.id))
+        self.SVL.invalidate_model()
+
+        doc = self._doc()
+        base = self.engine._baseline(doc)
+        scope = self.engine._touch_scope(doc, base)
+        preimage = {'stock_valuation_layer': self._capture(scope['svl_ids'])}
+
+        backup = self.engine._snapshot(doc, scope)
+        for group in doc._line_groups():
+            self.assertEqual(self.engine._locked_layer_count(group), 0)
+            q0, v0 = base[(group.product_id.id, group.warehouse_id.id)]
+            reseed = self.engine._void_and_reseed(
+                group, q0, v0, doc.cutoff_date, backup=backup)
+            self.engine._scoped_replay(group, reseed, doc.cutoff_date)
+        doc.backup_id = backup
+        return doc, preimage
+
+    def test_rollback_restores_every_touched_row(self):
+        doc, pre = self._apply_and_capture_preimage()
+        doc.action_rollback()
+        self.assertEqual(doc.state, 'rolled_back')
+        self.assertEqual(doc.backup_id.state, 'restored')
+        for table, rows in pre.items():
+            for pk, cols in rows.items():
+                self.env.cr.execute(
+                    "SELECT %s FROM %s WHERE id = %%s" % (
+                        ', '.join(cols), table), (pk,))
+                current = self.env.cr.fetchone()
+                self.assertEqual(
+                    current, tuple(cols.values()),
+                    "%s#%s not restored" % (table, pk))
+        self.env.cr.execute(
+            "SELECT count(*) FROM stock_valuation_layer WHERE description LIKE %s",
+            ('count-adjust %s%%' % doc.name,))
+        self.assertEqual(self.env.cr.fetchone()[0], 0)
+
+
+@tagged('post_install', '-at_install')
 class TestEngineBaseline(common.TransactionCase):
 
     def setUp(self):

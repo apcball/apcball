@@ -1,6 +1,7 @@
 import hashlib
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class StockCountAdjustment(models.Model):
@@ -90,7 +91,11 @@ class StockCountAdjustment(models.Model):
         raise NotImplementedError
 
     def action_rollback(self):
-        raise NotImplementedError
+        self.ensure_one()
+        if not self.backup_id:
+            raise UserError(_('This adjustment has no backup to roll back.'))
+        self.backup_id.action_restore()
+        self.state = 'rolled_back'
 
     def action_import(self):
         raise NotImplementedError
