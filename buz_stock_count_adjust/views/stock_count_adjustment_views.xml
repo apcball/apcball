@@ -79,6 +79,12 @@
                                     <field name="diff"/>
                                     <field name="suggested_location_id"/>
                                     <field name="state"/>
+                                    <button name="action_fix_move_line" type="object"
+                                            string="Fix" icon="fa-wrench"
+                                            invisible="state != 'open'"/>
+                                    <button name="action_ignore" type="object"
+                                            string="Ignore" icon="fa-ban"
+                                            invisible="state != 'open'"/>
                                 </tree>
                             </field>
                         </page>

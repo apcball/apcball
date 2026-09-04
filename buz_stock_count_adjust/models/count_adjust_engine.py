@@ -596,9 +596,99 @@ class CountAdjustEngine(models.AbstractModel):
                 'delta': target - current}
 
     def _reconcile(self, group, cutoff_date):
-        """Stub -- Task 9 replaces the body with the SVL-vs-move reconciliation
-        pass. Returns a list of dicts (mismatch vals)."""
-        return []
+        """SVL-vs-move reconciliation pass (step 6). DETECT + REPORT ONLY --
+        writes nothing.
+
+        For every post-cutoff SVL (create_date > the UTC cutoff instant) for
+        this (product, warehouse) pair that carries a stock_move_id, compare
+        the layer's booked quantity against the move's net quantity flow across
+        the pair's lot_stock_id subtree boundary (sum of move-line `quantity`
+        where location_dest_id is child_of lot_stock_id, minus where
+        location_id is). If they disagree beyond UoM precision the move line's
+        source / destination was corrupted after the layer was booked -- flag
+        it for a manual fix.
+
+        Returns list[dict] with keys matching stock.count.adjustment.mismatch
+        fields so _write_engine_result / run() can Command.create them; [] when
+        there are no post-cutoff stock_move_id layers or none disagree.
+        """
+        product = group.product_id
+        warehouse = group.warehouse_id
+        company = group.adjustment_id.company_id
+        lot_stock = warehouse.lot_stock_id
+        utc_cutoff, _acct = self._cutoff_instants(cutoff_date)
+        rounding = product.uom_id.rounding
+        cr = self.env.cr
+        Move = self.env['stock.move']
+        ML = self.env['stock.move.line']
+
+        child_ids = tuple(self.env['stock.location'].search(
+            [('id', 'child_of', lot_stock.id)]).ids)
+
+        self.env['stock.valuation.layer'].flush_model(
+            ['quantity', 'create_date'])
+        ML.flush_model(['quantity', 'location_id', 'location_dest_id'])
+
+        # strict `>` -- a layer created AT the cutoff instant (e.g. the
+        # neutralised inventory layer _quant_adjust backdates to utc_cutoff) is
+        # not a post-cutoff layer and must not be reconciled.
+        cr.execute("""
+            SELECT id, stock_move_id, quantity
+            FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+              AND create_date > %s AND stock_move_id IS NOT NULL
+            ORDER BY create_date, id
+        """, (product.id, warehouse.id, company.id, utc_cutoff))
+        svl_rows = cr.fetchall()
+        if not svl_rows:
+            return []
+
+        mismatches = []
+        for svl_id, move_id, svl_qty in svl_rows:
+            svl_qty = float(svl_qty or 0.0)
+            cr.execute("""
+                SELECT COALESCE(SUM(
+                    (CASE WHEN location_dest_id IN %(loc)s
+                          THEN quantity ELSE 0 END)
+                  - (CASE WHEN location_id IN %(loc)s
+                          THEN quantity ELSE 0 END)), 0)
+                FROM stock_move_line
+                WHERE move_id = %(move)s
+            """, {'loc': child_ids or (0,), 'move': move_id})
+            move_net_qty = float(cr.fetchone()[0] or 0.0)
+            if float_compare(abs(svl_qty - move_net_qty), 0.0,
+                             precision_rounding=rounding) <= 0:
+                continue
+            move = Move.browse(move_id)
+            mls = ML.search([('move_id', '=', move_id)])
+            suspect = mls.filtered(
+                lambda l: l.location_id != move.location_id
+                or l.location_dest_id != move.location_dest_id)[:1] or mls[:1]
+            mismatches.append({
+                'product_id': product.id,
+                'warehouse_id': warehouse.id,
+                'svl_id': svl_id,
+                'move_id': move_id,
+                'move_line_id': suspect.id or False,
+                'svl_qty': svl_qty,
+                'move_net_qty': move_net_qty,
+                'diff': svl_qty - move_net_qty,
+                'suggested_location_id': lot_stock.id,
+            })
+        return mismatches
+
+    def _persist_mismatches(self, adjustment, result):
+        """Replace adjustment.mismatch_ids from the run() result. Called from
+        run() on a real (non-dry) run so callers that invoke run() directly
+        still see the reconciliation report; action_apply's later
+        _write_engine_result does the same and is harmless if repeated."""
+        Mismatch = self.env['stock.count.adjustment.mismatch']
+        adjustment.mismatch_ids.unlink()
+        mvals = [dict(m, adjustment_id=adjustment.id)
+                 for g in result.get('groups', [])
+                 for m in g.get('mismatches', [])]
+        if mvals:
+            Mismatch.create(mvals)
 
     def run(self, adjustment, dry_run=True):
         """The void-reseed / scoped-replay / quant-adjust engine.
@@ -663,4 +753,6 @@ class CountAdjustEngine(models.AbstractModel):
         # The savepoint rolled the DB back but the ORM cache still holds the
         # voided / reseeded values and ids of rows that no longer exist.
         self.env.invalidate_all()
+        if not dry_run:
+            self._persist_mismatches(adjustment, result)
         return result

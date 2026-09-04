@@ -385,6 +385,182 @@ class TestEngineBaseline(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install')
+class TestReconcileAndFix(common.TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.engine = self.env['count.adjust.engine']
+        self.SVL = self.env['stock.valuation.layer']
+        self.wh = self.env['stock.warehouse'].search([], limit=1)
+        self.wh2 = self.env['stock.warehouse'].create({
+            'name': 'CA reconcile WH2', 'code': 'CAR2'})
+        self.categ = self.env['product.category'].create({
+            'name': 'MP-rec', 'property_valuation': 'manual_periodic',
+            'property_cost_method': 'fifo'})
+        self.p = self.env['product.product'].create({
+            'name': 'rec probe', 'type': 'product', 'categ_id': self.categ.id,
+            'standard_price': 100.0})
+
+    def _fixture_with_corrupted_transfer(self):
+        """5 units seeded at wh.lot_stock_id (backdated inventory adjustment),
+        then a post-cutoff done inter-warehouse move of 1 unit
+        wh.lot_stock_id -> wh2.lot_stock_id which books a post-cutoff out-layer
+        (-1) at wh. The move line's source is then raw-corrupted to
+        wh2.lot_stock_id so it no longer references the wh subtree: the layer
+        booked -1 leaving wh but the move now shows net 0 there."""
+        Quant = self.env['stock.quant']
+        quant = Quant.with_context(skip_warehouse_consistency_check=True).create({
+            'product_id': self.p.id,
+            'location_id': self.wh.lot_stock_id.id,
+            'company_id': self.env.company.id, 'quantity': 0.0})
+        quant.write({'inventory_quantity': 5.0})
+        quant.with_context(skip_warehouse_consistency_check=True)._apply_inventory()
+
+        # backdate the seeding move + layer to well before the cutoff
+        self.env['stock.move'].flush_model()
+        self.env['stock.move.line'].flush_model()
+        self.SVL.flush_model()
+        self.env.cr.execute(
+            "UPDATE stock_move SET date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', self.p.id))
+        self.env.cr.execute(
+            "UPDATE stock_move_line SET date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', self.p.id))
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s, "
+            "accounting_date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', '2026-05-10 00:00:00', self.p.id))
+        self.env['stock.move'].invalidate_model()
+        self.env['stock.move.line'].invalidate_model()
+        self.SVL.invalidate_model()
+
+        move = self.env['stock.move'].create({
+            'name': 'CA bad transfer',
+            'product_id': self.p.id,
+            'product_uom_qty': 1.0,
+            'product_uom': self.p.uom_id.id,
+            'location_id': self.wh.lot_stock_id.id,
+            'location_dest_id': self.wh2.lot_stock_id.id,
+            'company_id': self.env.company.id,
+        })
+        move._action_confirm()
+        move._action_assign()
+        if not move.move_line_ids:
+            self.env['stock.move.line'].create({
+                'move_id': move.id,
+                'product_id': self.p.id,
+                'product_uom_id': self.p.uom_id.id,
+                'location_id': move.location_id.id,
+                'location_dest_id': move.location_dest_id.id,
+                'company_id': self.env.company.id,
+            })
+        move.move_line_ids.quantity = 1.0
+        move._action_done()
+        self.transfer_move = move
+        self.bad_move_line = move.move_line_ids[0]
+
+        # the inter-warehouse out-layer at wh, booked with this move
+        self.SVL.flush_model()
+        self.env.cr.execute("""
+            SELECT id FROM stock_valuation_layer
+            WHERE stock_move_id = %s AND warehouse_id = %s AND quantity < 0
+        """, (move.id, self.wh.id))
+        row = self.env.cr.fetchone()
+        self.assertTrue(
+            row, "fixture produced no post-cutoff out-layer at wh for the move")
+        self.out_svl_id = row[0]
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s WHERE id = %s",
+            ('2026-06-15 03:00:00', self.out_svl_id))
+        self.env.cr.execute(
+            "UPDATE stock_move SET date = %s WHERE id = %s",
+            ('2026-06-15 03:00:00', move.id))
+        self.env.cr.execute(
+            "UPDATE stock_move_line SET date = %s WHERE move_id = %s",
+            ('2026-06-15 03:00:00', move.id))
+
+        # corrupt the move line's source: point it away from the wh subtree
+        self.env.cr.execute(
+            "UPDATE stock_move_line SET location_id = %s WHERE id = %s",
+            (self.wh2.lot_stock_id.id, self.bad_move_line.id))
+        self.env['stock.move'].invalidate_model()
+        self.env['stock.move.line'].invalidate_model()
+        self.SVL.invalidate_model()
+
+        return self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 10, 'target_qty': 5.0,
+                        'target_value': 500.0})]})
+
+    def test_reconcile_detects_corrupted_move_line(self):
+        # plant a done inter-warehouse move whose line reads RM01->RM01
+        # instead of FG10->RM01, so the source quant was never decremented
+        doc = self._fixture_with_corrupted_transfer()
+        res = self.env['count.adjust.engine'].run(doc, dry_run=False)
+        self.assertEqual(len(doc.mismatch_ids), 1)
+        m = doc.mismatch_ids
+        self.assertEqual(m.move_line_id, self.bad_move_line)
+        self.assertAlmostEqual(abs(m.diff), 1.0, places=3)
+        self.assertEqual(m.state, 'open')
+
+    def test_mismatch_fix_button_corrects_locations_and_quants(self):
+        doc = self._fixture_with_corrupted_transfer()
+        res = self.env['count.adjust.engine'].run(doc, dry_run=False)
+        doc.backup_id = res['backup_id']       # exercise the self-backup branch
+        m = doc.mismatch_ids
+        diff = m.diff
+        Quant = self.env['stock.quant']
+        q_to_before = sum(Quant.search([
+            ('product_id', '=', self.p.id),
+            ('location_id', '=', self.wh.lot_stock_id.id)]).mapped('quantity'))
+        q_from_before = sum(Quant.search([
+            ('product_id', '=', self.p.id),
+            ('location_id', '=', self.wh2.lot_stock_id.id)]).mapped('quantity'))
+
+        doc.mismatch_ids.action_fix_move_line()
+        self.assertEqual(doc.mismatch_ids.state, 'fixed')
+        self.assertEqual(self.bad_move_line.location_id,
+                         self.wh.lot_stock_id)
+
+        Quant.invalidate_model()
+        q_to_after = sum(Quant.search([
+            ('product_id', '=', self.p.id),
+            ('location_id', '=', self.wh.lot_stock_id.id)]).mapped('quantity'))
+        q_from_after = sum(Quant.search([
+            ('product_id', '=', self.p.id),
+            ('location_id', '=', self.wh2.lot_stock_id.id)]).mapped('quantity'))
+        self.assertAlmostEqual(q_to_after - q_to_before, diff, places=3)
+        self.assertAlmostEqual(q_from_after - q_from_before, -diff, places=3)
+
+    def test_reconcile_clean_transfer_no_mismatch(self):
+        Quant = self.env['stock.quant']
+        quant = Quant.with_context(skip_warehouse_consistency_check=True).create({
+            'product_id': self.p.id, 'location_id': self.wh.lot_stock_id.id,
+            'company_id': self.env.company.id, 'quantity': 0.0})
+        quant.write({'inventory_quantity': 5.0})
+        quant.with_context(skip_warehouse_consistency_check=True)._apply_inventory()
+        self.SVL.flush_model()
+        self.env.cr.execute(
+            "UPDATE stock_valuation_layer SET create_date = %s, "
+            "accounting_date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', '2026-05-10 00:00:00', self.p.id))
+        self.env.cr.execute(
+            "UPDATE stock_move SET date = %s WHERE product_id = %s",
+            ('2026-05-10 00:00:00', self.p.id))
+        self.SVL.invalidate_model()
+        doc = self.env['stock.count.adjustment'].create({
+            'company_id': self.env.company.id, 'cutoff_date': '2026-05-31',
+            'line_ids': [
+                (0, 0, {'product_id': self.p.id, 'warehouse_id': self.wh.id,
+                        'bucket_seq': 10, 'target_qty': 5.0,
+                        'target_value': 500.0})]})
+        group = doc._line_groups()[0]
+        self.assertEqual(self.engine._reconcile(group, doc.cutoff_date), [])
+
+
+@tagged('post_install', '-at_install')
 class TestCountAdjustSkeleton(common.TransactionCase):
 
     def test_models_and_group_exist(self):
