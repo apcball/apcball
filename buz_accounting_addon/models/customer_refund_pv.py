@@ -323,7 +323,7 @@ class BuzCustomerRefundPv(models.Model):
                 if not is_paid:
                     not_paid.append(inv)
             if not_paid:
-                names = ", ".join(not_paid.mapped("name"))
+                names = ", ".join(inv.name or str(inv.id) for inv in not_paid)
                 pv.source_status = _("Invoice ยังไม่ Paid: %s") % names
                 pv.source_status_is_paid = False
             else:
@@ -381,7 +381,7 @@ class BuzCustomerRefundPv(models.Model):
                 details = []
                 for inv in not_paid:
                     details.append("%s (state=%s, payment_state=%s, residual=%s)" % (inv.name or inv.id, inv.state, inv.payment_state, inv.amount_residual))
-                names = ", ".join(not_paid.mapped("name") or [str(x.id) for x in not_paid])
+                names = ", ".join(inv.name or str(inv.id) for inv in not_paid)
                 raise UserError(_("Invoice ยังไม่ Paid: %s ยังไม่ชำระครบ (ต้อง posted / out_invoice / payment_state=paid & residual 0). รายละเอียด: %s") % (names, ", ".join(details)))
 
     def action_view_payments(self):
