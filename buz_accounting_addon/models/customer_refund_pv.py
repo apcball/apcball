@@ -57,7 +57,7 @@ class BuzCustomerRefundPv(models.Model):
     )
     other_income_account_id = fields.Many2one(
         "account.account", string="Other Income Account",
-        domain="[('account_type', '=', 'income'), ('company_id', '=', company_id)]",
+        domain="[('company_id', '=', company_id), ('deprecated', '=', False)]",
         check_company=True, copy=False,
     )
     check_number = fields.Char(string="Cheque Number", tracking=True)
@@ -200,9 +200,9 @@ class BuzCustomerRefundPv(models.Model):
                 raise UserError(_("Please select an Other Income Account when Other Income is greater than zero."))
             if pv.other_income_account_id and (
                 pv.other_income_account_id.company_id != pv.company_id
-                or pv.other_income_account_id.account_type != "income"
+                or pv.other_income_account_id.deprecated
             ):
-                raise UserError(_("Other Income Account must be an Income account in the same company."))
+                raise UserError(_("Other Income Account must be active and belong to the same company."))
             # Partial payment: total of all posted PVs for same CN must not exceed CN total (cancelled PVs excluded, cancelled payments not counted as paid but PV still counts)
             other_posted = self.search([('credit_note_id', '=', pv.credit_note_id.id), ('state', '=', 'posted'), ('id', '!=', pv.id)])
             total_other = sum(other_posted.mapped('refund_amount'))

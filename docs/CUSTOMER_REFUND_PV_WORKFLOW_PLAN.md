@@ -6,18 +6,27 @@
 - **Payment:** ใช้ `refund_amount` ที่อนุมัติ, ใช้เลขจาก Odoo sequence และให้ Odoo จัดการ Post/Reconcile; ไม่มีการสร้าง Draft Payment เพื่อให้แก้เลข และไม่มี custom number lock หรือ custom reconcile
 - **Validation:** Credit Note ต้องเป็น `out_refund` และ Posted, ยอดคืนต้องไม่เกิน residual, Invoice ต้นทางทุกใบต้อง Paid และยอดที่แก้ใน Register Wizard ต้องถูกปฏิเสธ
 - **Other Income:** คำนวณอัตโนมัติจาก `Credit Note Residual - Refund Amount` และบันทึกเป็น Journal Item จริงใน Payment เมื่อมียอดส่วนต่าง
+- **Other Income Account:** ใน Draft ให้เลือกบัญชีที่ Active ได้ทุกประเภทภายในบริษัทปัจจุบัน โดยใช้ Domain `company_id = company_id` และ `deprecated = False`; ไม่จำกัดเฉพาะบัญชีประเภท Income
 - **Bank Fee:** แสดงและแก้ไขได้ตอน Draft แต่ยังไม่อนุญาตให้ Post หากมียอด เพราะยังไม่มี Journal Entry รองรับ
 - **WHT:** ยังไม่รวมใน Customer Refund PV flow นี้
 - **ขอบเขตโค้ด:** แก้เฉพาะ `buz_accounting_addon/`; ไม่แก้ `po_so_credit_note`, `sale_order_line_credit_note`, Vendor PV, Receipt Voucher หรือ Batch Payment flow อื่น
 - **DEV:** การ deploy/upgrade/restart รอบนี้ทำเฉพาะ `buz_accounting_addon` บน `MOG_DEV`; ไม่ deploy PROD
 
-## ผลการ Deploy DEV รอบปัจจุบัน
+## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 18:26–18:27 (เวลาไทย)
 
-- **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/`
-- **Upgrade:** สำเร็จบน `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded` และ `Registry loaded`
+- **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/` โดยไม่อัปโหลดเอกสารและไม่แตะโมดูลอื่น
+- **Upgrade:** สำเร็จบนฐานข้อมูล `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded in 5.14s`
 - **Restart:** สำเร็จด้วยการ restart เฉพาะ container `odoo`; HTTP service `8069` และ longpolling `8072` กลับมาทำงาน
+- **สิ่งที่ส่งขึ้น DEV:** Domain ของ `Other Income Account` และ validation ตอน Confirm/Register Payment ตามรายละเอียดด้านล่าง
 - **คำเตือน:** ยังมี warning เดิมของโมดูลอื่น เช่น `office_supply_requisition` ไม่ installable และ Odoo field warnings; ไม่พบ error ที่ทำให้ `buz_accounting_addon` upgrade ล้มเหลว
 - **ขอบเขตการยืนยัน:** เป็นผลการ deploy/upgrade/restart เท่านั้น ยังไม่ได้ยืนยัน Browser/PDF หรือ accounting business UAT บน DEV
+
+## การเปลี่ยนแปลง Domain รอบนี้
+
+- แก้ Domain ใน `models/customer_refund_pv.py` และ `views/customer_refund_pv_views.xml` ให้เลือกบัญชีที่ Active ได้ทุกประเภทในบริษัทปัจจุบัน
+- Confirm และ Register Payment ตรวจเฉพาะว่าบัญชีอยู่บริษัทเดียวกันและไม่ Archived
+- หาก `Other Income` มากกว่า 0 ต้องเลือกบัญชี ส่วนการคำนวณ Other Income และการสร้าง Payment/Journal Entry ยังคงเดิม
+- ไม่เปลี่ยนลำดับฟิลด์, workflow, Payment Status, Amounts หรือ Vendor PV
 
 ## สรุป Flow ปัจจุบัน
 ```
@@ -191,7 +200,7 @@ Posted Customer Credit Note (out_refund)
 - **DEV/PROD:** ไม่ upload, deploy rollback, upgrade module, restart หรือดำเนินการใด ๆ กับ DEV/PROD จากการแก้ไขครั้งนี้
 - **การส่งมอบ:** การเปลี่ยนแปลงเอกสารยังไม่ commit เพื่อให้ผู้ดูแล repository ตรวจสอบและ commit เอง
 
-## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 11:03–11:04 (เวลาไทย)
+## ประวัติการ Deploy DEV ก่อนรอบล่าสุด: 2026-09-05 เวลา 11:03–11:04 (เวลาไทย)
 
 - **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/`
 - **Upgrade:** สำเร็จบน `MOG_DEV`; Odoo โหลด `buz_accounting_addon` และไฟล์ report/view ใหม่ครบ (`Registry loaded in 20.532s`)

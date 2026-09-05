@@ -62,6 +62,11 @@ class AccountPaymentRegister(models.TransientModel):
             raise UserError(_("Bank Fee cannot be posted until a Bank Fee Journal Entry is supported."))
         if refund_pv.other_income_dis > 0 and not refund_pv.other_income_account_id:
             raise UserError(_("Please select an Other Income Account when Other Income is greater than zero."))
+        if refund_pv.other_income_account_id and (
+            refund_pv.other_income_account_id.company_id != refund_pv.company_id
+            or refund_pv.other_income_account_id.deprecated
+        ):
+            raise UserError(_("Other Income Account must be active and belong to the same company."))
 
         credit_note = refund_pv.credit_note_id
         if not credit_note or credit_note.state != 'posted' or credit_note.move_type != 'out_refund':
