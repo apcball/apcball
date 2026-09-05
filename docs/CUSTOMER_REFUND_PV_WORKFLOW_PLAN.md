@@ -12,12 +12,19 @@
 - **ขอบเขตโค้ด:** แก้เฉพาะ `buz_accounting_addon/`; ไม่แก้ `po_so_credit_note`, `sale_order_line_credit_note`, Vendor PV, Receipt Voucher หรือ Batch Payment flow อื่น
 - **DEV:** การ deploy/upgrade/restart รอบนี้ทำเฉพาะ `buz_accounting_addon` บน `MOG_DEV`; ไม่ deploy PROD
 
-## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 19:55–19:56 (เวลาไทย)
+## แก้ RPC Error ของ Source SO/Invoice
+
+- สาเหตุคือการกำหนดค่า Many2many ใน `_compute_source_documents()` ส่ง `fields.Command` เป็นคำสั่งเดี่ยว ทำให้ Odoo อ่านค่า ID ผิดรูปแบบและเกิด `TypeError: unhashable type: 'list'`
+- แก้เฉพาะ `buz_accounting_addon/models/customer_refund_pv.py` โดยห่อคำสั่ง `fields.Command.clear()` และ `fields.Command.set(...)` เป็นรายการคำสั่ง เช่น `[fields.Command.set(ids)]`
+- ไม่เปลี่ยน logic การค้นหา Source SO/Invoice, กฎที่ Invoice ทุกใบต้อง Paid, การคำนวณยอดเงิน, Payment หรือ Journal Entry
+- ตรวจ Python AST และ `git diff --check` ผ่านแล้วก่อน deploy
+
+## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 20:04–20:06 (เวลาไทย)
 
 - **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/` โดยไม่อัปโหลดเอกสารและไม่แตะโมดูลอื่น
-- **Upgrade:** สำเร็จบนฐานข้อมูล `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded in 4.92s`
+- **Upgrade:** สำเร็จบนฐานข้อมูล `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded in 4.59s`
 - **Restart:** สำเร็จด้วยการ restart เฉพาะ container `odoo`; HTTP service `8069` และ longpolling `8072` กลับมาทำงาน
-- **สิ่งที่ส่งขึ้น DEV:** การตรวจ Source SO/Invoice ตามความสัมพันธ์ SO lines, Invoice ทั้งหมดของ SO และ validation กลางตอน Confirm/Register Payment
+- **สิ่งที่ส่งขึ้น DEV:** แก้ RPC Error ใน `_compute_source_documents()` ให้ Source Sale Orders และ Source Invoices คำนวณได้โดยใช้ `fields.Command` เป็นรายการคำสั่ง พร้อมคง logic การตรวจ Source SO/Invoice เดิม
 - **คำเตือน:** ยังมี warning เดิมของโมดูลอื่น เช่น `office_supply_requisition` ไม่ installable และ Odoo field warnings; ไม่พบ error ที่ทำให้ `buz_accounting_addon` upgrade ล้มเหลว
 - **ขอบเขตการยืนยัน:** เป็นผลการ deploy/upgrade/restart เท่านั้น ยังไม่ได้ยืนยัน Browser/PDF หรือ accounting business UAT บน DEV
 

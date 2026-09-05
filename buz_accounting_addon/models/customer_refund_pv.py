@@ -321,9 +321,9 @@ class BuzCustomerRefundPv(models.Model):
     def _compute_source_documents(self):
         for pv in self:
             if not pv.credit_note_id:
-                pv.source_sale_order_ids = fields.Command.clear()
+                pv.source_sale_order_ids = [fields.Command.clear()]
                 pv.source_sale_order_count = 0
-                pv.source_invoice_ids = fields.Command.clear()
+                pv.source_invoice_ids = [fields.Command.clear()]
                 pv.source_invoice_count = 0
                 pv.source_status = _("No Credit Note")
                 pv.source_status_is_paid = False
@@ -332,9 +332,9 @@ class BuzCustomerRefundPv(models.Model):
             sale_orders = pv._get_source_sale_orders()
             invoices_by_order = pv._get_source_invoices_by_sale_order()
             invoices = pv._get_source_invoices()
-            pv.source_sale_order_ids = fields.Command.set(sale_orders.ids)
+            pv.source_sale_order_ids = [fields.Command.set(sale_orders.ids)]
             pv.source_sale_order_count = len(sale_orders)
-            pv.source_invoice_ids = fields.Command.set(invoices.ids)
+            pv.source_invoice_ids = [fields.Command.set(invoices.ids)]
             pv.source_invoice_count = len(invoices)
 
             if not sale_orders:
