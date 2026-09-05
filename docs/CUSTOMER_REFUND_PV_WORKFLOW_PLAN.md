@@ -156,6 +156,12 @@ Posted Customer Credit Note (out_refund)
 - **DEV:** การ deploy/upload, module upgrade และ restart ที่เวลา 06:08 เป็นประวัติจริงของ DEV และยังคงมีโค้ดจาก `51461ad4` อยู่; การ revert ใน local ไม่ได้เปลี่ยน DEV และยังไม่มีคำสั่ง deploy rollback
 - **ผลกระทบที่ต้องทราบ:** local จะกลับไปใช้ `sale_line_id` และคำสั่งแบบ `(6, 0, ids)` เดิมในสอง wizard จึงอาจนำปัญหา CN ไม่มี `sale_line_ids` และ Refund PV หา Invoice ต้นทางไม่พบกลับมา
 
+### ขอบเขตหลังการแก้ไข
+- **อยู่ในขอบเขต:** ปรับสถานะและคำอธิบายในเอกสารนี้ให้สอดคล้องกับ local Git หลัง revert `51461ad4`; การย้อนโค้ดจำกัดเฉพาะ 2 wizard ที่ระบุไว้ข้างต้น
+- **อยู่นอกขอบเขต:** ไม่แก้ `buz_accounting_addon`, ไม่แก้ข้อมูล CN/Invoice เดิม, ไม่ทำ repair หรือ backfill `sale_line_ids` และไม่เปลี่ยน workflow การเงินส่วนอื่น
+- **DEV/PROD:** ไม่ upload, deploy rollback, upgrade module, restart หรือดำเนินการใด ๆ กับ DEV/PROD จากการแก้ไขครั้งนี้
+- **การส่งมอบ:** การเปลี่ยนแปลงเอกสารยังไม่ commit เพื่อให้ผู้ดูแล repository ตรวจสอบและ commit เอง
+
 ## ประวัติการ Upgrade และ Restart DEV (ไม่ใช่สถานะ local ปัจจุบัน)
 - **Upload ล่าสุด 2026-09-04 06:08 (ประวัติการ deploy fix sale_line_ids):** `scp -r -i dev_server_ed25519` `buz_accounting_addon, po_so_credit_note, sale_order_line_credit_note` → `/srv/docker/odoo/custom-addons/` `SCP_EXIT True` ทั้ง 3 โมดูล, `cp -r` ไป `/srv/docker/odoo_dev/custom-addons/` `COPIED` ทั้ง 3, ตรวจ `models/customer_refund_pv.py 40932` bytes (เดิม), `po_so_credit_note/wizards/so_credit_note_wizard.py` มี `sale_line_ids: [fields.Command.link...]` (แก้ `sale_line_id` → `sale_line_ids`), `sale_order_line_credit_note/wizard/sale_order_credit_note_wizard.py` มี `Command.link/set` (แก้ `(6,0)` → `Command`), `Module buz_accounting_addon loaded in 6.73s` `Registry loaded in 37.261s`
 - **Upgrade 2026-09-04 06:08 (ประวัติ):** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon,po_so_credit_note,sale_order_line_credit_note --stop-after-init --no-http` สำเร็จ `320 modules loaded in 19.79s, 1090 queries` `Module buz_accounting_addon loaded in 6.73s` `Registry loaded in 37.261s` `Modules loaded. Stopping gracefully` (warning `office_supply_requisition not installable` + `fields.states` เดิม — ไม่กระทบ Refund PV) `commit 51461ad4 fix: preserve sale_line_ids on CN creation`
