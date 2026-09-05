@@ -12,12 +12,12 @@
 - **ขอบเขตโค้ด:** แก้เฉพาะ `buz_accounting_addon/`; ไม่แก้ `po_so_credit_note`, `sale_order_line_credit_note`, Vendor PV, Receipt Voucher หรือ Batch Payment flow อื่น
 - **DEV:** การ deploy/upgrade/restart รอบนี้ทำเฉพาะ `buz_accounting_addon` บน `MOG_DEV`; ไม่ deploy PROD
 
-## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 18:26–18:27 (เวลาไทย)
+## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 19:55–19:56 (เวลาไทย)
 
 - **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/` โดยไม่อัปโหลดเอกสารและไม่แตะโมดูลอื่น
-- **Upgrade:** สำเร็จบนฐานข้อมูล `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded in 5.14s`
+- **Upgrade:** สำเร็จบนฐานข้อมูล `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded in 4.92s`
 - **Restart:** สำเร็จด้วยการ restart เฉพาะ container `odoo`; HTTP service `8069` และ longpolling `8072` กลับมาทำงาน
-- **สิ่งที่ส่งขึ้น DEV:** Domain ของ `Other Income Account` และ validation ตอน Confirm/Register Payment ตามรายละเอียดด้านล่าง
+- **สิ่งที่ส่งขึ้น DEV:** การตรวจ Source SO/Invoice ตามความสัมพันธ์ SO lines, Invoice ทั้งหมดของ SO และ validation กลางตอน Confirm/Register Payment
 - **คำเตือน:** ยังมี warning เดิมของโมดูลอื่น เช่น `office_supply_requisition` ไม่ installable และ Odoo field warnings; ไม่พบ error ที่ทำให้ `buz_accounting_addon` upgrade ล้มเหลว
 - **ขอบเขตการยืนยัน:** เป็นผลการ deploy/upgrade/restart เท่านั้น ยังไม่ได้ยืนยัน Browser/PDF หรือ accounting business UAT บน DEV
 
@@ -27,6 +27,25 @@
 - Confirm และ Register Payment ตรวจเฉพาะว่าบัญชีอยู่บริษัทเดียวกันและไม่ Archived
 - หาก `Other Income` มากกว่า 0 ต้องเลือกบัญชี ส่วนการคำนวณ Other Income และการสร้าง Payment/Journal Entry ยังคงเดิม
 - ไม่เปลี่ยนลำดับฟิลด์, workflow, Payment Status, Amounts หรือ Vendor PV
+
+## การตรวจ Source SO และ Invoice รอบนี้
+
+ใช้เส้นทางตรวจสอบเดียวกันทั้งตอน Confirm และ Register Payment:
+
+```text
+Customer Credit Note
+→ Credit Note Lines ที่มี sale_line_ids
+→ Sale Order Lines
+→ Sale Order ทุกใบที่เกี่ยวข้อง
+→ Invoice ทั้งหมดของแต่ละ Sale Order
+→ ตรวจว่าเป็น out_invoice, Posted, Paid และ residual = 0
+```
+
+- แสดง Source Sale Orders, Source Invoices, จำนวน SO, จำนวน Invoice และสถานะรวมแบบ Readonly บนฟอร์ม
+- รองรับ Credit Note ที่เชื่อมกับหลาย SO และต้องผ่านการตรวจครบทุก SO/Invoice
+- ค้นหา Invoice จาก `sale.order.invoice_ids` และ Invoice lines ที่เชื่อมกับ SO lines จึงไม่จำกัดเฉพาะบรรทัดที่อยู่ใน Credit Note
+- หาก SO ไม่มี Invoice หรือ Invoice ใดไม่ผ่าน จะแจ้งชื่อเอกสารและรายละเอียด `state`, `payment_state`, `residual`
+- ไม่ใช้ `invoice_origin` เป็นแหล่งอ้างอิง และไม่แก้โมดูล `sale`, `account` หรือโมดูลภายนอก
 
 ## สรุป Flow ปัจจุบัน
 ```

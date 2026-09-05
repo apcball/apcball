@@ -98,7 +98,7 @@
                             <field name="source_invoice_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}" string="Source Invoices"/>
                         </group>
                         <group>
-                            <field name="source_status" readonly="1" string="Source Status" placeholder="Source Invoice Paid / Invoice ยังไม่ Paid / ไม่พบ Invoice ต้นทาง"/>
+                            <field name="source_status" readonly="1" string="Source Status" placeholder="Source Invoice Paid / Invoice ยังไม่ Paid / ไม่พบ Invoice ของ SO / ไม่พบ SO ต้นทาง"/>
                         </group>
                     </group>
                     <group string="Refund Payment (Standard Odoo)" invisible="payment_count == 0">
