@@ -124,9 +124,10 @@
                             </tbody>
                         </table>
 
-                        <!-- 2. Payment Method Table — only standard Refund Amount is supported -->
-                        <t t-set="payment_main_amount" t-value="o.refund_amount or o.amount_total_gross"/>
-                        <t t-set="payment_breakdown_total" t-value="payment_main_amount"/>
+                        <!-- 2. Payment Method Table — use actual Odoo Payments when available -->
+                        <t t-set="payment_rows" t-value="o.get_report_payments()"/>
+                        <t t-set="payment_amount_total" t-value="sum(row['amount'] for row in payment_rows)"/>
+                        <t t-set="payment_breakdown_total" t-value="payment_amount_total + (o.other_income_dis or 0.0)"/>
                         <table class="table-bordered" style="margin-top: 15px;">
                             <thead>
                                 <tr class="table-header">
@@ -139,32 +140,28 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr style="vertical-align: top;">
+                                <tr t-foreach="payment_rows" t-as="payment_row" style="vertical-align: top;">
                                     <td class="text-center">
-                                        <span t-if="o.payment_type == 'check'">เช็ค</span>
-                                        <span t-elif="o.payment_type == 'transfer'">โอนเงิน</span>
-                                        <span t-elif="o.payment_type == 'cash'">เงินสด</span>
+                                        <span t-esc="payment_row['method']"/>
                                     </td>
                                     <td>
-                                        <span t-field="o.destination_journal_id.name"/>
+                                        <span t-esc="payment_row['journal']"/>
                                     </td>
                                     <td class="text-center">
-                                        <span t-field="o.check_number"/>
+                                        <span t-esc="payment_row['check_number']"/>
                                     </td>
                                     <td class="text-center">
-                                        <span t-if="o.payment_type == 'check'" t-field="o.check_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
-                                        <span t-else="" t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                        <span t-esc="payment_row['date']" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
                                     </td>
                                     <td>
-                                        <span t-field="o.check_pay_to"/>
+                                        <span t-esc="payment_row['pay_to']"/>
                                     </td>
                                     <td class="text-end">
-                                        <span t-esc="payment_main_amount" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="payment_row['amount']" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                 </tr>
 
-                                <!-- Bank Fee is hidden until a real Journal Entry is implemented. -->
-                                <tr t-if="False" style="vertical-align: top;">
+                                <tr t-if="o.bank_free_dis > 0" style="vertical-align: top;">
                                     <td class="text-center">
                                         Bank Fee
                                     </td>
@@ -181,7 +178,16 @@
                                     </td>
                                 </tr>
 
-                                <!-- WHT is hidden until a real Journal Entry is implemented. -->
+                                <tr t-if="o.other_income_dis > 0" style="vertical-align: top;">
+                                    <td class="text-center">Other Income</td>
+                                    <td><span t-field="o.other_income_account_id.name"/></td>
+                                    <td></td>
+                                    <td class="text-center"><span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
+                                    <td></td>
+                                    <td class="text-end"><span t-field="o.other_income_dis" t-options='{"widget": "float", "precision": 2}'/></td>
+                                </tr>
+
+                                <!-- WHT remains hidden because Refund PV has no WHT Journal Entry. -->
                                 <tr t-if="False" style="vertical-align: top;">
                                     <td class="text-center">
                                         หัก ณ.ที่จ่าย
@@ -214,7 +220,7 @@
                         <div class="text-end" style="margin-top: 5px; font-weight: bold; border-top: 1px solid transparent;">
                             Amount
                         </div>
-                        <t t-set="preview_lines" t-value="o.get_preview_moves()"/>
+                        <t t-set="preview_lines" t-value="o.get_report_journal_lines()"/>
                         <table class="table-bordered" style="margin-top: 0px; padding-top: 5px; table-layout: fixed;">
                             <thead>
                                 <tr class="table-header">

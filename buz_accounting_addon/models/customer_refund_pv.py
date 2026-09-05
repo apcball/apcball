@@ -51,7 +51,15 @@ class BuzCustomerRefundPv(models.Model):
         tracking=True,
     )
     bank_free_dis = fields.Monetary(string="Bank Fee", currency_field="currency_id")
-    other_income_dis = fields.Monetary(string="Other Income", currency_field="currency_id")
+    other_income_dis = fields.Monetary(
+        string="Other Income", currency_field="currency_id", readonly=True, copy=False,
+        help="Credit Note residual less the approved Refund Amount.",
+    )
+    other_income_account_id = fields.Many2one(
+        "account.account", string="Other Income Account",
+        domain="[('account_type', '=', 'income'), ('company_id', '=', company_id)]",
+        check_company=True, copy=False,
+    )
     check_number = fields.Char(string="Cheque Number", tracking=True)
     check_date = fields.Date(string="Cheque Date", tracking=True)
     check_pay_to = fields.Char(string="Pay to", tracking=True)
@@ -96,6 +104,19 @@ class BuzCustomerRefundPv(models.Model):
         if self.partner_id and not self.check_pay_to:
             self.check_pay_to = self.partner_id.name
 
+    @api.onchange("credit_note_id", "refund_amount")
+    def _onchange_other_income(self):
+        for pv in self:
+            pv.other_income_dis = pv._get_other_income_amount()
+
+    def _get_credit_note_residual(self):
+        self.ensure_one()
+        return abs(self.credit_note_id.amount_residual) if self.credit_note_id else 0.0
+
+    def _get_other_income_amount(self):
+        self.ensure_one()
+        return max(self._get_credit_note_residual() - (self.refund_amount or 0.0), 0.0)
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -122,7 +143,8 @@ class BuzCustomerRefundPv(models.Model):
             protected = {
                 "name", "partner_id", "credit_note_id", "date", "company_id", "currency_id",
                 "payment_type", "destination_journal_id", "payment_method_line_id",
-                "bank_free_dis", "other_income_dis", "check_number", "check_date", "check_pay_to",
+                "bank_free_dis", "other_income_dis", "other_income_account_id",
+                "check_number", "check_date", "check_pay_to",
                 "line_ids", "note", "refund_amount",
             }
             if protected.intersection(vals.keys()) and not (set(vals.keys()) <= {"state", "message_follower_ids", "activity_ids", "message_ids"}):
@@ -133,6 +155,8 @@ class BuzCustomerRefundPv(models.Model):
     def action_confirm(self):
         """Current phase: Validate and confirm Draft -> Posted. No payment creation / no reconcile."""
         for pv in self:
+            # เก็บยอดส่วนต่างก่อน Post เพื่อไม่ให้ residual หลังชำระทำให้รายงานคลาดเคลื่อน
+            pv.other_income_dis = pv._get_other_income_amount()
             if pv.state != "draft":
                 raise UserError(_("Only draft Refund PV can be confirmed. Document %s is already %s.") % (pv.name or "", pv.state))
             if not pv.name or pv.name in ("/", False, None, ""):
@@ -170,6 +194,15 @@ class BuzCustomerRefundPv(models.Model):
                 raise UserError(_("Net refund amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (pv.amount_total_net, pv.credit_note_id.name, residual))
             if pv.refund_amount - residual > 1e-6:
                 raise UserError(_("Refund Amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (pv.refund_amount, pv.credit_note_id.name, residual))
+            if pv.bank_free_dis:
+                raise UserError(_("Bank Fee cannot be posted until a Bank Fee Journal Entry is supported."))
+            if pv.other_income_dis > 0 and not pv.other_income_account_id:
+                raise UserError(_("Please select an Other Income Account when Other Income is greater than zero."))
+            if pv.other_income_account_id and (
+                pv.other_income_account_id.company_id != pv.company_id
+                or pv.other_income_account_id.account_type != "income"
+            ):
+                raise UserError(_("Other Income Account must be an Income account in the same company."))
             # Partial payment: total of all posted PVs for same CN must not exceed CN total (cancelled PVs excluded, cancelled payments not counted as paid but PV still counts)
             other_posted = self.search([('credit_note_id', '=', pv.credit_note_id.id), ('state', '=', 'posted'), ('id', '!=', pv.id)])
             total_other = sum(other_posted.mapped('refund_amount'))
@@ -500,6 +533,60 @@ class BuzCustomerRefundPv(models.Model):
             action.update({"view_mode": "form", "res_id": orders.id})
         return action
 
+    def get_report_payments(self):
+        """Return payment rows for the report, preferring real payments.
+
+        เมื่อมี Payment จริง ให้ใช้ข้อมูลจาก Payment/Journal ของ Odoo โดยตรง
+        ส่วนเอกสารที่ยังไม่ Register Payment จะแสดงข้อมูลที่กรอกไว้ใน Refund PV
+        เป็นแถว preview เดียว
+        """
+        self.ensure_one()
+        payments = self.payment_ids.filtered(lambda payment: payment.state != "cancel")
+        if not payments:
+            return [{
+                "method": {
+                    "cash": _("Cash"),
+                    "transfer": _("Transfer"),
+                    "check": _("Check"),
+                }.get(self.payment_type, self.payment_type or "-"),
+                "journal": self.destination_journal_id.name or "-",
+                "check_number": self.check_number or "-",
+                "date": self.check_date if self.payment_type == "check" and self.check_date else self.date,
+                "pay_to": self.check_pay_to or self.partner_id.name or "-",
+                "amount": self.refund_amount or self.amount_total_gross,
+            }]
+
+        rows = []
+        for payment in payments:
+            method = payment.payment_method_line_id.name or "-"
+            rows.append({
+                "method": method,
+                "journal": payment.journal_id.name or "-",
+                "check_number": getattr(payment, "check_number", False) or self.check_number or "-",
+                "date": payment.date or self.date,
+                "pay_to": getattr(payment, "check_pay_to", False) or self.check_pay_to or self.partner_id.name or "-",
+                "amount": payment.amount,
+            })
+        return rows
+
+    def get_report_journal_lines(self):
+        """Return posted Payment journal lines, or the existing preview fallback."""
+        self.ensure_one()
+        posted_moves = self.payment_ids.filtered(
+            lambda payment: payment.state == "posted" and payment.move_id and payment.move_id.state == "posted"
+        ).mapped("move_id")
+        if not posted_moves:
+            return self.get_preview_moves()
+
+        return [{
+            "code": line.account_id.code,
+            "name": line.account_id.name,
+            "ref": line.move_id.ref or line.move_id.name or self.name,
+            "date": line.date or line.move_id.date,
+            "debit": line.debit,
+            "credit": line.credit,
+        } for line in posted_moves.mapped("line_ids")]
+
     def get_preview_moves(self):
         """
         Compute simulated journal entry lines for Customer Refund PV report.
@@ -521,7 +608,7 @@ class BuzCustomerRefundPv(models.Model):
             total_wht = 0.0
             total_net = total_gross
         bank_fee = 0.0
-        other_income = 0.0
+        other_income = self.other_income_dis or 0.0
         total_disbursement = total_net + bank_fee
 
         if total_gross > 0:
@@ -536,7 +623,7 @@ class BuzCustomerRefundPv(models.Model):
                 'name': account.name if account else _('Receivable'),
                 'ref': voucher_name,
                 'date': date,
-                'debit': total_gross,
+                'debit': total_gross + other_income,
                 'credit': 0.0,
             })
 
@@ -583,21 +670,8 @@ class BuzCustomerRefundPv(models.Model):
                 'credit': 0.0,
             })
 
-        if other_income > 0:
-            other_income_account = self.env['account.account'].search([
-                ('code', 'in', ['423000', '42300']),
-                ('company_id', '=', self.company_id.id)
-            ], limit=1)
-            if not other_income_account:
-                other_income_account = self.env['account.account'].search([
-                    ('name', 'ilike', 'เน€เธเธเน€เธเธ’เน€เธเธเน€เธยเน€เธโ€เน€เธยเน€เธเธเน€เธเธ—เน€เธยเน€เธย'),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
-            if not other_income_account:
-                other_income_account = self.env['account.account'].search([
-                    ('account_type', '=', 'income'),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
+        if other_income > 0 and self.other_income_account_id:
+            other_income_account = self.other_income_account_id
             lines.append({
                 'code': other_income_account.code if other_income_account else '423000',
                 'name': other_income_account.name if other_income_account else _('เน€เธเธเน€เธเธ’เน€เธเธเน€เธยเน€เธโ€เน€เธยเน€เธเธเน€เธเธ—เน€เธยเน€เธย'),

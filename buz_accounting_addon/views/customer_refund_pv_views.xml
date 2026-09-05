@@ -81,15 +81,12 @@
                             <field name="payment_type" readonly="state != 'draft'"/>
                             <field name="destination_journal_id" required="1" readonly="state != 'draft'"/>
                             <field name="payment_method_line_id" required="payment_type != 'cash'" invisible="payment_type == 'cash'" readonly="state != 'draft'"/>
-                            <field name="bank_free_dis" invisible="1"/>
-                            <field name="other_income_dis" invisible="1"/>
+                            <field name="bank_free_dis" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="state != 'draft'"/>
+                            <field name="other_income_dis" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                            <field name="other_income_account_id" domain="[('account_type', '=', 'income'), ('company_id', '=', company_id)]" required="other_income_dis > 0" readonly="state != 'draft'"/>
                             <field name="check_pay_to" string="Pay To" readonly="state != 'draft'"/>
                             <field name="check_number" string="Cheque No." readonly="state != 'draft'"/>
-                        </group>
-                    </group>
-                    <group string="Payment Details" invisible="payment_type != 'check'">
-                        <group>
-                            <field name="check_date" readonly="state != 'draft'"/>
+                            <field name="check_date" readonly="state != 'draft'" invisible="payment_type != 'check'"/>
                         </group>
                     </group>
                     <group string="Source Documents (Auto-detected, Readonly)" invisible="not credit_note_id">

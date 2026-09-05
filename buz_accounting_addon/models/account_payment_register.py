@@ -29,6 +29,22 @@ class AccountPaymentRegister(models.TransientModel):
             return super().make_payments()
         return self.with_context(batch=False).action_create_payments()
 
+    def _add_refund_pv_link(self, vals):
+        refund_pv_id = self.env.context.get('buz_customer_refund_pv_id')
+        if refund_pv_id:
+            refund_pv = self.env['buz.customer.refund.pv'].browse(refund_pv_id).exists()
+            if refund_pv:
+                vals['buz_customer_refund_pv_id'] = refund_pv.id
+        return vals
+
+    def _create_payment_vals_from_wizard(self, batch_result):
+        vals = super()._create_payment_vals_from_wizard(batch_result)
+        return self._add_refund_pv_link(vals)
+
+    def _create_payment_vals_from_batch(self, batch_result):
+        vals = super()._create_payment_vals_from_batch(batch_result)
+        return self._add_refund_pv_link(vals)
+
     def _validate_refund_pv(self):
         """ตรวจเงื่อนไข Refund PV ก่อนให้ Odoo สร้าง Post และ Reconcile payment."""
         refund_pv_id = self._context.get('buz_customer_refund_pv_id')
@@ -42,12 +58,24 @@ class AccountPaymentRegister(models.TransientModel):
             raise UserError(_("Refund PV must be posted before Register Payment."))
         if refund_pv.payment_ids.filtered(lambda payment: payment.state != 'cancel'):
             raise UserError(_("Payment already registered for Refund PV %s.") % refund_pv.name)
+        if refund_pv.bank_free_dis:
+            raise UserError(_("Bank Fee cannot be posted until a Bank Fee Journal Entry is supported."))
+        if refund_pv.other_income_dis > 0 and not refund_pv.other_income_account_id:
+            raise UserError(_("Please select an Other Income Account when Other Income is greater than zero."))
 
         credit_note = refund_pv.credit_note_id
         if not credit_note or credit_note.state != 'posted' or credit_note.move_type != 'out_refund':
             raise UserError(_("A posted Customer Credit Note is required."))
 
         residual = abs(credit_note.amount_residual)
+        expected_other_income = max(residual - refund_pv.refund_amount, 0.0)
+        if refund_pv.currency_id.compare_amounts(
+            refund_pv.other_income_dis, expected_other_income,
+        ) != 0:
+            raise UserError(_(
+                "Credit Note residual changed. Please cancel and recreate/confirm "
+                "the Refund PV before registering payment."
+            ))
         for wizard in self:
             if refund_pv.currency_id.compare_amounts(wizard.amount, 0.0) <= 0:
                 raise UserError(_("Payment amount must be greater than 0."))

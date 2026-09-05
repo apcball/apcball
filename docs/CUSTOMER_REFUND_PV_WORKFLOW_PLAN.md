@@ -5,7 +5,9 @@
 - **Local Git:** โค้ด Customer Refund PV อยู่ภายใต้ `buz_accounting_addon` และใช้ flow มาตรฐานของ Odoo: `Posted Credit Note → Refund PV Confirm → Register Refund Payment → Payment Posted/Reconciled`
 - **Payment:** ใช้ `refund_amount` ที่อนุมัติ, ใช้เลขจาก Odoo sequence และให้ Odoo จัดการ Post/Reconcile; ไม่มีการสร้าง Draft Payment เพื่อให้แก้เลข และไม่มี custom number lock หรือ custom reconcile
 - **Validation:** Credit Note ต้องเป็น `out_refund` และ Posted, ยอดคืนต้องไม่เกิน residual, Invoice ต้นทางทุกใบต้อง Paid และยอดที่แก้ใน Register Wizard ต้องถูกปฏิเสธ
-- **WHT / Bank Fee / Other Income:** ปิด/ซ่อนจาก Customer Refund PV และรายงาน จนกว่าจะมี Journal Entry รองรับจริง
+- **Other Income:** คำนวณอัตโนมัติจาก `Credit Note Residual - Refund Amount` และบันทึกเป็น Journal Item จริงใน Payment เมื่อมียอดส่วนต่าง
+- **Bank Fee:** แสดงและแก้ไขได้ตอน Draft แต่ยังไม่อนุญาตให้ Post หากมียอด เพราะยังไม่มี Journal Entry รองรับ
+- **WHT:** ยังไม่รวมใน Customer Refund PV flow นี้
 - **ขอบเขตโค้ด:** แก้เฉพาะ `buz_accounting_addon/`; ไม่แก้ `po_so_credit_note`, `sale_order_line_credit_note`, Vendor PV, Receipt Voucher หรือ Batch Payment flow อื่น
 - **DEV:** การ deploy/upgrade/restart รอบนี้ทำเฉพาะ `buz_accounting_addon` บน `MOG_DEV`; ไม่ deploy PROD
 
@@ -26,7 +28,8 @@ Posted Customer Credit Note (out_refund)
 → Print Refund PV (PDF แยกจาก Vendor PV)
 → Refund PV: Register Refund Payment (ปุ่มใหม่บน Refund PV, ใช้ refund_amount 4000)
 → Create Payment ผ่าน Standard Odoo → Payment Posted/Reconciled ตาม Journal และ Outstanding Account
-→ [Phase ถัดไป] WHT / Bank Fee / Other Income เมื่อมี Journal Entry รองรับจริง
+   โดย Dr ลูกหนี้ = Refund Amount + Other Income,
+   Cr Bank/Cash = Refund Amount และ Cr Other Income = Other Income
 ```
 เลขเอกสารแยกตามมาตรฐานระบบ: `Refund PV (PV2600300)` ≠ `Payment/Journal (เลขจาก Odoo sequence)` ≠ `Credit Note (RINV/2026/00052)`
 
@@ -44,6 +47,8 @@ Posted Customer Credit Note (out_refund)
   - `refund_amount:63` เพิ่ม `fields.Monetary(string="Refund Amount")` สำหรับยอดจ่ายจริงที่บัญชีระบุ รองรับบางส่วนเช่น `4,990 → 3,000/4,000`
   - `line_ids:60` One2many `buz.customer.refund.pv.line`
   - `amount_total_gross/wht/net:66` คงสูตรเดิม `sum(line)` ไม่แก้
+  - `other_income_dis` คำนวณจาก residual ของ Credit Note หัก `refund_amount` และเก็บค่าไว้ก่อนเอกสารเป็น Posted
+  - `other_income_account_id` รับเฉพาะบัญชีประเภท Income ของบริษัทเดียวกัน และไม่บังคับเลือกเมื่อ Other Income เป็นศูนย์
   - `payment_ids:72` `Many2many account.payment buz_customer_refund_pv_payment_rel` + `payment_count:73` `compute _compute_payment_count:185` (นับรวม cancel สำหรับประวัติ) + `has_active_payment:74` `compute _compute_has_active_payment:200` `any(p.state!='cancel')` สำหรับเปิดปุ่มใหม่ + `action_view_payments:189` + `action_register_refund_payment:204`
 - **Line `BuzCustomerRefundPvLine:351`**
   - ไม่มี field `name` / `date`
@@ -54,14 +59,21 @@ Posted Customer Credit Note (out_refund)
   - ตรวจ `state draft → name จำเป็น + ตรวจซ้ำ search name, partner, date, credit_note out_refund+posted, line_ids, refund_amount>0, gross/net>0, ทุกยอด <= residual (amount_residual_signed)` รวมถึง `refund_amount - residual >1e-6`
   - ตรวจ Partial: `other_posted = search([credit_note_id, posted, id!=current]) total_other = sum(refund_amount)` `total_other + refund_amount <= cn_total(4990)` กันยอดรวมหลาย PV เกิน CN, `cancel` PV ไม่นับ (state!='posted')
   - `write({"state":"posted"})` + `message_post` ไม่สร้าง `account.payment` ไม่ reconcile (Confirm ยังไม่สร้าง Payment)
-  - `write:101` ล็อก `protected {name, partner_id, credit_note_id, date, payment_type, destination_journal_id, bank_free_dis, other_income_dis, line_ids, note, refund_amount}` หลัง Posted, `_check_name_unique:90` กันซ้ำ
+  - `write:101` ล็อก `protected {name, partner_id, credit_note_id, date, payment_type, destination_journal_id, bank_free_dis, other_income_dis, other_income_account_id, line_ids, note, refund_amount}` หลัง Posted, `_check_name_unique:90` กันซ้ำ
 - **Register Refund Payment `action_register_refund_payment:219` (ปุ่มใหม่บน Refund PV)**
   - ตรวจ `state posted, credit_note_id มี, move_type out_refund, credit_note posted, refund_amount>0, not already registered (has_active_payment), refund_amount <= residual` กัน `Draft, ไม่มี CN, CN ไม่ใช่ out_refund, CN ไม่ posted, ยอด 0/ลบ, ยอดเกิน, Register ซ้ำ`
   - `ctx = {active_model account.move, active_ids [credit_note.id], buz_customer_refund_pv_id, force_amount=refund_amount, batch=False, default_journal/date/method}` — `batch=False` บังคับ standard flow ไม่ให้ `account_payment_batch_process` ตีความยอดเต็ม CN, เรียก `credit_note.with_context(ctx).action_register_payment()` เปิด `account.payment.register` ยอดเริ่มต้น `refund_amount` (เช่น 4000 ไม่ใช่ 4990)
   - **Context Merge `260`**: `action_register_payment()` สร้าง context ใหม่ทับ `buz_customer_refund_pv_id/force_amount` จึงต้อง `action_context.update(ctx)` ใส่กลับเข้า `action['context']` ก่อน return เพื่อไม่ให้ยอดหลุดเมื่อ Odoo สร้าง wizard
   - Reconcile กับ Credit Note ที่ผูกเท่านั้น ผ่านกลไกมาตรฐาน Odoo
 - **Preview `get_preview_moves:193`**
-  - ถ้ามี `refund_amount>0` ใช้เป็น `total_gross` (`total_net = gross - wht`) รองรับพิมพ์บางส่วน, `other_income =0.0` ไม่ใช้ Other Income คำนวณยอดคืน, `total_disbursement = net + bank_fee`
+  - ถ้ามี `refund_amount>0` ใช้เป็นยอดคืนจริง และเพิ่ม `Other Income` ในฝั่ง Dr ลูกหนี้/Cr รายได้อื่นเมื่อยังไม่มี Payment Posted
+
+### 3. Other Income และ Payment Journal Entry (รอบปรับปรุงปัจจุบัน)
+- **Form:** จัดลำดับ Payment Details เป็น `Refund Amount → Payment Type → Payment Journal → Payment Method → Bank Fee → Other Income → Other Income Account → Pay To → Cheque No. → Cheque Date`
+- **สูตร:** `Other Income = Credit Note Residual - Refund Amount`; ห้ามติดลบ และถ้ามากกว่า 0 ต้องเลือกบัญชี Income บริษัทเดียวกัน
+- **Journal Entry:** Payment ใช้ยอดคืนจริงสำหรับ Bank/Cash และเพิ่ม write-off line ของ Other Income ใน Payment move เดียวกัน เพื่อให้ `Dr Accounts Receivable = Refund Amount + Other Income` และ Credit Note reconcile ครบ residual
+- **รายงาน:** ถ้ามี Payment Posted ให้ดึง Payment และ Journal Entry จริง; ถ้ายังไม่มี Payment ให้ใช้ preview fallback และแสดง Other Income แยกจากยอดจ่ายจริง
+- **Vendor PV:** ไม่แก้ model, view, report, sequence หรือ workflow ของ Vendor PV
 
 ### 3. Account Move `buz_accounting_addon/models/account_move.py:29`
 - `action_create_customer_refund_pv:29` ตรวจ `out_refund+posted` สร้าง PV `vals {partner_id, company_id, credit_note_id, date}` แล้ว `write line_ids Command.create({move_id, amount_to_pay_gross:residual, wht_base_amount:untaxed})` ใช้ field จริงเท่านั้น
@@ -179,6 +191,15 @@ Posted Customer Credit Note (out_refund)
 - **DEV/PROD:** ไม่ upload, deploy rollback, upgrade module, restart หรือดำเนินการใด ๆ กับ DEV/PROD จากการแก้ไขครั้งนี้
 - **การส่งมอบ:** การเปลี่ยนแปลงเอกสารยังไม่ commit เพื่อให้ผู้ดูแล repository ตรวจสอบและ commit เอง
 
+## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 11:03–11:04 (เวลาไทย)
+
+- **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/`
+- **Upgrade:** สำเร็จบน `MOG_DEV`; Odoo โหลด `buz_accounting_addon` และไฟล์ report/view ใหม่ครบ (`Registry loaded in 20.532s`)
+- **Restart:** สำเร็จด้วย `docker restart odoo`; HTTP `8069` และ longpolling `8072` ทำงาน
+- **คำเตือนที่พบ:** `office_supply_requisition` ไม่ installable และ field warnings เดิมของโมดูลอื่น ไม่ใช่ความล้มเหลวของโมดูลนี้
+- **ยังไม่ได้ทำ:** Browser/PDF UAT, accounting UAT และการทดสอบข้อมูลจริงบน DEV
+- **ขอบเขต:** ไม่ deploy PROD, ไม่แก้ Vendor PV, Receipt Voucher หรือ Batch Payment
+
 ## ประวัติการ Upgrade และ Restart DEV ก่อนรอบนี้
 - **Upload ล่าสุด 2026-09-04 06:08 (ประวัติการ deploy fix sale_line_ids):** `scp -r -i dev_server_ed25519` `buz_accounting_addon, po_so_credit_note, sale_order_line_credit_note` → `/srv/docker/odoo/custom-addons/` `SCP_EXIT True` ทั้ง 3 โมดูล, `cp -r` ไป `/srv/docker/odoo_dev/custom-addons/` `COPIED` ทั้ง 3, ตรวจ `models/customer_refund_pv.py 40932` bytes (เดิม), `po_so_credit_note/wizards/so_credit_note_wizard.py` มี `sale_line_ids: [fields.Command.link...]` (แก้ `sale_line_id` → `sale_line_ids`), `sale_order_line_credit_note/wizard/sale_order_credit_note_wizard.py` มี `Command.link/set` (แก้ `(6,0)` → `Command`), `Module buz_accounting_addon loaded in 6.73s` `Registry loaded in 37.261s`
 - **Upgrade 2026-09-04 06:08 (ประวัติ):** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon,po_so_credit_note,sale_order_line_credit_note --stop-after-init --no-http` สำเร็จ `320 modules loaded in 19.79s, 1090 queries` `Module buz_accounting_addon loaded in 6.73s` `Registry loaded in 37.261s` `Modules loaded. Stopping gracefully` (warning `office_supply_requisition not installable` + `fields.states` เดิม — ไม่กระทบ Refund PV) `commit 51461ad4 fix: preserve sale_line_ids on CN creation`
@@ -199,11 +220,12 @@ Posted Customer Credit Note (out_refund)
 - **Upgrade concurrent** ยังมีโอกาส `SerializationFailure` เมื่อมี request พร้อมกัน — แก้ด้วย retry
 - **Warning คงเหลือ** `office_supply_requisition: not installable, skipped`, `fields.states is no longer supported`, `Two fields ... have same label` — ไม่กระทบ Refund PV
 - **เลข Refund PV** ใช้ `@api.constrains` + ตรวจใน `action_confirm`; เลข Payment/Journal ใช้ Odoo sequence มาตรฐาน
-- **WHT / Bank Fee / Other Income** มี field เดิมเพื่อความเข้ากันได้ของข้อมูล แต่ถูกซ่อนและไม่รวมในยอด/รายงานจนกว่าจะมี Journal Entry รองรับ
+- **WHT** ยังไม่รวมใน flow นี้; **Bank Fee** แสดงใน Draft แต่ยังบล็อกการ Post หากมียอด เพราะยังไม่มี Journal Entry รองรับ
+- **Other Income** คำนวณจาก residual หัก Refund Amount และบันทึกใน Payment Journal Entry จริงผ่านบัญชี Income ที่ผู้ใช้เลือก
 - **Register แยก** ปุ่ม `Register Refund Payment` บน Refund PV ใช้ `refund_amount` (เช่น 4000) ส่วนปุ่มเดิมบน Credit Note ใช้ flow มาตรฐานของ Odoo ไม่กระทบ Invoice/Vendor Bill และหลัง Post ให้ Odoo จัดการ Reconcile
 
 ## ขอบเขต Phase นี้ vs ถัดไป
-- **Phase นี้ทำแล้ว (ตามโค้ดที่ deploy รอบนี้):** `Posted Credit Note → Create Refund PV → Confirm (ตรวจ Credit Note, residual และ Invoice ต้นทาง Paid) → Print → Register Refund Payment (ใช้ refund_amount) → Standard Odoo Payment Posted/Reconciled` เก็บ `payment_ids/payment_count` และสถานะ Payment บน Refund PV, มี smart button เปิด Credit Note/Source Documents/Payments, Credit Note Register Payment เดิมยังเป็น standard และไม่เปลี่ยน Vendor PV/Receipt Voucher/Batch Payment
-- **ยังอยู่นอก Phase นี้:** ไม่ใช้ `WHT` / `Bank Fee` คำนวณยอดคืน (แม้มี field ยังไม่ผูก), ไม่สร้าง `account.payment` อัตโนมัติตอน Confirm, ไม่แก้ Vendor PV/Batch Payment, ไม่รวม `WHT Certificate`, `Bank Transfer`, ไม่ mass update CN เก่าที่ไม่มี sale_line_ids (ต้อง repair รายใบ)
+- **Phase นี้ทำแล้ว (ตามโค้ดที่ deploy รอบนี้):** `Posted Credit Note → Create Refund PV → Confirm → Print → Register Refund Payment → Standard Odoo Payment Posted/Reconciled` โดยใช้ `Refund Amount` เป็นยอดจ่ายจริง และใช้ `Other Income` เป็นส่วนต่างเพื่อ reconcile Credit Note ให้เต็ม residual
+- **ยังอยู่นอก Phase นี้:** WHT, Bank Fee ที่มียอด, WHT Certificate, Bank Transfer, การสร้าง Payment ตอน Confirm และการ mass update CN เก่าที่ไม่มี `sale_line_ids`
 
-ผลการทดสอบและ flow ที่มี `sale_line_ids` ครบในบันทึกเดิมเป็นผลของโค้ดก่อน revert และการ deploy DEV เวลา 06:08 ไม่ใช่สถานะปัจจุบันของ local Git; DEV จะเปลี่ยนเป็นโค้ด Standard Odoo Flow หลังการ deploy และ upgrade ในรอบนี้
+ผลการทดสอบและ flow ที่มี `sale_line_ids` ครบในบันทึกเดิมเป็นประวัติของโค้ดก่อน revert ไม่ใช่สถานะปัจจุบันของ local Git หรือ DEV รอบนี้
