@@ -285,26 +285,40 @@ class BuzCustomerRefundPv(models.Model):
     def _get_source_sale_orders(self):
         return self._get_source_sale_lines().mapped("order_id")
 
-    def _get_source_invoices_by_sale_order(self):
+    def _get_source_invoices_by_sale_order(self, sale_orders=None):
         """Return every customer invoice belonging to each source Sale Order.
 
         ครอบคลุมทั้ง sale.order.invoice_ids และ invoice lines ที่เชื่อมกับ SO lines
         เพื่อไม่จำกัดผลลัพธ์อยู่เฉพาะบรรทัดที่อยู่ใน Credit Note เท่านั้น
         """
         self.ensure_one()
-        sale_orders = self._get_source_sale_orders()
-        invoices_by_order = {}
-        for sale_order in sale_orders:
-            invoices = sale_order.invoice_ids.filtered(
-                lambda move: move.move_type == "out_invoice"
+        sale_orders = sale_orders or self._get_source_sale_orders()
+        invoice_ids_by_order = {
+            sale_order.id: set(
+                sale_order.invoice_ids.filtered(
+                    lambda move: move.move_type == "out_invoice"
+                ).ids
             )
+            for sale_order in sale_orders
+        }
+        sale_line_ids = sale_orders.mapped("order_line").ids
+        if sale_line_ids:
+            # ค้น Invoice line ของ SO ทั้งหมดครั้งเดียว แล้วจัดกลุ่มกลับตาม SO
             invoice_lines = self.env["account.move.line"].search([
-                ("sale_line_ids", "in", sale_order.order_line.ids),
+                ("sale_line_ids", "in", sale_line_ids),
                 ("move_id.move_type", "=", "out_invoice"),
             ])
-            invoices |= invoice_lines.mapped("move_id")
-            invoices_by_order[sale_order.id] = invoices
-        return invoices_by_order
+            for invoice_line in invoice_lines:
+                for sale_line in invoice_line.sale_line_ids:
+                    order_id = sale_line.order_id.id
+                    if order_id in invoice_ids_by_order:
+                        invoice_ids_by_order[order_id].add(invoice_line.move_id.id)
+
+        move_model = self.env["account.move"]
+        return {
+            order_id: move_model.browse(invoice_ids)
+            for order_id, invoice_ids in invoice_ids_by_order.items()
+        }
 
     def _get_source_invoices(self):
         self.ensure_one()
@@ -330,8 +344,14 @@ class BuzCustomerRefundPv(models.Model):
                 continue
 
             sale_orders = pv._get_source_sale_orders()
-            invoices_by_order = pv._get_source_invoices_by_sale_order()
-            invoices = pv._get_source_invoices()
+            invoices_by_order = pv._get_source_invoices_by_sale_order(sale_orders)
+            invoices = self.env["account.move"].browse(
+                list(set(
+                    invoice.id
+                    for order_invoices in invoices_by_order.values()
+                    for invoice in order_invoices
+                ))
+            )
             pv.source_sale_order_ids = [fields.Command.set(sale_orders.ids)]
             pv.source_sale_order_count = len(sale_orders)
             pv.source_invoice_ids = [fields.Command.set(invoices.ids)]
@@ -384,7 +404,7 @@ class BuzCustomerRefundPv(models.Model):
                     "ที่เชื่อมกับ Sale Order"
                 ) % (cn.name or ""))
 
-            invoices_by_order = pv._get_source_invoices_by_sale_order()
+            invoices_by_order = pv._get_source_invoices_by_sale_order(sale_orders)
             missing_invoice_orders = sale_orders.filtered(
                 lambda order: not invoices_by_order.get(order.id)
             )
