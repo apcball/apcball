@@ -105,8 +105,7 @@ class SoCreditNoteWizard(models.TransientModel):
                     'Please define an income account for product "%s".' % so_line.product_id.name
                 ))
 
-            # Create credit note line — preserve sale_line_ids for Refund PV source tracking
-            # Per spec: use sale_line_ids link to original SO line, do NOT guess via invoice_origin
+            # Create credit note line
             self.env['account.move.line'].create({
                 'move_id': move.id,
                 'product_id': so_line.product_id.id,
@@ -114,8 +113,8 @@ class SoCreditNoteWizard(models.TransientModel):
                 'quantity': wizard_line.qty_to_refund,
                 'price_unit': wizard_line.price_unit,
                 'account_id': account.id,
-                'sale_line_ids': [fields.Command.link(so_line.id)],
-                'tax_ids': [fields.Command.set(so_line.tax_id.ids)],
+                'sale_line_id': so_line.id,
+                'tax_ids': [(6, 0, so_line.tax_id.ids)],
             })
 
             # Track source line
