@@ -138,8 +138,12 @@ class BuzCustomerRefundPv(models.Model):
     def write(self, vals):
         if vals.get("name") == "/":
             vals["name"] = self.env["ir.sequence"].next_by_code("buz.customer.refund.pv") or "/"
-        # Lock critical fields once posted (including manual name and refund_amount)
-        if self and any(rec.state == "posted" for rec in self):
+        if "state" in vals and not self.env.context.get("buz_refund_pv_state_transition"):
+            raise UserError(_(
+                "Refund PV state can only be changed through the approved workflow."
+            ))
+        # ล็อกข้อมูลหลักหลัง Posted หรือ Cancelled ไม่ให้แก้ผ่าน write/import โดยตรง
+        if self and any(rec.state in ("posted", "cancel") for rec in self):
             protected = {
                 "name", "partner_id", "credit_note_id", "date", "company_id", "currency_id",
                 "payment_type", "destination_journal_id", "payment_method_line_id",
@@ -148,8 +152,7 @@ class BuzCustomerRefundPv(models.Model):
                 "line_ids", "note", "refund_amount",
             }
             if protected.intersection(vals.keys()) and not (set(vals.keys()) <= {"state", "message_follower_ids", "activity_ids", "message_ids"}):
-                if not (set(vals.keys()) == {"state"} and vals.get("state") == "posted"):
-                    raise UserError(_("Posted Customer Refund PV cannot be edited."))
+                raise UserError(_("Posted or Cancelled Customer Refund PV cannot be edited."))
         return super().write(vals)
 
     def action_confirm(self):
@@ -216,17 +219,103 @@ class BuzCustomerRefundPv(models.Model):
             pv._check_source_invoices_paid()
         # All validations passed: post the documents
         for pv in self:
-            pv.write({"state": "posted"})
+            pv.with_context(buz_refund_pv_state_transition=True).write({"state": "posted"})
             try:
                 pv.message_post(body=_("Refund PV confirmed and posted."))
             except Exception:
                 pass
         return True
 
+    def _get_reconciled_credit_note_lines(self):
+        self.ensure_one()
+        credit_note = self.credit_note_id
+        if not credit_note:
+            return self.env["account.move.line"].browse()
+        receivable_lines = credit_note.line_ids.filtered(
+            lambda line: line.account_id.account_type == "asset_receivable"
+        )
+        return receivable_lines.filtered(
+            lambda line: line.full_reconcile_id
+            or line.matched_debit_ids
+            or line.matched_credit_ids
+        )
+
+    def _check_reset_or_cancel_allowed(self):
+        self.ensure_one()
+        if not self.env.user.has_group("account.group_account_manager"):
+            raise UserError(_("Only Accounting Managers can reset or cancel a Customer Refund PV."))
+        active_payments = self.payment_ids.filtered(lambda payment: payment.state != "cancel")
+        if active_payments:
+            details = ", ".join(
+                "%s (%s)" % (payment.name or payment.id, payment.state)
+                for payment in active_payments
+            )
+            raise UserError(_(
+                "Cancel or reverse the linked Payment(s) before changing this Refund PV: %s"
+            ) % details)
+        reconciled_lines = self._get_reconciled_credit_note_lines()
+        if reconciled_lines:
+            raise UserError(_(
+                "Credit Note %s still has reconciliation entries. "
+                "Remove the reconciliation through the Payment workflow first."
+            ) % (self.credit_note_id.display_name or self.credit_note_id.id))
+
+    def action_reset_to_draft(self):
+        self.ensure_one()
+        if self.state != "posted":
+            raise UserError(_("Only a Posted Customer Refund PV can be reset to Draft."))
+        if not self.env.user.has_group("account.group_account_manager"):
+            raise UserError(_("Only Accounting Managers can reset a Customer Refund PV."))
+        return self._open_state_reason_wizard("reset")
+
+    def action_cancel(self):
+        self.ensure_one()
+        if self.state not in ("draft", "posted"):
+            raise UserError(_("Only a Draft or Posted Customer Refund PV can be cancelled."))
+        if not self.env.user.has_group("account.group_account_manager"):
+            raise UserError(_("Only Accounting Managers can cancel a Customer Refund PV."))
+        return self._open_state_reason_wizard("cancel")
+
+    def _open_state_reason_wizard(self, operation):
+        self.ensure_one()
+        return {
+            "name": _("Refund PV Workflow Reason"),
+            "type": "ir.actions.act_window",
+            "res_model": "buz.customer.refund.pv.state.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_pv_id": self.id,
+                "default_operation": operation,
+            },
+        }
+
+    def _reset_to_draft_with_reason(self, reason):
+        for pv in self:
+            pv._check_reset_or_cancel_allowed()
+            if pv.state != "posted":
+                raise UserError(_("Only a Posted Customer Refund PV can be reset to Draft."))
+            pv.with_context(buz_refund_pv_state_transition=True).write({"state": "draft"})
+            pv.message_post(body=_(
+                "Refund PV reset to draft by %s.\nReason: %s"
+            ) % (self.env.user.name, reason))
+        return True
+
+    def _cancel_with_reason(self, reason):
+        for pv in self:
+            pv._check_reset_or_cancel_allowed()
+            if pv.state not in ("draft", "posted"):
+                raise UserError(_("Only a Draft or Posted Customer Refund PV can be cancelled."))
+            pv.with_context(buz_refund_pv_state_transition=True).write({"state": "cancel"})
+            pv.message_post(body=_(
+                "Refund PV cancelled by %s.\nReason: %s"
+            ) % (self.env.user.name, reason))
+        return True
+
     def unlink(self):
         for pv in self:
-            if pv.state == "posted":
-                raise UserError(_("Cannot delete a posted Customer Refund PV."))
+            if pv.state in ("posted", "cancel"):
+                raise UserError(_("Cannot delete a posted or cancelled Customer Refund PV."))
         return super().unlink()
 
     @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount", "bank_free_dis", "other_income_dis")
@@ -816,11 +905,11 @@ class BuzCustomerRefundPvLine(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        if any(line.pv_id.state == "posted" for line in self):
-            raise UserError(_("Cannot edit lines of a posted Customer Refund PV."))
+        if any(line.pv_id.state in ("posted", "cancel") for line in self):
+            raise UserError(_("Cannot edit lines of a posted or cancelled Customer Refund PV."))
         return super().write(vals)
 
     def unlink(self):
-        if any(line.pv_id.state == "posted" for line in self):
-            raise UserError(_("Cannot delete lines of a posted Customer Refund PV."))
+        if any(line.pv_id.state in ("posted", "cancel") for line in self):
+            raise UserError(_("Cannot delete lines of a posted or cancelled Customer Refund PV."))
         return super().unlink()

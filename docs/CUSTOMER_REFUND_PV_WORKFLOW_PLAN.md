@@ -20,6 +20,15 @@
 - คงกฎเดิม: ต้องพบ SO ทุกใบ, ต้องพบ Invoice ทุกใบ และ Invoice ทุกใบต้องเป็น `out_invoice`, Posted, Paid และ residual เป็นศูนย์
 - การปรับนี้เป็นการลดงานค้นข้อมูลจากโค้ด ยังไม่ได้สรุปผลเวลาโหลดจริงจนกว่าจะทดสอบบน DEV ด้วยข้อมูลหลาย SO/Invoice
 
+## Workflow Reset to Draft / Cancel อย่างปลอดภัย
+
+- เพิ่มปุ่ม `Reset to Draft` และ `Cancel` ในฟอร์ม Customer Refund PV โดยแสดงเฉพาะ Accounting Manager
+- ทุกการดำเนินการต้องผ่าน Wizard และกรอกเหตุผล เหตุผลจะถูกบันทึกใน Chatter พร้อมชื่อผู้ดำเนินการ
+- `Reset to Draft` ใช้ได้เฉพาะ PV ที่ Posted และต้องไม่มี Payment ที่ยัง Active หรือ reconciliation ค้างกับ Credit Note
+- `Cancel` ใช้ได้กับ PV ที่ Draft หรือ Posted ภายใต้เงื่อนไขเดียวกัน และเมื่อ Cancel แล้วจะแก้ไข/Confirm/Register Payment ไม่ได้
+- Payment หรือ Journal Entry ที่มีอยู่จะไม่ถูกลบ แก้ไข หรือยกเลิกอัตโนมัติ ต้องจัดการผ่าน workflow ของ Payment ก่อน
+- ป้องกันการเปลี่ยน `state` ผ่าน `write()` โดยตรง และล็อกข้อมูลหลักของ PV ที่ Posted หรือ Cancelled
+
 ## แก้ RPC Error ของ Source SO/Invoice
 
 - สาเหตุคือการกำหนดค่า Many2many ใน `_compute_source_documents()` ส่ง `fields.Command` เป็นคำสั่งเดี่ยว ทำให้ Odoo อ่านค่า ID ผิดรูปแบบและเกิด `TypeError: unhashable type: 'list'`
@@ -27,12 +36,12 @@
 - ไม่เปลี่ยน logic การค้นหา Source SO/Invoice, กฎที่ Invoice ทุกใบต้อง Paid, การคำนวณยอดเงิน, Payment หรือ Journal Entry
 - ตรวจ Python AST และ `git diff --check` ผ่านแล้วก่อน deploy
 
-## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 20:20–20:22 (เวลาไทย)
+## ผลการ Deploy DEV รอบล่าสุด: 2026-09-05 เวลา 20:54–20:56 (เวลาไทย)
 
 - **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/` โดยไม่อัปโหลดเอกสารและไม่แตะโมดูลอื่น
-- **Upgrade:** สำเร็จบนฐานข้อมูล `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded in 4.88s`
+- **Upgrade:** สำเร็จบนฐานข้อมูล `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded in 5.09s` และ `Registry loaded in 22.904s`
 - **Restart:** สำเร็จด้วยการ restart เฉพาะ container `odoo`; HTTP service `8069` และ longpolling `8072` กลับมาทำงาน
-- **สิ่งที่ส่งขึ้น DEV:** ปรับการค้น Source SO/Invoice เป็น batch เพื่อลด N+1 Query, ใช้ผลคำนวณชุดเดียวกันในหน้าฟอร์ม และคงการแก้ RPC Error ของ `fields.Command` พร้อม logic การตรวจ Source SO/Invoice เดิม
+- **สิ่งที่ส่งขึ้น DEV:** เพิ่ม workflow Reset to Draft/Cancel พร้อม Wizard เหตุผล, สิทธิ์ Accounting Manager, การตรวจ Payment/reconciliation และการป้องกันเปลี่ยน state โดยตรง
 - **คำเตือน:** ยังมี warning เดิมของโมดูลอื่น เช่น `office_supply_requisition` ไม่ installable และ Odoo field warnings; ไม่พบ error ที่ทำให้ `buz_accounting_addon` upgrade ล้มเหลว
 - **ขอบเขตการยืนยัน:** เป็นผลการ deploy/upgrade/restart เท่านั้น ยังไม่ได้ยืนยัน Browser/PDF หรือ accounting business UAT บน DEV
 
