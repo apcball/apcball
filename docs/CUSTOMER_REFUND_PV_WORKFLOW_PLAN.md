@@ -1,6 +1,23 @@
-# Customer Refund PV — Workflow Plan (ถึงขั้น Register Refund Payment แยก)
+# Customer Refund PV — Workflow Plan
 
-## สรุป Flow ปัจจุบัน (อัปเดต 2026-09-04 — แก้เลข Payment ก่อน Post)
+## สถานะปัจจุบันของ local และ DEV
+
+- **Local Git:** โค้ด Customer Refund PV อยู่ภายใต้ `buz_accounting_addon` และใช้ flow มาตรฐานของ Odoo: `Posted Credit Note → Refund PV Confirm → Register Refund Payment → Payment Posted/Reconciled`
+- **Payment:** ใช้ `refund_amount` ที่อนุมัติ, ใช้เลขจาก Odoo sequence และให้ Odoo จัดการ Post/Reconcile; ไม่มีการสร้าง Draft Payment เพื่อให้แก้เลข และไม่มี custom number lock หรือ custom reconcile
+- **Validation:** Credit Note ต้องเป็น `out_refund` และ Posted, ยอดคืนต้องไม่เกิน residual, Invoice ต้นทางทุกใบต้อง Paid และยอดที่แก้ใน Register Wizard ต้องถูกปฏิเสธ
+- **WHT / Bank Fee / Other Income:** ปิด/ซ่อนจาก Customer Refund PV และรายงาน จนกว่าจะมี Journal Entry รองรับจริง
+- **ขอบเขตโค้ด:** แก้เฉพาะ `buz_accounting_addon/`; ไม่แก้ `po_so_credit_note`, `sale_order_line_credit_note`, Vendor PV, Receipt Voucher หรือ Batch Payment flow อื่น
+- **DEV:** การ deploy/upgrade/restart รอบนี้ทำเฉพาะ `buz_accounting_addon` บน `MOG_DEV`; ไม่ deploy PROD
+
+## ผลการ Deploy DEV รอบปัจจุบัน
+
+- **Upload:** สำเร็จ อัปโหลดเฉพาะ `buz_accounting_addon` ไปยัง `/srv/docker/odoo/custom-addons/`
+- **Upgrade:** สำเร็จบน `MOG_DEV` ด้วย `-u buz_accounting_addon`; Odoo รายงาน `Module buz_accounting_addon loaded` และ `Registry loaded`
+- **Restart:** สำเร็จด้วยการ restart เฉพาะ container `odoo`; HTTP service `8069` และ longpolling `8072` กลับมาทำงาน
+- **คำเตือน:** ยังมี warning เดิมของโมดูลอื่น เช่น `office_supply_requisition` ไม่ installable และ Odoo field warnings; ไม่พบ error ที่ทำให้ `buz_accounting_addon` upgrade ล้มเหลว
+- **ขอบเขตการยืนยัน:** เป็นผลการ deploy/upgrade/restart เท่านั้น ยังไม่ได้ยืนยัน Browser/PDF หรือ accounting business UAT บน DEV
+
+## สรุป Flow ปัจจุบัน
 ```
 Posted Customer Credit Note (out_refund)
 → Create Refund PV (Draft)
@@ -8,10 +25,10 @@ Posted Customer Credit Note (out_refund)
 → Confirm → Posted (ล็อกเอกสาร)
 → Print Refund PV (PDF แยกจาก Vendor PV)
 → Refund PV: Register Refund Payment (ปุ่มใหม่บน Refund PV, ใช้ refund_amount 4000)
-→ Create Payment (Draft) → แก้เลข Payment/Journal (เช่น PBNK11/2026/00009, เลขเดียวกับ account.move.name) → Post Payment → Reconcile Payment ↔ Credit Note
-→ [Phase ถัดไป] WHT / Bank Fee / ติดตามยอดจ่ายจริง
+→ Create Payment ผ่าน Standard Odoo → Payment Posted/Reconciled ตาม Journal และ Outstanding Account
+→ [Phase ถัดไป] WHT / Bank Fee / Other Income เมื่อมี Journal Entry รองรับจริง
 ```
-เลขแยกชัดเจน: `Refund PV (PV2600300)` ≠ `Payment/Journal (PBNK11/2026/00009)` ≠ `Credit Note (RINV/2026/00052)` — Payment สร้างเป็น Draft เพื่อให้แก้เลขได้ก่อน Post, Post แล้วล็อกเลขและ Reconcile
+เลขเอกสารแยกตามมาตรฐานระบบ: `Refund PV (PV2600300)` ≠ `Payment/Journal (เลขจาก Odoo sequence)` ≠ `Credit Note (RINV/2026/00052)`
 
 เอกสารเป็นโมเดลแยก `buz.customer.refund.pv` / `buz.customer.refund.pv.line` ใช้ layout เดียวกับ Vendor PV แต่ไม่กระทบ Vendor PV เดิม ปุ่ม `Register Payment` เดิมบน Credit Note ยังใช้ยอดเต็มมาตรฐาน (4990) ไม่ส่ง `refund_amount`
 
@@ -162,7 +179,7 @@ Posted Customer Credit Note (out_refund)
 - **DEV/PROD:** ไม่ upload, deploy rollback, upgrade module, restart หรือดำเนินการใด ๆ กับ DEV/PROD จากการแก้ไขครั้งนี้
 - **การส่งมอบ:** การเปลี่ยนแปลงเอกสารยังไม่ commit เพื่อให้ผู้ดูแล repository ตรวจสอบและ commit เอง
 
-## ประวัติการ Upgrade และ Restart DEV (ไม่ใช่สถานะ local ปัจจุบัน)
+## ประวัติการ Upgrade และ Restart DEV ก่อนรอบนี้
 - **Upload ล่าสุด 2026-09-04 06:08 (ประวัติการ deploy fix sale_line_ids):** `scp -r -i dev_server_ed25519` `buz_accounting_addon, po_so_credit_note, sale_order_line_credit_note` → `/srv/docker/odoo/custom-addons/` `SCP_EXIT True` ทั้ง 3 โมดูล, `cp -r` ไป `/srv/docker/odoo_dev/custom-addons/` `COPIED` ทั้ง 3, ตรวจ `models/customer_refund_pv.py 40932` bytes (เดิม), `po_so_credit_note/wizards/so_credit_note_wizard.py` มี `sale_line_ids: [fields.Command.link...]` (แก้ `sale_line_id` → `sale_line_ids`), `sale_order_line_credit_note/wizard/sale_order_credit_note_wizard.py` มี `Command.link/set` (แก้ `(6,0)` → `Command`), `Module buz_accounting_addon loaded in 6.73s` `Registry loaded in 37.261s`
 - **Upgrade 2026-09-04 06:08 (ประวัติ):** `docker exec odoo odoo -d MOG_DEV -u buz_accounting_addon,po_so_credit_note,sale_order_line_credit_note --stop-after-init --no-http` สำเร็จ `320 modules loaded in 19.79s, 1090 queries` `Module buz_accounting_addon loaded in 6.73s` `Registry loaded in 37.261s` `Modules loaded. Stopping gracefully` (warning `office_supply_requisition not installable` + `fields.states` เดิม — ไม่กระทบ Refund PV) `commit 51461ad4 fix: preserve sale_line_ids on CN creation`
 - **Upload ก่อนหน้า 2026-09-04 05:09 (แก้ RPC_ERROR _compute_source_documents):** `scp -r -i dev_server_ed25519` `buz_accounting_addon` → `/srv/docker/odoo/custom-addons/` `SCP_EXIT 0`, `cp -r` ไป `/srv/docker/odoo_dev/custom-addons/` `COPIED`, ตรวจ `models/customer_refund_pv.py` 40932 bytes (แก้ `not_paid.mapped` → `join` 2 จุด `:326` `:384`), `Module buz_accounting_addon loaded in 5.70s` `Registry loaded in 25.937s`
@@ -181,12 +198,12 @@ Posted Customer Credit Note (out_refund)
 ## Error / ข้อจำกัดที่ยังเหลือ
 - **Upgrade concurrent** ยังมีโอกาส `SerializationFailure` เมื่อมี request พร้อมกัน — แก้ด้วย retry
 - **Warning คงเหลือ** `office_supply_requisition: not installable, skipped`, `fields.states is no longer supported`, `Two fields ... have same label` — ไม่กระทบ Refund PV
-- **เลขซ้ำ** ใช้ `@api.constrains` + ตรวจใน `action_confirm` ไม่ใช้ `_sql_constraints unique(name)` เพื่อให้หลาย Draft ว่าง `name=False` ได้
-- **Other Income** ยังมี field `other_income_dis` ในโมเดล/ฟอร์มแต่ไม่ใช้คำนวณยอดคืน (report `payment_main_amount` และ `get_preview_moves` ตั้ง `other_income=0.0`)
-- **Register แยก** ปุ่มใหม่ `Register Refund Payment` บน Refund PV ใช้ `refund_amount` (เช่น 4000) ส่วนปุ่มเดิมบน Credit Note ใช้ยอดเต็ม CN (4990) ยังแยกกันชัดเจน ไม่กระทบ Invoice/Vendor Bill, ทดสอบ `Draft, ยอดเกิน, ไม่มี CN, Register ซ้ำ` block ครบ, Wizard `amount` ล็อก `readonly` เมื่อมาจาก PV, หลัง `Cancel` Payment กลับมา Register ใหม่ได้
+- **เลข Refund PV** ใช้ `@api.constrains` + ตรวจใน `action_confirm`; เลข Payment/Journal ใช้ Odoo sequence มาตรฐาน
+- **WHT / Bank Fee / Other Income** มี field เดิมเพื่อความเข้ากันได้ของข้อมูล แต่ถูกซ่อนและไม่รวมในยอด/รายงานจนกว่าจะมี Journal Entry รองรับ
+- **Register แยก** ปุ่ม `Register Refund Payment` บน Refund PV ใช้ `refund_amount` (เช่น 4000) ส่วนปุ่มเดิมบน Credit Note ใช้ flow มาตรฐานของ Odoo ไม่กระทบ Invoice/Vendor Bill และหลัง Post ให้ Odoo จัดการ Reconcile
 
 ## ขอบเขต Phase นี้ vs ถัดไป
-- **Phase นี้ทำแล้ว (ตามโค้ด local หลัง revert):** `SO → Invoice Paid → CN → Create Refund PV → Confirm (ตรวจ SO/Invoice Paid) → Print → Register Refund Payment (ปุ่มใหม่บน Refund PV ใช้ refund_amount) → Create Payment (Draft) → แก้เลข Payment/Journal (PBNK11/2026/00009, เลขเดียวกับ move.name, ตรวจซ้ำ Journal+Company) → Post Payment (ล็อกเลข) → Reconcile` เก็บ `payment_ids/payment_count (รวม cancel) + has_active_payment + refund_payment_name/state` บน Refund PV, Smart Button `Payment` + `Open Payment` + `Source SOs/Invoices`, `Credit Note ↔ Refund PVs ↔ Payment (Draft→Posted)` ครบ, เลข PV ≠ เลข Payment/Journal ≠ เลข CN, ปุ่มเดิมบน Credit Note ยัง `Posted` ทันทีมาตรฐาน, รองรับหลาย PV ต่อ CN ตรวจยอดรวมไม่เกิน CN + ตรวจ SO/Invoice Paid ก่อน Confirm/Register
+- **Phase นี้ทำแล้ว (ตามโค้ดที่ deploy รอบนี้):** `Posted Credit Note → Create Refund PV → Confirm (ตรวจ Credit Note, residual และ Invoice ต้นทาง Paid) → Print → Register Refund Payment (ใช้ refund_amount) → Standard Odoo Payment Posted/Reconciled` เก็บ `payment_ids/payment_count` และสถานะ Payment บน Refund PV, มี smart button เปิด Credit Note/Source Documents/Payments, Credit Note Register Payment เดิมยังเป็น standard และไม่เปลี่ยน Vendor PV/Receipt Voucher/Batch Payment
 - **ยังอยู่นอก Phase นี้:** ไม่ใช้ `WHT` / `Bank Fee` คำนวณยอดคืน (แม้มี field ยังไม่ผูก), ไม่สร้าง `account.payment` อัตโนมัติตอน Confirm, ไม่แก้ Vendor PV/Batch Payment, ไม่รวม `WHT Certificate`, `Bank Transfer`, ไม่ mass update CN เก่าที่ไม่มี sale_line_ids (ต้อง repair รายใบ)
 
-ผลการทดสอบและ flow ที่มี `sale_line_ids` ครบเป็นผลของโค้ดก่อน revert และการ deploy DEV เวลา 06:08 เท่านั้น ไม่ใช่สถานะปัจจุบันของ local Git; DEV ยังไม่ได้รับ rollback และยังมีโค้ดจาก `51461ad4` จนกว่าจะมีคำสั่ง deploy rollback โดยชัดแจ้ง
+ผลการทดสอบและ flow ที่มี `sale_line_ids` ครบในบันทึกเดิมเป็นผลของโค้ดก่อน revert และการ deploy DEV เวลา 06:08 ไม่ใช่สถานะปัจจุบันของ local Git; DEV จะเปลี่ยนเป็นโค้ด Standard Odoo Flow หลังการ deploy และ upgrade ในรอบนี้

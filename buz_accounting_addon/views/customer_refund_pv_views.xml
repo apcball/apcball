@@ -81,8 +81,8 @@
                             <field name="payment_type" readonly="state != 'draft'"/>
                             <field name="destination_journal_id" required="1" readonly="state != 'draft'"/>
                             <field name="payment_method_line_id" required="payment_type != 'cash'" invisible="payment_type == 'cash'" readonly="state != 'draft'"/>
-                            <field name="bank_free_dis" string="Bank Fee" readonly="state != 'draft'"/>
-                            <field name="other_income_dis" string="Other Income" readonly="state != 'draft'"/>
+                            <field name="bank_free_dis" invisible="1"/>
+                            <field name="other_income_dis" invisible="1"/>
                             <field name="check_pay_to" string="Pay To" readonly="state != 'draft'"/>
                             <field name="check_number" string="Cheque No." readonly="state != 'draft'"/>
                         </group>
@@ -104,17 +104,17 @@
                             <field name="source_status" readonly="1" string="Source Status" placeholder="Source Invoice Paid / Invoice ยังไม่ Paid / ไม่พบ Invoice ต้นทาง"/>
                         </group>
                     </group>
-                    <group string="Refund Payment (Draft → Post) — แก้เลขก่อน Post" invisible="payment_count == 0">
+                    <group string="Refund Payment (Standard Odoo)" invisible="payment_count == 0">
                         <field name="refund_payment_id" invisible="1"/>
                         <field name="refund_payment_move_name" invisible="1"/>
                         <group>
-                            <field name="refund_payment_name" readonly="1" string="Payment / Journal Number" help="เลขเดียวกับ Journal Entry (account.move.name) — แก้ได้เฉพาะตอน Payment Draft"/>
+                            <field name="refund_payment_name" readonly="1" string="Payment / Journal Number" help="เลขตาม Odoo sequence และ Journal Entry"/>
                             <field name="refund_payment_state" readonly="1" widget="badge" decoration-info="refund_payment_state == 'draft'" decoration-success="refund_payment_state == 'posted'" decoration-danger="refund_payment_state == 'cancel'" string="Payment State"/>
                         </group>
                         <group>
                             <button name="action_view_payments" type="object" string="Open Payment" class="oe_highlight" icon="fa-external-link" invisible="payment_count == 0"/>
-                            <div invisible="refund_payment_state != 'draft'"><span class="text-muted">Draft: เปิด Payment → แก้เลข (เช่น PBNK11/2026/00009) → Post</span></div>
-                            <div invisible="refund_payment_state != 'posted'"><span class="text-success">Posted: Reconcile กับ Credit Note แล้ว</span></div>
+                            <div invisible="refund_payment_state != 'draft'"><span class="text-muted">Payment Draft: ดำเนินการผ่าน Odoo standard flow</span></div>
+                            <div invisible="refund_payment_state != 'posted'"><span class="text-success">Posted: Odoo reconcile กับ Credit Note แล้ว</span></div>
                         </group>
                     </group>
                     <notebook>
@@ -127,11 +127,11 @@
                                     <field name="company_id" column_invisible="1"/>
                                     <field name="move_id" domain="[('partner_id', '=', partner_id), ('move_type', '=', 'out_refund'), ('state', '=', 'posted')]"/>
                                     <field name="amount_to_pay_gross" sum="Total Gross"/>
-                                    <field name="wht_base_amount" sum="Total Base"/>
-                                    <field name="buz_wht_tax_id"/>
+                                    <field name="wht_base_amount" column_invisible="1"/>
+                                    <field name="buz_wht_tax_id" column_invisible="1"/>
                                     <field name="wht_rate" column_invisible="1" force_save="1"/>
-                                    <field name="wht_amount" readonly="1" force_save="1" sum="Total WHT"/>
-                                    <field name="amount_to_pay_net" readonly="1" force_save="1" sum="Total Net"/>
+                                    <field name="wht_amount" column_invisible="1" readonly="1" force_save="1"/>
+                                    <field name="amount_to_pay_net" column_invisible="1" readonly="1" force_save="1"/>
                                 </tree>
                             </field>
                         </page>

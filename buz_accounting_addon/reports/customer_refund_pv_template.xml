@@ -124,9 +124,9 @@
                             </tbody>
                         </table>
 
-                        <!-- 2. Payment Method Table — refund amount is manual, not computed via Other Income -->
-                        <t t-set="payment_main_amount" t-value="(o.refund_amount or o.amount_total_gross) - o.amount_total_wht - o.bank_free_dis"/>
-                        <t t-set="payment_breakdown_total" t-value="payment_main_amount + o.bank_free_dis + o.amount_total_wht"/>
+                        <!-- 2. Payment Method Table — only standard Refund Amount is supported -->
+                        <t t-set="payment_main_amount" t-value="o.refund_amount or o.amount_total_gross"/>
+                        <t t-set="payment_breakdown_total" t-value="payment_main_amount"/>
                         <table class="table-bordered" style="margin-top: 15px;">
                             <thead>
                                 <tr class="table-header">
@@ -163,7 +163,8 @@
                                     </td>
                                 </tr>
 
-                                <tr t-if="o.bank_free_dis > 0" style="vertical-align: top;">
+                                <!-- Bank Fee is hidden until a real Journal Entry is implemented. -->
+                                <tr t-if="False" style="vertical-align: top;">
                                     <td class="text-center">
                                         Bank Fee
                                     </td>
@@ -180,7 +181,8 @@
                                     </td>
                                 </tr>
 
-                                <tr t-if="o.amount_total_wht > 0" style="vertical-align: top;">
+                                <!-- WHT is hidden until a real Journal Entry is implemented. -->
+                                <tr t-if="False" style="vertical-align: top;">
                                     <td class="text-center">
                                         หัก ณ.ที่จ่าย
                                     </td>

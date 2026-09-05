@@ -73,7 +73,7 @@ class BuzCustomerRefundPv(models.Model):
     payment_ids = fields.Many2many('account.payment', 'buz_customer_refund_pv_payment_rel', 'pv_id', 'payment_id', string='Payments', readonly=True, copy=False)
     payment_count = fields.Integer(string='Payment Count', compute='_compute_payment_count')
     has_active_payment = fields.Boolean(string='Has Active Payment', compute='_compute_has_active_payment')
-    # For draft-payment flow: show first payment's number/state and allow edit before Post
+    # Payment summary is read-only; numbering and state come from standard Odoo Payment
     refund_payment_id = fields.Many2one('account.payment', string='Refund Payment', compute='_compute_refund_payment', readonly=True, store=False)
     refund_payment_name = fields.Char(string='Payment Number', compute='_compute_refund_payment', readonly=True)
     refund_payment_state = fields.Selection(string='Payment State', related='refund_payment_id.state', readonly=True)
@@ -200,8 +200,9 @@ class BuzCustomerRefundPv(models.Model):
     def _compute_amount_totals(self):
         for pv in self:
             line_gross = sum(line.amount_to_pay_gross for line in pv.line_ids)
-            line_wht = sum(line.wht_amount for line in pv.line_ids)
-            line_net = sum(line.amount_to_pay_net for line in pv.line_ids)
+            # WHT/Bank Fee/Other Income ยังไม่มี Journal Entry จริงใน Refund PV รอบนี้
+            line_wht = 0.0
+            line_net = line_gross
             pv.amount_total_gross = line_gross
             pv.amount_total_wht = line_wht
             pv.amount_total_net = line_net
@@ -510,16 +511,16 @@ class BuzCustomerRefundPv(models.Model):
         lines = []
         date = self.date
         voucher_name = self.name
-        # Use manual refund_amount for report when specified (supports partial approval), otherwise fall back to line sums
+        # ใช้เฉพาะยอด Refund Amount; รายการ WHT/Bank Fee/Other Income ยังไม่สร้าง Journal Entry
         if self.refund_amount and self.refund_amount > 0:
             total_gross = self.refund_amount
-            total_wht = sum(line.wht_amount for line in self.line_ids)
-            total_net = total_gross - total_wht
+            total_wht = 0.0
+            total_net = total_gross
         else:
             total_gross = sum(line.amount_to_pay_gross for line in self.line_ids)
-            total_wht = sum(line.wht_amount for line in self.line_ids)
-            total_net = sum(line.amount_to_pay_net for line in self.line_ids)
-        bank_fee = self.bank_free_dis or 0.0
+            total_wht = 0.0
+            total_net = total_gross
+        bank_fee = 0.0
         other_income = 0.0
         total_disbursement = total_net + bank_fee
 
