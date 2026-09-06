@@ -106,6 +106,20 @@ Dr ลูกหนี้                         1,000
 - หมายเหตุ: พบ warning เดิมของโมดูลอื่น เช่น `office_supply_requisition` และ Odoo field warnings
   แต่ไม่ทำให้การ upgrade ของ target module ล้มเหลว
 
+### รอบปรับรายงาน Customer Refund PV — 2026-09-06 เวลาไทย
+
+- เปลี่ยนเฉพาะ `models/customer_refund_pv.py` และ `reports/customer_refund_pv_template.xml`
+- คอลัมน์เลขที่เอกสารใช้เลขที่ Payment ทุก Journal Line; กรณียังไม่มี Payment ใช้เลขที่ PV เป็น preview
+- เพิ่ม style เฉพาะตาราง Journal Entry เพื่อคุมแถว Total และเว้นระยะก่อนหมายเหตุ
+- Upload ไป DEV สำเร็จด้วย `scp` เฉพาะโฟลเดอร์ `buz_accounting_addon`
+- Upgrade `MOG_DEV` สำเร็จด้วย `-u buz_accounting_addon --stop-after-init --no-http`
+  - Target module loaded successfully; registry loaded successfully
+- Restart สำเร็จด้วย `docker restart odoo`
+- Health check ผ่าน: container `odoo Up` และ HTTP `/web/database/selector` ได้ `200`
+- ตรวจ module state: `buz_accounting_addon | installed | 17.0.2.1.0`
+- ไม่ได้ upload เอกสารนี้ และไม่ได้แก้ Vendor PV หรือ workflow บัญชี
+- Browser/PDF visual UAT ยังต้องตรวจด้วยข้อมูลจริงบน DEV
+
 ### ขอบเขตการส่งมอบ
 
 การ deploy รอบนี้ไม่รวมเอกสาร, โมดูลอื่น, DEV database migration, Production deployment

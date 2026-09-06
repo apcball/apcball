@@ -37,6 +37,20 @@
                             .no-border-bottom {
                                 border-bottom: none !important;
                             }
+                            .journal-entry-table .journal-entry-total-row {
+                                height: 32px;
+                                line-height: 24px;
+                                vertical-align: middle;
+                            }
+                            .journal-entry-table .journal-entry-total-cell {
+                                height: 32px;
+                                line-height: 24px;
+                                vertical-align: middle;
+                                white-space: nowrap;
+                            }
+                            .journal-entry-table .journal-entry-amount {
+                                white-space: nowrap;
+                            }
                         </style>
 
                         <!-- Header Area -->
@@ -221,7 +235,7 @@
                             Amount
                         </div>
                         <t t-set="preview_lines" t-value="o.get_report_journal_lines()"/>
-                        <table class="table-bordered" style="margin-top: 0px; padding-top: 5px; table-layout: fixed;">
+                        <table class="table-bordered journal-entry-table" style="margin-top: 0px; padding-top: 5px; table-layout: fixed;">
                             <thead>
                                 <tr class="table-header">
                                     <th style="width: 12%;">เลขที่บัญชี</th>
@@ -238,13 +252,13 @@
                                     <td><span t-esc="line['name']"/></td>
                                     <td class="text-center"><span t-esc="line['ref']"/></td>
                                     <td class="text-center"><span t-esc="line['date']" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
-                                    <td class="text-end">
+                                    <td class="text-end journal-entry-amount">
                                         <t t-if="line['debit'] > 0">
                                             <span t-esc="line['debit']" t-options='{"widget": "float", "precision": 2}'/>
                                         </t>
                                         <t t-else="">0.00</t>
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-end journal-entry-amount">
                                         <t t-if="line['credit'] > 0">
                                             <span t-esc="line['credit']" t-options='{"widget": "float", "precision": 2}'/>
                                         </t>
@@ -253,14 +267,14 @@
                                 </tr>
                                 <t t-set="total_top_debit" t-value="sum(l['debit'] for l in preview_lines)"/>
                                 <t t-set="total_top_credit" t-value="sum(l['credit'] for l in preview_lines)"/>
-                                <tr>
-                                    <td colspan="4" class="text-end" style="font-weight: bold; padding-right: 10px;">
+                                <tr class="journal-entry-total-row">
+                                    <td colspan="4" class="text-end journal-entry-total-cell" style="font-weight: bold; padding-right: 10px;">
                                         Total
                                     </td>
-                                    <td class="text-end" style="font-weight: bold;">
+                                    <td class="text-end journal-entry-total-cell journal-entry-amount" style="font-weight: bold;">
                                         <span t-esc="total_top_debit" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
-                                    <td class="text-end" style="font-weight: bold;">
+                                    <td class="text-end journal-entry-total-cell journal-entry-amount" style="font-weight: bold;">
                                         <span t-esc="total_top_credit" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                 </tr>
@@ -268,7 +282,7 @@
                         </table>
 
                         <!-- Note -->
-                        <div style="margin-top: 10px;">
+                        <div class="journal-entry-note" style="margin-top: 20px;">
                             <strong>หมายเหตุ:</strong> <span t-field="o.note"/>
                         </div>
 

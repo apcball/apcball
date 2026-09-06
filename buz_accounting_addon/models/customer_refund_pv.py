@@ -682,20 +682,25 @@ class BuzCustomerRefundPv(models.Model):
     def get_report_journal_lines(self):
         """Return posted Payment journal lines, or the existing preview fallback."""
         self.ensure_one()
-        posted_moves = self.payment_ids.filtered(
+        posted_payments = self.payment_ids.filtered(
             lambda payment: payment.state == "posted" and payment.move_id and payment.move_id.state == "posted"
-        ).mapped("move_id")
-        if not posted_moves:
+        )
+        if not posted_payments:
             return self.get_preview_moves()
 
-        return [{
-            "code": line.account_id.code,
-            "name": line.account_id.name,
-            "ref": line.move_id.ref or line.move_id.name or self.name,
-            "date": line.date or line.move_id.date,
-            "debit": line.debit,
-            "credit": line.credit,
-        } for line in posted_moves.mapped("line_ids")]
+        rows = []
+        for payment in posted_payments:
+            # ใช้เลข Payment เป็นเลขอ้างอิงของทุกบรรทัด ไม่ใช้ move.ref
+            payment_number = payment.name or payment.move_id.name or self.name
+            rows.extend({
+                "code": line.account_id.code,
+                "name": line.account_id.name,
+                "ref": payment_number,
+                "date": line.date or payment.move_id.date,
+                "debit": line.debit,
+                "credit": line.credit,
+            } for line in payment.move_id.line_ids)
+        return rows
 
     def get_preview_moves(self):
         """
