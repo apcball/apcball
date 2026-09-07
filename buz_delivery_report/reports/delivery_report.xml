@@ -145,8 +145,11 @@
                         text-align: right;
                       }
                       .note-section {
-                        margin-top: 10px !important;
+                        margin-top: 2px !important;
                         line-height: 1.1;
+                      }
+                      .total-section {
+                        margin-top: 0 !important;
                       }
                       .note-content {
                         display: block;
@@ -200,15 +203,15 @@
                       }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
-                    <t t-set="groups_of_14" t-value="[move_list[i:i+14] for i in range(0, len(move_list), 14)]"/>
-                    <t t-set="total_pages" t-value="len(groups_of_14)"/>
+                    <t t-set="groups_of_13" t-value="[move_list[i:i+13] for i in range(0, len(move_list), 13)]"/>
+                    <t t-set="total_pages" t-value="len(groups_of_13)"/>
                     <t t-set="page_number" t-value="1"/>
                     <t t-set="line_number" t-value="1"/>
                     <t t-set="total_delivered_total" t-value="0"/>
-                    <t t-foreach="groups_of_14" t-as="group">
+                    <t t-foreach="groups_of_13" t-as="group">
                         <div t-attf-class="page #{page_number != 1 and 'page-following' or ''}"
                              t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
-                            <t t-if="groups_of_14">
+                            <t t-if="groups_of_13">
                                 <div>
                                     <div class="delivery-report-header">
                                     <!-- Page header if more than 1 page -->
@@ -265,7 +268,7 @@
                                         </div>
                                     </div>
                                     <!-- Document Info -->
-                                    <div class="row mb-3">
+                                    <div class="row mb-1">
                                         <div class="col-6">
                                             <div class="info-box" style="height: 180px;">
                                                 <div class="mb-2">
@@ -333,9 +336,9 @@
                                                     </td>
                                                 </tr>
                                             </t>
-                                            <!-- Fill the last page to 14 table rows. -->
-                                            <t t-if="page_number == total_pages and len(group) &lt; 14">
-                                                <t t-set="empty_rows" t-value="14 - len(group)"/>
+                                            <!-- Fill the last page to 13 table rows. -->
+                                            <t t-if="page_number == total_pages and len(group) &lt; 13">
+                                                <t t-set="empty_rows" t-value="13 - len(group)"/>
                                                 <t t-foreach="range(empty_rows)" t-as="empty_row">
                                                     <tr>
                                                         <td class="text-center">&#160;</td>
@@ -352,7 +355,7 @@
                             </t>
                     <t t-if="page_number == total_pages">
                         <!-- Total Section -->
-                        <div class="row mt-3">
+                        <div class="row total-section">
                             <div class="col-12">
                                 <div class="info-box">
                                     <div class="row">
@@ -366,7 +369,7 @@
                         </div>
                         <!-- เพิ่มหมายเหตุ -->
                         <t t-if="doc.note">
-                            <div class="row mt-3 note-section">
+                            <div class="row note-section">
                                 <div class="col-12">
                                     <strong>หมายเหตุ:</strong>
                                     <span class="note-content" t-field="doc.note"/>
@@ -414,7 +417,7 @@
                                     <tr>
                                         <td>
                                             <div class="text-center signature-section">
-                                                <br/><br/>
+                                                <br/>
                                                 <p>________________________</p>
                                                 <p>กรณีส่งของออกนอกบริษัท</p>
                                                 <p>ทีมจัดส่ง/ติดตั้ง(ผู้รับของ)</p>
@@ -423,7 +426,7 @@
                                         </td>
                                         <td>
                                             <div class="text-center signature-section">
-                                                <br/><br/>
+                                                <br/>
                                                 <p>________________________</p>
                                                 <p>ผู้รับของหน้างาน / Recipient</p>
                                                 <p>วันที่ / Date: ___________</p>
