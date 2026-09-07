@@ -164,6 +164,42 @@ class CountAdjustEngine(models.AbstractModel):
             ('company_id', '=', company.id)])
         return sum(quants.mapped('reserved_quantity'))
 
+    def _check_replay_dates(self, group, cutoff_date):
+        """Do not silently replay rows already represented by the counted queue.
+
+        Accounting time and FIFO insertion time can straddle the count in either
+        direction. Reconstructing such histories needs an explicit allocation of
+        those movements to the count, so reject them before making any changes.
+        """
+        cutoff, _acct = self._cutoff_instants(cutoff_date)
+        self.env['stock.valuation.layer'].flush_model()
+        self.env.cr.execute("""
+            SELECT COUNT(*) FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+              AND (quantity != 0 OR value != 0)
+              AND ((COALESCE(accounting_date, create_date) < %s)
+                   IS DISTINCT FROM (create_date < %s))
+        """, (group.product_id.id, group.warehouse_id.id,
+              group.adjustment_id.company_id.id, cutoff, cutoff))
+        if self.env.cr.fetchone()[0]:
+            raise UserError(_(
+                'Backdated layers cross the count cutoff. Resolve their dates '
+                'before applying; replay would count movements twice.'))
+
+    def _value_totals(self, group, cutoff_date):
+        """Measure actual before/after totals, not intermediate replay drift."""
+        self.env['stock.valuation.layer'].flush_model()
+        cutoff, _acct = self._cutoff_instants(cutoff_date)
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(value), 0),
+                   COALESCE(SUM(value) FILTER (
+                       WHERE quantity < 0 AND create_date >= %s), 0)
+            FROM stock_valuation_layer
+            WHERE product_id = %s AND warehouse_id = %s AND company_id = %s
+        """, (cutoff, group.product_id.id, group.warehouse_id.id,
+              group.adjustment_id.company_id.id))
+        return tuple(float(v) for v in self.env.cr.fetchone())
+
     def _touch_scope(self, adjustment, base):
         """Every row a real run WILL touch, enumerated before anything is
         touched. `base` is the _baseline dict (unused here; kept for run()
@@ -186,8 +222,7 @@ class CountAdjustEngine(models.AbstractModel):
 
             quants = Quant.search([
                 ('product_id', '=', group.product_id.id),
-                ('location_id', 'child_of', group.warehouse_id.lot_stock_id.id),
-                ('company_id', '=', group.adjustment_id.company_id.id)])
+                ('company_id', 'in', [False, group.adjustment_id.company_id.id])])
             scope['quant_ids'].update(quants.ids)
 
             if post_ids:
@@ -215,10 +250,11 @@ class CountAdjustEngine(models.AbstractModel):
         """
         cr = self.env.cr
         uid = self.env.uid
-        backup = self.env['stock.count.adjustment.backup'].create({
+        backup = self.env['stock.count.adjustment.backup'].sudo().create({
             'company_id': adjustment.company_id.id,
             'adjustment_id': adjustment.id,
             'state': 'active',
+            'scope_product_ids': adjustment.line_ids.product_id.ids,
         })
         svl_ids = scope['svl_ids']
         quant_ids = scope['quant_ids']
@@ -227,15 +263,18 @@ class CountAdjustEngine(models.AbstractModel):
         if svl_ids:
             self.env['stock.valuation.layer'].flush_model(
                 ['quantity', 'value', 'unit_cost', 'remaining_qty',
-                 'remaining_value', 'accounting_date'])
+                 'remaining_value', 'accounting_date',
+                 'origin_remaining_qty', 'origin_remaining_value'])
             cr.execute("""
                 INSERT INTO stock_count_adjustment_backup_line
                     (backup_id, layer_id, product_id, warehouse_id, quantity,
                      value, unit_cost, remaining_qty, remaining_value,
+                     origin_remaining_qty, origin_remaining_value,
                      accounting_date, was_inserted,
                      create_uid, create_date, write_uid, write_date)
                 SELECT %s, l.id, l.product_id, l.warehouse_id, l.quantity,
                        l.value, l.unit_cost, l.remaining_qty, l.remaining_value,
+                       l.origin_remaining_qty, l.origin_remaining_value,
                        l.accounting_date, false,
                        %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
                 FROM stock_valuation_layer l
@@ -509,15 +548,15 @@ class CountAdjustEngine(models.AbstractModel):
             [('id', 'child_of', lot_stock.id)]).ids)
 
         # Net qty flow across the subtree boundary from post-cutoff done moves.
-        ML.flush_model(['quantity', 'location_id', 'location_dest_id', 'date'])
+        ML.flush_model(['quantity_product_uom', 'location_id', 'location_dest_id', 'date'])
         Move.flush_model(['state', 'date'])
         cr.execute("""
             SELECT COALESCE(SUM(
                 CASE
                   WHEN sml.location_dest_id IN %(loc)s
-                       AND sml.location_id NOT IN %(loc)s THEN sml.quantity
+                        AND sml.location_id NOT IN %(loc)s THEN sml.quantity_product_uom
                   WHEN sml.location_id IN %(loc)s
-                       AND sml.location_dest_id NOT IN %(loc)s THEN -sml.quantity
+                        AND sml.location_dest_id NOT IN %(loc)s THEN -sml.quantity_product_uom
                   ELSE 0
                 END), 0)
             FROM stock_move_line sml
@@ -529,6 +568,8 @@ class CountAdjustEngine(models.AbstractModel):
         post_flow = float(cr.fetchone()[0] or 0.0)
 
         target = sum(group.mapped('target_qty')) + post_flow
+        if self._reserved_qty(group) > max(target, 0.0):
+            raise UserError(_('Reserved quantity exceeds the current target on-hand.'))
 
         Quant.flush_model(['quantity'])
         quants = Quant.search([
@@ -566,6 +607,8 @@ class CountAdjustEngine(models.AbstractModel):
         # Put the whole discrepancy onto the main quant so the pair sum
         # lands exactly on `target`.
         main_target = target - (current - sum(main.mapped('quantity')))
+        if main.reserved_quantity > max(main_target, 0.0):
+            raise UserError(_('The adjusted quant would fall below its reservations.'))
 
         last_move_id = Move.search(
             [('company_id', '=', company.id)], order='id desc', limit=1).id or 0
@@ -583,6 +626,25 @@ class CountAdjustEngine(models.AbstractModel):
             if gen_moves else ML.browse()
         gen_svls = SVL.search(
             [('company_id', '=', company.id), ('id', '>', last_svl_id)])
+        if backup is not None:
+            # Inventory adjustment also changes the virtual inventory quant.
+            # Existing quants were snapshotted across all locations; new rows
+            # must be restored to zero, including the virtual counterpart.
+            Quant.flush_model()
+            cr.execute("""
+                INSERT INTO stock_count_adjustment_backup_quant
+                    (backup_id, quant_id, quantity,
+                     create_uid, create_date, write_uid, write_date)
+                SELECT %s, q.id, 0, %s, now() at time zone 'UTC',
+                       %s, now() at time zone 'UTC'
+                FROM stock_quant q
+                WHERE q.product_id = %s
+                  AND (q.company_id = %s OR q.company_id IS NULL)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM stock_count_adjustment_backup_quant b
+                      WHERE b.backup_id = %s AND b.quant_id = q.id)
+            """, (backup.id, uid, uid, product.id, company.id, backup.id))
+            backup.invalidate_recordset(['quant_line_ids'])
         move_id = gen_moves[:1].id if gen_moves else False
         svl_id = gen_svls[:1].id if gen_svls else False
 
@@ -684,7 +746,7 @@ class CountAdjustEngine(models.AbstractModel):
 
         self.env['stock.valuation.layer'].flush_model(
             ['quantity', 'create_date'])
-        ML.flush_model(['quantity', 'location_id', 'location_dest_id'])
+        ML.flush_model(['quantity_product_uom', 'location_id', 'location_dest_id'])
 
         # strict `>` -- a layer created AT the cutoff instant (e.g. the
         # neutralised inventory layer _quant_adjust backdates to utc_cutoff) is
@@ -706,9 +768,9 @@ class CountAdjustEngine(models.AbstractModel):
             cr.execute("""
                 SELECT COALESCE(SUM(
                     (CASE WHEN location_dest_id IN %(loc)s
-                          THEN quantity ELSE 0 END)
+                          THEN quantity_product_uom ELSE 0 END)
                   - (CASE WHEN location_id IN %(loc)s
-                          THEN quantity ELSE 0 END)), 0)
+                          THEN quantity_product_uom ELSE 0 END)), 0)
                 FROM stock_move_line
                 WHERE move_id = %(move)s
             """, {'loc': child_ids or (0,), 'move': move_id})
@@ -739,8 +801,8 @@ class CountAdjustEngine(models.AbstractModel):
         run() on a real (non-dry) run so callers that invoke run() directly
         still see the reconciliation report; action_apply's later
         _write_engine_result does the same and is harmless if repeated."""
-        Mismatch = self.env['stock.count.adjustment.mismatch']
-        adjustment.mismatch_ids.unlink()
+        Mismatch = self.env['stock.count.adjustment.mismatch'].sudo()
+        adjustment.mismatch_ids.sudo().unlink()
         mvals = [dict(m, adjustment_id=adjustment.id)
                  for g in result.get('groups', [])
                  for m in g.get('mismatches', [])]
@@ -757,6 +819,11 @@ class CountAdjustEngine(models.AbstractModel):
         """
         result = {'groups': [], 'valuation_delta': 0.0,
                   'cogs_delta': 0.0, 'qty_delta': 0.0, 'backup_id': False}
+        adjustment._check_operation_access()
+        if not adjustment.line_ids:
+            raise UserError(_('Add at least one count line.'))
+        self = self.with_company(adjustment.company_id)
+        adjustment = adjustment.with_company(adjustment.company_id)
         backup = None
         try:
             with self.env.cr.savepoint():
@@ -785,6 +852,8 @@ class CountAdjustEngine(models.AbstractModel):
                         g['note'] = _(
                             '%s post-cutoff layers carry journal entries — GL '
                             'reposting is out of scope') % gl_backed
+                        if not dry_run:
+                            raise UserError(g['note'])
                         result['groups'].append(g)
                         continue
                     rounding = group.product_id.uom_id.rounding
@@ -797,46 +866,36 @@ class CountAdjustEngine(models.AbstractModel):
                         # An error in the try-block below still supersedes this.
                         g['note'] = _('Target qty sums to %.2f (negative)') % (
                             target_sum,)
-                    else:
-                        reserved = self._reserved_qty(group)
-                        if float_compare(reserved, target_sum,
-                                         precision_rounding=rounding) > 0:
-                            # No writes for this group -- guard sits before
-                            # _void_and_reseed so nothing is half-applied.
-                            g['state'] = 'error'
-                            g['note'] = _(
-                                'Reserved qty %.2f exceeds target %.2f') % (
-                                reserved, target_sum)
-                            result['groups'].append(g)
-                            continue
                     q0, v0 = base[(g['product_id'], g['warehouse_id'])]
                     try:
-                        reseed = self._void_and_reseed(
-                            group, q0, v0, adjustment.cutoff_date, backup=backup)
-                        r1 = self._scoped_replay(
-                            group, reseed, adjustment.cutoff_date)
-                        qa = self._quant_adjust(
-                            group, adjustment.cutoff_date, backup=backup)
-                        if qa['delta']:
-                            # The inventory move consumed from the bucket
-                            # remaining_* queue; re-walk to restore it (the
-                            # neutralised, qty-0 inventory SVL contributes
-                            # nothing).
-                            r1 = self._scoped_replay(
+                        with self.env.cr.savepoint():
+                            self._check_replay_dates(group, adjustment.cutoff_date)
+                            before_value, before_cogs = self._value_totals(
+                                group, adjustment.cutoff_date)
+                            reseed = self._void_and_reseed(
+                                group, q0, v0, adjustment.cutoff_date, backup=backup)
+                            self._scoped_replay(
                                 group, reseed, adjustment.cutoff_date)
-                        g['mismatches'] = self._reconcile(
-                            group, adjustment.cutoff_date)
-                        g['baseline'] = (q0, v0)
-                        # The dominant term is the reseed delta (v_target - v0);
-                        # _scoped_replay only adds the post-cutoff remaining-value
-                        # drift on top. Reporting r1 alone under-counts grossly.
-                        g['value_delta'] = (reseed['value_delta_reseed']
-                                            + r1['value_delta'])
-                        g['qty_delta'] = reseed['qty_delta_reseed']
-                        g['quant_delta'] = qa['delta']
+                            qa = self._quant_adjust(
+                                group, adjustment.cutoff_date, backup=backup)
+                            if qa['delta']:
+                                self._scoped_replay(
+                                    group, reseed, adjustment.cutoff_date)
+                            after_value, after_cogs = self._value_totals(
+                                group, adjustment.cutoff_date)
+                            g['mismatches'] = self._reconcile(
+                                group, adjustment.cutoff_date)
+                            g['baseline'] = (q0, v0)
+                            g['value_delta'] = after_value - before_value
+                            g['cogs_delta'] = after_cogs - before_cogs
+                            g['qty_delta'] = reseed['qty_delta_reseed']
+                            g['quant_delta'] = qa['delta']
                         result['valuation_delta'] += g['value_delta']
+                        result['cogs_delta'] += g['cogs_delta']
                         result['qty_delta'] += g['qty_delta']
                     except UserError as e:
+                        if not dry_run:
+                            raise
                         g['state'] = 'error'
                         # keep any pre-try warning (e.g. negative target sum)
                         g['note'] = (g['note'] + ' | ' if g['note']
@@ -851,4 +910,5 @@ class CountAdjustEngine(models.AbstractModel):
         self.env.invalidate_all()
         if not dry_run:
             self._persist_mismatches(adjustment, result)
+            backup._seal_stock_state()
         return result

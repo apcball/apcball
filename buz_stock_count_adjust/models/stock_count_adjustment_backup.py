@@ -1,3 +1,5 @@
+import hashlib
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -28,6 +30,8 @@ class StockCountAdjustmentBackup(models.Model):
 
     restore_date = fields.Datetime(readonly=True, copy=False)
     restore_log = fields.Text(readonly=True, copy=False)
+    stock_fingerprint = fields.Char(readonly=True, copy=False)
+    scope_product_ids = fields.Json(readonly=True, copy=False)
 
     line_count = fields.Integer(compute='_compute_line_count')
 
@@ -42,6 +46,63 @@ class StockCountAdjustmentBackup(models.Model):
         for rec in self:
             rec.line_count = len(rec.line_ids)
 
+    def _stock_state_fingerprint(self):
+        """Conservatively cover all stock activity for the affected products.
+
+        Include row contents and membership, so later inserts, deletions, raw
+        SQL changes and reservations are detected even without write_date.
+        """
+        self.ensure_one()
+        self.env.flush_all()
+        products = tuple(self.scope_product_ids or [])
+        if not products:
+            raise UserError(_('Backup has no verified stock scope.'))
+        digest = hashlib.sha256()
+        for table in ('stock_valuation_layer', 'stock_quant',
+                      'stock_move', 'stock_move_line'):
+            self.env.cr.execute("""
+                SELECT md5(COALESCE(string_agg(md5(to_jsonb(t)::text), ''
+                                               ORDER BY t.id), ''))
+                FROM %s t
+                WHERE t.product_id IN %%s
+                  AND (t.company_id = %%s OR t.company_id IS NULL)
+            """ % table, (products, self.company_id.id))
+            digest.update(self.env.cr.fetchone()[0].encode())
+        if 'stock.valuation.layer.usage' in self.env:
+            self.env.cr.execute("""
+                SELECT md5(COALESCE(string_agg(md5(to_jsonb(u)::text), ''
+                                               ORDER BY u.id), ''))
+                FROM stock_valuation_layer_usage u
+                WHERE EXISTS (
+                    SELECT 1 FROM stock_valuation_layer s
+                    WHERE s.product_id IN %s AND s.company_id = %s
+                      AND s.id IN (u.stock_valuation_layer_id,
+                                   u.dest_stock_valuation_layer_id))
+            """, (products, self.company_id.id))
+            digest.update(self.env.cr.fetchone()[0].encode())
+        return digest.hexdigest()
+
+    def _seal_stock_state(self):
+        self.ensure_one()
+        self.sudo().write({'stock_fingerprint': self._stock_state_fingerprint()})
+
+    def _check_stock_unchanged(self):
+        self.ensure_one()
+        self.check_access_rights('read')
+        self.check_access_rule('read')
+        self.adjustment_id._lock_operation()
+        self.invalidate_recordset()
+        if self.state != 'active':
+            raise UserError(_('The backup is no longer active.'))
+        if not self.stock_fingerprint:
+            raise UserError(_(
+                'This legacy backup has no verified post-apply snapshot. '
+                'Automatic restore or mismatch fixing is not safe.'))
+        if self.stock_fingerprint != self._stock_state_fingerprint():
+            raise UserError(_(
+                'Stock changed after this adjustment. Restore or mismatch fixing '
+                'would overwrite later activity and has been refused.'))
+
     def action_restore(self):
         """Put every touched row back to its pre-image, in one pass.
 
@@ -51,6 +112,7 @@ class StockCountAdjustmentBackup(models.Model):
         invalidate_model afterwards. No cr.commit().
         """
         self.ensure_one()
+        self._check_stock_unchanged()
         if self.state != 'active':
             raise UserError(_('Backup %s is already %s.') % (self.name, self.state))
 
@@ -73,7 +135,9 @@ class StockCountAdjustmentBackup(models.Model):
             SET remaining_qty = b.remaining_qty,
                 remaining_value = b.remaining_value,
                 value = b.value,
-                unit_cost = b.unit_cost
+                unit_cost = b.unit_cost,
+                origin_remaining_qty = b.origin_remaining_qty,
+                origin_remaining_value = b.origin_remaining_value
             FROM stock_count_adjustment_backup_line b
             WHERE b.backup_id = %s AND b.layer_id = l.id
               AND b.was_inserted = false
@@ -161,9 +225,10 @@ class StockCountAdjustmentBackup(models.Model):
         if 'stock.valuation.layer.usage' in self.env:
             self.env['stock.valuation.layer.usage'].invalidate_model()
 
-        self.state = 'restored'
-        self.restore_date = fields.Datetime.now()
-        self.restore_log = '\n'.join(log)
+        self.sudo().write({
+            'state': 'restored', 'restore_date': fields.Datetime.now(),
+            'restore_log': '\n'.join(log)})
+        self.adjustment_id.sudo().write({'state': 'rolled_back'})
         return True
 
 
@@ -182,6 +247,8 @@ class StockCountAdjustmentBackupLine(models.Model):
     unit_cost = fields.Float(digits='Product Price')
     remaining_qty = fields.Float(digits='Product Unit of Measure')
     remaining_value = fields.Float(digits='Product Price')
+    origin_remaining_qty = fields.Float(digits='Product Unit of Measure')
+    origin_remaining_value = fields.Float(digits='Product Price')
     accounting_date = fields.Datetime()
     was_inserted = fields.Boolean(default=False)
 

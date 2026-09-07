@@ -34,10 +34,13 @@ class StockCountAdjustmentMismatch(models.Model):
 
     def action_ignore(self):
         for rec in self:
+            rec.check_access_rights('read')
+            rec.check_access_rule('read')
+            rec.adjustment_id._check_operation_access()
             if rec.state != 'open':
                 raise UserError(_(
                     'Mismatch %s is already %s.') % (rec.id, rec.state))
-            rec.state = 'ignored'
+            rec.sudo().write({'state': 'ignored'})
         return True
 
     def action_fix_move_line(self):
@@ -53,6 +56,11 @@ class StockCountAdjustmentMismatch(models.Model):
         action_restore's raw restore).
         """
         self.ensure_one()
+        self.check_access_rights('read')
+        self.check_access_rule('read')
+        if not self.adjustment_id.backup_id:
+            raise UserError(_('A verified backup is required to fix a mismatch.'))
+        self.adjustment_id.backup_id._check_stock_unchanged()
         if self.state != 'open':
             raise UserError(_(
                 'Mismatch %s is already %s.') % (self.id, self.state))
@@ -123,17 +131,22 @@ class StockCountAdjustmentMismatch(models.Model):
                        %s, now() at time zone 'UTC', %s, now() at time zone 'UTC'
                 FROM stock_move_line sml
                 JOIN stock_move sm ON sm.id = sml.move_id
-                WHERE sml.id = %s
-            """, (backup.id, uid, uid, ml.id))
+                WHERE sml.id = %s AND NOT EXISTS (
+                    SELECT 1 FROM stock_count_adjustment_backup_moveline b
+                    WHERE b.backup_id = %s AND b.move_line_id = sml.id)
+            """, (backup.id, uid, uid, ml.id, backup.id))
             for q in (to_quant, from_quant):
                 cr.execute("""
                     INSERT INTO stock_count_adjustment_backup_quant
                         (backup_id, quant_id, quantity,
                          create_uid, create_date, write_uid, write_date)
-                    VALUES (%s, %s, %s,
-                            %s, now() at time zone 'UTC', %s,
-                            now() at time zone 'UTC')
-                """, (backup.id, q.id, q.quantity, uid, uid))
+                    SELECT %s, %s, %s,
+                           %s, now() at time zone 'UTC', %s,
+                           now() at time zone 'UTC'
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM stock_count_adjustment_backup_quant b
+                        WHERE b.backup_id = %s AND b.quant_id = %s)
+                """, (backup.id, q.id, q.quantity, uid, uid, backup.id, q.id))
             backup.invalidate_recordset(
                 ['moveline_line_ids', 'quant_line_ids'])
 
@@ -153,5 +166,6 @@ class StockCountAdjustmentMismatch(models.Model):
 
         ML.invalidate_model()
         Quant.invalidate_model()
-        self.state = 'fixed'
+        self.sudo().write({'state': 'fixed'})
+        backup._seal_stock_state()
         return True

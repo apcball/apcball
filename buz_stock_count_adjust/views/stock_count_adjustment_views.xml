@@ -38,8 +38,8 @@
                     </div>
                     <group>
                         <group>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="cutoff_date"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state in ('applied', 'rolled_back')"/>
+                            <field name="cutoff_date" readonly="state in ('applied', 'rolled_back')"/>
                             <field name="backup_id" readonly="1"/>
                             <field name="line_hash" readonly="1" groups="base.group_no_one"/>
                         </group>

@@ -9,5 +9,40 @@
 writes stock.valuation.layer directly. Add people deliberately; being a stock
 manager is not enough.</field>
         </record>
+        <record id="rule_count_adjustment_company" model="ir.rule">
+            <field name="name">Count adjustments: allowed companies</field>
+            <field name="model_id" ref="model_stock_count_adjustment"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_count_adjustment_line_company" model="ir.rule">
+            <field name="name">Count lines: allowed companies</field>
+            <field name="model_id" ref="model_stock_count_adjustment_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_count_adjustment_mismatch_company" model="ir.rule">
+            <field name="name">Count mismatches: allowed companies</field>
+            <field name="model_id" ref="model_stock_count_adjustment_mismatch"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_count_adjustment_backup_company" model="ir.rule">
+            <field name="name">Count backups: allowed companies</field>
+            <field name="model_id" ref="model_stock_count_adjustment_backup"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_count_adjustment_backup_line_company" model="ir.rule">
+            <field name="name">Count backup layers: allowed companies</field>
+            <field name="model_id" ref="model_stock_count_adjustment_backup_line"/>
+            <field name="domain_force">[('backup_id.company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_count_adjustment_backup_quant_company" model="ir.rule">
+            <field name="name">Count backup quants: allowed companies</field>
+            <field name="model_id" ref="model_stock_count_adjustment_backup_quant"/>
+            <field name="domain_force">[('backup_id.company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_count_adjustment_backup_moveline_company" model="ir.rule">
+            <field name="name">Count backup moves: allowed companies</field>
+            <field name="model_id" ref="model_stock_count_adjustment_backup_moveline"/>
+            <field name="domain_force">[('backup_id.company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>

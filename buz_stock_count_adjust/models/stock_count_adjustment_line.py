@@ -5,6 +5,7 @@ class StockCountAdjustmentLine(models.Model):
     _name = 'stock.count.adjustment.line'
     _description = 'Stock Count Adjustment Line'
     _order = 'product_id, warehouse_id, bucket_seq, id'
+    _check_company_auto = True
 
     adjustment_id = fields.Many2one(
         'stock.count.adjustment', required=True, ondelete='cascade', index=True)
@@ -47,18 +48,28 @@ class StockCountAdjustmentLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self.env['stock.count.adjustment'].browse([
+            v['adjustment_id'] for v in vals_list if v.get('adjustment_id')
+        ])._check_inputs_editable()
         lines = super().create(vals_list)
+        # Also cover adjustment_id supplied by default_get/context.
+        lines.adjustment_id._check_inputs_editable()
         lines.adjustment_id._reset_hash_if_changed()
         return lines
 
     def write(self, vals):
         docs = self.adjustment_id
+        if {'adjustment_id', 'product_id', 'warehouse_id', 'bucket_seq',
+                'target_qty', 'target_value'} & vals.keys():
+            (docs | self.env['stock.count.adjustment'].browse(
+                vals.get('adjustment_id', [])))._check_inputs_editable()
         res = super().write(vals)
         (docs | self.adjustment_id)._reset_hash_if_changed()
         return res
 
     def unlink(self):
         docs = self.adjustment_id
+        docs._check_inputs_editable()
         res = super().unlink()
         docs._reset_hash_if_changed()
         return res
