@@ -382,7 +382,7 @@
                                             <div class="text-center signature-section">
                                                 <br/><br/>
                                                 <p>________________________</p>
-                                                <p>ผู้โอน/ผู้ส่งของ / Handled By</p>
+                                                <p>ผู้โอน/ผู้จ่ายของ / Issued By</p>
                                                 <p>วันที่ / Date: ___________</p>
                                             </div>
                                         </td>
@@ -416,7 +416,8 @@
                                             <div class="text-center signature-section">
                                                 <br/><br/>
                                                 <p>________________________</p>
-                                                <p>ผู้อนุมัติ / Approved By</p>
+                                                <p>กรณีส่งของออกนอกบริษัท</p>
+                                                <p>ทีมจัดส่ง/ติดตั้ง(ผู้รับของ)</p>
                                                 <p>วันที่ / Date: ___________</p>
                                             </div>
                                         </td>
@@ -424,7 +425,7 @@
                                             <div class="text-center signature-section">
                                                 <br/><br/>
                                                 <p>________________________</p>
-                                                <p>ผู้อนุมัติ / Approved By</p>
+                                                <p>ผู้รับของหน้างาน / Recipient</p>
                                                 <p>วันที่ / Date: ___________</p>
                                             </div>
                                         </td>
