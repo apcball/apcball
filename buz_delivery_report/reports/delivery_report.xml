@@ -411,6 +411,26 @@
                                             </div>
                                         </td>
                                     </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="text-center signature-section">
+                                                <br/><br/>
+                                                <p>________________________</p>
+                                                <p>ผู้อนุมัติ / Approved By</p>
+                                                <p>วันที่ / Date: ___________</p>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="text-center signature-section">
+                                                <br/><br/>
+                                                <p>________________________</p>
+                                                <p>ผู้อนุมัติ / Approved By</p>
+                                                <p>วันที่ / Date: ___________</p>
+                                            </div>
+                                        </td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
