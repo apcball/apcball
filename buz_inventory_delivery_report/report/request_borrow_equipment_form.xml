@@ -24,7 +24,9 @@
                      t-att-data-oe-lang="o and o.env.context.get('lang')">
                   <div class="report-container">
                     <t t-set="move_list" t-value="o.move_ids_without_package"/>
-                    <t t-set="groups_of_9" t-value="move_list and [move_list[i:i+9] for i in range(0, len(move_list), 9)] or [[]]"/>
+                    <t t-set="first_page_moves" t-value="move_list[:9]"/>
+                    <t t-set="remaining_moves" t-value="move_list[9:]"/>
+                    <t t-set="groups_of_9" t-value="[first_page_moves] + [remaining_moves[i:i+21] for i in range(0, len(remaining_moves), 21)]"/>
                     <t t-set="page_number" t-value="1"/>
                     <t t-set="total_pages" t-value="len(groups_of_9)"/>
                     <t t-foreach="groups_of_9" t-as="group">
@@ -397,7 +399,7 @@
                             <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
                         </t>
                         <t t-if="page_number != total_pages">
-                        <t t-foreach="range(9 - len(group))" t-as="blank_index">
+                        <t t-foreach="range((page_number == 1 and 9 or 21) - len(group))" t-as="blank_index">
                           <tr class="empty-line">
                             <td>&#160;</td>
                             <td>&#160;</td>
