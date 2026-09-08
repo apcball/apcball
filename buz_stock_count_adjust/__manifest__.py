@@ -1,6 +1,6 @@
 {
     'name': 'Stock Count Adjustment (FIFO void-reseed)',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Inventory/Inventory',
     'author': 'APC Ball',
     'license': 'LGPL-3',

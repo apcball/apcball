@@ -1,3 +1,4 @@
+from odoo.exceptions import UserError
 from odoo.tests import common, tagged
 
 
@@ -62,7 +63,8 @@ class TestEngineVoidReseed(common.TransactionCase):
         self.assertAlmostEqual(sum(inserted.mapped('quantity')),
                                217 - q0, places=3)
         self.assertAlmostEqual(sum(inserted.mapped('value')),
-                               78956.2345 - v0, places=2)
+                               sum(doc.line_ids.mapped('target_value')) - v0,
+                               places=2)
         for b in self.SVL.browse(res['bucket_ids']):
             self.assertAlmostEqual(b.quantity, b.remaining_qty, places=4)
             self.assertAlmostEqual(b.value, b.remaining_value, places=2)
@@ -71,7 +73,7 @@ class TestEngineVoidReseed(common.TransactionCase):
         again = self.engine._baseline(doc)
         q1, v1 = again[(self.p.id, self.wh.id)]
         self.assertAlmostEqual(q1, 217.0, places=2)
-        self.assertAlmostEqual(v1, 78956.2345, places=2)
+        self.assertAlmostEqual(v1, sum(doc.line_ids.mapped('target_value')), places=2)
 
     def test_scoped_replay_reprices_post_cutoff_out_no_shortage(self):
         doc = self._doc()  # reuse TestEngineVoidReseed._doc
@@ -201,6 +203,7 @@ class TestBackupRollback(common.TransactionCase):
             self.engine._scoped_replay(group, reseed, doc.cutoff_date)
         doc.backup_id = backup
         doc.state = 'applied'
+        backup._seal_stock_state()
         return doc, preimage
 
     def test_rollback_restores_every_touched_row(self):
@@ -348,7 +351,8 @@ class TestEngineRunIntegration(common.TransactionCase):
         # rollback path (state == 'applied') is permanently lost.
         doc = self._apply_fixture()
         self.assertTrue(doc.backup_id)
-        doc.line_ids[0].target_qty = 999.0
+        with self.assertRaises(UserError):
+            doc.line_ids[0].target_qty = 999.0
         self.assertEqual(doc.state, 'applied')
         self.assertTrue(doc.backup_id)
         doc.action_rollback()

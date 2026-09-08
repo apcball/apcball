@@ -1,13 +1,14 @@
 import hashlib
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 
 class StockCountAdjustment(models.Model):
     _name = 'stock.count.adjustment'
     _description = 'Stock Count Adjustment'
     _order = 'id desc'
+    _check_company_auto = True
 
     name = fields.Char(default='/', copy=False, readonly=True, index=True)
     company_id = fields.Many2one(
@@ -47,16 +48,46 @@ class StockCountAdjustment(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if not self.env.su and (
+                    vals.get('state', 'draft') != 'draft'
+                    or vals.get('backup_id') or vals.get('line_hash')):
+                raise AccessError(_('Create a draft adjustment and use its actions.'))
             if vals.get('name', '/') == '/':
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'stock.count.adjustment') or '/'
         return super().create(vals_list)
 
     def write(self, vals):
+        if {'company_id', 'cutoff_date', 'line_ids'} & vals.keys():
+            self._check_inputs_editable()
+        if not self.env.su and {'state', 'backup_id', 'line_hash'} & vals.keys():
+            raise AccessError(_('Use the adjustment actions to change its workflow.'))
         res = super().write(vals)
-        if 'line_ids' in vals:
+        if {'line_ids', 'company_id', 'cutoff_date'} & vals.keys():
             self._reset_hash_if_changed()
         return res
+
+    def _check_inputs_editable(self):
+        if any(doc.state in ('applied', 'rolled_back') for doc in self):
+            raise UserError(_('Applied adjustment inputs cannot be changed.'))
+
+    def _check_operation_access(self):
+        self.ensure_one()
+        self.check_access_rights('write')
+        self.check_access_rule('write')
+        if not self.env.su and not self.env.user.has_group(
+                'buz_stock_count_adjust.group_stock_count_adjustment'):
+            raise AccessError(_('Stock Count Adjustment access is required.'))
+        if self.company_id not in self.env.companies:
+            raise AccessError(_('The adjustment company is not allowed.'))
+
+    def _lock_operation(self):
+        self._check_operation_access()
+        self.flush_recordset()
+        self.env.cr.execute(
+            'SELECT id FROM stock_count_adjustment WHERE id = %s FOR UPDATE',
+            (self.id,))
+        self.invalidate_recordset()
 
     def _reset_hash_if_changed(self):
         for doc in self:
@@ -66,8 +97,7 @@ class StockCountAdjustment(models.Model):
                     and doc._line_hash() != doc.line_hash):
                 # plain field assignment, NOT a nested write() — avoids
                 # re-entering this override
-                doc.state = 'draft'
-                doc.line_hash = False
+                doc.sudo().write({'state': 'draft', 'line_hash': False})
 
     def unlink(self):
         for doc in self:
@@ -84,7 +114,8 @@ class StockCountAdjustment(models.Model):
             (l.product_id.id, l.warehouse_id.id, l.bucket_seq,
              round(l.target_qty, 6), round(l.target_value, 6))
             for l in self.line_ids)
-        return hashlib.sha256(repr(payload).encode()).hexdigest()
+        return hashlib.sha256(repr((
+            self.company_id.id, self.cutoff_date, payload)).encode()).hexdigest()
 
     def _line_groups(self):
         self.ensure_one()
@@ -136,13 +167,13 @@ class StockCountAdjustment(models.Model):
                 'state': gstate,
                 'result_note': g.get('note', ''),
             })
-        self.mismatch_ids.unlink()
+        self.mismatch_ids.sudo().unlink()
         mvals = []
         for g in result.get('groups', []):
             for m in g.get('mismatches', []):
                 mvals.append(dict(m, adjustment_id=self.id))
         if mvals:
-            self.env['stock.count.adjustment.mismatch'].create(mvals)
+            self.env['stock.count.adjustment.mismatch'].sudo().create(mvals)
         self.write({
             log_field: self._format_engine_log(result),
             'valuation_delta': result.get('valuation_delta', 0.0),
@@ -152,16 +183,18 @@ class StockCountAdjustment(models.Model):
 
     def action_preview(self):
         self.ensure_one()
+        self._lock_operation()
         if self.state not in ('draft', 'previewed'):
             raise UserError(_(
                 'Preview is only available on a draft or previewed document.'))
         result = self.env['count.adjust.engine'].run(self, dry_run=True)
         self._write_engine_result(result, 'preview_log')
-        self.write({'state': 'previewed', 'line_hash': self._line_hash()})
+        self.sudo().write({'state': 'previewed', 'line_hash': self._line_hash()})
         return True
 
     def action_apply(self):
         self.ensure_one()
+        self._lock_operation()
         if self.state != 'previewed':
             raise UserError(_('Preview the adjustment before applying it.'))
         if self._line_hash() != self.line_hash:
@@ -171,17 +204,18 @@ class StockCountAdjustment(models.Model):
         vals = {'state': 'applied'}
         if result.get('backup_id'):
             vals['backup_id'] = result['backup_id']
-        self.write(vals)
+        self.sudo().write(vals)
         return True
 
     def action_rollback(self):
         self.ensure_one()
+        self._lock_operation()
         if self.state != 'applied':
             raise UserError(_('Only an applied adjustment can be rolled back.'))
         if not self.backup_id:
             raise UserError(_('This adjustment has no backup to roll back.'))
         self.backup_id.action_restore()
-        self.state = 'rolled_back'
+        self.sudo().write({'state': 'rolled_back'})
 
     def action_import(self):
         self.ensure_one()
