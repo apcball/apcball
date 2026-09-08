@@ -158,6 +158,8 @@
                       .signature-box {
                         width: 100%;
                         page-break-inside: avoid;
+                        position: relative;
+                        top: 10px;
                         margin-top: 0 !important;
                          padding-bottom: 20px;
                       }
