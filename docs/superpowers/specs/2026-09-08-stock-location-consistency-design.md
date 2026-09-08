@@ -110,11 +110,11 @@ differs from the current one. For each such move:
 | `assigned`, `partially_available` | yes | `move._do_unreserve()` → `super().write(vals)` → `move._action_assign()`. Odoo does all quant / `reserved_quantity` bookkeeping. If re-assignment cannot cover the demand the move falls back to `confirmed`; post a chatter note on the picking. **No hand-written quant SQL.** |
 
 **Legacy tolerance.** Before blocking, check whether the move is
-*already* divergent (a legacy broken row). Compute "was any line
-outside the OLD header subtree" — if yes, and the write does not
-increase the count of out-of-subtree lines, allow it. This keeps the
-guard from firing on ordinary edits to the ~175 rows that were broken
-before the module existed.
+*already* divergent (a legacy broken row): "is any line outside the
+OLD header subtree". If yes, allow the write — a move that is already
+broken cannot be made cleaner or worse by this guard, and the ~175
+pre-existing rows must stay editable. Only a write that turns a
+*clean* move divergent is blocked.
 
 **Bypass.** Honour `self.env.context.get('skip_location_consistency_check')`
 for deliberate repair scripts, mirroring the existing

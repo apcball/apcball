@@ -116,6 +116,25 @@ class TestLocationConsistency(TransactionCase):
         self.assertFalse(p2.move_ids.move_line_ids.filtered(
             lambda l: not loc_contained(l.location_id, self.sub)))
 
+    def test_reserved_pickingless_move_source_change_no_crash(self):
+        """A picking-less reserved move whose reassign fails must not raise
+        (message_post would ensure_one() on an empty picking_id)."""
+        product = self.env["product.product"].create({
+            "name": "CONSISTENCY_NOPICK", "type": "product"})
+        self.env["stock.quant"]._update_available_quantity(product, self.stock, 2.0)
+        move = self.env["stock.move"].create({
+            "name": product.name, "product_id": product.id,
+            "product_uom_qty": 2.0, "product_uom": product.uom_id.id,
+            "location_id": self.stock.id, "location_dest_id": self.sub.id,
+        })
+        move._action_confirm()
+        move._action_assign()
+        self.assertEqual(move.state, "assigned")
+        self.assertFalse(move.picking_id)
+        # new source (self.sub) has no stock -> reassign can't cover
+        move.write({"location_id": self.sub.id})
+        self.assertEqual(move.location_id, self.sub)
+
     # ---- stock.picking guard ----------------------------------------
 
     def test_picking_source_change_on_done_blocked(self):

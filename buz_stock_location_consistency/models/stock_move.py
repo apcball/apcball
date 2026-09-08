@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import api, models, _
 from odoo.exceptions import ValidationError
 
 from .location_helpers import loc_contained, build_mismatch_message
+
+_logger = logging.getLogger(__name__)
 
 
 class StockMove(models.Model):
@@ -52,11 +56,16 @@ class StockMove(models.Model):
         if to_reassign:
             to_reassign._action_assign()
             for move in to_reassign:
-                if move.state not in ("assigned", "done"):
-                    move.picking_id.message_post(body=_(
-                        "ตำแหน่งต้นทางถูกเปลี่ยน แต่ระบบจองสินค้าที่ตำแหน่งใหม่ไม่พอ "
-                        "(move %(name)s กลับเป็นสถานะ %(state)s)",
-                    ) % {"name": move.display_name, "state": move.state})
+                if move.state in ("assigned", "done"):
+                    continue
+                msg = _(
+                    "ตำแหน่งต้นทางถูกเปลี่ยน แต่ระบบจองสินค้าที่ตำแหน่งใหม่ไม่พอ "
+                    "(move %(name)s กลับเป็นสถานะ %(state)s)",
+                ) % {"name": move.display_name, "state": move.state}
+                if move.picking_id:
+                    move.picking_id.message_post(body=msg)
+                else:
+                    _logger.warning("buz_stock_location_consistency: %s", msg)
         return res
 
     @api.constrains("location_id")
