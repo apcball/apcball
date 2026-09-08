@@ -185,8 +185,21 @@ re-grabbed the remaining unit. Final: 1220 qty 1 / reserved 1, 76 qty 1; 00614 a
 0 mismatch for 274140; quant == ml net. No GL.
 Backups `mog-prod:~/backups/imtn270_{ml,quant,svl}_20260908.csv`.
 
-Still paused in the type-324 batch: EMTN017682/684/685/690/691 (product 5638 ×5 — correcting
-all 5 drives FG10/Stock loc 8 to −5).
+**2026-09-08 — EMTN017682/684/685/690/691 (type 324, shape A, product 5638 ×5). Type-324
+mismatch list now EMPTY.** Each: claim move `8→1220`, move line `1220→1220` no-op. All 5 SVL
+pairs already booked OUT wh1 (FG10) / IN wh16 (RM11) at done-time (value 460.41 ea, no GL) —
+so SVL wh1 for 5638 was already −5 while quant loc 8 = 0. User (warehouse authority) confirmed
+5638 picked from FG10/Stock (same as co-product 6233 whose line was correct). Fix: `ml.location_id
+1220→8` ×5 (lines 253363/253350/253215/252830/252829); SVL IN layers
+220999/221015/221023/221031/221039 `location_id 8→1220` + complete_name `RM11/EMTN` (warehouse_id
+16 + OUT layers untouched); quant FG10/Stock(8) `0→−5` (now matches SVL wh1 −5),
+RM11/EMTN(1220) `6→11`. `product_template`.allow_negative_stock → True on 5638 (the −5 is a
+surfaced shortage / recount item, same as RM01260600094/275). EMTN017715 move 306007 had a
+phantom reservation at loc 8 (qty 0 / reserved 1) → `do_unreserve`; that 5638 move stays
+`confirmed`, its other 2 product moves remain assigned. Company phys 467 == SVL 467.
+Backups `mog-prod:~/backups/emtn5638_{ml,quant,svl,prodflag}_20260908.csv`.
+
+**Type-324 batch (picking_type_id 324) is now fully cleared** — the find-offenders query returns 0.
 
 Raw dataset: `scratchpad/bulk_analysis.csv` (201 rows, all fields).
 Query to regenerate the population:
