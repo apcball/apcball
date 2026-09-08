@@ -201,6 +201,13 @@
                         margin-bottom: 2px;
                         line-height: 1.1;
                       }
+                       .signature-final-row td {
+                         padding-top: 30px !important;
+                       }
+                       .signature-note p {
+                         position: relative;
+                         top: 20px;
+                       }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
                     <t t-set="groups_of_13" t-value="[move_list[i:i+13] for i in range(0, len(move_list), 13)]"/>
@@ -414,28 +421,34 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="text-center signature-section">
-                                                <br/>
-                                                <p>กรณีส่งของออกนอกบริษัท</p>
-                                                <br/>
-                                                <p>________________________</p>
-                                                <p>ทีมจัดส่ง/ติดตั้ง(ผู้รับของ)</p>
-                                                <p>วันที่ / Date: ___________</p>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center signature-section">
-                                                <br/>
-                                                <p>________________________</p>
-                                                <p>ผู้รับของหน้างาน / Recipient</p>
-                                                <p>วันที่ / Date: ___________</p>
-                                            </div>
-                                        </td>
-                                        <td></td>
-                                        <td></td>
-                                    </tr>
+                                     <tr>
+                                         <td class="signature-note">
+                                             <div class="text-center">
+                                                 <p>กรณีส่งของออกนอกบริษัท</p>
+                                             </div>
+                                         </td>
+                                         <td></td>
+                                         <td></td>
+                                         <td></td>
+                                     </tr>
+                                     <tr class="signature-final-row">
+                                         <td>
+                                             <div class="text-center signature-section">
+                                                 <p>________________________</p>
+                                                 <p>ทีมจัดส่ง/ติดตั้ง(ผู้รับของ)</p>
+                                                 <p>วันที่ / Date: ___________</p>
+                                             </div>
+                                         </td>
+                                         <td>
+                                             <div class="text-center signature-section">
+                                                 <p>________________________</p>
+                                                 <p>ผู้รับของหน้างาน / Recipient</p>
+                                                 <p>วันที่ / Date: ___________</p>
+                                             </div>
+                                         </td>
+                                         <td></td>
+                                         <td></td>
+                                     </tr>
                                 </tbody>
                             </table>
                         </div>
