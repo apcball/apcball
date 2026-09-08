@@ -70,6 +70,7 @@
                                     <field name="layout"/>
                                     <field name="lac"/>
                                     <field name="quantity"/>
+                                    <field name="date"/>
                                     <field name="import_status" widget="badge" optional="hide"/>
                                     <field name="import_message" optional="hide"/>
                                 </tree>

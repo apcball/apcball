@@ -481,6 +481,29 @@ class StockValuationLayer(models.Model):
         """, (prod_id, wh_id, company_id))
         rows = self.env.cr.fetchall()
 
+        # consume loop extracted to _fifo_consume_rows so buz_stock_count_adjust replays the same code
+        return self._fifo_consume_rows(rows)
+
+    @api.model
+    def _fifo_consume_rows(self, rows, seed=None):
+        """Consume a FIFO history and report the resulting queue state.
+
+        rows: iterable of (layer_id, quantity, value, stock_landed_cost_id,
+              stock_valuation_layer_id) tuples, already ordered (create_date, id).
+        seed: optional list of (layer_id, qty, value) to prime the pool with
+              BEFORE walking rows — used for a scoped replay that starts from a
+              known ending queue rather than from the beginning of history.
+              When None, the pool starts empty (origin behaviour).
+
+        Returns {'expected': {layer_id: (rem_qty, rem_value)},
+                 'cogs': {layer_id: value_the_outgoing_layer_should_carry},
+                 'shortage': float,
+                 'inverted': int}
+        Same semantics as the old inline loop: live-rate unit_cost =
+        entry['value'] / available, EPS = FIFO_QTY_EPSILON, delete-on-exhaust.
+        A seeded layer_id already present in rows keeps its seeded pool entry
+        (the row's positive quantity is NOT pushed again).
+        """
         epsilon = self.FIFO_QTY_EPSILON
         pool = {}       # layer id -> {'qty', 'value'}, insertion order == FIFO order
         expected = {}
@@ -488,6 +511,12 @@ class StockValuationLayer(models.Model):
         shortage = 0.0
         inverted = 0
         previous_id = 0
+
+        if seed:
+            for layer_id, qty, value in seed:
+                pool[layer_id] = {'qty': float(qty or 0.0),
+                                  'value': float(value or 0.0)}
+                expected[layer_id] = None
 
         for layer_id, qty, value, lc_id, target_id in rows:
             if layer_id < previous_id:
@@ -497,8 +526,9 @@ class StockValuationLayer(models.Model):
             value = float(value or 0.0)
 
             if qty > 0:
-                pool[layer_id] = {'qty': qty, 'value': value}
-                expected[layer_id] = None  # filled in at the end from the pool
+                if layer_id not in pool:          # a seeded id keeps its seed
+                    pool[layer_id] = {'qty': qty, 'value': value}
+                    expected[layer_id] = None  # filled in at the end from the pool
             elif qty < 0:
                 to_consume = -qty
                 consumed_value = 0.0
