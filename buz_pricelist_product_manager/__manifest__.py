@@ -1,6 +1,6 @@
 {
     'name': 'Pricelist Product Manager (All-in-One Module)',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Sales',
     'summary': 'Manage prices by Product, not by rule',
     'description': """

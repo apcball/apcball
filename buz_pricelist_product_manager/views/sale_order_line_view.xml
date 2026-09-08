@@ -11,6 +11,7 @@
             <xpath expr="//field[@name='order_line']/tree//field[@name='price_unit']" position="before">
                 <field name="include_installation" optional="hide"/>
                 <field name="installation_price" optional="hide" readonly="1"/>
+                <field name="install_cost" optional="hide" readonly="1"/>
             </xpath>
             <xpath expr="//field[@name='order_line']/form//field[@name='price_unit']" position="attributes">
                <attribute name="readonly">include_installation</attribute>
@@ -18,6 +19,7 @@
             <xpath expr="//field[@name='order_line']/form//field[@name='price_unit']" position="before">
                  <field name="include_installation"/>
                  <field name="installation_price" readonly="1"/>
+                 <field name="install_cost" readonly="1"/>
             </xpath>
         </field>
     </record>

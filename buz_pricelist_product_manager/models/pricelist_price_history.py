@@ -16,6 +16,9 @@ class PricelistPriceHistory(models.Model):
     
     old_installation_price = fields.Float(string='Old Install Price', readonly=True)
     new_installation_price = fields.Float(string='New Install Price', readonly=True)
+
+    old_install_cost = fields.Float(string='Old Install Cost', readonly=True)
+    new_install_cost = fields.Float(string='New Install Cost', readonly=True)
     
     origin = fields.Selection([
         ('create', 'Created'),

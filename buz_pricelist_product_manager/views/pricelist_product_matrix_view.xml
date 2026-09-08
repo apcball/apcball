@@ -38,6 +38,7 @@
                 <field name="price" invisible="rule_type != 'fixed'" required="rule_type == 'fixed'"/>
                 <field name="percent_price" invisible="rule_type != 'percentage'" required="rule_type == 'percentage'"/>
                 <field name="installation_price" optional="show"/>
+                <field name="install_cost" optional="show"/>
                 <field name="min_quantity"/>
                 <field name="date_start" optional="hide"/>
                 <field name="date_end" optional="hide"/>
