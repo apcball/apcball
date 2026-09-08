@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_stock_location_mismatch_tree" model="ir.ui.view">
+        <field name="name">buz.stock.location.mismatch.tree</field>
+        <field name="model">buz.stock.location.mismatch</field>
+        <field name="arch" type="xml">
+            <tree string="Location Mismatches" create="false" edit="false" delete="false">
+                <field name="picking_id"/>
+                <field name="picking_type_id"/>
+                <field name="product_id"/>
+                <field name="ml_location_id"/>
+                <field name="header_location_id"/>
+                <field name="quantity"/>
+                <field name="state"/>
+                <field name="move_write_date"/>
+                <field name="move_write_uid"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_stock_location_mismatch_search" model="ir.ui.view">
+        <field name="name">buz.stock.location.mismatch.search</field>
+        <field name="model">buz.stock.location.mismatch</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="picking_id"/>
+                <field name="product_id"/>
+                <field name="header_location_id"/>
+                <field name="ml_location_id"/>
+                <filter name="done" string="Done" domain="[('state','=','done')]"/>
+                <filter name="reserved" string="Reserved"
+                        domain="[('state','in',['assigned','partially_available'])]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_ptype" string="Operation Type"
+                            context="{'group_by':'picking_type_id'}"/>
+                    <filter name="g_header" string="Header Source"
+                            context="{'group_by':'header_location_id'}"/>
+                    <filter name="g_wdate" string="Header Edited On"
+                            context="{'group_by':'move_write_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_buz_stock_location_mismatch" model="ir.actions.act_window">
+        <field name="name">Location Mismatches</field>
+        <field name="res_model">buz.stock.location.mismatch</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiley_face">No move line / header location mismatches</p>
+            <p>Rows here have a move line whose source location is outside the
+               move header's location subtree. Each is fixed case-by-case.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_buz_stock_location_mismatch"
+              name="Location Mismatches"
+              parent="stock.menu_warehouse_report"
+              action="action_buz_stock_location_mismatch"
+              sequence="95"/>
+</odoo>
