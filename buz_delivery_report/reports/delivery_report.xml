@@ -158,10 +158,8 @@
                       .signature-box {
                         width: 100%;
                         page-break-inside: avoid;
-                        position: relative;
-                        top: 10px;
                         margin-top: 0 !important;
-                         padding-bottom: 20px;
+                         padding-bottom: 0px;
                       }
                       .signature-table {
                         width: 100%;
@@ -212,7 +210,7 @@
                          top: 20px;
                        }
                        .signature-note {
-                         padding-bottom: 20px !important;
+                         padding-bottom: 8px !important;
                        }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
