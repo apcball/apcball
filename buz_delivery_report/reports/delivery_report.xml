@@ -214,15 +214,15 @@
                        }
                     </style>
                     <t t-set="move_list" t-value="doc.move_ids"/>
-                    <t t-set="groups_of_12" t-value="[move_list[i:i+12] for i in range(0, len(move_list), 12)]"/>
-                    <t t-set="total_pages" t-value="len(groups_of_12)"/>
+                    <t t-set="groups_of_13" t-value="[move_list[i:i+13] for i in range(0, len(move_list), 13)]"/>
+                    <t t-set="total_pages" t-value="len(groups_of_13)"/>
                     <t t-set="page_number" t-value="1"/>
                     <t t-set="line_number" t-value="1"/>
                     <t t-set="total_delivered_total" t-value="0"/>
-                    <t t-foreach="groups_of_12" t-as="group">
+                    <t t-foreach="groups_of_13" t-as="group">
                         <div t-attf-class="page #{page_number != 1 and 'page-following' or ''}"
                              t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
-                            <t t-if="groups_of_12">
+                            <t t-if="groups_of_13">
                                 <div>
                                     <div class="delivery-report-header">
                                     <!-- Page header if more than 1 page -->
@@ -347,9 +347,9 @@
                                                     </td>
                                                 </tr>
                                             </t>
-                                            <!-- Fill each page to 12 table rows. -->
-                                            <t t-if="len(group) &lt; 12">
-                                                <t t-set="empty_rows" t-value="12 - len(group)"/>
+                                            <!-- Fill each page to 13 table rows. -->
+                                            <t t-if="len(group) &lt; 13">
+                                                <t t-set="empty_rows" t-value="13 - len(group)"/>
                                                 <t t-foreach="range(empty_rows)" t-as="empty_row">
                                                     <tr>
                                                         <td class="text-center">&#160;</td>
@@ -394,7 +394,6 @@
                                     <tr>
                                         <td>
                                             <div class="text-center signature-section">
-                                                <br/><br/>
                                                 <p>________________________</p>
                                                 <p>ผู้โอน/ผู้จ่ายของ / Issued By</p>
                                                 <p>วันที่ / Date: ___________</p>
@@ -402,7 +401,6 @@
                                         </td>
                                         <td>
                                             <div class="text-center signature-section">
-                                                <br/><br/>
                                                 <p>________________________</p>
                                                 <p>ผู้รับของ / Received By</p>
                                                 <p>วันที่ / Date: ___________</p>
@@ -410,7 +408,6 @@
                                         </td>
                                         <td>
                                             <div class="text-center signature-section">
-                                                <br/><br/>
                                                 <p>________________________</p>
                                                 <p>ผู้ตรวจสอบ / Checked By</p>
                                                 <p>วันที่ / Date: ___________</p>
@@ -418,7 +415,6 @@
                                         </td>
                                         <td>
                                             <div class="text-center signature-section">
-                                                <br/><br/>
                                                 <p>________________________</p>
                                                 <p>ผู้อนุมัติ / Approved By</p>
                                                 <p>วันที่ / Date: ___________</p>
