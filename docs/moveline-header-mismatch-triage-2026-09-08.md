@@ -175,7 +175,18 @@ layer's `location_id` tag was stale (1220 not 76). Earlier PAUSE reason ("2028 n
 RM11/EMTN(1220) `1→0`, FG40/Stock(76) `2→3`; `SVL 220314.location_id 1220→76` +
 complete_name `FG40/Stock`. Header + SVL warehouse/qty/value untouched; no GL. 0 mismatch for
 274135; quant == ml net. Backups `mog-prod:~/backups/imtn269_{ml,quant,svl}_20260908.csv`.
-Still paused in the type-324 batch: RM11/IMTN/00270 (4028), EMTN017682/684/685/690/691 (5638 ×5).
+**2026-09-08 — RM11/IMTN/00270 (type 324, shape A, move 274140 / line 253117, product 4028
+MA00001B0010000).** Same as 00269 (chain origin POS0023154, FG10/CM11/00542 claim return).
+Line `76→76` → `1220→76`; `SVL 220296.location_id 1220→76` + complete_name `FG40/Stock`
+(warehouse_id 9 / src_wh 16 unchanged, OUT 220295 untouched). quant RM11/EMTN(1220) `2→1`,
+FG40/Stock(76) `0→1` (new row). Pause reason (open RM11/IMTN/00614 reserving 1 unit at 1220)
+handled: `do_unreserve` 00614 → fix → `_update_available_quantity` → `action_assign` 00614
+re-grabbed the remaining unit. Final: 1220 qty 1 / reserved 1, 76 qty 1; 00614 assigned;
+0 mismatch for 274140; quant == ml net. No GL.
+Backups `mog-prod:~/backups/imtn270_{ml,quant,svl}_20260908.csv`.
+
+Still paused in the type-324 batch: EMTN017682/684/685/690/691 (product 5638 ×5 — correcting
+all 5 drives FG10/Stock loc 8 to −5).
 
 Raw dataset: `scratchpad/bulk_analysis.csv` (201 rows, all fields).
 Query to regenerate the population:
