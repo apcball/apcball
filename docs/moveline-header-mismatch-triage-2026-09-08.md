@@ -166,6 +166,17 @@ IN=NC wh9, no GL). Line kept FG10 (done-time, uid 35). Fix: `ml.location_id 8→
 OT01 −1 (2→1) / FG10 +1 (9→10). SVL 241001/241002 untouched. 0 mismatch; quant == ml net.
 Backups `mog-prod:/tmp/bk8_{move,ml,svl,quant}.csv`. OUTLET VTMAE08R1 now = 1 — warehouse to confirm.
 
+**2026-09-08 — RM11/IMTN/00269 (type 324, shape A, move 274135 / line 253116, product 2028
+ACS03602100).** Claim chain origin POS0021050: FG10/EMTN/00051 (8→1220, re-done 2026-09-07) →
+RM11/IMTN/00269 (1220→76, claim→NC). Line was no-op `76→76`; header `1220→76` correct. SVL
+220313/220314 warehouse_id (OUT 16 / IN 9) + source_warehouse_id already correct — only the IN
+layer's `location_id` tag was stale (1220 not 76). Earlier PAUSE reason ("2028 no inbound at 1220
+→ goes −1") went stale once 00051 landed the unit at 1220. Fix: `ml.location_id 76→1220`; quant
+RM11/EMTN(1220) `1→0`, FG40/Stock(76) `2→3`; `SVL 220314.location_id 1220→76` +
+complete_name `FG40/Stock`. Header + SVL warehouse/qty/value untouched; no GL. 0 mismatch for
+274135; quant == ml net. Backups `mog-prod:~/backups/imtn269_{ml,quant,svl}_20260908.csv`.
+Still paused in the type-324 batch: RM11/IMTN/00270 (4028), EMTN017682/684/685/690/691 (5638 ×5).
+
 Raw dataset: `scratchpad/bulk_analysis.csv` (201 rows, all fields).
 Query to regenerate the population:
 ```sql
