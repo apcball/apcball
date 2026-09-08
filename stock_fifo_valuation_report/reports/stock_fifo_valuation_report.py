@@ -120,16 +120,14 @@ class StockFifoValuationReport(models.Model):
     def _get_warehouse_clause(self, warehouse_id):
         """SQL predicate for the warehouse filter.
 
-        A handful of layers carry no warehouse at all (manual revaluations
-        posted without a stock move, so there is no location to derive one
-        from). `warehouse_id in (...)` silently drops them, which loses real
-        value from the report. When the user asked for every warehouse, keep
-        them; when a specific warehouse was picked, they are genuinely out of
-        scope.
+        A handful of layers carry no warehouse at all (import price-difference
+        revaluations posted from a vendor bill without a stock move, so there
+        is no location to derive one from). These are GL-backed but cannot be
+        attributed to any warehouse, and finance does not want them surfaced
+        in this stock report. They are always excluded here; the layers and
+        their journal entries are untouched.
         """
-        if warehouse_id:
-            return "svl.warehouse_id in %s"
-        return "(svl.warehouse_id in %s or svl.warehouse_id is null)"
+        return "svl.warehouse_id in %s"
 
     def _get_product_category_ids(self, product_category_ids):
         if product_category_ids:
