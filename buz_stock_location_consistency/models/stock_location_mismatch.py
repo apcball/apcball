@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models, tools
 
+# Only surface mismatches whose effective (movement) date is on or after this
+# wall-clock instant in MISMATCH_TZ. Older documents are stale backlog and are
+# excluded from the report entirely. stock_move.date / stock_move_line.date are
+# stored as naive UTC timestamps, so the SQL converts this cutoff to UTC.
+MISMATCH_EFFECTIVE_CUTOFF = "2025-03-31 00:00:00"
+MISMATCH_TZ = "Asia/Bangkok"
+
 
 class BuzStockLocationMismatch(models.Model):
     _name = "buz.stock.location.mismatch"
     _description = "Stock Move Line / Header Location Mismatch"
     _auto = False
-    _order = "move_write_date desc"
+    _order = "effective_date desc"
 
     picking_id = fields.Many2one("stock.picking", readonly=True)
     move_id = fields.Many2one("stock.move", readonly=True)
@@ -19,6 +26,10 @@ class BuzStockLocationMismatch(models.Model):
     state = fields.Char(readonly=True)
     move_write_uid = fields.Many2one("res.users", string="Header Last Edited By", readonly=True)
     move_write_date = fields.Datetime(string="Header Last Edited", readonly=True)
+    effective_date = fields.Datetime(
+        string="Effective Date", readonly=True,
+        help="When the stock movement took effect (move done date), "
+             "not the last edit time.")
     picking_type_id = fields.Many2one("stock.picking.type", readonly=True)
     company_id = fields.Many2one("res.company", readonly=True)
 
@@ -67,6 +78,7 @@ class BuzStockLocationMismatch(models.Model):
                        m.state                AS state,
                        m.write_uid            AS move_write_uid,
                        m.write_date           AS move_write_date,
+                       COALESCE(ml.date, m.date) AS effective_date,
                        p.picking_type_id      AS picking_type_id,
                        m.company_id           AS company_id,
                        trim(BOTH '+' FROM
@@ -107,5 +119,7 @@ class BuzStockLocationMismatch(models.Model):
                 ) dst ON true
                 WHERE m.state IN ('done', 'assigned', 'partially_available')
                   AND (src.bad OR dst.bad)
+                  AND COALESCE(ml.date, m.date)
+                      >= (TIMESTAMP %s AT TIME ZONE %s AT TIME ZONE 'UTC')
             )
-        """)
+        """, (MISMATCH_EFFECTIVE_CUTOFF, MISMATCH_TZ))

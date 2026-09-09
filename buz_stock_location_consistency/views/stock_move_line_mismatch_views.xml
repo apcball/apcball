@@ -23,7 +23,8 @@
                 <field name="header_location_dest_id"/>
                 <field name="quantity"/>
                 <field name="state"/>
-                <field name="move_write_date"/>
+                <field name="effective_date"/>
+                <field name="move_write_date" optional="show"/>
                 <field name="move_write_uid"/>
                 <field name="cleared" optional="show"/>
                 <field name="cleared_by" optional="show"/>
@@ -44,6 +45,7 @@
                 <field name="header_location_id"/>
                 <field name="ml_location_id"/>
                 <field name="cleared_by"/>
+                <field name="effective_date"/>
                 <filter name="open" string="Open (not cleared)"
                         domain="[('cleared','=',False)]"/>
                 <filter name="cleared" string="Cleared"
@@ -63,6 +65,8 @@
                             context="{'group_by':'picking_type_id'}"/>
                     <filter name="g_header" string="Header Source"
                             context="{'group_by':'header_location_id'}"/>
+                    <filter name="g_edate" string="Effective Date"
+                            context="{'group_by':'effective_date:month'}"/>
                     <filter name="g_wdate" string="Header Edited On"
                             context="{'group_by':'move_write_date:day'}"/>
                 </group>
