@@ -572,9 +572,6 @@ class BuzCustomerRefundPv(models.Model):
             'force_amount': self.refund_amount,
             # ให้ Standard Payment Register สร้าง write-off เพียงบรรทัดเดียว
             # จากบัญชี Other Income ที่ผู้ใช้เลือกบน Refund PV
-            'default_payment_difference_handling': 'reconcile',
-            'default_writeoff_account_id': self.other_income_account_id.id if self.other_income_account_id else False,
-            'default_writeoff_label': _('Other Income - %s') % self.name,
             # Refund PV ต้องใช้ standard payment flow เท่านั้น ไม่ให้ batch module
             # สร้างยอดใหม่จากยอดคงเหลือเต็มของ Credit Note
             'batch': False,
