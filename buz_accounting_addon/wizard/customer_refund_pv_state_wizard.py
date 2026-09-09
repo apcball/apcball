@@ -21,8 +21,11 @@ class BuzCustomerRefundPvStateWizard(models.TransientModel):
 
     def action_confirm(self):
         self.ensure_one()
-        if not self.env.user.has_group("account.group_account_manager"):
-            raise UserError(_("Only Accounting Managers can perform this action."))
+        if not (
+            self.env.user.has_group("account.group_account_invoice")
+            or self.env.user.has_group("account.group_account_manager")
+        ):
+            raise UserError(_("Only Accounting Users or Accounting Managers can perform this action."))
         reason = (self.reason or "").strip()
         if not reason:
             raise UserError(_("Please enter a reason."))

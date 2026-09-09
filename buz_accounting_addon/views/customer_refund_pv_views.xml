@@ -40,8 +40,8 @@
             <form string="Customer Refund PV">
                 <header>
                     <button name="action_confirm" type="object" string="Confirm" class="oe_highlight" invisible="state != 'draft'"/>
-                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" groups="account.group_account_manager" invisible="state != 'posted'"/>
-                    <button name="action_cancel" type="object" string="Cancel" groups="account.group_account_manager" invisible="state == 'cancel'"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" groups="account.group_account_invoice" invisible="state != 'posted'"/>
+                    <button name="action_cancel" type="object" string="Cancel" groups="account.group_account_invoice" invisible="state == 'cancel'"/>
                     <button name="%(buz_accounting_addon.action_report_customer_refund_pv)d" type="action" string="Print Payment Voucher" class="oe_highlight" invisible="state != 'posted'"/>
                     <button name="action_register_refund_payment" type="object" string="Register Refund Payment" class="oe_highlight" invisible="state != 'posted' or not credit_note_id or not refund_amount or has_active_payment"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancel"/>

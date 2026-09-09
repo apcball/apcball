@@ -60,7 +60,7 @@ Source Invoice เป็นข้อมูลที่ฝ่ายบัญช�
 ## 5. การควบคุมข้อมูล
 
 - Posted หรือ Cancelled Refund PV แก้ข้อมูลหลักและ Invoice ต้นทางไม่ได้
-- Reset to Draft และ Cancel ใช้ได้เฉพาะ Accounting Manager ผ่าน Reason Wizard
+- Reset to Draft and Cancel are available to Accounting Users and Accounting Managers through the Reason Wizard.
 - ไม่ทำ mass update หรือ backfill ข้อมูลธุรกรรมเดิม
 - การ deploy ตามแผนนี้จำกัดเฉพาะ DEV (`MOG_DEV`) ไม่รวม PROD
 
@@ -104,6 +104,16 @@ Module: `buz_accounting_addon`
 
 ระหว่าง deploy มี validation failure ครั้งแรกเนื่องจาก custom domain อ้าง `company_id` ใน view แต่ field ไม่ผ่าน view validation จึงปรับกลับไปใช้ domain Active มาตรฐานร่วมกับ `check_company=True` แล้ว upgrade สำเร็จ
 
+
+### 9.1 Customer Refund PV permission for Accounting User
+
+Local-only verification on 2026-09-09:
+
+- Permission checks for Reset to Draft, Cancel, and the Reason Wizard now accept account.group_account_invoice while retaining Accounting Manager.
+- Reason, active Payment, and Credit Note reconciliation validations remain unchanged.
+- Form buttons and CRUD ACL for the state wizard were updated for Accounting User.
+- No deploy, upgrade, or server restart was performed.
+- Odoo/database UAT remains pending until deployment is separately authorized.
 ## 9. UAT ที่ยังค้าง
 
 - เปิด Register Refund Payment จาก Customer Refund PV และตรวจว่าตัวเลือกทั้งสองแบบแสดงจริง

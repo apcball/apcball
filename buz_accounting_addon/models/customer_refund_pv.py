@@ -250,8 +250,11 @@ class BuzCustomerRefundPv(models.Model):
 
     def _check_reset_or_cancel_allowed(self):
         self.ensure_one()
-        if not self.env.user.has_group("account.group_account_manager"):
-            raise UserError(_("Only Accounting Managers can reset or cancel a Customer Refund PV."))
+        if not (
+            self.env.user.has_group("account.group_account_invoice")
+            or self.env.user.has_group("account.group_account_manager")
+        ):
+            raise UserError(_("Only Accounting Users or Accounting Managers can reset or cancel a Customer Refund PV."))
         active_payments = self.payment_ids.filtered(lambda payment: payment.state != "cancel")
         if active_payments:
             details = ", ".join(
@@ -272,16 +275,22 @@ class BuzCustomerRefundPv(models.Model):
         self.ensure_one()
         if self.state != "posted":
             raise UserError(_("Only a Posted Customer Refund PV can be reset to Draft."))
-        if not self.env.user.has_group("account.group_account_manager"):
-            raise UserError(_("Only Accounting Managers can reset a Customer Refund PV."))
+        if not (
+            self.env.user.has_group("account.group_account_invoice")
+            or self.env.user.has_group("account.group_account_manager")
+        ):
+            raise UserError(_("Only Accounting Users or Accounting Managers can reset a Customer Refund PV."))
         return self._open_state_reason_wizard("reset")
 
     def action_cancel(self):
         self.ensure_one()
         if self.state not in ("draft", "posted"):
             raise UserError(_("Only a Draft or Posted Customer Refund PV can be cancelled."))
-        if not self.env.user.has_group("account.group_account_manager"):
-            raise UserError(_("Only Accounting Managers can cancel a Customer Refund PV."))
+        if not (
+            self.env.user.has_group("account.group_account_invoice")
+            or self.env.user.has_group("account.group_account_manager")
+        ):
+            raise UserError(_("Only Accounting Users or Accounting Managers can cancel a Customer Refund PV."))
         return self._open_state_reason_wizard("cancel")
 
     def _open_state_reason_wizard(self, operation):
