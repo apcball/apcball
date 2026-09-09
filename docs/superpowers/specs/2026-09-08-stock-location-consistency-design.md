@@ -332,3 +332,62 @@ writes are covered.
   (already does via the `bool()` checks); a null path means "cannot
   prove containment" → treat as contained (do not block) to stay
   conservative.
+
+---
+
+## 11. Extension — v17.0.1.1.0 (2026-09-09): destination axis + move-line guard
+
+**Trigger:** unbuild POJ0012387. `buz_mrp_unbuild_enhancement` lets a
+user return each component to its own destination location. When a
+byproduct's move **line** was pointed at a different warehouse than the
+produce move **header** (header FG50 / line RM01), the SVL followed the
+header and the quant followed the line — the same value/quantity split
+this module exists to prevent, but on the `location_dest_id` axis and
+introduced from the move-line side, which §4 did not cover.
+
+Decision (Ball): do **not** change the SVL warehouse derivation or the
+FIFO engine (a header-vs-line source-of-truth split there desyncs COGS
+from the layer tag). Keep valuation on the header; lock the line to the
+header instead.
+
+Added:
+
+- **`models/stock_move_line.py`** — `create()` / `write()` hooks (not
+  `@api.constrains`, so a move-header location change's recompute cascade
+  does not trip it). Blocks a line whose `location_id` is outside the
+  move header `location_id` subtree, or whose `location_dest_id` is
+  outside the header `location_dest_id` subtree. Same `loc_contained`
+  containment rule; same bypass context.
+- **`stock_move.write()` + constrains** — the `_AXES` loop now guards
+  `location_dest_id` as well as `location_id`. A source change still
+  does the unreserve/reassign dance; a dest change only blocks the
+  done-move orphan case and re-points unreserved lines (dest change
+  does not touch reservations).
+- **mismatch view** — two LATERAL containment checks (source + dest);
+  `axis` column reports `source` / `dest` / `source+dest`.
+
+`buz_mrp_unbuild_enhancement` is unaffected: `_prepare_component_move_values`
+already sets each produce move's **header** `location_dest_id` to the
+component line's destination, so header == line and the guard passes.
+
+### v17.0.1.2.0 — unbuild move-line destination is the operator's choice
+
+Ball's design: an unbuild returns components to several warehouses, and
+the operator may pick the destination on the **raw move line** (Detailed
+Operations) before posting, not only on the component line. For that flow
+blocking is wrong — the line is the intent.
+
+`stock_move_line._check_line_within_move_header` now, for a move with
+`unbuild_id` / `consume_unbuild_id` that is **not yet done**:
+
+- if every non-zero line agrees on one location for the diverging axis →
+  `_realign_unbuild_header` points the move header (and `warehouse_id`)
+  at that location, unreserving/reassigning around the write when the
+  move is reserved. No exception; the valuation layer (header-keyed)
+  then lands correctly.
+- otherwise (lines in >1 location, or the move is already `done`) →
+  `ValidationError` as before.
+
+Detection is by `move._fields` membership, so the module still installs
+without `mrp`. Non-unbuild moves are unchanged: any cross-subtree line is
+blocked.

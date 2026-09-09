@@ -8,8 +8,12 @@
                 <field name="picking_id"/>
                 <field name="picking_type_id"/>
                 <field name="product_id"/>
+                <field name="axis"/>
+                <field name="cross_warehouse"/>
                 <field name="ml_location_id"/>
                 <field name="header_location_id"/>
+                <field name="ml_location_dest_id"/>
+                <field name="header_location_dest_id"/>
                 <field name="quantity"/>
                 <field name="state"/>
                 <field name="move_write_date"/>
@@ -28,10 +32,14 @@
                 <field name="product_id"/>
                 <field name="header_location_id"/>
                 <field name="ml_location_id"/>
+                <filter name="cross_wh" string="Cross-warehouse"
+                        domain="[('cross_warehouse','=',True)]"/>
                 <filter name="done" string="Done" domain="[('state','=','done')]"/>
                 <filter name="reserved" string="Reserved"
                         domain="[('state','in',['assigned','partially_available'])]"/>
                 <group expand="0" string="Group By">
+                    <filter name="g_cross" string="Cross-warehouse"
+                            context="{'group_by':'cross_warehouse'}"/>
                     <filter name="g_ptype" string="Operation Type"
                             context="{'group_by':'picking_type_id'}"/>
                     <filter name="g_header" string="Header Source"
@@ -50,8 +58,11 @@
         <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiley_face">No move line / header location mismatches</p>
-            <p>Rows here have a move line whose source location is outside the
-               move header's location subtree. Each is fixed case-by-case.</p>
+            <p>Rows here have a move line whose source or destination location
+               is outside the move header's location subtree (the "axis"
+               column says which). Valuation follows the header, physical
+               stock follows the line, so a cross-warehouse split desyncs
+               value from quantity. Each is fixed case-by-case.</p>
         </field>
     </record>
 

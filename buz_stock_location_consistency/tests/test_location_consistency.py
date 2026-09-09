@@ -187,3 +187,207 @@ class TestLocationConsistency(TransactionCase):
         rows = self.env["buz.stock.location.mismatch"].search(
             [("move_id", "=", move.id)])
         self.assertFalse(rows)
+
+    # ---- stock.move.line guard (line must stay within its move header) ----
+
+    def _draft_move(self, name, src=None, dest=None, qty=1.0, seed_locs=None):
+        src = src or self.stock
+        dest = dest or self.sub
+        product = self.env["product.product"].create({
+            "name": name, "type": "product"})
+        # buz_stock_reservation_guard blocks a move-line create at a source
+        # with no on-hand stock; seed every location a test will pick from.
+        for loc in (seed_locs or [src]):
+            self.env["stock.quant"]._update_available_quantity(
+                product, loc, qty + 10.0)
+        move = self.env["stock.move"].create({
+            "name": product.name, "product_id": product.id,
+            "product_uom_qty": qty, "product_uom": product.uom_id.id,
+            "location_id": src.id, "location_dest_id": dest.id,
+        })
+        move._action_confirm()
+        return move, product
+
+    def test_move_line_dest_outside_header_dest_blocked(self):
+        """POJ0012387 shape: a produce/transfer move line whose destination
+        sits in a different warehouse than the move header destination."""
+        move, product = self._draft_move("ML_DEST_BAD")
+        with self.assertRaises(ValidationError):
+            self.env["stock.move.line"].create({
+                "move_id": move.id, "product_id": product.id,
+                "quantity": 1.0,
+                "location_id": self.stock.id,
+                "location_dest_id": self.other.id,
+            })
+
+    def test_move_line_source_outside_header_source_blocked(self):
+        move, product = self._draft_move(
+            "ML_SRC_BAD", seed_locs=[self.stock, self.other])
+        with self.assertRaises(ValidationError):
+            self.env["stock.move.line"].create({
+                "move_id": move.id, "product_id": product.id,
+                "quantity": 1.0,
+                "location_id": self.other.id,
+                "location_dest_id": self.sub.id,
+            })
+
+    def test_move_line_dest_child_of_header_dest_allowed(self):
+        """A putaway split to a sub-location of the header dest is legit."""
+        subsub = self.Location.create({
+            "name": "CONSISTENCY_SUBSUB", "location_id": self.sub.id})
+        move, product = self._draft_move("ML_DEST_OK", dest=self.sub)
+        ml = self.env["stock.move.line"].create({
+            "move_id": move.id, "product_id": product.id,
+            "quantity": 1.0,
+            "location_id": self.stock.id,
+            "location_dest_id": subsub.id,
+        })
+        self.assertEqual(ml.location_dest_id, subsub)
+
+    def test_move_line_divergence_bypass_allows(self):
+        move, product = self._draft_move("ML_BYPASS")
+        ml = self.env["stock.move.line"].with_context(
+            skip_location_consistency_check=True).create({
+                "move_id": move.id, "product_id": product.id,
+                "quantity": 1.0,
+                "location_id": self.stock.id,
+                "location_dest_id": self.other.id,
+            })
+        self.assertEqual(ml.location_dest_id, self.other)
+
+    def test_move_line_write_dest_outside_header_blocked(self):
+        move, product = self._draft_move("ML_WRITE_BAD")
+        move._action_assign()
+        ml = move.move_line_ids[:1] or self.env["stock.move.line"].create({
+            "move_id": move.id, "product_id": product.id, "quantity": 1.0,
+            "location_id": self.stock.id, "location_dest_id": self.sub.id})
+        with self.assertRaises(ValidationError):
+            ml.write({"location_dest_id": self.other.id})
+
+    # ---- stock.move header dest guard ----------------------------------
+
+    def test_done_move_dest_change_orphaning_lines_blocked(self):
+        move = self._make_done_internal_move(src=self.stock, dest=self.sub)
+        with self.assertRaises(ValidationError):
+            move.write({"location_dest_id": self.other.id})
+
+    # ---- mismatch report: destination axis ---------------------------
+
+    def test_mismatch_view_lists_dest_axis_row(self):
+        move = self._make_done_internal_move(src=self.stock, dest=self.sub)
+        move.move_line_ids.with_context(
+            skip_location_consistency_check=True).write(
+                {"location_dest_id": self.other.id})
+        self.env.flush_all()
+        rows = self.env["buz.stock.location.mismatch"].search(
+            [("move_id", "=", move.id)])
+        self.assertTrue(rows)
+        self.assertEqual(rows[0].ml_location_dest_id, self.other)
+
+    def test_mismatch_cross_warehouse_flag_true(self):
+        """Line lands in a different warehouse than the header - the case
+        that actually desyncs FIFO valuation from physical stock."""
+        move = self._make_done_internal_move(src=self.stock, dest=self.sub)
+        move.move_line_ids.with_context(
+            skip_location_consistency_check=True).write(
+                {"location_dest_id": self.other.id})
+        self.env.flush_all()
+        row = self.env["buz.stock.location.mismatch"].search(
+            [("move_id", "=", move.id)])
+        self.assertTrue(row.cross_warehouse)
+
+    # ---- unbuild: line destination is the operator's choice ----------
+
+    def _production_loc(self):
+        loc = self.env["stock.location"].search(
+            [("usage", "=", "production")], limit=1)
+        return loc or self.env["stock.location"].create({
+            "name": "CONSISTENCY_PROD_LOC", "usage": "production",
+            "location_id": self.env.ref(
+                "stock.stock_location_locations_virtual").id})
+
+    def _unbuild_move(self, header_dest):
+        """A confirmed unbuild produce move (Production -> header_dest)."""
+        fg = self.env["product.product"].create({
+            "name": "UB_FG", "type": "product"})
+        comp = self.env["product.product"].create({
+            "name": "UB_COMP", "type": "product"})
+        bom = self.env["mrp.bom"].create({
+            "product_tmpl_id": fg.product_tmpl_id.id,
+            "product_qty": 1.0, "type": "normal",
+            "bom_line_ids": [(0, 0, {
+                "product_id": comp.id, "product_qty": 1.0})],
+        })
+        ub = self.env["mrp.unbuild"].create({
+            "product_id": fg.id, "product_qty": 1.0, "bom_id": bom.id,
+            "location_id": self.stock.id,
+            "location_dest_id": header_dest.id,
+        })
+        move = self.env["stock.move"].create({
+            "name": "UB", "product_id": comp.id, "product_uom_qty": 1.0,
+            "product_uom": comp.uom_id.id,
+            "location_id": self._production_loc().id,
+            "location_dest_id": header_dest.id,
+            "unbuild_id": ub.id,
+        })
+        move._action_confirm()
+        return move, comp
+
+    def _unbuild_line(self, move, comp):
+        """The move's operation line (auto-created once assigned), or a
+        fresh one if none exists."""
+        ml = move.move_line_ids[:1]
+        if ml:
+            return ml
+        return self.env["stock.move.line"].with_context(
+            skip_location_consistency_check=True).create({
+                "move_id": move.id, "product_id": comp.id, "quantity": 1.0,
+                "location_id": self._production_loc().id,
+                "location_dest_id": move.location_dest_id.id,
+            })
+
+    def test_unbuild_produce_line_dest_realigns_header(self):
+        if "mrp.unbuild" not in self.env:
+            self.skipTest("mrp not installed")
+        move, comp = self._unbuild_move(self.sub)
+        self._unbuild_line(move, comp).write(
+            {"location_dest_id": self.other.id})
+        self.assertEqual(move.location_dest_id, self.other,
+                         "unbuild move header should follow the line")
+
+    def test_unbuild_move_lines_in_two_locations_blocked(self):
+        if "mrp.unbuild" not in self.env:
+            self.skipTest("mrp not installed")
+        move, comp = self._unbuild_move(self.sub)
+        self._unbuild_line(move, comp).write(
+            {"location_dest_id": self.other.id})
+        with self.assertRaises(ValidationError):
+            self.env["stock.move.line"].create({
+                "move_id": move.id, "product_id": comp.id, "quantity": 1.0,
+                "location_id": self._production_loc().id,
+                "location_dest_id": self.sub.id,
+            })
+
+    def test_unbuild_done_move_line_divergence_blocked(self):
+        if "mrp.unbuild" not in self.env:
+            self.skipTest("mrp not installed")
+        move, comp = self._unbuild_move(self.sub)
+        ml = self._unbuild_line(move, comp)
+        move.write({"state": "done"})
+        with self.assertRaises(ValidationError):
+            ml.write({"location_dest_id": self.other.id})
+
+    def test_mismatch_cross_warehouse_flag_false_same_wh_subtree(self):
+        """Line in a sibling sub-location of the same warehouse - a header /
+        line divergence, but no valuation impact."""
+        sib = self.Location.create({
+            "name": "CONSISTENCY_SIB", "location_id": self.stock.id})
+        move = self._make_done_internal_move(src=self.stock, dest=self.sub)
+        move.move_line_ids.with_context(
+            skip_location_consistency_check=True).write(
+                {"location_dest_id": sib.id})
+        self.env.flush_all()
+        row = self.env["buz.stock.location.mismatch"].search(
+            [("move_id", "=", move.id)])
+        self.assertTrue(row)
+        self.assertFalse(row.cross_warehouse)
