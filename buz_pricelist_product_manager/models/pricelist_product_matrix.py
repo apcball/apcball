@@ -33,6 +33,7 @@ class PricelistProductMatrix(models.Model):
     
     computed_price = fields.Float(string='Final Price', compute='_compute_price')
     currency_id = fields.Many2one('res.currency', string='Currency', readonly=True)
+    pricelist_is_standard_cost = fields.Boolean(string='Is Standard Cost Pricelist', readonly=True)
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -55,7 +56,12 @@ class PricelistProductMatrix(models.Model):
         has_install_cost = self.env.cr.fetchone()[0] > 0
 
         install_price_expr = "COALESCE(item_v.installation_price, item_t.installation_price)" if has_install_price else "0.0"
-        install_cost_expr = "COALESCE(item_v.install_cost, item_t.install_cost)" if has_install_cost else "0.0"
+        # install_cost is only read from the Standard Cost Pricelist, so blank it elsewhere
+        # to avoid showing an editable-looking value that would be ignored downstream.
+        install_cost_expr = (
+            "CASE WHEN COALESCE(pl.is_standard_cost_pricelist, FALSE) "
+            "THEN COALESCE(item_v.install_cost, item_t.install_cost) ELSE NULL END"
+        ) if has_install_cost else "NULL"
 
         # Optimization: Use stable, non-colliding IDs.
         # Strategy:
@@ -73,6 +79,7 @@ class PricelistProductMatrix(models.Model):
                     END AS id,
                     pl.id AS pricelist_id,
                     pl.currency_id AS currency_id,
+                    COALESCE(pl.is_standard_cost_pricelist, FALSE) AS pricelist_is_standard_cost,
                     pp.id AS product_variant_id,
                     pp.product_tmpl_id AS product_tmpl_id,
                     pt.categ_id AS category_id,
@@ -141,6 +148,17 @@ class PricelistProductMatrix(models.Model):
         changes = {k: v for k, v in vals.items() if k in editable_fields}
         if not changes:
             return True
+
+        # Guard: install_cost is only ever read from the Standard Cost Pricelist
+        # (sale.order.line._compute_install_cost). Reject edits on any other pricelist
+        # so users don't set a value that is silently ignored.
+        if 'install_cost' in changes:
+            bad = self.filtered(lambda r: not r.pricelist_id.is_standard_cost_pricelist)
+            if bad:
+                raise UserError(_(
+                    "Installation Cost can only be set on the Standard Cost Pricelist. "
+                    "It is ignored on other pricelists (e.g. '%s')."
+                ) % (bad[0].pricelist_id.display_name,))
 
         # Map 'price' back to 'fixed_price'
         if 'price' in changes:

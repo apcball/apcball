@@ -15,6 +15,9 @@ class ImportPricelistPreview(models.TransientModel):
     
     old_installation_price = fields.Float('Old Install. Price')
     new_installation_price = fields.Float('New Install. Price')
+
+    old_install_cost = fields.Float('Old Install. Cost')
+    new_install_cost = fields.Float('New Install. Cost')
     
     min_qty = fields.Float('Min Qty')
     

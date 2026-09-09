@@ -37,8 +37,11 @@
                 <field name="rule_type"/>
                 <field name="price" invisible="rule_type != 'fixed'" required="rule_type == 'fixed'"/>
                 <field name="percent_price" invisible="rule_type != 'percentage'" required="rule_type == 'percentage'"/>
+                <field name="pricelist_is_standard_cost" column_invisible="True"/>
                 <field name="installation_price" optional="show"/>
-                <field name="install_cost" optional="show"/>
+                <!-- install_cost only applies on the Standard Cost Pricelist; hidden by default,
+                     read-only on any other pricelist when the column is enabled -->
+                <field name="install_cost" optional="hide" readonly="not pricelist_is_standard_cost"/>
                 <field name="min_quantity"/>
                 <field name="date_start" optional="hide"/>
                 <field name="date_end" optional="hide"/>
