@@ -31,6 +31,26 @@ class BuzStockLocationMismatch(models.Model):
              "header warehouse) from physical stock. False = a header/line "
              "split within one warehouse's sub-locations (no valuation impact).")
 
+    clearance_id = fields.Many2one(
+        "buz.stock.location.mismatch.clearance", readonly=True)
+    cleared = fields.Boolean(readonly=True, string="Cleared")
+    cleared_by = fields.Many2one("res.users", readonly=True, string="Cleared By")
+    cleared_date = fields.Datetime(readonly=True, string="Cleared On")
+    clearance_note = fields.Char(readonly=True, string="Resolution Note")
+
+    def action_mark_cleared(self):
+        """Tag every selected row's move as resolved. Idempotent."""
+        Clr = self.env["buz.stock.location.mismatch.clearance"]
+        for move in self.mapped("move_id"):
+            if move and not Clr.search_count([("move_id", "=", move.id)]):
+                Clr.create({"move_id": move.id})
+        return True
+
+    def action_reopen(self):
+        self.env["buz.stock.location.mismatch.clearance"].search(
+            [("move_id", "in", self.mapped("move_id").ids)]).unlink()
+        return True
+
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
         self.env.cr.execute("""
@@ -55,10 +75,16 @@ class BuzStockLocationMismatch(models.Model):
                        COALESCE(
                           (src.bad AND mls.warehouse_id IS DISTINCT FROM lm_src.warehouse_id)
                           OR (dst.bad AND mld.warehouse_id IS DISTINCT FROM lm_dst.warehouse_id),
-                          false) AS cross_warehouse
+                          false) AS cross_warehouse,
+                       clr.id                 AS clearance_id,
+                       (clr.id IS NOT NULL)   AS cleared,
+                       clr.user_id            AS cleared_by,
+                       clr.date               AS cleared_date,
+                       clr.note               AS clearance_note
                 FROM stock_move_line ml
                 JOIN stock_move m           ON m.id = ml.move_id
                 LEFT JOIN stock_picking p   ON p.id = ml.picking_id
+                LEFT JOIN buz_stock_location_mismatch_clearance clr ON clr.move_id = m.id
                 JOIN stock_location lm_src  ON lm_src.id = m.location_id
                 JOIN stock_location lm_dst  ON lm_dst.id = m.location_dest_id
                 LEFT JOIN stock_location mls ON mls.id = ml.location_id

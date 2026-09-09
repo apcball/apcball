@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_buz_stock_location_mismatch,buz.stock.location.mismatch,model_buz_stock_location_mismatch,stock.group_stock_user,1,0,0,0
+access_buz_stock_location_mismatch_clearance,buz.stock.location.mismatch.clearance,model_buz_stock_location_mismatch_clearance,stock.group_stock_user,1,1,1,1

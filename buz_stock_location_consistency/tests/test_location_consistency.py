@@ -296,6 +296,52 @@ class TestLocationConsistency(TransactionCase):
             [("move_id", "=", move.id)])
         self.assertTrue(row.cross_warehouse)
 
+    # ---- clearance tag ---------------------------------------------
+
+    def _one_mismatch(self):
+        move = self._make_done_internal_move(src=self.stock, dest=self.sub)
+        move.move_line_ids.with_context(
+            skip_location_consistency_check=True).write(
+                {"location_dest_id": self.other.id})
+        self.env.flush_all()
+        return self.env["buz.stock.location.mismatch"].search(
+            [("move_id", "=", move.id)])
+
+    def _reload(self, move):
+        self.env.flush_all()
+        self.env["buz.stock.location.mismatch"].invalidate_model()
+        return self.env["buz.stock.location.mismatch"].search(
+            [("move_id", "=", move.id)])
+
+    def test_mark_cleared_then_reopen(self):
+        rows = self._one_mismatch()
+        self.assertTrue(rows)
+        self.assertFalse(any(rows.mapped("cleared")))
+        rows.action_mark_cleared()
+        after = self._reload(rows.move_id)
+        self.assertTrue(all(after.mapped("cleared")))
+        self.assertEqual(after[0].cleared_by, self.env.user)
+        self.assertTrue(after[0].cleared_date)
+        after.action_reopen()
+        self.assertFalse(any(self._reload(rows.move_id).mapped("cleared")))
+
+    def test_mark_cleared_idempotent(self):
+        rows = self._one_mismatch()
+        rows.action_mark_cleared()
+        rows.action_mark_cleared()
+        self.assertEqual(
+            self.env["buz.stock.location.mismatch.clearance"].search_count(
+                [("move_id", "=", rows.move_id.id)]), 1)
+
+    def test_open_filter_excludes_cleared(self):
+        rows = self._one_mismatch()
+        rows.action_mark_cleared()
+        self.env.flush_all()
+        self.env["buz.stock.location.mismatch"].invalidate_model()
+        still_open = self.env["buz.stock.location.mismatch"].search(
+            [("move_id", "=", rows.move_id.id), ("cleared", "=", False)])
+        self.assertFalse(still_open)
+
     # ---- unbuild: line destination is the operator's choice ----------
 
     def _production_loc(self):

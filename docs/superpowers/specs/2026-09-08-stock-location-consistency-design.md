@@ -391,3 +391,17 @@ blocking is wrong — the line is the intent.
 Detection is by `move._fields` membership, so the module still installs
 without `mrp`. Non-unbuild moves are unchanged: any cross-subtree line is
 blocked.
+
+### v17.0.1.3.0 — clearance tag on the mismatch report
+
+The backlog is worked per-case and rows linger in the report after they
+are fixed. New real model `buz.stock.location.mismatch.clearance`
+(`move_id` unique, `user_id`, `date`, `note`). The report view LEFT JOINs
+it and exposes `cleared` / `cleared_by` / `cleared_date` /
+`clearance_note`. Two `type="object"` header buttons on the tree —
+`action_mark_cleared` (upsert one clearance per selected row's move,
+idempotent) and `action_reopen` (unlink). Default filter
+`search_default_open` hides cleared rows; a `Cleared` filter and a
+`cleared` group-by show them again — nothing is deleted, the SQL view
+still computes the mismatch. `ondelete="cascade"` on `move_id` drops the
+tag if the move is ever removed.

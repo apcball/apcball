@@ -4,7 +4,14 @@
         <field name="name">buz.stock.location.mismatch.tree</field>
         <field name="model">buz.stock.location.mismatch</field>
         <field name="arch" type="xml">
-            <tree string="Location Mismatches" create="false" edit="false" delete="false">
+            <tree string="Location Mismatches" create="false" edit="false" delete="false"
+                  decoration-muted="cleared">
+                <header>
+                    <button name="action_mark_cleared" type="object"
+                            string="Mark Cleared" class="btn-primary"/>
+                    <button name="action_reopen" type="object"
+                            string="Reopen"/>
+                </header>
                 <field name="picking_id"/>
                 <field name="picking_type_id"/>
                 <field name="product_id"/>
@@ -18,6 +25,10 @@
                 <field name="state"/>
                 <field name="move_write_date"/>
                 <field name="move_write_uid"/>
+                <field name="cleared" optional="show"/>
+                <field name="cleared_by" optional="show"/>
+                <field name="cleared_date" optional="hide"/>
+                <field name="clearance_note" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
         </field>
@@ -32,12 +43,20 @@
                 <field name="product_id"/>
                 <field name="header_location_id"/>
                 <field name="ml_location_id"/>
+                <field name="cleared_by"/>
+                <filter name="open" string="Open (not cleared)"
+                        domain="[('cleared','=',False)]"/>
+                <filter name="cleared" string="Cleared"
+                        domain="[('cleared','=',True)]"/>
+                <separator/>
                 <filter name="cross_wh" string="Cross-warehouse"
                         domain="[('cross_warehouse','=',True)]"/>
                 <filter name="done" string="Done" domain="[('state','=','done')]"/>
                 <filter name="reserved" string="Reserved"
                         domain="[('state','in',['assigned','partially_available'])]"/>
                 <group expand="0" string="Group By">
+                    <filter name="g_cleared" string="Cleared"
+                            context="{'group_by':'cleared'}"/>
                     <filter name="g_cross" string="Cross-warehouse"
                             context="{'group_by':'cross_warehouse'}"/>
                     <filter name="g_ptype" string="Operation Type"
@@ -55,7 +74,7 @@
         <field name="name">Location Mismatches</field>
         <field name="res_model">buz.stock.location.mismatch</field>
         <field name="view_mode">tree</field>
-        <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
+        <field name="context">{'create': False, 'edit': False, 'delete': False, 'search_default_open': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiley_face">No move line / header location mismatches</p>
             <p>Rows here have a move line whose source or destination location

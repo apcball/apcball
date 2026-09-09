@@ -1,6 +1,6 @@
 {
     "name": "BUZ Stock Location Consistency",
-    "version": "17.0.1.2.0",
+    "version": "17.0.1.3.0",
     "category": "Inventory/Inventory",
     "summary": "Keep stock move line source consistent with the move header; "
                "report existing mismatches",
