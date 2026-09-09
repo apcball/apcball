@@ -39,15 +39,9 @@ Two ways this divergence appears:
   are blocked — existing broken rows stay editable.
 - **`@api.constrains` backstop** on `done` moves.
 - **Inventory → Reporting → Location Mismatches** — read-only list of
-  current mismatches, with an `axis` column (source / dest / both) and a
-  `cross_warehouse` flag (the valuation-breaking subset). Each case is
-  repaired manually with a backup and quant/SVL checks. When a case is
-  done, select its rows and **Mark Cleared** — a
-  `buz.stock.location.mismatch.clearance` row is written per move
-  (who / when / optional note), the rows go grey and drop out of the
-  default **Open (not cleared)** filter. **Reopen** removes the tag. The
-  underlying mismatch is still listed under the **Cleared** filter, so
-  nothing is hidden permanently.
+  current mismatches, with an `axis` column (source / dest / both). No
+  fix button; each case is repaired manually with a backup and
+  quant/SVL checks.
 
 ## Unbuild into multiple warehouses
 
