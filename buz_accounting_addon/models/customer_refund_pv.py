@@ -87,10 +87,18 @@ class BuzCustomerRefundPv(models.Model):
     refund_payment_state = fields.Selection(string='Payment State', related='refund_payment_id.state', readonly=True)
     refund_payment_move_name = fields.Char(string='Journal Entry Number', compute='_compute_refund_payment', readonly=True, help="Same as Payment/Journal Entry number (account.move.name)")
 
-    # Source SO / Invoice tracking (read-only, computed from CN sale_line_ids)
+    # Source SO / Invoice tracking. Invoice matching is selected by accounting in Draft.
     source_sale_order_ids = fields.Many2many('sale.order', compute='_compute_source_documents', string='Source Sale Orders', readonly=True)
     source_sale_order_count = fields.Integer(string='Source SO Count', compute='_compute_source_documents', readonly=True)
-    source_invoice_ids = fields.Many2many('account.move', compute='_compute_source_documents', string='Source Invoices', readonly=True)
+    source_invoice_ids = fields.Many2many(
+        'account.move', 'buz_customer_refund_pv_source_invoice_rel',
+        'pv_id', 'invoice_id', string='Source Invoices', copy=False,
+        check_company=True,
+    )
+    source_invoice_candidate_ids = fields.Many2many(
+        'account.move', compute='_compute_source_documents',
+        string='Selectable Source Invoices', readonly=True,
+    )
     source_invoice_count = fields.Integer(string='Source Invoice Count', compute='_compute_source_documents', readonly=True)
     source_status = fields.Char(string='Source Status', compute='_compute_source_documents', readonly=True)
     source_status_is_paid = fields.Boolean(string='Source Invoices Paid', compute='_compute_source_documents', readonly=True)
@@ -149,7 +157,7 @@ class BuzCustomerRefundPv(models.Model):
                 "payment_type", "destination_journal_id", "payment_method_line_id",
                 "bank_free_dis", "other_income_dis", "other_income_account_id",
                 "check_number", "check_date", "check_pay_to",
-                "line_ids", "note", "refund_amount",
+                "line_ids", "note", "refund_amount", "source_invoice_ids",
             }
             if protected.intersection(vals.keys()) and not (set(vals.keys()) <= {"state", "message_follower_ids", "activity_ids", "message_ids"}):
                 raise UserError(_("Posted or Cancelled Customer Refund PV cannot be edited."))
@@ -420,63 +428,58 @@ class BuzCustomerRefundPv(models.Model):
         "credit_note_id",
         "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids",
         "credit_note_id.line_ids.sale_line_ids.order_id.invoice_ids",
+        "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids.state",
+        "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids.payment_state",
+        "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids.amount_residual",
+        "source_invoice_ids",
     )
     def _compute_source_documents(self):
         for pv in self:
             if not pv.credit_note_id:
                 pv.source_sale_order_ids = [fields.Command.clear()]
                 pv.source_sale_order_count = 0
-                pv.source_invoice_ids = [fields.Command.clear()]
+                pv.source_invoice_candidate_ids = [fields.Command.clear()]
                 pv.source_invoice_count = 0
                 pv.source_status = _("No Credit Note")
                 pv.source_status_is_paid = False
                 continue
 
             sale_orders = pv._get_source_sale_orders()
-            invoices_by_order = pv._get_source_invoices_by_sale_order(sale_orders)
-            invoices = self.env["account.move"].browse(
-                list(set(
-                    invoice.id
-                    for order_invoices in invoices_by_order.values()
-                    for invoice in order_invoices
-                ))
-            )
-            pv.source_sale_order_ids = [fields.Command.set(sale_orders.ids)]
-            pv.source_sale_order_count = len(sale_orders)
-            pv.source_invoice_ids = [fields.Command.set(invoices.ids)]
-            pv.source_invoice_count = len(invoices)
-
-            if not sale_orders:
-                pv.source_status = _("ไม่พบ SO ต้นทาง")
-                pv.source_status_is_paid = False
-                continue
-
-            missing_invoice_orders = sale_orders.filtered(
-                lambda order: not invoices_by_order.get(order.id)
-            )
-            not_paid = invoices.filtered(lambda inv: not (
-                inv.state == "posted"
+            invoices = pv._get_source_invoices()
+            candidates = invoices.filtered(
+                lambda inv: inv.company_id == pv.company_id
+                and inv.partner_id == pv.partner_id
+                and inv.state == "posted"
                 and inv.move_type == "out_invoice"
                 and inv.payment_state == "paid"
                 and float_is_zero(
                     inv.amount_residual,
-                    precision_rounding=inv.currency_id.rounding or self.env.company.currency_id.rounding,
+                    precision_rounding=inv.currency_id.rounding or pv.currency_id.rounding,
                 )
-            ))
-            if missing_invoice_orders:
-                names = ", ".join(order.name for order in missing_invoice_orders)
-                pv.source_status = _("ไม่พบ Invoice ของ SO: %s") % names
+            )
+            pv.source_sale_order_ids = [fields.Command.set(sale_orders.ids)]
+            pv.source_sale_order_count = len(sale_orders)
+            pv.source_invoice_candidate_ids = [fields.Command.set(candidates.ids)]
+            pv.source_invoice_count = len(pv.source_invoice_ids)
+
+            if not sale_orders:
+                pv.source_status = _("No source Sale Order")
                 pv.source_status_is_paid = False
-            elif not_paid:
-                names = ", ".join(inv.name or str(inv.id) for inv in not_paid)
-                pv.source_status = _("Invoice ยังไม่ Paid: %s") % names
+            elif not pv.source_invoice_ids:
+                pv.source_status = _("Please select at least one source Invoice for Refund")
                 pv.source_status_is_paid = False
             else:
-                pv.source_status = _("Source Invoice Paid")
-                pv.source_status_is_paid = True
+                invalid = pv.source_invoice_ids - candidates
+                if invalid:
+                    names = ", ".join(inv.name or str(inv.id) for inv in invalid)
+                    pv.source_status = _("Selected Invoice is no longer eligible: %s") % names
+                    pv.source_status_is_paid = False
+                else:
+                    pv.source_status = _("Source Invoice Paid")
+                    pv.source_status_is_paid = True
 
     def _check_source_invoices_paid(self):
-        """Validate every source SO and every customer invoice belonging to it."""
+        """Validate only the invoices explicitly selected for this Refund PV."""
         for pv in self:
             cn = pv.credit_note_id
             if not cn:
@@ -493,35 +496,32 @@ class BuzCustomerRefundPv(models.Model):
                     "ที่เชื่อมกับ Sale Order"
                 ) % (cn.name or ""))
 
-            invoices_by_order = pv._get_source_invoices_by_sale_order(sale_orders)
-            missing_invoice_orders = sale_orders.filtered(
-                lambda order: not invoices_by_order.get(order.id)
-            )
-            not_paid = self.env["account.move"].browse()
-            for invoices in invoices_by_order.values():
-                not_paid |= invoices.filtered(lambda inv: not (
-                    inv.state == "posted"
-                    and inv.move_type == "out_invoice"
-                    and inv.payment_state == "paid"
-                    and float_is_zero(
-                        inv.amount_residual,
-                        precision_rounding=inv.currency_id.rounding or self.env.company.currency_id.rounding,
-                    )
+            if not pv.source_invoice_ids:
+                raise UserError(_(
+                    "Please select at least one source Invoice for Refund before confirming or registering payment."
                 ))
 
-            errors = []
-            if missing_invoice_orders:
-                names = ", ".join(order.name for order in missing_invoice_orders)
-                errors.append(_("ไม่พบ Invoice ของ SO: %s") % names)
-            if not_paid:
-                details = ", ".join(
-                    "%s (state=%s, payment_state=%s, residual=%s)"
-                    % (inv.name or inv.id, inv.state, inv.payment_state, inv.amount_residual)
-                    for inv in not_paid
+            candidates = pv._get_source_invoices().filtered(
+                lambda inv: inv.company_id == pv.company_id
+                and inv.partner_id == pv.partner_id
+            )
+            invalid = pv.source_invoice_ids - candidates
+            invalid |= pv.source_invoice_ids.filtered(lambda inv: not (
+                inv.state == "posted"
+                and inv.move_type == "out_invoice"
+                and inv.payment_state == "paid"
+                and float_is_zero(
+                    inv.amount_residual,
+                    precision_rounding=inv.currency_id.rounding or pv.currency_id.rounding,
                 )
-                errors.append(_("Invoice ยังไม่ Paid หรือมียอดคงเหลือ: %s") % details)
-            if errors:
-                raise UserError("\n".join(errors))
+            ))
+            if invalid:
+                details = ", ".join(
+                    "%s (state=%s, move_type=%s, payment_state=%s, residual=%s)"
+                    % (inv.name or inv.id, inv.state, inv.move_type, inv.payment_state, inv.amount_residual)
+                    for inv in invalid
+                )
+                raise UserError(_("Selected source Invoice is no longer eligible: %s") % details)
 
     def action_view_payments(self):
         self.ensure_one()
@@ -611,7 +611,7 @@ class BuzCustomerRefundPv(models.Model):
 
     def action_view_source_invoices(self):
         self.ensure_one()
-        invoices = self._get_source_invoices()
+        invoices = self.source_invoice_ids
         if not invoices:
             raise UserError(_("ไม่พบ Invoice ต้นทาง"))
         action = {

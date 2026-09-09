@@ -91,13 +91,17 @@
                             <field name="check_date" readonly="state != 'draft'" invisible="payment_type != 'check'"/>
                         </group>
                     </group>
-                    <group string="Source Documents (Auto-detected, Readonly)" invisible="not credit_note_id">
+                    <group string="Source Documents" invisible="not credit_note_id">
                         <field name="source_sale_order_count" invisible="1"/>
                         <field name="source_invoice_count" invisible="1"/>
                         <field name="source_status_is_paid" invisible="1"/>
                         <group>
                             <field name="source_sale_order_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}" string="Source Sale Orders"/>
-                            <field name="source_invoice_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}" string="Source Invoices"/>
+                            <field name="source_invoice_candidate_ids" invisible="1"/>
+                            <field name="source_invoice_ids" widget="many2many_tags"
+                                   domain="[('id', 'in', source_invoice_candidate_ids)]"
+                                   readonly="state != 'draft'" options="{'no_create': True}"
+                                   string="Invoice ต้นทางสำหรับ Refund"/>
                         </group>
                         <group>
                             <field name="source_status" readonly="1" string="Source Status" placeholder="Source Invoice Paid / Invoice ยังไม่ Paid / ไม่พบ Invoice ของ SO / ไม่พบ SO ต้นทาง"/>

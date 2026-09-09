@@ -1,126 +1,100 @@
 # Customer Refund PV — Workflow Plan
 
 เอกสารนี้อธิบาย workflow ปัจจุบันของ Customer Refund PV ใน `buz_accounting_addon`
-และใช้เป็นบันทึกสำหรับการทดสอบและส่งมอบระบบ
+รวมถึงขอบเขตการ deploy และผลการตรวจสอบล่าสุด
 
-## สถานะปัจจุบัน
-
-Customer Refund PV ใช้ flow มาตรฐานของ Odoo ดังนี้:
+## ภาพรวม Workflow
 
 ```text
-Posted Credit Note
-    → Create Refund PV
-    → Confirm PV
-    → Register Refund Payment
-    → Payment Posted และ Reconcile
+Posted Customer Credit Note
+        ↓
+Create Customer Refund PV (Draft)
+        ↓
+เลือก Invoice ต้นทางสำหรับ Refund
+        ↓
+Confirm Refund PV (Posted)
+        ↓
+Register Refund Payment
+        ↓
+Post Payment และ Reconcile กับ Credit Note
 ```
 
-- การ Confirm เปลี่ยนเฉพาะสถานะ PV เป็น Posted; ยังไม่สร้าง Payment หรือ Journal Entry
-- Payment และ Journal Entry จะเกิดเมื่อผู้ใช้กด Register Refund Payment เท่านั้น
-- Payment ใช้ `Refund Amount` ที่อนุมัติบน PV และใช้เลขจาก Odoo Standard Sequence
-- Credit Note ต้องเป็น Customer Credit Note (`out_refund`) และอยู่ในสถานะ Posted
+## กติกาหลัก
+
+- Confirm เปลี่ยนเฉพาะสถานะ Refund PV เป็น `Posted` ยังไม่สร้าง Payment หรือ Journal Entry
+- Payment จะถูกสร้างเมื่อผู้ใช้กด `Register Refund Payment` เท่านั้น
+- Payment ใช้ยอด `Refund Amount` ที่อนุมัติบน Refund PV
+- Credit Note ต้องเป็น Customer Credit Note (`out_refund`) และอยู่สถานะ `Posted`
 - Refund Amount ต้องมากกว่า 0 และไม่เกินยอดคงเหลือของ Credit Note
-- Invoice ต้นทางทุกใบต้องเป็น Customer Invoice ที่ Posted, Paid และ residual เป็นศูนย์
-- เมื่อมี Payment ที่ Active แล้ว จะ Register ซ้ำไม่ได้
+- เมื่อมี Payment ที่ยัง Active แล้ว จะ Register Payment ซ้ำไม่ได้
+
+## Invoice ต้นทางสำหรับ Refund
+
+การจับคู่ Credit Note กับ Invoice ต้นทางเป็นการตัดสินใจของฝ่ายบัญชีในสถานะ Draft
+ระบบจะไม่เลือก Invoice ให้อัตโนมัติ เพราะ Sales Order เดียวกันอาจมีหลาย Invoice
+
+รายการที่เลือกได้ต้องมีเงื่อนไขทั้งหมดต่อไปนี้:
+
+- อยู่ภายใต้ Source SO ที่เชื่อมจาก Credit Note ผ่าน `sale_line_ids`
+- เป็น Customer Invoice (`move_type = out_invoice`)
+- สถานะเอกสารเป็น `Posted`
+- สถานะการชำระเงินเป็น `Paid`
+- ยอดคงเหลือเป็นศูนย์
+- เป็นลูกค้าและบริษัทเดียวกับ Refund PV
+
+การทำงานของฟิลด์:
+
+- `Invoice ต้นทางสำหรับ Refund` เลือกได้หลายใบใน Draft
+- ต้องเลือกอย่างน้อยหนึ่งใบก่อน Confirm
+- หลัง Confirm แล้วรายการ Invoice ต้นทางจะถูกล็อก
+- Source Status และ Smart Button แสดงเฉพาะ Invoice ที่เลือก
+- หาก Invoice ที่เลือกเปลี่ยนสถานะภายหลัง ระบบจะแจ้งสาเหตุและบล็อก Register Payment
+- Invoice อื่นใน SO เดียวกัน เช่น Invoice ที่ Reversed จะไม่มีผลต่อ Refund PV หากไม่ได้เลือก
 
 ## Other Income และ Write-Off
 
-ระบบใช้ Write-Off มาตรฐานของ Odoo เพียงชุดเดียว โดยส่งค่าเข้า Payment Register:
+ระบบใช้ Standard Payment Register ของ Odoo และส่งค่า Write-Off ดังนี้:
 
 - `payment_difference_handling = reconcile`
-- `writeoff_account_id = Other Income Account` ที่ผู้ใช้เลือกบน PV
-- `writeoff_label = Other Income - <PV Number>`
+- `writeoff_account_id` ใช้บัญชี Other Income ที่เลือกบน Refund PV
+- `writeoff_label` ใช้รูปแบบ `Other Income - <PV Number>`
 
-โค้ด Customer Refund PV จะไม่เพิ่ม Journal Line ของ Other Income เองอีกต่อไป
+ระบบไม่สร้าง Journal Line ของ Other Income เพิ่มเอง
 
-ตัวอย่าง Credit Note 1,000 บาท, Refund Amount 860 บาท และส่วนต่าง 140 บาท:
+## การควบคุมและขอบเขต
 
-```text
-Dr ลูกหนี้                         1,000
-    Cr ธนาคาร                       860
-    Cr บัญชี Other Income            140
-```
-
-ผลที่ต้องได้คือ Journal Entry มี Other Income เพียง 1 บรรทัด และต้องไม่มีทั้ง
-`Write-Off 140` กับ `Other Income - PV 140` ซ้ำกัน
-
-กรณีคืนเต็มจำนวน จะไม่มี Payment Difference และไม่มี Write-Off
-
-### Other Income Account
-
-- ฟิลด์ยังคงแสดงบนหน้า PV และรายงาน
-- บัญชีต้อง Active และอยู่บริษัทเดียวกับ PV
-- ไม่จำกัดเฉพาะ account type Income เพื่อให้ใช้ตามผังบัญชีของบริษัทได้
-- หากมีส่วนต่างแต่ไม่ได้เลือกบัญชี ระบบจะบล็อก Confirm/Register
-
-## การควบคุมความปลอดภัยของ PV
-
+- Posted หรือ Cancelled Refund PV แก้ไขข้อมูลหลักและ Invoice ต้นทางไม่ได้
 - Reset to Draft และ Cancel ใช้ได้เฉพาะ Accounting Manager ผ่าน Reason Wizard
-- เหตุผลและผู้ดำเนินการถูกบันทึกใน Chatter
-- ห้ามเปลี่ยน State ผ่าน `write()` โดยตรง
-- PV ที่ Posted หรือ Cancelled และรายการของ PV จะถูกล็อกไม่ให้แก้ไขหรือลบ
-- ระบบไม่ลบ ยกเลิก หรือแก้ Payment/Journal Entry อัตโนมัติ
-- ก่อน Reset หรือ Cancel ต้องจัดการ Payment และ reconciliation ที่เกี่ยวข้องผ่าน workflow ของ Payment ก่อน
+- ไม่เปลี่ยนสถานะ Invoice หรือ Credit Note
+- ไม่แก้ reconciliation เดิม
+- ไม่แก้ Vendor PV, Payment Voucher เดิม, Receipt Voucher หรือ `po_so_credit_note`
+- ไม่รองรับ WHT ใน flow นี้
+- Bank Fee ยังบล็อกการ Post หากมียอด เพราะยังไม่มี Journal Entry รองรับ
+- ไม่ทำ mass update หรือ backfill ข้อมูลเดิม
+- Deploy เฉพาะ DEV (`MOG_DEV`) เท่านั้น ไม่รวม PROD
 
-## Source SO/Invoice
+## ผลการตรวจสอบก่อน Deploy
 
-- ระบบค้น Invoice ต้นทางจากความสัมพันธ์ `Credit Note line.sale_line_ids → SO line`
-- ค้น Invoice line แบบ batch และนำผลชุดเดียวกันไปใช้แสดงรายการ จำนวน และสถานะ
-- ไม่ใช้ `invoice_origin` หรือการเดาจากชื่อ/ยอดเงินเป็น fallback
-- หากหา SO/Invoice ไม่ครบ หรือ Invoice ยังไม่ Paid จะบล็อกทั้ง Confirm และ Register
-
-## สิ่งที่ไม่อยู่ในขอบเขต
-
-- ไม่แก้ Vendor PV, Payment Voucher, Receipt Voucher หรือ Batch Payment flow อื่น
-- ไม่สร้าง Payment ตอน Confirm
-- WHT ยังไม่รวมใน Customer Refund PV flow นี้
-- Bank Fee แสดงใน Draft ได้ แต่ยังบล็อกการ Post หากมียอด เพราะยังไม่มี Journal Entry รองรับ
-- ไม่ทำ mass update/backfill ข้อมูล Credit Note เดิม
-- ไม่ deploy ไป Production จาก workflow นี้
-
-## ผลการทดสอบล่าสุด
-
-ทดสอบใน Docker isolated database `MOG_TEST`:
-
-- AST และ XML syntax: ผ่าน
+- Python syntax: ผ่าน
+- XML syntax ของ `customer_refund_pv_views.xml`: ผ่าน
 - `git diff --check`: ผ่าน
-- Odoo module tests: `0 failed, 0 error(s) of 2 tests`
-- ทดสอบการส่งค่า Standard Write-Off context และยืนยันว่า `account.payment` ไม่มี custom move-line injection ของ Refund PV
-
-การทดสอบ Browser/PDF และ accounting UAT แบบ end-to-end ยังต้องดำเนินการโดยผู้ใช้งาน
-เช่น ตรวจ Payment, Journal Entry, จำนวน Other Income line และยอด Credit Note หลัง Reconcile
+- ไฟล์ที่แก้ใน source มีเฉพาะ:
+  - `buz_accounting_addon/models/customer_refund_pv.py`
+  - `buz_accounting_addon/views/customer_refund_pv_views.xml`
+- ยังไม่ได้ทดสอบ Browser/PDF หรือ accounting UAT แบบ end-to-end
 
 ## ประวัติการ Deploy DEV
 
-### รอบแก้ Other Income ซ้ำ — 2026-09-06 เวลาไทย
+### รอบเลือก Invoice ต้นทางสำหรับ Refund — 2026-09-09 เวลาไทย
 
 - Target: DEV database `MOG_DEV`
 - Module: `buz_accounting_addon` เท่านั้น
-- Upload: สำเร็จ (`scp`); ไม่ upload เอกสารนี้และไม่แตะโมดูลอื่น
-- Upgrade: สำเร็จด้วย `-u buz_accounting_addon --stop-after-init --no-http`
-  - Odoo รายงาน `Module buz_accounting_addon loaded in 4.90s`
-  - Odoo รายงาน `Modules loaded` และ `Registry loaded in 29.697s`
-- Restart: สำเร็จด้วย `docker restart odoo`
-- Health check: container รายงาน `odoo Up` และ HTTP `/web/database/selector` ได้ `200`
-- Module state: `buz_accounting_addon | installed | 17.0.2.1.0`
-- หมายเหตุ: พบ warning เดิมของโมดูลอื่น เช่น `office_supply_requisition` และ Odoo field warnings
-  แต่ไม่ทำให้การ upgrade ของ target module ล้มเหลว
+- Upload: สำเร็จด้วย scp เฉพาะโฟลเดอร์ buz_accounting_addon
+- Upgrade: สำเร็จด้วย -u buz_accounting_addon --stop-after-init --no-http บน MOG_DEV
+- Restart: สำเร็จด้วย docker restart odoo
+- Health check: ผ่าน — container odoo เป็น Up และ HTTP /web/database/selector ได้ 200
+- Module state: buz_accounting_addon | installed | 17.0.2.1.0
+- Warning ที่พบเป็น warning เดิมของ module อื่น เช่น office_supply_requisition ไม่ installable และไม่ทำให้ target upgrade ล้มเหลว
+- Browser/PDF และ accounting UAT: ต้องตรวจต่อด้วยข้อมูลจริงบน DEV
 
-### รอบปรับรายงาน Customer Refund PV — 2026-09-06 เวลาไทย
-
-- เปลี่ยนเฉพาะ `models/customer_refund_pv.py` และ `reports/customer_refund_pv_template.xml`
-- คอลัมน์เลขที่เอกสารใช้เลขที่ Payment ทุก Journal Line; กรณียังไม่มี Payment ใช้เลขที่ PV เป็น preview
-- เพิ่ม style เฉพาะตาราง Journal Entry เพื่อคุมแถว Total และเว้นระยะก่อนหมายเหตุ
-- Upload ไป DEV สำเร็จด้วย `scp` เฉพาะโฟลเดอร์ `buz_accounting_addon`
-- Upgrade `MOG_DEV` สำเร็จด้วย `-u buz_accounting_addon --stop-after-init --no-http`
-  - Target module loaded successfully; registry loaded successfully
-- Restart สำเร็จด้วย `docker restart odoo`
-- Health check ผ่าน: container `odoo Up` และ HTTP `/web/database/selector` ได้ `200`
-- ตรวจ module state: `buz_accounting_addon | installed | 17.0.2.1.0`
-- ไม่ได้ upload เอกสารนี้ และไม่ได้แก้ Vendor PV หรือ workflow บัญชี
-- Browser/PDF visual UAT ยังต้องตรวจด้วยข้อมูลจริงบน DEV
-
-### ขอบเขตการส่งมอบ
-
-การ deploy รอบนี้ไม่รวมเอกสาร, โมดูลอื่น, DEV database migration, Production deployment
-หรือการปรับข้อมูลย้อนหลัง
+เอกสารนี้อัปเดตเพื่อบันทึกแผนและผลการส่งมอบ โดยไม่รวมการเปลี่ยนข้อมูลธุรกรรมเดิม
