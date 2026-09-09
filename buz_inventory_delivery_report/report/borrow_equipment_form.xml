@@ -19,7 +19,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                    <div class="page borrow-equipment-page">
 
                         <style>
                             @font-face {
@@ -55,6 +55,19 @@
                             body, .page, .row {
                                 margin: 0 !important;
                                 padding: 0 !important;
+                            }
+
+                            /* เลื่อน layout ทั้งหน้าขึ้นและคืนพื้นที่ให้ footer จริง */
+                            .borrow-equipment-page {
+                                margin-top: -8mm !important;
+                                color: #000;
+                                opacity: 1;
+                                font-weight: 400;
+                            }
+
+                            .borrow-equipment-page * {
+                                color: #000;
+                                opacity: 1;
                             }
                             
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
@@ -340,15 +353,15 @@
                                     <t t-if="page_number == total_pages">
                                       <!-- หมายเหตุ -->
                                    <div style="padding: 15px; font-size: 20px;  margin-top: 10px; line-height: 1.6;">
-                                     <strong>หมายเหตุ: </strong><span>1. การซื้อขายสมบูรณ์ เมื่อมีการส่งมอบสินค้า / บริษัทฯ สงวนสิทธิ์ที่จะปรับปรุงราคาให้เท่ากับราคาซื้อขายในวันรับสินค้า</span><br/>
+                                     <div style="display: table; width: 100%; table-layout: fixed;"><div style="display: table-cell; width: 6em; padding: 0; vertical-align: top; white-space: nowrap;"><strong>หมายเหตุ:</strong></div><div style="display: table-cell; min-width: 0; padding: 0; vertical-align: top; overflow-wrap: anywhere; word-break: break-word;"><span>1. การซื้อขายสมบูรณ์ เมื่อมีการส่งมอบสินค้า / บริษัทฯ สงวนสิทธิ์ที่จะปรับปรุงราคาให้เท่ากับราคาซื้อขายในวันรับสินค้า</span><br/>
                                      
-                                     <div style="display: flex; margin-left: 50px;">
-                                       <div style="width: 2ch;">2.</div>
-                                       <div style="flex: 1;">ได้รับสินค้าตามรายการข้างล่าง ในสภาพที่ดีและจำนวนถูกต้องแล้ว</div>
+                                     <div style="display: table; width: 100%; table-layout: fixed;">
+                                       <div style="display: table-cell; width: 2ch; vertical-align: top;">2.</div>
+                                       <div style="display: table-cell; min-width: 0; vertical-align: top; overflow-wrap: anywhere; word-break: break-word;">ได้รับสินค้าตามรายการข้างล่าง ในสภาพที่ดีและจำนวนถูกต้องแล้ว</div>
                                      </div>
 
-                                     <div t-if="o.note" style="margin-top: 10px; margin-left: 10px;">
-                                         <span t-field="o.note"/>
+                                     <div t-if="o.note" style="margin-top: 10px; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">
+                                         <span t-field="o.note"/></div></div>
                                      </div>
                                  </div>
                          
@@ -397,13 +410,13 @@
                                  </div>
                              </div>
 
-                             <div style="position: relative; min-height: 25mm; padding-bottom: 20mm;">
+                             <div style="position: relative; min-height: 0; padding-bottom: 8mm;">
                                  <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
 
                                  <!-- Footer fixed bottom -->
                                   <div style="
                                      position: absolute;
-                                     bottom: 40px; left: 0; width: 100%;
+                                     bottom: 0; left: 0; width: 100%;
                                    display: flex; justify-content: space-between;
                                    font-size: 10px;
                                    padding-left: 4mm; padding-right: 4mm;
