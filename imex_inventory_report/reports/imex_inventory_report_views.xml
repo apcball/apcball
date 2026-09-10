@@ -12,6 +12,9 @@
                 <filter name="balance" string="In stock" domain="[('balance','!=',0)]"/>
                 <filter name="not_balance" string="Out of stock" domain="[('balance','=',0)]"/>
                 <separator/>
+                <filter name="loc_internal" string="Internal Loc" domain="[('location.usage','=','internal')]"/>
+                <filter name="loc_transit" string="Transit Loc" domain="[('location.usage','=','transit')]"/>
+                <separator/>
                 <filter name="imex" string="Imex Qty" domain="['|',('product_in','!=',0),('product_out','!=',0)]"/>
                 <filter name="not_imex" string="Not Imex Qty" domain="[('product_in','=',0),('product_out','=',0)]"/>
                 <group expand="0" string="Group By">

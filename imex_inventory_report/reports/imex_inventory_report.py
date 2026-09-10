@@ -75,7 +75,7 @@ class ImexInventoryReport(models.Model):
                 [("id", "child_of", location_id.ids)]).ids)
         else:
             locations = tuple(self.env["stock.location"].search(
-                [("usage", "=", "internal")]).ids)
+                [("usage", "in", ("internal", "transit"))]).ids)
             if not locations:
                 locations = (-1,)
             if not is_groupby_location:
@@ -290,7 +290,7 @@ class ImexInventoryReport(models.Model):
                             and template.categ_id in %s
                             and move.date >= %s
                             and move.date < %s
-                            and location_src.usage = 'internal'
+                            and location_src.usage in ('internal', 'transit')
                         UNION ALL
                         SELECT
                             (move.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok') AS date, move.product_id,
@@ -338,7 +338,7 @@ class ImexInventoryReport(models.Model):
                             and template.categ_id in %s
                             and move.date >= %s
                             and move.date < %s
-                            and location_dest.usage = 'internal'
+                            and location_dest.usage in ('internal', 'transit')
                         ) as move_group_location
                     GROUP BY 
                         move_group_location.product_id,
