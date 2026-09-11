@@ -1,0 +1,7 @@
+{
+  "results": [
+    "Native draft attachment: Thai filename, binary persistence and PDF preview PASS",
+    "Document Upload button and drag/drop wizard: file persisted as draft PASS"
+  ],
+  "errors": []
+}

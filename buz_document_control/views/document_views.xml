@@ -1,0 +1,89 @@
+<odoo>
+    <record id="view_buz_document_search" model="ir.ui.view">
+        <field name="name">buz.document.search</field><field name="model">buz.document</field>
+        <field name="arch" type="xml"><search>
+            <field name="document_no" string="Search Documents" filter_domain="['|','|','|','|','|','|',('document_no','ilike',self),('name','ilike',self),('document_type_id.name','ilike',self),('document_type_id.code','ilike',self),('department_id.name','ilike',self),('category_id.name','ilike',self),('current_revision','ilike',self)]"/>
+            <field name="name"/><field name="document_type_id"/><field name="department_id"/><field name="category_id"/><field name="current_revision"/>
+            <filter name="published" string="Published" domain="[('state','=','published')]"/>
+            <filter name="draft" string="Draft" domain="[('state','=','draft')]" groups="buz_document_control.group_document_manager"/>
+            <filter name="waiting_review" string="Waiting Review" domain="[('revision_ids.state','=','review')]" groups="buz_document_control.group_document_manager"/>
+            <separator/>
+            <filter name="general" string="General" domain="[('security_level','=','general')]"/>
+            <filter name="restricted" string="Restricted" domain="[('security_level','=','restricted')]"/>
+            <filter name="confidential" string="Confidential" domain="[('security_level','=','confidential')]" groups="buz_document_control.group_document_confidential_user"/>
+            <separator/>
+            <filter name="forms" string="Forms" domain="[('document_type_id.code','=','FM')]"/>
+            <filter name="my_department" string="My Department" domain="[('is_my_department','=',True)]"/>
+            <filter name="recent" string="Recently Updated" date="write_date" default_period="this_month"/>
+            <separator/>
+            <filter name="review_due" string="Review Due" domain="[('state','=','published'),('review_status','=','due_soon')]"/>
+            <filter name="review_overdue" string="Overdue" domain="[('state','=','published'),('review_status','=','overdue')]" groups="buz_document_control.group_document_manager"/>
+            <filter name="preview_failed" string="Preview Failed" domain="[('current_revision_id.preview_status','=','failed')]" groups="buz_document_control.group_document_manager"/>
+            <separator/>
+            <filter name="archived" string="Archived" domain="[('active','=',False)]" groups="buz_document_control.group_document_manager"/>
+            <group expand="0" string="Group By"><filter name="group_type" string="Type" context="{'group_by':'document_type_id'}"/><filter name="group_department" string="Department" context="{'group_by':'department_id'}"/><filter name="group_security" string="Security" context="{'group_by':'security_level'}"/></group>
+        </search></field>
+    </record>
+    <record id="view_buz_document_tree" model="ir.ui.view">
+        <field name="name">buz.document.tree</field><field name="model">buz.document</field>
+        <field name="arch" type="xml"><tree decoration-warning="review_status == 'due_soon'" decoration-danger="review_status == 'overdue'" decoration-muted="state in ('obsolete','archived')">
+            <field name="document_no"/><field name="name"/><field name="document_type_id" optional="show"/><field name="department_id" optional="show"/>
+            <field name="current_revision" string="Revision"/><field name="effective_date" optional="hide"/><field name="review_date" optional="show"/><field name="review_status" column_invisible="True"/>
+            <field name="security_level" widget="badge" decoration-warning="security_level == 'restricted'" decoration-danger="security_level == 'confidential'" optional="show"/>
+            <field name="state" widget="badge" decoration-success="state == 'published'" decoration-info="state == 'draft'"/><field name="write_date" string="Updated" optional="hide"/>
+            <button name="action_document_viewer" type="object" icon="fa-eye" title="Open Document Viewer"/>
+        </tree></field>
+    </record>
+    <record id="view_buz_document_kanban" model="ir.ui.view">
+        <field name="name">buz.document.kanban</field><field name="model">buz.document</field>
+        <field name="arch" type="xml">
+            <kanban class="o_bdc_kanban" js_class="bdc_document_kanban" quick_create="false" records_draggable="false" default_order="write_date desc" sample="0">
+                <field name="document_no"/><field name="name"/><field name="document_type_id"/><field name="department_id"/><field name="current_revision_id"/><field name="current_revision"/>
+                <field name="security_level"/><field name="state"/><field name="effective_date"/><field name="review_date"/><field name="review_status"/><field name="original_filename"/>
+                <templates>
+                    <t t-name="kanban-menu"><t groups="buz_document_control.group_document_manager"><a type="object" name="action_new_revision" class="dropdown-item">New Revision</a><a type="open" class="dropdown-item">Open</a><a type="object" name="action_archive" class="dropdown-item" confirm="Archive this document? It will no longer appear in the employee Document Center.">Archive</a></t></t>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click bdc-native-card">
+                            <t t-set="extension" t-value="(record.original_filename.raw_value || '').split('.').pop().toLowerCase()"/>
+                            <div class="bdc-native-heading"><span class="bdc-file-icon" t-att-class="extension === 'pdf' ? 'bdc-file-pdf' : ['doc','docx'].includes(extension) ? 'bdc-file-word' : ['xls','xlsx'].includes(extension) ? 'bdc-file-excel' : 'bdc-generic'"><i t-att-class="'fa ' + (extension === 'pdf' ? 'fa-file-pdf-o' : ['doc','docx'].includes(extension) ? 'fa-file-word-o' : ['xls','xlsx'].includes(extension) ? 'fa-file-excel-o' : 'fa-file-o')" aria-hidden="true"/></span><span t-attf-class="bdc-badge bdc-#{record.security_level.raw_value}"><field name="security_level"/></span></div>
+                            <strong class="text-primary"><field name="document_no"/></strong><h3><field name="name"/></h3>
+                            <div class="d-flex justify-content-between text-muted small gap-2"><field name="department_id"/><span>Rev.<field name="current_revision"/></span></div>
+                            <div class="d-flex justify-content-between align-items-center mt-2 small gap-2"><field name="document_type_id"/><span t-attf-class="bdc-badge bdc-#{record.state.raw_value}"><field name="state"/></span></div>
+                            <div class="small text-muted mt-3">Effective: <field name="effective_date"/> · Review: <field name="review_date"/></div>
+                            <div class="bdc-native-footer"><button type="object" name="action_document_viewer" class="btn btn-outline-secondary btn-sm">Preview</button><button t-if="record.current_revision_id.raw_value" type="object" name="action_download" class="btn btn-outline-primary btn-sm">Download</button></div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    <record id="view_buz_document_form" model="ir.ui.view">
+        <field name="name">buz.document.form</field><field name="model">buz.document</field>
+        <field name="arch" type="xml"><form string="Document Information">
+            <header>
+                <button name="action_document_viewer" type="object" string="Document Viewer" class="btn-primary"/>
+                <button name="action_download" type="object" string="Download Original" invisible="not current_revision_id"/>
+                <button name="action_new_revision" type="object" string="Upload Document" class="btn-primary" invisible="current_revision_id" groups="buz_document_control.group_document_manager"/>
+                <button name="action_new_revision" type="object" string="New Revision" invisible="not current_revision_id" groups="buz_document_control.group_document_manager"/>
+                <button name="action_archive" type="object" string="Archive" confirm="Archive this document? It will no longer appear in the employee Document Center." groups="buz_document_control.group_document_manager"/>
+                <field name="state" widget="statusbar" statusbar_visible="draft,published,archived"/>
+            </header>
+            <sheet><div class="oe_title"><label for="document_no"/><h1><field name="document_no" placeholder="QP-ITD-01"/></h1><h2><field name="name" placeholder="Document name"/></h2></div>
+                <notebook>
+                    <page name="overview" string="Overview"><group><group><field name="document_type_id"/><field name="department_id"/><field name="category_id"/><field name="owner_id" options="{'no_open': True}"/></group><group><field name="security_level" widget="badge" readonly="1"/><field name="current_revision"/><field name="effective_date"/><field name="review_date"/><field name="review_status" widget="badge"/></group></group><field name="description" placeholder="About this document…"/></page>
+                    <page name="current_revision" string="Current Revision"><group><field name="current_revision_id" options="{'no_open': True}"/></group><button name="action_preview" type="object" string="Open PDF Preview" invisible="not current_revision_id"/></page>
+                    <page name="history" string="Revision History" groups="buz_document_control.group_document_manager"><field name="revision_ids" readonly="1"><tree decoration-success="state == 'published'" decoration-muted="state == 'obsolete'" create="0" delete="0"><field name="revision"/><field name="state" widget="badge"/><field name="effective_date"/><field name="published_date"/><field name="change_description"/><field name="published_by"/></tree></field></page>
+                    <page name="access" string="Access" groups="buz_document_control.group_document_manager"><group><field name="security_level"/><field name="allowed_group_ids" widget="many2many_tags" invisible="security_level == 'general'"/><field name="allowed_department_ids" widget="many2many_tags" invisible="security_level != 'restricted'"/></group><div class="alert alert-info" invisible="security_level != 'general'">Visible to all Document Users</div><div class="alert alert-warning" invisible="security_level != 'confidential'">Confidential: requires Confidential Document User permission and any configured group assignment.</div></page>
+                    <page name="audit" string="Audit Trail" groups="buz_document_control.group_document_manager"><group><field name="create_uid"/><field name="create_date"/><field name="write_uid"/><field name="write_date"/></group><p class="text-muted">Workflow changes and internal conversations appear in the manager chatter.</p></page>
+                </notebook>
+            </sheet>
+            <div class="oe_chatter" groups="buz_document_control.group_document_manager"><field name="message_follower_ids" widget="mail_followers"/><field name="activity_ids" widget="mail_activity"/><field name="message_ids" widget="mail_thread"/></div>
+        </form></field>
+    </record>
+    <record id="action_buz_document" model="ir.actions.act_window"><field name="name">Documents</field><field name="res_model">buz.document</field><field name="view_mode">kanban,tree,form</field><field name="search_view_id" ref="view_buz_document_search"/></record>
+    <record id="action_buz_document_general" model="ir.actions.act_window"><field name="name">General Documents</field><field name="res_model">buz.document</field><field name="view_mode">kanban,tree,form</field><field name="domain">[('security_level','=','general')]</field></record>
+    <record id="action_buz_document_restricted" model="ir.actions.act_window"><field name="name">Restricted Documents</field><field name="res_model">buz.document</field><field name="view_mode">kanban,tree,form</field><field name="domain">[('security_level','=','restricted')]</field></record>
+    <record id="action_buz_document_confidential" model="ir.actions.act_window"><field name="name">Confidential Documents</field><field name="res_model">buz.document</field><field name="view_mode">kanban,tree,form</field><field name="domain">[('security_level','=','confidential')]</field></record>
+    <record id="action_buz_document_forms" model="ir.actions.act_window"><field name="name">Forms</field><field name="res_model">buz.document</field><field name="view_mode">kanban,tree,form</field><field name="domain">[('document_type_id.code','=','FM')]</field></record>
+    <record id="action_buz_document_my_department" model="ir.actions.act_window"><field name="name">My Department</field><field name="res_model">buz.document</field><field name="view_mode">kanban,tree,form</field><field name="domain">[('is_my_department','=',True)]</field></record>
+</odoo>

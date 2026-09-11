@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_document_control.DocumentDashboard">
+        <div class="o_bdc bdc-center" t-att-aria-busy="state.loading ? 'true' : 'false'">
+            <div class="bdc-container">
+                <header class="bdc-header">
+                    <div><span class="bdc-eyebrow">DOCUMENT CENTER</span><h1>Document Control</h1><p class="text-muted mb-0">เอกสารและแบบฟอร์มบริษัท</p></div>
+                    <div class="bdc-header-actions">
+                        <button class="btn btn-outline-secondary" t-on-click="() => this.load(true)" t-att-disabled="state.loading" title="Refresh documents" aria-label="Refresh documents"><i class="fa fa-refresh" aria-hidden="true"/></button>
+                        <t t-if="state.data?.is_manager">
+                            <button class="btn btn-outline-secondary" t-on-click="() => this.openNative(false, 'list')"><i class="fa fa-list-ul me-2" aria-hidden="true"/>List View</button>
+                            <button class="btn btn-primary" t-on-click="createDocument"><i class="fa fa-plus me-2" aria-hidden="true"/>Create Document</button>
+                        </t>
+                    </div>
+                </header>
+                <section class="bdc-search-panel" aria-label="Search documents">
+                    <div class="bdc-search"><i class="fa fa-search" aria-hidden="true"/><input type="search" t-att-value="state.query" t-on-input="search" placeholder="ค้นหาชื่อเอกสาร, Document No., QP, WI, FM..." aria-label="Search document number, name, type, department, category or revision"/></div>
+                    <div class="bdc-filters"><button t-foreach="filters" t-as="filter" t-key="filter.key" class="bdc-chip" t-att-class="{ active: state.filter === filter.key }" t-att-aria-pressed="state.filter === filter.key ? 'true' : 'false'" t-on-click="() => this.setFilter(filter.key)" t-esc="filter.label"/></div>
+                </section>
+                <div t-if="state.error" class="bdc-empty" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"/><h2>Unable to load documents</h2><p>Check your connection and document access, then try again.</p><button class="btn btn-primary" t-on-click="() => this.load(true)">Try Again</button></div>
+                <t t-elif="state.data">
+                    <section t-if="state.data.is_manager and state.summary" class="bdc-kpis" aria-label="Manager dashboard">
+                        <button t-foreach="kpis" t-as="kpi" t-key="kpi.key" class="bdc-kpi" t-on-click="() => this.setFilter(kpi.key)">
+                            <span t-attf-class="bdc-kpi-icon bdc-#{kpi.tone}"><i t-attf-class="fa #{kpi.icon}" aria-hidden="true"/></span>
+                            <span class="text-muted" t-esc="kpi.label"/><strong t-esc="state.summary.counts[kpi.key] || 0"/>
+                        </button>
+                    </section>
+                    <section t-if="state.summary" class="bdc-section" aria-label="Document types">
+                        <div class="bdc-section-heading"><h2>ประเภทเอกสาร</h2><span class="text-muted">Browse by document type</span></div>
+                        <div class="bdc-categories">
+                            <button t-foreach="state.summary.document_types" t-as="type" t-key="type.id" class="bdc-category" t-on-click="() => this.openNative(type.id)">
+                                <span class="bdc-category-code"><i class="fa fa-folder-open-o" aria-hidden="true"/><t t-esc="type.code"/></span>
+                                <span t-esc="type.name"/><span class="text-muted"><strong t-esc="type.count"/> documents <i class="fa fa-angle-right ms-1" aria-hidden="true"/></span>
+                            </button>
+                        </div>
+                    </section>
+                    <section class="bdc-section" aria-label="Recent documents">
+                        <div class="bdc-section-heading"><div><h2 t-esc="isSearching ? 'ผลการค้นหา' : 'เอกสารอัปเดตล่าสุด'"/><span class="text-muted"><t t-esc="state.data.total"/> documents available to you</span></div><button class="btn btn-link" t-on-click="() => this.openNative()">Browse all <i class="fa fa-arrow-right ms-1" aria-hidden="true"/></button></div>
+                        <div class="bdc-filters bdc-type-chips" t-if="state.summary"><button t-foreach="state.summary.document_types" t-as="type" t-key="type.id" class="bdc-chip" t-att-class="{ active: state.typeId === type.id }" t-att-aria-pressed="state.typeId === type.id ? 'true' : 'false'" t-on-click="() => this.setType(type.id)" t-esc="type.code"/><button t-if="isSearching" class="btn btn-link btn-sm" t-on-click="reset">Clear filters</button></div>
+                        <div t-if="state.loading" class="bdc-loading" role="status"><i class="fa fa-circle-o-notch fa-spin me-2" aria-hidden="true"/>Loading documents…</div>
+                        <div t-elif="!state.data.documents.length" class="bdc-empty"><i class="fa fa-folder-open-o" aria-hidden="true"/><h3>ไม่มีเอกสารในหมวดนี้</h3><p>ลองเปลี่ยน Filter หรือค้นหาด้วยคำอื่น</p><button t-if="state.data.is_manager" class="btn btn-primary" t-on-click="createDocument">Create Document</button><button t-else="" class="btn btn-outline-secondary" t-on-click="reset">Clear filters</button></div>
+                        <div t-else="" class="bdc-document-grid"><DocumentCard t-foreach="state.data.documents" t-as="document" t-key="document.id" document="document" onOpen.bind="openDocument" onDownload.bind="download"/></div>
+                        <nav t-if="state.data.total > 12" class="bdc-pagination" aria-label="Document pages"><button class="btn btn-outline-secondary btn-sm" t-att-disabled="state.offset === 0 || state.loading" t-on-click="() => this.page(-1)">Previous</button><span><t t-esc="state.offset + 1"/>–<t t-esc="Math.min(state.offset + 12, state.data.total)"/> / <t t-esc="state.data.total"/></span><button class="btn btn-outline-secondary btn-sm" t-att-disabled="state.offset + 12 >= state.data.total || state.loading" t-on-click="() => this.page(1)">Next</button></nav>
+                    </section>
+                    <section t-if="state.data.is_manager and state.summary" class="bdc-section bdc-attention">
+                        <div class="bdc-section-heading"><div><h2>Needs Attention</h2><span class="text-muted">Reviews, pending revisions and previews</span></div><button class="btn btn-link btn-sm" t-on-click="() => this.setFilter('preview_failed')">Preview issues</button></div>
+                        <p t-if="!state.summary.needs_attention.length" class="text-muted py-3 mb-0"><i class="fa fa-check-circle-o me-2" aria-hidden="true"/>Everything is up to date.</p>
+                        <div t-foreach="state.summary.needs_attention" t-as="row" t-key="row.id" class="bdc-attention-row">
+                            <i class="fa fa-file-text-o bdc-attention-icon" aria-hidden="true"/><div class="bdc-attention-name"><strong t-esc="row.document_no"/><span t-esc="row.name"/></div>
+                            <span t-if="row.review_status !== 'ok'" t-attf-class="bdc-badge bdc-#{row.review_status}" t-esc="badgeLabel(row.review_status)"/>
+                            <span t-elif="row.pending_revision" t-attf-class="bdc-badge bdc-#{row.pending_revision.state}" t-esc="badgeLabel(row.pending_revision.state)"/>
+                            <span t-else="" class="bdc-badge bdc-due_soon">Check document</span>
+                            <span class="text-muted small" t-esc="row.review_date || '—'"/><button class="btn btn-outline-secondary btn-sm" t-on-click="() => this.openPending(row)">Review</button>
+                        </div>
+                    </section>
+                </t>
+                <div t-else="" class="bdc-loading" role="status"><i class="fa fa-circle-o-notch fa-spin me-2" aria-hidden="true"/>Loading Document Center…</div>
+            </div>
+        </div>
+    </t>
+</templates>

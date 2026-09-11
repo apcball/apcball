@@ -1,0 +1,18 @@
+<odoo>
+    <record id="rule_document_user_general_restricted" model="ir.rule">
+        <field name="name">Document users: general and distributed restricted documents</field><field name="model_id" ref="model_buz_document"/><field name="groups" eval="[(4, ref('buz_document_control.group_document_user'))]"/>
+        <field name="domain_force">['&amp;', '&amp;', ('active', '=', True), ('state', '=', 'published'), '|', ('security_level', '=', 'general'), '&amp;', ('security_level', '=', 'restricted'), '|', ('allowed_group_ids', 'in', user.groups_id.ids), ('allowed_department_ids', 'in', user.employee_ids.department_id.ids)]</field>
+    </record>
+    <record id="rule_document_confidential" model="ir.rule">
+        <field name="name">Confidential users: assigned confidential documents</field><field name="model_id" ref="model_buz_document"/><field name="groups" eval="[(4, ref('buz_document_control.group_document_confidential_user'))]"/>
+        <field name="domain_force">['&amp;', '&amp;', '&amp;', ('active', '=', True), ('state', '=', 'published'), ('security_level', '=', 'confidential'), '|', ('allowed_group_ids', '=', False), ('allowed_group_ids', 'in', user.groups_id.ids)]</field>
+    </record>
+    <record id="rule_document_manager" model="ir.rule"><field name="name">Document managers: all documents</field><field name="model_id" ref="model_buz_document"/><field name="groups" eval="[(4, ref('buz_document_control.group_document_manager'))]"/><field name="domain_force">[(1, '=', 1)]</field></record>
+    <record id="rule_revision_user" model="ir.rule">
+        <field name="name">Document users: published revisions only</field><field name="model_id" ref="model_buz_document_revision"/><field name="groups" eval="[(4, ref('buz_document_control.group_document_user'))]"/>
+        <!-- Mirrors rule_document_user_general_restricted via dotted fields (SQL join),
+             instead of materializing every visible document id into an IN() clause. -->
+        <field name="domain_force">['&amp;', ('state', '=', 'published'), '&amp;', '&amp;', ('document_id.active', '=', True), ('document_id.state', '=', 'published'), '|', ('document_id.security_level', '=', 'general'), '&amp;', ('document_id.security_level', '=', 'restricted'), '|', ('document_id.allowed_group_ids', 'in', user.groups_id.ids), ('document_id.allowed_department_ids', 'in', user.employee_ids.department_id.ids)]</field>
+    </record>
+    <record id="rule_revision_manager" model="ir.rule"><field name="name">Document managers: all revisions</field><field name="model_id" ref="model_buz_document_revision"/><field name="groups" eval="[(4, ref('buz_document_control.group_document_manager'))]"/><field name="domain_force">[(1, '=', 1)]</field></record>
+</odoo>
