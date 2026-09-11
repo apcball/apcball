@@ -90,14 +90,7 @@
                             <field name="destination_journal_id" required="1"/>
                             <field name="payment_method_line_id" required="payment_type != 'cash'" invisible="payment_type == 'cash'"/>
                             <field name="bank_free_dis" string="Bank Fee"/>
-                            <field name="paid_discount_amount"/>
-                            <field name="paid_discount_account_id"
-                                   required="paid_discount_amount &gt; 0"
-                                   options="{'no_create': True, 'no_create_edit': True}"/>
                             <field name="other_income_dis" string="Other Income"/>
-                            <field name="other_income_account_id"
-                                   required="other_income_dis &gt; 0"
-                                   options="{'no_create': True, 'no_create_edit': True}"/>
                             <field name="check_pay_to" string="Pay To"/>
                             <field name="check_number" string="Cheque No."/>
                         </group>

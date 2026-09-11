@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -55,29 +55,10 @@ class AccountPaymentVoucher(models.Model):
         currency_field="currency_id",
         help="Optional bank fee deducted by the bank."
     )
-    paid_discount_amount = fields.Monetary(
-        string="Paid Discount Amount",
-        currency_field="currency_id",
-        help="Paid discount used only for the Vendor Payment Voucher report preview."
-    )
-    paid_discount_account_id = fields.Many2one(
-        "account.account",
-        string="Paid Discount Account",
-        domain="[('deprecated', '=', False), ('company_id', '=', company_id)]",
-        check_company=True,
-        help="Expense account used for the paid discount line in the report preview."
-    )
     other_income_dis = fields.Monetary(
         string="Other Income",
         currency_field="currency_id",
         help="Other income deducted from disbursement."
-    )
-    other_income_account_id = fields.Many2one(
-        "account.account",
-        string="Other Income Account",
-        domain="[('deprecated', '=', False), ('company_id', '=', company_id)]",
-        check_company=True,
-        help="Income account used for the other income line in the report preview."
     )
     check_number = fields.Char(string="Check Number", tracking=True)
     check_date = fields.Date(string="Check Date", tracking=True)
@@ -136,42 +117,6 @@ class AccountPaymentVoucher(models.Model):
         for voucher in self:
             if any(line.partner_id != voucher.partner_id for line in voucher.line_ids):
                 raise UserError(_("All lines in a payment voucher must belong to the same vendor (%s).") % voucher.partner_id.name)
-
-    @api.constrains(
-        'paid_discount_amount',
-        'paid_discount_account_id',
-        'other_income_dis',
-        'other_income_account_id',
-        'company_id',
-    )
-    def _check_report_adjustments(self):
-        """Validate report-only adjustments without changing real payments."""
-        for voucher in self:
-            paid_discount = voucher.currency_id.round(voucher.paid_discount_amount or 0.0)
-            other_income = voucher.currency_id.round(voucher.other_income_dis or 0.0)
-
-            if paid_discount > 0 and not voucher.paid_discount_account_id:
-                raise ValidationError(_(
-                    "Please select a Paid Discount Account when Paid Discount Amount is greater than zero."
-                ))
-            if other_income > 0 and not voucher.other_income_account_id:
-                raise ValidationError(_(
-                    "Please select an Other Income Account when Other Income is greater than zero."
-                ))
-            if paid_discount > 0 and other_income > 0:
-                raise ValidationError(_(
-                    "Paid Discount Amount and Other Income cannot both be greater than zero."
-                ))
-
-            # ตรวจทั้งฝั่ง UI และ backend เพื่อกันการเลือกบัญชีข้ามบริษัทหรือบัญชีที่ปิดใช้งาน
-            for account, label in (
-                (voucher.paid_discount_account_id, _("Paid Discount Account")),
-                (voucher.other_income_account_id, _("Other Income Account")),
-            ):
-                if account and (account.company_id != voucher.company_id or account.deprecated):
-                    raise ValidationError(_(
-                        "%s must be active and belong to the same company as the Payment Voucher."
-                    ) % label)
 
     @api.model
     def create(self, vals):
@@ -646,12 +591,10 @@ class AccountPaymentVoucher(models.Model):
         # Calculate totals
         total_gross = sum(line.amount_to_pay_gross for line in self.line_ids)
         total_wht = sum(line.wht_amount for line in self.line_ids)
-        total_net_after_wht = total_gross - total_wht
+        total_net = sum(line.amount_to_pay_net for line in self.line_ids)
         bank_fee = self.bank_free_dis or 0.0
-        paid_discount = self.paid_discount_amount or 0.0
         other_income = self.other_income_dis or 0.0
-        payment_amount = total_net_after_wht + paid_discount - other_income
-        total_disbursement = payment_amount + bank_fee
+        total_disbursement = total_net + bank_fee - other_income
 
         # 1. Debit Line (Payable) - Aggregated
         if total_gross > 0:
@@ -725,27 +668,12 @@ class AccountPaymentVoucher(models.Model):
                 'credit': 0.0,
             })
 
-        # 3.5 Debit Line (Paid Discount — increases displayed payment amount)
-        if paid_discount > 0:
-            paid_discount_account = self.paid_discount_account_id
-            lines.append({
-                'code': paid_discount_account.code if paid_discount_account else '',
-                'name': paid_discount_account.name if paid_discount_account else _('Paid Discount'),
-                'ref': voucher_name,
-                'date': date,
-                'debit': paid_discount,
-                'credit': 0.0,
-            })
-
-        # 3.6 Credit Line (Other Income — reduces displayed payment amount)
+        # 3.5 Credit Line (Other Income — reduces disbursement)
         if other_income > 0:
-            other_income_account = self.other_income_account_id
-            # เอกสารเก่าที่มี Other Income แต่ยังไม่มีฟิลด์บัญชีใหม่ต้องพิมพ์ได้เหมือนเดิม
-            if not other_income_account:
-                other_income_account = self.env['account.account'].search([
-                    ('code', 'in', ['423000', '42300']),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
+            other_income_account = self.env['account.account'].search([
+                ('code', 'in', ['423000', '42300']),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
             if not other_income_account:
                 other_income_account = self.env['account.account'].search([
                     ('name', 'ilike', 'รายได้อื่น'),

@@ -9,13 +9,7 @@
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
-                                src: url('/buz_accounting_addon/static/fonts/Sarabun-Regular.ttf') format('truetype');
-                                font-weight: 400;
-                            }
-                            @font-face {
-                                font-family: 'Sarabun';
-                                src: url('/buz_accounting_addon/static/fonts/Sarabun-Bold.ttf') format('truetype');
-                                font-weight: 700;
+                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
                             }
                             .page {
                                 font-family: 'Sarabun', sans-serif;
@@ -136,9 +130,8 @@
                         </table>
 
                         <!-- 2. Payment Method Table -->
-                        <t t-set="net_after_wht" t-value="o.amount_total_gross - o.amount_total_wht"/>
-                        <t t-set="payment_main_amount" t-value="net_after_wht + o.paid_discount_amount - o.other_income_dis"/>
-                        <t t-set="payment_breakdown_total" t-value="payment_main_amount + o.bank_free_dis"/>
+                        <t t-set="payment_main_amount" t-value="o.amount_total_gross - o.amount_total_wht - o.other_income_dis - o.bank_free_dis"/>
+                        <t t-set="payment_breakdown_total" t-value="payment_main_amount + o.bank_free_dis + o.other_income_dis + o.amount_total_wht"/>
                         <table class="table-bordered" style="margin-top: 15px;">
                             <thead>
                                 <tr class="table-header">
@@ -151,7 +144,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Line 1: Transfer/check/cash amount after report-only adjustments -->
+                                <!-- Line 1: Main Payment (Net) -->
                                 <tr style="vertical-align: top;">
                                     <td class="text-center">
                                         <span t-if="o.payment_type == 'check'">เช็ค</span>
@@ -191,6 +184,26 @@
                                     <td></td>
                                     <td class="text-end">
                                         <span t-field="o.bank_free_dis" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+
+                                <!-- Line 2: WHT (If exists) -->
+                                <tr t-if="o.amount_total_wht > 0" style="vertical-align: top;">
+                                    <td class="text-center">
+                                        หัก ณ.ที่จ่าย
+                                    </td>
+                                    <td>
+                                        ค่าบริการ <!-- Or try to fetch name from first tax: o.line_ids[:1].wht_tax_id.name -->
+                                    </td>
+                                    <td></td>
+                                    <td class="text-center">
+                                        <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                    </td>
+                                    <td>
+                                        <!-- Pay to/Vendor? -->
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="o.amount_total_wht" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                 </tr>
 
