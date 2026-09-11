@@ -99,7 +99,7 @@
                             <field name="source_sale_order_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}" string="Source Sale Orders"/>
                             <field name="source_invoice_candidate_ids" invisible="1"/>
                             <field name="source_invoice_ids" widget="many2many_tags"
-                                   domain="[('id', 'in', source_invoice_candidate_ids)]"
+                                   domain="[('company_id', '=', company_id), ('partner_id', '=', partner_id), ('move_type', '=', 'out_invoice')]"
                                    readonly="state != 'draft'" options="{'no_create': True}"
                                    string="Invoice ต้นทางสำหรับ Refund"/>
                         </group>

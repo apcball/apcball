@@ -124,3 +124,10 @@ Local-only verification on 2026-09-09:
 - ตรวจผล Payment, Reconciliation และ Journal Entry บนหน้าจอจริง
 
 เอกสารนี้อัปเดตเพื่อบันทึกผลการแก้ไขและการส่งมอบ DEV โดยไม่รวมการ deploy ไป PROD
+
+## 6. POS Lite ที่ไม่มี Source SO หรือ Source Invoice
+
+- Source SO และ Source Invoice เป็นข้อมูลอ้างอิงแบบ best effort ไม่ใช่เงื่อนไขบังคับของการ Confirm Refund PV
+- Credit Note จาก POS Lite ที่ไม่มี `sale_line_ids` และไม่มี Source Invoice สามารถ Confirm จาก `Draft` เป็น `Posted` ได้ หากผ่านเงื่อนไขสำคัญอื่นทั้งหมด
+- หากผู้ใช้เลือก Source Invoice เอง ระบบตรวจบริษัท ลูกค้า ประเภท `out_invoice` สถานะ Posted สถานะชำระเงิน Paid และยอดคงเหลือเป็นศูนย์ โดยไม่สร้างความสัมพันธ์กับ SO ขึ้นมาเอง
+- การตรวจ Source Invoice ก่อน Register Payment ยังคงทำงานตามเดิม จึงต้องเลือก Invoice ที่ผ่านเงื่อนไขเมื่อจะรับชำระเงิน

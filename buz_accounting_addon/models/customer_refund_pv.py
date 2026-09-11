@@ -223,8 +223,8 @@ class BuzCustomerRefundPv(models.Model):
                 cn_total = residual
             if total_other + pv.refund_amount - cn_total > 1e-6:
                 raise UserError(_("Total Refund Amount (%.2f) for Credit Note %s would exceed its total (%.2f).") % (total_other + pv.refund_amount, pv.credit_note_id.name, cn_total))
-            # Source SO / Invoice validation (central)
-            pv._check_source_invoices_paid()
+            # Source SO/Invoice เป็นข้อมูลอ้างอิงแบบ best effort จึงไม่บังคับตอน Confirm
+            pv._check_source_invoices_paid(require_selected=False)
         # All validations passed: post the documents
         for pv in self:
             pv.with_context(buz_refund_pv_state_transition=True).write({"state": "posted"})
@@ -487,8 +487,8 @@ class BuzCustomerRefundPv(models.Model):
                     pv.source_status = _("Source Invoice Paid")
                     pv.source_status_is_paid = True
 
-    def _check_source_invoices_paid(self):
-        """Validate only the invoices explicitly selected for this Refund PV."""
+    def _check_source_invoices_paid(self, require_selected=True):
+        """Validate selected source invoices without requiring standard source links."""
         for pv in self:
             cn = pv.credit_note_id
             if not cn:
@@ -498,23 +498,22 @@ class BuzCustomerRefundPv(models.Model):
             if cn.state != "posted":
                 raise UserError(_("Customer Credit Note must be Posted."))
 
-            sale_orders = pv._get_source_sale_orders()
-            if not sale_orders:
-                raise UserError(_(
-                    "ไม่พบ SO ต้นทาง: Credit Note %s ไม่มี sale_line_ids "
-                    "ที่เชื่อมกับ Sale Order"
-                ) % (cn.name or ""))
+            # POS Lite อาจไม่มี sale_line_ids จึงแจ้งสถานะผ่าน source_status
+            # แต่ไม่หยุดการ Confirm
 
             if not pv.source_invoice_ids:
-                raise UserError(_(
-                    "Please select at least one source Invoice for Refund before confirming or registering payment."
-                ))
+                if require_selected:
+                    raise UserError(_(
+                        "Please select at least one source Invoice for Refund before registering payment."
+                    ))
+                continue
 
-            candidates = pv._get_source_invoices().filtered(
-                lambda inv: inv.company_id == pv.company_id
-                and inv.partner_id == pv.partner_id
+            # อนุญาต Invoice ที่ผู้ใช้เลือกเองได้ แม้ไม่มีความสัมพันธ์กับ SO/CN
+            # แต่ยังตรวจบริษัท ลูกค้า ประเภท และสถานะทางบัญชีอย่างเข้มงวด
+            invalid = pv.source_invoice_ids.filtered(
+                lambda inv: inv.company_id != pv.company_id
+                or inv.partner_id != pv.partner_id
             )
-            invalid = pv.source_invoice_ids - candidates
             invalid |= pv.source_invoice_ids.filtered(lambda inv: not (
                 inv.state == "posted"
                 and inv.move_type == "out_invoice"
