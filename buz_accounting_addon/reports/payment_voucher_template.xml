@@ -137,8 +137,8 @@
 
                         <!-- 2. Payment Method Table -->
                         <t t-set="net_after_wht" t-value="o.amount_total_gross - o.amount_total_wht"/>
-                        <t t-set="payment_main_amount" t-value="net_after_wht + o.paid_discount_amount - o.other_income_dis + o.bank_free_dis"/>
-                        <t t-set="payment_breakdown_total" t-value="payment_main_amount"/>
+                        <t t-set="payment_main_amount" t-value="net_after_wht + o.paid_discount_amount - o.other_income_dis"/>
+                        <t t-set="payment_breakdown_total" t-value="payment_main_amount + o.bank_free_dis"/>
                         <table class="table-bordered" style="margin-top: 15px;">
                             <thead>
                                 <tr class="table-header">
@@ -175,7 +175,26 @@
                                         <span t-esc="payment_main_amount" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                 </tr>
-<!-- Total Row -->
+
+                                <!-- Line 1.5: Bank Fee (If exists) -->
+                                <tr t-if="o.bank_free_dis > 0" style="vertical-align: top;">
+                                    <td class="text-center">
+                                        Bank Fee
+                                    </td>
+                                    <td>
+                                        Bank Charge
+                                    </td>
+                                    <td></td>
+                                    <td class="text-center">
+                                        <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                    </td>
+                                    <td></td>
+                                    <td class="text-end">
+                                        <span t-field="o.bank_free_dis" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+
+                                <!-- Total Row -->
                                 <tr>
                                     <td colspan="5" class="text-end" style="font-weight: bold; padding-right: 10px;">
                                         จำนวนเงิน
