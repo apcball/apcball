@@ -20,6 +20,7 @@ class BuzDocument(models.Model):
         default="general", required=True, tracking=True)
     allowed_group_ids = fields.Many2many("res.groups", "buz_document_group_rel", "document_id", "group_id", string="Allowed Groups")
     allowed_department_ids = fields.Many2many("hr.department", "buz_document_department_rel", "document_id", "department_id", string="Allowed Departments")
+    allowed_employee_ids = fields.Many2many("hr.employee", "buz_document_employee_rel", "document_id", "employee_id", string="Allowed Employees")
     current_revision_id = fields.Many2one("buz.document.revision", readonly=True, copy=False, ondelete="restrict")
     current_revision = fields.Char(related="current_revision_id.revision", store=True)
     effective_date = fields.Date(related="current_revision_id.effective_date", store=True)

@@ -124,6 +124,7 @@ class DocumentCenter(models.Model):
             result["access"] = {
                 "groups": self.allowed_group_ids.mapped("display_name"),
                 "departments": self.allowed_department_ids.mapped("display_name"),
+                "employees": self.allowed_employee_ids.mapped("display_name"),
             }
             result["activity"] = self.env["buz.document.download.log"].search_read(
                 [("document_id", "=", self.id)], ["user_id", "revision_id", "action_type", "download_date"], limit=20,
