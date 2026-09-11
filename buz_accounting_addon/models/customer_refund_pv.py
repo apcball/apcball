@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-from odoo.tools import float_is_zero
+
 
 
 class BuzCustomerRefundPv(models.Model):
@@ -87,7 +87,7 @@ class BuzCustomerRefundPv(models.Model):
     refund_payment_state = fields.Selection(string='Payment State', related='refund_payment_id.state', readonly=True)
     refund_payment_move_name = fields.Char(string='Journal Entry Number', compute='_compute_refund_payment', readonly=True, help="Same as Payment/Journal Entry number (account.move.name)")
 
-    # Source SO / Invoice tracking. Invoice matching is selected by accounting in Draft.
+    # Source SO / Invoice tracking. Invoice is an optional accounting reference.
     source_sale_order_ids = fields.Many2many('sale.order', compute='_compute_source_documents', string='Source Sale Orders', readonly=True)
     source_sale_order_count = fields.Integer(string='Source SO Count', compute='_compute_source_documents', readonly=True)
     source_invoice_ids = fields.Many2many(
@@ -224,7 +224,7 @@ class BuzCustomerRefundPv(models.Model):
             if total_other + pv.refund_amount - cn_total > 1e-6:
                 raise UserError(_("Total Refund Amount (%.2f) for Credit Note %s would exceed its total (%.2f).") % (total_other + pv.refund_amount, pv.credit_note_id.name, cn_total))
             # Source SO/Invoice เป็นข้อมูลอ้างอิงแบบ best effort จึงไม่บังคับตอน Confirm
-            pv._check_source_invoices_paid(require_selected=False)
+            pv._check_source_invoices_paid()
         # All validations passed: post the documents
         for pv in self:
             pv.with_context(buz_refund_pv_state_transition=True).write({"state": "posted"})
@@ -434,12 +434,11 @@ class BuzCustomerRefundPv(models.Model):
         return invoices
 
     @api.depends(
+        "company_id",
+        "partner_id",
         "credit_note_id",
         "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids",
         "credit_note_id.line_ids.sale_line_ids.order_id.invoice_ids",
-        "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids.state",
-        "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids.payment_state",
-        "credit_note_id.invoice_line_ids.sale_line_ids.order_id.invoice_ids.amount_residual",
         "source_invoice_ids",
     )
     def _compute_source_documents(self):
@@ -454,28 +453,25 @@ class BuzCustomerRefundPv(models.Model):
                 continue
 
             sale_orders = pv._get_source_sale_orders()
-            invoices = pv._get_source_invoices()
-            candidates = invoices.filtered(
-                lambda inv: inv.company_id == pv.company_id
-                and inv.partner_id == pv.partner_id
-                and inv.state == "posted"
-                and inv.move_type == "out_invoice"
-                and inv.payment_state == "paid"
-                and float_is_zero(
-                    inv.amount_residual,
-                    precision_rounding=inv.currency_id.rounding or pv.currency_id.rounding,
-                )
-            )
+            # POS Lite อาจไม่มี SO/Invoice link จึงแสดง Invoice อ้างอิงจาก
+            # บริษัท/ลูกค้า/ประเภท/สถานะเท่านั้น ไม่เดาความสัมพันธ์กับ Credit Note
+            # หรือ SO จากข้อมูลอื่น เช่น invoice_origin
+            candidates = self.env["account.move"].search([
+                ("company_id", "=", pv.company_id.id),
+                ("partner_id", "=", pv.partner_id.id),
+                ("move_type", "=", "out_invoice"),
+                ("state", "=", "posted"),
+            ])
             pv.source_sale_order_ids = [fields.Command.set(sale_orders.ids)]
             pv.source_sale_order_count = len(sale_orders)
             pv.source_invoice_candidate_ids = [fields.Command.set(candidates.ids)]
             pv.source_invoice_count = len(pv.source_invoice_ids)
 
-            if not sale_orders:
-                pv.source_status = _("No source Sale Order")
-                pv.source_status_is_paid = False
-            elif not pv.source_invoice_ids:
-                pv.source_status = _("Please select at least one source Invoice for Refund")
+            if not pv.source_invoice_ids:
+                if not sale_orders:
+                    pv.source_status = _("No source SO or Invoice reference (optional)")
+                else:
+                    pv.source_status = _("No Invoice reference selected (optional)")
                 pv.source_status_is_paid = False
             else:
                 invalid = pv.source_invoice_ids - candidates
@@ -484,11 +480,16 @@ class BuzCustomerRefundPv(models.Model):
                     pv.source_status = _("Selected Invoice is no longer eligible: %s") % names
                     pv.source_status_is_paid = False
                 else:
-                    pv.source_status = _("Source Invoice Paid")
-                    pv.source_status_is_paid = True
+                    pv.source_status = _("Invoice reference valid")
+                    pv.source_status_is_paid = False
 
-    def _check_source_invoices_paid(self, require_selected=True):
-        """Validate selected source invoices without requiring standard source links."""
+    def _check_source_invoices_paid(self):
+        """Validate optional Invoice references without using them for payment.
+
+        Payment registration always targets the Credit Note. The selected Invoice
+        is retained only as an accounting reference and is never inferred from
+        POS Lite, SO, or Credit Note lines.
+        """
         for pv in self:
             cn = pv.credit_note_id
             if not cn:
@@ -498,18 +499,14 @@ class BuzCustomerRefundPv(models.Model):
             if cn.state != "posted":
                 raise UserError(_("Customer Credit Note must be Posted."))
 
-            # POS Lite อาจไม่มี sale_line_ids จึงแจ้งสถานะผ่าน source_status
-            # แต่ไม่หยุดการ Confirm
+            # POS Lite อาจไม่มี sale_line_ids และไม่มี Invoice link
+            # จึงไม่บังคับให้เลือก Invoice อ้างอิง
 
             if not pv.source_invoice_ids:
-                if require_selected:
-                    raise UserError(_(
-                        "Please select at least one source Invoice for Refund before registering payment."
-                    ))
                 continue
 
-            # อนุญาต Invoice ที่ผู้ใช้เลือกเองได้ แม้ไม่มีความสัมพันธ์กับ SO/CN
-            # แต่ยังตรวจบริษัท ลูกค้า ประเภท และสถานะทางบัญชีอย่างเข้มงวด
+            # อนุญาตให้เลือก Invoice อ้างอิงเอง แม้ไม่มีความสัมพันธ์กับ SO/CN
+            # แต่ยังตรวจบริษัท ลูกค้า ประเภทเอกสาร และสถานะ Posted
             invalid = pv.source_invoice_ids.filtered(
                 lambda inv: inv.company_id != pv.company_id
                 or inv.partner_id != pv.partner_id
@@ -517,19 +514,16 @@ class BuzCustomerRefundPv(models.Model):
             invalid |= pv.source_invoice_ids.filtered(lambda inv: not (
                 inv.state == "posted"
                 and inv.move_type == "out_invoice"
-                and inv.payment_state == "paid"
-                and float_is_zero(
-                    inv.amount_residual,
-                    precision_rounding=inv.currency_id.rounding or pv.currency_id.rounding,
-                )
+
             ))
             if invalid:
                 details = ", ".join(
-                    "%s (state=%s, move_type=%s, payment_state=%s, residual=%s)"
-                    % (inv.name or inv.id, inv.state, inv.move_type, inv.payment_state, inv.amount_residual)
+                    "%s (company=%s, partner=%s, state=%s, move_type=%s)"
+                    % (inv.name or inv.id, inv.company_id.display_name, inv.partner_id.display_name,
+                       inv.state, inv.move_type)
                     for inv in invalid
                 )
-                raise UserError(_("Selected source Invoice is no longer eligible: %s") % details)
+                raise UserError(_("Selected Invoice reference is not eligible: %s") % details)
 
     def action_view_payments(self):
         self.ensure_one()

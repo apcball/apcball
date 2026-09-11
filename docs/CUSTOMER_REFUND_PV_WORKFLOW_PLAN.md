@@ -127,7 +127,15 @@ Local-only verification on 2026-09-09:
 
 ## 6. POS Lite ที่ไม่มี Source SO หรือ Source Invoice
 
-- Source SO และ Source Invoice เป็นข้อมูลอ้างอิงแบบ best effort ไม่ใช่เงื่อนไขบังคับของการ Confirm Refund PV
-- Credit Note จาก POS Lite ที่ไม่มี `sale_line_ids` และไม่มี Source Invoice สามารถ Confirm จาก `Draft` เป็น `Posted` ได้ หากผ่านเงื่อนไขสำคัญอื่นทั้งหมด
-- หากผู้ใช้เลือก Source Invoice เอง ระบบตรวจบริษัท ลูกค้า ประเภท `out_invoice` สถานะ Posted สถานะชำระเงิน Paid และยอดคงเหลือเป็นศูนย์ โดยไม่สร้างความสัมพันธ์กับ SO ขึ้นมาเอง
+- หากผู้ใช้เลือก Invoice อ้างอิงเอง ระบบตรวจเฉพาะบริษัท ลูกค้า ประเภท out_invoice และสถานะ Posted โดยไม่บังคับ Paid หรือยอดคงเหลือเป็นศูนย์ และไม่สร้างความสัมพันธ์กับ SO ขึ้นมาเอง
+- การตรวจ Invoice อ้างอิงก่อน Confirm/Register Payment ไม่บังคับให้เลือก และการจ่ายเงินจริงยังใช้ Credit Note กับ Refund Amount เป็นหลัก
+- Dropdown Invoice อ้างอิงแสดงเฉพาะ Invoice Posted ของบริษัทและลูกค้าเดียวกัน โดยไม่เดาความสัมพันธ์จาก POS Lite, SO หรือ invoice_origin
 - การตรวจ Source Invoice ก่อน Register Payment ยังคงทำงานตามเดิม จึงต้องเลือก Invoice ที่ผ่านเงื่อนไขเมื่อจะรับชำระเงิน
+
+## 7. POS Lite Refund PV: Optional Invoice Reference
+
+- Confirm และ Register Refund Payment ไม่บังคับเลือก Source Invoice
+- Invoice ที่เลือกเองเป็นข้อมูลอ้างอิงเท่านั้น ระบบตรวจบริษัท ลูกค้า ประเภท out_invoice และสถานะ Posted
+- Dropdown แสดง Invoice Posted ของบริษัทและลูกค้าเดียวกัน โดยไม่เดาความสัมพันธ์จาก POS Lite, SO หรือ invoice_origin
+- การ Register Payment ใช้ Credit Note และ Refund Amount เป็นเอกสารและยอดหลักตาม standard Odoo Payment Register
+- ผลการตรวจ local: ยังไม่ได้ deploy, upgrade หรือ restart server และยังต้องทดสอบด้วย Odoo isolated/local database และ UAT จริง

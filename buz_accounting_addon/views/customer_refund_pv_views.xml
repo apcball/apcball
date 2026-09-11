@@ -99,12 +99,12 @@
                             <field name="source_sale_order_ids" widget="many2many_tags" readonly="1" options="{'no_create': True}" string="Source Sale Orders"/>
                             <field name="source_invoice_candidate_ids" invisible="1"/>
                             <field name="source_invoice_ids" widget="many2many_tags"
-                                   domain="[('company_id', '=', company_id), ('partner_id', '=', partner_id), ('move_type', '=', 'out_invoice')]"
+                                   domain="[('company_id', '=', company_id), ('partner_id', '=', partner_id), ('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]"
                                    readonly="state != 'draft'" options="{'no_create': True}"
-                                   string="Invoice ต้นทางสำหรับ Refund"/>
+                                   string="Invoice อ้างอิง (ถ้ามี)"/>
                         </group>
                         <group>
-                            <field name="source_status" readonly="1" string="Source Status" placeholder="Source Invoice Paid / Invoice ยังไม่ Paid / ไม่พบ Invoice ของ SO / ไม่พบ SO ต้นทาง"/>
+                            <field name="source_status" readonly="1" string="Source Status" placeholder="Invoice อ้างอิงเป็นข้อมูลเสริม ไม่บังคับเลือก"/>
                         </group>
                     </group>
                     <group string="Refund Payment (Standard Odoo)" invisible="payment_count == 0">
