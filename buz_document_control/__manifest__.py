@@ -5,7 +5,6 @@
     "category": "Documents",
     "author": "Mogen Co., Ltd.",
     "license": "LGPL-3",
-    "icon": "static/description/icon.png",
     "depends": ["base", "mail", "web", "hr"],
     "data": [
         "security/security.xml",
