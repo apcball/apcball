@@ -18,6 +18,7 @@
         <record id="group_material_requisition_user" model="res.groups">
             <field name="name">Material Requisition User</field>
             <field name="category_id" ref="base.module_category_project"/>
+            <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
         </record>
 
         <record id="group_material_requisition_manager" model="res.groups">
@@ -36,7 +37,7 @@
             <field name="name">Job Cost Sheet: User Access</field>
             <field name="model_id" ref="model_job_cost_sheet"/>
             <field name="groups" eval="[(4, ref('group_job_costing_user'))]"/>
-            <field name="domain_force">['|', ('create_uid', '=', user.id), ('project_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
         <record id="rule_job_cost_sheet_manager" model="ir.rule">
@@ -51,7 +52,7 @@
             <field name="name">Job Order: User Access</field>
             <field name="model_id" ref="model_job_order"/>
             <field name="groups" eval="[(4, ref('group_job_costing_user'))]"/>
-            <field name="domain_force">['|', ('user_id', '=', user.id), ('project_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
         <record id="rule_job_order_manager" model="ir.rule">
@@ -70,7 +71,7 @@
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>
             <field name="perm_unlink" eval="False"/>
-            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id', '=', False)]</field>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
         <record id="rule_material_requisition_dept_manager" model="ir.rule">
@@ -81,7 +82,7 @@
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>
             <field name="perm_unlink" eval="False"/>
-            <field name="domain_force">['|', ('department_id.manager_id.user_id', '=', user.id), ('department_id', '=', False)]</field>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 
         <record id="rule_material_requisition_manager" model="ir.rule">
@@ -146,6 +147,32 @@
         <record id="rule_material_requisition_line_multi_company" model="ir.rule">
             <field name="name">Material Requisition Line: Multi Company</field>
             <field name="model_id" ref="model_material_requisition_line"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Procurement Pool Rules -->
+        <record id="rule_procurement_pool_user" model="ir.rule">
+            <field name="name">Procurement Pool: User Access</field>
+            <field name="model_id" ref="model_procurement_pool"/>
+            <field name="groups" eval="[(4, ref('group_material_requisition_user'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_procurement_pool_multi_company" model="ir.rule">
+            <field name="name">Procurement Pool: Multi Company</field>
+            <field name="model_id" ref="model_procurement_pool"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_procurement_pool_line_multi_company" model="ir.rule">
+            <field name="name">Procurement Pool Line: Multi Company</field>
+            <field name="model_id" ref="model_procurement_pool_line"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_purchase_allocation_multi_company" model="ir.rule">
+            <field name="name">Purchase Allocation: Multi Company</field>
+            <field name="model_id" ref="model_purchase_allocation"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
 

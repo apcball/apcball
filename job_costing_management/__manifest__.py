@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'buz Project Job Costing Management for Construction',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.2',
     'category': 'Project',
     'summary': 'Project Job Costing (Contracting) and Job Cost Sheet for Construction Management',
     'description': """
@@ -55,6 +55,7 @@ Key Benefits:
         'mail',
         'portal',
         'contacts',  # Added dependency for contacts module
+        'report_xlsx',
     ],
     'data': [
         # Security
@@ -72,6 +73,8 @@ Key Benefits:
         'wizard/create_rfq_from_job_cost_view.xml',
         'wizard/job_cost_line_wizard_view.xml',
         'wizard/boq_material_requisition_wizard_view.xml',
+        'wizard/add_to_pool_wizard_view.xml',
+        'wizard/shortfall_wizard_view.xml',
         
         # Views (load after wizards to ensure actions are defined)
         'views/job_type_views.xml',
@@ -87,6 +90,8 @@ Key Benefits:
         'views/purchase_order_views.xml',
         'views/account_move_views.xml',
         'views/hr_timesheet_views.xml',
+        'views/procurement_pool_views.xml',
+        'views/purchase_allocation_views.xml',
         
         # Menu (load after actions are defined)
         'views/job_costing_menu.xml',
@@ -104,7 +109,7 @@ Key Benefits:
         'demo/job_cost_demo_rfq.xml',
         'demo/job_cost_line_demo.xml',
     ],
-    'qweb': [],
+
     'installable': True,
     'auto_install': False,
     'application': True,

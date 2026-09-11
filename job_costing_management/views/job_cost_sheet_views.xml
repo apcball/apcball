@@ -41,6 +41,9 @@
                         <button name="action_sync_actual_costs" string="Refresh Actual Costs" type="object" 
                                 class="btn-secondary" invisible="state not in ['approved', 'done']"
                                 help="Manually refresh actual costs from purchase orders, invoices, and timesheets"/>
+                        <button name="action_recalculate_active_costs" string="Recalculate Active Costs" type="object" 
+                                class="btn-secondary"
+                                help="Recalculate active planned costs (excluding cancelled/rejected Material Requisitions)"/>
                         <button name="action_cancel" string="Cancel" type="object" 
                                 invisible="state in ['done', 'cancelled']"/>
                         <button name="action_draft" string="Reset to Draft" type="object" 
@@ -90,28 +93,53 @@
                             </group>
                         </group>
                         
-                        <!-- Cost Summary -->
-                        <group string="Cost Summary">
-                            <group string="Planned Costs">
-                                <field name="total_material_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="total_labour_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="total_overhead_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
-                            </group>
-                            <group string="Actual Costs">
-                                <field name="actual_material_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="actual_labour_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="actual_overhead_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="actual_total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
-                            </group>
-                            <group string="Variance">
-                                <field name="material_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="labour_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="overhead_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                <field name="total_variance" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
-                            </group>
+                        <group name="cost_summary" string="Cost Summary" col="4">
+                        <!-- BOQ COSTS (BASELINE BUDGET) -->
+                        <group name="boq_costs" string="BOQ Costs (Baseline Budget)" invisible="boq_total_cost == 0">
+                            <field name="boq_material_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="boq_labour_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="boq_overhead_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="boq_total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" 
+                                   class="oe_subtotal_footer_separator"/>
                         </group>
-
+                        
+                        <!-- ACTIVE PLANNED COSTS -->
+                        <group name="active_planned_costs" string="Active Planned Costs">
+                            <field name="active_material_cost" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   decoration-info="active_material_cost != boq_material_cost"/>
+                            <field name="total_labour_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="total_overhead_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="active_total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   class="oe_subtotal_footer_separator"
+                                   decoration-info="active_total_cost != boq_total_cost"/>
+                        </group>
+                        
+                        <!-- ACTUAL COSTS -->
+                        <group name="actual_costs" string="Actual Costs">
+                            <field name="actual_material_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="actual_labour_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="actual_overhead_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="actual_total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   class="oe_subtotal_footer_separator"/>
+                        </group>
+                        
+                        <!-- VARIANCE -->
+                        <group name="variance" string="Variance">
+                            <field name="material_variance" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   decoration-danger="material_variance &gt; 0"
+                                   decoration-success="material_variance &lt; 0"/>
+                            <field name="labour_variance" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   decoration-danger="labour_variance &gt; 0"
+                                   decoration-success="labour_variance &lt; 0"/>
+                            <field name="overhead_variance" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   decoration-danger="overhead_variance &gt; 0"
+                                   decoration-success="overhead_variance &lt; 0"/>
+                            <field name="total_variance" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   class="oe_subtotal_footer_separator"
+                                   decoration-danger="total_variance &gt; 0"
+                                   decoration-success="total_variance &lt; 0"/>
+                        </group>
+                    </group>
                         <notebook>
                             <!-- Material Costs Tab -->
                             <page string="Material Costs" name="material_costs">
@@ -121,11 +149,15 @@
                                         <field name="product_id" domain="[('detailed_type', '!=', 'service')]"/>
                                         <field name="name" required="1"/>
                                         <field name="planned_qty"/>
+                                        <field name="active_planned_qty" readonly="1" optional="show" 
+                                               decoration-warning="active_planned_qty != planned_qty"/>
                                         <field name="actual_qty" readonly="1"/>
                                         <field name="uom_id"/>
                                         <field name="unit_cost"/>
                                         <field name="actual_unit_cost" readonly="1"/>
                                         <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                        <field name="active_total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1" optional="show"
+                                               decoration-warning="active_total_cost != total_cost"/>
                                         <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_type" column_invisible="1"/>

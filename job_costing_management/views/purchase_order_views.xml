@@ -27,9 +27,37 @@
                 <!-- Hide job costing fields from header -->
                 <xpath expr="//field[@name='partner_ref']" position="after">
                     <field name="material_requisition_id" readonly="1" invisible="1"/>
+                    <field name="procurement_pool_id" readonly="1" invisible="not procurement_pool_id"/>
                     <field name="job_cost_sheet_id" readonly="1" invisible="1"/>
                     <field name="project_id" readonly="1" invisible="1"/>
                     <field name="job_order_id" readonly="1" invisible="1"/>
+                </xpath>
+
+                <!-- Close Shortfall button in header -->
+                <xpath expr="//header" position="inside">
+                    <field name="has_shortfall" invisible="1"/>
+                    <button name="action_open_shortfall_wizard" string="Close Shortfall" type="object"
+                            class="btn-warning" icon="fa-compress"
+                            invisible="state != 'purchase' or not has_shortfall"
+                            groups="purchase.group_purchase_manager,job_costing_management.group_job_costing_manager"/>
+                </xpath>
+                
+                <!-- Shortfall warning banner -->
+                <xpath expr="//div[@name='button_box']" position="after">
+                    <div class="alert alert-warning mb-0" role="alert"
+                         invisible="not has_shortfall or state != 'purchase'">
+                        <i class="fa fa-exclamation-triangle"/> <strong>Supplier has not delivered full quantity.</strong>
+                        Click "Close Shortfall" to reduce PO to actual received and release excess back to BOQ/Budget.
+                    </div>
+                </xpath>
+                
+                <!-- Add Allocations smart button -->
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_allocations" type="object"
+                            class="oe_stat_button" icon="fa-link"
+                            invisible="allocation_count == 0">
+                        <field name="allocation_count" widget="statinfo" string="Allocations"/>
+                    </button>
                 </xpath>
                 
                 <!-- Add Job Cost fields to purchase order lines -->

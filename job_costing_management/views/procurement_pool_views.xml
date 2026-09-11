@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Procurement Pool Tree View -->
+        <record id="view_procurement_pool_tree" model="ir.ui.view">
+            <field name="name">procurement.pool.tree</field>
+            <field name="model">procurement.pool</field>
+            <field name="arch" type="xml">
+                <tree string="Procurement Pools" 
+                      decoration-success="state=='done'"
+                      decoration-info="state=='ordered'"
+                      decoration-warning="state=='rfq_created'">
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <field name="total_demand_qty" string="Demand"/>
+                    <field name="total_ordered_qty" string="Ordered"/>
+                    <field name="total_received_qty" string="Received"/>
+                    <field name="total_remaining_qty" string="Remaining"/>
+                    <field name="company_id" groups="base.group_multi_company" optional="show"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-info="state == 'ordered'"
+                           decoration-warning="state == 'rfq_created'"
+                           decoration-danger="state == 'cancelled'"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Procurement Pool Form View -->
+        <record id="view_procurement_pool_form" model="ir.ui.view">
+            <field name="name">procurement.pool.form</field>
+            <field name="model">procurement.pool</field>
+            <field name="arch" type="xml">
+                <form string="Procurement Pool">
+                    <header>
+                        <button name="action_confirm" string="Confirm" type="object"
+                                class="oe_highlight" invisible="state != 'draft'"/>
+                        <button name="action_create_rfq" string="Create RFQ" type="object"
+                                class="oe_highlight" invisible="state not in ('confirmed', 'rfq_created')"/>
+                        <button name="action_done" string="Mark as Done" type="object"
+                                class="oe_highlight" invisible="state != 'ordered'"/>
+                        <button name="action_cancel" string="Cancel" type="object"
+                                invisible="state in ('done', 'cancelled')"/>
+                        <button name="action_reset_to_draft" string="Reset to Draft" type="object"
+                                invisible="state != 'cancelled'"/>
+                        <field name="state" widget="statusbar" 
+                               statusbar_visible="draft,confirmed,rfq_created,ordered,done"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_purchase_orders" type="object"
+                                    class="oe_stat_button" icon="fa-shopping-cart">
+                                <field name="po_count" widget="statinfo" string="Purchase Orders"/>
+                            </button>
+                            <button name="action_view_material_requisitions" type="object"
+                                    class="oe_stat_button" icon="fa-list-alt">
+                                <field name="mr_count" widget="statinfo" string="Material Requisitions"/>
+                            </button>
+                        </div>
+                        <widget name="web_ribbon" title="Cancelled" bg_color="text-bg-danger"
+                                invisible="state != 'cancelled'"/>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="user_id"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                            <group>
+                                <field name="total_demand_qty" string="Total Demand"/>
+                                <field name="total_ordered_qty" string="Total Ordered"/>
+                                <field name="total_received_qty" string="Total Received"/>
+                                <field name="total_remaining_qty" string="Total Remaining"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Consolidated Demand">
+                                <field name="line_ids" nolabel="1">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="vendor_id"/>
+                                        <field name="department_id" optional="show"/>
+                                        <field name="analytic_distribution" widget="analytic_distribution"
+                                               groups="analytic.group_analytic_accounting"
+                                               options="{'product_field': 'product_id', 'business_domain': 'purchase_order'}"/>
+                                        <field name="uom_id"/>
+                                        <field name="price_unit" string="Unit Price"/>
+                                        <field name="total_qty" string="Demand Qty" readonly="1" sum="Total Demand"/>
+                                        <field name="ordered_qty" readonly="1" sum="Total Ordered"/>
+                                        <field name="received_qty" readonly="1" sum="Total Received"/>
+                                        <field name="remaining_qty" readonly="1" sum="Total Remaining" 
+                                               decoration-danger="remaining_qty > 0"
+                                               decoration-success="remaining_qty == 0"/>
+                                        <field name="mr_count" string="MRs"/>
+                                        <field name="mr_references" string="MR Numbers"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="MR Line Details">
+                                <field name="line_ids" nolabel="1" mode="tree" readonly="1">
+                                    <tree>
+                                        <field name="product_id"/>
+                                        <field name="department_id" optional="show"/>
+                                        <field name="mr_references"/>
+                                        <field name="total_qty"/>
+                                        <field name="ordered_qty"/>
+                                        <field name="received_qty"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Notes">
+                                <field name="notes"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- Procurement Pool Search View -->
+        <record id="view_procurement_pool_search" model="ir.ui.view">
+            <field name="name">procurement.pool.search</field>
+            <field name="model">procurement.pool</field>
+            <field name="arch" type="xml">
+                <search string="Search Procurement Pool">
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <filter string="Draft" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Confirmed" name="filter_confirmed" domain="[('state', '=', 'confirmed')]"/>
+                    <filter string="RFQ Created" name="filter_rfq" domain="[('state', '=', 'rfq_created')]"/>
+                    <filter string="Ordered" name="filter_ordered" domain="[('state', '=', 'ordered')]"/>
+                    <filter string="Done" name="filter_done" domain="[('state', '=', 'done')]"/>
+                    <separator/>
+                    <filter string="Has Remaining" name="filter_remaining" domain="[('total_remaining_qty', '>', 0)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Officer" name="group_user" context="{'group_by': 'user_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Procurement Pool Action -->
+        <record id="action_procurement_pool" model="ir.actions.act_window">
+            <field name="name">Procurement Pool</field>
+            <field name="res_model">procurement.pool</field>
+            <field name="view_mode">tree,form</field>
+            <field name="context">{'search_default_filter_remaining': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a new Procurement Pool
+                </p>
+                <p>
+                    Consolidate material demand from multiple MRs to negotiate 
+                    better prices with suppliers. Add approved MR lines here, 
+                    then create a single RFQ for the total demand.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

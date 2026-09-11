@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Purchase Allocation Tree View -->
+        <record id="view_purchase_allocation_tree" model="ir.ui.view">
+            <field name="name">purchase.allocation.tree</field>
+            <field name="model">purchase.allocation</field>
+            <field name="arch" type="xml">
+                <tree string="Purchase Allocations"
+                      decoration-success="qty_received >= qty"
+                      decoration-warning="qty_received > 0 and qty_received &lt; qty">
+                    <field name="po_id"/>
+                    <field name="mr_id"/>
+                    <field name="product_id"/>
+                    <field name="project_id"/>
+                    <field name="qty" sum="Total Allocated"/>
+                    <field name="qty_received" sum="Total Received"/>
+                    <field name="uom_id"/>
+                    <field name="analytic_account_id" optional="show"/>
+                    <field name="job_cost_sheet_id" optional="show"/>
+                    <field name="company_id" groups="base.group_multi_company" optional="show"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Purchase Allocation Form View -->
+        <record id="view_purchase_allocation_form" model="ir.ui.view">
+            <field name="name">purchase.allocation.form</field>
+            <field name="model">purchase.allocation</field>
+            <field name="arch" type="xml">
+                <form string="Purchase Allocation">
+                    <sheet>
+                        <group>
+                            <group string="Purchase">
+                                <field name="po_line_id"/>
+                                <field name="po_id" readonly="1"/>
+                                <field name="product_id" readonly="1"/>
+                                <field name="uom_id" readonly="1"/>
+                            </group>
+                            <group string="Allocation">
+                                <field name="mr_line_id"/>
+                                <field name="mr_id" readonly="1"/>
+                                <field name="pool_line_id" readonly="1"/>
+                                <field name="qty"/>
+                                <field name="qty_received"/>
+                            </group>
+                        </group>
+                        <group string="Project Assignment">
+                            <field name="project_id"/>
+                            <field name="analytic_account_id"/>
+                            <field name="job_cost_sheet_id"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Purchase Allocation Search View -->
+        <record id="view_purchase_allocation_search" model="ir.ui.view">
+            <field name="name">purchase.allocation.search</field>
+            <field name="model">purchase.allocation</field>
+            <field name="arch" type="xml">
+                <search string="Search Allocations">
+                    <field name="po_id"/>
+                    <field name="mr_id"/>
+                    <field name="product_id"/>
+                    <field name="project_id"/>
+                    <filter string="Not Fully Received" name="filter_pending"
+                            domain="[('qty_received', '&lt;', 'qty')]"/>
+                    <filter string="Fully Received" name="filter_received"
+                            domain="[('qty_received', '>=', 'qty')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                        <filter string="Project" name="group_project" context="{'group_by': 'project_id'}"/>
+                        <filter string="PO" name="group_po" context="{'group_by': 'po_id'}"/>
+                        <filter string="MR" name="group_mr" context="{'group_by': 'mr_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Purchase Allocation Action -->
+        <record id="action_purchase_allocation" model="ir.actions.act_window">
+            <field name="name">Purchase Allocations</field>
+            <field name="res_model">purchase.allocation</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No purchase allocations yet
+                </p>
+                <p>
+                    Allocations are created automatically when RFQs are generated 
+                    from the Procurement Pool. They track which MR/project each 
+                    portion of a PO is intended for.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>
