@@ -129,6 +129,10 @@ export class DocumentDashboard extends Component {
         return this.action.doAction({ type: "ir.actions.client", tag: "buz_document_control.viewer",
             name: _t("Document Viewer"), params: { document_id: id } });
     }
+    openDocumentForm(id) {
+        return this.action.doAction({ type: "ir.actions.act_window", name: _t("Document"),
+            res_model: "buz.document", res_id: id, views: [[false, "form"]] });
+    }
     async download(id) {
         try { await this.action.doAction(await this.orm.call("buz.document", "action_download", [[id]])); }
         catch { this.notification.add(_t("Unable to download this document. Check your access or refresh the page."), { type: "warning" }); }

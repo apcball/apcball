@@ -55,7 +55,10 @@
                                         <td><span class="bdc-type-pill" t-esc="typeCode(row)"/></td><td t-esc="row.department_id?.[1] || '—'"/>
                                         <td><span t-attf-class="bdc-badge bdc-#{attentionStatus(row)}" t-esc="attentionStatusLabel(row)"/></td>
                                         <td><span t-esc="date(row.review_date)"/><small t-att-class="row.review_status === 'overdue' ? 'bdc-days-overdue' : 'bdc-days-due'" t-esc="daysLabel(row.review_date)"/></td>
-                                        <td><button t-att-class="attentionStatus(row) === 'draft' ? 'btn btn-outline-primary btn-sm' : 'btn btn-primary btn-sm'" t-on-click="() => this.openPending(row)" t-esc="attentionLabel(row)"/></td>
+                                        <td><div class="bdc-row-action-buttons"><button t-att-class="attentionStatus(row) === 'draft' ? 'btn btn-outline-primary btn-sm' : 'btn btn-primary btn-sm'" t-on-click="() => this.openPending(row)" t-esc="attentionLabel(row)"/>
+                                            <details class="bdc-more"><summary class="btn btn-light btn-sm" aria-label="More document actions" title="More document actions"><i class="fa fa-ellipsis-v" aria-hidden="true"/></summary>
+                                                <div class="bdc-more-menu bdc-row-more-menu"><button class="btn btn-sm" t-on-click="() => this.openDocument(row.id)"><i class="fa fa-eye me-2" aria-hidden="true"/>Preview</button><button t-if="row.current_revision_id" class="btn btn-sm" t-on-click="() => this.download(row.id)"><i class="fa fa-download me-2" aria-hidden="true"/>Download</button><button class="btn btn-sm" t-on-click="() => this.openDocumentForm(row.id)"><i class="fa fa-pencil me-2" aria-hidden="true"/>Open document</button></div>
+                                            </details></div></td>
                                     </tr></tbody>
                                 </table>
                             </div>
