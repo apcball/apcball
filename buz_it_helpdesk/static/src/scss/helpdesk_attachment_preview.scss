@@ -1,3 +1,26 @@
+.o_buz_helpdesk_attachment_sla_layout {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    margin-top: 1rem;
+
+    > .o_buz_helpdesk_attachment_column,
+    > .o_buz_helpdesk_sla_column {
+        min-width: 0;
+    }
+
+    > .o_buz_helpdesk_sla_column {
+        align-content: start;
+        margin: 0;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .o_buz_helpdesk_attachment_sla_layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .o_buz_helpdesk_attachment_preview {
     .o_buz_attachment_composer_toggle {
         align-items: center;

@@ -139,3 +139,13 @@
 - เพิ่ม Send to Approve, Approve และ Reject wizard ที่บังคับเหตุผล พร้อม Activity และ Chatter audit
 - ตรวจสิทธิ์ซ้ำใน backend/RPC, จำกัด Manager ตามกลุ่มและบริษัท และล็อกฟิลด์ระหว่างคำขอ pending
 - Targeted `TestTicketApproval` ผ่าน; full module suite ยังมี failure/error เดิมใน LINE และ Kanban tests ที่ไม่เกี่ยวกับ Approval
+
+## SLA and Attachments Layout (2026-09-12)
+
+- ย้ายส่วน SLA ไปอยู่คอลัมน์ที่ 2 ของ Attachments ในฟอร์ม Ticket โดยคง `attachment_ids`, Attachment Composer และฟิลด์ SLA เดิม
+- เพิ่ม Responsive Layout: หน้าจอกว้างแสดง Attachments ทางซ้ายและ SLA ทางขวา; หน้าจอแคบให้ SLA อยู่ใต้ Attachments
+- คงสิทธิ์การมองเห็น SLA เฉพาะ IT Support Agent และ Helpdesk Manager และคง Approval group ในตำแหน่งเดิม
+- ไม่เปลี่ยน SLA calculation, Attachment, Workflow, Approval sub-workflow หรือสิทธิ์อื่น
+- ตรวจ XML parse, XML structure/XPath, manifest asset load, SLA fields แบบอ่านอย่างเดียว และ `git diff --check` ผ่าน
+- ยังไม่ได้ทำ Browser UAT ในรอบนี้ จึงยังไม่ยืนยันผลการจัดวางบน Desktop/หน้าจอแคบหรือการใช้งาน Upload, Paste Screenshot, Preview, Download และ Remove จาก Browser
+- ยังไม่ deploy, upgrade หรือ restart

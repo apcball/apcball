@@ -210,7 +210,13 @@
                             <field name="approval_decided_at" readonly="1"/>
                             <field name="approval_rejection_reason" readonly="1" invisible="approval_state != 'rejected'"/>
                         </group>
-                        <group string="SLA" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                    </group>
+                    <div class="o_buz_helpdesk_attachment_sla_layout">
+                        <div class="o_buz_helpdesk_attachment_column">
+                            <separator string="ไฟล์แนบ / Attachments"/>
+                            <field name="attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1" readonly="not is_editable"/>
+                        </div>
+                        <group string="SLA" class="o_buz_helpdesk_sla_column" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
                             <field name="sla_status" widget="badge"
                                    decoration-success="sla_status == 'on_track' or sla_status == 'resolved'"
                                    decoration-warning="sla_status == 'paused'"
@@ -223,9 +229,7 @@
                             <field name="sla_response_at" readonly="1"/>
                             <field name="sla_resolution_at" readonly="1"/>
                         </group>
-                    </group>
-                    <separator string="ไฟล์แนบ / Attachments"/>
-                    <field name="attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1" readonly="not is_editable"/>
+                    </div>
                     <separator string="รายละเอียด / Description"/>
                     <field name="description" nolabel="1" readonly="not is_editable"/>
                 </sheet>
