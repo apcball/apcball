@@ -1,0 +1,20 @@
+<odoo>
+    <record id="view_config_tree" model="ir.ui.view">
+        <field name="name">buz.it.config.tree</field><field name="model">buz.it.config</field>
+        <field name="arch" type="xml"><tree><field name="company_id"/><field name="warehouse_id"/><field name="location_id"/><field name="accounting_reviewed"/></tree></field>
+    </record>
+    <record id="view_config_form" model="ir.ui.view">
+        <field name="name">buz.it.config.form</field><field name="model">buz.it.config</field>
+        <field name="arch" type="xml">
+            <form string="IT Issue Settings">
+                <header><button name="action_prepare_locations" type="object" string="Prepare IT Consumption Location" class="oe_highlight" groups="buz_it_stock_mobile.group_it_manager"/></header>
+                <sheet>
+                    <div class="alert alert-info">เลือกคลังและสถานที่ต้นทาง บันทึก แล้วกด Prepare เพื่อสร้างปลายทางเบิกใช้แยกจาก Scrap ตรวจบัญชี Stock Valuation ของสินค้าและบัญชีที่ Location ปลายทางก่อนเปิดใช้งาน</div>
+                    <group><field name="company_id"/><field name="warehouse_id"/><field name="location_id"/><field name="destination_id"/><field name="picking_type_id"/><field name="accounting_reviewed"/></group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_config" model="ir.actions.act_window"><field name="name">ตั้งค่าคลัง IT</field><field name="res_model">buz.it.config</field><field name="view_mode">tree,form</field></record>
+    <record id="action_categories" model="ir.actions.act_window"><field name="name">หมวดอุปกรณ์ IT</field><field name="res_model">buz.it.category</field><field name="view_mode">tree,form</field></record>
+</odoo>

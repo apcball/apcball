@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_issue_user,IT issue user,model_buz_it_issue,group_it_user,1,1,1,0
+access_line_user,IT line user,model_buz_it_issue_line,group_it_user,1,1,1,1
+access_category_user,IT category user,model_buz_it_category,group_it_user,1,0,0,0
+access_category_manager,IT category manager,model_buz_it_category,group_it_manager,1,1,1,1
+access_config_user,IT config user,model_buz_it_config,group_it_user,1,0,0,0
+access_config_manager,IT config manager,model_buz_it_config,group_it_manager,1,1,1,0

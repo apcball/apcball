@@ -1,0 +1,10 @@
+<odoo>
+    <record id="product_template_it_form" model="ir.ui.view">
+        <field name="name">product.template.it.issue</field><field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml"><xpath expr="//sheet/notebook" position="inside">
+            <page string="IT Issue" groups="buz_it_stock_mobile.group_it_manager"><group><field name="it_issue_enabled"/><field name="it_category_id" required="it_issue_enabled"/></group></page>
+        </xpath></field>
+    </record>
+    <record id="action_products" model="ir.actions.act_window"><field name="name">อุปกรณ์ IT</field><field name="res_model">product.template</field><field name="view_mode">kanban,tree,form</field><field name="domain">[('it_issue_enabled', '=', True)]</field><field name="context">{'default_detailed_type': 'product'}</field></record>
+</odoo>

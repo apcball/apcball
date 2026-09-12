@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: MOG_IT_TEST
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: isolated-test-only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d MOG_IT_TEST"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+  odoo:
+    image: odoo:17.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HOST: postgres
+      USER: odoo
+      PASSWORD: isolated-test-only
+    volumes:
+      - ./buz_it_stock_mobile:/mnt/extra-addons/buz_it_stock_mobile:ro
+    command: >-
+      odoo -d MOG_IT_TEST --db_host=postgres --db_user=odoo
+      --db_password=isolated-test-only
+      --addons-path=/usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons
+      -i buz_it_stock_mobile --without-demo=all
+      --test-enable --test-tags /buz_it_stock_mobile
+      --stop-after-init --no-http --workers=0

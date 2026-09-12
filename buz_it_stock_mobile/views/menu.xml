@@ -1,0 +1,10 @@
+<odoo>
+    <record id="action_it_app" model="ir.actions.client"><field name="name">IT Issue</field><field name="tag">buz_it_stock_mobile.app</field></record>
+    <menuitem id="menu_it_root" name="IT Issue" sequence="25" action="action_it_app" web_icon="buz_it_stock_mobile,static/description/icon.svg" groups="group_it_user"/>
+    <menuitem id="menu_it_app" name="เบิกอุปกรณ์ IT" parent="menu_it_root" action="action_it_app" sequence="1"/>
+    <menuitem id="menu_it_history" name="ประวัติการเบิก" parent="menu_it_root" action="action_issues" sequence="2"/>
+    <menuitem id="menu_it_settings" name="ตั้งค่า" parent="menu_it_root" groups="group_it_manager" sequence="10"/>
+    <menuitem id="menu_it_config" name="คลัง IT" parent="menu_it_settings" action="action_config"/>
+    <menuitem id="menu_it_products" name="สินค้า" parent="menu_it_settings" action="action_products"/>
+    <menuitem id="menu_it_categories" name="หมวดสินค้า" parent="menu_it_settings" action="action_categories"/>
+</odoo>
