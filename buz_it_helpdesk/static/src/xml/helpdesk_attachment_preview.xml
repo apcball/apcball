@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="buz_it_helpdesk.HelpdeskAttachmentPreviewField" owl="1">
-        <div t-attf-class="oe_fileupload o_buz_helpdesk_attachment_preview {{props.className ? props.className : ''}}" aria-atomic="true">
+        <div t-attf-class="oe_fileupload o_buz_helpdesk_attachment_preview {{props.className ? props.className : ''}}" aria-atomic="true" tabindex="0" t-on-paste="onAttachmentsPaste" aria-label="Attachments">
             <div class="o_attachments">
                 <t t-foreach="files" t-as="file" t-key="file_index">
                     <div name="attachment" t-attf-class="o_attachment o_attachment_many2many {{!props.readonly ? 'o_attachment_editable' : ''}}">
@@ -20,6 +20,7 @@
                 </t>
             </div>
             <div t-if="!props.readonly &amp;&amp; (!props.numberOfFiles || files.length &lt; props.numberOfFiles)" class="oe_add">
+                <div t-if="canPasteClipboard" class="o_buz_attachment_paste_hint">คลิกที่นี่แล้วกด Ctrl+V เพื่อแนบ Screenshot</div>
                 <FileInput acceptedFileExtensions="props.acceptedFileExtensions" multiUpload="true" onUpload.bind="onFileUploaded" resModel="props.record.resModel" resId="props.record.resId || 0">
                     <button class="btn btn-secondary o_attach" type="button"><span class="fa fa-paperclip" aria-label="Attach"/> <t t-esc="uploadText"/></button>
                 </FileInput>

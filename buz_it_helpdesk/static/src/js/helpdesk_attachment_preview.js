@@ -2,6 +2,7 @@
 
 import { onMounted, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
 import {
     Many2ManyBinaryField,
     many2ManyBinaryField,
@@ -12,6 +13,8 @@ export class HelpdeskAttachmentPreviewField extends Many2ManyBinaryField {
 
     setup() {
         super.setup();
+        this.http = useService("http");
+        this.notification = useService("notification");
         this.previewViewport = useRef("previewViewport");
         this.previewImage = useRef("previewImage");
         this.previewState = useState({ file: null, zoom: 1, dragging: false });
@@ -58,6 +61,87 @@ export class HelpdeskAttachmentPreviewField extends Many2ManyBinaryField {
                 cancelAnimationFrame(this.panFrame);
             }
         });
+    }
+
+    get canPasteClipboard() {
+        return this.props.name === "attachment_ids";
+    }
+
+    getClipboardFiles(clipboardData) {
+        const files = [];
+
+        for (const item of clipboardData?.items || []) {
+            if (
+                item.kind === "file" &&
+                String(item.type || "").toLowerCase().startsWith("image/")
+            ) {
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                }
+            }
+        }
+        return files;
+    }
+
+    getClipboardFileName(file) {
+        if (file.name) {
+            return file.name;
+        }
+        if (String(file.type || "").toLowerCase().startsWith("image/")) {
+            return "pasted-image.png";
+        }
+        return "pasted-image.png";
+    }
+
+    normalizeClipboardFile(file) {
+        const name = this.getClipboardFileName(file);
+        return file.name === name
+            ? file
+            : new File([file], name, {
+                type: file.type || "application/octet-stream",
+                lastModified: file.lastModified || Date.now(),
+            });
+    }
+
+    async onAttachmentsPaste(event) {
+        if (this.props.readonly || !this.canPasteClipboard) {
+            return;
+        }
+
+        const files = this.getClipboardFiles(event.clipboardData)
+            .map((file) => this.normalizeClipboardFile(file));
+        if (!files.length) {
+            // ปล่อยให้การวางข้อความทำงานตามปกติเมื่อ Clipboard ไม่มีไฟล์
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        try {
+            const params = {
+                csrf_token: odoo.csrf_token,
+                ufile: files,
+                model: this.props.record.resModel,
+                id: this.props.record.resId || 0,
+            };
+            const fileData = await this.http.post(
+                "/web/binary/upload_attachment",
+                params,
+                "text",
+            );
+            const parsedFileData = JSON.parse(fileData);
+            if (parsedFileData.error) {
+                throw new Error(parsedFileData.error);
+            }
+            await this.onFileUploaded(parsedFileData, files);
+        } catch (error) {
+            this.notification.add(error.message || "Unable to upload clipboard files.", {
+                title: "Uploading error",
+                type: "danger",
+            });
+        }
     }
 
     openPreview(file) {

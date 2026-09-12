@@ -1,4 +1,15 @@
 .o_buz_helpdesk_attachment_preview {
+    &:focus {
+        outline: 2px solid var(--o-brand-primary);
+        outline-offset: 2px;
+    }
+
+    .o_buz_attachment_paste_hint {
+        color: var(--o-muted-color);
+        font-size: 0.8125rem;
+        margin-bottom: 0.375rem;
+    }
+
     .oe_add .o_attach {
         align-items: center;
         display: inline-flex;
