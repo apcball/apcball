@@ -39,6 +39,47 @@ async function main() {
             await page.screenshot({ path: path.join(output, `${role}-dashboard-desktop.png`), fullPage: true });
             assert.equal(await page.getByRole("button", { name: "Create Document", exact: true }).count(), role === "manager" ? 1 : 0);
             assert.equal(await page.locator(".bdc-kpi").count(), role === "manager" ? 6 : 0);
+            assert.equal(await page.locator(".bdc-dashboard-card").count(), 3);
+            assert.equal(await page.locator(".bdc-attention").count(), role === "manager" ? 1 : 0);
+            assert(await page.locator(".bdc-department-row").count() > 0);
+            for (const [width, height, label] of [[1630, 965, "reference"], [820, 1180, "tablet"], [390, 844, "mobile"]]) {
+                await page.setViewportSize({ width, height });
+                await page.screenshot({ path: path.join(output, `${role}-dashboard-${label}.png`), fullPage: true });
+                assert.equal(await page.locator(".bdc-center").evaluate(el => el.scrollWidth > el.clientWidth + 2), false, `${role}: dashboard ${label} overflow`);
+            }
+            await page.setViewportSize({ width: 1440, height: 1080 });
+            await page.getByRole("button", { name: "ตัวกรองเพิ่มเติม" }).click();
+            await page.locator("#bdc-extra-filters").waitFor();
+            const filtered = page.waitForResponse(response => response.url().includes("get_document_center_data"));
+            await page.locator("#bdc-extra-filters").getByRole("button", { name: "FM", exact: true }).click();
+            await filtered;
+            await page.locator('.bdc-center[aria-busy="false"]').waitFor();
+            assert((await page.locator(".bdc-document-number").allTextContents()).every(number => number.startsWith("FM-")));
+            const cleared = page.waitForResponse(response => response.url().includes("get_document_center_data"));
+            await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+            await cleared;
+            await page.locator('.bdc-center[aria-busy="false"]').waitFor();
+            const refreshed = page.waitForResponse(response => response.url().includes("get_document_center_data"));
+            await page.getByRole("button", { name: "Refresh documents", exact: true }).click();
+            const refreshedData = (await (await refreshed).json()).result;
+            assert.equal(await page.locator(".bdc-department-row").count(), Math.min(5, refreshedData.departments.filter(row => row.id).length)
+                + Number(refreshedData.departments.some(row => !row.id)) + Number(refreshedData.departments.filter(row => row.id).length > 5));
+            await page.locator(".bdc-dashboard-card").first().waitFor();
+            if (role === "manager") {
+                for (const key of ["all", "published", "due", "overdue", "draft"]) {
+                    const index = ["all", "published", "due", "overdue", "draft"].indexOf(key);
+                    assert.equal(Number(await page.locator(".bdc-kpi").nth(index).locator("strong").textContent()), refreshedData.counts[key]);
+                }
+                await page.locator(".bdc-deadline").click();
+                await page.locator(".o_list_view").waitFor();
+                assert.equal(await page.locator(".o_data_row").count(), refreshedData.counts.due);
+                await page.goto(`/web?db=${fixture.db}#action=${fixture.action_id}&menu_id=${fixture.menu_id}`);
+                await page.locator(".bdc-attention-table").waitFor();
+                await page.locator(".bdc-attention-table").getByRole("button", { name: "Review", exact: true }).first().click();
+                await page.locator(".bdc-viewer, .o_form_view").first().waitFor();
+                await page.goto(`/web?db=${fixture.db}#action=${fixture.action_id}&menu_id=${fixture.menu_id}`);
+                await page.locator(".bdc-dashboard-card").first().waitFor();
+            }
             const search = page.getByRole("searchbox");
             await search.fill("QP-RESTRICTED-01");
             await page.waitForTimeout(700);

@@ -15,4 +15,10 @@
         <field name="domain_force">['&amp;', ('state', '=', 'published'), '&amp;', '&amp;', ('document_id.active', '=', True), ('document_id.state', '=', 'published'), '|', ('document_id.security_level', '=', 'general'), '&amp;', ('document_id.security_level', '=', 'restricted'), '|', '|', ('document_id.allowed_group_ids', 'in', user.groups_id.ids), ('document_id.allowed_department_ids', 'in', user.employee_ids.department_id.ids), ('document_id.allowed_employee_ids', 'in', user.employee_ids.ids)]</field>
     </record>
     <record id="rule_revision_manager" model="ir.rule"><field name="name">Document managers: all revisions</field><field name="model_id" ref="model_buz_document_revision"/><field name="groups" eval="[(4, ref('buz_document_control.group_document_manager'))]"/><field name="domain_force">[(1, '=', 1)]</field></record>
+    <record id="rule_revision_confidential" model="ir.rule">
+        <field name="name">Confidential users: published revisions of assigned documents</field>
+        <field name="model_id" ref="model_buz_document_revision"/>
+        <field name="groups" eval="[Command.link(ref('group_document_confidential_user'))]"/>
+        <field name="domain_force">['&amp;', '&amp;', '&amp;', '&amp;', ('state', '=', 'published'), ('document_id.active', '=', True), ('document_id.state', '=', 'published'), ('document_id.security_level', '=', 'confidential'), '|', '|', ('document_id.allowed_group_ids', '=', False), ('document_id.allowed_group_ids', 'in', user.groups_id.ids), ('document_id.allowed_employee_ids', 'in', user.employee_ids.ids)]</field>
+    </record>
 </odoo>

@@ -125,6 +125,82 @@ class TestDocumentCenter(HttpCase):
         compact = self.center(self.reader, include_summary=False)
         self.assertNotIn("counts", compact)
         self.assertNotIn("needs_attention", compact)
+        self.assertNotIn("departments", compact)
+        self.assertNotIn("created_this_month", compact)
+        self.assertNotIn("summary_domains", compact)
+
+    def test_department_summary_and_drilldowns_obey_record_rules(self):
+        self.documents["general"].department_id = False
+        for user in (self.reader, self.confidential, self.manager):
+            model = self.env["buz.document"].with_user(user)
+            data = self.center(user, query="no matching document")
+            self.assertEqual(data["total"], 0)
+            self.assertEqual(sum(row["count"] for row in data["departments"]), data["counts"]["all"])
+            for department in data["departments"]:
+                self.assertEqual(department["count"], model.search_count(
+                    data["base_domain"] + [("department_id", "=", department["id"])],
+                ))
+            self.assertTrue(any(not row["id"] for row in data["departments"]))
+            if user == self.reader:
+                self.assertFalse(any(row["id"] == self.department.id for row in data["departments"]))
+            if user == self.manager:
+                for key, count in data["counts"].items():
+                    self.assertEqual(count, model.search_count(data["summary_domains"][key]))
+                attention = self.center(user, filter_key="attention")
+                self.assertEqual(attention["domain"], data["summary_domains"]["attention"])
+                self.assertTrue({row["id"] for row in data["needs_attention"]}.issubset(
+                    set(model.search(data["summary_domains"]["attention"]).ids),
+                ))
+            else:
+                self.assertNotIn("summary_domains", data)
+                self.assertNotIn("created_this_month", data)
+                self.assertEqual(data["needs_attention"], [])
+
+    def test_summary_honors_global_record_rules(self):
+        # No company_id exists on this model. Verify that summaries honor global
+        # rules as well as role rules, including rules added by another addon.
+        hidden = self.documents["general"]
+        self.env["ir.rule"].create({
+            "name": "BDC summary test global visibility",
+            "model_id": self.env["ir.model"]._get_id("buz.document"),
+            "domain_force": "[('id', '!=', %s)]" % hidden.id,
+        })
+        data = self.center(self.manager)
+        model = self.env["buz.document"].with_user(self.manager)
+        self.assertNotIn(hidden.id, [row["id"] for row in data["documents"]])
+        self.assertEqual(sum(row["count"] for row in data["departments"]), model.search_count(data["base_domain"]))
+        self.assertEqual(data["counts"]["all"], model.search_count(data["base_domain"]))
+
+    def test_monthly_count_and_configured_review_window(self):
+        model = self.env["buz.document"].with_user(self.manager)
+        data = self.center(self.manager)
+        month_start = fields.Datetime.start_of(fields.Datetime.now(), "month")
+        self.assertEqual(data["created_this_month"], model.search_count(data["base_domain"] + [
+            ("create_date", ">=", month_start),
+            ("create_date", "<", fields.Datetime.add(month_start, months=1)),
+        ]))
+        doc = model.create({"document_no": "BDC-MONTH-TEST", "name": "Created this month"})
+        self.assertEqual(self.center(self.manager)["created_this_month"], data["created_this_month"] + 1)
+        doc.action_archive()
+        self.assertEqual(self.center(self.manager)["created_this_month"], data["created_this_month"])
+        self.env["ir.config_parameter"].sudo().set_param("buz_document_control.review_warning_days", 7)
+        data = self.center(self.manager)
+        self.assertEqual(data["review_warning_days"], 7)
+        due_ids = model.search(data["summary_domains"]["due"]).ids
+        self.assertNotIn(self.documents["general"].id, due_ids)
+
+    def test_filtered_pagination_has_no_missing_or_repeated_documents(self):
+        documents = self.env["buz.document"].with_user(self.manager).create([
+            {"document_no": "BDC-PAGE-%02d" % index, "name": "Dashboard pagination"} for index in range(13)
+        ])
+        first = self.center(self.manager, query="BDC-PAGE-", include_summary=False)
+        second = self.center(self.manager, query="BDC-PAGE-", offset=12, include_summary=False)
+        self.assertEqual(first["total"], 13)
+        self.assertEqual(len(first["documents"]), 12)
+        self.assertEqual(len(second["documents"]), 1)
+        ids = [row["id"] for row in first["documents"] + second["documents"]]
+        self.assertEqual(len(set(ids)), 13)
+        self.assertEqual(set(ids), set(documents.ids))
 
     def test_original_routes_and_direct_urls_for_all_roles(self):
         for user, allowed in [(self.reader, {"general"}), (self.confidential, {"general", "confidential"}),
@@ -153,6 +229,22 @@ class TestDocumentCenter(HttpCase):
         self.assertEqual(BuzDocumentController._filename("QP-ITD-01_Rev04.pdf", "file"), "QP-ITD-01_Rev04.pdf")
         self.assertEqual(BuzDocumentController._filename("แบบฟอร์ม.docx", "file"), "แบบฟอร์ม.docx")
         self.assertNotIn("\n", BuzDocumentController._filename("test\nheader.pdf", "file"))
+
+    def test_confidential_revision_access_matches_document_distribution(self):
+        doc = self.documents["confidential"]
+        current = doc.current_revision_id
+        revision_model = self.env["buz.document.revision"].with_user(self.confidential)
+        self.assertEqual(revision_model.search([("id", "=", current.id)]), current)
+        old = self.env["buz.document.revision"].with_user(self.manager).create({
+            "document_id": doc.id, "revision": "03", "state": "obsolete", "change_description": "Previous issue",
+        })
+        self.assertFalse(revision_model.search([("id", "=", old.id)]))
+        doc.allowed_group_ids = [fields.Command.set(self.department_group.ids)]
+        self.assertFalse(revision_model.search([("id", "=", current.id)]))
+        self.confidential.groups_id = [fields.Command.link(self.department_group.id)]
+        self.assertEqual(revision_model.search([("id", "=", current.id)]), current)
+        doc.action_archive()
+        self.assertFalse(revision_model.search([("id", "=", current.id)]))
 
     def test_role_views_hide_mutation_controls(self):
         view = self.env.ref("buz_document_control.view_buz_document_form")

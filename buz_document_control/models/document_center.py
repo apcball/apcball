@@ -39,7 +39,7 @@ class DocumentCenter(models.Model):
     @api.model
     def _center_filters(self):
         published = [("state", "=", "published")]
-        return {
+        filters = {
             "all": [],
             "published": published,
             "forms": [("document_type_id.code", "=", "FM")],
@@ -52,13 +52,17 @@ class DocumentCenter(models.Model):
             "confidential": [("security_level", "=", "confidential")],
             "preview_failed": [("current_revision_id.preview_status", "=", "failed")],
         }
+        filters["attention"] = expression.OR([
+            filters[key] for key in ("due", "overdue", "preview_failed", "draft", "review")
+        ])
+        return filters
 
     @api.model
     def get_document_center_data(self, query="", filter_key="all", type_id=False, offset=0, include_summary=True):
         self.check_access_rights("read")
         manager = self.env.user.has_group("buz_document_control.group_document_manager")
         filters = self._center_filters()
-        if filter_key not in filters or (not manager and filter_key in ("draft", "review", "overdue", "confidential", "preview_failed")):
+        if filter_key not in filters or (not manager and filter_key in ("draft", "review", "overdue", "confidential", "preview_failed", "attention")):
             filter_key = "all"
         base = [("state", "not in", ["obsolete", "archived"])]
         domain = expression.AND([base, filters[filter_key]])
@@ -76,6 +80,19 @@ class DocumentCenter(models.Model):
             "documents": self.search_read(domain, DOCUMENT_FIELDS, offset=offset, limit=12, order="write_date desc, id desc"),
         }
         if include_summary:
+            result["base_domain"] = base
+            result["today"] = fields.Date.today()
+            # Only configuration is elevated; document aggregates always use the caller.
+            result["review_warning_days"] = int(self.env["ir.config_parameter"].sudo().get_param(
+                "buz_document_control.review_warning_days", 30,
+            ))
+            departments = self.read_group(base, ["department_id"], ["department_id"])
+            result["departments"] = sorted([
+                {"id": group["department_id"][0] if group["department_id"] else False,
+                 "name": group["department_id"][1] if group["department_id"] else _("ไม่ระบุแผนก"),
+                 "count": group["department_id_count"]}
+                for group in departments
+            ], key=lambda row: (-row["count"], row["name"], row["id"] or 0))
             groups = self.read_group(base, ["document_type_id"], ["document_type_id"])
             counts = {g["document_type_id"][0]: g["document_type_id_count"] for g in groups if g["document_type_id"]}
             result["document_types"] = [dict(row, count=counts.get(row["id"], 0)) for row in
@@ -86,9 +103,15 @@ class DocumentCenter(models.Model):
             }
             result["needs_attention"] = []
             if manager:
-                attention_domain = expression.AND([base, expression.OR([
-                    filters["due"], filters["overdue"], filters["preview_failed"], filters["draft"], filters["review"],
-                ])])
+                month_start = fields.Datetime.start_of(fields.Datetime.now(), "month")
+                result["created_this_month"] = self.search_count(expression.AND([base, [
+                    ("create_date", ">=", month_start),
+                    ("create_date", "<", fields.Datetime.add(month_start, months=1)),
+                ]]))
+                result["summary_domains"] = {
+                    key: expression.AND([base, filters[key]]) for key in (*result["counts"], "attention")
+                }
+                attention_domain = result["summary_domains"]["attention"]
                 result["needs_attention"] = self.search_read(
                     attention_domain, DOCUMENT_FIELDS, limit=8, order="review_date asc, write_date desc",
                 )

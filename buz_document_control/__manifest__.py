@@ -1,7 +1,7 @@
 {
     "name": "BUZ ISO Document Control",
     "summary": "ISO document distribution and revision control",
-    "version": "17.0.1.1.1",
+    "version": "17.0.1.2.0",
     "category": "Documents",
     "author": "Mogen Co., Ltd.",
     "license": "LGPL-3",
@@ -29,6 +29,7 @@
             "buz_document_control/static/src/xml/document_dashboard.xml",
             "buz_document_control/static/src/xml/document_viewer.xml",
             "buz_document_control/static/src/scss/document_control.scss",
+            "buz_document_control/static/src/scss/document_dashboard.scss",
         ],
     },
     "application": True,

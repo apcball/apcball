@@ -30,6 +30,12 @@ def seed(env):
         users[role] = {"id": user.id, "login": login, "password": password}
     manager = env["res.users"].browse(users["manager"]["id"])
     department = env["hr.department"].create({"name": "Information Technology"})
+    departments = {"IT": department}
+    for key, name in [("WH", "Warehouse"), ("HR", "Human Resources"), ("QA", "Quality Assurance"),
+                      ("FIN", "Accounting"), ("SALES", "Sales"), ("MGT", "Management")]:
+        departments[key] = env["hr.department"].create({"name": name})
+    document_departments = {"WI-ITD-02": "WH", "FM-HR-01": "HR", "QM-QA-01": "QA",
+                            "FM-FIN-02": "FIN", "WI-ITD-03": "SALES", "QP-CONFIDENTIAL-01": "MGT"}
     group = env["res.groups"].create({"name": "IT Department — UI test"})
     env["hr.employee"].create({"name": "Document Reader", "user_id": users["reader"]["id"], "department_id": department.id})
     output = BytesIO()
@@ -52,7 +58,8 @@ def seed(env):
     ]
     for number, name, type_code, security, days in examples:
         doc = env["buz.document"].with_user(manager).create({
-            "document_no": number, "name": name, "department_id": department.id,
+            "document_no": number, "name": name,
+            "department_id": departments[document_departments.get(number, "IT")].id,
             "document_type_id": env["buz.document.type"].search([("code", "=", type_code)], limit=1).id,
             "security_level": security, "description": "เอกสารควบคุมสำหรับการปฏิบัติงานภายในบริษัท",
             "allowed_group_ids": [fields.Command.set(group.ids)] if security == "restricted" else [],
