@@ -46,6 +46,7 @@ class TestTicketKanbanStage(TransactionCase):
                 cls.group_manager.id,
             ])],
         })
+        cls.category = cls.env['buz.helpdesk.category'].create({'name': 'Kanban Test Category'})
 
     def _ticket(self, **values):
         requested_stage = values.pop('stage_id', self.stage_new.id)
@@ -54,6 +55,7 @@ class TestTicketKanbanStage(TransactionCase):
         defaults = {
             'subject': 'Kanban stage test',
             'requester_id': self.requester.id,
+            'category_id': self.category.id,
         }
         defaults.update(values)
         ticket = self.env['buz.helpdesk.ticket'].with_user(self.manager).create(defaults)

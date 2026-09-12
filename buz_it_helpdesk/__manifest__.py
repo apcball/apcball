@@ -23,6 +23,7 @@ without dependencies on custom or business modules.
         'views/helpdesk_ticket_views.xml',
         'views/helpdesk_approval_views.xml',
         'views/helpdesk_line_settings_views.xml',
+        'views/helpdesk_sla_views.xml',
         'views/helpdesk_menus.xml',
     ],
     'assets': {

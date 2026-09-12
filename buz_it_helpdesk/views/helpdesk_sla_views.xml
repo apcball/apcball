@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_helpdesk_sla_config_list" model="ir.ui.view">
+        <field name="name">buz.helpdesk.sla.config.list</field>
+        <field name="model">buz.helpdesk.sla.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/><field name="company_id"/>
+                <field name="timezone"/><field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_helpdesk_sla_config_form" model="ir.ui.view">
+        <field name="name">buz.helpdesk.sla.config.form</field>
+        <field name="model">buz.helpdesk.sla.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/><field name="company_id"/>
+                        <field name="timezone"/><field name="active"/>
+                    </group>
+                    <group string="Working Hours">
+                        <field name="work_start" widget="float_time"/>
+                        <field name="work_end" widget="float_time"/>
+                        <field name="lunch_start" widget="float_time"/>
+                        <field name="lunch_end" widget="float_time"/>
+                    </group>
+                    <notebook>
+                        <page string="SLA Rules">
+                            <field name="rule_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="category_id"/>
+                                    <field name="priority"/>
+                                    <field name="response_value"/>
+                                    <field name="response_unit"/>
+                                    <field name="resolution_value"/>
+                                    <field name="resolution_unit"/>
+                                    <field name="active"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Company Holidays">
+                            <field name="holiday_ids">
+                                <tree editable="bottom">
+                                    <field name="date"/><field name="name"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_helpdesk_sla_settings" model="ir.actions.act_window">
+        <field name="name">SLA Settings</field>
+        <field name="res_model">buz.helpdesk.sla.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

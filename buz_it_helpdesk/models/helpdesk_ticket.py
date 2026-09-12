@@ -8,6 +8,7 @@ from odoo.tools import html2plaintext
 _logger = logging.getLogger(__name__)
 RESOLUTION_CONFIRMATION_SUMMARY = 'Confirm IT Resolution'
 APPROVAL_ACTIVITY_SUMMARY = 'Helpdesk Approval Request'
+SLA_GROUPS = 'buz_it_helpdesk.group_it_support_agent'
 
 
 class HelpdeskTicket(models.Model):
@@ -71,7 +72,9 @@ class HelpdeskTicket(models.Model):
         domain="[('id', 'in', team_user_ids)]",
         tracking=True,
     )
-    category_id = fields.Many2one('buz.helpdesk.category', string='Category')
+    category_id = fields.Many2one(
+        'buz.helpdesk.category', string='Category', required=True,
+    )
     category_type_id = fields.Many2one(
         'buz.helpdesk.category.type', string='Type',
         domain="[('id', 'in', category_type_ids)]",
@@ -112,6 +115,32 @@ class HelpdeskTicket(models.Model):
         required=True,
         tracking=True,
     )
+    sla_start_at = fields.Datetime(
+        string='SLA Started At', readonly=True, copy=False, groups=SLA_GROUPS,
+    )
+    sla_response_at = fields.Datetime(
+        string='Response Completed At', readonly=True, copy=False,
+        groups=SLA_GROUPS,
+    )
+    sla_resolution_at = fields.Datetime(
+        string='Resolution Completed At', readonly=True, copy=False,
+        groups=SLA_GROUPS,
+    )
+    sla_rule_id = fields.Many2one(
+        'buz.helpdesk.sla.rule', string='SLA Rule', compute='_compute_sla',
+        groups=SLA_GROUPS,
+    )
+    sla_response_deadline = fields.Datetime(
+        string='Response Deadline', compute='_compute_sla', groups=SLA_GROUPS,
+    )
+    sla_resolution_deadline = fields.Datetime(
+        string='Resolution Deadline', compute='_compute_sla', groups=SLA_GROUPS,
+    )
+    sla_status = fields.Selection([
+        ('on_track', 'On Track'), ('paused', 'Paused'),
+        ('overdue', 'Overdue'), ('resolved', 'Resolved'),
+        ('no_sla', 'No SLA'),
+    ], string='SLA Status', compute='_compute_sla', groups=SLA_GROUPS)
     approval_state = fields.Selection(
         [
             ('none', 'No Approval'),
@@ -360,6 +389,66 @@ class HelpdeskTicket(models.Model):
             'buz_it_helpdesk.group_it_helpdesk_manager'
         )
 
+    def _get_sla_config(self):
+        self.ensure_one()
+        return self.env['buz.helpdesk.sla.config'].search([
+            ('company_id', '=', self.company_id.id), ('active', '=', True),
+        ], limit=1)
+
+    def _get_sla_rule(self):
+        self.ensure_one()
+        config = self._get_sla_config()
+        if not config:
+            return self.env['buz.helpdesk.sla.rule']
+        rules = config.rule_ids.filtered(
+            lambda rule: rule.active and (
+                not rule.category_id or rule.category_id == self.category_id
+            ) and (
+                not rule.priority or rule.priority == self.priority
+            )
+        )
+        return min(
+            rules,
+            key=lambda rule: (-rule.specificity(), rule.sequence, rule.id),
+            default=self.env['buz.helpdesk.sla.rule'],
+        )
+
+    @api.depends(
+        'category_id', 'priority', 'company_id', 'stage_id', 'approval_state',
+        'sla_start_at', 'sla_response_at', 'sla_resolution_at',
+    )
+    def _compute_sla(self):
+        now = fields.Datetime.now()
+        for ticket in self:
+            ticket.sla_rule_id = False
+            ticket.sla_response_deadline = False
+            ticket.sla_resolution_deadline = False
+            ticket.sla_status = 'no_sla'
+            rule = ticket._get_sla_rule()
+            if not rule or not ticket.sla_start_at:
+                continue
+            config = ticket._get_sla_config()
+            ticket.sla_rule_id = rule
+            ticket.sla_response_deadline = config.add_business_minutes(
+                ticket.sla_start_at, rule.minutes('response'),
+            )
+            ticket.sla_resolution_deadline = config.add_business_minutes(
+                ticket.sla_start_at, rule.minutes('resolution'),
+            )
+            if ticket.stage_id == self.env.ref('buz_it_helpdesk.stage_closed') \
+                    or ticket.sla_resolution_at:
+                ticket.sla_status = 'resolved'
+            elif ticket.stage_id == self.env.ref('buz_it_helpdesk.stage_pending_user') \
+                    or ticket.approval_state == 'pending':
+                ticket.sla_status = 'paused'
+            elif (
+                (not ticket.sla_response_at and now > ticket.sla_response_deadline)
+                or (not ticket.sla_resolution_at and now > ticket.sla_resolution_deadline)
+            ):
+                ticket.sla_status = 'overdue'
+            else:
+                ticket.sla_status = 'on_track'
+
     def copy(self, default=None):
         default = dict(default or {})
         default.update({
@@ -378,12 +467,17 @@ class HelpdeskTicket(models.Model):
             'approval_decided_at': False,
             'approval_rejection_reason': False,
             'approval_request_note': False,
+            'sla_start_at': False,
+            'sla_response_at': False,
+            'sla_resolution_at': False,
         })
         return super().copy(default)
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if not vals.get('category_id'):
+                raise ValidationError(_('Category is required when creating a ticket.'))
             for field_name in (
                 'approval_state', 'approval_manager_id',
                 'approval_requested_by', 'approval_requested_at',
@@ -437,6 +531,7 @@ class HelpdeskTicket(models.Model):
         self._write_workflow_fields({
             'stage_id': new_stage.id,
             'create_ticket_date': fields.Date.context_today(self),
+            'sla_start_at': fields.Datetime.now(),
         })
 
         activity_type = self.env.ref('mail.mail_activity_data_todo')
@@ -773,6 +868,7 @@ class HelpdeskTicket(models.Model):
             raise UserError(_('Only Pending User tickets can resume work.'))
         self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+            'sla_response_at': fields.Datetime.now(),
         })
         return True
 
@@ -783,6 +879,7 @@ class HelpdeskTicket(models.Model):
             raise UserError(_('Only In Progress tickets can be Resolved.'))
         self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_resolved').id,
+            'sla_resolution_at': fields.Datetime.now(),
         })
         self.message_post(
             body=_(
@@ -912,6 +1009,7 @@ class HelpdeskTicket(models.Model):
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
             'assigned_user_id': self.env.user.id,
             'team_id': receiving_team.id,
+            'sla_response_at': fields.Datetime.now(),
         })
         self._complete_receive_activities()
         return True
@@ -987,6 +1085,7 @@ class HelpdeskTicket(models.Model):
             ))
         self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+            'sla_response_at': fields.Datetime.now(),
         })
         self._complete_receive_activities()
         return True
@@ -1006,6 +1105,7 @@ class HelpdeskTicket(models.Model):
             'stage_id': self.env.ref('buz_it_helpdesk.stage_new').id,
             'team_id': False,
             'assigned_user_id': False,
+            'sla_response_at': False,
         })
         return True
 
@@ -1051,7 +1151,10 @@ class HelpdeskTicket(models.Model):
 
     def _write_workflow_fields(self, vals):
         """Write workflow-managed fields from trusted model methods only."""
-        recordset = self
+        # ฟิลด์ SLA เป็นข้อมูลภายในและถูกจำกัดด้วย field groups แต่ผู้แจ้ง
+        # ยังต้องเรียก action_create_ticket ได้ จึงเขียนผ่าน trusted sudo path
+        # เดียวกับ workflow-managed fields เท่านั้น ไม่เปิดสิทธิ์ write ให้ผู้แจ้ง
+        recordset = self.sudo()
         return super(HelpdeskTicket, recordset).write(vals)
 
     def _write_approval_fields(self, vals):
@@ -1076,6 +1179,13 @@ class HelpdeskTicket(models.Model):
                 'Approval status and decision fields can only be changed '
                 'through the approval workflow.'
             ))
+        if {'category_id', 'priority'}.intersection(vals):
+            draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+            if any(ticket.stage_id != draft_stage for ticket in self):
+                raise UserError(_(
+                    'Category and Priority cannot be changed after the ticket '
+                    'enters New.'
+                ))
         if 'approval_manager_id' in vals:
             for ticket in self:
                 if ticket.approval_state not in ('none', 'rejected'):

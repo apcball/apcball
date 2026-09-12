@@ -18,6 +18,7 @@ class TestTicketApproval(TransactionCase):
         cls.support = cls._user('approval-support', cls.group_support)
         cls.manager = cls._user('approval-manager', cls.group_manager)
         cls.other_manager = cls._user('approval-other-manager', cls.group_manager)
+        cls.category = cls.env['buz.helpdesk.category'].create({'name': 'Approval Test Category'})
 
     @classmethod
     def _user(cls, login, group):
@@ -39,6 +40,7 @@ class TestTicketApproval(TransactionCase):
         ticket = self.env['buz.helpdesk.ticket'].with_user(self.manager).create({
             'subject': 'Approval test',
             'requester_id': self.requester.id,
+            'category_id': self.category.id,
         })
         ticket.with_user(self.manager).write({
             'team_id': team.id,

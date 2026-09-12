@@ -75,6 +75,7 @@ class TestHelpdeskLineNotification(TransactionCase):
             ])],
         })
         cls.parameters = cls.env['ir.config_parameter'].sudo()
+        cls.category = cls.env['buz.helpdesk.category'].create({'name': 'LINE Test Category'})
 
     def setUp(self):
         super().setUp()
@@ -113,6 +114,7 @@ class TestHelpdeskLineNotification(TransactionCase):
         ).create({
             'subject': subject,
             'description': 'private description',
+            'category_id': self.category.id,
         })
 
     def _response(self, status=200, payload=None, text=''):
