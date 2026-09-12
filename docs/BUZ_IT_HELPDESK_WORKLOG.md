@@ -3,7 +3,7 @@
 เอกสารติดตามสถานะงานของโมดูล `buz_it_helpdesk`
 
 วันที่อัปเดตล่าสุด: 2026-09-12  
-สถานะโมดูลปัจจุบัน: `17.0.1.3.5`  
+สถานะโมดูลปัจจุบัน: `17.0.1.3.6`
 ขอบเขต: บันทึกสิ่งที่มีอยู่แล้ว สิ่งที่ตรวจสอบแล้ว และงานที่ต้องดำเนินการต่อ
 
 ## สรุปปัจจุบัน
@@ -12,8 +12,8 @@
 - Ticket workflow ปัจจุบันมี 6 สถานะ:
   `Draft → New → In Progress → Pending User → Resolved → Closed`
 - Requester ยังคงเห็น Ticket ทั้งหมดภายในบริษัทตามพฤติกรรมปัจจุบัน
-- Working tree ของ `buz_it_helpdesk` สะอาด ณ วันที่ตรวจสอบ
-- งานล่าสุดที่ต้องทำ: ซ่อนคอลัมน์ `Draft` จากหน้า Ticket Kanban เป็นค่าเริ่มต้น แต่ยังเปิดกลับได้จากการตั้งค่า Stage
+- มีการ commit งาน Helpdesk ของวันที่ 2026-09-12 ต่อเนื่องถึง `db1e1765`
+- DEV `MOG_DEV` อัปเกรดโมดูลเป็น `17.0.1.3.6` และ restart container `odoo` แล้ว; HTTP health check ได้ `200`
 
 ## สิ่งที่ทำเสร็จแล้ว
 
@@ -135,6 +135,7 @@
 
 ## Approval Sub-workflow (2026-09-12)
 
+- Commits: `f4bc3317`, `1493d48e`
 - เพิ่ม Approval Manager, Approval Status, request note และ audit timestamps สำหรับทีม IT
 - เพิ่ม Send to Approve, Approve และ Reject wizard ที่บังคับเหตุผล พร้อม Activity และ Chatter audit
 - ตรวจสิทธิ์ซ้ำใน backend/RPC, จำกัด Manager ตามกลุ่มและบริษัท และล็อกฟิลด์ระหว่างคำขอ pending
@@ -148,4 +149,27 @@
 - ไม่เปลี่ยน SLA calculation, Attachment, Workflow, Approval sub-workflow หรือสิทธิ์อื่น
 - ตรวจ XML parse, XML structure/XPath, manifest asset load, SLA fields แบบอ่านอย่างเดียว และ `git diff --check` ผ่าน
 - ยังไม่ได้ทำ Browser UAT ในรอบนี้ จึงยังไม่ยืนยันผลการจัดวางบน Desktop/หน้าจอแคบหรือการใช้งาน Upload, Paste Screenshot, Preview, Download และ Remove จาก Browser
-- ยังไม่ deploy, upgrade หรือ restart
+- Commit: `db1e1765` (`feat: enhance SLA and attachments layout in ticket form with responsive design`)
+- DEV deployment: upload, upgrade และ restart สำเร็จ; module state เป็น `installed`, version `17.0.1.3.6`, container เป็น `Up`
+
+## SLA Management (2026-09-12)
+
+- Commit: `9ed41bff` (`feat: implement SLA management with configuration, rules, and holiday handling`)
+- เพิ่ม SLA Settings ต่อบริษัท, working hours, lunch hours, timezone และ company holidays
+- เพิ่ม SLA Rules ที่เลือกตาม Category/Priority และคำนวณ response/resolution deadline ตามเวลาทำงาน
+- Ticket บันทึก SLA start, response และ resolution timestamps ตาม workflow พร้อมสถานะ On Track, Paused, Overdue, Resolved และ No SLA
+- เพิ่ม access control และ automated tests สำหรับ rule specificity, business time และการจำกัดสิทธิ์ SLA Settings
+
+## Attachment Composer (2026-09-12)
+
+- Commits: `3cbcd251`, `8d4c5a58`
+- เพิ่ม Attachment Composer สำหรับ `attachment_ids` รองรับ Upload และ Paste Screenshot ผ่าน Clipboard
+- คง Preview, Download และ Remove ของ Attachment เดิม และเพิ่มการแสดงชนิดไฟล์/จำนวนไฟล์
+- ยังไม่มี Browser UAT ในรอบนี้ จึงยังไม่ยืนยันพฤติกรรมการใช้งานจริงจาก Browser
+
+## DEV Delivery (2026-09-12)
+
+- Upload เฉพาะโมดูล `buz_it_helpdesk` ไปยัง DEV สำเร็จด้วย `scp`
+- Upgrade `buz_it_helpdesk` บนฐานข้อมูล `MOG_DEV` สำเร็จ และโหลด `helpdesk_ticket_views.xml` สำเร็จ
+- Restart container `odoo` สำเร็จ; container status เป็น `Up` และ HTTP health check ได้ `200`
+- ไม่ได้ deploy ไป Production และยังไม่ได้ทำ Browser/PDF/accounting UAT
