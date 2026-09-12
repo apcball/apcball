@@ -3,6 +3,7 @@
     <record id="stage_draft" model="buz.helpdesk.stage">
         <field name="name">Draft</field>
         <field name="sequence">10</field>
+        <field name="show_in_kanban">False</field>
     </record>
     <record id="stage_new" model="buz.helpdesk.stage">
         <field name="name">New</field>

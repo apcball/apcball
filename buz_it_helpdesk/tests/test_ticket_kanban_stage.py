@@ -12,6 +12,7 @@ class TestTicketKanbanStage(TransactionCase):
         cls.group_requester = cls.env.ref('buz_it_helpdesk.group_it_requester')
         cls.group_support = cls.env.ref('buz_it_helpdesk.group_it_support_agent')
         cls.group_manager = cls.env.ref('buz_it_helpdesk.group_it_helpdesk_manager')
+        cls.stage_draft = cls.env.ref('buz_it_helpdesk.stage_draft')
         cls.stage_new = cls.env.ref('buz_it_helpdesk.stage_new')
         cls.stage_in_progress = cls.env.ref('buz_it_helpdesk.stage_in_progress')
         cls.stage_pending_user = cls.env.ref('buz_it_helpdesk.stage_pending_user')
@@ -227,6 +228,21 @@ class TestTicketKanbanStage(TransactionCase):
         })
         self.assertTrue(custom_stage.show_in_kanban)
 
+    def test_draft_stage_is_hidden_by_default(self):
+        self.assertFalse(self.stage_draft.show_in_kanban)
+
+    def test_manager_can_show_draft_in_kanban(self):
+        self.stage_draft.with_user(self.manager).write({
+            'show_in_kanban': True,
+        })
+
+        self.assertTrue(self.stage_draft.show_in_kanban)
+
+        expanded_stages = self.env['buz.helpdesk.ticket']._read_group_stage_ids(
+            self.env['buz.helpdesk.stage'], [], 'sequence, name'
+        )
+        self.assertIn(self.stage_draft, expanded_stages)
+
     def test_kanban_group_expansion_excludes_hidden_and_archived_stages(self):
         hidden_stage = self.stage_pending_user.with_user(self.manager)
         hidden_stage.write({'show_in_kanban': False})
@@ -246,10 +262,11 @@ class TestTicketKanbanStage(TransactionCase):
         self.assertNotIn(archived_stage, expanded_stages)
 
     def test_hidden_stage_keeps_existing_ticket(self):
-        ticket = self._ticket(stage_id=self.stage_pending_user.id)
-        self.stage_pending_user.with_user(self.manager).write({
+        ticket = self._ticket(stage_id=self.stage_draft.id)
+
+        self.stage_draft.with_user(self.manager).write({
             'show_in_kanban': False,
         })
 
         ticket.invalidate_recordset()
-        self.assertEqual(ticket.stage_id, self.stage_pending_user)
+        self.assertEqual(ticket.stage_id, self.stage_draft)
