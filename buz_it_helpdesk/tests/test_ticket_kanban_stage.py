@@ -64,9 +64,9 @@ class TestTicketKanbanStage(TransactionCase):
             }.items() if value
         }
         if restore_values:
-            ticket.with_context(buz_helpdesk_transition=True).write(restore_values)
+            ticket._write_workflow_fields(restore_values)
         if requested_stage != self.env.ref('buz_it_helpdesk.stage_draft').id:
-            ticket.with_context(buz_helpdesk_transition=True).write({
+            ticket._write_workflow_fields({
                 'stage_id': requested_stage,
             })
         return ticket
@@ -156,6 +156,7 @@ class TestTicketKanbanStage(TransactionCase):
         ticket.with_user(self.support).write({
             'stage_id': self.stage_resolved.id,
         })
+        ticket.with_user(self.requester).action_confirm_resolution()
         ticket.with_user(self.support).write({'stage_id': self.stage_closed.id})
 
         self.assertEqual(ticket.stage_id, self.stage_closed)
@@ -184,6 +185,17 @@ class TestTicketKanbanStage(TransactionCase):
         ticket.with_user(self.support).write({
             'stage_id': self.stage_in_progress.id,
         })
+        self.assertEqual(ticket.stage_id, self.stage_in_progress)
+        self.assertEqual(ticket.assigned_user_id, self.support)
+
+    def test_requester_reply_resumes_pending_ticket(self):
+        ticket = self._ticket(
+            stage_id=self.stage_pending_user.id,
+            assigned_user_id=self.support.id,
+        )
+
+        ticket.with_user(self.requester).message_post(body='Requester reply')
+
         self.assertEqual(ticket.stage_id, self.stage_in_progress)
         self.assertEqual(ticket.assigned_user_id, self.support)
 

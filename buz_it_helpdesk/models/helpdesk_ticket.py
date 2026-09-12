@@ -434,7 +434,7 @@ class HelpdeskTicket(models.Model):
             raise UserError(_('No active IT Support Agent is available.'))
 
         new_stage = self.env.ref('buz_it_helpdesk.stage_new')
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': new_stage.id,
             'create_ticket_date': fields.Date.context_today(self),
         })
@@ -509,7 +509,7 @@ class HelpdeskTicket(models.Model):
         self.ensure_one()
         self._assert_can_request_approval()
         requested_at = fields.Datetime.now()
-        self.with_context(buz_helpdesk_approval_transition=True).write({
+        self._write_approval_fields({
             'approval_state': 'pending',
             'approval_requested_by': self.env.user.id,
             'approval_requested_at': requested_at,
@@ -553,7 +553,7 @@ class HelpdeskTicket(models.Model):
         self.ensure_one()
         self._assert_can_decide_approval()
         self._approval_activities().action_done()
-        self.with_context(buz_helpdesk_approval_transition=True).write({
+        self._write_approval_fields({
             'approval_state': 'approved',
             'approval_decided_by': self.env.user.id,
             'approval_decided_at': fields.Datetime.now(),
@@ -597,7 +597,7 @@ class HelpdeskTicket(models.Model):
         if not reason:
             raise UserError(_('A rejection reason is required.'))
         self._approval_activities().action_done()
-        self.with_context(buz_helpdesk_approval_transition=True).write({
+        self._write_approval_fields({
             'approval_state': 'rejected',
             'approval_decided_by': self.env.user.id,
             'approval_decided_at': fields.Datetime.now(),
@@ -699,7 +699,7 @@ class HelpdeskTicket(models.Model):
         }
         line_service._send_user_message(line_user_id, message)
         self.message_post(body=body, subtype_xmlid='mail.mt_comment')
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref(
                 'buz_it_helpdesk.stage_pending_user'
             ).id,
@@ -732,7 +732,7 @@ class HelpdeskTicket(models.Model):
                 'The requester must confirm the resolution before this '
                 'ticket can be closed.'
             ))
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_closed').id,
             'closed_ticket_date': fields.Date.context_today(self),
         })
@@ -756,7 +756,7 @@ class HelpdeskTicket(models.Model):
         self._assert_assigned_agent_workflow()
         if self.stage_id != self.env.ref('buz_it_helpdesk.stage_in_progress'):
             raise UserError(_('Only In Progress tickets can wait for the User.'))
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_pending_user').id,
         })
         self.message_post(
@@ -771,7 +771,7 @@ class HelpdeskTicket(models.Model):
         self._assert_assigned_agent_workflow()
         if self.stage_id != self.env.ref('buz_it_helpdesk.stage_pending_user'):
             raise UserError(_('Only Pending User tickets can resume work.'))
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
         })
         return True
@@ -781,7 +781,7 @@ class HelpdeskTicket(models.Model):
         self._assert_assigned_agent_workflow()
         if self.stage_id != self.env.ref('buz_it_helpdesk.stage_in_progress'):
             raise UserError(_('Only In Progress tickets can be Resolved.'))
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_resolved').id,
         })
         self.message_post(
@@ -908,7 +908,7 @@ class HelpdeskTicket(models.Model):
             raise UserError(_(
                 'The receiving IT user must belong to an active Helpdesk Team.'
             ))
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
             'assigned_user_id': self.env.user.id,
             'team_id': receiving_team.id,
@@ -957,9 +957,7 @@ class HelpdeskTicket(models.Model):
                 and author_id == ticket.requester_id.partner_id.id
             ):
                 ticket._complete_requester_activities()
-                ticket.with_context(
-                    buz_helpdesk_transition=True,
-                ).write({'stage_id': in_progress.id})
+                ticket._write_workflow_fields({'stage_id': in_progress.id})
                 if ticket.assigned_user_id:
                     ticket.activity_schedule(
                         'mail.mail_activity_data_todo',
@@ -987,7 +985,7 @@ class HelpdeskTicket(models.Model):
             raise ValidationError(_(
                 'The assigned user must be a member of the selected team.'
             ))
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
         })
         self._complete_receive_activities()
@@ -1004,7 +1002,7 @@ class HelpdeskTicket(models.Model):
                 'Only the assigned agent or a Helpdesk Manager can return '
                 'this ticket to New.'
             ))
-        self.with_context(buz_helpdesk_transition=True).write({
+        self._write_workflow_fields({
             'stage_id': self.env.ref('buz_it_helpdesk.stage_new').id,
             'team_id': False,
             'assigned_user_id': False,
@@ -1051,12 +1049,17 @@ class HelpdeskTicket(models.Model):
 
         raise UserError(_('Invalid Helpdesk workflow transition.'))
 
+    def _write_workflow_fields(self, vals):
+        """Write workflow-managed fields from trusted model methods only."""
+        recordset = self
+        return super(HelpdeskTicket, recordset).write(vals)
+
+    def _write_approval_fields(self, vals):
+        """Write approval-managed fields from trusted model methods only."""
+        recordset = self
+        return super(HelpdeskTicket, recordset).write(vals)
+
     def write(self, vals):
-        if (
-            self.env.context.get('buz_helpdesk_transition')
-            or self.env.context.get('buz_helpdesk_approval_transition')
-        ):
-            return super().write(vals)
         is_manager = self._is_helpdesk_manager()
         protected = {
             'stage_id', 'assigned_user_id', 'create_ticket_date',

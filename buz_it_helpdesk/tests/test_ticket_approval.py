@@ -44,7 +44,7 @@ class TestTicketApproval(TransactionCase):
             'team_id': team.id,
             'assigned_user_id': self.support.id,
         })
-        ticket.with_context(buz_helpdesk_transition=True).write({
+        ticket._write_workflow_fields({
             'stage_id': self.stage_in_progress.id,
         })
         self.assertEqual(ticket.stage_id, self.stage_in_progress)
@@ -122,6 +122,21 @@ class TestTicketApproval(TransactionCase):
         ticket = self._ticket()
         with self.assertRaises(UserError):
             ticket.with_user(self.support).write({'approval_state': 'approved'})
+
+    def test_context_flags_cannot_bypass_workflow_or_approval(self):
+        ticket = self._ticket()
+        with self.assertRaises(UserError):
+            ticket.with_user(self.requester).with_context(
+                buz_helpdesk_transition=True,
+            ).write({'stage_id': self.env.ref(
+                'buz_it_helpdesk.stage_closed'
+            ).id})
+        with self.assertRaises(UserError):
+            ticket.with_user(self.requester).with_context(
+                buz_helpdesk_approval_transition=True,
+            ).write({'approval_state': 'approved'})
+        self.assertEqual(ticket.stage_id, self.stage_in_progress)
+        self.assertEqual(ticket.approval_state, 'none')
 
     def test_requester_cannot_read_approval_fields(self):
         ticket = self._ticket()

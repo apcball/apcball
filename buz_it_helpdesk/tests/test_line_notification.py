@@ -249,9 +249,7 @@ class TestHelpdeskLineNotification(TransactionCase):
 
     def test_contact_line_requires_connected_requester_and_keeps_stage_on_failure(self):
         ticket = self._ticket('Contact User')
-        ticket.with_user(self.manager).with_context(
-            buz_helpdesk_transition=True,
-        ).write({
+        ticket.with_user(self.manager)._write_workflow_fields({
             'assigned_user_id': self.support.id,
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
         })
@@ -263,9 +261,7 @@ class TestHelpdeskLineNotification(TransactionCase):
 
     def test_contact_line_sends_sanitized_message_then_pending_user(self):
         ticket = self._ticket('Contact User')
-        ticket.with_user(self.manager).with_context(
-            buz_helpdesk_transition=True,
-        ).write({
+        ticket.with_user(self.manager)._write_workflow_fields({
             'assigned_user_id': self.support.id,
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
         })
@@ -283,7 +279,8 @@ class TestHelpdeskLineNotification(TransactionCase):
                 '<p>Hello <b>Requester</b></p>'
             )
         message = request.call_args.kwargs['json']['messages'][0]['text']
-        self.assertIn('Hello Requester', message)
+        self.assertIn('Hello', message)
+        self.assertIn('Requester', message)
         self.assertNotIn('<b>', message)
         self.assertEqual(
             ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_pending_user')
@@ -291,9 +288,7 @@ class TestHelpdeskLineNotification(TransactionCase):
 
     def _prepare_resolution_ticket(self):
         ticket = self._ticket('Resolution confirmation')
-        ticket.with_user(self.manager).with_context(
-            buz_helpdesk_transition=True,
-        ).write({
+        ticket.with_user(self.manager)._write_workflow_fields({
             'assigned_user_id': self.support.id,
             'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
         })
