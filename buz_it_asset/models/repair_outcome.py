@@ -43,12 +43,7 @@ class ITAssetRepairOutcome(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        # อนุญาตให้ Odoo โหลดค่า built-in ซ้ำระหว่างติดตั้ง/อัปเกรดเท่านั้น
-        is_module_loading = (
-            self.env.is_superuser()
-            and self.env.context.get('install_mode')
-        )
-        if {'code', 'behavior'}.intersection(vals) and not is_module_loading:
+        if {'code', 'behavior'}.intersection(vals):
             raise UserError(_('Outcome code and behavior cannot be changed.'))
         return super().write(vals)
 
