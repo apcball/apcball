@@ -7,6 +7,7 @@ from odoo.tools import html2plaintext
 
 _logger = logging.getLogger(__name__)
 RESOLUTION_CONFIRMATION_SUMMARY = 'Confirm IT Resolution'
+APPROVAL_ACTIVITY_SUMMARY = 'Helpdesk Approval Request'
 
 
 class HelpdeskTicket(models.Model):
@@ -111,6 +112,55 @@ class HelpdeskTicket(models.Model):
         required=True,
         tracking=True,
     )
+    approval_state = fields.Selection(
+        [
+            ('none', 'No Approval'),
+            ('pending', 'Pending Approval'),
+            ('approved', 'Approved'),
+            ('rejected', 'Rejected'),
+        ],
+        string='Approval Status',
+        default='none',
+        required=True,
+        tracking=True,
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_manager_id = fields.Many2one(
+        'res.users',
+        string='Approval Manager',
+        tracking=True,
+        domain="[('id', 'in', approval_manager_domain_ids)]",
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_manager_domain_ids = fields.Many2many(
+        'res.users',
+        compute='_compute_approval_manager_domain_ids',
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_requested_by = fields.Many2one(
+        'res.users', string='Requested By', readonly=True,
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_requested_at = fields.Datetime(
+        string='Requested At', readonly=True,
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_decided_by = fields.Many2one(
+        'res.users', string='Decided By', readonly=True,
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_decided_at = fields.Datetime(
+        string='Decided At', readonly=True,
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_rejection_reason = fields.Text(
+        string='Rejection Reason', readonly=True,
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
+    approval_request_note = fields.Text(
+        string='Approval Request Note',
+        groups='buz_it_helpdesk.group_it_support_agent',
+    )
     active = fields.Boolean(default=True)
     is_draft_stage = fields.Boolean(compute='_compute_is_draft_stage')
     is_closed_stage = fields.Boolean(compute='_compute_is_closed_stage')
@@ -129,6 +179,15 @@ class HelpdeskTicket(models.Model):
     )
     show_line_connection_shortcut = fields.Boolean(
         compute='_compute_show_line_connection_shortcut',
+    )
+    show_send_approval_button = fields.Boolean(
+        compute='_compute_approval_buttons',
+    )
+    show_approve_button = fields.Boolean(
+        compute='_compute_approval_buttons',
+    )
+    show_reject_button = fields.Boolean(
+        compute='_compute_approval_buttons',
     )
 
     @api.model
@@ -255,6 +314,42 @@ class HelpdeskTicket(models.Model):
                 ticket.requester_id == self.env.user
             )
 
+    @api.depends('stage_id', 'assigned_user_id', 'approval_state',
+                 'approval_manager_id')
+    @api.depends_context('uid')
+    def _compute_approval_buttons(self):
+        in_progress = self.env.ref('buz_it_helpdesk.stage_in_progress')
+        is_manager = self._is_helpdesk_manager()
+        is_agent = self._is_support_agent()
+        for ticket in self:
+            secure_ticket = ticket.sudo()
+            can_request = is_manager or ticket.assigned_user_id == self.env.user
+            ticket.show_send_approval_button = bool(
+                is_agent
+                and can_request
+                and ticket.stage_id == in_progress
+                and secure_ticket.approval_state in ('none', 'rejected')
+                and secure_ticket.approval_manager_id
+            )
+            ticket.show_approve_button = bool(
+                is_manager
+                and secure_ticket.approval_state == 'pending'
+                and secure_ticket.approval_manager_id == self.env.user
+            )
+            ticket.show_reject_button = ticket.show_approve_button
+
+    @api.depends('company_id')
+    def _compute_approval_manager_domain_ids(self):
+        manager_group = self.env.ref(
+            'buz_it_helpdesk.group_it_helpdesk_manager'
+        )
+        for ticket in self:
+            ticket.approval_manager_domain_ids = self.env['res.users'].search([
+                ('active', '=', True),
+                ('groups_id', 'in', manager_group.id),
+                ('company_ids', 'in', ticket.company_id.id),
+            ])
+
     def _is_support_agent(self):
         return self.env.user.has_group(
             'buz_it_helpdesk.group_it_support_agent'
@@ -275,12 +370,27 @@ class HelpdeskTicket(models.Model):
             'closed_ticket_date': False,
             'company_id': self.env.company.id,
             'active': True,
+            'approval_state': 'none',
+            'approval_manager_id': False,
+            'approval_requested_by': False,
+            'approval_requested_at': False,
+            'approval_decided_by': False,
+            'approval_decided_at': False,
+            'approval_rejection_reason': False,
+            'approval_request_note': False,
         })
         return super().copy(default)
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            for field_name in (
+                'approval_state', 'approval_manager_id',
+                'approval_requested_by', 'approval_requested_at',
+                'approval_decided_by', 'approval_decided_at',
+                'approval_rejection_reason', 'approval_request_note',
+            ):
+                vals.pop(field_name, None)
             is_manager = self._is_helpdesk_manager()
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code(
@@ -353,6 +463,160 @@ class HelpdeskTicket(models.Model):
                 note=note,
             )
         self._send_line_notification()
+        return True
+
+    def _approval_manager_is_valid(self):
+        self.ensure_one()
+        manager = self.approval_manager_id
+        return bool(
+            manager
+            and manager.active
+            and manager.company_ids & self.company_id
+            and manager.has_group('buz_it_helpdesk.group_it_helpdesk_manager')
+        )
+
+    def _assert_can_request_approval(self):
+        self.ensure_one()
+        if not self._is_support_agent():
+            raise UserError(_('Only IT Support Agents can request approval.'))
+        if (
+            not self._is_helpdesk_manager()
+            and self.assigned_user_id != self.env.user
+        ):
+            raise UserError(_(
+                'Only the assigned IT user or a Helpdesk Manager can request approval.'
+            ))
+        if self.stage_id != self.env.ref('buz_it_helpdesk.stage_in_progress'):
+            raise UserError(_('Only In Progress tickets can request approval.'))
+        if self.approval_state == 'pending':
+            raise UserError(_('This ticket already has a pending approval request.'))
+        if not self._approval_manager_is_valid():
+            raise UserError(_(
+                'Select an active Helpdesk Manager from the same company first.'
+            ))
+
+    def _approval_activities(self):
+        self.ensure_one()
+        return self.env['mail.activity'].search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('user_id', '=', self.approval_manager_id.id),
+            ('summary', '=', _(APPROVAL_ACTIVITY_SUMMARY)),
+            ('date_done', '=', False),
+        ])
+
+    def action_send_to_approve(self):
+        self.ensure_one()
+        self._assert_can_request_approval()
+        requested_at = fields.Datetime.now()
+        self.with_context(buz_helpdesk_approval_transition=True).write({
+            'approval_state': 'pending',
+            'approval_requested_by': self.env.user.id,
+            'approval_requested_at': requested_at,
+            'approval_decided_by': False,
+            'approval_decided_at': False,
+            'approval_rejection_reason': False,
+        })
+        note = self.approval_request_note or _(
+            'Please review and decide the approval request for %s.'
+        ) % self.display_name
+        if not self._approval_activities():
+            self.activity_schedule(
+                'mail.mail_activity_data_todo',
+                user_id=self.approval_manager_id.id,
+                summary=_(APPROVAL_ACTIVITY_SUMMARY),
+                note=note,
+            )
+        self.message_post(
+            body=_(
+                'Approval requested from %(manager)s by %(requester)s.'
+            ) % {
+                'manager': self.approval_manager_id.display_name,
+                'requester': self.env.user.display_name,
+            },
+            subtype_xmlid='mail.mt_note',
+        )
+        return True
+
+    def _assert_can_decide_approval(self):
+        self.ensure_one()
+        if not self._is_helpdesk_manager():
+            raise UserError(_('Only Helpdesk Managers can decide approval.'))
+        if self.approval_state != 'pending':
+            raise UserError(_('This ticket has no pending approval request.'))
+        if self.approval_manager_id != self.env.user:
+            raise UserError(_(
+                'Only the selected Approval Manager can decide this request.'
+            ))
+
+    def action_approve(self):
+        self.ensure_one()
+        self._assert_can_decide_approval()
+        self._approval_activities().action_done()
+        self.with_context(buz_helpdesk_approval_transition=True).write({
+            'approval_state': 'approved',
+            'approval_decided_by': self.env.user.id,
+            'approval_decided_at': fields.Datetime.now(),
+        })
+        recipients = (
+            [self.assigned_user_id.partner_id.id]
+            if self.assigned_user_id else []
+        )
+        self.message_post(
+            body=_(
+                'Approval approved by %s. IT may continue work.'
+            ) % self.env.user.display_name,
+            partner_ids=recipients,
+            subtype_xmlid='mail.mt_note',
+        )
+        return True
+
+    def action_reject(self):
+        self.ensure_one()
+        self._assert_can_decide_approval()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Reject Approval'),
+            'res_model': 'buz.helpdesk.approval.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'view_id': self.env.ref(
+                'buz_it_helpdesk.view_helpdesk_approval_reject_wizard'
+            ).id,
+            'context': {
+                'default_ticket_id': self.id,
+                'active_model': self._name,
+                'active_ids': [self.id],
+            },
+        }
+
+    def _reject_approval(self, reason):
+        self.ensure_one()
+        self._assert_can_decide_approval()
+        reason = (reason or '').strip()
+        if not reason:
+            raise UserError(_('A rejection reason is required.'))
+        self._approval_activities().action_done()
+        self.with_context(buz_helpdesk_approval_transition=True).write({
+            'approval_state': 'rejected',
+            'approval_decided_by': self.env.user.id,
+            'approval_decided_at': fields.Datetime.now(),
+            'approval_rejection_reason': reason,
+        })
+        recipients = (
+            [self.assigned_user_id.partner_id.id]
+            if self.assigned_user_id else []
+        )
+        self.message_post(
+            body=_(
+                'Approval rejected by %(manager)s. Reason: %(reason)s'
+            ) % {
+                'manager': self.env.user.display_name,
+                'reason': reason,
+            },
+            partner_ids=recipients,
+            subtype_xmlid='mail.mt_note',
+        )
         return True
 
     def _send_line_notification(self):
@@ -788,7 +1052,10 @@ class HelpdeskTicket(models.Model):
         raise UserError(_('Invalid Helpdesk workflow transition.'))
 
     def write(self, vals):
-        if self.env.context.get('buz_helpdesk_transition'):
+        if (
+            self.env.context.get('buz_helpdesk_transition')
+            or self.env.context.get('buz_helpdesk_approval_transition')
+        ):
             return super().write(vals)
         is_manager = self._is_helpdesk_manager()
         protected = {
@@ -796,6 +1063,50 @@ class HelpdeskTicket(models.Model):
             'closed_ticket_date', 'name', 'department_id', 'requester_id',
             'company_id',
         }
+        approval_protected = {
+            'approval_state', 'approval_requested_by',
+            'approval_requested_at', 'approval_decided_by',
+            'approval_decided_at', 'approval_rejection_reason',
+        }
+        if approval_protected.intersection(vals):
+            raise UserError(_(
+                'Approval status and decision fields can only be changed '
+                'through the approval workflow.'
+            ))
+        if 'approval_manager_id' in vals:
+            for ticket in self:
+                if ticket.approval_state not in ('none', 'rejected'):
+                    raise UserError(_(
+                        'The Approval Manager is locked while approval is pending '
+                        'or completed.'
+                    ))
+                if not ticket._is_support_agent() or (
+                    not is_manager and ticket.assigned_user_id != self.env.user
+                ):
+                    raise UserError(_(
+                        'Only the assigned IT user or a Helpdesk Manager can '
+                        'select an Approval Manager.'
+                    ))
+            manager_id = vals['approval_manager_id']
+            if manager_id:
+                manager = self.env['res.users'].browse(manager_id).exists()
+                if not manager or not manager.active or not manager.has_group(
+                    'buz_it_helpdesk.group_it_helpdesk_manager'
+                ):
+                    raise ValidationError(_(
+                        'Approval Manager must be an active Helpdesk Manager.'
+                    ))
+                for ticket in self:
+                    if ticket.company_id not in manager.company_ids:
+                        raise ValidationError(_(
+                            'Approval Manager must belong to the Ticket company.'
+                        ))
+        if 'approval_request_note' in vals:
+            for ticket in self:
+                if ticket.approval_state not in ('none', 'rejected'):
+                    raise UserError(_(
+                        'The approval request note is locked after submission.'
+                    ))
         if 'stage_id' in vals:
             stage = self.env['buz.helpdesk.stage'].browse(vals['stage_id']).exists()
             if not stage:

@@ -146,6 +146,9 @@
                     <button name="action_request_user" string="Waiting for User" type="object" class="btn-secondary" invisible="not show_pending_user_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_resume_work" string="Resume Work" type="object" class="btn-primary" invisible="not show_resume_work_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_mark_resolved" string="Mark Resolved" type="object" class="btn-success" invisible="not show_resolve_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_send_to_approve" string="Send to Approve" type="object" class="btn-warning" invisible="not show_send_approval_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_approve" string="Approve" type="object" class="btn-success" invisible="not show_approve_button" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_reject" string="Reject" type="object" class="btn-danger" invisible="not show_reject_button" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_confirm_resolution" string="Confirm Resolution" type="object" class="btn-primary" invisible="not show_confirm_resolution_button" groups="buz_it_helpdesk.group_it_requester"/>
                     <button name="action_close_ticket" string="Close Ticket" type="object" class="btn-danger" invisible="not show_close_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_contact_user_via_line" string="Contact User via LINE" type="object" class="btn-secondary" invisible="not show_contact_line_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
@@ -160,7 +163,11 @@
                     <field name="show_confirm_resolution_button" invisible="1"/>
                     <field name="show_contact_line_button" invisible="1"/>
                     <field name="show_line_connection_shortcut" invisible="1"/>
+                    <field name="show_send_approval_button" invisible="1"/>
+                    <field name="show_approve_button" invisible="1"/>
+                    <field name="show_reject_button" invisible="1"/>
                     <field name="is_editable" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Closed" bg_color="text-bg-danger" invisible="not is_closed_stage"/>
@@ -168,7 +175,7 @@
                         <label for="subject" string="หัวข้อ / Subject" class="oe_edit_only"/>
                         <h1><field name="subject" placeholder="ระบุหัวข้อ Ticket / Enter ticket subject" readonly="not is_editable"/></h1>
                     </div>
-                    <group>
+                    <group col="3">
                         <group>
                             <field name="name" string="เลขที่ Ticket / Ticket Number" readonly="1"/>
                             <field name="create_ticket_date" string="วันที่สร้าง Ticket / Ticket Created Date" readonly="1"/>
@@ -191,6 +198,17 @@
                             <field name="team_user_ids" invisible="1"/>
                             <field name="can_manage_assignment" invisible="1"/>
                             <field name="active" string="ใช้งาน / Active" readonly="not is_editable"/>
+                        </group>
+                        <group groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                            <field name="approval_manager_domain_ids" invisible="1"/>
+                            <field name="approval_manager_id" readonly="approval_state not in ['none', 'rejected']" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="approval_state" widget="badge" decoration-muted="approval_state == 'none'" decoration-warning="approval_state == 'pending'" decoration-success="approval_state == 'approved'" decoration-danger="approval_state == 'rejected'" readonly="1"/>
+                            <field name="approval_request_note" readonly="approval_state not in ['none', 'rejected']" placeholder="Reason or context for the approval request"/>
+                            <field name="approval_requested_by" readonly="1"/>
+                            <field name="approval_requested_at" readonly="1"/>
+                            <field name="approval_decided_by" readonly="1"/>
+                            <field name="approval_decided_at" readonly="1"/>
+                            <field name="approval_rejection_reason" readonly="1" invisible="approval_state != 'rejected'"/>
                         </group>
                     </group>
                     <separator string="ไฟล์แนบ / Attachments"/>

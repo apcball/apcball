@@ -1,6 +1,6 @@
 {
     'name': 'IT Helpdesk',
-    'version': '17.0.1.3.5',
+    'version': '17.0.1.3.6',
     'category': 'Services/Helpdesk',
     'summary': 'Standalone IT Helpdesk Phase 1',
     'description': """
@@ -21,6 +21,7 @@ without dependencies on custom or business modules.
         'views/helpdesk_team_views.xml',
         'views/helpdesk_stage_views.xml',
         'views/helpdesk_ticket_views.xml',
+        'views/helpdesk_approval_views.xml',
         'views/helpdesk_line_settings_views.xml',
         'views/helpdesk_menus.xml',
     ],

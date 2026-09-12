@@ -132,3 +132,10 @@
 | 2026-09-12 | ตรวจสอบโครงสร้าง `buz_it_helpdesk` และความสัมพันธ์ของ models, views, security, services และ tests | เสร็จแล้ว |
 | 2026-09-12 | ยืนยันให้ Requester เห็น Ticket ทั้งบริษัทตามพฤติกรรมเดิม | ยืนยันแล้ว |
 | 2026-09-12 | ซ่อน `Draft` จาก Kanban โดยค่าเริ่มต้น พร้อมยืนยันการเปิดกลับผ่าน Stage configuration และการคงอยู่ของ Ticket Draft | เสร็จแล้ว |
+
+## Approval Sub-workflow (2026-09-12)
+
+- เพิ่ม Approval Manager, Approval Status, request note และ audit timestamps สำหรับทีม IT
+- เพิ่ม Send to Approve, Approve และ Reject wizard ที่บังคับเหตุผล พร้อม Activity และ Chatter audit
+- ตรวจสิทธิ์ซ้ำใน backend/RPC, จำกัด Manager ตามกลุ่มและบริษัท และล็อกฟิลด์ระหว่างคำขอ pending
+- Targeted `TestTicketApproval` ผ่าน; full module suite ยังมี failure/error เดิมใน LINE และ Kanban tests ที่ไม่เกี่ยวกับ Approval
