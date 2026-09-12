@@ -15,6 +15,7 @@ export class HelpdeskAttachmentPreviewField extends Many2ManyBinaryField {
         super.setup();
         this.http = useService("http");
         this.notification = useService("notification");
+        this.composerState = useState({ open: false });
         this.previewViewport = useRef("previewViewport");
         this.previewImage = useRef("previewImage");
         this.previewState = useState({ file: null, zoom: 1, dragging: false });
@@ -65,6 +66,12 @@ export class HelpdeskAttachmentPreviewField extends Many2ManyBinaryField {
 
     get canPasteClipboard() {
         return this.props.name === "attachment_ids";
+    }
+
+    toggleAttachmentComposer() {
+        if (this.canPasteClipboard) {
+            this.composerState.open = !this.composerState.open;
+        }
     }
 
     getClipboardFiles(clipboardData) {

@@ -1,7 +1,44 @@
 .o_buz_helpdesk_attachment_preview {
-    &:focus {
-        outline: 2px solid var(--o-brand-primary);
-        outline-offset: 2px;
+    .o_buz_attachment_composer_toggle {
+        align-items: center;
+        display: inline-flex;
+        min-height: 2.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .o_buz_attachment_composer {
+        background: var(--o-view-background-color, #fff);
+        border: 1px solid var(--o-border-color, #dee2e6);
+        border-radius: 0.375rem;
+        margin-top: 0.5rem;
+        max-width: 42rem;
+        padding: 0.75rem;
+    }
+
+    .o_buz_attachment_composer_header {
+        align-items: center;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+    }
+
+    .o_buz_attachment_paste_zone {
+        align-items: center;
+        border: 1px dashed var(--o-border-color, #ced4da);
+        border-radius: 0.375rem;
+        color: var(--o-muted-color, #6c757d);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+
+        &:focus {
+            border-color: var(--o-brand-primary);
+            box-shadow: 0 0 0 0.15rem rgba(113, 75, 103, 0.15);
+            outline: 0;
+        }
     }
 
     .o_buz_attachment_paste_hint {
