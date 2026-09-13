@@ -286,6 +286,20 @@ export class ITManagementDashboard extends Component {
         return value ? `${value} h` : "N/A";
     }
 
+    formatLastUpdated() {
+        if (!this.state.lastUpdated) {
+            return "Not synced yet";
+        }
+        return this.state.lastUpdated.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+
+    hasRows(rows) {
+        return Array.isArray(rows) && rows.some((row) => Number(row.value || 0) > 0);
+    }
+
     formatAmount(value) {
         return new Intl.NumberFormat(undefined, {
             minimumFractionDigits: 2,
