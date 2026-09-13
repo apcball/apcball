@@ -13,10 +13,16 @@ export class ITManagementDashboard extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.openDrilldown = this.openDrilldown.bind(this);
+        // ใช้ใน arrow expression ของ QWeb จึงต้องผูก context ของ component ไว้เอง
+        this.selectTab = this.selectTab.bind(this);
         this.trendRef = useRef("ticketTrend");
         this.ticketStatusRef = useRef("ticketStatus");
         this.assetStatusRef = useRef("assetStatus");
         this.categoryRef = useRef("assetCategory");
+        this.ticketFunnelRef = useRef("ticketFunnel");
+        this.ticketAgingRef = useRef("ticketAging");
+        this.repairStatusRef = useRef("repairStatus");
+        this.repairWorkflowRef = useRef("repairWorkflow");
         this.charts = {};
         this.state = useState({
             data: null,
@@ -25,6 +31,7 @@ export class ITManagementDashboard extends Component {
             loading: true,
             error: null,
             lastUpdated: null,
+            tab: "overview",
         });
         onWillStart(async () => {
             try {
@@ -84,6 +91,10 @@ export class ITManagementDashboard extends Component {
         await this.loadData();
     }
 
+    selectTab(tab) {
+        this.state.tab = tab;
+    }
+
     destroyCharts() {
         Object.values(this.charts).forEach((chart) => chart.destroy());
         this.charts = {};
@@ -91,7 +102,7 @@ export class ITManagementDashboard extends Component {
 
     renderCharts() {
         const data = this.state.data;
-        if (!data || !window.Chart || !this.trendRef.el) {
+        if (!data || !window.Chart) {
             return;
         }
         this.destroyCharts();
@@ -101,6 +112,7 @@ export class ITManagementDashboard extends Component {
             plugins: { legend: { display: false } },
         };
         const trend = data.ticket_trend || [];
+        if (this.trendRef.el) {
         this.charts.trend = new window.Chart(this.trendRef.el, {
             type: "line",
             data: {
@@ -139,25 +151,25 @@ export class ITManagementDashboard extends Component {
                     this.openDrilldown(target, trend[element.index].date);
                 },
             },
-        });
-        this.charts.ticketStatus = this.makeDoughnut(
+        }); }
+        if (this.ticketStatusRef.el) { this.charts.ticketStatus = this.makeDoughnut(
             this.ticketStatusRef.el,
             data.ticket_status || [],
             ["#6d36e9", "#287df0", "#f39a16", "#22b45b", "#8b96a8"],
             (index) => this.openDrilldown(
                 "ticket_status", data.ticket_status[index].stage_id
             ),
-        );
-        this.charts.assetStatus = this.makeDoughnut(
+        ); }
+        if (this.assetStatusRef.el) { this.charts.assetStatus = this.makeDoughnut(
             this.assetStatusRef.el,
             data.asset_status || [],
             ["#22b45b", "#287df0", "#f39a16", "#8b96a8", "#ee3e4b"],
             (index) => this.openDrilldown(
                 "asset_status", data.asset_status[index].state
             ),
-        );
+        ); }
         const categories = data.assets_by_category || [];
-        this.charts.category = new window.Chart(this.categoryRef.el, {
+        if (this.categoryRef.el) { this.charts.category = new window.Chart(this.categoryRef.el, {
             type: "bar",
             data: {
                 labels: categories.map((row) => row.label),
@@ -179,6 +191,28 @@ export class ITManagementDashboard extends Component {
                     }
                 },
             },
+        }); }
+        const workflow = data.workflow || {};
+        const analytics = workflow.ticket_analytics || {};
+        if (this.ticketFunnelRef.el) {
+            this.charts.ticketFunnel = this.makeBar(this.ticketFunnelRef.el, data.ticket_status || [], "#287df0");
+        }
+        if (this.ticketAgingRef.el) {
+            this.charts.ticketAging = this.makeBar(this.ticketAgingRef.el, analytics.aging || [], "#6d36e9");
+        }
+        if (this.repairStatusRef.el) {
+            this.charts.repairStatus = this.makeBar(this.repairStatusRef.el, workflow.repair_analytics?.status || [], "#f39a16");
+        }
+        if (this.repairWorkflowRef.el) {
+            this.charts.repairWorkflow = this.makeBar(this.repairWorkflowRef.el, workflow.repair_analytics?.status || [], "#f39a16");
+        }
+    }
+
+    makeBar(element, rows, color) {
+        return new window.Chart(element, {
+            type: "bar",
+            data: { labels: rows.map((row) => row.label), datasets: [{ data: rows.map((row) => row.value), backgroundColor: color, borderRadius: 5 }] },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
         });
     }
 
@@ -246,6 +280,27 @@ export class ITManagementDashboard extends Component {
             "Resolved": "#22b45b",
             "Closed": "#8b96a8",
         }[label] || "#8b96a8";
+    }
+
+    formatHours(value) {
+        return value ? `${value} h` : "N/A";
+    }
+
+    formatAmount(value) {
+        return new Intl.NumberFormat(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(Number(value || 0));
+    }
+
+    attentionItems(attention) {
+        const rows = [];
+        (attention?.sla || []).forEach((item) => rows.push({ ...item, label: "SLA", kind: "urgent", icon: "fa-clock-o" }));
+        (attention?.urgent_tickets || []).forEach((item) => rows.push({ ...item, label: "Urgent", kind: "urgent", icon: "fa-bell-o" }));
+        (attention?.unassigned_tickets || []).forEach((item) => rows.push({ ...item, label: "Unassigned", kind: "warning", icon: "fa-user-o" }));
+        (attention?.repairs || []).forEach((item) => rows.push({ ...item, label: "Repair", kind: "warning", icon: "fa-wrench" }));
+        (attention?.licenses || []).forEach((item) => rows.push({ ...item, label: "License", kind: "license", icon: "fa-file-text-o" }));
+        return rows.slice(0, 8);
     }
 
     async openDrilldown(target, bucket = null) {

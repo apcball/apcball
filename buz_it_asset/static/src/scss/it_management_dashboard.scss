@@ -66,6 +66,11 @@
     .recent-panel{min-height:0;padding:12px}
 }
 
+/* Executive and workflow dashboard sections */
+.it-dashboard-tabs{display:flex;gap:22px;border-bottom:1px solid var(--it-border);margin-bottom:16px}.it-dashboard-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--it-muted);padding:8px 2px;font-weight:700}.it-dashboard-tabs button.active{border-bottom-color:var(--it-violet);color:var(--it-violet)}
+.it-kpi-icon.blue{background:#e7f0ff;color:var(--it-blue)}.repair-summary{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;align-items:end;margin-bottom:8px}.repair-summary strong{color:var(--it-navy);font-size:28px}.repair-summary b{color:var(--it-amber);font-size:20px}.repair-summary span{color:var(--it-muted);font-size:11px}.workflow-wide{grid-column:span 2}.workflow-grid .it-panel{min-height:0}
+@media(max-width:900px){.workflow-wide{grid-column:auto}}
+
 /* จัดพื้นที่ label ของฟอร์ม Asset โดยไม่กระทบฟอร์ม Odoo อื่น */
 .o_form_view .buz-asset-form-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));

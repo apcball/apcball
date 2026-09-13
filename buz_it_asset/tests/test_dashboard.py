@@ -41,6 +41,30 @@ class TestITManagementDashboard(TransactionCase):
         self.assertIn('sla', data['needs_attention'])
         self.assertIn('unassigned_tickets', data['needs_attention'])
 
+    def test_dashboard_payload_contains_executive_and_workflow_sections(self):
+        dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
+        data = dashboard.get_dashboard_data()
+        self.assertEqual(
+            set(('open_tickets', 'overdue_sla', 'sla_compliance',
+                 'asset_utilization', 'repair_backlog', 'license_risk')),
+            set(data['kpis']).intersection({
+                'open_tickets', 'overdue_sla', 'sla_compliance',
+                'asset_utilization', 'repair_backlog', 'license_risk',
+            }),
+        )
+        self.assertIn('sla_status', data)
+        self.assertIn('ticket_analytics', data['workflow'])
+        self.assertIn('repair_analytics', data['workflow'])
+        self.assertEqual(len(data['workflow']['ticket_analytics']['aging']), 4)
+
+    def test_open_backlog_drilldown_excludes_resolved_and_closed(self):
+        dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
+        action = dashboard.get_drilldown_action('open_tickets')
+        self.assertEqual(action['name'], 'Open Backlog')
+        self.assertIn(('stage_id', 'not in'), [
+            (item[0], item[1]) for item in action['domain'] if isinstance(item, tuple)
+        ])
+
     def test_needs_attention_drilldown_combines_urgent_and_sla(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
         action = dashboard.get_drilldown_action('needs_attention')
