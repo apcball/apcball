@@ -28,7 +28,7 @@ User ทั่วไปต้องถูกเพิ่มเข้า Group **
 
 ## 3. เมนูของ Requester
 
-- **Dashboard:** เห็นเฉพาะ Ticket ของตนเอง ไม่มี Create, Edit และ Delete
+- **Dashboard:** ไม่มีสิทธิ์เข้าถึง Dashboard ของทีม IT
 - **My Tickets:** เห็นเฉพาะ Ticket ของตนเอง และเป็นจุดที่ใช้สร้าง Ticket ใหม่
 - **Tickets:** เมนูสำหรับ Agent ไม่แสดงแก่ Requester
 - **Knowledge Base:** อ่านบทความที่ได้รับอนุญาต
@@ -76,7 +76,7 @@ Ticket ใหม่จะมีสถานะ **Draft**
 
 ## 7. การติดตามและตอบกลับ
 
-- ดูรายละเอียด ประวัติ และไฟล์แนบได้จาก Dashboard หรือ My Tickets
+- ดูรายละเอียด ประวัติ และไฟล์แนบได้จาก My Tickets
 - ใช้ Chatter เพื่อตอบกลับและติดตามประวัติ
 - การตอบกลับจาก Agent จะบันทึก First Response
 - การตอบ Email ใน Thread เดิมต้องอัปเดต Ticket เดิม ไม่สร้างซ้ำ เมื่อมี Message-ID, In-Reply-To หรือเลข Ticket ใน Subject
@@ -94,7 +94,7 @@ Email ของผู้ส่งควรถูกผูกกับ User ใ�
 
 ## 9. ขั้นตอนของ Support Agent
 
-1. เข้า **IT Management > Tickets** หรือ Dashboard
+1. เข้า **IT Management > Tickets** หรือ **My Tickets** ตามสิทธิ์ผู้ใช้งาน
 2. เปิด Ticket ที่เป็น New หรือรอการมอบหมาย
 3. ตรวจสอบรายละเอียดและไฟล์แนบ
 4. กด **Assign to Me**
@@ -133,8 +133,8 @@ Requester ไม่จำเป็นต้องเข้าถึงเมน�
 | ID | ทดสอบ | ผลที่คาดหวัง |
 |---|---|---|
 | RQ-01 | Login ด้วย Requester | เข้า IT Helpdesk ได้ |
-| RQ-02 | เปิด Dashboard | เห็นเฉพาะ Ticket ของตนเอง |
-| RQ-03 | ตรวจ Dashboard | ไม่มี Create, Edit, Delete |
+| RQ-02 | ตรวจเมนู Dashboard | ไม่แสดง Dashboard ให้ Requester |
+| RQ-03 | เปิด My Tickets | เห็นเฉพาะ Ticket ของตนเอง |
 | RQ-04 | เปิด My Tickets | เห็นเฉพาะ Ticket ของตนเอง |
 | RQ-05 | เปิด Ticket ของ User อื่น | เข้าถึงไม่ได้ |
 | RQ-06 | เปิด Tickets/SLA/Settings | ไม่เห็นหรือเข้าถึงไม่ได้ |
@@ -227,7 +227,7 @@ Requester ไม่จำเป็นต้องเข้าถึงเมน�
 - Requester สร้าง Ticket ได้เฉพาะจาก My Tickets
 - Ticket ใหม่เริ่มเป็น Draft
 - เจ้าของ Ticket กด Confirm ได้และสถานะเป็น New
-- Dashboard แสดงเฉพาะ Ticket ของตนเองและไม่มี Create/Edit/Delete
+- Requester ไม่เห็น Dashboard ของทีม IT และใช้ My Tickets สำหรับดูหรือสร้าง Ticket ของตนเอง
 - Agent รับและดำเนินการ Ticket ได้
 - SLA เริ่มหลัง Confirm และใช้เวลาทำการจริง
 - Pending User หยุด SLA และกลับมาคำนวณต่อได้

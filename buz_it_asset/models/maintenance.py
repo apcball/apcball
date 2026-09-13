@@ -42,6 +42,7 @@ class ITAssetMaintenance(models.Model):
         ('cancelled', 'ยกเลิก (Cancelled)'),
     ], string='สถานะ (Status)', required=True, default='sent')
     completed_date = fields.Date(string='วันที่ซ่อมเสร็จ (Completed Date)')
+    active = fields.Boolean(default=True)
     technician_employee_id = fields.Many2one(
         'hr.employee', string='ช่างภายใน (Internal Technician)',
         ondelete='restrict', check_company=True, groups=IT_GROUPS,

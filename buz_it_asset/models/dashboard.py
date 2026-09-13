@@ -12,9 +12,10 @@ class ITManagementDashboard(models.AbstractModel):
     _TARGETS = {
         'open_tickets', 'urgent_tickets', 'ticket_status',
         'ticket_trend_opened', 'ticket_trend_closed', 'recent_tickets',
+        'unassigned_tickets', 'overdue_sla',
         'assets_assigned', 'assets_available', 'assets_repair',
         'asset_status', 'asset_category', 'repair_backlog',
-        'licenses_expiring', 'license_seats',
+        'licenses_expiring', 'licenses_expired', 'license_seats',
     }
 
     @api.model
@@ -58,6 +59,7 @@ class ITManagementDashboard(models.AbstractModel):
     def _ticket_base_domain(self, normalized):
         draft = self.env.ref('buz_it_helpdesk.stage_draft')
         return [
+            ('active', '=', True),
             ('company_id', 'in', normalized['company_ids']),
             ('stage_id', '!=', draft.id),
         ]
@@ -78,7 +80,7 @@ class ITManagementDashboard(models.AbstractModel):
 
     @api.model
     def _ticket_trend(self, normalized):
-        model = self.env['buz.helpdesk.ticket'].with_context(active_test=False)
+        model = self.env['buz.helpdesk.ticket']
         domain = self._ticket_base_domain(normalized)
         opened = Counter()
         closed = Counter()
@@ -106,7 +108,7 @@ class ITManagementDashboard(models.AbstractModel):
 
     @api.model
     def _ticket_status(self, normalized):
-        model = self.env['buz.helpdesk.ticket'].with_context(active_test=False)
+        model = self.env['buz.helpdesk.ticket']
         stages = [
             ('New', 'buz_it_helpdesk.stage_new'),
             ('In Progress', 'buz_it_helpdesk.stage_in_progress'),
@@ -128,8 +130,8 @@ class ITManagementDashboard(models.AbstractModel):
 
     @api.model
     def _asset_status(self, normalized):
-        model = self.env['buz.it.asset'].with_context(active_test=False)
-        base = [('company_id', 'in', normalized['company_ids'])]
+        model = self.env['buz.it.asset']
+        base = [('active', '=', True), ('company_id', 'in', normalized['company_ids'])]
         states = [
             ('Available', 'available'), ('Assigned', 'assigned'),
             ('Repair', 'repair'), ('Retired', 'retired'), ('Lost', 'lost'),
@@ -144,19 +146,23 @@ class ITManagementDashboard(models.AbstractModel):
 
     @api.model
     def _asset_categories(self, normalized):
-        model = self.env['buz.it.asset'].with_context(active_test=False)
+        model = self.env['buz.it.asset']
         rows = model.search_read(
-            [('company_id', 'in', normalized['company_ids'])], ['category_id']
+            [('active', '=', True), ('company_id', 'in', normalized['company_ids'])],
+            ['category_id']
         )
         counts = Counter()
         names = {}
+        uncategorized = 0
         for row in rows:
             category = row['category_id']
             if category:
                 category_id, category_name = category
                 counts[category_id] += 1
                 names[category_id] = category_name
-        return [
+            else:
+                uncategorized += 1
+        result = [
             {
                 'category_id': category_id,
                 'label': names[category_id],
@@ -164,6 +170,13 @@ class ITManagementDashboard(models.AbstractModel):
             }
             for category_id in counts
         ]
+        if uncategorized:
+            result.append({
+                'category_id': False,
+                'label': 'Uncategorized',
+                'value': uncategorized,
+            })
+        return result
 
     @api.model
     def _license_seats(self, normalized):
@@ -174,29 +187,112 @@ class ITManagementDashboard(models.AbstractModel):
         total = sum(record.seat_count for record in licenses)
         used = sum(record.active_installation_count for record in licenses)
         unlimited = sum(1 for record in licenses if not record.seat_count)
+        overallocated = sum(
+            max(record.active_installation_count - record.seat_count, 0)
+            for record in licenses if record.seat_count
+        )
         return {
             'used': used,
             'available': max(total - used, 0),
             'total': total,
             'unlimited_licenses': unlimited,
+            'overallocated': overallocated,
         }
 
     @api.model
+    def _human_duration(self, seconds):
+        minutes = max(int(seconds // 60), 1)
+        days, minutes = divmod(minutes, 24 * 60)
+        hours, minutes = divmod(minutes, 60)
+        parts = []
+        if days:
+            parts.append(f'{days} วัน')
+        if hours:
+            parts.append(f'{hours} ชั่วโมง')
+        if minutes and len(parts) < 2:
+            parts.append(f'{minutes} นาที')
+        return 'เกิน ' + ' '.join(parts)
+
+    @api.model
+    def _format_user_datetime(self, value):
+        if not value:
+            return ''
+        local_value = fields.Datetime.context_timestamp(self, value)
+        return local_value.strftime('%Y-%m-%d %H:%M')
+
+    @api.model
+    def _overdue_sla(self, normalized):
+        ticket_model = self.env['buz.helpdesk.ticket']
+        terminal_stages = [
+            self.env.ref('buz_it_helpdesk.stage_draft').id,
+            self.env.ref('buz_it_helpdesk.stage_resolved').id,
+            self.env.ref('buz_it_helpdesk.stage_closed').id,
+        ]
+        tickets = ticket_model.search([
+            ('active', '=', True),
+            ('company_id', 'in', normalized['company_ids']),
+            ('stage_id', 'not in', terminal_stages),
+        ])
+        now = fields.Datetime.now()
+        rows = []
+        for ticket in tickets:
+            if ticket.sla_status in ('no_sla', 'paused', 'resolved'):
+                continue
+            deadlines = []
+            for label, deadline, completed in (
+                ('Response', ticket.sla_response_deadline, ticket.sla_response_at),
+                ('Resolution', ticket.sla_resolution_deadline, ticket.sla_resolution_at),
+            ):
+                if deadline and not completed and deadline < now:
+                    deadlines.append((label, deadline))
+            if not deadlines:
+                continue
+            overdue_seconds = max((now - deadline).total_seconds() for _, deadline in deadlines)
+            rows.append({
+                'id': ticket.id,
+                'target': 'overdue_sla',
+                'bucket': {'record_id': ticket.id},
+                'title': ticket.display_name,
+                'detail': ticket.subject,
+                'sla_details': [
+                    {
+                        'type': label,
+                        'deadline': self._format_user_datetime(deadline),
+                        'duration': self._human_duration(
+                            (now - deadline).total_seconds()
+                        ),
+                    }
+                    for label, deadline in deadlines
+                ],
+                'assignee': ticket.assigned_user_id.name or 'Unassigned',
+                'overdue_seconds': overdue_seconds,
+                'status': ticket.stage_id.name,
+                'priority': ticket.priority,
+            })
+        rows.sort(key=lambda row: (-row['overdue_seconds'], row['id']))
+        return rows
+
+    @api.model
     def _needs_attention(self, normalized):
-        ticket_model = self.env['buz.helpdesk.ticket'].with_context(
-            active_test=False
-        )
-        repair_model = self.env['buz.it.asset.maintenance'].with_context(
-            active_test=False
-        )
+        ticket_model = self.env['buz.helpdesk.ticket']
+        repair_model = self.env['buz.it.asset.maintenance']
         license_model = self.env['buz.it.software.license']
         ticket_base = self._ticket_base_domain(normalized)
         closed = self.env.ref('buz_it_helpdesk.stage_closed')
+        resolved = self.env.ref('buz_it_helpdesk.stage_resolved')
         urgent = ticket_model.search(
-            ticket_base + [('stage_id', '!=', closed.id), ('priority', '=', '3')],
+            ticket_base + [
+                ('stage_id', 'not in', [closed.id, resolved.id]),
+                ('priority', '=', '3'),
+            ],
+            order='create_ticket_date asc, id asc', limit=5,
+        )
+        unassigned = ticket_model.search(
+            ticket_base + [('assigned_user_id', '=', False)],
             order='create_ticket_date asc, id asc', limit=5,
         )
         repairs = repair_model.search([
+            ('active', '=', True),
             ('company_id', 'in', normalized['company_ids']),
             ('state', 'in', ['sent', 'in_progress']),
         ], order='sent_date asc, id asc', limit=5)
@@ -210,31 +306,43 @@ class ITManagementDashboard(models.AbstractModel):
         return {
             'urgent_tickets': [
                 {
-                    'target': 'urgent_tickets', 'bucket': None,
+                    'id': ticket.id, 'target': 'urgent_tickets',
+                    'bucket': {'record_id': ticket.id},
                     'title': ticket.display_name, 'detail': ticket.subject,
                     'status': ticket.stage_id.name, 'priority': ticket.priority,
                 } for ticket in urgent
             ],
             'repairs': [
                 {
-                    'target': 'repair_backlog', 'bucket': None,
+                    'id': repair.id, 'target': 'repair_backlog',
+                    'bucket': {'record_id': repair.id},
                     'title': repair.asset_id.display_name, 'detail': repair.symptom,
                     'status': repair.state, 'priority': None,
                 } for repair in repairs
             ],
             'licenses': [
                 {
-                    'target': 'licenses_expiring', 'bucket': None,
+                    'id': record.id, 'target': 'licenses_expiring',
+                    'bucket': {'record_id': record.id},
                     'title': record.display_name,
                     'detail': record.expiration_date.isoformat(),
                     'status': 'Expiring', 'priority': None,
                 } for record in expiring
             ],
+            'unassigned_tickets': [
+                {
+                    'id': ticket.id, 'target': 'unassigned_tickets',
+                    'bucket': {'record_id': ticket.id},
+                    'title': ticket.display_name, 'detail': ticket.subject,
+                    'status': ticket.stage_id.name, 'priority': ticket.priority,
+                } for ticket in unassigned
+            ],
+            'sla': self._overdue_sla(normalized)[:5],
         }
 
     @api.model
     def _recent_tickets(self, normalized):
-        model = self.env['buz.helpdesk.ticket'].with_context(active_test=False)
+        model = self.env['buz.helpdesk.ticket']
         rows = model.search_read(
             self._ticket_base_domain(normalized),
             [
@@ -256,6 +364,7 @@ class ITManagementDashboard(models.AbstractModel):
                 'stage_id': row['stage_id'][0] if row['stage_id'] else False,
                 'create_ticket_date': row['create_ticket_date'],
                 'target': 'recent_tickets',
+                'bucket': {'record_id': row['id']},
             }
             for row in rows
         ]
@@ -264,17 +373,16 @@ class ITManagementDashboard(models.AbstractModel):
     def get_dashboard_data(self, filters=None):
         self._ensure_dashboard_access()
         normalized = self._normalize_filters(filters)
-        ticket_model = self.env['buz.helpdesk.ticket'].with_context(
-            active_test=False
-        )
+        ticket_model = self.env['buz.helpdesk.ticket']
         base = self._ticket_base_domain(normalized)
         closed = self.env.ref('buz_it_helpdesk.stage_closed')
-        open_domain = base + [('stage_id', '!=', closed.id)]
+        resolved = self.env.ref('buz_it_helpdesk.stage_resolved')
+        open_domain = base + [('stage_id', 'not in', [closed.id, resolved.id])]
         new_ticket_domain = base + [
             ('stage_id', '=', self.env.ref('buz_it_helpdesk.stage_new').id),
         ]
-        asset_model = self.env['buz.it.asset'].with_context(active_test=False)
-        asset_base = [('company_id', 'in', normalized['company_ids'])]
+        asset_model = self.env['buz.it.asset']
+        asset_base = [('active', '=', True), ('company_id', 'in', normalized['company_ids'])]
         today = normalized['date_to']
         expiring_domain = [
             ('company_id', 'in', normalized['company_ids']),
@@ -282,6 +390,12 @@ class ITManagementDashboard(models.AbstractModel):
             ('expiration_date', '>=', today),
             ('expiration_date', '<=', today + timedelta(days=30)),
         ]
+        expired_domain = [
+            ('company_id', 'in', normalized['company_ids']),
+            ('active', '=', True),
+            ('expiration_date', '<', today),
+        ]
+        overdue_sla = self._overdue_sla(normalized)
         return {
             'meta': {
                 'period': normalized['period'],
@@ -299,6 +413,10 @@ class ITManagementDashboard(models.AbstractModel):
                 'urgent_tickets': ticket_model.search_count(
                     open_domain + [('priority', '=', '3')]
                 ),
+                'unassigned_tickets': ticket_model.search_count(
+                    base + [('assigned_user_id', '=', False)]
+                ),
+                'overdue_sla': len(overdue_sla),
                 'assets_assigned': asset_model.search_count(
                     asset_base + [('state', '=', 'assigned')]
                 ),
@@ -311,6 +429,9 @@ class ITManagementDashboard(models.AbstractModel):
                 'licenses_expiring': self.env[
                     'buz.it.software.license'
                 ].search_count(expiring_domain),
+                'licenses_expired': self.env[
+                    'buz.it.software.license'
+                ].search_count(expired_domain),
             },
             'ticket_trend': self._ticket_trend(normalized),
             'ticket_status': self._ticket_status(normalized),
@@ -328,11 +449,43 @@ class ITManagementDashboard(models.AbstractModel):
         if target not in self._TARGETS:
             raise UserError('Unsupported dashboard drill-down target.')
 
+        if isinstance(bucket, dict) and bucket.get('record_id'):
+            record_models = {
+                'recent_tickets': 'buz.helpdesk.ticket',
+                'urgent_tickets': 'buz.helpdesk.ticket',
+                'unassigned_tickets': 'buz.helpdesk.ticket',
+                'overdue_sla': 'buz.helpdesk.ticket',
+                'repair_backlog': 'buz.it.asset.maintenance',
+                'licenses_expiring': 'buz.it.software.license',
+            }
+            model = record_models.get(target)
+            if model:
+                record_domain = [('id', '=', int(bucket['record_id']))]
+                if model == 'buz.helpdesk.ticket':
+                    record_domain += self._ticket_base_domain(normalized)
+                else:
+                    record_domain += [
+                        ('active', '=', True),
+                        ('company_id', 'in', normalized['company_ids']),
+                    ]
+                record = self.env[model].search(record_domain, limit=1)
+                if not record:
+                    raise AccessError('The selected dashboard record is not allowed.')
+                return {
+                    'type': 'ir.actions.act_window',
+                    'name': 'Dashboard Details',
+                    'res_model': model,
+                    'res_id': record.id,
+                    'view_mode': 'form',
+                    'views': [[False, 'form']],
+                    'context': {'active_test': True},
+                }
+
         ticket_model = 'buz.helpdesk.ticket'
         asset_model = 'buz.it.asset'
         model = ticket_model
         name = 'Dashboard Details'
-        context = {'active_test': False}
+        context = {'active_test': True}
         ticket_base = self._ticket_base_domain(normalized)
         closed = self.env.ref('buz_it_helpdesk.stage_closed')
         if target == 'open_tickets':
@@ -341,8 +494,19 @@ class ITManagementDashboard(models.AbstractModel):
             ]
         elif target == 'urgent_tickets':
             name, domain = 'Urgent Tickets', ticket_base + [
-                ('stage_id', '!=', closed.id), ('priority', '=', '3'),
+                ('stage_id', 'not in', [closed.id, self.env.ref(
+                    'buz_it_helpdesk.stage_resolved'
+                ).id]), ('priority', '=', '3'),
             ]
+        elif target == 'unassigned_tickets':
+            name, domain = 'Unassigned Tickets', ticket_base + [
+                ('assigned_user_id', '=', False),
+            ]
+        elif target == 'overdue_sla':
+            overdue_ids = [
+                row['id'] for row in self._overdue_sla(normalized)
+            ]
+            name, domain = 'Overdue SLA', [('id', 'in', overdue_ids)]
         elif target in (
             'ticket_status', 'ticket_trend_opened',
             'ticket_trend_closed', 'recent_tickets',
@@ -366,11 +530,13 @@ class ITManagementDashboard(models.AbstractModel):
             }
             state, name = states[target]
             model, domain = asset_model, [
+                ('active', '=', True),
                 ('company_id', 'in', normalized['company_ids']),
                 ('state', '=', state),
             ]
         elif target == 'asset_status':
             name, domain = 'Asset Status', [
+                ('active', '=', True),
                 ('company_id', 'in', normalized['company_ids']),
             ]
             model = asset_model
@@ -378,13 +544,18 @@ class ITManagementDashboard(models.AbstractModel):
                 domain.append(('state', '=', bucket))
         elif target == 'asset_category':
             name, domain = 'Assets by Category', [
+                ('active', '=', True),
                 ('company_id', 'in', normalized['company_ids']),
             ]
             model = asset_model
             category_id = bucket.get('category_id') if isinstance(bucket, dict) else bucket
-            domain.append(('category_id', '=', int(category_id)))
+            domain.append(
+                ('category_id', '=', int(category_id)) if category_id
+                else ('category_id', '=', False)
+            )
         elif target == 'repair_backlog':
             name, model, domain = 'Repair Backlog', 'buz.it.asset.maintenance', [
+                ('active', '=', True),
                 ('company_id', 'in', normalized['company_ids']),
                 ('state', 'in', ['sent', 'in_progress']),
             ]
@@ -394,6 +565,12 @@ class ITManagementDashboard(models.AbstractModel):
                 ('active', '=', True),
                 ('expiration_date', '>=', normalized['date_to']),
                 ('expiration_date', '<=', normalized['date_to'] + timedelta(days=30)),
+            ]
+        elif target == 'licenses_expired':
+            name, model, domain = 'Expired Licenses', 'buz.it.software.license', [
+                ('company_id', 'in', normalized['company_ids']),
+                ('active', '=', True),
+                ('expiration_date', '<', normalized['date_to']),
             ]
         elif target == 'license_seats':
             name, model, domain = 'Software Licenses', 'buz.it.software.license', [

@@ -253,3 +253,15 @@
 - ปรับ Attachment Widget และ Backend attachment access ให้รองรับทั้งสองความสัมพันธ์ โดยคงสิทธิ์เดิมของ Requester, Support Agent และ Manager
 - เพิ่ม Automated Tests สำหรับการแยกความสัมพันธ์ การใช้งานของทีม IT และการป้องกันการจัดการโดยผู้ไม่มีสิทธิ์
 - ตรวจสอบใน local isolated test เท่านั้น; ยังไม่มีการ Deploy, Upgrade หรือ Restart Server
+
+## IT Management Dashboard Improvements (2026-09-13)
+
+- ขอบเขตการปรับปรุงครอบคลุม `buz_it_helpdesk` และ `buz_it_asset` โดย Dashboard อยู่ใน `buz_it_asset` และอ่านข้อมูล Ticket/SLA จาก `buz_it_helpdesk`
+- เพิ่ม Overdue SLA สำหรับ Response และ Resolution โดยรวม Ticket เดียวกันเป็นรายการเดียว แสดงตาม Timezone ของผู้ใช้ และไม่รวม No SLA, Paused, Resolved, Closed หรือข้อมูลที่ไม่สมบูรณ์
+- เพิ่ม Unassigned Tickets, Expired/Overallocated License และหมวด Asset `Uncategorized`
+- ปรับ Dashboard และ Drill-down ให้ไม่รวมข้อมูล Archive และเปิดรายการที่เลือกโดยตรง พร้อมรักษาการกรองบริษัทเดิม
+- ปรับ Refresh ให้คงข้อมูลเดิมระหว่างโหลด แสดง Last Updated และแจ้งเตือนเมื่อข้อมูลใหม่โหลดไม่สำเร็จ
+- คงชื่อ `Open Tickets`, Layout หลัก, สิทธิ์ Dashboard, SLA calculation, Workflow, Approval และ Notification เดิม
+- เพิ่ม Dashboard automated tests และตรวจ XML/JavaScript/การโหลด assets; Browser UAT ต้องตรวจ Desktop และหน้าจอแคบแยกต่างหาก
+- แก้ User Guide ให้ Requester ใช้ `My Tickets` และไม่เข้าถึง IT Management Dashboard
+- Local-only: ยังไม่ Deploy, Upgrade หรือ Restart DEV/Production และไม่ทำ Data Backfill

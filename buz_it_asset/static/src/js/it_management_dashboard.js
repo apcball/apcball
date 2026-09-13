@@ -24,6 +24,7 @@ export class ITManagementDashboard extends Component {
             company: "all",
             loading: true,
             error: null,
+            lastUpdated: null,
         });
         onWillStart(async () => {
             try {
@@ -52,11 +53,13 @@ export class ITManagementDashboard extends Component {
         this.state.loading = true;
         this.state.error = null;
         try {
-            this.state.data = await this.orm.call(
+            const data = await this.orm.call(
                 "buz.it.management.dashboard",
                 "get_dashboard_data",
                 [this.filters],
             );
+            this.state.data = data;
+            this.state.lastUpdated = new Date();
         } catch (error) {
             this.state.error = error.message || "Unable to load dashboard data.";
         } finally {
@@ -125,6 +128,15 @@ export class ITManagementDashboard extends Component {
                 plugins: {
                     legend: { display: true, position: "top", align: "end" },
                     tooltip: { mode: "index", intersect: false },
+                },
+                onClick: (_event, elements) => {
+                    if (!elements.length) {
+                        return;
+                    }
+                    const element = elements[0];
+                    const target = element.datasetIndex === 0
+                        ? "ticket_trend_opened" : "ticket_trend_closed";
+                    this.openDrilldown(target, trend[element.index].date);
                 },
             },
         });
