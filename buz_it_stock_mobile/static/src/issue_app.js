@@ -4,6 +4,7 @@ import { Component, onWillStart, onWillUnmount, useRef, useState } from "@odoo/o
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { deserializeDateTime } from "@web/core/l10n/dates";
+import { Dialog } from "@web/core/dialog/dialog";
 
 export function itemKey(productId, lotId = false) {
     return `${productId}:${lotId || 0}`;
@@ -17,6 +18,29 @@ export function quantityTotals(lines) {
     return Object.entries(totals).map(([unit, qty]) => `${Number(qty.toFixed(6))} ${unit}`).join(" · ");
 }
 
+const CHART_COLORS = ["#0668ff", "#3995ff", "#ffad00", "#ff654e", "#9147ff", "#13c1b8"];
+
+export function categoryChart(categories = []) {
+    const positive = categories.filter(item => Number(item.qty) > 0);
+    if (!positive.length || new Set(positive.map(item => item.uom)).size !== 1) {
+        return null;
+    }
+    const total = positive.reduce((sum, item) => sum + Number(item.qty), 0);
+    let cursor = 0;
+    const segments = positive.map((item, index) => {
+        const start = cursor;
+        cursor += Number(item.qty) / total * 100;
+        return `${CHART_COLORS[index % CHART_COLORS.length]} ${start}% ${cursor}%`;
+    });
+    return { style: `background: conic-gradient(${segments.join(",")})`, total, uom: positive[0].uom };
+}
+
+class ITIssueDetail extends Component {
+    static template = "buz_it_stock_mobile.Detail";
+    static components = { Dialog };
+    static props = { detail: Object, close: Function, formatDate: Function, number: Function, statusLabel: Function };
+}
+
 export class ITIssueApp extends Component {
     static template = "buz_it_stock_mobile.App";
 
@@ -24,13 +48,14 @@ export class ITIssueApp extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.dialog = useService("dialog");
         this.canvas = useRef("signature");
         this.state = useState({
             ready: false, busy: false, error: "", step: 0, nav: false,
-            boot: {}, products: [], more: false, search: "", category: false,
+            boot: {}, products: [], more: false, search: "", category: false, catalogExpanded: false,
             cart: [], note: "", people: [], employeeSearch: "", employee: null,
             locationId: "", detail: null, dashboard: null, lotProduct: null, lots: [],
-            signed: false, requestKey: null, uncertain: false,
+            signed: false, requestKey: null, uncertain: false, failedImages: {},
         });
         this.catalogRevision = 0;
         this.peopleRevision = 0;
@@ -46,7 +71,7 @@ export class ITIssueApp extends Component {
     }
 
     get title() {
-        return ["เบิกอุปกรณ์ IT", "ตรวจสอบรายการ", "ยืนยันผู้รับ", "เซ็นรับอุปกรณ์", "สำเร็จ"][this.state.step];
+        return ["IT Issue", "ตรวจสอบรายการ", "ยืนยันผู้รับ", "เซ็นรับอุปกรณ์", "สำเร็จ"][this.state.step];
     }
     get totals() { return quantityTotals(this.state.cart); }
     get distinctCount() { return new Set(this.state.cart.map(line => line.product_id)).size; }
@@ -57,6 +82,38 @@ export class ITIssueApp extends Component {
     icon(category) { return `fa fa-${category.icon || "cube"}`; }
     itemKey(productId, lotId) { return itemKey(productId, lotId); }
     image(productId) { return `/web/image/product.product/${productId}/image_256`; }
+    imageFailed(productId) { this.state.failedImages[productId] = true; }
+    get chart() { return categoryChart(this.state.dashboard?.categories); }
+    chartColor(index) { return `background: ${CHART_COLORS[index % CHART_COLORS.length]}`; }
+    statusLabel(state) { return { draft: "ร่าง", awaiting: "รอเซ็น", done: "เสร็จสิ้น", cancel: "ยกเลิก" }[state] || state; }
+    categoryImage(id) {
+        const product = this.state.products.find(item => item.category_id === id && item.has_image && !this.state.failedImages[item.id]);
+        return product ? this.image(product.id) : false;
+    }
+    categoryImageFailed(event) {
+        const match = event.currentTarget.getAttribute("src").match(/\/product\.product\/(\d+)\//);
+        if (match) { this.imageFailed(Number(match[1])); }
+    }
+    showCart() {
+        if (this.state.busy || this.state.uncertain || this.state.step === 4) { return; }
+        this.clearSignature();
+        this.state.nav = false;
+        this.state.step = 1;
+    }
+    showAllProducts() {
+        this.state.catalogExpanded = true;
+        this.state.search = "";
+        clearTimeout(this.searchTimer);
+        return this.selectCategory(false);
+    }
+    openMyIssues() {
+        return this.openAction({
+            type: "ir.actions.act_window", name: "รายการของฉัน", res_model: "buz.it.issue",
+            views: [[false, "list"], [false, "form"]],
+            domain: [["create_uid", "=", this.state.boot.user_id], ["company_id", "=", this.state.boot.company_id]],
+            target: "current",
+        });
+    }
 
     async run(callback) {
         if (this.state.busy) { return; }
@@ -98,11 +155,13 @@ export class ITIssueApp extends Component {
     }
     async dashboard() { this.state.dashboard = await this.orm.call("buz.it.issue", "get_dashboard", []); }
     searchInput(event) {
+        this.state.catalogExpanded = true;
         this.state.search = event.target.value;
         clearTimeout(this.searchTimer);
         this.searchTimer = setTimeout(() => this.run(() => this.catalog()), 250);
     }
     selectCategory(id) {
+        this.state.catalogExpanded = true;
         this.state.category = id;
         return this.run(() => this.catalog());
     }
@@ -279,10 +338,20 @@ export class ITIssueApp extends Component {
         });
         await this.run(async () => { await Promise.all([this.catalog(), this.dashboard()]); });
     }
-    openAction(action) { this.state.nav = false; return this.action.doAction(action); }
+    openAction(action) {
+        if (this.state.busy || this.state.uncertain) { return; }
+        this.state.nav = false;
+        return this.action.doAction(action);
+    }
     openDetail(id) {
-        return this.action.doAction({ type: "ir.actions.act_window", res_model: "buz.it.issue",
-            res_id: id, views: [[false, "form"]], target: "current" });
+        if (this.state.uncertain) { return; }
+        return this.run(async () => {
+            const detail = await this.orm.call("buz.it.issue", "get_detail", [[id]]);
+            this.dialog.add(ITIssueDetail, {
+                detail, formatDate: value => this.formatDate(value),
+                number: value => this.number(value), statusLabel: value => this.statusLabel(value),
+            });
+        });
     }
 }
 

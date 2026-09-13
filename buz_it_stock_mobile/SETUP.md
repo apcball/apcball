@@ -32,6 +32,10 @@ docker compose -p buz-it-stock-test -f docker-compose.it-stock-test.yml down
 
 The Compose file mounts only this addon read-only, uses Postgres 16 with temporary database storage, and runs the Odoo 17 test runner against `MOG_IT_TEST`. It has no DEV/PROD connections and no published ports. Stopping its Postgres container discards test data. Never substitute a live database for this test command.
 
-Frontend unit tests are registered in `web.qunit_suite_tests` and can be run at `/web/tests?module=IT%20Issue%20Mobile` on an isolated Odoo test server. Check the full receipt flow at 390, 768 and 1440 pixels, including touch signing, screen rotation, serial selection, and network recovery.
+Frontend unit tests are registered in `web.qunit_suite_tests` and can be run at `/web/tests?module=buz_it_stock_mobile%20%3E%20IT%20Issue%20Mobile` on an isolated Odoo test server. The module prefix is required by Odoo's QUnit runner. Check the full receipt flow at 375, 390, 768, 1024 and 1440 pixels, including touch signing, screen rotation, serial selection, and network recovery.
+
+With Playwright installed, run `tests/browser_acceptance.cjs`, `tests/browser_resilience.cjs`, and `tests/browser_redesign.cjs` using Node. Set `IT_TEST_URL` to the disposable localhost preview and `IT_TEST_PASSWORD` to its test account password. `IT_TEST_ARTIFACTS` controls the acceptance screenshots directory. Acceptance and resilience tests create actual receipts only in the disposable database; redesign edge cases intercept read responses to verify empty data, operator presentation, mixed units, failed images and long names. Actual authorization remains covered by the Odoo tests.
+
+The home screen shows four equipment cards on desktop and three on mobile; **ดูทั้งหมด**, search or a category selection expands the catalog, retaining its existing pagination. Product photos come from Odoo, with category icons when absent or unavailable. The banner is a bundled SVG. Dashboard values are real; historical growth percentages are omitted, and mixed units use separate progress bars. Mobile **รายการของฉัน** filters the standard history by creator and current company. Recent receipt details open in an Odoo dialog without replacing the current cart.
 
 Deployment is separate; use the repository's `scripts/deploy.sh` after reviewing results and authorizing the target environment.

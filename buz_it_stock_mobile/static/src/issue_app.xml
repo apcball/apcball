@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
+    <t t-name="buz_it_stock_mobile.Detail">
+        <Dialog title="props.detail.name" size="'md'">
+                <div class="buz-it-app it-detail-content"><section class="it-panel"><div class="it-section-heading"><h2>รายละเอียดใบเบิก</h2><span t-att-class="'it-status ' + props.detail.state" t-esc="props.statusLabel(props.detail.state)"/></div><div class="it-receiver selected"><span class="it-avatar"><i class="fa fa-user"/></span><div><strong t-esc="props.detail.receiver"/><small t-esc="props.detail.department"/><small t-esc="props.detail.location"/></div></div><div class="it-summary"><div t-foreach="props.detail.lines" t-as="line" t-key="line_index"><span><t t-esc="line.name"/><small t-if="line.lot_name" t-esc="line.lot_name"/></span><strong><t t-esc="props.number(line.quantity)"/> <t t-esc="line.uom"/></strong></div></div><p t-if="props.detail.note" class="it-detail-note" t-esc="props.detail.note"/><div t-if="props.detail.picking_name" class="it-stat"><span>ใบโอนสินค้า</span><strong t-esc="props.detail.picking_name"/></div><t t-if="props.detail.signature"><p class="it-muted">ลายเซ็นผู้รับ · <t t-esc="props.formatDate(props.detail.signed_on)"/></p><img class="it-saved-signature" t-att-src="'data:image/png;base64,' + props.detail.signature" alt="ลายเซ็นผู้รับอุปกรณ์"/></t></section></div>
+            <t t-set-slot="footer"><div class="buz-it-app it-detail-footer"><button class="it-primary" t-on-click="props.close">ปิดรายละเอียด</button></div></t>
+        </Dialog>
+    </t>
     <t t-name="buz_it_stock_mobile.App">
-        <div class="buz-it-app">
+        <div class="buz-it-app" t-att-class="{'has-cart': state.cart.length and state.step === 0}">
             <aside t-att-class="'it-sidebar ' + (state.nav ? 'is-open' : '')">
                 <div class="it-brand"><img src="/buz_it_stock_mobile/static/description/icon.svg" alt=""/> IT Issue <button class="it-mobile-close" t-on-click="() => state.nav = false" aria-label="ปิดเมนู">×</button></div>
-                <button class="active" t-on-click="home" t-att-disabled="state.uncertain or state.busy"><i class="fa fa-home"/> หน้าหลัก</button>
-                <button t-on-click="() => { state.step = 1; state.nav = false; }" t-att-disabled="state.uncertain or state.busy or state.step === 4"><i class="fa fa-cube"/> เบิกอุปกรณ์</button>
+                <button t-att-class="state.step === 0 ? 'active' : ''" t-on-click="home" t-att-disabled="state.uncertain or state.busy"><i class="fa fa-home"/> หน้าหลัก</button>
+                <button t-on-click="showCart" t-att-disabled="state.uncertain or state.busy or state.step === 4"><i class="fa fa-cube"/> เบิกอุปกรณ์</button>
                 <button t-on-click="() => this.openAction('buz_it_stock_mobile.action_issues')"><i class="fa fa-list-alt"/> ประวัติการเบิก</button>
                 <t t-if="state.boot.manager">
                     <button t-on-click="() => this.openAction('buz_it_stock_mobile.action_products')"><i class="fa fa-archive"/> คลังสินค้า IT</button>
@@ -16,12 +22,13 @@
             </aside>
             <div t-if="state.nav" class="it-menu-backdrop" t-on-click="() => state.nav = false"/>
             <main class="it-main">
-                <header class="it-header">
+                <header class="it-header" t-att-class="{'is-home': state.step === 0}">
                     <button t-if="state.step > 0 and state.step &lt; 4" class="it-icon-button" t-on-click="back" t-att-disabled="state.busy or state.uncertain" aria-label="ย้อนกลับ"><i class="fa fa-arrow-left"/></button>
-                    <button t-else="" class="it-icon-button it-menu-toggle" t-on-click="() => state.nav = !state.nav" aria-label="เปิดเมนู"><i class="fa fa-bars"/></button>
+                    <button t-else="" class="it-icon-button it-menu-toggle" t-on-click="() => state.nav = !state.nav" t-att-aria-expanded="state.nav ? 'true' : 'false'" aria-label="เปิดเมนู"><i class="fa fa-bars"/></button>
                     <h1 t-esc="title"/>
                     <span class="it-warehouse"><i class="fa fa-map-marker"/> <t t-esc="state.boot.warehouse"/></span>
                     <button class="it-icon-button" t-on-click="() => this.openAction('buz_it_stock_mobile.action_issues')" aria-label="ประวัติการเบิก"><i class="fa fa-history"/></button>
+                    <span class="it-avatar it-header-avatar" t-att-title="state.boot.user"><t t-esc="(state.boot.user || '?').slice(0, 1)"/></span>
                 </header>
                 <div t-if="state.error" class="it-alert" role="alert"><i class="fa fa-exclamation-circle"/> <t t-esc="state.error"/></div>
                 <div t-if="state.busy" class="it-loading" role="status"><i class="fa fa-spinner fa-spin"/> กำลังดำเนินการ…</div>
@@ -31,29 +38,41 @@
                 </div>
                 <t t-elif="state.ready">
                     <div t-if="state.step === 0" class="it-home">
+                        <section class="it-welcome">
+                            <div><h2>สวัสดีครับ, <t t-esc="state.boot.user"/></h2><p>บริการเบิกอุปกรณ์ IT อย่างสะดวก รวดเร็ว</p></div>
+                            <label class="it-search"><i class="fa fa-search"/><input placeholder="ค้นหาอุปกรณ์ (ชื่อ, รหัส, Serial...)" t-att-value="state.search" t-on-input="searchInput" aria-label="ค้นหาอุปกรณ์"/></label>
+                        </section>
+                        <section t-if="state.dashboard" class="it-overview" aria-label="ภาพรวมการเบิก">
+                            <div class="it-metric it-panel"><span class="it-metric-icon"><i class="fa fa-cube"/></span><div><p>อุปกรณ์ทั้งหมด</p><strong t-esc="number(state.dashboard.product_count)"/><small>รายการอุปกรณ์ IT</small></div></div>
+                            <div class="it-metric it-panel"><span class="it-metric-icon is-green"><i class="fa fa-check-circle"/></span><div><p>เบิกสำเร็จ (เดือนนี้)</p><strong t-esc="number(state.dashboard.month_count)"/><small>ใบเบิกที่เซ็นรับแล้ว</small></div></div>
+                            <div class="it-hero"><div><h2>อุปกรณ์พร้อมใช้งาน<br/>เพื่อการทำงานที่ดียิ่งขึ้น</h2><p>ค้นหา · เบิก · ใช้งาน ได้อย่างง่ายดาย</p></div><img src="/buz_it_stock_mobile/static/src/img/workspace.svg?v=20260913-1" alt=""/></div>
+                        </section>
                         <section class="it-catalog">
-                            <div class="it-search-row"><label class="it-search"><i class="fa fa-search"/><input placeholder="ค้นหาอุปกรณ์ ชื่อ รหัส หรือ Serial…" t-att-value="state.search" t-on-input="searchInput" aria-label="ค้นหาอุปกรณ์"/></label></div>
-                            <div class="it-chips"><button t-att-class="!state.category ? 'selected' : ''" t-on-click="() => this.selectCategory(false)">ทั้งหมด</button><button t-foreach="state.boot.categories" t-as="category" t-key="category.id" t-att-class="state.category === category.id ? 'selected' : ''" t-on-click="() => this.selectCategory(category.id)" t-esc="category.name"/></div>
-                            <h2 class="it-section-title it-mobile-only">หมวดหมู่</h2>
-                            <div class="it-category-grid it-mobile-only"><button t-foreach="state.boot.categories" t-as="category" t-key="category.id" t-on-click="() => this.selectCategory(category.id)"><i t-att-class="icon(category)"/><span t-esc="category.name"/></button></div>
-                            <div class="it-section-heading"><h2 class="it-section-title">อุปกรณ์พร้อมเบิก</h2><span>เลือกสินค้าเพื่อเพิ่มในตะกร้า</span></div>
-                            <div class="it-product-grid">
+                            <section class="it-panel it-categories">
+                                <div class="it-section-heading"><h2><span class="it-desktop-only">เลือกอุปกรณ์ที่ต้องการเบิก</span><span class="it-mobile-only">หมวดหมู่อุปกรณ์</span></h2><button class="it-text-button" t-on-click="showAllProducts" t-att-disabled="state.busy">ดูทั้งหมด <i class="fa fa-angle-right"/></button></div>
+                                <div class="it-chips"><button t-att-class="!state.category ? 'selected' : ''" t-att-aria-pressed="!state.category ? 'true' : 'false'" t-on-click="() => this.selectCategory(false)" t-att-disabled="state.busy">ทั้งหมด</button><button t-foreach="state.boot.categories" t-as="category" t-key="category.id" t-att-class="state.category === category.id ? 'selected' : ''" t-att-aria-pressed="state.category === category.id ? 'true' : 'false'" t-on-click="() => this.selectCategory(category.id)" t-att-disabled="state.busy" t-esc="category.name"/></div>
+                                <div class="it-category-grid"><button t-foreach="state.boot.categories" t-as="category" t-key="category.id" t-att-class="state.category === category.id ? 'selected' : ''" t-att-aria-pressed="state.category === category.id ? 'true' : 'false'" t-on-click="() => this.selectCategory(category.id)" t-att-disabled="state.busy"><span class="it-category-art"><img t-if="categoryImage(category.id)" t-att-src="categoryImage(category.id)" t-on-error="categoryImageFailed" alt=""/><i t-else="" t-att-class="icon(category)"/></span><span t-esc="category.name"/></button></div>
+                            </section>
+                            <section class="it-panel it-equipment">
+                            <div class="it-section-heading"><h2 class="it-section-title">อุปกรณ์พร้อมเบิก</h2><button t-if="!state.catalogExpanded" class="it-text-button" t-on-click="() => state.catalogExpanded = true">ดูทั้งหมด <i class="fa fa-angle-right"/></button><span t-else="">เลือกสินค้าเพื่อเพิ่มในตะกร้า</span></div>
+                            <div class="it-product-grid" t-att-class="{'is-preview': !state.catalogExpanded}">
                                 <article class="it-product" t-foreach="state.products" t-as="product" t-key="product.id">
-                                    <div class="it-product-image"><img t-if="product.has_image" t-att-src="image(product.id)" t-att-alt="product.name" loading="lazy"/><i t-else="" t-att-class="'fa fa-' + product.category_icon" aria-hidden="true"/></div>
-                                    <div class="it-product-info"><h3 t-esc="product.name"/><span class="it-muted" t-esc="product.category"/><small t-att-class="product.available > 0 ? 'it-stock' : 'it-empty-stock'">พร้อมเบิก <t t-esc="number(product.available)"/> <t t-esc="product.uom"/></small></div>
-                                    <button class="it-add" t-on-click="() => this.add(product)" t-att-disabled="product.available &lt;= 0 or state.busy" t-att-aria-label="'เพิ่ม ' + product.name"><i class="fa fa-plus"/></button>
+                                    <div class="it-product-image"><img t-if="product.has_image and !state.failedImages[product.id]" t-att-src="image(product.id)" t-att-alt="product.name" loading="lazy" t-on-error="() => this.imageFailed(product.id)"/><i t-else="" t-att-class="'fa fa-' + (product.category_icon || 'cube')" aria-hidden="true"/></div>
+                                    <div class="it-product-info"><h3 t-esc="product.name"/><span class="it-muted" t-esc="product.category"/><small t-att-class="product.available > 0 ? 'it-stock' : 'it-empty-stock'"><i class="fa fa-circle"/> พร้อมเบิก <t t-esc="number(product.available)"/> <t t-esc="product.uom"/></small></div>
+                                    <button class="it-add" t-on-click="() => this.add(product)" t-att-disabled="product.available &lt;= 0 or state.busy" t-att-aria-label="'เพิ่ม ' + product.name"><i class="fa fa-plus"/><span>เบิก</span></button>
                                 </article>
                             </div>
                             <div t-if="!state.products.length" class="it-empty"><i class="fa fa-search"/><p>ไม่พบอุปกรณ์ในหมวดหรือคำค้นนี้</p></div>
-                            <button t-if="state.more" class="it-secondary it-load-more" t-on-click="() => this.run(() => this.catalog(true))" t-att-disabled="state.busy">โหลดสินค้าเพิ่มเติม</button>
-                            <div class="it-cart-bar"><span><i class="fa fa-shopping-cart"/> <strong t-esc="distinctCount"/> รายการ <small t-esc="totals"/></span><button t-on-click="() => state.step = 1" t-att-disabled="!state.cart.length or state.busy">ดูรายการ (<t t-esc="distinctCount"/>) <i class="fa fa-angle-right"/></button></div>
+                            <button t-if="state.more and state.catalogExpanded" class="it-secondary it-load-more" t-on-click="() => this.run(() => this.catalog(true))" t-att-disabled="state.busy">โหลดสินค้าเพิ่มเติม</button>
+                            </section>
                         </section>
                         <aside t-if="state.dashboard" class="it-dashboard">
                             <section class="it-panel it-recent"><div class="it-section-heading"><h2>รายการเบิกล่าสุด</h2><button class="it-text-button" t-on-click="() => this.openAction('buz_it_stock_mobile.action_issues')">ดูทั้งหมด</button></div>
-                                <table><thead><tr><th>เลขที่เอกสาร</th><th>ผู้รับ</th><th>วันที่</th><th>สถานะ</th></tr></thead><tbody><tr t-foreach="state.dashboard.recent" t-as="issue" t-key="issue.id" t-on-click="() => this.openDetail(issue.id)"><td><button class="it-text-button" t-esc="issue.name"/></td><td t-esc="issue.receiver"/><td t-esc="formatDate(issue.date)"/><td><span t-att-class="'it-status ' + issue.state"><t t-esc="{draft: 'ร่าง', awaiting: 'รอเซ็น', done: 'เสร็จสิ้น', cancel: 'ยกเลิก'}[issue.state]"/></span></td></tr></tbody></table>
+                                <table class="it-desktop-only"><thead><tr><th>เลขที่เอกสาร</th><th>ผู้รับ</th><th>วันที่</th><th>สถานะ</th></tr></thead><tbody><tr t-foreach="state.dashboard.recent.slice(0, 5)" t-as="issue" t-key="issue.id"><td><button class="it-text-button" t-on-click="() => this.openDetail(issue.id)" t-att-disabled="state.busy" t-esc="issue.name"/></td><td t-esc="issue.receiver"/><td t-esc="formatDate(issue.date)"/><td><span t-att-class="'it-status ' + issue.state"><t t-esc="statusLabel(issue.state)"/></span></td></tr></tbody></table>
+                                <div class="it-recent-list it-mobile-only"><button t-foreach="state.dashboard.recent.slice(0, 3)" t-as="issue" t-key="issue.id" t-on-click="() => this.openDetail(issue.id)" t-att-disabled="state.busy"><span class="it-recent-icon"><i class="fa fa-file-text-o"/></span><span class="it-recent-info"><strong t-esc="issue.name"/><small><t t-esc="issue.count"/> รายการ · <t t-esc="issue.receiver"/></small><small t-esc="formatDate(issue.date)"/></span><span t-att-class="'it-status ' + issue.state" t-esc="statusLabel(issue.state)"/></button></div>
                                 <p t-if="!state.dashboard.recent.length" class="it-muted">ยังไม่มีรายการเบิก เริ่มต้นจากอุปกรณ์ด้านซ้าย</p>
                             </section>
-                            <div class="it-dashboard-bottom"><section class="it-panel"><h2>สรุปการเบิก (เดือนนี้)</h2><div class="it-month-count"><strong t-esc="state.dashboard.month_count"/><span>ใบเบิกสำเร็จ</span></div><div class="it-chart" t-foreach="state.dashboard.categories" t-as="category" t-key="category.name + category.uom"><div><span t-esc="category.name"/><strong><t t-esc="number(category.qty)"/> <t t-esc="category.uom"/></strong></div><progress t-att-value="category.qty" t-att-max="state.dashboard.totals[category.uom] || 1"/></div><p t-if="!state.dashboard.categories.length" class="it-muted">ยังไม่มีการเบิกในเดือนนี้</p></section>
+                            <div class="it-dashboard-bottom"><section class="it-panel"><h2>สถิติการเบิก (เดือนนี้)</h2><div class="it-chart-layout"><div t-if="chart" class="it-donut" t-att-style="chart.style" role="img" t-att-aria-label="'ยอดเบิก ' + number(chart.total) + ' ' + chart.uom"><div><strong t-esc="number(chart.total)"/><span t-esc="chart.uom"/></div></div><div class="it-chart-legend"><div class="it-chart" t-foreach="state.dashboard.categories" t-as="category" t-key="category_index"><div><span><i class="it-legend-dot" t-att-style="chartColor(category_index)"/><t t-esc="category.name || 'อื่น ๆ'"/></span><strong><t t-esc="number(category.qty)"/> <t t-esc="category.uom"/></strong></div><progress t-if="!chart" t-att-value="category.qty" t-att-max="state.dashboard.totals[category.uom] || 1" t-att-aria-label="category.name + ' (' + category.uom + ')'"/></div></div></div><p t-if="!state.dashboard.categories.length" class="it-muted">ยังไม่มีการเบิกในเดือนนี้</p></section>
                                 <section class="it-panel"><h2>คลังสินค้า IT</h2><p class="it-muted" t-esc="state.boot.warehouse"/><t t-if="state.boot.manager"><small class="it-muted">มูลค่าประมาณการจากต้นทุนสินค้า</small><div class="it-value"><t t-esc="state.dashboard.currency"/> <t t-esc="number(state.dashboard.value)"/></div></t><div class="it-stat"><span>สินค้าทั้งหมด</span><strong><t t-esc="state.dashboard.product_count"/> รายการ</strong></div><div class="it-stat" t-foreach="Object.entries(state.dashboard.stock)" t-as="stock" t-key="stock[0]"><span>คงเหลือ</span><strong class="it-stock"><t t-esc="number(stock[1])"/> <t t-esc="stock[0]"/></strong></div></section>
                             </div>
                         </aside>
@@ -88,6 +107,12 @@
                     <section t-elif="state.step === 4" class="it-flow it-complete"><div class="it-success-icon"><i class="fa fa-check"/></div><h2>เบิกอุปกรณ์สำเร็จ</h2><p class="it-muted">เลขที่เอกสาร</p><h3 class="it-document-number" t-esc="state.detail.name"/><p class="it-muted" t-esc="formatDate(state.detail.signed_on)"/><div class="it-panel it-summary"><div><span>ผู้รับ</span><strong t-esc="state.detail.receiver"/></div><div><span>จำนวน</span><strong t-esc="detailTotals"/></div><div><span>ใบโอนสินค้า</span><strong t-esc="state.detail.picking_name"/></div></div><div class="it-flow-actions"><button class="it-secondary" t-on-click="() => this.openDetail(state.detail.id)">ดูรายละเอียด</button><button class="it-primary" t-on-click="newIssue" t-att-disabled="state.busy">สร้างใบเบิกใหม่</button></div></section>
                 </t>
             </main>
+            <div t-if="state.cart.length and state.step === 0" class="it-cart-bar"><span><i class="fa fa-shopping-cart"/> <strong t-esc="distinctCount"/> รายการ <small t-esc="totals"/></span><button t-on-click="showCart" t-att-disabled="state.busy">ดูรายการ (<t t-esc="distinctCount"/>) <i class="fa fa-angle-right"/></button></div>
+            <nav t-if="state.ready and !state.boot.setup_error" class="it-bottom-nav" aria-label="เมนูหลัก">
+                <button t-att-class="state.step === 0 ? 'active' : ''" t-on-click="home" t-att-disabled="state.busy or state.uncertain"><i class="fa fa-home"/><span>หน้าหลัก</span></button>
+                <button t-att-class="state.step > 0 ? 'active' : ''" t-on-click="showCart" t-att-disabled="state.busy or state.uncertain or state.step === 4"><span class="it-nav-icon"><i class="fa fa-cube"/><b t-if="state.cart.length and state.step !== 4" t-esc="distinctCount"/></span><span>เบิกอุปกรณ์</span></button>
+                <button t-on-click="openMyIssues" t-att-disabled="state.busy or state.uncertain"><i class="fa fa-list-alt"/><span>รายการของฉัน</span></button>
+            </nav>
             <div t-if="state.lotProduct" class="it-modal-backdrop"><section class="it-lot-modal" role="dialog" aria-modal="true" aria-label="เลือก Serial หรือ Lot"><div class="it-section-heading"><h2>เลือก Serial / Lot</h2><button class="it-icon-button" t-on-click="() => state.lotProduct = null" aria-label="ปิด">×</button></div><p t-esc="state.lotProduct.name"/><div class="it-lot-list"><button t-foreach="state.lots" t-as="lot" t-key="lot.id" t-on-click="() => this.addLine(state.lotProduct, lot)"><span><strong t-esc="lot.name"/><small>พร้อมเบิก <t t-esc="lot.available"/> <t t-esc="state.lotProduct.uom"/></small></span><i t-att-class="state.cart.some(line => line.key === itemKey(state.lotProduct.id, lot.id)) ? 'fa fa-check-circle it-stock' : 'fa fa-plus-circle'"/></button><p t-if="!state.lots.length" class="it-muted">ไม่มี Serial / Lot ที่พร้อมเบิก</p></div><button class="it-primary" t-on-click="() => state.lotProduct = null">เสร็จแล้ว</button></section></div>
         </div>
     </t>
