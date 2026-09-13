@@ -1253,6 +1253,10 @@ class HelpdeskTicket(models.Model):
     def write(self, vals):
         vals = dict(vals)
         is_manager = self._is_helpdesk_manager()
+        is_requester_only = (
+            self.env.user.has_group('buz_it_helpdesk.group_it_requester')
+            and not self._is_support_agent()
+        )
         protected = {
             'stage_id', 'assigned_user_id', 'create_ticket_date',
             'closed_ticket_date', 'name', 'department_id', 'requester_id',
@@ -1275,6 +1279,16 @@ class HelpdeskTicket(models.Model):
                 'Approval status and decision fields can only be changed '
                 'through the approval workflow.'
             ))
+        if is_requester_only and not is_manager:
+            draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+            for ticket in self:
+                if (
+                    ticket.stage_id == draft_stage
+                    and ticket.requester_id != self.env.user
+                ):
+                    raise UserError(_(
+                        'A Requester can only edit their own Draft ticket.'
+                    ))
         if {'category_id', 'priority'}.intersection(vals):
             draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
             for ticket in self:

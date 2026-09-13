@@ -203,6 +203,16 @@
 
 ## SLA Stability Hardening (2026-09-13)
 
+## Requester Draft Ownership (2026-09-13)
+
+- จำกัด Requester ให้แก้ไขได้เฉพาะ Ticket สถานะ Draft ที่มีตนเองเป็น Requester
+- ป้องกันการแก้ไข Draft ของผู้อื่นที่ Backend/API/RPC ด้วย `write()` guard
+- คงการมองเห็น Ticket ของบริษัทเดียวกันตามกฎเดิม
+- คงพฤติกรรมของ Support Agent และ Helpdesk Manager
+- เพิ่ม automated tests สำหรับการแก้ไข Draft ของตนเอง การปฏิเสธ Draft ของผู้อื่น และการอ่าน Ticket ของบริษัทเดียวกัน
+- ไม่เปลี่ยน Workflow, Approval, SLA, LINE Notification, Attachment Policy หรือข้อมูลเดิมย้อนหลัง
+- Local-only: ยังไม่ Deploy, Upgrade หรือ Restart DEV/Production
+
 ## DEV Delivery (2026-09-13)
 
 - Uploaded only `buz_it_helpdesk` to DEV with `scp`.

@@ -233,6 +233,63 @@ class TestTicketKanbanStage(TransactionCase):
                 'stage_id': self.stage_in_progress.id,
             })
 
+    def test_requester_can_edit_own_draft(self):
+        ticket = self._ticket(
+            stage_id=self.stage_draft.id,
+            requester_id=self.requester.id,
+        )
+
+        ticket.with_user(self.requester).write({
+            'subject': 'Updated by requester',
+            'description': 'Requester draft update',
+        })
+
+        self.assertEqual(ticket.subject, 'Updated by requester')
+        self.assertEqual(ticket.description, 'Requester draft update')
+
+    def test_requester_cannot_edit_another_requesters_draft(self):
+        other_requester = self.env['res.users'].create({
+            'name': 'Another Requester',
+            'login': 'another-requester',
+            'email': 'another-requester@example.com',
+            'groups_id': [Command.set([
+                self.group_user.id,
+                self.group_requester.id,
+            ])],
+        })
+        ticket = self._ticket(
+            stage_id=self.stage_draft.id,
+            requester_id=other_requester.id,
+        )
+
+        with self.assertRaises(UserError):
+            ticket.with_user(self.requester).write({
+                'subject': 'Unauthorized update',
+            })
+
+        self.assertEqual(ticket.subject, 'Kanban stage test')
+
+    def test_requester_can_still_read_another_requesters_company_ticket(self):
+        other_requester = self.env['res.users'].create({
+            'name': 'Visible Requester',
+            'login': 'visible-requester',
+            'email': 'visible-requester@example.com',
+            'groups_id': [Command.set([
+                self.group_user.id,
+                self.group_requester.id,
+            ])],
+        })
+        ticket = self._ticket(
+            stage_id=self.stage_draft.id,
+            requester_id=other_requester.id,
+        )
+
+        visible_ticket = self.env['buz.helpdesk.ticket'].with_user(
+            self.requester
+        ).search([('id', '=', ticket.id)])
+
+        self.assertEqual(visible_ticket, ticket)
+
     def test_kanban_stage_visibility_defaults_to_true(self):
         self.assertTrue(self.stage_new.show_in_kanban)
 
