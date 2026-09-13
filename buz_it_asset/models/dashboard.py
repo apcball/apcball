@@ -12,7 +12,7 @@ class ITManagementDashboard(models.AbstractModel):
     _TARGETS = {
         'open_tickets', 'urgent_tickets', 'ticket_status',
         'ticket_trend_opened', 'ticket_trend_closed', 'recent_tickets',
-        'unassigned_tickets', 'overdue_sla',
+        'unassigned_tickets', 'overdue_sla', 'needs_attention',
         'assets_assigned', 'assets_available', 'assets_repair',
         'asset_status', 'asset_category', 'repair_backlog',
         'licenses_expiring', 'licenses_expired', 'license_seats',
@@ -310,7 +310,7 @@ class ITManagementDashboard(models.AbstractModel):
                     'bucket': {'record_id': ticket.id},
                     'title': ticket.display_name, 'detail': ticket.subject,
                     'status': ticket.stage_id.name, 'priority': ticket.priority,
-                } for ticket in urgent
+                } for ticket in urgent[:2]
             ],
             'repairs': [
                 {
@@ -337,7 +337,7 @@ class ITManagementDashboard(models.AbstractModel):
                     'status': ticket.stage_id.name, 'priority': ticket.priority,
                 } for ticket in unassigned
             ],
-            'sla': self._overdue_sla(normalized)[:5],
+            'sla': self._overdue_sla(normalized)[:2],
         }
 
     @api.model
@@ -507,6 +507,17 @@ class ITManagementDashboard(models.AbstractModel):
                 row['id'] for row in self._overdue_sla(normalized)
             ]
             name, domain = 'Overdue SLA', [('id', 'in', overdue_ids)]
+        elif target == 'needs_attention':
+            overdue_ids = [
+                row['id'] for row in self._overdue_sla(normalized)
+            ]
+            resolved = self.env.ref('buz_it_helpdesk.stage_resolved')
+            name, domain = 'Needs Attention', ticket_base + [
+                '|', '&',
+                ('stage_id', 'not in', [closed.id, resolved.id]),
+                ('priority', '=', '3'),
+                ('id', 'in', overdue_ids),
+            ]
         elif target in (
             'ticket_status', 'ticket_trend_opened',
             'ticket_trend_closed', 'recent_tickets',

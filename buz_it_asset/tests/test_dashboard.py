@@ -41,6 +41,13 @@ class TestITManagementDashboard(TransactionCase):
         self.assertIn('sla', data['needs_attention'])
         self.assertIn('unassigned_tickets', data['needs_attention'])
 
+    def test_needs_attention_drilldown_combines_urgent_and_sla(self):
+        dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
+        action = dashboard.get_drilldown_action('needs_attention')
+        self.assertEqual(action['name'], 'Needs Attention')
+        self.assertEqual(action['res_model'], 'buz.helpdesk.ticket')
+        self.assertIn('|', action['domain'])
+
     def test_dashboard_ticket_domain_excludes_archived_and_draft(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
         normalized = dashboard._normalize_filters()
