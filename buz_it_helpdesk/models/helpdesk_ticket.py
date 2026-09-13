@@ -202,6 +202,9 @@ class HelpdeskTicket(models.Model):
         compute='_compute_show_confirm_resolution_button',
     )
     is_editable = fields.Boolean(compute='_compute_is_editable')
+    can_edit_category_priority = fields.Boolean(
+        compute='_compute_can_edit_category_priority',
+    )
     can_manage_assignment = fields.Boolean(compute='_compute_can_manage_assignment')
     show_contact_line_button = fields.Boolean(
         compute='_compute_show_contact_line_button',
@@ -305,6 +308,63 @@ class HelpdeskTicket(models.Model):
                     self._is_support_agent()
                     and ticket.assigned_user_id == self.env.user
                 )
+
+    @api.depends('stage_id', 'requester_id', 'category_id', 'priority')
+    @api.depends_context('uid')
+    def _compute_can_edit_category_priority(self):
+        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+        resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
+        closed_stage = self.env.ref('buz_it_helpdesk.stage_closed')
+        is_manager = self._is_helpdesk_manager()
+        for ticket in self:
+            if ticket.stage_id == draft_stage:
+                ticket.can_edit_category_priority = (
+                    is_manager or ticket.requester_id == self.env.user
+                )
+            else:
+                ticket.can_edit_category_priority = (
+                    is_manager
+                    and (not ticket.category_id or not ticket.priority)
+                    and ticket.stage_id not in (resolved_stage, closed_stage)
+                )
+
+    def _is_legacy_sla_setup_ticket(self):
+        self.ensure_one()
+        return not self.category_id or not self.priority
+
+    def _can_manager_complete_legacy_sla_setup(self):
+        self.ensure_one()
+        return (
+            self._is_helpdesk_manager()
+            and self._is_legacy_sla_setup_ticket()
+            and self.stage_id not in (
+                self.env.ref('buz_it_helpdesk.stage_resolved'),
+                self.env.ref('buz_it_helpdesk.stage_closed'),
+            )
+        )
+
+    def _start_legacy_sla_if_ready(self):
+        """Start from the repair time, never from the ticket create date."""
+        self.ensure_one()
+        if (
+            self.sla_start_at
+            or not self.category_id
+            or not self.priority
+            or self.stage_id in (
+                self.env.ref('buz_it_helpdesk.stage_resolved'),
+                self.env.ref('buz_it_helpdesk.stage_closed'),
+            )
+        ):
+            return False
+        started_at = fields.Datetime.now()
+        vals = {'sla_start_at': started_at}
+        if self.assigned_user_id or self.stage_id not in (
+            self.env.ref('buz_it_helpdesk.stage_draft'),
+            self.env.ref('buz_it_helpdesk.stage_new'),
+        ):
+            vals['sla_response_at'] = started_at
+        self._write_workflow_fields(vals)
+        return True
 
     @api.depends_context('uid')
     def _compute_can_manage_assignment(self):
@@ -1163,6 +1223,7 @@ class HelpdeskTicket(models.Model):
         return super(HelpdeskTicket, recordset).write(vals)
 
     def write(self, vals):
+        vals = dict(vals)
         is_manager = self._is_helpdesk_manager()
         protected = {
             'stage_id', 'assigned_user_id', 'create_ticket_date',
@@ -1174,6 +1235,13 @@ class HelpdeskTicket(models.Model):
             'approval_requested_at', 'approval_decided_by',
             'approval_decided_at', 'approval_rejection_reason',
         }
+        sla_protected = {
+            'sla_start_at', 'sla_response_at', 'sla_resolution_at',
+        }
+        if sla_protected.intersection(vals):
+            raise UserError(_(
+                'SLA timing fields can only be changed through the workflow.'
+            ))
         if approval_protected.intersection(vals):
             raise UserError(_(
                 'Approval status and decision fields can only be changed '
@@ -1181,11 +1249,20 @@ class HelpdeskTicket(models.Model):
             ))
         if {'category_id', 'priority'}.intersection(vals):
             draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
-            if any(ticket.stage_id != draft_stage for ticket in self):
-                raise UserError(_(
-                    'Category and Priority cannot be changed after the ticket '
-                    'enters New.'
-                ))
+            for ticket in self:
+                if ticket.stage_id == draft_stage:
+                    continue
+                if not ticket._can_manager_complete_legacy_sla_setup():
+                    raise UserError(_(
+                        'Category and Priority cannot be changed after the '
+                        'ticket enters New.'
+                    ))
+                if 'category_id' in vals and not vals['category_id']:
+                    raise ValidationError(_('Category cannot be cleared.'))
+                if 'priority' in vals and not vals['priority']:
+                    raise ValidationError(_('Priority cannot be cleared.'))
+            if len(self) == 1 and not vals.get('priority') and not self.priority:
+                vals['priority'] = '1'
         if 'approval_manager_id' in vals:
             for ticket in self:
                 if ticket.approval_state not in ('none', 'rejected'):
@@ -1246,6 +1323,9 @@ class HelpdeskTicket(models.Model):
                         _('Only the assigned agent can edit this ticket.')
                     )
         result = super().write(vals)
+        if {'category_id', 'priority'}.intersection(vals):
+            for ticket in self:
+                ticket._start_legacy_sla_if_ready()
         if 'team_id' in vals or 'assigned_user_id' in vals:
             for ticket in self:
                 ticket._auto_receive_assigned_ticket()

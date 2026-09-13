@@ -132,6 +132,7 @@
 | 2026-09-12 | ตรวจสอบโครงสร้าง `buz_it_helpdesk` และความสัมพันธ์ของ models, views, security, services และ tests | เสร็จแล้ว |
 | 2026-09-12 | ยืนยันให้ Requester เห็น Ticket ทั้งบริษัทตามพฤติกรรมเดิม | ยืนยันแล้ว |
 | 2026-09-12 | ซ่อน `Draft` จาก Kanban โดยค่าเริ่มต้น พร้อมยืนยันการเปิดกลับผ่าน Stage configuration และการคงอยู่ของ Ticket Draft | เสร็จแล้ว |
+| 2026-09-12 | รองรับ Legacy Ticket ที่ไม่มี Category/Priority และปรับเงื่อนไข View/Backend ให้สอดคล้องกัน | เสร็จแล้ว |
 
 ## Approval Sub-workflow (2026-09-12)
 
@@ -166,6 +167,18 @@
 - เพิ่ม Attachment Composer สำหรับ `attachment_ids` รองรับ Upload และ Paste Screenshot ผ่าน Clipboard
 - คง Preview, Download และ Remove ของ Attachment เดิม และเพิ่มการแสดงชนิดไฟล์/จำนวนไฟล์
 - ยังไม่มี Browser UAT ในรอบนี้ จึงยังไม่ยืนยันพฤติกรรมการใช้งานจริงจาก Browser
+
+## Legacy Ticket SLA Setup (2026-09-12)
+
+- เปิดให้ Helpdesk Manager เติม Category ของ Ticket เดิมที่ข้อมูล SLA ยังไม่ครบได้เท่านั้น
+- หาก Priority ของ Ticket เดิมไม่มีค่า ระบบใช้ `Normal` (`1`) เป็นค่าเริ่มต้น
+- เมื่อ Category/Priority ครบจากการแก้ไขครั้งแรก ระบบเริ่ม `sla_start_at` จากเวลาบันทึกจริง ไม่คำนวณย้อนหลังจาก `create_date`
+- Ticket ที่ Receive แล้วบันทึก `sla_response_at` เท่ากับเวลาเริ่ม SLA เพื่อไม่คิด Response SLA ย้อนหลัง
+- Ticket ที่ Resolved/Closed แล้ว และ Ticket ที่ข้อมูลครบแต่ไม่เคยเริ่ม SLA จะยังคง `No SLA`
+- ปรับ View flag `can_edit_category_priority` และ Backend guard ให้เปิดแก้เฉพาะกรณี Legacy ที่จำเป็น; Ticket ใหม่ยังบังคับ Category และ Priority เริ่มต้นเป็น Normal
+- เพิ่ม targeted tests สำหรับ Legacy category/priority, auto-start, no-retroactive response, terminal ticket และสิทธิ์ Agent
+- Python AST, XML parse, `git diff --check` ผ่าน; isolated Odoo `TestHelpdeskSla` ผ่าน `0 failed, 0 error(s) of 9 tests`
+- ยังไม่ได้ทำ Browser UAT และงานรอบนี้ยังไม่ได้ deploy, upgrade หรือ restart DEV/Production
 
 ## DEV Delivery (2026-09-12)
 
