@@ -1,3 +1,5 @@
+import math
+
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError
 
@@ -21,6 +23,14 @@ class ProductTemplate(models.Model):
 
     it_issue_enabled = fields.Boolean(string='Show in IT Issue', tracking=False)
     it_category_id = fields.Many2one('buz.it.category', string='IT Issue Category')
+    it_min_qty = fields.Float(string='IT Minimum Stock', company_dependent=True,
+                              help='Alert when available IT stock is below this quantity. Zero disables alerts.')
+
+    @api.constrains('it_min_qty')
+    def _check_it_min_qty(self):
+        for product in self:
+            if not math.isfinite(product.it_min_qty) or product.it_min_qty < 0:
+                raise ValidationError(_('Minimum stock must be a finite, non-negative quantity.'))
 
     @api.constrains('it_issue_enabled', 'detailed_type', 'it_category_id')
     def _check_it_product(self):

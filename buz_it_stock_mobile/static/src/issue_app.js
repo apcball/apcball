@@ -56,13 +56,22 @@ export class ITIssueApp extends Component {
             cart: [], note: "", people: [], employeeSearch: "", employee: null,
             locationId: "", detail: null, dashboard: null, lotProduct: null, lots: [],
             signed: false, requestKey: null, uncertain: false, failedImages: {},
+            lowOpen: false, lowProducts: [], lowSearch: '', lowCategory: '', lowStatus: 'all',
+            lowPage: 0, purchaseSelection: {}, canPurchase: false, canReadPurchase: false,
         });
         this.catalogRevision = 0;
         this.peopleRevision = 0;
         this.drawing = false;
         this.inkDistance = 0;
         onWillStart(() => this.load());
+        this.stockTimer = setInterval(() => {
+            if (this.state.ready && !this.state.boot.setup_error && !document.hidden &&
+                !this.state.busy && !this.state.uncertain && (this.state.step === 0 || this.state.lowOpen)) {
+                this.run(() => this.dashboard());
+            }
+        }, 60000);
         onWillUnmount(() => {
+            clearInterval(this.stockTimer);
             clearTimeout(this.searchTimer);
             clearTimeout(this.peopleTimer);
             this.catalogRevision++;
@@ -129,6 +138,7 @@ export class ITIssueApp extends Component {
             this.state.boot = await this.orm.call("buz.it.issue", "get_bootstrap", []);
             if (!this.state.boot.setup_error) {
                 await Promise.all([this.catalog(), this.dashboard()]);
+                if (this.props.action?.params?.low_stock) { this.state.lowOpen = true; }
                 const issueId = this.props.action?.params?.issue_id;
                 const pending = sessionStorage.getItem(this.storageKey);
                 if (issueId) {
@@ -153,7 +163,79 @@ export class ITIssueApp extends Component {
         this.state.products = append ? [...this.state.products, ...result.products] : result.products;
         this.state.more = result.more;
     }
-    async dashboard() { this.state.dashboard = await this.orm.call("buz.it.issue", "get_dashboard", []); }
+    async dashboard() {
+        const [dashboard, low] = await Promise.all([
+            this.orm.call("buz.it.issue", "get_dashboard", []),
+            this.orm.call("buz.it.issue", "get_low_stock", []),
+        ]);
+        this.state.dashboard = dashboard;
+        this.state.lowProducts = low.products;
+        this.state.canPurchase = low.can_create;
+        this.state.canReadPurchase = low.can_read;
+        const ids = new Set(low.products.map(product => product.id));
+        for (const id of Object.keys(this.state.purchaseSelection)) {
+            if (!ids.has(Number(id))) { delete this.state.purchaseSelection[id]; }
+        }
+        this.state.lowPage = Math.min(this.state.lowPage, this.lowPages - 1);
+    }
+    get selectedPurchase() { return Object.values(this.state.purchaseSelection); }
+    get filteredLowStock() {
+        const term = this.state.lowSearch.trim().toLocaleLowerCase();
+        return this.state.lowProducts.filter(p =>
+            (!term || `${p.name} ${p.category}`.toLocaleLowerCase().includes(term)) &&
+            (!this.state.lowCategory || p.category_id === Number(this.state.lowCategory)) &&
+            (this.state.lowStatus !== 'empty' || p.available <= 0) &&
+            (this.state.lowStatus !== 'ordering' || p.status === 'ordering') &&
+            (this.state.lowStatus !== 'low' || p.status === 'low'));
+    }
+    purchaseStatus(state) {
+        return {draft: 'ร่าง', waiting_head_approval: 'รอหัวหน้าอนุมัติ',
+            waiting_purchase_approval: 'รอจัดซื้ออนุมัติ', approved: 'อนุมัติแล้ว',
+            purchase_order_created: 'สร้าง PO แล้ว', received: 'รับแล้ว', cancelled: 'ยกเลิก'}[state] || state;
+    }
+    openPurchaseReport(productId = false) {
+        return this.run(async () => {
+            const action = await this.orm.call('buz.it.issue', 'get_replenishment_report', [productId]);
+            await this.action.doAction(action);
+        });
+    }
+    openPurchase(id) {
+        return this.run(() => this.action.doAction({type: 'ir.actions.act_window',
+            res_model: 'employee.purchase.requisition', res_id: id,
+            views: [[false, 'form']], target: 'current'}));
+    }
+    get lowPages() { return Math.max(1, Math.ceil(this.filteredLowStock.length / 6)); }
+    get lowRows() { return this.filteredLowStock.slice(this.state.lowPage * 6, (this.state.lowPage + 1) * 6); }
+    filterLowStock() { this.state.lowPage = 0; }
+    openLowStock() {
+        if (this.state.busy || this.state.uncertain) { return; }
+        this.state.nav = false;
+        return this.run(async () => {
+            await this.dashboard();
+            const ids = new Set(this.state.lowProducts.map(p => p.id));
+            for (const id of Object.keys(this.state.purchaseSelection)) {
+                if (!ids.has(Number(id))) { delete this.state.purchaseSelection[id]; }
+            }
+            this.state.lowPage = 0;
+            this.state.lowOpen = true;
+        });
+    }
+    togglePurchase(product, checked) {
+        if (checked) { this.state.purchaseSelection[product.id] = { product_id: product.id, quantity: product.quantity }; }
+        else { delete this.state.purchaseSelection[product.id]; }
+    }
+    purchaseQuantity(product, value) {
+        product.quantity = Number(value);
+        if (this.state.purchaseSelection[product.id]) {
+            this.state.purchaseSelection[product.id].quantity = Number(value);
+        }
+    }
+    createPurchase() {
+        return this.run(async () => {
+            const action = await this.orm.call('buz.it.issue', 'prepare_purchase_requisition', [this.selectedPurchase]);
+            await this.action.doAction(action);
+        });
+    }
     searchInput(event) {
         this.state.catalogExpanded = true;
         this.state.search = event.target.value;

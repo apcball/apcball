@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 
 from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import Form, TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
 
@@ -63,8 +63,127 @@ class TestITIssue(TransactionCase):
             'lines': lines or [{'product_id': self.product.id, 'quantity': 2}],
         })
 
+    def test_low_stock_threshold_and_location(self):
+        self.product.it_min_qty = 12
+        rows = self.env['buz.it.issue'].with_user(self.user).get_low_stock()['products']
+        row = next(row for row in rows if row['id'] == self.product.id)
+        self.assertEqual((row['available'], row['minimum'], row['quantity']), (10, 12, 2))
+        self.product.it_min_qty = 10
+        self.assertNotIn(self.product.id, [r['id'] for r in self.env['buz.it.issue'].get_low_stock()['products']])
+        self.product.it_min_qty = 0
+        self.assertNotIn(self.product.id, [r['id'] for r in self.env['buz.it.issue'].get_low_stock()['products']])
+        with self.assertRaises(AccessError):
+            self.env['buz.it.issue'].with_user(self.outsider).get_low_stock()
+
+    def test_prepare_purchase_defaults_and_validation(self):
+        self.product.it_min_qty = 12
+        service = self.env['buz.it.issue']
+        action = service.prepare_purchase_requisition([{'product_id': self.product.id, 'quantity': 3}])
+        self.assertEqual(action['res_model'], 'employee.purchase.requisition')
+        context = action['context']
+        self.assertEqual(context['default_company_id'], self.company.id)
+        line = context['default_requisition_order_ids'][0][2]
+        self.assertEqual((line['product_id'], line['quantity'], line['uom']), (self.product.id, 3, self.product.uom_id.id))
+        for quantity in (0, -1, float('nan'), float('inf'), self.product.uom_id.rounding / 2):
+            with self.assertRaises(ValidationError):
+                service.prepare_purchase_requisition([{'product_id': self.product.id, 'quantity': quantity}])
+        with self.assertRaises(ValidationError):
+            service.prepare_purchase_requisition([{'product_id': self.serial_product.id, 'quantity': 1}])
+        with self.assertRaises(AccessError):
+            service.with_user(self.user).prepare_purchase_requisition([{'product_id': self.product.id, 'quantity': 1}])
+
     def _record(self, detail, user=None):
         return self.env['buz.it.issue'].with_user(user or self.user).browse(detail['id'])
+
+    def _replenishment(self, quantity=4):
+        self.product.it_min_qty = 12
+        action = self.env['buz.it.issue'].prepare_purchase_requisition([
+            {'product_id': self.product.id, 'quantity': quantity},
+        ])
+        return self.env['employee.purchase.requisition'].with_context(**action['context']).create({
+            'employee_id': self.employee.id,
+        })
+
+    def _low_row(self, user=None):
+        rows = self.env['buz.it.issue'].with_user(user or self.env.user).get_low_stock()['products']
+        return next((row for row in rows if row['id'] == self.product.id), None)
+
+    def test_replenishment_saved_pr_and_history(self):
+        self.product.it_min_qty = 12
+        self.env['buz.it.issue'].prepare_purchase_requisition([{'product_id': self.product.id, 'quantity': 4}])
+        self.assertEqual(self._low_row()['status'], 'low')
+
+        pr = self._replenishment()
+        self.assertEqual(pr.it_config_id, self.config)
+        self.assertEqual(self._low_row()['status'], 'ordering')
+        self.assertEqual(self._low_row()['requisitions'][0]['id'], pr.id)
+        # IT users without PR permission see the ordering flag, never PR details.
+        self.assertEqual(self._low_row(self.user)['status'], 'ordering')
+        self.assertEqual(self._low_row(self.user)['requisitions'], [])
+        with self.assertRaises(AccessError):
+            self.env['buz.it.issue'].with_user(self.user).get_replenishment_report()
+        pr.state = 'cancelled'
+        self.assertEqual(self._low_row()['status'], 'low')
+        report = self.env['buz.it.issue'].get_replenishment_report(self.product.id)
+        self.assertIn(pr, self.env[report['res_model']].search(report['domain']))
+        pr.state = 'received'
+        self.assertEqual(self._low_row()['status'], 'low')
+
+    def test_replenishment_form_preserves_link(self):
+        self.product.it_min_qty = 12
+        action = self.env['buz.it.issue'].prepare_purchase_requisition([
+            {'product_id': self.product.id, 'quantity': 4},
+        ])
+        with Form(self.env['employee.purchase.requisition'].with_context(**action['context'])) as form:
+            form.employee_id = self.employee
+        pr = form.record
+        self.assertEqual(pr.it_config_id, self.config)
+        self.assertEqual(pr.requisition_order_ids.product_id, self.product)
+        self.assertEqual(pr.requisition_order_ids.quantity, 4)
+
+    def test_replenishment_actual_partial_and_full_receipt(self):
+        pr = self._replenishment()
+        vendor = self.env['res.partner'].create({'name': 'IT Replenishment Vendor'})
+        pr.requisition_order_ids.partner_id = vendor
+        pr.action_create_purchase_order()
+        po = pr.it_purchase_ids
+        self.assertEqual(len(po), 1)
+        self.assertEqual(po.it_requisition_id, pr)
+        po.button_confirm()
+        picking = po.picking_ids
+        picking.move_ids.quantity = 1
+        picking.with_context(skip_backorder=True).button_validate()
+        self.assertEqual(self._low_row()['available'], 11)
+        self.assertEqual(self._low_row()['status'], 'ordering')
+        backorder = po.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        self.assertEqual(len(backorder), 1)
+        backorder.move_ids.quantity = 3
+        backorder.with_context(skip_backorder=True).button_validate()
+        self.assertFalse(self._low_row())
+        # A new shortage must not reuse the fully received PO as an active order.
+        detail = self._issue(lines=[{'product_id': self.product.id, 'quantity': 5}])
+        issue = self._record(detail)
+        issue.action_sign(self.signature, issue.get_detail()['revision'])
+        self.assertEqual(self._low_row()['status'], 'low')
+        report = self.env['buz.it.issue'].get_replenishment_report(self.product.id)
+        self.assertIn(pr, self.env[report['res_model']].search(report['domain']))
+
+    def test_replenishment_multiple_prs_and_cancelled_po(self):
+        first = self._replenishment()
+        second = self._replenishment()
+        first.state = 'cancelled'
+        self.assertEqual([pr['id'] for pr in self._low_row()['requisitions']], [second.id])
+        second.requisition_order_ids.partner_id = self.env['res.partner'].create({'name': 'IT Vendor'})
+        second.action_create_purchase_order()
+        second.it_purchase_ids.button_cancel()
+        self.assertEqual(self._low_row()['status'], 'low')
+
+    def test_replenishment_company_boundary(self):
+        pr = self._replenishment()
+        other_company = self.env['res.company'].create({'name': 'IT Other Company'})
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            pr.company_id = other_company
+        self.assertEqual(pr.company_id, self.company)
 
     def test_signature_creates_one_completed_picking(self):
         detail = self._issue()

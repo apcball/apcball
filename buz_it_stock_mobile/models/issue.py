@@ -10,7 +10,7 @@ from PIL import Image
 
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tools.float_utils import float_compare, float_is_zero
+from odoo.tools.float_utils import float_compare, float_is_zero, float_round
 
 
 class ITIssue(models.Model):
@@ -397,6 +397,104 @@ class ITIssue(models.Model):
             'available': max(0, p.with_context(location=config.location_id.id).free_qty),
             'uom': p.uom_id.name, 'rounding': p.uom_id.rounding,
         } for p in products[:40]]}
+
+    @api.model
+    def get_low_stock(self):
+        config = self._get_config()
+        products = self.env['product.product'].search([
+            ('it_issue_enabled', '=', True), ('detailed_type', '=', 'product'),
+            ('company_id', 'in', [False, self.env.company.id]),
+        ], order='name, id').with_context(location=config.location_id.id)
+        # Read only the ordering flag with elevated access. PR names/details are
+        # exposed below only for records visible under the caller's PR rules.
+        requisitions = self.env['employee.purchase.requisition'].sudo().search([
+            ('it_config_id', '=', config.id), ('company_id', '=', self.env.company.id),
+            ('state', 'not in', ['received', 'cancelled']),
+        ])
+        pending = defaultdict(list)
+        for requisition in requisitions:
+            for product_id in requisition._it_pending_product_ids():
+                pending[product_id].append(requisition.id)
+        PR = self.env['employee.purchase.requisition']
+        can_read = PR.check_access_rights('read', raise_exception=False)
+        visible = {pr.id: pr for pr in PR.search([('id', 'in', requisitions.ids)])} if can_read else {}
+        rows = []
+        for product in products:
+            minimum = product.it_min_qty
+            available = product.free_qty
+            if minimum <= 0 or float_compare(available, minimum, precision_rounding=product.uom_id.rounding) >= 0:
+                continue
+            rows.append({
+                'id': product.id, 'name': product.display_name,
+                'category_id': product.it_category_id.id, 'category': product.it_category_id.name,
+                'available': available, 'minimum': minimum,
+                'quantity': float_round(minimum - available, precision_rounding=product.uom_id.rounding, rounding_method='UP'),
+                'uom': product.uom_id.name, 'rounding': product.uom_id.rounding,
+                'status': 'ordering' if pending[product.id] else 'low',
+                'requisitions': [{'id': visible[pr_id].id, 'name': visible[pr_id].name,
+                                  'state': visible[pr_id].state}
+                                 for pr_id in pending[product.id] if pr_id in visible],
+            })
+        return {'products': rows, 'can_read': can_read,
+                'can_create': PR.check_access_rights('create', raise_exception=False)}
+
+    @api.model
+    def get_replenishment_report(self, product_id=False):
+        config = self._get_config()
+        self.env['employee.purchase.requisition'].check_access_rights('read')
+        domain = [('it_config_id', '=', config.id), ('company_id', '=', self.env.company.id)]
+        if product_id:
+            domain.append(('requisition_order_ids.product_id', '=', int(product_id)))
+        return {
+            'type': 'ir.actions.act_window', 'name': _('รายงาน PR เติมคลัง IT'),
+            'res_model': 'employee.purchase.requisition',
+            'views': [(self.env.ref('buz_it_stock_mobile.requisition_it_report_tree').id, 'list'),
+                      (False, 'form')],
+            'domain': domain, 'target': 'current',
+        }
+
+    @api.model
+    def prepare_purchase_requisition(self, lines):
+        config = self._get_config()
+        self.env['employee.purchase.requisition'].check_access_rights('create')
+        if not isinstance(lines, list) or not lines or len(lines) > 200:
+            raise ValidationError(_('Select between 1 and 200 products.'))
+        available = {row['id'] for row in self.get_low_stock()['products']}
+        commands = []
+        seen = set()
+        for line in lines:
+            if not isinstance(line, dict):
+                raise ValidationError(_('Invalid purchase item.'))
+            try:
+                product_id = int(line['product_id'])
+                quantity = float(line['quantity'])
+            except (KeyError, TypeError, ValueError, OverflowError) as exc:
+                raise ValidationError(_('Invalid purchase item.')) from exc
+            if product_id not in available or product_id in seen:
+                raise ValidationError(_('Selected equipment is no longer low in stock. Refresh the list.'))
+            product = self.env['product.product'].browse(product_id)
+            if not math.isfinite(quantity) or quantity <= 0 or not float_is_zero(
+                quantity - float_round(quantity, precision_rounding=product.uom_id.rounding), precision_rounding=0.000001,
+            ):
+                raise ValidationError(_('Enter a positive quantity matching the product unit rounding.'))
+            seen.add(product_id)
+            commands.append(fields.Command.create({
+                'product_id': product.id, 'description': product.display_name,
+                'quantity': quantity, 'uom': product.uom_id.id,
+                'picking_type_id': config.warehouse_id.in_type_id.id,
+            }))
+        return {
+            'type': 'ir.actions.act_window', 'name': _('สร้างใบขอซื้ออุปกรณ์ IT'),
+            'res_model': 'employee.purchase.requisition', 'views': [(False, 'form')],
+            'target': 'current', 'context': {
+                'default_company_id': self.env.company.id, 'default_user_id': self.env.uid,
+                'default_it_config_id': config.id,
+                'default_requisition_description': _('เติมสินค้าในคลัง IT'),
+                'default_delivery_type_id': config.warehouse_id.in_type_id.id,
+                'default_destination_location_id': config.location_id.id,
+                'default_requisition_order_ids': commands,
+            },
+        }
 
     @api.model
     def get_lots(self, product_id):
