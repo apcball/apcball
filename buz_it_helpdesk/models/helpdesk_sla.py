@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta
+import math
 
 import pytz
 
@@ -34,23 +35,94 @@ class HelpdeskSlaConfig(models.Model):
 
     _sql_constraints = [
         ('company_unique', 'unique(company_id)',
-         'Only one active SLA Settings record is allowed per company.'),
+         'Only one SLA Settings record is allowed per company.'),
     ]
 
-    @api.constrains('work_start', 'work_end', 'lunch_start', 'lunch_end')
+    @api.constrains(
+        'timezone', 'work_start', 'work_end', 'lunch_start', 'lunch_end',
+    )
     def _check_working_hours(self):
         for config in self:
-            if not 0 <= config.work_start < config.work_end <= 24:
-                raise ValidationError(_('Working hours must be within one day.'))
-            if not config.work_start <= config.lunch_start < config.lunch_end <= config.work_end:
-                raise ValidationError(_('Lunch hours must be inside working hours.'))
+            config._validate_timezone()
+            work_start = config._hours_to_minutes(
+                config.work_start, 'Work Start', allow_24=False,
+            )
+            work_end = config._hours_to_minutes(
+                config.work_end, 'Work End', allow_24=True,
+            )
+            lunch_start = config._hours_to_minutes(
+                config.lunch_start, 'Lunch Start', allow_24=False,
+            )
+            lunch_end = config._hours_to_minutes(
+                config.lunch_end, 'Lunch End', allow_24=False,
+            )
+            if not work_start < work_end:
+                raise ValidationError(_(
+                    'Work Start must be earlier than Work End.'
+                ))
+            if not work_start <= lunch_start < lunch_end <= work_end:
+                raise ValidationError(_(
+                    'Lunch Start and Lunch End must be inside working hours.'
+                ))
 
-    def _float_time(self, value):
-        hours = int(value)
-        minutes = round((value - hours) * 60)
-        if minutes == 60:
-            hours, minutes = hours + 1, 0
-        return time(min(hours, 23), minutes)
+    def _validate_timezone(self):
+        self.ensure_one()
+        if not self.timezone or self.timezone not in pytz.all_timezones:
+            raise ValidationError(_(
+                'Timezone "%(timezone)s" is not supported. Select a timezone '
+                'from the supported timezone list.',
+                timezone=self.timezone or _('empty'),
+            ))
+
+    def _is_valid_for_calculation(self):
+        """Return False for incomplete legacy data instead of making a deadline."""
+        self.ensure_one()
+        try:
+            self._validate_timezone()
+            work_start = self._hours_to_minutes(
+                self.work_start, 'Work Start', allow_24=False,
+            )
+            work_end = self._hours_to_minutes(
+                self.work_end, 'Work End', allow_24=True,
+            )
+            lunch_start = self._hours_to_minutes(
+                self.lunch_start, 'Lunch Start', allow_24=False,
+            )
+            lunch_end = self._hours_to_minutes(
+                self.lunch_end, 'Lunch End', allow_24=False,
+            )
+        except ValidationError:
+            return False
+        return (
+            work_start < work_end
+            and work_start <= lunch_start < lunch_end <= work_end
+        )
+
+    def _hours_to_minutes(self, value, label, allow_24=False):
+        """แปลงชั่วโมงแบบ Float เป็นนาที และตรวจรูปแบบก่อนคำนวณเวลา."""
+        self.ensure_one()
+        if value is None or not math.isfinite(value):
+            raise ValidationError(_('%(label)s must be a valid time.', label=label))
+        maximum = 24 * 60 if allow_24 else (24 * 60) - 1
+        total_minutes = value * 60
+        rounded_minutes = round(total_minutes)
+        if (
+            value < 0
+            or value > 24
+            or abs(total_minutes - rounded_minutes) > 1e-6
+            or rounded_minutes > maximum
+        ):
+            raise ValidationError(_(
+                '%(label)s must be a valid time in HH:MM format.', label=label,
+            ))
+        return rounded_minutes
+
+    def _local_datetime(self, local_date, value, label, allow_24=False):
+        total_minutes = self._hours_to_minutes(value, label, allow_24=allow_24)
+        if total_minutes == 24 * 60:
+            return datetime.combine(local_date + timedelta(days=1), time.min)
+        hours, minutes = divmod(total_minutes, 60)
+        return datetime.combine(local_date, time(hours, minutes))
 
     def _localize(self, value, tz):
         return tz.localize(value, is_dst=None)
@@ -68,10 +140,16 @@ class HelpdeskSlaConfig(models.Model):
         if not self._is_workday(local_date):
             return []
         return [
-            (self._localize(datetime.combine(local_date, self._float_time(self.work_start)), tz),
-             self._localize(datetime.combine(local_date, self._float_time(self.lunch_start)), tz)),
-            (self._localize(datetime.combine(local_date, self._float_time(self.lunch_end)), tz),
-             self._localize(datetime.combine(local_date, self._float_time(self.work_end)), tz)),
+            (self._localize(self._local_datetime(
+                local_date, self.work_start, 'Work Start', allow_24=False,
+            ), tz), self._localize(self._local_datetime(
+                local_date, self.lunch_start, 'Lunch Start', allow_24=False,
+            ), tz)),
+            (self._localize(self._local_datetime(
+                local_date, self.lunch_end, 'Lunch End', allow_24=False,
+            ), tz), self._localize(self._local_datetime(
+                local_date, self.work_end, 'Work End', allow_24=True,
+            ), tz)),
         ]
 
     def business_minutes_between(self, start, end):
@@ -79,7 +157,8 @@ class HelpdeskSlaConfig(models.Model):
         self.ensure_one()
         if not start or not end or end <= start:
             return 0.0
-        tz = pytz.timezone(self.timezone or 'Asia/Bangkok')
+        self._validate_timezone()
+        tz = pytz.timezone(self.timezone)
         utc = pytz.UTC
         start_local = utc.localize(start).astimezone(tz)
         end_local = utc.localize(end).astimezone(tz)
@@ -99,7 +178,8 @@ class HelpdeskSlaConfig(models.Model):
         self.ensure_one()
         if not start or minutes <= 0:
             return start
-        tz = pytz.timezone(self.timezone or 'Asia/Bangkok')
+        self._validate_timezone()
+        tz = pytz.timezone(self.timezone)
         utc = pytz.UTC
         current = utc.localize(start).astimezone(tz)
         remaining = float(minutes)

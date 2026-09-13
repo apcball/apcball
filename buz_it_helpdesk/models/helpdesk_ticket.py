@@ -455,9 +455,9 @@ class HelpdeskTicket(models.Model):
             ('company_id', '=', self.company_id.id), ('active', '=', True),
         ], limit=1)
 
-    def _get_sla_rule(self):
+    def _get_sla_rule(self, config=None):
         self.ensure_one()
-        config = self._get_sla_config()
+        config = config or self._get_sla_config()
         if not config:
             return self.env['buz.helpdesk.sla.rule']
         rules = config.rule_ids.filtered(
@@ -479,15 +479,22 @@ class HelpdeskTicket(models.Model):
     )
     def _compute_sla(self):
         now = fields.Datetime.now()
+        closed_stage = self.env.ref('buz_it_helpdesk.stage_closed')
+        pending_user_stage = self.env.ref('buz_it_helpdesk.stage_pending_user')
         for ticket in self:
             ticket.sla_rule_id = False
             ticket.sla_response_deadline = False
             ticket.sla_resolution_deadline = False
             ticket.sla_status = 'no_sla'
-            rule = ticket._get_sla_rule()
-            if not rule or not ticket.sla_start_at:
-                continue
             config = ticket._get_sla_config()
+            rule = ticket._get_sla_rule(config)
+            if (
+                not config
+                or not config._is_valid_for_calculation()
+                or not rule
+                or not ticket.sla_start_at
+            ):
+                continue
             ticket.sla_rule_id = rule
             ticket.sla_response_deadline = config.add_business_minutes(
                 ticket.sla_start_at, rule.minutes('response'),
@@ -495,10 +502,10 @@ class HelpdeskTicket(models.Model):
             ticket.sla_resolution_deadline = config.add_business_minutes(
                 ticket.sla_start_at, rule.minutes('resolution'),
             )
-            if ticket.stage_id == self.env.ref('buz_it_helpdesk.stage_closed') \
+            if ticket.stage_id == closed_stage \
                     or ticket.sla_resolution_at:
                 ticket.sla_status = 'resolved'
-            elif ticket.stage_id == self.env.ref('buz_it_helpdesk.stage_pending_user') \
+            elif ticket.stage_id == pending_user_stage \
                     or ticket.approval_state == 'pending':
                 ticket.sla_status = 'paused'
             elif (

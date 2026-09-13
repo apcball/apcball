@@ -182,6 +182,28 @@
 
 ## DEV Delivery (2026-09-12)
 
+## SLA Stability Hardening (2026-09-13)
+
+## DEV Delivery (2026-09-13)
+
+- Uploaded only `buz_it_helpdesk` to DEV with `scp`.
+- Upgraded `buz_it_helpdesk` in `MOG_DEV`; Odoo reported the module loaded successfully.
+- Restarted the DEV `odoo` container successfully.
+- Verified remote manifest version `17.0.1.3.7`, module state `installed`, and HTTP `/web` response `303`.
+- Browser UAT was not performed in this delivery.
+
+- Locked policy: one SLA Settings record per company; retained SQL constraint `unique(company_id)`.
+- Added timezone validation against `pytz` supported timezones with clear validation errors.
+- Added minute-level working-hours validation, including lunch-range validation and safe handling of invalid legacy values.
+- Fixed `24:00` handling so the work interval ends at midnight on the following local date.
+- Prevented SLA deadline calculation when the active configuration is incomplete or invalid.
+- Reused the SLA configuration and closed/pending stage records in the critical ticket computation path.
+- Preserved `No SLA`, workflow timestamps, and `Paused` deadline behavior.
+- Added targeted SLA tests for timezone, time formats, `24:00`, consecutive holidays, no matching rule, invalid configuration, one-company constraint, workflow timestamps, Paused behavior, role access, and multi-company isolation.
+- Static checks passed: Python AST, XML parse, manifest parse, and `git diff --check`.
+- Targeted isolated Odoo result: `0 failed, 0 error(s) of 20 tests`.
+- Full module suite and Browser UAT remain pending; no DEV deploy, upgrade, or restart was performed for this worklog entry.
+
 - Upload เฉพาะโมดูล `buz_it_helpdesk` ไปยัง DEV สำเร็จด้วย `scp`
 - Upgrade `buz_it_helpdesk` บนฐานข้อมูล `MOG_DEV` สำเร็จ และโหลด `helpdesk_ticket_views.xml` สำเร็จ
 - Restart container `odoo` สำเร็จ; container status เป็น `Up` และ HTTP health check ได้ `200`
