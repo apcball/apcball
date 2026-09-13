@@ -1,5 +1,14 @@
 # BUZ IT Helpdesk Worklog
 
+## การแก้ไขล่าสุด: Resolution Confirmation ไม่ขึ้นกับภาษา
+
+- เพิ่ม Activity Type เฉพาะชื่อ `Resolution Confirmation`
+- การสร้างและค้นหา Activity ใหม่อ้างอิง Activity Type แทนข้อความสรุปที่อาจถูกแปล
+- Activity เดิมที่ใช้ประเภท To Do ยังรองรับด้วย fallback
+- ไม่กระทบ Approval Activity, workflow, สิทธิ์, LINE หรือ SLA
+- แก้ไขและตรวจสอบเฉพาะใน local repository
+- ห้าม deploy, upload, upgrade module, restart service, migration หรือแก้ฐานข้อมูลจริง
+
 ## ข้อกำหนดที่ยืนยันแล้ว
 
 ### Helpdesk Team และการดูแลหลายบริษัท

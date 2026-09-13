@@ -10,6 +10,8 @@ from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
+from ..models.helpdesk_ticket import RESOLUTION_CONFIRMATION_SUMMARY
+
 
 TOKEN_PARAMETER = 'buz_it_helpdesk.line_channel_access_token'
 GROUP_PREFIX = 'buz_it_helpdesk.line_group_id'
@@ -316,7 +318,9 @@ class TestHelpdeskLineNotification(TransactionCase):
             ('res_model', '=', ticket._name),
             ('res_id', '=', ticket.id),
             ('user_id', '=', self.requester.id),
-            ('summary', '=', 'Confirm IT Resolution'),
+            ('activity_type_id', '=', self.env.ref(
+                'buz_it_helpdesk.mail_activity_type_resolution_confirmation'
+            ).id),
             ('date_done', '=', False),
         ])
         self.assertTrue(confirmation)
@@ -335,6 +339,31 @@ class TestHelpdeskLineNotification(TransactionCase):
             )
         self.assertEqual(
             ticket.stage_id, self.env.ref('buz_it_helpdesk.stage_resolved')
+        )
+        self.assertTrue(ticket._resolution_confirmation_activities())
+
+    def test_resolution_confirmation_does_not_depend_on_summary_language(self):
+        ticket = self._prepare_resolution_ticket()
+        with patch(
+            'odoo.addons.buz_it_helpdesk.services.line_service.requests.request',
+            return_value=self._response(200),
+        ):
+            ticket.with_user(self.support).action_mark_resolved()
+
+        activity = ticket._resolution_confirmation_activities()
+        self.assertEqual(len(activity), 1)
+        activity.write({'summary': 'ยืนยันการแก้ไข'})
+        self.assertTrue(ticket._resolution_confirmation_activities())
+
+    def test_legacy_resolution_confirmation_activity_is_still_found(self):
+        ticket = self._prepare_resolution_ticket()
+        ticket.with_user(self.manager)._write_workflow_fields({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_resolved').id,
+        })
+        ticket.activity_schedule(
+            'mail.mail_activity_data_todo',
+            user_id=self.requester.id,
+            summary=RESOLUTION_CONFIRMATION_SUMMARY,
         )
         self.assertTrue(ticket._resolution_confirmation_activities())
 

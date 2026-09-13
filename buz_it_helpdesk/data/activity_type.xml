@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mail_activity_type_resolution_confirmation" model="mail.activity.type">
+        <field name="name">Resolution Confirmation</field>
+        <field name="summary">Confirm IT Resolution</field>
+        <field name="icon">fa-check-circle</field>
+        <field name="decoration_type">warning</field>
+    </record>
+</odoo>

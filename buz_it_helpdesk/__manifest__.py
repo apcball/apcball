@@ -15,6 +15,7 @@ without dependencies on custom or business modules.
     'data': [
         'data/sequence.xml',
         'data/stage_data.xml',
+        'data/activity_type.xml',
         'security/security.xml',
         'security/ir.model.access.csv',
         'views/helpdesk_category_views.xml',

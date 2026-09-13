@@ -957,7 +957,7 @@ class HelpdeskTicket(models.Model):
             subtype_xmlid='mail.mt_comment',
         )
         self.activity_schedule(
-            'mail.mail_activity_data_todo',
+            'buz_it_helpdesk.mail_activity_type_resolution_confirmation',
             user_id=self.requester_id.id,
             summary=_(RESOLUTION_CONFIRMATION_SUMMARY),
             note=_(
@@ -969,13 +969,34 @@ class HelpdeskTicket(models.Model):
 
     def _resolution_confirmation_activities(self):
         self.ensure_one()
-        return self.env['mail.activity'].search([
+        domain = [
             ('res_model', '=', self._name),
             ('res_id', '=', self.id),
             ('user_id', '=', self.requester_id.id),
-            ('summary', '=', _(RESOLUTION_CONFIRMATION_SUMMARY)),
             ('date_done', '=', False),
+        ]
+        activity_type = self.env.ref(
+            'buz_it_helpdesk.mail_activity_type_resolution_confirmation',
+            raise_if_not_found=False,
+        )
+        if not activity_type:
+            return self.env['mail.activity']
+
+        activities = self.env['mail.activity'].search(
+            domain + [('activity_type_id', '=', activity_type.id)]
+        )
+        # รองรับ Activity เดิมที่สร้างก่อนมีประเภทเฉพาะ โดยไม่ใช้ข้อความแปล
+        # เป็นเงื่อนไขหลักของ Activity ใหม่อีกต่อไป
+        legacy = self.env['mail.activity'].search(domain + [
+            ('activity_type_id', '=', self.env.ref(
+                'mail.mail_activity_data_todo'
+            ).id),
+            ('summary', 'in', [
+                RESOLUTION_CONFIRMATION_SUMMARY,
+                _(RESOLUTION_CONFIRMATION_SUMMARY),
+            ]),
         ])
+        return activities | legacy
 
     def _send_resolution_line_notification(self):
         self.ensure_one()
