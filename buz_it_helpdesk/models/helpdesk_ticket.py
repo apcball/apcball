@@ -449,6 +449,44 @@ class HelpdeskTicket(models.Model):
             'buz_it_helpdesk.group_it_helpdesk_manager'
         )
 
+    def _can_read_helpdesk_attachments(self):
+        """ตรวจสิทธิ์อ่านไฟล์แนบตามสิทธิ์การอ่าน Ticket ปัจจุบัน"""
+        self.ensure_one()
+        if (
+            self.env.user.has_group('buz_it_helpdesk.group_it_requester')
+            and not self._is_support_agent()
+            and not self._is_helpdesk_manager()
+            and self.requester_id != self.env.user
+        ):
+            return False
+        self.check_access_rights('read')
+        self.check_access_rule('read')
+        return True
+
+    def _can_manage_helpdesk_attachments(self):
+        """ตรวจสิทธิ์เพิ่ม/ลบไฟล์แนบตามสิทธิ์แก้ไข Ticket ปัจจุบัน"""
+        self.ensure_one()
+        if self._is_helpdesk_manager():
+            return True
+        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+        if self.stage_id == draft_stage:
+            return (
+                self.env.user.has_group('buz_it_helpdesk.group_it_requester')
+                and self.requester_id == self.env.user
+            )
+        return (
+            self._is_support_agent()
+            and self.assigned_user_id == self.env.user
+        )
+
+    def _check_helpdesk_attachment_write(self):
+        """ป้องกันการแก้ไขไฟล์แนบโดยข้ามกฎการแก้ไข Ticket"""
+        for ticket in self:
+            if not ticket._can_manage_helpdesk_attachments():
+                raise UserError(_(
+                    'You do not have permission to manage attachments on this ticket.'
+                ))
+
     def _get_sla_config(self):
         self.ensure_one()
         return self.env['buz.helpdesk.sla.config'].search([
@@ -1252,6 +1290,8 @@ class HelpdeskTicket(models.Model):
 
     def write(self, vals):
         vals = dict(vals)
+        if 'attachment_ids' in vals:
+            self._check_helpdesk_attachment_write()
         is_manager = self._is_helpdesk_manager()
         is_requester_only = (
             self.env.user.has_group('buz_it_helpdesk.group_it_requester')
@@ -1371,6 +1411,22 @@ class HelpdeskTicket(models.Model):
         if 'team_id' in vals or 'assigned_user_id' in vals:
             for ticket in self:
                 ticket._auto_receive_assigned_ticket()
+        return result
+
+    def read(self, fields=None, load='_classic_read'):
+        result = super().read(fields=fields, load=load)
+        if fields is not None and 'attachment_ids' not in fields:
+            return result
+        attachment_model = self.env['ir.attachment']
+        for values in result:
+            attachment_ids = values.get('attachment_ids')
+            if not attachment_ids:
+                continue
+            allowed = attachment_model.browse(attachment_ids)._helpdesk_allowed('read')
+            values['attachment_ids'] = [
+                attachment_id for attachment_id in attachment_ids
+                if attachment_id in allowed.ids
+            ]
         return result
 
     @api.onchange('requester_id')

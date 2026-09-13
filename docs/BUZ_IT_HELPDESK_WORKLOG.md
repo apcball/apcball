@@ -237,3 +237,12 @@
 - Upgrade `buz_it_helpdesk` บนฐานข้อมูล `MOG_DEV` สำเร็จ และโหลด `helpdesk_ticket_views.xml` สำเร็จ
 - Restart container `odoo` สำเร็จ; container status เป็น `Up` และ HTTP health check ได้ `200`
 - ไม่ได้ deploy ไป Production และยังไม่ได้ทำ Browser/PDF/accounting UAT
+
+## Attachment Access Restriction (2026-09-13)
+
+- กำหนดให้ Requester เห็นและดาวน์โหลดไฟล์แนบได้เฉพาะ Ticket ที่ตนเองเป็น Requester
+- Requester เพิ่มหรือลบไฟล์แนบได้เฉพาะ Draft ของตนเอง; Ticket หลังจากนั้นดู/ดาวน์โหลดได้อย่างเดียว
+- เพิ่ม Backend guard ที่ `ir.attachment` และ Ticket เพื่อป้องกัน Preview, Download, ORM/API/RPC และการเปลี่ยนความสัมพันธ์ไฟล์แนบ
+- Support Agent และ Helpdesk Manager ใช้สิทธิ์การเข้าถึง Ticket เดิม
+- เพิ่ม automated tests สำหรับการอ่าน, เพิ่ม, ลบ, สิทธิ์ข้ามผู้ใช้ และการคงสิทธิ์ของ Support/Manager
+- Local-only: ยังไม่ Deploy, Upgrade หรือ Restart DEV/Production
