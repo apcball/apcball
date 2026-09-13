@@ -65,7 +65,7 @@ export class HelpdeskAttachmentPreviewField extends Many2ManyBinaryField {
     }
 
     get canPasteClipboard() {
-        return this.props.name === "attachment_ids";
+        return ["attachment_ids", "it_attachment_ids"].includes(this.props.name);
     }
 
     toggleAttachmentComposer() {

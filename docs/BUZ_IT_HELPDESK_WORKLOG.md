@@ -246,3 +246,10 @@
 - Support Agent และ Helpdesk Manager ใช้สิทธิ์การเข้าถึง Ticket เดิม
 - เพิ่ม automated tests สำหรับการอ่าน, เพิ่ม, ลบ, สิทธิ์ข้ามผู้ใช้ และการคงสิทธิ์ของ Support/Manager
 - Local-only: ยังไม่ Deploy, Upgrade หรือ Restart DEV/Production
+## IT Attachments Feature Parity (2026-09-13)
+
+- กำหนดให้ `it_attachment_ids` รองรับการอัปโหลด ลบ Preview Download และ Paste Screenshot ผ่าน `Ctrl+V` เหมือน `attachment_ids`
+- คงฟิลด์และตารางความสัมพันธ์ของไฟล์แนบ User กับทีม IT แยกจากกัน ไม่รวมข้อมูลเข้าหากัน และไม่ทำ Data Backfill
+- ปรับ Attachment Widget และ Backend attachment access ให้รองรับทั้งสองความสัมพันธ์ โดยคงสิทธิ์เดิมของ Requester, Support Agent และ Manager
+- เพิ่ม Automated Tests สำหรับการแยกความสัมพันธ์ การใช้งานของทีม IT และการป้องกันการจัดการโดยผู้ไม่มีสิทธิ์
+- ตรวจสอบใน local isolated test เท่านั้น; ยังไม่มีการ Deploy, Upgrade หรือ Restart Server

@@ -1415,18 +1415,29 @@ class HelpdeskTicket(models.Model):
 
     def read(self, fields=None, load='_classic_read'):
         result = super().read(fields=fields, load=load)
-        if fields is not None and 'attachment_ids' not in fields:
+        attachment_fields = ['attachment_ids']
+        if 'it_attachment_ids' in self._fields:
+            attachment_fields.append('it_attachment_ids')
+        if fields is not None:
+            attachment_fields = [
+                field_name for field_name in attachment_fields
+                if field_name in fields
+            ]
+        if not attachment_fields:
             return result
         attachment_model = self.env['ir.attachment']
         for values in result:
-            attachment_ids = values.get('attachment_ids')
-            if not attachment_ids:
-                continue
-            allowed = attachment_model.browse(attachment_ids)._helpdesk_allowed('read')
-            values['attachment_ids'] = [
-                attachment_id for attachment_id in attachment_ids
-                if attachment_id in allowed.ids
-            ]
+            for field_name in attachment_fields:
+                attachment_ids = values.get(field_name)
+                if not attachment_ids:
+                    continue
+                allowed = attachment_model.browse(
+                    attachment_ids,
+                )._helpdesk_allowed('read')
+                values[field_name] = [
+                    attachment_id for attachment_id in attachment_ids
+                    if attachment_id in allowed.ids
+                ]
         return result
 
     @api.onchange('requester_id')
