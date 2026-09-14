@@ -66,6 +66,13 @@ class ITManagementDashboard(models.AbstractModel):
         ]
 
     @api.model
+    def _open_backlog_domain(self, normalized):
+        """จำกัด Open Backlog ให้เป็น Ticket ที่ยังอยู่ในสถานะ New เท่านั้น"""
+        return self._ticket_base_domain(normalized) + [
+            ('stage_id', '=', self.env.ref('buz_it_helpdesk.stage_new').id),
+        ]
+
+    @api.model
     def _date_rows(self, date_from, date_to, opened, closed):
         rows = []
         cursor = date_from
@@ -495,9 +502,7 @@ class ITManagementDashboard(models.AbstractModel):
         normalized = self._normalize_filters(filters)
         ticket_model = self.env['buz.helpdesk.ticket']
         base = self._ticket_base_domain(normalized)
-        closed = self.env.ref('buz_it_helpdesk.stage_closed')
-        resolved = self.env.ref('buz_it_helpdesk.stage_resolved')
-        open_domain = base + [('stage_id', 'not in', [closed.id, resolved.id])]
+        open_domain = self._open_backlog_domain(normalized)
         asset_model = self.env['buz.it.asset']
         asset_base = [('active', '=', True), ('company_id', 'in', normalized['company_ids'])]
         today = normalized['date_to']
@@ -615,11 +620,7 @@ class ITManagementDashboard(models.AbstractModel):
         ticket_base = self._ticket_base_domain(normalized)
         closed = self.env.ref('buz_it_helpdesk.stage_closed')
         if target == 'open_tickets':
-            name, domain = 'Open Backlog', ticket_base + [
-                ('stage_id', 'not in', [closed.id, self.env.ref(
-                    'buz_it_helpdesk.stage_resolved'
-                ).id]),
-            ]
+            name, domain = 'Open Backlog', self._open_backlog_domain(normalized)
         elif target == 'urgent_tickets':
             name, domain = 'Urgent Tickets', ticket_base + [
                 ('stage_id', 'not in', [closed.id, self.env.ref(

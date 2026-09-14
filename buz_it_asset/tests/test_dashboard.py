@@ -57,13 +57,23 @@ class TestITManagementDashboard(TransactionCase):
         self.assertIn('repair_analytics', data['workflow'])
         self.assertEqual(len(data['workflow']['ticket_analytics']['aging']), 4)
 
-    def test_open_backlog_drilldown_excludes_resolved_and_closed(self):
+    def test_open_backlog_counts_and_drills_down_to_new_tickets_only(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
+        normalized = dashboard._normalize_filters()
+        expected_domain = dashboard._open_backlog_domain(normalized)
+        data = dashboard.get_dashboard_data()
         action = dashboard.get_drilldown_action('open_tickets')
         self.assertEqual(action['name'], 'Open Backlog')
-        self.assertIn(('stage_id', 'not in'), [
-            (item[0], item[1]) for item in action['domain'] if isinstance(item, tuple)
-        ])
+        self.assertEqual(action['domain'], expected_domain)
+        self.assertEqual(
+            data['kpis']['open_tickets'],
+            self.env['buz.helpdesk.ticket'].search_count(expected_domain),
+        )
+        self.assertIn(
+            ('stage_id', '=', self.env.ref('buz_it_helpdesk.stage_new').id),
+            action['domain'],
+        )
+        self.assertNotIn(('stage_id', 'not in'), action['domain'])
 
     def test_needs_attention_drilldown_combines_urgent_and_sla(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
