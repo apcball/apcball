@@ -307,6 +307,20 @@ Requester ไม่จำเป็นต้องเข้าถึงเมน�
 - ตรวจ version 17.0.1.3.7, module state installed และ HTTP /web response 303
 - ยังไม่มี Browser UAT; Dashboard และ IT Attachments ที่ระบุ Local-only ยังไม่ถือว่าถูก deploy
 
+## แนวทาง IT Management สำหรับการพัฒนาต่อ
+
+หลักการสำคัญสำหรับการพัฒนาระบบ IT Management ต่อจากสถานะปัจจุบัน:
+
+- `All Hardware` เป็นทะเบียน Hardware หลัก ต้องไม่ถูกย้ายหรือเปลี่ยนพฤติกรรม
+- Hardware ที่ยังไม่ส่งมอบสามารถอยู่ในระบบได้โดยไม่ต้อง Assign
+- การ Assign เป็นขั้นตอนภายหลังเมื่อมีการส่งมอบอุปกรณ์จริง
+- Software License ยังคงเป็นส่วนแยกของ Software
+- Service Subscription และ Domain ต้องเป็นโมเดลและเมนูแยกจาก Hardware
+- การเชื่อมโยง Subscription หรือ Domain กับ Hardware ต้องเป็นแบบเลือกได้และไม่บังคับ
+- ยังไม่รวม Dashboard, ระบบบัญชี, การจ่ายเงิน, Password และระบบแจ้งเตือนอัตโนมัติในขอบเขตโครงสร้างนี้
+- เป้าหมายของ IT Management คือจัดการ Hardware, Software, License, Subscription, Domain, Maintenance, Assignment และเอกสารที่เกี่ยวข้อง
+
+ขอบเขตนี้มีไว้เป็นแนวทางสำหรับการพูดคุยและพัฒนาต่อจากเครื่องอื่น โดยการเพิ่มฟีเจอร์ใหม่ต้องไม่กระทบข้อมูลเดิม การ Assign เดิม หรือ Logic ของ `All Hardware`
 ## งานที่ยังต้องยืนยัน
 
 - Full module suite ใน isolated Odoo environment และแยก failure เดิมที่ไม่เกี่ยวข้อง
