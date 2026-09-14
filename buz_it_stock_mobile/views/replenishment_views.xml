@@ -1,20 +1,8 @@
 <odoo>
-    <record id="requisition_it_form" model="ir.ui.view">
-        <field name="name">employee.purchase.requisition.it.replenishment</field>
-        <field name="model">employee.purchase.requisition</field>
-        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet" position="inside">
-                <group string="ติดตามการเติมคลัง IT" groups="buz_it_stock_mobile.group_it_user">
-                    <field name="it_config_id" domain="[('company_id', '=', company_id)]" readonly="state != 'draft'" options="{'no_create': True}"/>
-                    <field name="it_purchase_ids" widget="many2many_tags" readonly="1" invisible="not it_config_id"/>
-                </group>
-            </xpath>
-        </field>
-    </record>
     <record id="requisition_it_report_tree" model="ir.ui.view">
         <field name="name">employee.purchase.requisition.it.report.tree</field>
         <field name="model">employee.purchase.requisition</field>
+        <field name="priority">99</field>
         <field name="arch" type="xml">
             <tree create="false" decoration-muted="state == 'cancelled'" decoration-success="state == 'received'">
                 <field name="name"/>
