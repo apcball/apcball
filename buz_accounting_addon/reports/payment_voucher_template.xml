@@ -138,7 +138,7 @@
                         </table>
 
                         <!-- 2. Payment Method Table -->
-                        <t t-set="payment_main_amount" t-value="o.amount_total_gross - o.amount_total_wht - o.other_income_dis - o.bank_free_dis"/>
+                        <t t-set="payment_main_amount" t-value="o.amount_total_gross - o.amount_total_wht + o.paid_discount_amount - o.other_income_dis"/>
                         <t t-set="payment_breakdown_total" t-value="payment_main_amount + o.bank_free_dis + o.other_income_dis + o.amount_total_wht"/>
                         <table class="table-bordered" style="margin-top: 15px;">
                             <thead>
