@@ -70,7 +70,6 @@
 .it-dashboard-tabs{display:flex;gap:22px;border-bottom:1px solid var(--it-border);margin-bottom:16px}.it-dashboard-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--it-muted);padding:8px 2px;font-weight:700}.it-dashboard-tabs button.active{border-bottom-color:var(--it-violet);color:var(--it-violet)}
 .it-kpi-icon.blue{background:#e7f0ff;color:var(--it-blue)}.repair-summary{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;align-items:end;margin-bottom:8px}.repair-summary strong{color:var(--it-navy);font-size:28px}.repair-summary b{color:var(--it-amber);font-size:20px}.repair-summary span{color:var(--it-muted);font-size:11px}.workflow-wide{grid-column:span 2}.workflow-grid .it-panel{min-height:0}
 @media(max-width:900px){.workflow-wide{grid-column:auto}}
-
 /* จัดพื้นที่ label ของฟอร์ม Asset โดยไม่กระทบฟอร์ม Odoo อื่น */
 .o_form_view .buz-asset-form-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -154,6 +153,16 @@
 .attention-empty i { color: var(--it-green); }
 .it-workflow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .it-workflow-grid .workflow-wide { grid-column: span 2; }
+.workflow-group { margin-bottom: 22px; }
+.workflow-group:last-child { margin-bottom: 0; }
+.workflow-group-heading { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 10px; }
+.workflow-group-heading h2 { margin: 0; color: var(--it-navy); font-size: 16px; letter-spacing: -.02em; }
+.workflow-group-heading > span:last-child { margin-left: auto; color: var(--it-muted); font-size: 11px; }
+.workflow-group-heading .it-panel-kicker { margin: 0; color: var(--it-violet); }
+.ticket-operations .it-workflow-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.asset-operations .it-workflow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.workflow-group .it-panel { min-height: 0; }
+.workflow-group .chart-box { min-height: 190px; }
 .it-refreshing { margin: -10px 0 14px; color: var(--it-violet); font-size: 11px; }
 .it-dashboard-alert { display: flex; align-items: center; gap: 9px; border: 1px solid #f4dfb7; border-radius: 10px; }
 .it-dashboard-alert span { flex: 1; }
@@ -171,3 +180,5 @@
 @media (max-width: 1100px) { .it-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .it-workflow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .it-workflow-grid .workflow-wide { grid-column: span 2; } }
 @media (max-width: 900px) { .it-dashboard-header { align-items: stretch; } .it-dashboard-toolbar { justify-content: stretch; } .it-sync-status { border-left: 0; padding-left: 0; } .it-dashboard-grid, .it-workflow-grid { grid-template-columns: 1fr; } .it-workflow-grid .workflow-wide { grid-column: auto; } .it-skeleton-kpis, .it-skeleton-panels { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .o_it_management_dashboard { padding: 14px; } .it-dashboard-toolbar { display: grid; grid-template-columns: 1fr 1fr; } .it-filter-control select, .it-dashboard-toolbar .btn { width: 100%; min-width: 0; } .it-sync-status { grid-column: span 2; } .it-dashboard-tabs { width: 100%; } .it-dashboard-tabs button { flex: 1; padding-left: 7px; padding-right: 7px; } .it-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .it-kpi-card { min-height: 108px; padding: 12px; } .it-kpi-icon { width: 40px; height: 40px; flex-basis: 40px; font-size: 17px; } .it-kpi-card strong { font-size: 24px; } .it-section-label small { font-size: 10px; } }
+
+@media (max-width: 600px) { .workflow-group-heading { align-items: flex-start; flex-wrap: wrap; } .workflow-group-heading > span:last-child { width: 100%; margin-left: 0; } }

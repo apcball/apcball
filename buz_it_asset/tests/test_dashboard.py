@@ -55,7 +55,18 @@ class TestITManagementDashboard(TransactionCase):
         self.assertIn('sla_status', data)
         self.assertIn('ticket_analytics', data['workflow'])
         self.assertIn('repair_analytics', data['workflow'])
-        self.assertEqual(len(data['workflow']['ticket_analytics']['aging']), 4)
+        analytics = data['workflow']['ticket_analytics']
+        self.assertEqual(len(analytics['aging']), 4)
+        self.assertIn('sla_eligible', analytics)
+        self.assertIn('sla_met', analytics)
+        self.assertIn('sla_compliance', analytics)
+        if analytics['sla_eligible']:
+            self.assertEqual(
+                analytics['sla_compliance'],
+                round(analytics['sla_met'] / analytics['sla_eligible'] * 100, 1),
+            )
+        else:
+            self.assertIsNone(analytics['sla_compliance'])
 
     def test_open_backlog_counts_and_drills_down_to_new_tickets_only(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)

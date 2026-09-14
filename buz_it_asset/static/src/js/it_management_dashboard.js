@@ -285,6 +285,12 @@ export class ITManagementDashboard extends Component {
     formatHours(value) {
         return value ? `${value} h` : "N/A";
     }
+    formatSlaRate(rate, eligible) {
+        if (!eligible || rate === null || rate === undefined) {
+            return "No eligible tickets";
+        }
+        return `${Number(rate).toFixed(1)}% of eligible tickets`;
+    }
 
     formatLastUpdated() {
         if (!this.state.lastUpdated) {
