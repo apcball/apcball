@@ -130,3 +130,66 @@ class TestResolutionWorkflow(TransactionCase):
         with self.assertRaises(UserError):
             with mute_logger('odoo.http'):
                 ticket.with_user(self.support).action_request_rework()
+    def test_legacy_ticket_requires_category_before_create(self):
+        ticket = self.env['buz.helpdesk.ticket'].with_user(
+            self.requester
+        ).create({
+            'subject': 'Legacy ticket without category',
+            'category_id': self.category.id,
+        })
+        self.env.cr.execute("UPDATE buz_helpdesk_ticket SET category_id = NULL WHERE id = %s", (ticket.id,))
+        ticket.invalidate_recordset(['category_id'])
+
+        with self.assertRaisesRegex(
+            UserError,
+            'Please select a Category before creating this ticket.',
+        ):
+            ticket.with_user(self.requester).action_create_ticket()
+
+    def test_manager_completes_legacy_category_before_receive(self):
+        ticket = self.env['buz.helpdesk.ticket'].with_user(
+            self.requester
+        ).create({
+            'subject': 'Legacy ticket receive test',
+            'category_id': self.category.id,
+        })
+        ticket.with_user(self.requester).action_create_ticket()
+        self.env.cr.execute("UPDATE buz_helpdesk_ticket SET category_id = NULL WHERE id = %s", (ticket.id,))
+        ticket.invalidate_recordset(['category_id'])
+
+        self.assertFalse(ticket.category_id)
+        self.assertFalse(ticket.with_user(
+            self.support
+        ).can_edit_category_priority)
+        self.assertTrue(ticket.with_user(
+            self.manager
+        ).can_edit_category_priority)
+        with self.assertRaisesRegex(
+            UserError,
+            'Please select a Category before receiving this ticket.',
+        ):
+            ticket.with_user(self.support).action_receive_ticket()
+
+        ticket.with_user(self.manager).write({
+            'category_id': self.category.id,
+        })
+        ticket.with_user(self.support).action_receive_ticket()
+
+        self.assertEqual(
+            ticket.stage_id,
+            self.env.ref('buz_it_helpdesk.stage_in_progress'),
+        )
+        self.assertEqual(ticket.team_id, self.team)
+        self.assertEqual(ticket.assigned_user_id, self.support)
+    def test_category_and_priority_are_force_saved(self):
+        view = self.env.ref('buz_it_helpdesk.view_helpdesk_ticket_form')
+        arch = view.arch_db
+
+        self.assertRegex(
+            arch,
+            r'<field name="priority"[^>]*force_save="1"',
+        )
+        self.assertRegex(
+            arch,
+            r'<field name="category_id"[^>]*force_save="1"',
+        )

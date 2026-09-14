@@ -73,7 +73,7 @@ class HelpdeskTicket(models.Model):
         tracking=True,
     )
     category_id = fields.Many2one(
-        'buz.helpdesk.category', string='Category', required=True,
+        'buz.helpdesk.category', string='Category',
     )
     category_type_id = fields.Many2one(
         'buz.helpdesk.category.type', string='Type',
@@ -642,6 +642,10 @@ class HelpdeskTicket(models.Model):
         draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
         if self.stage_id != draft_stage:
             raise UserError(_('Only Draft tickets can be created.'))
+        if not self.category_id:
+            raise UserError(_(
+                'Please select a Category before creating this ticket.'
+            ))
 
         recipients = self.env['res.users'].search([
             ('active', '=', True),
@@ -1186,6 +1190,10 @@ class HelpdeskTicket(models.Model):
         self.ensure_one()
         if not self._is_support_agent():
             raise UserError(_('Only IT Support Agents can receive tickets.'))
+        if not self.category_id:
+            raise UserError(_(
+                'Please select a Category before receiving this ticket.'
+            ))
         self.env.cr.execute(
             'SELECT id FROM buz_helpdesk_ticket WHERE id = %s FOR UPDATE',
             (self.id,),

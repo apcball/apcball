@@ -184,10 +184,10 @@
                             <field name="closed_ticket_date" string="วันที่ปิด Ticket / Ticket Closed Date" readonly="1"/>
                             <field name="requester_id" string="ผู้แจ้ง / Requester" readonly="not is_editable"/>
                             <field name="department_id" string="แผนก / Department" readonly="1"/>
-                            <field name="priority" string="ความสำคัญ / Priority" widget="priority" options="{'autosave': False}" readonly="not can_edit_category_priority"/>
+                            <field name="priority" string="ความสำคัญ / Priority" widget="priority" options="{'autosave': False}" force_save="1" readonly="not can_edit_category_priority"/>
                         </group>
                         <group>
-                            <field name="category_id" string="หมวดหมู่ / Category" readonly="not can_edit_category_priority"/>
+                            <field name="category_id" string="หมวดหมู่ / Category" required="is_draft_stage" force_save="1" readonly="not can_edit_category_priority"/>
                             <field name="category_type_id" string="ประเภท / Type" readonly="not is_editable"
                                    domain="[('id', 'in', category_type_ids)]"
                                    invisible="not show_category_type"/>
