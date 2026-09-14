@@ -407,11 +407,13 @@ class ITManagementDashboard(models.AbstractModel):
         ticket_base = self._ticket_base_domain(normalized)
         closed = self.env.ref('buz_it_helpdesk.stage_closed')
         resolved = self.env.ref('buz_it_helpdesk.stage_resolved')
+        urgent_domain = ticket_base + [
+            ('stage_id', 'not in', [closed.id, resolved.id]),
+            ('priority', '=', '3'),
+        ]
+        urgent_total = ticket_model.search_count(urgent_domain)
         urgent = ticket_model.search(
-            ticket_base + [
-                ('stage_id', 'not in', [closed.id, resolved.id]),
-                ('priority', '=', '3'),
-            ],
+            urgent_domain,
             order='create_ticket_date asc, id asc', limit=4,
         )
         unassigned = ticket_model.search(
@@ -431,6 +433,7 @@ class ITManagementDashboard(models.AbstractModel):
             ('expiration_date', '<=', today + timedelta(days=30)),
         ], order='expiration_date asc, id asc', limit=5)
         return {
+            'urgent_total': urgent_total,
             'urgent_tickets': [
                 {
                     'id': ticket.id, 'target': 'urgent_tickets',

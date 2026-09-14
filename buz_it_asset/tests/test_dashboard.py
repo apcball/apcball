@@ -85,9 +85,20 @@ class TestITManagementDashboard(TransactionCase):
 
     def test_needs_attention_payload_is_urgent_only_and_limited_to_four(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
+        normalized = dashboard._normalize_filters()
+        closed = self.env.ref('buz_it_helpdesk.stage_closed')
+        resolved = self.env.ref('buz_it_helpdesk.stage_resolved')
+        urgent_domain = dashboard._ticket_base_domain(normalized) + [
+            ('stage_id', 'not in', [closed.id, resolved.id]),
+            ('priority', '=', '3'),
+        ]
         attention = dashboard.get_dashboard_data()['needs_attention']
         urgent_items = attention['urgent_tickets']
 
+        self.assertEqual(
+            attention['urgent_total'],
+            self.env['buz.helpdesk.ticket'].search_count(urgent_domain),
+        )
         self.assertLessEqual(len(urgent_items), 4)
         self.assertTrue(all(item['target'] == 'urgent_tickets' for item in urgent_items))
 

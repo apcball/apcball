@@ -296,6 +296,19 @@ export class ITManagementDashboard extends Component {
         });
     }
 
+    formatDateRange(dateFrom, dateTo) {
+        if (!dateFrom || !dateTo) {
+            return "Date range unavailable";
+        }
+        const formatter = new Intl.DateTimeFormat(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
+        const parseDate = (value) => new Date(`${value}T00:00:00`);
+        return `${formatter.format(parseDate(dateFrom))} – ${formatter.format(parseDate(dateTo))}`;
+    }
+
     hasRows(rows) {
         return Array.isArray(rows) && rows.some((row) => Number(row.value || 0) > 0);
     }
