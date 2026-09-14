@@ -309,12 +309,8 @@ export class ITManagementDashboard extends Component {
 
     attentionItems(attention) {
         const rows = [];
-        (attention?.sla || []).forEach((item) => rows.push({ ...item, label: "SLA", kind: "urgent", icon: "fa-clock-o" }));
         (attention?.urgent_tickets || []).forEach((item) => rows.push({ ...item, label: "Urgent", kind: "urgent", icon: "fa-bell-o" }));
-        (attention?.unassigned_tickets || []).forEach((item) => rows.push({ ...item, label: "Unassigned", kind: "warning", icon: "fa-user-o" }));
-        (attention?.repairs || []).forEach((item) => rows.push({ ...item, label: "Repair", kind: "warning", icon: "fa-wrench" }));
-        (attention?.licenses || []).forEach((item) => rows.push({ ...item, label: "License", kind: "license", icon: "fa-file-text-o" }));
-        return rows.slice(0, 8);
+        return rows.slice(0, 4);
     }
 
     async openDrilldown(target, bucket = null) {

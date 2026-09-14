@@ -75,12 +75,21 @@ class TestITManagementDashboard(TransactionCase):
         )
         self.assertNotIn(('stage_id', 'not in'), action['domain'])
 
-    def test_needs_attention_drilldown_combines_urgent_and_sla(self):
+    def test_needs_attention_drilldown_matches_urgent_tickets(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
+        urgent_action = dashboard.get_drilldown_action('urgent_tickets')
         action = dashboard.get_drilldown_action('needs_attention')
         self.assertEqual(action['name'], 'Needs Attention')
         self.assertEqual(action['res_model'], 'buz.helpdesk.ticket')
-        self.assertIn('|', action['domain'])
+        self.assertEqual(action['domain'], urgent_action['domain'])
+
+    def test_needs_attention_payload_is_urgent_only_and_limited_to_four(self):
+        dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)
+        attention = dashboard.get_dashboard_data()['needs_attention']
+        urgent_items = attention['urgent_tickets']
+
+        self.assertLessEqual(len(urgent_items), 4)
+        self.assertTrue(all(item['target'] == 'urgent_tickets' for item in urgent_items))
 
     def test_dashboard_ticket_domain_excludes_archived_and_draft(self):
         dashboard = self.env['buz.it.management.dashboard'].with_user(self.agent)

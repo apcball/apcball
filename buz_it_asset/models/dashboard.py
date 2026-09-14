@@ -412,7 +412,7 @@ class ITManagementDashboard(models.AbstractModel):
                 ('stage_id', 'not in', [closed.id, resolved.id]),
                 ('priority', '=', '3'),
             ],
-            order='create_ticket_date asc, id asc', limit=5,
+            order='create_ticket_date asc, id asc', limit=4,
         )
         unassigned = ticket_model.search(
             ticket_base + [('assigned_user_id', '=', False)],
@@ -437,7 +437,7 @@ class ITManagementDashboard(models.AbstractModel):
                     'bucket': {'record_id': ticket.id},
                     'title': ticket.display_name, 'detail': ticket.subject,
                     'status': ticket.stage_id.name, 'priority': ticket.priority,
-                } for ticket in urgent[:2]
+                } for ticket in urgent
             ],
             'repairs': [
                 {
@@ -637,15 +637,10 @@ class ITManagementDashboard(models.AbstractModel):
             ]
             name, domain = 'Overdue SLA', [('id', 'in', overdue_ids)]
         elif target == 'needs_attention':
-            overdue_ids = [
-                row['id'] for row in self._overdue_sla(normalized)
-            ]
             resolved = self.env.ref('buz_it_helpdesk.stage_resolved')
             name, domain = 'Needs Attention', ticket_base + [
-                '|', '&',
                 ('stage_id', 'not in', [closed.id, resolved.id]),
                 ('priority', '=', '3'),
-                ('id', 'in', overdue_ids),
             ]
         elif target in (
             'ticket_status', 'ticket_trend_opened',
