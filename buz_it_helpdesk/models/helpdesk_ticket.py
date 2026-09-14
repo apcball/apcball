@@ -201,6 +201,9 @@ class HelpdeskTicket(models.Model):
     show_confirm_resolution_button = fields.Boolean(
         compute='_compute_show_confirm_resolution_button',
     )
+    show_request_rework_button = fields.Boolean(
+        compute='_compute_show_request_rework_button',
+    )
     is_editable = fields.Boolean(compute='_compute_is_editable')
     can_edit_category_priority = fields.Boolean(
         compute='_compute_can_edit_category_priority',
@@ -290,7 +293,13 @@ class HelpdeskTicket(models.Model):
         for ticket in self:
             ticket.show_close_button = (
                 ticket.stage_id == resolved_stage
-                and (is_manager or ticket.assigned_user_id == self.env.user)
+                and (
+                    is_manager
+                    or (
+                        ticket.assigned_user_id == self.env.user
+                        and not ticket._resolution_confirmation_activities()
+                    )
+                )
             )
 
     @api.depends('stage_id', 'assigned_user_id', 'requester_id')
@@ -390,6 +399,17 @@ class HelpdeskTicket(models.Model):
         resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
         for ticket in self:
             ticket.show_confirm_resolution_button = bool(
+                ticket.stage_id == resolved_stage
+                and ticket.requester_id == self.env.user
+                and ticket._resolution_confirmation_activities()
+            )
+
+    @api.depends('stage_id', 'requester_id')
+    @api.depends_context('uid')
+    def _compute_show_request_rework_button(self):
+        resolved_stage = self.env.ref('buz_it_helpdesk.stage_resolved')
+        for ticket in self:
+            ticket.show_request_rework_button = bool(
                 ticket.stage_id == resolved_stage
                 and ticket.requester_id == self.env.user
                 and ticket._resolution_confirmation_activities()
@@ -1077,6 +1097,10 @@ class HelpdeskTicket(models.Model):
 
     def action_confirm_resolution(self):
         self.ensure_one()
+        if not self.env.user.has_group('buz_it_helpdesk.group_it_requester'):
+            raise UserError(_(
+                'Only Helpdesk Requesters can confirm this ticket resolution.'
+            ))
         if self.requester_id != self.env.user:
             raise UserError(_(
                 'Only the requester can confirm this ticket resolution.'
@@ -1107,6 +1131,53 @@ class HelpdeskTicket(models.Model):
                 summary=_('Requester confirmed resolution'),
                 note=_(
                     'The requester confirmed Ticket %s. You can close it.'
+                ) % self.display_name,
+            )
+        return True
+
+    def action_request_rework(self):
+        self.ensure_one()
+        if not self.env.user.has_group('buz_it_helpdesk.group_it_requester'):
+            raise UserError(_(
+                'Only Helpdesk Requesters can request more work.'
+            ))
+        if self.requester_id != self.env.user:
+            raise UserError(_(
+                'Only the requester can request more work on this ticket.'
+            ))
+        if self.stage_id != self.env.ref('buz_it_helpdesk.stage_resolved'):
+            raise UserError(_(
+                'Only Resolved tickets can be sent back for more work.'
+            ))
+        activities = self._resolution_confirmation_activities()
+        if not activities:
+            raise UserError(_(
+                'There is no pending resolution confirmation for this ticket.'
+            ))
+
+        activities.action_done()
+        self._write_workflow_fields({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_in_progress').id,
+        })
+        self.message_post(
+            body=_(
+                'The requester reported that the issue is not fully resolved. '
+                'IT should continue working on this ticket.'
+            ),
+            partner_ids=(
+                [self.assigned_user_id.partner_id.id]
+                if self.assigned_user_id else []
+            ),
+            subtype_xmlid='mail.mt_comment',
+        )
+        if self.assigned_user_id:
+            self.activity_schedule(
+                'mail.mail_activity_data_todo',
+                user_id=self.assigned_user_id.id,
+                summary=_('Requester requested more work'),
+                note=_(
+                    'The requester reported that Ticket %s is not fully '
+                    'resolved. Please continue working on it.'
                 ) % self.display_name,
             )
         return True

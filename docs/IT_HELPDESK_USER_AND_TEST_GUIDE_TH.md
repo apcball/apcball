@@ -74,6 +74,12 @@ Ticket ใหม่จะมีสถานะ **Draft**
 | Resolved | แก้ไขแล้ว รอปิดงาน |
 | Closed | ปิด Ticket เรียบร้อย |
 
+หลัง IT กด **Mark Resolved** Requester ต้องตรวจสอบผลการแก้ไข:
+
+- กด **Confirm Resolution** เมื่องานถูกต้อง ระบบจึงอนุญาตให้ IT กด **Close Ticket**
+- กด **Request Rework** หากยังไม่เรียบร้อย ระบบจะส่ง Ticket กลับ **In Progress** ให้ IT แก้ไขต่อ
+
+
 ## 7. การติดตามและตอบกลับ
 
 - ดูรายละเอียด ประวัติ และไฟล์แนบได้จาก My Tickets

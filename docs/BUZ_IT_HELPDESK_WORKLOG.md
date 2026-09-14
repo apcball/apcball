@@ -49,6 +49,7 @@
 
 - มีการควบคุมการเปลี่ยนสถานะตามลำดับ workflow
 - รองรับการรับ Ticket, มอบหมายผู้รับผิดชอบ, รอผู้ใช้, กลับมาทำงานต่อ, Mark Resolved และ Close Ticket
+- Resolution workflow: หลัง Mark Resolved ให้ Requester เลือก Confirm Resolution เพื่ออนุญาตให้ IT ปิดงาน หรือ Request Rework เพื่อส่งกลับ In Progress และแจ้ง IT แก้ไขต่อ
 - ใช้ Chatter และ Activities สำหรับการติดตาม Ticket
 - มีการป้องกันการแก้ไข field ระบบ เช่น เลข Ticket, Company, Requester และวันที่ระบบ
 - มีการตรวจสอบว่า Assigned User ต้องอยู่ใน Team ที่เลือก
