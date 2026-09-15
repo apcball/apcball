@@ -66,6 +66,8 @@
         "reports/payment_voucher_template.xml",
         "reports/customer_refund_pv_report.xml",
         "reports/customer_refund_pv_template.xml",
+        "reports/customer_payment_receipt_report.xml",
+        "reports/customer_payment_receipt_template.xml",
         "reports/payment_transfer_report.xml",
         "reports/payment_tranfer_cheq_report.xml",
         "reports/account_cheque_report.xml",
