@@ -167,11 +167,56 @@ class ITSoftwareInstallation(models.Model):
     active = fields.Boolean(default=True)
     notes = fields.Text()
 
+    @api.onchange('employee_id')
+    def _onchange_employee_id(self):
+        """กรอง Asset ตามผู้ถือครองปัจจุบัน และช่วยเลือกกรณีมีรายการเดียว"""
+        domain = [
+            ('company_id', '=', (self.company_id or self.env.company).id),
+            ('active', '=', True),
+        ]
+        if not self.employee_id:
+            return {'domain': {'asset_id': domain}}
+
+        domain.append(('assigned_employee_id', '=', self.employee_id.id))
+        assets = self.env['buz.it.asset'].search(domain)
+        if self.asset_id and self.asset_id not in assets:
+            self.asset_id = False
+        if len(assets) == 1:
+            self.asset_id = assets
+        elif len(assets) > 1:
+            return {
+                'domain': {'asset_id': domain},
+                'warning': {
+                    'title': _('Select an Asset'),
+                    'message': _('This employee has multiple assets. Please select one.'),
+                },
+            }
+        return {'domain': {'asset_id': domain}}
+
+    def _get_employee_assets(self, employee_id, company_id=None):
+        return self.env['buz.it.asset'].search([
+            ('company_id', '=', company_id or self.env.company.id),
+            ('active', '=', True),
+            ('assigned_employee_id', '=', employee_id),
+        ])
+
     @api.constrains('asset_id', 'employee_id')
-    def _check_single_target(self):
+    def _check_installation_target(self):
         for record in self:
-            if bool(record.asset_id) == bool(record.employee_id):
-                raise ValidationError(_('Installation must target exactly one hardware asset or employee.'))
+            if not record.asset_id and not record.employee_id:
+                raise ValidationError(_(
+                    'Installation must target an employee or a hardware asset.'
+                ))
+            if record.employee_id and not record.asset_id:
+                if len(self._get_employee_assets(record.employee_id.id, record.company_id.id)) > 1:
+                    raise ValidationError(_(
+                        'This employee has multiple assets. Please select one asset.'
+                    ))
+            if (record.asset_id and record.employee_id
+                    and record.asset_id.assigned_employee_id != record.employee_id):
+                raise ValidationError(_(
+                    'The selected asset is not currently assigned to this employee.'
+                ))
 
     @api.constrains('company_id', 'license_id', 'asset_id', 'employee_id')
     def _check_companies(self):
@@ -188,10 +233,15 @@ class ITSoftwareInstallation(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if bool(vals.get('asset_id')) == bool(vals.get('employee_id')):
-                raise ValidationError(_(
-                    'Installation must target exactly one hardware asset or employee.'
-                ))
+            employee_id = vals.get('employee_id')
+            if employee_id and not vals.get('asset_id'):
+                assets = self._get_employee_assets(employee_id, vals.get('company_id'))
+                if len(assets) == 1:
+                    vals['asset_id'] = assets.id
+                elif len(assets) > 1:
+                    raise ValidationError(_(
+                        'This employee has multiple assets. Please select one asset.'
+                    ))
         records = super().create(vals_list)
         for record in records:
             record.action_install()

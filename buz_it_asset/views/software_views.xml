@@ -175,8 +175,8 @@
                 <sheet>
                     <group>
                         <field name="license_id"/>
-                        <field name="asset_id"/>
                         <field name="employee_id"/>
+                        <field name="asset_id" domain="[('company_id', '=', company_id)]" help="เลือก Asset ของ Employee ที่ระบุ หาก Employee มีหลาย Asset ต้องเลือกหนึ่งรายการ"/>
                         <field name="install_date"/>
                         <field name="uninstall_date"/>
                         <field name="installed_by_id"/>
