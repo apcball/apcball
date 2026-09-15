@@ -18,6 +18,7 @@ class StockCardExportWizard(models.TransientModel):
         domain=[("usage", "=", "internal")],
     )
     show_movements_only = fields.Boolean(string="Show Movements Only")
+    include_cost_lot = fields.Boolean(string="ต้นทุน + Lot", default=True)
 
     def action_export_xlsx(self):
         self.ensure_one()
@@ -28,6 +29,7 @@ class StockCardExportWizard(models.TransientModel):
             "date_from": self.date_from,
             "date_to": self.date_to,
             "show_movements_only": "1" if self.show_movements_only else "0",
+            "include_cost_lot": "1" if self.include_cost_lot else "0",
             "company_id": self.env.company.id,
         }
         if not all_mode:

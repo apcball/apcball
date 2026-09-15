@@ -7,6 +7,8 @@
     "license": "LGPL-3",
     "depends": [
         "stock",
+        "stock_account",
+        "stock_by_locations",
         "product",
         "web",
     ],

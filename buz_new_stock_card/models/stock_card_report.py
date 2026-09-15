@@ -3,6 +3,7 @@ from datetime import datetime, time, timedelta
 import pytz
 
 from odoo import api, fields, models
+from odoo.tools import html2plaintext
 
 
 DOC_TYPE_LABELS = {
@@ -836,3 +837,234 @@ class StockCardReport(models.AbstractModel):
                 [("id", "child_of", location.id)]
             ).ids
         return [location.id]
+
+    # ------------------------------------------------------------------
+    # Valuation (cost + lot) ledger
+    #
+    # Reads stock.valuation.layer directly instead of stock.move.line: the
+    # stock_by_locations module already splits every move into a
+    # location-scoped IN/OUT layer carrying real unit_cost/value, which is a
+    # much better cost source than re-deriving cost from move lines. Opening
+    # balance is decomposed into still-outstanding FIFO layers (one row per
+    # layer), matching the pattern in buz_stock_card_report's
+    # _get_open_document_rows. remaining_qty reflects the layer's *current*
+    # remaining quantity, not a snapshot as-of date_from - same known
+    # simplification buz_stock_card_report already accepts.
+    # ------------------------------------------------------------------
+
+    def _resolve_layer_lot_splits(self, layer, layer_qty):
+        """Split layer_qty across the lots on its move, proportional to each
+        move line's share of quantity. Returns [(lot_name, qty), ...]."""
+        move = layer.stock_move_id
+        if not move:
+            return [("", layer_qty)]
+        lines = move.move_line_ids.filtered(
+            lambda l: l.product_id.id == layer.product_id.id
+        )
+        if not lines:
+            return [("", layer_qty)]
+        if len(lines) == 1:
+            return [(lines.lot_id.name or "", layer_qty)]
+        total_qty = sum(lines.mapped("quantity"))
+        if not total_qty:
+            return [("", layer_qty)]
+        return [
+            (line.lot_id.name or "", layer_qty * (line.quantity / total_qty))
+            for line in lines
+        ]
+
+    def _valuation_rows_for_layer(self, layer, layer_qty, fallback_remark):
+        move = layer.stock_move_id
+        unit_cost = layer.unit_cost
+        line_vals = {
+            "picking_id": (move.picking_id.id, "") if move and move.picking_id else False,
+            "move_id": (move.id, "") if move else False,
+            "reference": (move.reference if move else "") or layer.description or "",
+        }
+        doc_type, doc_number, _res_model, _res_id, _source = self._resolve_document(line_vals)
+        sort_dt = move.date if move and move.date else datetime(1970, 1, 1)
+        date_str = self._to_user_tz_str(move.date) if move and move.date else ""
+        product = layer.product_id
+        # หมายเหตุ: the picking's own note, when there is one - falls back to
+        # the opening/receipt/issue label when there's no picking or no note.
+        picking_note = (
+            html2plaintext(move.picking_id.note).strip()
+            if move and move.picking_id and move.picking_id.note else ""
+        )
+        remark = picking_note or fallback_remark
+
+        rows = []
+        for lot_name, qty in self._resolve_layer_lot_splits(layer, layer_qty):
+            row = {
+                "product_default_code": product.default_code or "",
+                "product_name": product.name,
+                "lot_name": lot_name,
+                "warehouse_name": layer.location_id.warehouse_id.name or "",
+                "location_label": layer.location_id.display_name,
+                "doc_type": doc_type,
+                "doc_number": doc_number,
+                "date": date_str,
+                "qty_in": 0.0, "unitcost_in": 0.0, "cost_in": 0.0,
+                "qty_out": 0.0, "unitcost_out": 0.0, "cost_out": 0.0,
+                "remark": remark,
+                "_sort_dt": sort_dt,
+            }
+            if qty >= 0:
+                row["qty_in"] = qty
+                row["unitcost_in"] = unit_cost
+                row["cost_in"] = qty * unit_cost
+            else:
+                row["qty_out"] = -qty
+                row["unitcost_out"] = unit_cost
+                row["cost_out"] = -qty * unit_cost
+            rows.append(row)
+        return rows
+
+    def _get_opening_valuation_rows(self, product_id, scope_location_ids, date_from, company_ids):
+        Layer = self.env["stock.valuation.layer"]
+        if isinstance(date_from, str):
+            date_from = fields.Date.from_string(date_from)
+        domain = [
+            ("product_id", "=", product_id),
+            ("location_id", "in", list(scope_location_ids)),
+            ("company_id", "in", company_ids),
+            ("remaining_qty", ">", 0),
+            ("stock_move_id.date", "<", date_from),
+        ]
+        layers = Layer.search(domain, order="create_date, id")
+        rows = []
+        for layer in layers:
+            rows.extend(self._valuation_rows_for_layer(layer, layer.remaining_qty, "ยอดยกมา"))
+        return rows
+
+    def _get_period_valuation_rows(self, product_id, scope_location_ids, date_from, date_to, company_ids):
+        Layer = self.env["stock.valuation.layer"]
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        domain = [
+            ("product_id", "=", product_id),
+            ("location_id", "in", list(scope_location_ids)),
+            ("company_id", "in", company_ids),
+            ("stock_move_id.date", ">=", start_utc),
+            ("stock_move_id.date", "<", end_utc),
+        ]
+        layers = Layer.search(domain)
+        rows = []
+        for layer in layers:
+            if layer.quantity > 0:
+                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารรับในปี"))
+            elif layer.quantity < 0:
+                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารจ่ายในปี"))
+        return rows
+
+    def _product_scope_valuation_rows(self, product_id, scope_location_ids, date_from, date_to, company_ids):
+        opening_rows = self._get_opening_valuation_rows(product_id, scope_location_ids, date_from, company_ids)
+        period_rows = self._get_period_valuation_rows(product_id, scope_location_ids, date_from, date_to, company_ids)
+        return opening_rows + period_rows
+
+    def _discover_valuation_pairs(self, domain_extra, date_from, date_to, company_ids):
+        """(location_id, product_id) pairs with a layer touching the period,
+        or with a still-outstanding opening layer, matching domain_extra."""
+        Layer = self.env["stock.valuation.layer"]
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        domain_period = domain_extra + [
+            ("company_id", "in", company_ids),
+            ("stock_move_id.date", ">=", start_utc),
+            ("stock_move_id.date", "<", end_utc),
+        ]
+        domain_open = domain_extra + [
+            ("company_id", "in", company_ids),
+            ("remaining_qty", ">", 0),
+        ]
+        pairs = set()
+        for domain in (domain_period, domain_open):
+            groups = Layer.read_group(
+                domain, ["location_id", "product_id"], ["location_id", "product_id"], lazy=False,
+            )
+            for group in groups:
+                location = group.get("location_id")
+                product = group.get("product_id")
+                if location and product:
+                    pairs.add((location[0], product[0]))
+        return pairs
+
+    @staticmethod
+    def _finalize_valuation_rows(rows, sort_key):
+        rows.sort(key=sort_key)
+        for idx, row in enumerate(rows, start=1):
+            row["seq"] = idx
+            del row["_sort_dt"]
+        return rows
+
+    @api.model
+    def get_stock_card_valuation_lines(self, product_id, scope_location_ids, date_from, date_to, company_ids=None):
+        """Flat cost+lot ledger for one product in one scope: opening layers
+        (ยอดยกมา) followed by in-period receipts (เอกสารรับในปี) and issues
+        (เอกสารจ่ายในปี), one row per layer (split further per lot)."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+        scope_location_ids = list(scope_location_ids)
+        rows = self._product_scope_valuation_rows(
+            product_id, scope_location_ids, date_from, date_to, company_ids,
+        )
+        return self._finalize_valuation_rows(rows, sort_key=lambda r: r["_sort_dt"])
+
+    @api.model
+    def get_product_all_locations_valuation_lines(self, product_id, date_from, date_to, company_ids=None):
+        """Cost+lot ledger for one product across every location where it has
+        a layer touching the period or a still-outstanding opening layer."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+        pairs = self._discover_valuation_pairs(
+            [("product_id", "=", product_id)], date_from, date_to, company_ids,
+        )
+        location_ids = {loc_id for loc_id, _prod_id in pairs}
+        if not location_ids:
+            return []
+        rows = []
+        for location_id in location_ids:
+            rows.extend(self._product_scope_valuation_rows(
+                product_id, [location_id], date_from, date_to, company_ids,
+            ))
+        return self._finalize_valuation_rows(
+            rows, sort_key=lambda r: (r["location_label"], r["_sort_dt"]),
+        )
+
+    @api.model
+    def get_scoped_stock_card_valuation_lines(self, scope_location_ids, date_from, date_to, company_ids=None):
+        """Cost+lot ledger for every product with a layer in scope_location_ids
+        touching the period, or a still-outstanding opening layer there."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+        scope_location_ids = list(scope_location_ids)
+        if not scope_location_ids:
+            return []
+        pairs = self._discover_valuation_pairs(
+            [("location_id", "in", scope_location_ids)], date_from, date_to, company_ids,
+        )
+        product_ids = {prod_id for _loc_id, prod_id in pairs}
+        if not product_ids:
+            return []
+        rows = []
+        for product_id in product_ids:
+            rows.extend(self._product_scope_valuation_rows(
+                product_id, scope_location_ids, date_from, date_to, company_ids,
+            ))
+        return self._finalize_valuation_rows(
+            rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
+        )
+
+    @api.model
+    def get_all_stock_card_valuation_lines(self, date_from, date_to, company_ids=None):
+        """Cost+lot ledger for every (location, product) pair with a layer
+        touching the period, or a still-outstanding opening layer."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+        pairs = self._discover_valuation_pairs([], date_from, date_to, company_ids)
+        rows = []
+        for location_id, product_id in pairs:
+            rows.extend(self._product_scope_valuation_rows(
+                product_id, [location_id], date_from, date_to, company_ids,
+            ))
+        return self._finalize_valuation_rows(
+            rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
+        )

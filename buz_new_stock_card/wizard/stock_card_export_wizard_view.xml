@@ -15,6 +15,7 @@
                         <field name="product_id"/>
                         <field name="location_ids" widget="many2many_tags"/>
                         <field name="show_movements_only"/>
+                        <field name="include_cost_lot"/>
                     </group>
                 </group>
                 <footer>

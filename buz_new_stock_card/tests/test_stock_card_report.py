@@ -419,3 +419,186 @@ class TestStockCardReport(TransactionCase):
         move_rows = [r for r in rows if r["in"]]
         self.assertTrue(move_rows)
         self.assertEqual(move_rows[0]["in"], 30.0)
+
+    # ------------------------------------------------------------------
+    # Valuation (cost + lot) ledger
+    #
+    # Layers are created directly against a draft (never actioned) move so
+    # the test controls quantity/unit_cost/remaining_qty exactly, without
+    # tripping the real _action_done() valuation pipeline (whose costing
+    # method/account setup is out of scope for this engine's unit tests).
+    # ------------------------------------------------------------------
+
+    def _mk_valuation_layer(
+        self, product, location, qty, unit_cost, move_date,
+        remaining_qty=None, lot=None, picking=None,
+    ):
+        src = self.loc_supplier if qty >= 0 else location
+        dest = location if qty >= 0 else self.loc_customer
+        move = self.env["stock.move"].create({
+            "name": "svl test move",
+            "product_id": product.id,
+            "product_uom_qty": abs(qty),
+            "product_uom": product.uom_id.id,
+            "location_id": src.id,
+            "location_dest_id": dest.id,
+            "state": "draft",
+            "date": move_date,
+            "picking_id": picking.id if picking else False,
+        })
+        self.env["stock.move.line"].create({
+            "move_id": move.id,
+            "product_id": product.id,
+            "product_uom_id": product.uom_id.id,
+            "quantity": abs(qty),
+            "location_id": src.id,
+            "location_dest_id": dest.id,
+            "lot_id": lot.id if lot else False,
+            "date": move_date,
+        })
+        remaining_qty = qty if remaining_qty is None else remaining_qty
+        return self.env["stock.valuation.layer"].create({
+            "product_id": product.id,
+            "company_id": self.env.company.id,
+            "quantity": qty,
+            "unit_cost": unit_cost,
+            "value": qty * unit_cost,
+            "remaining_qty": remaining_qty,
+            "remaining_value": remaining_qty * unit_cost,
+            "stock_move_id": move.id,
+            "location_id": location.id,
+        })
+
+    def test_valuation_opening_row_from_outstanding_layer(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-05-01 08:00:00"),
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["remark"], "ยอดยกมา")
+        self.assertEqual(rows[0]["qty_in"], 10.0)
+        self.assertEqual(rows[0]["unitcost_in"], 100.0)
+        self.assertEqual(rows[0]["cost_in"], 1000.0)
+        self.assertEqual(rows[0]["qty_out"], 0.0)
+
+    def test_valuation_opening_excludes_fully_consumed_layer(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-05-01 08:00:00"),
+            remaining_qty=0.0,
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(rows, [])
+
+    def test_valuation_period_receipt_and_issue(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 20.0, 50.0, self._dt("2024-06-10 08:00:00"),
+        )
+        self._mk_valuation_layer(
+            self.product, self.loc_a, -5.0, 50.0, self._dt("2024-06-15 08:00:00"),
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["remark"], "เอกสารรับในปี")
+        self.assertEqual(rows[0]["qty_in"], 20.0)
+        self.assertEqual(rows[0]["cost_in"], 1000.0)
+        self.assertEqual(rows[1]["remark"], "เอกสารจ่ายในปี")
+        self.assertEqual(rows[1]["qty_out"], 5.0)
+        self.assertEqual(rows[1]["unitcost_out"], 50.0)
+        self.assertEqual(rows[1]["cost_out"], 250.0)
+
+    def test_valuation_scope_excludes_other_location(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_b, 20.0, 50.0, self._dt("2024-06-10 08:00:00"),
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(rows, [])
+
+    def test_valuation_lot_split_proportional(self):
+        lot_model = self.env["stock.lot"]
+        lot1 = lot_model.create({"name": "LOT1", "product_id": self.product.id})
+        lot2 = lot_model.create({"name": "LOT2", "product_id": self.product.id})
+
+        move = self.env["stock.move"].create({
+            "name": "svl multi-lot move",
+            "product_id": self.product.id,
+            "product_uom_qty": 30.0,
+            "product_uom": self.product.uom_id.id,
+            "location_id": self.loc_supplier.id,
+            "location_dest_id": self.loc_a.id,
+            "state": "draft",
+            "date": self._dt("2024-06-10 08:00:00"),
+        })
+        self.env["stock.move.line"].create([
+            {
+                "move_id": move.id, "product_id": self.product.id,
+                "product_uom_id": self.product.uom_id.id, "quantity": 10.0,
+                "location_id": self.loc_supplier.id, "location_dest_id": self.loc_a.id,
+                "lot_id": lot1.id,
+            },
+            {
+                "move_id": move.id, "product_id": self.product.id,
+                "product_uom_id": self.product.uom_id.id, "quantity": 20.0,
+                "location_id": self.loc_supplier.id, "location_dest_id": self.loc_a.id,
+                "lot_id": lot2.id,
+            },
+        ])
+        self.env["stock.valuation.layer"].create({
+            "product_id": self.product.id,
+            "company_id": self.env.company.id,
+            "quantity": 30.0,
+            "unit_cost": 10.0,
+            "value": 300.0,
+            "remaining_qty": 30.0,
+            "remaining_value": 300.0,
+            "stock_move_id": move.id,
+            "location_id": self.loc_a.id,
+        })
+
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 2)
+        by_lot = {r["lot_name"]: r for r in rows}
+        self.assertAlmostEqual(by_lot["LOT1"]["qty_in"], 10.0)
+        self.assertAlmostEqual(by_lot["LOT1"]["cost_in"], 100.0)
+        self.assertAlmostEqual(by_lot["LOT2"]["qty_in"], 20.0)
+        self.assertAlmostEqual(by_lot["LOT2"]["cost_in"], 200.0)
+
+    def test_valuation_scoped_lines_covers_multiple_products(self):
+        product2 = self.env["product.product"].create({
+            "name": "Test Stock Card Product Valuation 2", "type": "product",
+        })
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-06-10 08:00:00"),
+        )
+        self._mk_valuation_layer(
+            product2, self.loc_a, 5.0, 40.0, self._dt("2024-06-12 08:00:00"),
+        )
+        rows = self.engine.get_scoped_stock_card_valuation_lines(
+            [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        codes = {r["product_name"] for r in rows}
+        self.assertIn(self.product.name, codes)
+        self.assertIn(product2.name, codes)
+
+    def test_valuation_product_all_locations_covers_multiple_locations(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-06-10 08:00:00"),
+        )
+        self._mk_valuation_layer(
+            self.product, self.loc_b, 5.0, 40.0, self._dt("2024-06-12 08:00:00"),
+        )
+        rows = self.engine.get_product_all_locations_valuation_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        locations = {r["location_label"] for r in rows}
+        self.assertTrue(any("Shelf A" in l for l in locations))
+        self.assertTrue(any("Shelf B" in l for l in locations))

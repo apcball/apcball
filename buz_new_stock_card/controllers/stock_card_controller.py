@@ -32,6 +32,7 @@ class StockCardController(http.Controller):
             date_from = fields.Date.from_string(kw["date_from"])
             date_to = fields.Date.from_string(kw["date_to"])
             show_movements_only = kw.get("show_movements_only") in ("1", "true", "True")
+            include_cost_lot = kw.get("include_cost_lot") in ("1", "true", "True")
             company_id = kw.get("company_id")
             company_ids = [int(company_id)] if company_id else None
 
@@ -42,6 +43,12 @@ class StockCardController(http.Controller):
             warehouse_ids_param = kw.get("warehouse_ids")
 
             if not product_id_param and not location_ids_param and not warehouse_ids_param:
+                if include_cost_lot:
+                    rows = engine.get_all_stock_card_valuation_lines(
+                        date_from, date_to, company_ids=company_ids,
+                    )
+                    filename = "Stock_Card_Valuation_All_%s_%s.xlsx" % (date_from, date_to)
+                    return self._flat_valuation_response(rows, filename)
                 rows = engine.get_all_stock_card_lines(
                     date_from, date_to,
                     company_ids=company_ids,
@@ -55,6 +62,14 @@ class StockCardController(http.Controller):
 
             if product_id_param and not loc_ids and not wh_ids:
                 product = request.env["product.product"].browse(int(product_id_param))
+                if include_cost_lot:
+                    rows = engine.get_product_all_locations_valuation_lines(
+                        int(product_id_param), date_from, date_to, company_ids=company_ids,
+                    )
+                    filename = "Stock_Card_Valuation_%s_AllLoc_%s_%s.xlsx" % (
+                        product.default_code or product.id, date_from, date_to,
+                    )
+                    return self._flat_valuation_response(rows, filename)
                 rows = engine.get_product_all_locations_lines(
                     int(product_id_param), date_from, date_to,
                     company_ids=company_ids,
@@ -89,7 +104,19 @@ class StockCardController(http.Controller):
 
             used_names = set()
 
-            if product_id_param:
+            if product_id_param and include_cost_lot:
+                product_id = int(product_id_param)
+                product = request.env["product.product"].browse(product_id)
+                for location_label, scope_ids in sheets:
+                    rows = engine.get_stock_card_valuation_lines(
+                        product_id, scope_ids, date_from, date_to, company_ids=company_ids,
+                    )
+                    sheet_name = _safe_sheet_name(location_label, used_names)
+                    self._write_valuation_sheet(workbook, fmts, rows, sheet_name=sheet_name)
+                filename = "Stock_Card_Valuation_%s_%s_%s.xlsx" % (
+                    product.default_code or product.id, date_from, date_to,
+                )
+            elif product_id_param:
                 product_id = int(product_id_param)
                 product = request.env["product.product"].browse(product_id)
                 for location_label, scope_ids in sheets:
@@ -106,6 +133,14 @@ class StockCardController(http.Controller):
                 filename = "Stock_Card_%s_%s_%s.xlsx" % (
                     product.default_code or product.id, date_from, date_to,
                 )
+            elif include_cost_lot:
+                for location_label, scope_ids in sheets:
+                    rows = engine.get_scoped_stock_card_valuation_lines(
+                        scope_ids, date_from, date_to, company_ids=company_ids,
+                    )
+                    sheet_name = _safe_sheet_name(location_label, used_names)
+                    self._write_valuation_sheet(workbook, fmts, rows, sheet_name=sheet_name)
+                filename = "Stock_Card_Valuation_ByScope_%s_%s.xlsx" % (date_from, date_to)
             else:
                 for location_label, scope_ids in sheets:
                     rows = engine.get_scoped_stock_card_lines(
@@ -133,6 +168,73 @@ class StockCardController(http.Controller):
             return request.make_response(
                 json.dumps(error), headers=[("Content-Type", "application/json")], status=400
             )
+
+    def _flat_valuation_response(self, rows, filename):
+        """Single-sheet xlsx (cost+lot layout) from a flat valuation rows list."""
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+        fmts = {
+            "header": workbook.add_format({"bold": True, "bg_color": "#D9D9D9", "border": 1}),
+            "num": workbook.add_format({"num_format": "#,##0.00", "border": 1}),
+            "date": workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1}),
+            "text": workbook.add_format({"border": 1}),
+        }
+        self._write_valuation_sheet(workbook, fmts, rows)
+        workbook.close()
+        output.seek(0)
+        return request.make_response(
+            output.getvalue(),
+            headers=[
+                ("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                ("Content-Disposition", content_disposition(filename)),
+            ],
+        )
+
+    def _write_valuation_sheet(self, workbook, fmts, rows, sheet_name="Stock Card"):
+        sheet = workbook.add_worksheet(sheet_name)
+
+        sheet.set_column("A:A", 8)
+        sheet.set_column("B:B", 14)
+        sheet.set_column("C:C", 28)
+        sheet.set_column("D:D", 14)
+        sheet.set_column("E:E", 10)
+        sheet.set_column("F:F", 20)
+        sheet.set_column("G:H", 18)
+        sheet.set_column("I:I", 16)
+        sheet.set_column("J:L", 14)
+        sheet.set_column("M:O", 14)
+        sheet.set_column("P:P", 18)
+
+        headers = ["ลำดับ", "รหัสสินค้า", "ชื่อสินค้า", "Lot", "คลังสินค้า", "โลเคชั่น",
+                   "ประเภทเอกสาร", "เลขที่เอกสาร", "วันที่",
+                   "จำนวนรับ", "ราคาต่อหน่วย(รับ)", "มูลค่ารับ",
+                   "จำนวนจ่าย", "ราคาต่อหน่วย(จ่าย)", "มูลค่าจ่าย", "หมายเหตุ"]
+        for col, label in enumerate(headers):
+            sheet.write(0, col, label, fmts["header"])
+
+        row = 1
+        for line in rows:
+            sheet.write(row, 0, line["seq"], fmts["text"])
+            sheet.write(row, 1, line["product_default_code"], fmts["text"])
+            sheet.write(row, 2, line["product_name"], fmts["text"])
+            sheet.write(row, 3, line["lot_name"] or "", fmts["text"])
+            sheet.write(row, 4, line["warehouse_name"], fmts["text"])
+            sheet.write(row, 5, line["location_label"], fmts["text"])
+            sheet.write(row, 6, line["doc_type"] or "", fmts["text"])
+            sheet.write(row, 7, line["doc_number"] or "", fmts["text"])
+            line_date = datetime.strptime(line["date"], "%d/%m/%y %H:%M:%S") if line["date"] else None
+            if line_date:
+                sheet.write_datetime(row, 8, line_date, fmts["date"])
+            else:
+                sheet.write(row, 8, "", fmts["date"])
+            sheet.write(row, 9, line["qty_in"], fmts["num"])
+            sheet.write(row, 10, line["unitcost_in"], fmts["num"])
+            sheet.write(row, 11, line["cost_in"], fmts["num"])
+            sheet.write(row, 12, line["qty_out"], fmts["num"])
+            sheet.write(row, 13, line["unitcost_out"], fmts["num"])
+            sheet.write(row, 14, line["cost_out"], fmts["num"])
+            sheet.write(row, 15, line["remark"] or "", fmts["text"])
+            row += 1
 
     def _flat_sheet_response(self, rows, filename):
         """Single-sheet xlsx (14-column 'All' layout) from a flat rows list."""
