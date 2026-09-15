@@ -32,17 +32,23 @@ class StockCardController(http.Controller):
             date_from = fields.Date.from_string(kw["date_from"])
             date_to = fields.Date.from_string(kw["date_to"])
             show_movements_only = kw.get("show_movements_only") in ("1", "true", "True")
-            include_cost_lot = kw.get("include_cost_lot") in ("1", "true", "True")
+            can_see_value = request.env.user.has_group("buz_new_stock_card.group_stock_card_see_value")
+            include_cost_lot = can_see_value and kw.get("include_cost_lot") in ("1", "true", "True")
             company_id = kw.get("company_id")
             company_ids = [int(company_id)] if company_id else None
 
             engine = request.env["buz.stock.card.report"]
+            if company_ids:
+                if not set(company_ids).issubset(request.env.user.company_ids.ids):
+                    raise ValueError("บริษัทที่เลือกไม่อยู่ในบริษัทที่อนุญาต")
+                engine = engine.with_context(allowed_company_ids=company_ids)
 
             product_id_param = kw.get("product_id")
             location_ids_param = kw.get("location_ids")
             warehouse_ids_param = kw.get("warehouse_ids")
+            report_scope = kw.get("report_scope") == "1"
 
-            if not product_id_param and not location_ids_param and not warehouse_ids_param:
+            if not report_scope and not product_id_param and not location_ids_param and not warehouse_ids_param:
                 if include_cost_lot:
                     rows = engine.get_all_stock_card_valuation_lines(
                         date_from, date_to, company_ids=company_ids,
@@ -60,7 +66,7 @@ class StockCardController(http.Controller):
             loc_ids = [int(x) for x in location_ids_param.split(",") if x] if location_ids_param else []
             wh_ids = [int(x) for x in warehouse_ids_param.split(",") if x] if warehouse_ids_param else []
 
-            if product_id_param and not loc_ids and not wh_ids:
+            if not report_scope and product_id_param and not loc_ids and not wh_ids:
                 product = request.env["product.product"].browse(int(product_id_param))
                 if include_cost_lot:
                     rows = engine.get_product_all_locations_valuation_lines(
@@ -81,10 +87,15 @@ class StockCardController(http.Controller):
                 return self._flat_sheet_response(rows, filename)
 
             sheets = []  # list of (label, scope_ids)
-            for warehouse in request.env["stock.warehouse"].browse(wh_ids):
+            if report_scope:
+                scope = engine.resolve_report_scope(
+                    int(company_id), wh_ids, loc_ids, kw.get("include_children") == "1",
+                )
+                sheets.append((scope["label"], scope["location_ids"]))
+            for warehouse in request.env["stock.warehouse"].browse([] if report_scope else wh_ids):
                 scope_ids = engine.resolve_multi_location_scope([], [warehouse.id])
                 sheets.append((warehouse.name, scope_ids))
-            for location in request.env["stock.location"].browse(loc_ids):
+            for location in request.env["stock.location"].browse([] if report_scope else loc_ids):
                 scope_ids = engine.resolve_multi_location_scope([location.id], [])
                 sheets.append((location.display_name, scope_ids))
 
@@ -259,6 +270,7 @@ class StockCardController(http.Controller):
 
     def _write_all_stock_card_sheet(self, workbook, fmts, rows, sheet_name="Stock Card"):
         sheet = workbook.add_worksheet(sheet_name)
+        show_value = bool(rows) and "value" in rows[0]
 
         sheet.set_column("A:A", 8)
         sheet.set_column("B:B", 20)
@@ -269,9 +281,13 @@ class StockCardController(http.Controller):
         sheet.set_column("H:K", 12)
         sheet.set_column("L:M", 18)
         sheet.set_column("N:N", 24)
+        if show_value:
+            sheet.set_column("O:O", 16)
 
         headers = ["ลำดับ", "คลังสินค้า", "รหัสสินค้า", "ชื่อสินค้า", "วันที่", "เอกสาร", "เลขที่",
                    "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ", "จากคลัง", "ไปยัง", "หมายเหตุ"]
+        if show_value:
+            headers.append("มูลค่าสินค้า (บาท)")
         for col, label in enumerate(headers):
             sheet.write(0, col, label, fmts["header"])
 
@@ -295,10 +311,13 @@ class StockCardController(http.Controller):
             sheet.write(row, 11, line["from_location"] or "", fmts["text"])
             sheet.write(row, 12, line["to_location"] or "", fmts["text"])
             sheet.write(row, 13, line["note"] or "", fmts["text"])
+            if show_value:
+                sheet.write(row, 14, line.get("value", 0.0), fmts["num"])
             row += 1
 
     def _write_stock_card_sheet(self, workbook, fmts, sheet_name, product, location_label, data, date_from, date_to):
         sheet = workbook.add_worksheet(sheet_name)
+        show_value = bool(data.get("can_see_value"))
 
         sheet.set_column("A:A", 8)
         sheet.set_column("B:B", 12)
@@ -306,6 +325,8 @@ class StockCardController(http.Controller):
         sheet.set_column("D:D", 16)
         sheet.set_column("E:E", 20)
         sheet.set_column("F:I", 12)
+        if show_value:
+            sheet.set_column("J:J", 16)
 
         row = 0
         sheet.write(row, 0, "Stock Card", fmts["title"])
@@ -320,10 +341,18 @@ class StockCardController(http.Controller):
         sheet.write(row, 2, f"Total Incoming: {data['total_in']:.2f}")
         sheet.write(row, 4, f"Total Outgoing: {data['total_out']:.2f}")
         sheet.write(row, 6, f"Closing Balance: {data['closing_balance']:.2f}")
+        if show_value:
+            row += 1
+            sheet.write(row, 0, f"Opening Value: {data['opening_value']:.2f}")
+            sheet.write(row, 2, f"Total Incoming Value: {data['total_in_value']:.2f}")
+            sheet.write(row, 4, f"Total Outgoing Value: {data['total_out_value']:.2f}")
+            sheet.write(row, 6, f"Closing Value: {data['closing_value']:.2f}")
         row += 2
 
         headers = ["ลำดับ", "วันที่", "เอกสาร", "เลขที่", "อ้างอิง",
                    "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ"]
+        if show_value:
+            headers.append("มูลค่าสินค้า (บาท)")
         for col, label in enumerate(headers):
             sheet.write(row, col, label, fmts["header"])
         row += 1
@@ -333,6 +362,8 @@ class StockCardController(http.Controller):
         sheet.write(row, 6, 0.0, fmts["num"])
         sheet.write(row, 7, 0.0, fmts["num"])
         sheet.write(row, 8, data["opening_balance"], fmts["num"])
+        if show_value:
+            sheet.write(row, 9, data["opening_value"], fmts["num"])
         row += 1
 
         for line in data["lines"]:
@@ -349,4 +380,6 @@ class StockCardController(http.Controller):
             sheet.write(row, 6, line["in"], fmts["num"])
             sheet.write(row, 7, line["out"], fmts["num"])
             sheet.write(row, 8, line["balance"], fmts["num"])
+            if show_value:
+                sheet.write(row, 9, line.get("value", 0.0), fmts["num"])
             row += 1

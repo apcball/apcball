@@ -7,15 +7,19 @@
             <form string="Stock Card Export">
                 <group>
                     <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="company_id" invisible="1" groups="!base.group_multi_company"/>
                         <field name="date_from"/>
                         <field name="date_to"/>
-                        <field name="warehouse_ids" widget="many2many_tags"/>
+                        <field name="warehouse_ids" widget="many2many_tags" domain="[('company_id', '=', company_id)]"/>
+                        <field name="report_scope"/>
                     </group>
                     <group>
                         <field name="product_id"/>
                         <field name="location_ids" widget="many2many_tags"/>
+                        <field name="include_children" invisible="not report_scope"/>
                         <field name="show_movements_only"/>
-                        <field name="include_cost_lot"/>
+                        <field name="include_cost_lot" groups="buz_new_stock_card.group_stock_card_see_value"/>
                     </group>
                 </group>
                 <footer>

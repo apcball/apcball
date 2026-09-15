@@ -1,111 +1,144 @@
 .o_stock_card_action {
-    background-color: #f5f6fb;
+    --sc-ink: #172744;
+    --sc-muted: #637397;
+    --sc-line: #e5eaf6;
+    --sc-blue: #4655ff;
+    height: 100%;
+    min-width: 0;
+    overflow-y: auto;
+    color: var(--sc-ink);
+    background: #f6f8fe;
 
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { color: var(--sc-ink); }
+    h1 { font-size: 24px; font-weight: 700; letter-spacing: -.5px; }
+    h2 { font-size: 21px; font-weight: 600; }
+    h3 { font-size: 18px; }
+    .btn { min-height: 38px; border-radius: 5px; font-weight: 500; white-space: nowrap; }
+    .btn-primary { background: var(--sc-blue); border-color: var(--sc-blue); }
+    .btn-primary:hover { background: #3443e8; border-color: #3443e8; }
+    .btn-success { background: #35b967; border-color: #35b967; color: white; }
+    .btn-success:hover { background: #279c54; }
+    .btn:focus-visible, summary:focus-visible, .o_sc_table_scroll:focus-visible {
+        outline: 3px solid #9da6ff;
+        outline-offset: 2px;
+    }
     .o_stock_card_header {
-        background-color: #fff;
+        display: flex; justify-content: space-between; align-items: center; gap: 16px;
+        padding: 8px 20px; background: white; border-bottom: 1px solid var(--sc-line);
+        p { color: var(--sc-muted); margin-top: 2px; font-size: 13px; }
     }
-
     .o_stock_card_logo {
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        background-color: #4f5fe0;
-        color: #fff;
-        font-size: 16px;
+        display: grid; place-items: center; flex: 0 0 52px; height: 52px;
+        background: linear-gradient(135deg, #3c4bff, #5865ff); color: white;
+        border-radius: 9px; font-size: 29px; box-shadow: 0 4px 12px #4655ff24;
     }
-
-    .o_stock_card_sidebar {
-        background-color: #fff;
+    .o_stock_card_toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .o_stock_card_breadcrumb { color: var(--sc-muted); font-size: 13px; }
+    .o_help_button { color: var(--sc-muted); }
+    .o_sc_reset { border: 1px solid #dce2f0; color: var(--sc-ink); background: white; }
+    .o_stock_card_body { padding: 12px 18px 18px; }
+    .o_sc_panel { background: white; border: 1px solid var(--sc-line); border-radius: 11px; }
+    .o_stock_card_filters { padding: 10px 16px 0; margin-bottom: 14px; }
+    .o_sc_filter_grid {
+        display: grid; grid-template-columns: minmax(230px, 1.65fr) repeat(2, minmax(150px, .8fr)) repeat(2, minmax(190px, 1.2fr)) 130px 105px;
+        align-items: end; gap: 14px;
+        > div { min-width: 0; }
+        label, .o_sc_filter_label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; }
+        .form-control, .form-select { min-height: 38px; font-size: 14px; color: var(--sc-ink); border-color: #dce2f0; border-radius: 4px; }
+        .o-autocomplete, .o_input_dropdown { width: 100%; }
+        .o-autocomplete input { min-height: 38px; border: 1px solid #dce2f0; border-radius: 4px; padding: 6px 10px; background: white; width: 100%; }
     }
-
-    .o_sidebar_section_title {
-        color: #6b7280;
-        text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: .03em;
+    .o_sc_advanced {
+        margin-top: 6px; color: var(--sc-muted); font-size: 12px;
+        summary { cursor: pointer; padding: 4px 0 6px; width: fit-content; }
+        &[open] { border-top: 1px solid var(--sc-line); }
+        .o_sc_advanced_content { padding: 10px 0 16px; max-height: 320px; overflow-y: auto; font-size: 14px; }
+        .o_location_tree_node > div:hover { background: #f0f3ff; }
     }
-
-    .o_stock_card_main {
-        background-color: #f5f6fb;
+    .o_product_header {
+        padding: 10px 18px; margin-bottom: 15px;
+        h2 { font-size: 25px; font-weight: 700; }
+        .o_sc_product_name { font-size: 16px; font-weight: 500; }
     }
-
-    .o_report_title {
-        .text-primary {
-            color: #4f5fe0 !important;
-            letter-spacing: .02em;
-        }
+    .o_sc_status { border-radius: 20px; padding: 4px 14px; font-size: 13px; }
+    .is-active { color: #079f3d; background: #d7f6df; }
+    .is-archived { color: #646c7e; background: #edf0f5; }
+    .o_sc_product_button { color: #8050f8; background: #efe8ff; border: 1px solid transparent; }
+    .o_sc_product_button:hover { background: #e4d8ff; }
+    .o_sc_product_meta {
+        display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--sc-muted); font-size: 13px; margin-top: 8px;
+        > span + span { border-left: 1px solid #cbd3e5; padding-left: 20px; }
+        .o_sc_scope { margin-left: auto; border: 0; }
     }
-
+    .o_sc_summary_grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-bottom: 15px; }
     .o_summary_card {
-        border-radius: 8px;
-        border: none;
+        display: flex; gap: 28px; align-items: center; padding: 16px 22px; border-radius: 10px; border: 1px solid var(--sc-line);
+        .o_sc_card_icon { display: grid; place-items: center; width: 66px; height: 62px; flex-shrink: 0; border-radius: 11px; font-size: 32px; }
+        .o_sc_card_label { color: var(--sc-muted); font-weight: 600; margin-bottom: 2px; }
+        .o_sc_card_value { font-size: 27px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+        .o_sc_card_uom { color: var(--sc-muted); margin-top: 2px; }
+        .o_sc_card_value_baht { color: var(--sc-muted); font-size: 13px; margin-top: 4px; font-variant-numeric: tabular-nums; }
     }
-    .o_card_opening {
-        background-color: #eaefff;
-        .fs-4 { color: #3d55d6; }
+    .o_card_opening { background: linear-gradient(120deg, #f3f7ff, #edf2ff); color: #345bff; .o_sc_card_icon { background: #d8e3ff; } }
+    .o_card_in { background: linear-gradient(120deg, #f2fcf6, #edf9f2); color: #09b64f; .o_sc_card_icon { background: #d5f2df; } }
+    .o_card_out { background: linear-gradient(120deg, #fff4f5, #fff0f2); color: #ff254b; .o_sc_card_icon { background: #ffd9df; } }
+    .o_card_balance { background: linear-gradient(120deg, #f7f4ff, #f2edff); color: #8237ff; .o_sc_card_icon { background: #e6dbff; } }
+    .o_sc_transactions { padding: 10px 16px 12px; }
+    .o_sc_transactions_header {
+        display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 10px;
+        h2 { font-size: 20px; i { color: var(--sc-blue); font-size: 27px; vertical-align: middle; } }
     }
-    .o_card_in {
-        background-color: #e6f7ec;
-        .fs-4 { color: #1a9e5c; }
-    }
-    .o_card_out {
-        background-color: #fdecee;
-        .fs-4 { color: #e0455f; }
-    }
-    .o_card_balance {
-        background-color: #f0ecfd;
-        .fs-4 { color: #7c5ce0; }
-    }
-
-    .o_pill_toggle .btn {
-        border-radius: 4px;
-    }
-
+    .o_sc_page_size { display: flex; align-items: center; gap: 8px; margin: 0; white-space: nowrap; .form-select { width: 74px; border-color: #dce2f0; } }
+    .o_sc_table_scroll { overflow-x: auto; border: 1px solid var(--sc-line); border-radius: 5px; }
     .o_stock_card_table {
-        background-color: #fff;
-        border-radius: 8px;
-        overflow: hidden;
-
-        thead th {
-            background-color: #f4f5fa;
-            color: #6b7280;
-            font-weight: 600;
-            border-bottom: none;
-            white-space: nowrap;
-        }
-        td, th {
-            vertical-align: middle;
-        }
-        tbody tr:hover {
-            background-color: #f9faff;
-        }
+        margin: 0; min-width: 1000px; font-size: 13px; color: var(--sc-ink);
+        th { background: #f3f5fb; font-weight: 600; white-space: nowrap; }
+        th, td { padding: 4px 12px; vertical-align: middle; border-bottom: 1px solid var(--sc-line); }
+        td { font-variant-numeric: tabular-nums; }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:hover { background: #f7f9ff; }
+        .o_sc_doc_link { min-height: 0; padding: 0; font-size: inherit; color: #2851ff; text-decoration: underline; text-align: left; }
+        .o_sc_qty_in { color: #099c43; }
+        .o_sc_qty_out { color: #f51f46; }
     }
-
-    .o_doc_link_icon {
-        cursor: pointer;
-        color: #4f5fe0;
-        &:hover {
-            color: #3d4bc0;
-        }
+    .o_sc_movement_icon {
+        display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; margin-right: 10px;
+        &.is-in { color: #0db554; background: #dcf7e6; }
+        &.is-out { color: #ff3152; background: #ffe0e6; }
     }
-
-    .o_location_tree_node > div:hover {
-        background-color: rgba(79, 95, 224, 0.08);
+    .o_sc_pager {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+        padding-top: 12px; color: var(--sc-muted); font-size: 13px;
+        .btn { min-width: 34px; min-height: 34px; padding: 4px 9px; border: 1px solid var(--sc-line); color: var(--sc-muted); }
+        .btn-primary { color: white; border-color: var(--sc-blue); }
     }
-    .o_location_tree_node .bg-primary {
-        background-color: #4f5fe0 !important;
+    .o_sc_empty { text-align: center; padding: 64px 20px; color: var(--sc-muted); p { margin: 10px 0 16px; } }
+    @media (max-width: 1500px) {
+        .o_sc_filter_grid { grid-template-columns: 1.5fr 1fr 1fr; }
+        .o_sc_product_filter { grid-column: auto; }
+        .o_sc_search, .o_sc_reset { min-width: 120px; }
+        .o_stock_card_breadcrumb { display: none; }
+        .o_summary_card { gap: 15px; padding: 18px 14px; }
     }
-    .o_location_tree_node .badge {
-        background-color: #eaefff !important;
-        color: #4f5fe0 !important;
+    @media (max-width: 1000px) {
+        .o_stock_card_header { flex-wrap: wrap; }
+        .o_sc_summary_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .o_sc_product_meta .o_sc_scope { margin-left: 0; padding-left: 0; }
     }
-
-    .btn-primary {
-        background-color: #4f5fe0;
-        border-color: #4f5fe0;
-        &:hover {
-            background-color: #3d4bc0;
-            border-color: #3d4bc0;
-        }
+    @media (max-width: 600px) {
+        .o_stock_card_header { padding: 12px; }
+        .o_stock_card_body { padding: 10px; }
+        .o_sc_filter_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .o_sc_product_filter { grid-column: 1 / -1; }
+        .o_product_header > .d-flex, .o_sc_transactions_header { flex-wrap: wrap; }
+        .o_product_header h2 { font-size: 21px; overflow-wrap: anywhere; }
+        .o_sc_product_meta > span + span { border: 0; padding-left: 0; }
+        .o_summary_card { gap: 10px; padding: 14px 10px; }
+        .o_summary_card .o_sc_card_icon { width: 38px; height: 42px; font-size: 23px; }
+        .o_summary_card .o_sc_card_value { font-size: 22px; }
+        .o_sc_transactions { padding: 12px 10px; }
+        .o_sc_transactions_header h2 { font-size: 17px; }
+        .o_sc_pager .btn { min-width: 30px; padding: 4px 7px; }
     }
 }

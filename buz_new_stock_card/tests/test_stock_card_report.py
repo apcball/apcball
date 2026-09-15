@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from odoo import Command
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -10,6 +11,8 @@ class TestStockCardReport(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Fixture timestamps are UTC, independent of the database user's zone.
+        cls.env.user.tz = "UTC"
         cls.engine = cls.env["buz.stock.card.report"]
 
         cls.loc_supplier = cls.env.ref("stock.stock_location_suppliers")
@@ -88,6 +91,67 @@ class TestStockCardReport(TransactionCase):
         )
         self.assertEqual(data["opening_balance"], 100.0)
         self.assertEqual(len(data["lines"]), 0)
+
+    def test_report_scope_warehouse_and_exact_location(self):
+        warehouse = self.env["stock.warehouse"].search([("lot_stock_id", "=", self.loc_stock.id)], limit=1)
+        scope = self.engine.resolve_report_scope(self.env.company.id, [warehouse.id])
+        self.assertIn(self.loc_a.id, scope["location_ids"])
+        self.assertIn(self.loc_b.id, scope["location_ids"])
+        exact = self.engine.resolve_report_scope(self.env.company.id, [warehouse.id], [self.loc_a.id], False)
+        self.assertEqual(exact["location_ids"], [self.loc_a.id])
+        children = self.engine.resolve_report_scope(self.env.company.id, [], [self.loc_root.id], True)
+        self.assertEqual(set(children["location_ids"]), {self.loc_a.id, self.loc_b.id})
+        with self.assertRaises(ValidationError):
+            self.engine.resolve_report_scope(self.env.company.id, [], [self.loc_supplier.id])
+        with self.assertRaises(AccessError):
+            self.engine.resolve_report_scope(-1)
+
+    def test_all_warehouses_excludes_internal_transfers_and_preserves_pagination(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 20, self._dt("2024-05-10 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_b, 5, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_b, self.loc_customer, 2, self._dt("2024-06-11 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 3, self._dt("2024-06-12 08:00:00"))
+        scope = self.engine.resolve_report_scope(self.env.company.id)
+        pages = [self.engine.get_stock_card_data(
+            self.product.id, scope["location_ids"], "2024-06-01", "2024-06-30",
+            page_size=1, page=page, company_ids=[self.env.company.id],
+        ) for page in (0, 1)]
+        for data in pages:
+            self.assertEqual(data["total_count"], 2)
+            self.assertEqual(data["opening_balance"], 20)
+            self.assertEqual(data["total_in"], 0)
+            self.assertEqual(data["total_out"], 5)
+            self.assertEqual(data["closing_balance"], 15)
+        self.assertEqual(pages[0]["lines"][0]["balance"], 18)
+        self.assertEqual(pages[1]["lines"][0]["balance"], 15)
+        self.assertEqual(pages[0]["lines"][0]["location_name"], self.loc_b.display_name)
+
+    def test_opening_balance_obeys_company_filter(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 20, self._dt("2024-05-10 08:00:00"))
+        data = self.engine.get_stock_card_data(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30", company_ids=[-1],
+        )
+        self.assertEqual(data["opening_balance"], 0)
+        self.assertEqual(data["closing_balance"], 0)
+
+    def test_excel_wizard_keeps_report_scope(self):
+        from urllib.parse import parse_qs, urlparse
+        wizard = self.env["buz.stock.card.export.wizard"].create({
+            "product_id": self.product.id, "date_from": "2024-06-01", "date_to": "2024-06-30",
+            "company_id": self.env.company.id, "report_scope": True, "include_children": False,
+            "location_ids": [Command.set([self.loc_a.id])], "include_cost_lot": False,
+        })
+        query = parse_qs(urlparse(wizard.action_export_xlsx()["url"]).query)
+        self.assertEqual(query["company_id"], [str(self.env.company.id)])
+        self.assertEqual(query["report_scope"], ["1"])
+        self.assertEqual(query["include_children"], ["0"])
+        self.assertEqual(query["location_ids"], [str(self.loc_a.id)])
+
+    def test_excel_only_report_actions(self):
+        self.assertFalse(self.env["ir.actions.report"].search([
+            ("report_name", "=", "buz_new_stock_card.report_stock_card_pdf"),
+        ]))
+        self.assertTrue(self.env.ref("buz_new_stock_card.action_stock_card_export_wizard"))
 
     def test_incoming(self):
         data = self.engine.get_stock_card_data(
@@ -210,7 +274,7 @@ class TestStockCardReport(TransactionCase):
             "vat": "1234567890123",
             "phone": "0000000000",
             "email": "test-company-2@example.com",
-            "branch": "00000",
+            **({"branch": "00000"} if "branch" in self.env["res.partner"]._fields else {}),
         })
         company2 = self.env["res.company"].create({
             "name": "Test Company 2",
