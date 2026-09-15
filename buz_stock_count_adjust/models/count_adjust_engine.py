@@ -535,6 +535,13 @@ class CountAdjustEngine(models.AbstractModel):
         company = group.adjustment_id.company_id
         lot_stock = warehouse.lot_stock_id
         utc_cutoff, _acct = self._cutoff_instants(cutoff_date)
+        # Backdate generated rows to just BEFORE the exclusive boundary, not
+        # to utc_cutoff itself -- utc_cutoff is Bangkok midnight of the day
+        # AFTER cutoff_date, so stamping it exactly there makes the move
+        # display one calendar day late in the user's Asia/Bangkok view.
+        # Matches _void_and_reseed's counter/bucket convention of landing a
+        # few seconds before the boundary, on cutoff_date itself.
+        quant_adjust_ts = utc_cutoff - timedelta(seconds=1)
         cr = self.env.cr
         uid = self.env.uid
         Quant = self.env['stock.quant']
@@ -695,9 +702,9 @@ class CountAdjustEngine(models.AbstractModel):
                          'accounting_date'])
         if gen_moves:
             cr.execute("UPDATE stock_move SET date = %s WHERE id IN %s",
-                       (utc_cutoff, tuple(gen_moves.ids)))
+                       (quant_adjust_ts, tuple(gen_moves.ids)))
             cr.execute("UPDATE stock_move_line SET date = %s WHERE move_id IN %s",
-                       (utc_cutoff, tuple(gen_moves.ids)))
+                       (quant_adjust_ts, tuple(gen_moves.ids)))
         if gen_svls:
             cr.execute("""
                 UPDATE stock_valuation_layer
@@ -706,7 +713,7 @@ class CountAdjustEngine(models.AbstractModel):
                     origin_remaining_qty = 0, origin_remaining_value = 0,
                     create_date = %s, accounting_date = %s
                 WHERE id IN %s
-            """, (utc_cutoff, utc_cutoff, tuple(gen_svls.ids)))
+            """, (quant_adjust_ts, quant_adjust_ts, tuple(gen_svls.ids)))
         Move.invalidate_model()
         ML.invalidate_model()
         SVL.invalidate_model()
