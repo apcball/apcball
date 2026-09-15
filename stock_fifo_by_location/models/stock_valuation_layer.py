@@ -553,8 +553,11 @@ class StockValuationLayer(models.Model):
                 # Outgoing layers never hold remaining (see _run_fifo, final write).
                 expected[layer_id] = (0.0, 0.0)
             else:
-                # quantity == 0: landed cost or manual revaluation.
-                if lc_id and target_id in pool:
+                # quantity == 0: landed cost or manual revaluation. Only the
+                # target link matters -- manual revaluations never carry a
+                # stock_landed_cost_id, so requiring it here silently dropped
+                # their value from the replay.
+                if target_id and target_id in pool:
                     pool[target_id]['value'] += value
                 expected[layer_id] = (0.0, 0.0)
 
