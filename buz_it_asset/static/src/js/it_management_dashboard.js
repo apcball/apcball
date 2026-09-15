@@ -312,6 +312,11 @@ export class ITManagementDashboard extends Component {
             "Pending User": "#f39a16",
             "Resolved": "#22b45b",
             "Closed": "#8b96a8",
+            "Available": "#22b45b",
+            "Assigned": "#287df0",
+            "Repair": "#f39a16",
+            "Retired": "#8b96a8",
+            "Lost": "#ee3e4b",
         }[label] || "#8b96a8";
     }
 
