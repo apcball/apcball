@@ -182,3 +182,13 @@
 @media (max-width: 600px) { .o_it_management_dashboard { padding: 14px; } .it-dashboard-toolbar { display: grid; grid-template-columns: 1fr 1fr; } .it-filter-control select, .it-dashboard-toolbar .btn { width: 100%; min-width: 0; } .it-sync-status { grid-column: span 2; } .it-dashboard-tabs { width: 100%; } .it-dashboard-tabs button { flex: 1; padding-left: 7px; padding-right: 7px; } .it-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .it-kpi-card { min-height: 108px; padding: 12px; } .it-kpi-icon { width: 40px; height: 40px; flex-basis: 40px; font-size: 17px; } .it-kpi-card strong { font-size: 24px; } .it-section-label small { font-size: 10px; } }
 
 @media (max-width: 600px) { .workflow-group-heading { align-items: flex-start; flex-wrap: wrap; } .workflow-group-heading > span:last-child { width: 100%; margin-left: 0; } }
+
+
+/* Dashboard-local Light/Dark theme */
+.o_it_management_dashboard.is-dark{--it-navy:#e5e7eb;--it-muted:#aeb9cc;--it-border:#34415c;--it-bg:#111827;background:var(--it-bg);color:var(--it-navy);color-scheme:dark}
+.o_it_management_dashboard.is-dark .it-panel,.o_it_management_dashboard.is-dark .it-kpi-card,.o_it_management_dashboard.is-dark .it-dashboard-toolbar select,.o_it_management_dashboard.is-dark .it-dashboard-toolbar .btn{background:#1b263b;color:var(--it-navy);border-color:var(--it-border);box-shadow:0 3px 14px rgba(0,0,0,.22)}
+.o_it_management_dashboard.is-dark .attention-item{background:#241f2b;border-color:#563844}
+.o_it_management_dashboard.is-dark .attention-item.warning{background:#2b261e;border-color:#5a4a2b}
+.o_it_management_dashboard.is-dark .it-dashboard-tabs{border-color:var(--it-border)}
+.it-theme-toggle{width:142px;height:40px;padding:3px!important;border:1px solid #c9d1df!important;border-radius:999px!important;background:#e1e6ef!important;color:#56627a!important;box-shadow:inset 0 1px 3px rgba(20,35,72,.12)!important;overflow:hidden}.it-theme-toggle-track{display:flex;align-items:stretch;width:100%;height:100%;gap:2px}.it-theme-option{display:flex;align-items:center;justify-content:center;gap:5px;flex:1;border-radius:999px;font-size:8px;font-weight:800;line-height:.9;letter-spacing:.04em;text-align:center;transition:background .2s,color .2s,box-shadow .2s}.it-theme-option i{font-size:16px}.it-theme-option.active{background:#fff;color:#142348;box-shadow:0 1px 5px rgba(20,35,72,.22)}.o_it_management_dashboard.is-dark .it-theme-toggle{border-color:#4b5872!important;background:#202b42!important;color:#aeb9cc!important}.o_it_management_dashboard.is-dark .it-theme-option.active{background:#3b4964;color:#f3f4f6;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.o_it_management_dashboard.is-dark .it-dashboard-toolbar select option{background:#1b263b;color:var(--it-navy)}

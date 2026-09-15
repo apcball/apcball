@@ -328,3 +328,5 @@ Requester ไม่จำเป็นต้องเข้าถึงเมน�
 - UAT สำหรับ Confirm Resolution, Request Rework, Category required และ Legacy Ticket
 - UAT สิทธิ์ผ่านหน้าเว็บและ direct URL/API/RPC อย่างน้อย 3 บทบาทและ 2 Company
 - Email, Portal, LINE notification และการแจ้งเตือนข้ามบริษัทในสภาพแวดล้อมเป้าหมาย
+
+- IT Management Dashboard มีสวิตซ์ Light Mode / Dark Mode เฉพาะหน้า dashboard และจำค่าที่เลือกไว้ใน browser ด้วย localStorage

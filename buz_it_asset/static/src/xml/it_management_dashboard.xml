@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="buz_it_asset.ITManagementDashboard">
-        <div class="o_it_management_dashboard">
+        <div t-attf-class="o_it_management_dashboard {{ state.theme === 'dark' ? 'is-dark' : '' }}">
             <header class="it-dashboard-header">
                 <div class="it-dashboard-title">
                     <div class="it-eyebrow"><span class="it-live-dot"/> IT OPERATIONS</div>
@@ -12,6 +12,7 @@
                     <label class="it-filter-control"><span>Period</span><select t-on-change="onPeriodChange" t-att-value="state.period"><option value="this_month">This Month</option><option value="last_30_days">Last 30 Days</option><option value="last_90_days">Last 90 Days</option><option value="this_year">This Year</option></select></label>
                     <label t-if="state.data" class="it-filter-control"><span>Company</span><select t-on-change="onCompanyChange" t-att-value="state.company"><option value="all">All Companies</option><option t-foreach="state.data.companies" t-as="company" t-key="company.id" t-att-value="company.id"><t t-esc="company.name"/></option></select></label>
                     <button class="btn it-refresh-button" t-on-click="refresh" t-att-disabled="state.loading"><i class="fa fa-refresh"/> <span>Refresh</span></button>
+                    <button type="button" class="it-theme-toggle" t-on-click="toggleTheme" t-att-aria-pressed="state.theme === 'dark'" t-att-title="state.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'"><span class="it-theme-toggle-track"><span t-att-class="state.theme === 'light' ? 'it-theme-option active' : 'it-theme-option'"><i class="fa fa-sun-o"/><span>LIGHT<br/>MODE</span></span><span t-att-class="state.theme === 'dark' ? 'it-theme-option active' : 'it-theme-option'"><span>DARK<br/>MODE</span><i class="fa fa-moon-o"/></span></span></button>
                     <div class="it-sync-status"><span class="it-sync-dot"/><span><b>Last updated</b><small>Updated <t t-esc="formatLastUpdated()"/></small></span></div>
                 </div>
             </header>

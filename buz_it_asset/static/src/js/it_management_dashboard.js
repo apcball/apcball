@@ -5,6 +5,8 @@ import { loadJS } from "@web/core/assets";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
+const THEME_STORAGE_KEY = "buz_it_management_dashboard_theme";
+
 export class ITManagementDashboard extends Component {
     static template = "buz_it_asset.ITManagementDashboard";
 
@@ -13,6 +15,7 @@ export class ITManagementDashboard extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.openDrilldown = this.openDrilldown.bind(this);
+        this.toggleTheme = this.toggleTheme.bind(this);
         // ใช้ใน arrow expression ของ QWeb จึงต้องผูก context ของ component ไว้เอง
         this.selectTab = this.selectTab.bind(this);
         this.trendRef = useRef("ticketTrend");
@@ -32,6 +35,7 @@ export class ITManagementDashboard extends Component {
             error: null,
             lastUpdated: null,
             tab: "overview",
+            theme: this.getSavedTheme(),
         });
         onWillStart(async () => {
             try {
@@ -95,6 +99,23 @@ export class ITManagementDashboard extends Component {
         this.state.tab = tab;
     }
 
+    getSavedTheme() {
+        try {
+            return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
+        } catch {
+            return "light";
+        }
+    }
+
+    toggleTheme() {
+        this.state.theme = this.state.theme === "dark" ? "light" : "dark";
+        try {
+            window.localStorage.setItem(THEME_STORAGE_KEY, this.state.theme);
+        } catch {
+            // บาง browser อาจปิดการใช้งาน storage แต่ยังสลับธีมชั่วคราวได้
+        }
+    }
+
     destroyCharts() {
         Object.values(this.charts).forEach((chart) => chart.destroy());
         this.charts = {};
@@ -106,11 +127,7 @@ export class ITManagementDashboard extends Component {
             return;
         }
         this.destroyCharts();
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-        };
+        const chartOptions = this.getChartOptions();
         const trend = data.ticket_trend || [];
         if (this.trendRef.el) {
         this.charts.trend = new window.Chart(this.trendRef.el, {
@@ -138,7 +155,7 @@ export class ITManagementDashboard extends Component {
             options: {
                 ...chartOptions,
                 plugins: {
-                    legend: { display: true, position: "top", align: "end" },
+                    legend: { display: true, position: "top", align: "end", labels: { color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" } },
                     tooltip: { mode: "index", intersect: false },
                 },
                 onClick: (_event, elements) => {
@@ -182,7 +199,7 @@ export class ITManagementDashboard extends Component {
             options: {
                 ...chartOptions,
                 indexAxis: "y",
-                scales: { x: { beginAtZero: true } },
+                scales: { x: { ...chartOptions.scales.x, beginAtZero: true }, y: chartOptions.scales.y },
                 onClick: (_event, elements) => {
                     if (elements.length) {
                         this.openDrilldown(
@@ -208,11 +225,25 @@ export class ITManagementDashboard extends Component {
         }
     }
 
+    getChartOptions() {
+        const textColor = this.state.theme === "dark" ? "#e5e7eb" : "#142348";
+        const gridColor = this.state.theme === "dark" ? "rgba(148, 163, 184, .18)" : "rgba(20, 35, 72, .10)";
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false, labels: { color: textColor } } },
+            scales: {
+                x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                y: { ticks: { color: textColor }, grid: { color: gridColor } },
+            },
+        };
+    }
+
     makeBar(element, rows, color) {
         return new window.Chart(element, {
             type: "bar",
             data: { labels: rows.map((row) => row.label), datasets: [{ data: rows.map((row) => row.value), backgroundColor: color, borderRadius: 5 }] },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
+            options: { ...this.getChartOptions(), responsive: true, maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0, color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" }, grid: { color: this.state.theme === "dark" ? "rgba(148, 163, 184, .18)" : "rgba(20, 35, 72, .10)" } }, y: { ticks: { color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" }, grid: { color: this.state.theme === "dark" ? "rgba(148, 163, 184, .18)" : "rgba(20, 35, 72, .10)" } } } },
         });
     }
 
@@ -220,6 +251,7 @@ export class ITManagementDashboard extends Component {
         if (!element) {
             return null;
         }
+        const theme = this.state.theme;
         const centerText = {
             id: "itDashboardDoughnutCenter",
             afterDraw(chart) {
@@ -232,10 +264,10 @@ export class ITManagementDashboard extends Component {
                 const y = (chartArea.top + chartArea.bottom) / 2;
                 ctx.save();
                 ctx.textAlign = "center";
-                ctx.fillStyle = "#142348";
+                ctx.fillStyle = theme === "dark" ? "#f3f4f6" : "#142348";
                 ctx.font = "800 24px Inter, sans-serif";
                 ctx.fillText(total, x, y + 2);
-                ctx.fillStyle = "#6f7d96";
+                ctx.fillStyle = theme === "dark" ? "#aeb9cc" : "#6f7d96";
                 ctx.font = "12px Inter, sans-serif";
                 ctx.fillText("Total", x, y + 21);
                 ctx.restore();
@@ -249,7 +281,7 @@ export class ITManagementDashboard extends Component {
                     data: rows.map((row) => row.value),
                     backgroundColor: colors,
                     borderWidth: 2,
-                    borderColor: "#ffffff",
+                    borderColor: theme === "dark" ? "#202b42" : "#ffffff",
                 }],
             },
             plugins: [centerText],
