@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Report context and validation for Customer Receipt Voucher."""
-from odoo import api, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.misc import formatLang
 
@@ -20,6 +20,14 @@ class CustomerPaymentReceiptReport(models.AbstractModel):
                 amount or 0.0,
                 currency_obj=currency,
             )
+
+        def format_thai_date(value):
+            """Format a date as DD/MM/YYYY using the Buddhist calendar."""
+            if not value:
+                return "-"
+            date_value = fields.Date.to_date(value)
+            return date_value.strftime("%d/%m/") + str(date_value.year + 543)
+
         invalid = payments.filtered(
             lambda payment: payment.partner_type != "customer"
             or payment.payment_type not in ("inbound", "receive")
@@ -29,35 +37,48 @@ class CustomerPaymentReceiptReport(models.AbstractModel):
                 "Receipt Voucher ใช้ได้เฉพาะ Customer / Receive (Inbound) Payment เท่านั้น"
             )
 
-        invoice_rows = {}
+        receipt_rows = {}
         payment_rows = {}
         journal_rows = {}
         for payment in payments:
-            invoices = getattr(payment, "reconciled_invoice_ids", self.env["account.move"])
-            invoice_rows[payment.id] = [
-                {"name": invoice.name or "-", "date": invoice.invoice_date,
-                 "amount": invoice.amount_total}
-                for invoice in invoices
-            ]
-            check_number = getattr(payment, "check_number", False) or "-"
-            payment_rows[payment.id] = [{
-                "method": "Cheque" if check_number != "-" else (payment.payment_method_line_id.name or "-"),
-                "journal": payment.journal_id.name or "-",
-                "check_number": check_number,
-                "date": payment.date,
-                "amount": payment.amount,
+            receipt_rows[payment.id] = [{
+                "partner_code": getattr(payment.partner_id, "partner_code", False) or "-",
+                "partner_name": payment.partner_id.name or "-",
+                "document": "ใบเสร็จรับเงิน",
+                "document_number": payment.name or "-",
+                "date": format_thai_date(payment.date),
+                "amount": payment.amount or 0.0,
             }]
+
+            payment_rows[payment.id] = [{
+                "method": payment.payment_method_line_id.name or "-",
+                "journal": payment.journal_id.name or "-",
+                "check_number": getattr(payment, "check_number", False) or "-",
+                "date": format_thai_date(payment.date),
+                "amount": payment.amount or 0.0,
+            }]
+
             move = payment.move_id
             journal_rows[payment.id] = [
-                {"code": line.account_id.code or "-", "name": line.account_id.name or "-",
-                 "ref": line.name or move.ref or "-", "date": line.date or move.date,
-                 "debit": line.debit, "credit": line.credit}
+                {
+                    "code": line.account_id.code or "-",
+                    "name": line.account_id.name or "-",
+                    "ref": payment.name or move.name or move.ref or "-",
+                    "date": format_thai_date(payment.date),
+                    "debit": line.debit or 0.0,
+                    "credit": line.credit or 0.0,
+                }
                 for line in move.line_ids
             ] if move else []
+
         return {
-            "doc_ids": docids, "doc_model": "account.payment", "docs": payments,
-            "data": data, "invoice_rows": invoice_rows, "payment_rows": payment_rows,
+            "doc_ids": docids,
+            "doc_model": "account.payment",
+            "docs": payments,
+            "data": data,
+            "receipt_rows": receipt_rows,
+            "payment_rows": payment_rows,
             "journal_rows": journal_rows,
-            # A custom report does not receive this helper automatically.
             "format_amount": format_amount,
+            "format_thai_date": format_thai_date,
         }

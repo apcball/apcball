@@ -3,7 +3,7 @@
     <template id="customer_payment_receipt">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-set="invoices" t-value="invoice_rows.get(o.id, [])"/>
+                <t t-set="receipts" t-value="receipt_rows.get(o.id, [])"/>
                 <t t-set="methods" t-value="payment_rows.get(o.id, [])"/>
                 <t t-set="journal_lines" t-value="journal_rows.get(o.id, [])"/>
                 <t t-call="web.external_layout">
@@ -15,27 +15,122 @@
                             .rv-table th, .rv-table td { border: 1px solid #000; padding: 5px; }
                             .rv-table th { text-align: center; vertical-align: middle; }
                         </style>
+
                         <div class="row mb-2">
-                            <div class="col-4"><img src="/buz_accounting_addon/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 200px;" alt="Company Logo"/></div>
-                            <div class="col-4 text-center"><div style="font-size: 25px; font-weight: bold;">ใบเสร็จรับเงิน</div><div style="font-size: 22px; font-weight: bold;">RECEIPT VOUCHER</div></div>
-                            <div class="col-4"><div style="border: 1px solid #000; padding: 6px; margin-left: auto; width: 220px;"><div><strong>No.</strong> <span t-field="o.name"/></div><div><strong>Date.</strong> <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></div></div></div>
+                            <div class="col-4">
+                                <img src="/buz_accounting_addon/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 200px;" alt="Company Logo"/>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div style="font-size: 25px; font-weight: bold;">ใบเสร็จรับเงิน</div>
+                                <div style="font-size: 22px; font-weight: bold;">RECEIPT VOUCHER</div>
+                            </div>
+                            <div class="col-4">
+                                <div style="border: 1px solid #000; padding: 6px; margin-left: auto; width: 220px;">
+                                    <div><strong>No.</strong> <span t-field="o.name"/></div>
+                                    <div><strong>Date.</strong> <span t-esc="format_thai_date(o.date)"/></div>
+                                </div>
+                            </div>
                         </div>
-                        <table class="rv-table"><thead><tr><th>รหัสลูกค้า</th><th>ชื่อลูกค้า</th><th>Invoice</th><th>Invoice Date</th><th>จำนวนเงิน</th></tr></thead><tbody>
-                            <tr t-if="not invoices"><td><span t-esc="o.partner_id.partner_code or '-'"/></td><td><span t-field="o.partner_id.name"/></td><td colspan="2">-</td><td class="text-end"><span t-esc="format_amount(o.amount, o.currency_id)"/></td></tr>
-                            <tr t-foreach="invoices" t-as="invoice"><td><span t-esc="o.partner_id.partner_code or '-'"/></td><td><span t-field="o.partner_id.name"/></td><td><span t-esc="invoice['name']"/></td><td class="text-center"><span t-esc="invoice['date'] or '-'"/></td><td class="text-end"><span t-esc="format_amount(invoice['amount'], o.currency_id)"/></td></tr>
-                            <tr><td colspan="4" class="text-end"><strong>รวมทั้งสิ้น</strong></td><td class="text-end"><strong><span t-esc="format_amount(o.amount, o.currency_id)"/></strong></td></tr>
-                        </tbody></table>
-                        <table class="rv-table"><thead><tr><th>วิธีรับเงิน</th><th>Journal</th><th>เลขที่เช็ค</th><th>วันที่</th><th>จำนวนเงิน</th></tr></thead><tbody>
-                            <tr t-foreach="methods" t-as="method"><td><span t-esc="method['method']"/></td><td><span t-esc="method['journal']"/></td><td><span t-esc="method['check_number']"/></td><td class="text-center"><span t-esc="method['date']"/></td><td class="text-end"><span t-esc="format_amount(method['amount'], o.currency_id)"/></td></tr>
-                            <tr><td colspan="4" class="text-end"><strong>ยอดรวม</strong></td><td class="text-end"><strong><span t-esc="format_amount(o.amount, o.currency_id)"/></strong></td></tr>
-                        </tbody></table>
+
+                        <table class="rv-table">
+                            <thead>
+                                <tr>
+                                    <th>รหัสลูกหนี้</th>
+                                    <th>ชื่อลูกหนี้</th>
+                                    <th>เอกสาร</th>
+                                    <th>เลขที่เอกสาร</th>
+                                    <th>จำนวนเงิน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="receipts" t-as="receipt">
+                                    <td><span t-esc="receipt['partner_code']"/></td>
+                                    <td><span t-esc="receipt['partner_name']"/></td>
+                                    <td><span t-esc="receipt['document']"/></td>
+                                    <td><span t-esc="receipt['document_number']"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(receipt['amount'], o.currency_id)"/></td>
+                                </tr>
+                                <tr t-if="not receipts">
+                                    <td><span t-esc="o.partner_id.partner_code or '-'"/></td>
+                                    <td><span t-field="o.partner_id.name"/></td>
+                                    <td>ใบเสร็จรับเงิน</td>
+                                    <td><span t-field="o.name"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(o.amount, o.currency_id)"/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>จำนวนเงิน</strong></td>
+                                    <td class="text-end"><strong><span t-esc="format_amount(o.amount, o.currency_id)"/></strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="rv-table">
+                            <thead>
+                                <tr>
+                                    <th>ชำระเงิน</th>
+                                    <th>ชื่อ</th>
+                                    <th>เลขที่เช็ค</th>
+                                    <th>วันที่เช็ค</th>
+                                    <th>จำนวนเงินจ่าย</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="methods" t-as="method">
+                                    <td><span t-esc="method['method']"/></td>
+                                    <td><span t-esc="method['journal']"/></td>
+                                    <td><span t-esc="method['check_number']"/></td>
+                                    <td class="text-center"><span t-esc="method['date']"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(method['amount'], o.currency_id)"/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>จำนวนเงิน</strong></td>
+                                    <td class="text-end"><strong><span t-esc="format_amount(o.amount, o.currency_id)"/></strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
                         <div class="text-end" style="margin-top: 12px;"><strong>Journal Entry Dr./Cr.</strong></div>
-                        <table class="rv-table"><thead><tr><th>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th>Ref.</th><th>วันที่</th><th>Dr.</th><th>Cr.</th></tr></thead><tbody>
-                            <tr t-if="not journal_lines"><td colspan="6" class="text-center">ไม่มี Journal Entry</td></tr>
-                            <tr t-foreach="journal_lines" t-as="line"><td><span t-esc="line['code']"/></td><td><span t-esc="line['name']"/></td><td><span t-esc="line['ref']"/></td><td><span t-esc="line['date']"/></td><td class="text-end"><span t-esc="format_amount(line['debit'], o.currency_id)"/></td><td class="text-end"><span t-esc="format_amount(line['credit'], o.currency_id)"/></td></tr>
-                        </tbody></table>
+                        <table class="rv-table">
+                            <thead>
+                                <tr>
+                                    <th>เลขที่บัญชี</th>
+                                    <th>ชื่อบัญชี</th>
+                                    <th>เลขที่เอกสาร</th>
+                                    <th>วันที่</th>
+                                    <th>Dr.</th>
+                                    <th>Cr.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-if="not journal_lines">
+                                    <td colspan="6" class="text-center">ไม่มี Journal Entry</td>
+                                </tr>
+                                <tr t-foreach="journal_lines" t-as="line">
+                                    <td><span t-esc="line['code']"/></td>
+                                    <td><span t-esc="line['name']"/></td>
+                                    <td><span t-esc="line['ref']"/></td>
+                                    <td><span t-esc="line['date']"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(line['debit'], o.currency_id)"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(line['credit'], o.currency_id)"/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Total</strong></td>
+                                    <td class="text-end"><strong><span t-esc="format_amount(sum(line['debit'] for line in journal_lines), o.currency_id)"/></strong></td>
+                                    <td class="text-end"><strong><span t-esc="format_amount(sum(line['credit'] for line in journal_lines), o.currency_id)"/></strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
                         <div style="margin-top: 18px; min-height: 45px;"><strong>หมายเหตุ:</strong> <span t-esc="o.ref or '-'"/></div>
-                        <table style="width: 100%; text-align: center; margin-top: 30px; border-collapse: collapse;"><tr><td style="width: 33%;">ผู้จัดทำ<br/><br/>____________________</td><td style="width: 33%;">ผู้ตรวจสอบ<br/><br/>____________________</td><td style="width: 33%;">ผู้รับเงิน<br/><br/>____________________</td></tr></table>
+                        <table style="width: 100%; text-align: center; margin-top: 30px; border-collapse: collapse;">
+                            <tr>
+                                <td style="width: 20%;">Prepare By:<br/><br/>________________</td>
+                                <td style="width: 20%;">Checked (1) By:<br/><br/>________________</td>
+                                <td style="width: 20%;">Checked (2) By:<br/><br/>________________</td>
+                                <td style="width: 20%;">Approved By:<br/><br/>________________</td>
+                                <td style="width: 20%;">Received By:<br/><br/>________________</td>
+                            </tr>
+                        </table>
                     </div>
                 </t>
             </t>
