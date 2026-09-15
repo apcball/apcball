@@ -16,7 +16,7 @@
 @media(min-width:901px){
     .o_it_management_dashboard{padding:16px 20px}
     .it-dashboard-header{margin-bottom:12px}
-    .it-dashboard-toolbar{flex-wrap:nowrap;flex:0 0 auto;gap:8px}
+    .it-dashboard-toolbar{align-items:flex-end;flex-wrap:nowrap;flex:0 0 auto;gap:8px}
     .it-dashboard-toolbar select{width:132px;min-width:132px;padding:0 10px}
     .it-dashboard-toolbar .btn,.it-demo-note{height:34px;flex:0 0 auto;padding-left:11px;padding-right:11px}
     .it-kpi-grid{gap:10px;margin-bottom:12px}
