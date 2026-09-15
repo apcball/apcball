@@ -192,3 +192,113 @@
 .o_it_management_dashboard.is-dark .it-dashboard-tabs{border-color:var(--it-border)}
 .it-theme-toggle{width:142px;height:40px;padding:3px!important;border:1px solid #c9d1df!important;border-radius:999px!important;background:#e1e6ef!important;color:#56627a!important;box-shadow:inset 0 1px 3px rgba(20,35,72,.12)!important;overflow:hidden}.it-theme-toggle-track{display:flex;align-items:stretch;width:100%;height:100%;gap:2px}.it-theme-option{display:flex;align-items:center;justify-content:center;gap:5px;flex:1;border-radius:999px;font-size:8px;font-weight:800;line-height:.9;letter-spacing:.04em;text-align:center;transition:background .2s,color .2s,box-shadow .2s}.it-theme-option i{font-size:16px}.it-theme-option.active{background:#fff;color:#142348;box-shadow:0 1px 5px rgba(20,35,72,.22)}.o_it_management_dashboard.is-dark .it-theme-toggle{border-color:#4b5872!important;background:#202b42!important;color:#aeb9cc!important}.o_it_management_dashboard.is-dark .it-theme-option.active{background:#3b4964;color:#f3f4f6;box-shadow:0 1px 5px rgba(0,0,0,.35)}
 .o_it_management_dashboard.is-dark .it-dashboard-toolbar select option{background:#1b263b;color:var(--it-navy)}
+
+/* High-contrast dark mode overrides for dashboard content */
+.o_it_management_dashboard.is-dark {
+    --it-text-strong: #f8fafc;
+    --it-text: #dbe4f2;
+    --it-text-muted: #b8c4d8;
+    --it-surface: #1b263b;
+    --it-surface-alt: #202d45;
+    --it-line: #42516e;
+    --it-input: #19263e;
+    --it-navy: var(--it-text);
+    --it-muted: var(--it-text-muted);
+    --it-border: var(--it-line);
+    background: #111827;
+    color: var(--it-text);
+}
+.o_it_management_dashboard.is-dark .it-dashboard-title h1,
+.o_it_management_dashboard.is-dark .it-section-label,
+.o_it_management_dashboard.is-dark .section-heading h2,
+.o_it_management_dashboard.is-dark .workflow-group-heading h2,
+.o_it_management_dashboard.is-dark .it-kpi-label,
+.o_it_management_dashboard.is-dark .it-kpi-card strong,
+.o_it_management_dashboard.is-dark .license-progress b,
+.o_it_management_dashboard.is-dark .it-sync-status b {
+    color: var(--it-text-strong) !important;
+}
+.o_it_management_dashboard.is-dark .it-dashboard-title p,
+.o_it_management_dashboard.is-dark .section-heading > span,
+.o_it_management_dashboard.is-dark .it-kpi-context,
+.o_it_management_dashboard.is-dark .workflow-group-heading > span:last-child,
+.o_it_management_dashboard.is-dark .it-sync-status small,
+.o_it_management_dashboard.is-dark .license-progress,
+.o_it_management_dashboard.is-dark .attention-item small,
+.o_it_management_dashboard.is-dark .it-dashboard-error,
+.o_it_management_dashboard.is-dark .it-chart-empty {
+    color: var(--it-text-muted) !important;
+}
+.o_it_management_dashboard.is-dark .it-panel,
+.o_it_management_dashboard.is-dark .it-kpi-card {
+    background: var(--it-surface);
+    border-color: var(--it-line);
+}
+.o_it_management_dashboard.is-dark .it-panel-featured {
+    background: linear-gradient(145deg, #1b263b 0%, #202b42 100%);
+}
+.o_it_management_dashboard.is-dark .it-dashboard-toolbar select,
+.o_it_management_dashboard.is-dark .it-dashboard-toolbar .btn {
+    background: var(--it-input);
+    color: var(--it-text) !important;
+    border-color: var(--it-line);
+}
+.o_it_management_dashboard.is-dark .it-dashboard-tabs {
+    background: var(--it-surface-alt);
+    border-color: var(--it-line);
+}
+.o_it_management_dashboard.is-dark .it-dashboard-tabs button {
+    color: var(--it-text-muted);
+}
+.o_it_management_dashboard.is-dark .it-dashboard-tabs button.active {
+    background: #3b4964;
+    color: #ffffff;
+}
+.o_it_management_dashboard.is-dark .status-legend > span,
+.o_it_management_dashboard.is-dark .recent-row {
+    border-color: var(--it-line);
+    color: var(--it-text);
+}
+.o_it_management_dashboard.is-dark .status-legend b,
+.o_it_management_dashboard.is-dark .status-legend > span,
+.o_it_management_dashboard.is-dark .recent-row {
+    color: var(--it-text) !important;
+}
+.o_it_management_dashboard.is-dark .status-legend b em,
+.o_it_management_dashboard.is-dark .recent-head {
+    color: var(--it-text-muted) !important;
+}
+.o_it_management_dashboard.is-dark .recent-row b {
+    color: #78aaff;
+}
+.o_it_management_dashboard.is-dark .progress {
+    background: #34415c;
+}
+.o_it_management_dashboard.is-dark .attention-item b {
+    color: var(--it-text-strong);
+}
+.o_it_management_dashboard.is-dark .attention-item:hover {
+    background: #293650;
+}
+.o_it_management_dashboard.is-dark .attention-empty {
+    border-color: var(--it-line);
+}
+.o_it_management_dashboard.is-dark .it-card-arrow {
+    color: #b8c4d8;
+}
+.o_it_management_dashboard.is-dark .it-dashboard-alert {
+    background: #332b1d;
+    border-color: #725b2b;
+    color: #f8e4a8;
+}
+.o_it_management_dashboard.is-dark .it-dashboard-toolbar select option {
+    background: var(--it-input);
+    color: var(--it-text);
+}
+.o_it_management_dashboard.is-dark {
+    scrollbar-color: #52627f #111827;
+}
+.o_it_management_dashboard.is-dark .it-skeleton-kpis span,
+.o_it_management_dashboard.is-dark .it-skeleton-panels span {
+    background: linear-gradient(90deg, #1b263b 25%, #2b3a56 50%, #1b263b 75%);
+}

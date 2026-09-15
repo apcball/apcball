@@ -155,8 +155,9 @@ export class ITManagementDashboard extends Component {
             options: {
                 ...chartOptions,
                 plugins: {
+                    ...chartOptions.plugins,
                     legend: { display: true, position: "top", align: "end", labels: { color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" } },
-                    tooltip: { mode: "index", intersect: false },
+                    tooltip: { ...chartOptions.plugins.tooltip, mode: "index", intersect: false },
                 },
                 onClick: (_event, elements) => {
                     if (!elements.length) {
@@ -231,7 +232,7 @@ export class ITManagementDashboard extends Component {
         return {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false, labels: { color: textColor } } },
+            plugins: { legend: { display: false, labels: { color: textColor } }, tooltip: { titleColor: textColor, bodyColor: textColor, backgroundColor: this.state.theme === "dark" ? "#202b42" : "#142348", borderColor: gridColor, borderWidth: 1 } },
             scales: {
                 x: { ticks: { color: textColor }, grid: { color: gridColor } },
                 y: { ticks: { color: textColor }, grid: { color: gridColor } },
@@ -243,7 +244,7 @@ export class ITManagementDashboard extends Component {
         return new window.Chart(element, {
             type: "bar",
             data: { labels: rows.map((row) => row.label), datasets: [{ data: rows.map((row) => row.value), backgroundColor: color, borderRadius: 5 }] },
-            options: { ...this.getChartOptions(), responsive: true, maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0, color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" }, grid: { color: this.state.theme === "dark" ? "rgba(148, 163, 184, .18)" : "rgba(20, 35, 72, .10)" } }, y: { ticks: { color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" }, grid: { color: this.state.theme === "dark" ? "rgba(148, 163, 184, .18)" : "rgba(20, 35, 72, .10)" } } } },
+            options: { ...this.getChartOptions(), responsive: true, maintainAspectRatio: false, indexAxis: "y", plugins: { ...this.getChartOptions().plugins, legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0, color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" }, grid: { color: this.state.theme === "dark" ? "rgba(148, 163, 184, .18)" : "rgba(20, 35, 72, .10)" } }, y: { ticks: { color: this.state.theme === "dark" ? "#e5e7eb" : "#142348" }, grid: { color: this.state.theme === "dark" ? "rgba(148, 163, 184, .18)" : "rgba(20, 35, 72, .10)" } } } },
         });
     }
 
@@ -289,7 +290,7 @@ export class ITManagementDashboard extends Component {
                 responsive: true,
                 maintainAspectRatio: false,
                 cutout: "66%",
-                plugins: { legend: { display: false } },
+                plugins: { ...this.getChartOptions().plugins, legend: { display: false } },
                 onClick: (_event, elements) => {
                     if (elements.length) {
                         onClick(elements[0].index);
