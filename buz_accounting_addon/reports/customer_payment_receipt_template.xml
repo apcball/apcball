@@ -163,41 +163,21 @@
                                             Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
                                         </div>
                                     </td>
-                                    <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
-                                        <div style="margin-bottom: 5px;">
-                                            <span t-if="o.create_uid" t-field="o.create_uid.name"/>
-                                            <span t-else="">_________________</span>
-                                        </div>
-                                        <div style="font-size: 18px;">
-                                            Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
-                                        </div>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
                                     </td>
-                                    <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
-                                        <div style="margin-bottom: 5px;">
-                                            <span t-if="o.create_uid" t-field="o.create_uid.name"/>
-                                            <span t-else="">_________________</span>
-                                        </div>
-                                        <div style="font-size: 18px;">
-                                            Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
-                                        </div>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
                                     </td>
-                                    <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
-                                        <div style="margin-bottom: 5px;">
-                                            <span t-if="o.create_uid" t-field="o.create_uid.name"/>
-                                            <span t-else="">_________________</span>
-                                        </div>
-                                        <div style="font-size: 18px;">
-                                            Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
-                                        </div>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
                                     </td>
-                                    <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
-                                        <div style="margin-bottom: 5px;">
-                                            <span t-if="o.create_uid" t-field="o.create_uid.name"/>
-                                            <span t-else="">_________________</span>
-                                        </div>
-                                        <div style="font-size: 18px;">
-                                            Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
-                                        </div>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -247,6 +227,36 @@
                         <div style="margin-top: 18px; min-height: 45px;">
                             <strong>หมายเหตุ:</strong> <span t-esc="o.ref or '-'"/>
                         </div>
+
+                        <!-- Issued / Check / Approve Signatures -->
+                        <table style="width: 100%; text-align: center; margin-top: 40px; border: 1px solid #000; border-collapse: collapse;">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 33.33%; border: 1px solid #000; padding: 5px; text-align: left;">Issued By:</td>
+                                    <td style="width: 33.33%; border: 1px solid #000; padding: 5px; text-align: left;">Check By:</td>
+                                    <td style="width: 33.33%; border: 1px solid #000; padding: 5px; text-align: left;">Approve By:</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 5px; vertical-align: bottom; height: 45px; text-align: left;">
+                                        <div style="margin-bottom: 5px;">
+                                            <span t-if="o.create_uid" t-field="o.create_uid.name"/>
+                                            <span t-else="">_________________</span>
+                                        </div>
+                                        <div style="font-size: 18px;">
+                                            Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
+                                        </div>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 5px; vertical-align: bottom; height: 45px; text-align: left;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 18px;">Date ........./........./.........</div>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 5px; vertical-align: bottom; height: 45px; text-align: left;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 18px;">Date ........./........./.........</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </t>
             </t>
