@@ -10,6 +10,9 @@
                 <field name="buz_payment_channel"
                        invisible="partner_type != 'customer' or payment_type not in ('inbound', 'receive')"
                        readonly="0"/>
+                <field name="received_date"
+                       invisible="partner_type != 'customer' or payment_type not in ('inbound', 'receive')"
+                       readonly="0"/>
             </xpath>
         </field>
     </record>

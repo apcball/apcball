@@ -19,6 +19,14 @@ class AccountPayment(models.Model):
         help='\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e32\u0e07\u0e17\u0e35\u0e48\u0e25\u0e39\u0e01\u0e04\u0e49\u0e32\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e08\u0e23\u0e34\u0e07 \u0e43\u0e0a\u0e49\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e41\u0e2a\u0e14\u0e07\u0e1a\u0e19 Receipt Voucher \u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19',
     )
 
+    received_date = fields.Date(
+        string='Received date',
+        default=fields.Date.context_today,
+        copy=False,
+        tracking=True,
+        help='วันที่รับชำระเงินจริง แยกจาก Payment Date ซึ่งเป็นวันที่ลงบัญชี',
+    )
+
     buz_payment_voucher_id = fields.Many2one(
         'account.payment.voucher', string='Payment Voucher',
         ondelete='set null', index=True, copy=False,
@@ -27,6 +35,19 @@ class AccountPayment(models.Model):
         'buz.customer.refund.pv', string='Customer Refund PV',
         ondelete='set null', index=True, copy=False,
     )
+
+    def write(self, vals):
+        if 'received_date' in vals:
+            received_date = fields.Date.to_date(vals['received_date'])
+            posted_customer_payments = self.filtered(
+                lambda payment: payment.state == 'posted'
+                and payment.partner_type == 'customer'
+                and payment.payment_type in ('inbound', 'receive')
+                and payment.received_date != received_date
+            )
+            if posted_customer_payments:
+                raise UserError(_('Received date cannot be changed after posting.'))
+        return super().write(vals)
 
     def action_post(self):
         customer_payments = self.filtered(
