@@ -33,6 +33,9 @@ case "$TARGET" in
         rsync -az --delete "$SRC" dev:/srv/docker/odoo/custom-addons/"$MODULE"/
         ssh dev "docker exec odoo odoo -d MOG_DEV -u $MODULE --stop-after-init --no-http"
         printf "$UPDATE_LIST_PY" "MOG_DEV" "MOG_DEV" | ssh dev "docker exec -i odoo python3 -c \"\$(cat)\""
+        # The upgrade runs in a separate process; HTTP workers still have the
+        # previous Python classes imported until the container restarts.
+        ssh dev "docker restart odoo"
         echo "<<< DEV deploy $MODULE done"
         ;;
     prod)
