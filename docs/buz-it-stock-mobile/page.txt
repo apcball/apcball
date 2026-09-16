@@ -1,0 +1,70 @@
+IT Issue
+หน้าหลัก
+เบิกอุปกรณ์
+ประวัติการเบิก
+คลังสินค้า IT
+ตั้งค่าคลัง
+หมวดสินค้า
+Administrator
+My Company
+เบิกอุปกรณ์ IT
+ My Company
+ทั้งหมด
+Keyboard
+Mouse
+Cable
+Monitor
+Adapter
+อื่น ๆ
+อุปกรณ์พร้อมเบิก
+เลือกสินค้าเพื่อเพิ่มในตะกร้า
+HDMI Cable 2m
+Cable
+พร้อมเบิก 34 Units
+Logitech K120
+Keyboard
+พร้อมเบิก 16 Units
+Logitech M100
+Mouse
+พร้อมเบิก 23 Units
+Monitor 24 inch
+Monitor
+พร้อมเบิก 5 Units
+Network Cable Cat6
+Cable
+พร้อมเบิก 40 Units
+USB-C Hub
+Adapter
+พร้อมเบิก 12 Units
+ 0 รายการ
+ดูรายการ (0) 
+รายการเบิกล่าสุด
+ดูทั้งหมด
+เลขที่เอกสาร	ผู้รับ	วันที่	สถานะ
+IT-ISS-2026-00008	Somchai Jaidee	12/09/2026 22:31	เสร็จสิ้น
+IT-ISS-2026-00007	Somchai Jaidee	12/09/2026 22:31	รอเซ็น
+IT-ISS-2026-00006	Somchai Jaidee	12/09/2026 22:31	เสร็จสิ้น
+IT-ISS-2026-00005	Somchai Jaidee	12/09/2026 22:31	เสร็จสิ้น
+IT-ISS-2026-00004	Somchai Jaidee	12/09/2026 22:25	เสร็จสิ้น
+IT-ISS-2026-00003	Somchai Jaidee	12/09/2026 22:24	รอเซ็น
+IT-ISS-2026-00002	Somchai Jaidee	12/09/2026 22:23	รอเซ็น
+IT-ISS-2026-00001	Somchai Jaidee	12/09/2026 22:22	รอเซ็น
+สรุปการเบิก (เดือนนี้)
+4
+ใบเบิกสำเร็จ
+Mouse
+2 Units
+Monitor
+1 Units
+Keyboard
+2 Units
+คลังสินค้า IT
+
+My Company
+
+มูลค่าประมาณการจากต้นทุนสินค้า
+$ 58,500
+สินค้าทั้งหมด
+6 รายการ
+คงเหลือ
+130 Units

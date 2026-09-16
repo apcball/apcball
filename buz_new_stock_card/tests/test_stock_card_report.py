@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from odoo import Command
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -10,6 +11,8 @@ class TestStockCardReport(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Fixture timestamps are UTC, independent of the database user's zone.
+        cls.env.user.tz = "UTC"
         cls.engine = cls.env["buz.stock.card.report"]
 
         cls.loc_supplier = cls.env.ref("stock.stock_location_suppliers")
@@ -89,6 +92,67 @@ class TestStockCardReport(TransactionCase):
         self.assertEqual(data["opening_balance"], 100.0)
         self.assertEqual(len(data["lines"]), 0)
 
+    def test_report_scope_warehouse_and_exact_location(self):
+        warehouse = self.env["stock.warehouse"].search([("lot_stock_id", "=", self.loc_stock.id)], limit=1)
+        scope = self.engine.resolve_report_scope(self.env.company.id, [warehouse.id])
+        self.assertIn(self.loc_a.id, scope["location_ids"])
+        self.assertIn(self.loc_b.id, scope["location_ids"])
+        exact = self.engine.resolve_report_scope(self.env.company.id, [warehouse.id], [self.loc_a.id], False)
+        self.assertEqual(exact["location_ids"], [self.loc_a.id])
+        children = self.engine.resolve_report_scope(self.env.company.id, [], [self.loc_root.id], True)
+        self.assertEqual(set(children["location_ids"]), {self.loc_a.id, self.loc_b.id})
+        with self.assertRaises(ValidationError):
+            self.engine.resolve_report_scope(self.env.company.id, [], [self.loc_supplier.id])
+        with self.assertRaises(AccessError):
+            self.engine.resolve_report_scope(-1)
+
+    def test_all_warehouses_excludes_internal_transfers_and_preserves_pagination(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 20, self._dt("2024-05-10 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_b, 5, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_b, self.loc_customer, 2, self._dt("2024-06-11 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 3, self._dt("2024-06-12 08:00:00"))
+        scope = self.engine.resolve_report_scope(self.env.company.id)
+        pages = [self.engine.get_stock_card_data(
+            self.product.id, scope["location_ids"], "2024-06-01", "2024-06-30",
+            page_size=1, page=page, company_ids=[self.env.company.id],
+        ) for page in (0, 1)]
+        for data in pages:
+            self.assertEqual(data["total_count"], 2)
+            self.assertEqual(data["opening_balance"], 20)
+            self.assertEqual(data["total_in"], 0)
+            self.assertEqual(data["total_out"], 5)
+            self.assertEqual(data["closing_balance"], 15)
+        self.assertEqual(pages[0]["lines"][0]["balance"], 18)
+        self.assertEqual(pages[1]["lines"][0]["balance"], 15)
+        self.assertEqual(pages[0]["lines"][0]["location_name"], self.loc_b.display_name)
+
+    def test_opening_balance_obeys_company_filter(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 20, self._dt("2024-05-10 08:00:00"))
+        data = self.engine.get_stock_card_data(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30", company_ids=[-1],
+        )
+        self.assertEqual(data["opening_balance"], 0)
+        self.assertEqual(data["closing_balance"], 0)
+
+    def test_excel_wizard_keeps_report_scope(self):
+        from urllib.parse import parse_qs, urlparse
+        wizard = self.env["buz.stock.card.export.wizard"].create({
+            "product_id": self.product.id, "date_from": "2024-06-01", "date_to": "2024-06-30",
+            "company_id": self.env.company.id, "report_scope": True, "include_children": False,
+            "location_ids": [Command.set([self.loc_a.id])], "include_cost_lot": False,
+        })
+        query = parse_qs(urlparse(wizard.action_export_xlsx()["url"]).query)
+        self.assertEqual(query["company_id"], [str(self.env.company.id)])
+        self.assertEqual(query["report_scope"], ["1"])
+        self.assertEqual(query["include_children"], ["0"])
+        self.assertEqual(query["location_ids"], [str(self.loc_a.id)])
+
+    def test_excel_only_report_actions(self):
+        self.assertFalse(self.env["ir.actions.report"].search([
+            ("report_name", "=", "buz_new_stock_card.report_stock_card_pdf"),
+        ]))
+        self.assertTrue(self.env.ref("buz_new_stock_card.action_stock_card_export_wizard"))
+
     def test_incoming(self):
         data = self.engine.get_stock_card_data(
             self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30", page_size=20, page=0,
@@ -112,6 +176,26 @@ class TestStockCardReport(TransactionCase):
         self.assertEqual(data["opening_balance"], 100.0)
         self.assertEqual(data["lines"][0]["out"], 30.0)
         self.assertEqual(data["lines"][0]["balance"], 70.0)
+
+    def test_value_in_out_split(self):
+        self.env.user.groups_id = [Command.link(
+            self.env.ref("buz_new_stock_card.group_stock_card_see_value").id
+        )]
+        self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 30.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_supplier, self.loc_a, 20.0, self._dt("2024-06-15 10:00:00"))
+        data = self.engine.get_stock_card_data(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30", page_size=20, page=0,
+        )
+        out_line, in_line = data["lines"][0], data["lines"][1]
+        self.assertGreater(out_line["value_out"], 0.0)
+        self.assertEqual(out_line["value_in"], 0.0)
+        self.assertGreater(in_line["value_in"], 0.0)
+        self.assertEqual(in_line["value_out"], 0.0)
+        self.assertAlmostEqual(
+            out_line["value_in"] - out_line["value_out"],
+            out_line["value"] - data["opening_value"],
+        )
 
     def test_internal_transfer_excluded_when_scope_covers_both_sides(self):
         self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
@@ -210,7 +294,7 @@ class TestStockCardReport(TransactionCase):
             "vat": "1234567890123",
             "phone": "0000000000",
             "email": "test-company-2@example.com",
-            "branch": "00000",
+            **({"branch": "00000"} if "branch" in self.env["res.partner"]._fields else {}),
         })
         company2 = self.env["res.company"].create({
             "name": "Test Company 2",
@@ -419,3 +503,186 @@ class TestStockCardReport(TransactionCase):
         move_rows = [r for r in rows if r["in"]]
         self.assertTrue(move_rows)
         self.assertEqual(move_rows[0]["in"], 30.0)
+
+    # ------------------------------------------------------------------
+    # Valuation (cost + lot) ledger
+    #
+    # Layers are created directly against a draft (never actioned) move so
+    # the test controls quantity/unit_cost/remaining_qty exactly, without
+    # tripping the real _action_done() valuation pipeline (whose costing
+    # method/account setup is out of scope for this engine's unit tests).
+    # ------------------------------------------------------------------
+
+    def _mk_valuation_layer(
+        self, product, location, qty, unit_cost, move_date,
+        remaining_qty=None, lot=None, picking=None,
+    ):
+        src = self.loc_supplier if qty >= 0 else location
+        dest = location if qty >= 0 else self.loc_customer
+        move = self.env["stock.move"].create({
+            "name": "svl test move",
+            "product_id": product.id,
+            "product_uom_qty": abs(qty),
+            "product_uom": product.uom_id.id,
+            "location_id": src.id,
+            "location_dest_id": dest.id,
+            "state": "draft",
+            "date": move_date,
+            "picking_id": picking.id if picking else False,
+        })
+        self.env["stock.move.line"].create({
+            "move_id": move.id,
+            "product_id": product.id,
+            "product_uom_id": product.uom_id.id,
+            "quantity": abs(qty),
+            "location_id": src.id,
+            "location_dest_id": dest.id,
+            "lot_id": lot.id if lot else False,
+            "date": move_date,
+        })
+        remaining_qty = qty if remaining_qty is None else remaining_qty
+        return self.env["stock.valuation.layer"].create({
+            "product_id": product.id,
+            "company_id": self.env.company.id,
+            "quantity": qty,
+            "unit_cost": unit_cost,
+            "value": qty * unit_cost,
+            "remaining_qty": remaining_qty,
+            "remaining_value": remaining_qty * unit_cost,
+            "stock_move_id": move.id,
+            "location_id": location.id,
+        })
+
+    def test_valuation_opening_row_from_outstanding_layer(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-05-01 08:00:00"),
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["remark"], "ยอดยกมา")
+        self.assertEqual(rows[0]["qty_in"], 10.0)
+        self.assertEqual(rows[0]["unitcost_in"], 100.0)
+        self.assertEqual(rows[0]["cost_in"], 1000.0)
+        self.assertEqual(rows[0]["qty_out"], 0.0)
+
+    def test_valuation_opening_excludes_fully_consumed_layer(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-05-01 08:00:00"),
+            remaining_qty=0.0,
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(rows, [])
+
+    def test_valuation_period_receipt_and_issue(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 20.0, 50.0, self._dt("2024-06-10 08:00:00"),
+        )
+        self._mk_valuation_layer(
+            self.product, self.loc_a, -5.0, 50.0, self._dt("2024-06-15 08:00:00"),
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["remark"], "เอกสารรับในปี")
+        self.assertEqual(rows[0]["qty_in"], 20.0)
+        self.assertEqual(rows[0]["cost_in"], 1000.0)
+        self.assertEqual(rows[1]["remark"], "เอกสารจ่ายในปี")
+        self.assertEqual(rows[1]["qty_out"], 5.0)
+        self.assertEqual(rows[1]["unitcost_out"], 50.0)
+        self.assertEqual(rows[1]["cost_out"], 250.0)
+
+    def test_valuation_scope_excludes_other_location(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_b, 20.0, 50.0, self._dt("2024-06-10 08:00:00"),
+        )
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(rows, [])
+
+    def test_valuation_lot_split_proportional(self):
+        lot_model = self.env["stock.lot"]
+        lot1 = lot_model.create({"name": "LOT1", "product_id": self.product.id})
+        lot2 = lot_model.create({"name": "LOT2", "product_id": self.product.id})
+
+        move = self.env["stock.move"].create({
+            "name": "svl multi-lot move",
+            "product_id": self.product.id,
+            "product_uom_qty": 30.0,
+            "product_uom": self.product.uom_id.id,
+            "location_id": self.loc_supplier.id,
+            "location_dest_id": self.loc_a.id,
+            "state": "draft",
+            "date": self._dt("2024-06-10 08:00:00"),
+        })
+        self.env["stock.move.line"].create([
+            {
+                "move_id": move.id, "product_id": self.product.id,
+                "product_uom_id": self.product.uom_id.id, "quantity": 10.0,
+                "location_id": self.loc_supplier.id, "location_dest_id": self.loc_a.id,
+                "lot_id": lot1.id,
+            },
+            {
+                "move_id": move.id, "product_id": self.product.id,
+                "product_uom_id": self.product.uom_id.id, "quantity": 20.0,
+                "location_id": self.loc_supplier.id, "location_dest_id": self.loc_a.id,
+                "lot_id": lot2.id,
+            },
+        ])
+        self.env["stock.valuation.layer"].create({
+            "product_id": self.product.id,
+            "company_id": self.env.company.id,
+            "quantity": 30.0,
+            "unit_cost": 10.0,
+            "value": 300.0,
+            "remaining_qty": 30.0,
+            "remaining_value": 300.0,
+            "stock_move_id": move.id,
+            "location_id": self.loc_a.id,
+        })
+
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 2)
+        by_lot = {r["lot_name"]: r for r in rows}
+        self.assertAlmostEqual(by_lot["LOT1"]["qty_in"], 10.0)
+        self.assertAlmostEqual(by_lot["LOT1"]["cost_in"], 100.0)
+        self.assertAlmostEqual(by_lot["LOT2"]["qty_in"], 20.0)
+        self.assertAlmostEqual(by_lot["LOT2"]["cost_in"], 200.0)
+
+    def test_valuation_scoped_lines_covers_multiple_products(self):
+        product2 = self.env["product.product"].create({
+            "name": "Test Stock Card Product Valuation 2", "type": "product",
+        })
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-06-10 08:00:00"),
+        )
+        self._mk_valuation_layer(
+            product2, self.loc_a, 5.0, 40.0, self._dt("2024-06-12 08:00:00"),
+        )
+        rows = self.engine.get_scoped_stock_card_valuation_lines(
+            [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        codes = {r["product_name"] for r in rows}
+        self.assertIn(self.product.name, codes)
+        self.assertIn(product2.name, codes)
+
+    def test_valuation_product_all_locations_covers_multiple_locations(self):
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-06-10 08:00:00"),
+        )
+        self._mk_valuation_layer(
+            self.product, self.loc_b, 5.0, 40.0, self._dt("2024-06-12 08:00:00"),
+        )
+        rows = self.engine.get_product_all_locations_valuation_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        locations = {r["location_label"] for r in rows}
+        self.assertTrue(any("Shelf A" in l for l in locations))
+        self.assertTrue(any("Shelf B" in l for l in locations))

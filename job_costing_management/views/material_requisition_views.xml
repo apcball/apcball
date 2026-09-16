@@ -17,6 +17,7 @@
                     <field name="company_id" groups="base.group_multi_company" optional="show"/>
                     <field name="request_date"/>
                     <field name="required_date"/>
+                    <field name="total_cost" sum="Total Cost" optional="show"/>
                     <field name="state"/>
                     <field name="priority"/>
                 </tree>
@@ -38,18 +39,23 @@
                         <button name="action_approve" string="Approve" type="object" 
                                 class="oe_highlight" invisible="state != 'dept_approved'" 
                                 groups="job_costing_management.group_material_requisition_manager"/>
-                        <button name="action_create_purchase_order" string="Create Purchase Orders" type="object" 
-                                class="oe_highlight" invisible="state != 'approved'"/>
+                        <button name="action_create_purchase_order" string="Create RFQ" type="object"
+                                class="oe_highlight" invisible="state != 'approved' and not (state == 'ordered' and has_unordered_qty)"/>
+                        <button name="action_add_to_pool" string="Add to Procurement Pool" type="object" 
+                                class="btn-secondary" invisible="state != 'approved'"/>
                         <button name="action_create_picking" string="Create Internal Transfer" type="object" 
                                 class="oe_highlight" invisible="state != 'approved'"/>
-                        <button name="action_received" string="Mark as Received" type="object" 
-                                class="oe_highlight" invisible="state != 'ordered'"/>
                         <button name="action_reject" string="Reject" type="object" 
                                 invisible="state not in ('submitted', 'dept_approved')"/>
                         <button name="action_cancel" string="Cancel" type="object" 
-                                invisible="state not in ('draft', 'submitted', 'dept_approved', 'approved')"/>
+                                invisible="state not in ('draft', 'submitted', 'dept_approved', 'approved', 'ordered')"/>
                         <button name="action_reset_to_draft" string="Reset to Draft" type="object" 
-                                invisible="state not in ('rejected', 'cancelled')"/>
+                                invisible="state not in ('rejected', 'cancelled', 'ordered')"/>
+                        <button name="action_close_remaining" string="Close Remaining" type="object"
+                                class="btn-warning" icon="fa-compress"
+                                invisible="state not in ('approved', 'ordered') or not has_unordered_qty"
+                                confirm="This will reduce MR line quantities to match actual PO quantities. Unordered quantities will be released back to BOQ. Continue?"
+                                groups="purchase.group_purchase_manager,job_costing_management.group_job_costing_manager"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,submitted,dept_approved,approved,ordered,received"/>
                     </header>
                     <sheet>
@@ -62,21 +68,32 @@
                                     class="oe_stat_button" icon="fa-truck">
                                 <field name="picking_count" widget="statinfo" string="Pickings"/>
                             </button>
+                            <button name="action_view_pools" type="object"
+                                    class="oe_stat_button" icon="fa-cubes"
+                                    invisible="pool_count == 0">
+                                <field name="pool_count" widget="statinfo" string="Pools"/>
+                            </button>
                         </div>
                         <widget name="web_ribbon" title="Rejected" bg_color="text-bg-danger" 
                                 invisible="state != 'rejected'"/>
                         <widget name="web_ribbon" title="Cancelled" bg_color="text-bg-warning" 
                                 invisible="state != 'cancelled'"/>
+                        <field name="has_unordered_qty" invisible="1"/>
+                        <div class="alert alert-warning mb-0" role="alert"
+                             invisible="not has_unordered_qty or state not in ('approved', 'ordered')">
+                            <i class="fa fa-exclamation-triangle"/> <strong>Some quantities have not been ordered via PO yet.</strong>
+                            Click "Close Remaining" to release unordered quantities back to BOQ.
+                        </div>
                         <group>
                             <group>
                                 <field name="name"/>
                                 <field name="project_id"/>
                                 <field name="job_order_id"/>
                                 <field name="boq_id"/>
-                                <field name="analytic_account_id"/>
                                 <field name="employee_id"/>
                                 <field name="department_id"/>
                                 <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="delivery_to"/>
                             </group>
                             <group>
                                 <field name="request_date"/>
@@ -94,19 +111,28 @@
                                 <field name="line_ids" nolabel="1">
                                     <tree editable="bottom" decoration-warning="quantity > boq_remaining_qty and boq_line_id">
                                         <field name="sequence" widget="handle"/>
+                                        <field name="select_for_rfq" string="RFQ" widget="boolean_toggle"
+                                               readonly="requisition_action != 'purchase' or rfq_remaining_qty &lt;= 0"/>
+                                        <field name="rfq_remaining_qty" column_invisible="True"/>
                                         <field name="product_id"/>
                                         <field name="description"/>
                                         <field name="analytic_distribution" widget="analytic_distribution" optional="show"/>
                                         <field name="quantity"/>
                                         <field name="uom_id"/>
                                         <field name="estimated_cost"/>
-                                        <field name="total_cost"/>
+                                        <field name="company_currency_id" column_invisible="True"/>
+                                        <field name="total_cost" sum="Total Cost" string="Subtotal" readonly="1" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
                                         <field name="requisition_action"/>
                                         <field name="vendor_id" invisible="requisition_action != 'purchase'"/>
                                         <field name="boq_line_id"/>
                                         <field name="boq_total_qty" string="BOQ Total" readonly="1" invisible="not boq_line_id"/>
                                         <field name="boq_requisitioned_qty" string="BOQ Requisitioned" readonly="1" invisible="not boq_line_id"/>
                                         <field name="boq_remaining_qty" string="BOQ Remaining" readonly="1" invisible="not boq_line_id"/>
+                                        <field name="is_pooled" string="Pooled" readonly="1" widget="boolean" optional="show"/>
+                                        <field name="allocated_qty" string="Allocated" readonly="1" optional="hide"/>
+                                        <field name="ordered_qty" string="PO Ordered" readonly="1" optional="show"/>
+                                        <field name="received_qty" string="PO Received" readonly="1" optional="show"/>
+                                        <field name="rfq_qty" string="RFQ Opened" readonly="1" optional="show"/>
                                     </tree>
                                 </field>
                             </page>
@@ -114,6 +140,10 @@
                                 <field name="notes"/>
                             </page>
                         </notebook>
+                        <group class="oe_subtotal_footer oe_right" colspan="2" name="requisition_total">
+                            <field name="company_currency_id" invisible="True"/>
+                            <field name="total_cost" string="ยอดรวมทั้งหมด" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                        </group>
                     </sheet>
                     <div class="oe_chatter">
                         <field name="message_follower_ids" widget="mail_followers"/>

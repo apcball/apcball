@@ -44,6 +44,10 @@ class ProjectProject(models.Model):
     total_planned_cost = fields.Float(string='Total Planned Cost', compute='_compute_cost_totals', store=True)
     total_actual_cost = fields.Float(string='Total Actual Cost', compute='_compute_cost_totals', store=True)
     cost_variance = fields.Float(string='Cost Variance', compute='_compute_cost_totals', store=True)
+    total_committed_cost = fields.Float(string='Total Committed Cost', compute='_compute_cost_totals', store=True)
+    total_remaining_budget = fields.Float(string='Total Remaining Budget', compute='_compute_cost_totals', store=True)
+    budget_utilization = fields.Float(string='Budget Utilization %', compute='_compute_cost_totals', store=True)
+    is_budget_locked = fields.Boolean(string='Budget Locked', default=False)
     
     # Progress
     cost_progress = fields.Float(string='Cost Progress %', compute='_compute_cost_progress')
@@ -79,6 +83,18 @@ class ProjectProject(models.Model):
             record.total_planned_cost = sum(record.job_cost_sheet_ids.mapped('total_cost'))
             record.total_actual_cost = sum(record.job_cost_sheet_ids.mapped('actual_total_cost'))
             record.cost_variance = record.total_actual_cost - record.total_planned_cost
+            # Committed cost
+            record.total_committed_cost = 0.0
+            # Remaining budget = planned - actual - committed
+            record.total_remaining_budget = (
+                record.total_planned_cost - record.total_actual_cost - record.total_committed_cost)
+            # Utilization %
+            if record.total_planned_cost:
+                record.budget_utilization = (
+                    (record.total_actual_cost + record.total_committed_cost)
+                    / record.total_planned_cost) * 100
+            else:
+                record.budget_utilization = 0.0
     
     @api.depends('total_planned_cost', 'total_actual_cost')
     def _compute_cost_progress(self):

@@ -22,6 +22,18 @@ class SaleOrder(models.Model):
                "('company_id', '=', company_id),('company_id', '=', False)]",
     )
 
+    @api.onchange('warehouse_id')
+    def _onchange_warehouse_set_picking_type(self):
+        """
+        default Deliver From / Location from the warehouse's outgoing
+        operation type (e.g. คลังสินค้าสำเร็จรูป 1 -> FG10/Stock)
+        """
+        for record in self:
+            if record.warehouse_id and record.warehouse_id.out_type_id:
+                record.picking_type_id = record.warehouse_id.out_type_id
+                record.picking_location_id = \
+                    record.warehouse_id.out_type_id.default_location_src_id
+
     @api.onchange('picking_location_id')
     def _onchange_picking_type(self):
         """

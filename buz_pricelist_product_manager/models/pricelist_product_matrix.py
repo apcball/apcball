@@ -25,6 +25,7 @@ class PricelistProductMatrix(models.Model):
     price = fields.Float(string='Fixed Price')
     percent_price = fields.Float(string='Percentage')
     installation_price = fields.Float(string='Installation Price')
+    install_cost = fields.Float(string='Installation Cost')
     
     min_quantity = fields.Float(string='Min. Qty', digits='Product Unit of Measure')
     date_start = fields.Datetime(string='Start Date')
@@ -32,6 +33,7 @@ class PricelistProductMatrix(models.Model):
     
     computed_price = fields.Float(string='Final Price', compute='_compute_price')
     currency_id = fields.Many2one('res.currency', string='Currency', readonly=True)
+    pricelist_is_standard_cost = fields.Boolean(string='Is Standard Cost Pricelist', readonly=True)
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -44,8 +46,22 @@ class PricelistProductMatrix(models.Model):
             AND column_name = 'installation_price'
         """)
         has_install_price = self.env.cr.fetchone()[0] > 0
-        
+
+        self.env.cr.execute("""
+            SELECT count(*)
+            FROM information_schema.columns
+            WHERE table_name = 'product_pricelist_item'
+            AND column_name = 'install_cost'
+        """)
+        has_install_cost = self.env.cr.fetchone()[0] > 0
+
         install_price_expr = "COALESCE(item_v.installation_price, item_t.installation_price)" if has_install_price else "0.0"
+        # install_cost is only read from the Standard Cost Pricelist, so blank it elsewhere
+        # to avoid showing an editable-looking value that would be ignored downstream.
+        install_cost_expr = (
+            "CASE WHEN COALESCE(pl.is_standard_cost_pricelist, FALSE) "
+            "THEN COALESCE(item_v.install_cost, item_t.install_cost) ELSE NULL END"
+        ) if has_install_cost else "NULL"
 
         # Optimization: Use stable, non-colliding IDs.
         # Strategy:
@@ -63,6 +79,7 @@ class PricelistProductMatrix(models.Model):
                     END AS id,
                     pl.id AS pricelist_id,
                     pl.currency_id AS currency_id,
+                    COALESCE(pl.is_standard_cost_pricelist, FALSE) AS pricelist_is_standard_cost,
                     pp.id AS product_variant_id,
                     pp.product_tmpl_id AS product_tmpl_id,
                     pt.categ_id AS category_id,
@@ -72,6 +89,7 @@ class PricelistProductMatrix(models.Model):
                     COALESCE(item_v.fixed_price, item_t.fixed_price) AS price,
                     COALESCE(item_v.percent_price, item_t.percent_price) AS percent_price,
                     %s AS installation_price,
+                    %s AS install_cost,
                     COALESCE(item_v.min_quantity, item_t.min_quantity) AS min_quantity,
                     COALESCE(item_v.date_start, item_t.date_start) AS date_start,
                     COALESCE(item_v.date_end, item_t.date_end) AS date_end
@@ -91,7 +109,7 @@ class PricelistProductMatrix(models.Model):
                 WHERE
                      pp.active = TRUE AND pt.active = TRUE
             )
-        """ % (self._table, install_price_expr))
+        """ % (self._table, install_price_expr, install_cost_expr))
 
     @api.depends_context('pricelist', 'quantity', 'date')
     def _compute_price(self):
@@ -125,11 +143,22 @@ class PricelistProductMatrix(models.Model):
     def write(self, vals):
         # Handling Inline Edit
         # Allowed fields to edit: rule_type, price, percent_price, min_quantity, date_start, date_end, installation_price
-        editable_fields = ['rule_type', 'price', 'percent_price', 'min_quantity', 'date_start', 'date_end', 'installation_price']
+        editable_fields = ['rule_type', 'price', 'percent_price', 'min_quantity', 'date_start', 'date_end', 'installation_price', 'install_cost']
         
         changes = {k: v for k, v in vals.items() if k in editable_fields}
         if not changes:
             return True
+
+        # Guard: install_cost is only ever read from the Standard Cost Pricelist
+        # (sale.order.line._compute_install_cost). Reject edits on any other pricelist
+        # so users don't set a value that is silently ignored.
+        if 'install_cost' in changes:
+            bad = self.filtered(lambda r: not r.pricelist_id.is_standard_cost_pricelist)
+            if bad:
+                raise UserError(_(
+                    "Installation Cost can only be set on the Standard Cost Pricelist. "
+                    "It is ignored on other pricelists (e.g. '%s')."
+                ) % (bad[0].pricelist_id.display_name,))
 
         # Map 'price' back to 'fixed_price'
         if 'price' in changes:
@@ -148,10 +177,22 @@ class PricelistProductMatrix(models.Model):
         # 2. Create New Rules
         if records_without_rules:
             to_create = []
+            new_fixed_price = changes.get('fixed_price')
             for record in records_without_rules:
                 # Determine rule type: from changes, or view column, or default 'fixed'
                 new_rule_type = changes.get('rule_type') or record.rule_type or 'fixed'
-                
+
+                # Guard: never let an installation-price / cost edit silently create a
+                # zero fixed rule on the Standard Cost Pricelist (that would wipe the
+                # product's standard cost). Require a Sales Price first.
+                if record.pricelist_id.is_standard_cost_pricelist and (
+                    new_rule_type == 'fixed' and not (new_fixed_price and new_fixed_price > 0)
+                ):
+                    raise UserError(_(
+                        "Product '%s' has no Sales Price on the Standard Cost Pricelist yet. "
+                        "Set its Fixed Price before adding an Installation Price or Installation Cost."
+                    ) % (record.product_variant_id.display_name,))
+
                 new_rule_vals = {
                     'pricelist_id': record.pricelist_id.id,
                     'product_id': record.product_variant_id.id,

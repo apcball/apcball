@@ -13,6 +13,11 @@ services:
     image: my-odoo:17
     depends_on:
       - postgres-test
+    environment:
+      HOST: postgres-test
+      PORT: 5432
+      USER: odoo
+      PASSWORD: odoo
     volumes:
       - ./:/mnt/extra-addons
     command: >

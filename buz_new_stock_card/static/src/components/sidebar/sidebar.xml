@@ -1,73 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="buz_new_stock_card.Sidebar">
-        <div class="o_stock_card_sidebar border-end d-flex flex-column"
-             style="width: 300px; min-width: 300px; overflow-y: auto;">
-            <div class="o_stock_card_filters p-3 border-bottom">
-                <div class="o_sidebar_section_title d-flex align-items-center gap-1 fw-bold mb-2">
-                    <i class="fa fa-filter text-muted"/>
-                    <span>ตัวกรอง (Filters)</span>
+        <section class="o_stock_card_filters o_sc_panel" aria-label="ตัวกรอง Stock Card">
+            <div class="o_sc_filter_grid">
+                <div class="o_sc_product_filter">
+                    <div class="o_sc_filter_label">สินค้า (Product)</div>
+                    <RecordAutocomplete resModel="'product.product'" update.bind="onUpdateProduct" multiSelect="false"
+                        getIds.bind="productGetIds" value="props.state.productName" fieldString="'สินค้า (Product)'"
+                        placeholder="'ค้นหาสินค้า...'" domain="productDomain" context="companyContext"/>
                 </div>
-
-                <label class="form-label fw-bold small mb-1">สินค้า (Product)</label>
-                <RecordAutocomplete resModel="'product.product'"
-                                     update.bind="onUpdateProduct"
-                                     multiSelect="false"
-                                     getIds.bind="productGetIds"
-                                     value="props.state.productName"
-                                     fieldString="'Product'"
-                                     placeholder="'Search product...'"/>
-
-                <label class="form-label fw-bold small mt-2 mb-1">วันที่เริ่มต้น</label>
-                <input type="date" class="form-control form-control-sm"
-                       t-att-value="props.state.dateFrom" t-on-change="onDateFromChange"/>
-
-                <label class="form-label fw-bold small mt-2 mb-1">วันที่สิ้นสุด</label>
-                <input type="date" class="form-control form-control-sm"
-                       t-att-value="props.state.dateTo" t-on-change="onDateToChange"/>
-
-                <label class="form-label fw-bold small mt-2 mb-1">บริษัท (Company)</label>
-                <select class="form-select form-select-sm" t-on-change="onCompanyChange">
-                    <t t-foreach="companies" t-as="company" t-key="company.id">
-                        <option t-att-value="company.id"
-                                t-att-selected="company.id === props.state.companyId">
-                            <t t-esc="company.name"/>
-                        </option>
-                    </t>
-                </select>
-
-                <label class="form-label fw-bold small mt-2 mb-1">คลังสินค้า (Warehouse)</label>
-                <select class="form-select form-select-sm" t-on-change="onWarehouseChange">
-                    <option value="" t-att-selected="!props.state.warehouseId">ทั้งหมด</option>
-                    <t t-foreach="local.warehouses" t-as="wh" t-key="wh.id">
-                        <option t-att-value="wh.id" t-att-selected="wh.id === props.state.warehouseId">
-                            <t t-esc="wh.name"/>
-                        </option>
-                    </t>
-                </select>
-
-                <div class="d-flex gap-2 mt-3">
-                    <button class="btn btn-primary btn-sm flex-grow-1" t-on-click="props.onSearch">
-                        <i class="fa fa-search me-1"/>ค้นหา (Search)
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" t-on-click="props.onReset">
-                        <i class="fa fa-rotate-left me-1"/>ล้างค่า
-                    </button>
+                <div><label for="sc-date-from">วันที่เริ่มต้น</label><input id="sc-date-from" type="date" class="form-control"
+                    t-att-value="props.state.dateFrom" t-on-change="onDateFromChange"/></div>
+                <div><label for="sc-date-to">วันที่สิ้นสุด</label><input id="sc-date-to" type="date" class="form-control"
+                    t-att-value="props.state.dateTo" t-on-change="onDateToChange"/></div>
+                <div><label for="sc-company">บริษัท (Company)</label>
+                    <select id="sc-company" class="form-select" t-on-change="onCompanyChange">
+                        <option t-foreach="companies" t-as="company" t-key="company.id"
+                            t-att-value="company.id" t-att-selected="company.id === props.state.companyId"><t t-esc="company.name"/></option>
+                    </select>
                 </div>
+                <div><label for="sc-warehouse">คลังสินค้า (Warehouse)</label>
+                    <select id="sc-warehouse" class="form-select" t-on-change="onWarehouseChange" t-att-disabled="local.loading">
+                        <option value="" t-att-selected="!props.state.warehouseId">ทั้งหมด</option>
+                        <option t-foreach="local.warehouses" t-as="wh" t-key="wh.id"
+                            t-att-value="wh.id" t-att-selected="wh.id === props.state.warehouseId"><t t-esc="wh.name"/></option>
+                    </select>
+                </div>
+                <button class="btn btn-primary o_sc_search" t-on-click="props.onSearch" t-att-disabled="props.state.loading or local.loading">
+                    <i aria-hidden="true" class="fa fa-search me-2"/>ค้นหา
+                </button>
+                <button class="btn o_sc_reset" t-on-click="onReset"><i aria-hidden="true" class="fa fa-refresh me-2"/>ล้างค่า</button>
             </div>
-
-            <div class="o_stock_card_location_tree flex-grow-1 p-3" style="overflow-y: auto;">
-                <div class="o_sidebar_section_title d-flex align-items-center gap-1 fw-bold mb-2">
-                    <i class="fa fa-folder-open text-muted"/>
-                    <span>คลังสินค้า / Location</span>
-                </div>
-                <div t-if="!props.state.productId" class="text-muted small">เลือกสินค้าก่อนเพื่อดู Location</div>
-                <div t-elif="!props.state.locationTree.length" class="text-muted small">ไม่พบ Location ที่มีสต๊อกหรือการเคลื่อนไหวของสินค้านี้</div>
-                <LocationTree t-else="" nodes="props.state.locationTree"
-                              counts="props.state.locationCounts"
-                              selectedId="props.state.selectedLocationId"
-                              onSelect="props.onSelectLocation"/>
+            <div t-if="local.error" class="text-danger mt-2" role="alert">
+                <t t-esc="local.error"/> <button class="btn btn-link btn-sm" t-on-click="loadWarehouses">ลองใหม่</button>
             </div>
-        </div>
+            <details class="o_sc_advanced">
+                <summary><i aria-hidden="true" class="fa fa-sliders me-2"/>ตัวเลือกขั้นสูง / Advanced locations
+                    <span t-if="props.state.selectedLocationId" class="ms-2" t-esc="props.state.selectedLocationName"/>
+                </summary>
+                <div class="o_sc_advanced_content">
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.props.onSelectLocation(false, '', true)"
+                                t-att-disabled="!props.state.productId">ใช้ขอบเขตคลังสินค้า</button>
+                        <label class="d-flex align-items-center gap-2 mb-0">
+                            <input type="checkbox" class="form-check-input m-0" t-att-checked="props.state.showMovementsOnly"
+                                t-on-change="props.onToggleShowMovementsOnly"/>แสดงเฉพาะที่มีการเคลื่อนไหว
+                        </label>
+                    </div>
+                    <div t-if="!props.state.locationTree.length" class="text-muted">กดค้นหาเพื่อดู Location ของสินค้าตามตัวกรอง</div>
+                    <LocationTree t-else="" nodes="props.state.locationTree" counts="props.state.locationCounts"
+                        selectedId="props.state.selectedLocationId" onSelect="props.onSelectLocation"/>
+                </div>
+            </details>
+        </section>
     </t>
 </templates>

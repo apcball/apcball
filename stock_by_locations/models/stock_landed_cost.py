@@ -201,7 +201,7 @@ class StockLandedCost(models.Model):
                 product = line.move_id.product_id
                 if not cost.company_id.currency_id.is_zero(cost_to_add):
                     vals_list = []
-                    if line.move_id.product_id.lot_valuated:
+                    if getattr(line.move_id.product_id, 'lot_valuated', False):
                         for lot_id, sml in line.move_id.move_line_ids.grouped('lot_id').items():
                             lot_layer = linked_layer.filtered(lambda l: l.lot_id == lot_id)[:1]
                             value = cost_to_add * sum(sml.mapped('quantity')) / line.move_id.quantity
@@ -275,7 +275,7 @@ class StockLandedCost(models.Model):
                     if not float_is_zero(product.quantity_svl, precision_rounding=product.uom_id.rounding):
                         product.sudo().with_context(disable_auto_svl=True).standard_price += cost_to_add_byproduct[
                                                                                                  product] / product.quantity_svl
-                    if product.lot_valuated:
+                    if getattr(product, 'lot_valuated', False):
                         for lot, value in cost_to_add_bylot[product].items():
                             if float_is_zero(lot.quantity_svl, precision_rounding=product.uom_id.rounding):
                                 continue

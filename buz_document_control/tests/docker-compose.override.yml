@@ -1,0 +1,26 @@
+# From the repository root:
+# docker compose -p bdc-design-test -f docker-compose.test.yml \
+#   -f buz_document_control/tests/docker-compose.override.yml up \
+#   --abort-on-container-exit --exit-code-from odoo-test
+services:
+  postgres-test:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d MOG_TEST"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  odoo-test:
+    environment:
+      HOST: postgres-test
+    volumes:
+      - ./:/mnt/extra-addons:ro
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    command: >-
+      odoo -d MOG_TEST
+      --db_host=postgres-test --db_user=odoo --db_password=odoo
+      --addons-path=/usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons
+      -i buz_document_control --without-demo=all
+      --test-enable --test-tags=/buz_document_control
+      --stop-after-init --max-cron-threads=0

@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class BOQ(models.Model):
@@ -14,10 +18,11 @@ class BOQ(models.Model):
                       default=lambda self: _('New'))
     
     # Relations
-    project_id = fields.Many2one('project.project', string='Project', required=True)
-    job_order_id = fields.Many2one('job.order', string='Job Order')
-    job_cost_sheet_id = fields.Many2one('job.cost.sheet', string='Job Cost Sheet')
-    company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
+    project_id = fields.Many2one('project.project', string='Project', required=True, index=True)
+    job_order_id = fields.Many2one('job.order', string='Job Order', index=True)
+    job_cost_sheet_id = fields.Many2one('job.cost.sheet', string='Job Cost Sheet', index=True)
+    company_id = fields.Many2one('res.company', string='Company', required=True, 
+                                 default=lambda self: self.env.company, index=True)
     
     # BOQ Information
     title = fields.Char(string='BOQ Title', required=True)
@@ -31,10 +36,16 @@ class BOQ(models.Model):
         ('approved', 'Approved'),
         ('locked', 'Locked'),
         ('cancelled', 'Cancelled')
-    ], string='Status', default='draft', tracking=True)
+    ], string='Status', default='draft', tracking=True, index=True)
     
     # BOQ Lines
     line_ids = fields.One2many('boq.line', 'boq_id', string='BOQ Lines')
+    material_line_ids = fields.One2many(
+        'boq.line', 'boq_id', string='Material Lines',
+        domain=[('line_type', '=', 'material')])
+    labour_line_ids = fields.One2many(
+        'boq.line', 'boq_id', string='Labour Lines',
+        domain=[('line_type', '=', 'labour')])
     
     # Categories
     category_ids = fields.One2many('boq.category', 'boq_id', string='Categories')
@@ -65,7 +76,6 @@ class BOQ(models.Model):
     approved_by = fields.Many2one('res.users', string='Approved by')
     approved_date = fields.Date(string='Approved Date')
     
-    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     currency_id = fields.Many2one('res.currency', string='Currency', 
                                  default=lambda self: self.env.company.currency_id)
     
@@ -108,15 +118,7 @@ class BOQ(models.Model):
         """Create BOQ lines from template lines"""
         BOQLine = self.env['boq.line']
         
-        # Debug logging
-        import logging
-        _logger = logging.getLogger(__name__)
-        _logger.info(f"Creating BOQ lines from template: {template.name}")
-        _logger.info(f"Template has {len(template.line_ids)} lines")
-        
         for template_line in template.line_ids:
-            _logger.info(f"Processing template line: {template_line.description}, Product: {template_line.product_id.name if template_line.product_id else 'None'}")
-            
             line_vals = {
                 'boq_id': self.id,
                 'sequence': template_line.sequence,
@@ -134,19 +136,14 @@ class BOQ(models.Model):
             
             # Validate that essential fields are present
             if not line_vals['description']:
-                _logger.warning(f"Template line {template_line.id} has no description")
+                _logger.debug("Template line %s has no description, skipping", template_line.id)
                 continue
                 
             if not line_vals['uom_id']:
-                _logger.warning(f"Template line {template_line.id} has no UOM")
+                _logger.debug("Template line %s has no UOM, skipping", template_line.id)
                 continue
             
-            new_line = BOQLine.create(line_vals)
-            _logger.info(f"Created BOQ line: {new_line.id}, Product: {new_line.product_id.name if new_line.product_id else 'None'}")
-            
-            # Additional check: if the created line has no product, log it
-            if not new_line.product_id:
-                _logger.warning(f"Created BOQ line {new_line.id} has no product assigned")
+            BOQLine.create(line_vals)
     
     @api.depends('line_ids.quantity', 'line_ids.total_cost')
     def _compute_totals(self):
@@ -269,29 +266,18 @@ class BOQ(models.Model):
     
     def action_create_job_cost_lines(self):
         """Create job cost lines from BOQ"""
-        # Debug logging
-        import logging
-        _logger = logging.getLogger(__name__)
-        _logger.info(f"Creating job cost lines from BOQ: {self.name}")
-        
         if not self.job_cost_sheet_id:
             raise ValidationError(_('Please specify a job cost sheet.'))
-        
-        _logger.info(f"Job cost sheet: {self.job_cost_sheet_id.name}")
         
         # Check if there are any BOQ lines with products
         lines_with_products = self.line_ids.filtered(lambda l: l.product_id)
         if not lines_with_products:
             raise ValidationError(_('No BOQ lines with products found to create job cost lines from.'))
         
-        _logger.info(f"Found {len(lines_with_products)} BOQ lines with products")
-        
         created_lines = []
         skipped_lines = []
         
         for line in lines_with_products:
-            _logger.info(f"Processing BOQ line: {line.description}, Product: {line.product_id.name}")
-            
             # Check if job cost line already exists for this BOQ line
             existing_line = self.env['job.cost.line'].search([
                 ('cost_sheet_id', '=', self.job_cost_sheet_id.id),
@@ -299,29 +285,49 @@ class BOQ(models.Model):
             ], limit=1)
             
             if existing_line:
-                _logger.info(f"Skipping BOQ line {line.id} - job cost line already exists: {existing_line.id}")
                 skipped_lines.append(line.description)
                 continue  # Skip if already exists
             
+            # FIX ISSUE #3: Also check by product to prevent duplicate overhead costs
+            # when BOQ is processed multiple times
+            product_existing = self.env['job.cost.line'].search([
+                ('cost_sheet_id', '=', self.job_cost_sheet_id.id),
+                ('product_id', '=', line.product_id.id),
+                ('boq_line_id', '=', False)  # Not linked to any BOQ line yet
+            ], limit=1)
+            
+            if product_existing:
+                # Link the existing cost line to this BOQ line instead of creating new
+                product_existing.sudo().write({'boq_line_id': line.id})
+                skipped_lines.append(f"{line.description} (linked to existing)")
+                continue
+            
+            # Determine cost_type based on product type
+            # Service products → labour, storable/consumable → material
+            product = line.product_id
+            if product.detailed_type == 'service':
+                cost_type = 'labour'
+            else:
+                cost_type = 'material'
+
             cost_line_vals = {
                 'cost_sheet_id': self.job_cost_sheet_id.id,
-                'cost_type': 'material',
-                'product_id': line.product_id.id,
+                'cost_type': cost_type,
+                'product_id': product.id,
                 'name': line.description,
                 'planned_qty': line.quantity,
                 'uom_id': line.uom_id.id,
                 'unit_cost': line.unit_cost,
                 'boq_line_id': line.id,  # Link to BOQ line
+                # BOQ Baseline (set once, never changes)
+                'boq_qty': line.quantity,
+                'boq_unit_cost': line.unit_cost,
             }
-            
-            _logger.info(f"Creating job cost line with values: {cost_line_vals}")
             
             try:
                 cost_line = self.env['job.cost.line'].create(cost_line_vals)
                 created_lines.append(cost_line.id)
-                _logger.info(f"Created job cost line: {cost_line.id}")
             except Exception as e:
-                _logger.error(f"Error creating job cost line for {line.description}: {str(e)}")
                 raise ValidationError(_('Error creating job cost line for %s: %s') % (line.description, str(e)))
         
         if not created_lines:
@@ -329,8 +335,6 @@ class BOQ(models.Model):
                 raise ValidationError(_('No new job cost lines were created. The following lines already exist: %s') % ', '.join(skipped_lines))
             else:
                 raise ValidationError(_('No new job cost lines were created. They may already exist.'))
-        
-        _logger.info(f"Successfully created {len(created_lines)} job cost lines")
         
         # Return action to show the created job cost lines
         return {
@@ -445,12 +449,6 @@ class BOQ(models.Model):
         original_lines = self.line_ids
         original_categories = self.category_ids
         
-        # Debug logging
-        import logging
-        _logger = logging.getLogger(__name__)
-        _logger.info(f"Copying BOQ: {self.name}")
-        _logger.info(f"Original BOQ has {len(original_lines)} lines")
-        
         # Copy the BOQ record using standard copy
         new_boq = super(BOQ, self).copy(default)
         
@@ -491,10 +489,8 @@ class BOQ(models.Model):
                 # Reset status and don't copy relations
                 'status': 'pending',
             }
-            new_line = self.env['boq.line'].create(line_vals)
-            _logger.info(f"Created BOQ line copy: {new_line.id}, Product: {new_line.product_id.name if new_line.product_id else 'None'}")
+            self.env['boq.line'].create(line_vals)
         
-        _logger.info(f"BOQ copy completed. New BOQ has {len(new_boq.line_ids)} lines")
         return new_boq
 
 
@@ -505,7 +501,7 @@ class BOQCategory(models.Model):
 
     name = fields.Char(string='Category Name', required=True)
     sequence = fields.Integer(string='Sequence', default=10)
-    boq_id = fields.Many2one('boq.boq', string='BOQ', required=True, ondelete='cascade')
+    boq_id = fields.Many2one('boq.boq', string='BOQ', required=True, ondelete='cascade', index=True)
     description = fields.Text(string='Description')
     
     # Computed fields
@@ -522,17 +518,24 @@ class BOQLine(models.Model):
     _name = 'boq.line'
     _description = 'BOQ Line'
     _order = 'sequence, id'
+    _rec_name = 'description'
 
-    boq_id = fields.Many2one('boq.boq', string='BOQ', required=True, ondelete='cascade')
+    boq_id = fields.Many2one('boq.boq', string='BOQ', required=True, ondelete='cascade', index=True)
     company_id = fields.Many2one('res.company', related='boq_id.company_id', string='Company', store=True, readonly=True)
     sequence = fields.Integer(string='Sequence', default=10)
-    category_id = fields.Many2one('boq.category', string='Category')
+    category_id = fields.Many2one('boq.category', string='Category', index=True)
     
     # Item information
     item_code = fields.Char(string='Item Code')
-    product_id = fields.Many2one('product.product', string='Product', required=True)
+    product_id = fields.Many2one('product.product', string='Product', required=True, index=True)
     description = fields.Text(string='Description', required=True)
     specification = fields.Text(string='Specification')
+    
+    # Line type: auto-determined by product type
+    line_type = fields.Selection([
+        ('material', 'Material'),
+        ('labour', 'Labour'),
+    ], string='Type', compute='_compute_line_type', store=True)
     
     # Quantity and Unit
     quantity = fields.Float(string='Quantity', default=1.0, required=True)
@@ -573,6 +576,14 @@ class BOQLine(models.Model):
     # Notes
     notes = fields.Text(string='Notes')
     
+    @api.depends('product_id', 'product_id.detailed_type')
+    def _compute_line_type(self):
+        for record in self:
+            if record.product_id and record.product_id.detailed_type == 'service':
+                record.line_type = 'labour'
+            else:
+                record.line_type = 'material'
+
     @api.depends('quantity', 'unit_cost')
     def _compute_total_cost(self):
         for record in self:
@@ -580,26 +591,56 @@ class BOQLine(models.Model):
     
     @api.depends('requisition_line_ids', 'requisition_line_ids.quantity', 'requisition_line_ids.requisition_state')
     def _compute_purchase_tracking(self):
-        """Compute purchase tracking fields"""
+        """Compute purchase tracking fields.
+
+        - total_requisitioned_qty: sum of active MR line quantities (unchanged).
+        - total_ordered_qty: for purchase MR lines → actual PO line data;
+                             for internal/service MR lines → MR state-based.
+        - total_received_qty: for purchase MR lines → PO qty_received;
+                              for internal/service MR lines → MR state-based.
+        - remaining_qty: BOQ adjusted qty minus requisitioned qty.
+        """
+        POLine = self.env['purchase.order.line'].sudo()
         for record in self:
             # Get all requisition lines for this BOQ line
             req_lines = record.requisition_line_ids
-            
+
             # Calculate total requisitioned quantity (all states except cancelled/rejected)
-            active_req_lines = req_lines.filtered(lambda l: l.requisition_state not in ['cancelled', 'rejected'])
+            active_req_lines = req_lines.filtered(
+                lambda l: l.requisition_state not in ['cancelled', 'cancel', 'rejected'])
             record.total_requisitioned_qty = sum(active_req_lines.mapped('quantity'))
-            
-            # Calculate total ordered quantity (approved and above states)
-            ordered_req_lines = req_lines.filtered(lambda l: l.requisition_state in ['approved', 'ordered', 'received'])
-            record.total_ordered_qty = sum(ordered_req_lines.mapped('quantity'))
-            
-            # Calculate total received quantity
-            received_req_lines = req_lines.filtered(lambda l: l.requisition_state == 'received')
-            record.total_received_qty = sum(received_req_lines.mapped('quantity'))
-            
+
+            # --- Split by requisition_action ---
+            purchase_lines = active_req_lines.filtered(
+                lambda l: l.requisition_action == 'purchase')
+            internal_lines = active_req_lines.filtered(
+                lambda l: l.requisition_action != 'purchase')
+
+            # Purchase-type: derive from actual PO lines
+            po_ordered = 0.0
+            po_received = 0.0
+            if purchase_lines:
+                po_lines = POLine.search([
+                    ('material_requisition_line_id', 'in', purchase_lines.ids),
+                    ('order_id.state', 'in', ['purchase', 'done']),
+                ])
+                po_ordered = sum(po_lines.mapped('product_qty'))
+                po_received = sum(po_lines.mapped('qty_received'))
+
+            # Internal/service-type: use MR state as before
+            int_ordered = sum(internal_lines.filtered(
+                lambda l: l.requisition_state in ['approved', 'ordered', 'received']
+            ).mapped('quantity'))
+            int_received = sum(internal_lines.filtered(
+                lambda l: l.requisition_state == 'received'
+            ).mapped('quantity'))
+
+            record.total_ordered_qty = po_ordered + int_ordered
+            record.total_received_qty = po_received + int_received
+
             # Calculate remaining quantity
             record.remaining_qty = record.adjusted_quantity - record.total_requisitioned_qty
-            
+
             # Calculate purchase progress percentage
             if record.adjusted_quantity > 0:
                 record.purchase_progress = (record.total_requisitioned_qty / record.adjusted_quantity) * 100
@@ -710,7 +751,7 @@ class BOQTemplate(models.Model):
 
     name = fields.Char(string='Template Name', required=True)
     description = fields.Text(string='Description')
-    job_type_id = fields.Many2one('job.type', string='Job Type')
+    job_type_id = fields.Many2one('job.type', string='Job Type', index=True)
     
     # Template lines
     line_ids = fields.One2many('boq.template.line', 'template_id', string='Template Lines')
@@ -782,12 +823,12 @@ class BOQTemplateLine(models.Model):
     _description = 'BOQ Template Line'
     _order = 'sequence, id'
 
-    template_id = fields.Many2one('boq.template', string='Template', required=True, ondelete='cascade')
+    template_id = fields.Many2one('boq.template', string='Template', required=True, ondelete='cascade', index=True)
     sequence = fields.Integer(string='Sequence', default=10)
     
     # Item information
     item_code = fields.Char(string='Item Code')
-    product_id = fields.Many2one('product.product', string='Product', required=True)
+    product_id = fields.Many2one('product.product', string='Product', required=True, index=True)
     description = fields.Text(string='Description', required=True)
     specification = fields.Text(string='Specification')
     

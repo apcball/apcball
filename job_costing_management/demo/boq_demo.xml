@@ -7,7 +7,7 @@
             <field name="name">BOQ00001</field>
             <field name="title">Construction BOQ for Office Building</field>
             <field name="description">Bill of Quantities for the construction of a 5-story office building including all materials, labor, and equipment requirements.</field>
-            <field name="boq_date" eval="(DateTime.now() - relativedelta(days=30)).strftime('%Y-%m-%d')"/>
+            <field name="boq_date" eval="(datetime.datetime.now() - relativedelta(days=30)).strftime('%Y-%m-%d')"/>
             <field name="revision">1.0</field>
             <field name="state">draft</field>
         </record>

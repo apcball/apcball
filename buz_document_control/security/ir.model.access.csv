@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_document_user,buz.document user,model_buz_document,buz_document_control.group_document_user,1,0,0,0
+access_buz_document_manager,buz.document manager,model_buz_document,buz_document_control.group_document_manager,1,1,1,1
+access_buz_document_admin,buz.document admin,model_buz_document,buz_document_control.group_document_admin,1,1,1,1
+access_buz_document_revision_user,buz.document.revision user,model_buz_document_revision,buz_document_control.group_document_user,1,0,0,0
+access_buz_document_revision_manager,buz.document.revision manager,model_buz_document_revision,buz_document_control.group_document_manager,1,1,1,1
+access_buz_document_revision_admin,buz.document.revision admin,model_buz_document_revision,buz_document_control.group_document_admin,1,1,1,1
+access_buz_document_type_manager,buz.document.type manager,model_buz_document_type,buz_document_control.group_document_manager,1,1,1,1
+access_buz_document_type_user,buz.document.type user,model_buz_document_type,buz_document_control.group_document_user,1,0,0,0
+access_buz_document_category_manager,buz.document.category manager,model_buz_document_category,buz_document_control.group_document_manager,1,1,1,1
+access_buz_document_category_user,buz.document.category user,model_buz_document_category,buz_document_control.group_document_user,1,0,0,0
+access_buz_document_log_manager,buz.document.download.log manager,model_buz_document_download_log,buz_document_control.group_document_manager,1,0,0,0
+access_buz_document_log_admin,buz.document.download.log admin,model_buz_document_download_log,buz_document_control.group_document_admin,1,1,1,1
+access_buz_document_revision_wizard_manager,buz.document.revision.wizard manager,model_buz_document_revision_wizard,buz_document_control.group_document_manager,1,1,1,1

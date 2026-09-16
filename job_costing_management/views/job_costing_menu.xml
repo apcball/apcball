@@ -57,6 +57,19 @@
                   action="action_material_requisition" 
                   sequence="10"/>
 
+        <!-- Procurement Menu -->
+        <menuitem id="menu_procurement" name="Procurement" parent="menu_job_costing_main" sequence="45"/>
+        
+        <menuitem id="menu_procurement_pool" name="Procurement Pool" 
+                  parent="menu_procurement" 
+                  action="action_procurement_pool" 
+                  sequence="10"/>
+
+        <menuitem id="menu_purchase_allocations" name="Purchase Allocations" 
+                  parent="menu_procurement" 
+                  action="action_purchase_allocation" 
+                  sequence="20"/>
+
         <!-- Subcontractors Menu -->
         <menuitem id="menu_subcontractors" name="Subcontractors" parent="menu_job_costing_main" sequence="50"/>
         

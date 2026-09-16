@@ -47,7 +47,11 @@ class ImportPricelistExcel(models.TransientModel):
         required_headers = ['pricelist', 'product_name', 'variant', 'category', 'base_price', 'rule_type', 'price', 'installation_price', 'min_qty', 'date_start', 'date_end']
         
         header_map = {h: i for i, h in enumerate(headers) if h}
-        
+
+        # install_cost is an optional column; only applied on the Standard Cost Pricelist
+        has_install_cost_col = 'install_cost' in header_map
+        apply_install_cost = has_install_cost_col and self.pricelist_id.is_standard_cost_pricelist
+
         missing = [h for h in required_headers if h not in header_map]
         
         # Check for product identifier
@@ -132,6 +136,7 @@ class ImportPricelistExcel(models.TransientModel):
             
             new_price = row_dict.get('price')
             new_install_price = row_dict.get('installation_price')
+            new_install_cost = row[header_map['install_cost']] if has_install_cost_col else None
             
             # Parse Dates
             date_start = row_dict.get('date_start')
@@ -153,9 +158,17 @@ class ImportPricelistExcel(models.TransientModel):
                  error_msg = "Invalid Installation Price"
             if new_install_price is None:
                 new_install_price = 0.0
-            
+
+            if (new_install_cost is not None) and (not isinstance(new_install_cost, (int, float)) or new_install_cost < 0):
+                 status = 'error'
+                 action = 'error'
+                 error_msg = "Invalid Installation Cost"
+            if new_install_cost is None:
+                new_install_cost = 0.0
+
             old_price = 0.0
             old_install_price = 0.0
+            old_install_cost = 0.0
 
             if status == 'ok':
                 if rule and rule.compute_price == 'fixed':
@@ -169,12 +182,14 @@ class ImportPricelistExcel(models.TransientModel):
                 
                 if rule:
                     old_install_price = rule.installation_price
+                    old_install_cost = rule.install_cost
                     current_price = rule.fixed_price if rule.compute_price == 'fixed' else old_price
-                    
+
                     price_changed = abs(current_price - new_price) > 0.001
                     install_changed = abs(old_install_price - new_install_price) > 0.001
-                    
-                    if price_changed or install_changed:
+                    cost_changed = apply_install_cost and abs(old_install_cost - new_install_cost) > 0.001
+
+                    if price_changed or install_changed or cost_changed:
                         action = 'update'
                     else:
                         action = 'skip'
@@ -190,6 +205,8 @@ class ImportPricelistExcel(models.TransientModel):
                 'new_price': new_price,
                 'old_installation_price': old_install_price,
                 'new_installation_price': new_install_price,
+                'old_install_cost': old_install_cost,
+                'new_install_cost': new_install_cost if apply_install_cost else 0.0,
                 'min_qty': min_qty,
                 'action': action,
                 'status': status,
@@ -198,7 +215,8 @@ class ImportPricelistExcel(models.TransientModel):
                 'row_data': json.dumps({
                     'price': new_price,
                     'installation_price': new_install_price,
-                    'date_start': str(date_start) if date_start else False, 
+                    'install_cost': new_install_cost if apply_install_cost else None,
+                    'date_start': str(date_start) if date_start else False,
                     'date_end': str(date_end) if date_end else False, 
                     'min_qty': min_qty, 
                     'rule_type': row_dict.get('rule_type')
@@ -243,6 +261,8 @@ class ImportPricelistExcel(models.TransientModel):
                 'date_start': data['date_start'] if data['date_start'] else False,
                 'date_end': data['date_end'] if data['date_end'] else False,
             }
+            if data.get('install_cost') is not None:
+                vals['install_cost'] = data['install_cost']
             to_create_vals.append(vals)
             
         if to_create_vals:
@@ -259,7 +279,9 @@ class ImportPricelistExcel(models.TransientModel):
                 'date_start': data['date_start'] if data['date_start'] else False,
                 'date_end': data['date_end'] if data['date_end'] else False,
             }
-            
+            if data.get('install_cost') is not None:
+                vals['install_cost'] = data['install_cost']
+
             if data.get('rule_type') in rule_type_map:
                 vals['compute_price'] = rule_type_map[data['rule_type']]
             

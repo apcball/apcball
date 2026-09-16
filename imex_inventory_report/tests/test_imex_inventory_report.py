@@ -7,6 +7,22 @@ class TestImexInventoryReport(TransactionCase):
         super().setUpClass()
         cls.uom_unit = cls.env.ref("uom.product_uom_unit")
         cls.location_stock = cls.env.ref("stock.stock_location_stock")
+        cls.location_suppliers = cls.env.ref("stock.stock_location_suppliers")
+        cls.warehouse = cls.env["stock.warehouse"].search(
+            [("company_id", "=", cls.env.company.id)], limit=1)
+        # Per-warehouse transit location (resolves warehouse_id from parent).
+        cls.location_transit = cls.env["stock.location"].create({
+            "name": "Test WH Transit",
+            "usage": "transit",
+            "location_id": cls.warehouse.view_location_id.id,
+        })
+        # Global inter-warehouse transit location: usage transit, no warehouse
+        # (parented under Physical Locations, which has no warehouse_id).
+        cls.location_inter_wh = cls.env["stock.location"].create({
+            "name": "Test Global Transit",
+            "usage": "transit",
+            "location_id": cls.env.ref("stock.stock_location_locations").id,
+        })
         cls.location_production = cls.env["stock.location"].search(
             [("usage", "=", "production")],
             limit=1,
@@ -35,7 +51,17 @@ class TestImexInventoryReport(TransactionCase):
             "is_groupby_location": is_groupby_location,
         })
 
+    def _seed_stock(self, location, quantity):
+        """Put `quantity` on hand at `location` so a subsequent internal or
+        transit -sourced move has something to reserve. The helpers below
+        write state='done' directly and never call _action_done(), so no
+        quants are ever created organically."""
+        if location.usage in ("internal", "transit"):
+            self.env["stock.quant"]._update_available_quantity(
+                self.product, location, quantity)
+
     def _create_partial_done_move(self):
+        self._seed_stock(self.location_stock, 4.0)
         move = self.env["stock.move"].create({
             "name": self.reference,
             "company_id": self.env.company.id,
@@ -70,6 +96,7 @@ class TestImexInventoryReport(TransactionCase):
         return self.env["stock.move"].browse(move.id)
 
     def _create_done_move(self, source, destination, quantity, date, reference):
+        self._seed_stock(source, quantity)
         move = self.env["stock.move"].create({
             "name": reference,
             "company_id": self.env.company.id,
@@ -159,6 +186,54 @@ class TestImexInventoryReport(TransactionCase):
         self.assertTrue(report_line, "Expected detail line for test product")
         self.assertEqual(report_line.product_qty, 2.0)
         self.assertEqual(report_line.product_out, 2.0)
+
+    def test_transit_location_gets_its_own_rows(self):
+        # Vendors -> WH/Transit -> WH/Stock: the transit hop must surface as
+        # its own report row with both an in and an out leg.
+        self._create_done_move(
+            self.location_suppliers, self.location_transit, 10.0,
+            "2026-05-05 08:00:00", "IMEX/TRANSIT/RECV")
+        self._create_done_move(
+            self.location_transit, self.location_stock, 10.0,
+            "2026-05-06 08:00:00", "IMEX/TRANSIT/PUT")
+        wizard = self._create_wizard(is_groupby_location=True)
+
+        self.env["imex.inventory.report"].init_results(wizard)
+        transit_line = self.env["imex.inventory.report"].search([
+            ("product_id", "=", self.product.id),
+            ("location", "=", self.location_transit.id),
+        ], limit=1)
+
+        self.assertTrue(transit_line, "Expected a report row for the transit location")
+        self.assertEqual(transit_line.product_in, 10.0)
+        self.assertEqual(transit_line.product_out, 10.0)
+        self.assertEqual(transit_line.balance, 0.0)
+
+        self.env["imex.inventory.details.report"].init_results(wizard)
+        detail_lines = self.env["imex.inventory.details.report"].search([
+            ("product_id", "=", self.product.id),
+            ("report_location_id", "=", self.location_transit.id),
+        ])
+        self.assertEqual(len(detail_lines), 2, "Expected both transit legs in the detail report")
+
+    def test_global_transit_without_warehouse_does_not_crash(self):
+        self._create_done_move(
+            self.location_stock, self.location_inter_wh, 5.0,
+            "2026-05-05 08:00:00", "IMEX/INTERWH/OUT")
+        self._create_done_move(
+            self.location_inter_wh, self.location_stock, 5.0,
+            "2026-05-06 08:00:00", "IMEX/INTERWH/IN")
+        wizard = self._create_wizard(is_groupby_location=True)
+
+        self.assertFalse(self.location_inter_wh.warehouse_id)
+        self.env["imex.inventory.report"].init_results(wizard)
+        transit_line = self.env["imex.inventory.report"].search([
+            ("product_id", "=", self.product.id),
+            ("location", "=", self.location_inter_wh.id),
+        ], limit=1)
+        self.assertTrue(transit_line, "Expected a report row for the global transit location")
+        self.assertEqual(transit_line.product_in, 5.0)
+        self.assertEqual(transit_line.product_out, 5.0)
 
     def test_report_details_without_filters_context(self):
         self._create_partial_done_move()

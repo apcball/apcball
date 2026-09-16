@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Add to Procurement Pool Wizard -->
+        <record id="view_add_to_pool_wizard_form" model="ir.ui.view">
+            <field name="name">add.to.pool.wizard.form</field>
+            <field name="model">add.to.pool.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Add to Procurement Pool">
+                    <group>
+                        <field name="requisition_id" readonly="1"/>
+                        <field name="create_new_pool"/>
+                        <field name="pool_id" invisible="create_new_pool"/>
+                    </group>
+                    <separator string="MR Lines to Add"/>
+                    <field name="mr_line_ids" nolabel="1">
+                        <tree>
+                            <field name="product_id"/>
+                            <field name="description"/>
+                            <field name="quantity"/>
+                            <field name="uom_id"/>
+                            <field name="estimated_cost"/>
+                            <field name="vendor_id"/>
+                        </tree>
+                    </field>
+                    <footer>
+                        <button name="action_add_to_pool" string="Add to Pool" 
+                                type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Allocate Receiving Wizard -->
+        <record id="view_allocate_receiving_wizard_form" model="ir.ui.view">
+            <field name="name">allocate.receiving.wizard.form</field>
+            <field name="model">allocate.receiving.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Allocate Received Goods to Projects">
+                    <group>
+                        <field name="picking_id" readonly="1"/>
+                    </group>
+                    <separator string="Allocation Breakdown"/>
+                    <p class="text-muted">
+                        Specify how many units should go to each project/MR.
+                    </p>
+                    <field name="line_ids" nolabel="1">
+                        <tree editable="bottom">
+                            <field name="product_id" readonly="1"/>
+                            <field name="mr_name" readonly="1"/>
+                            <field name="project_id" readonly="1"/>
+                            <field name="allocated_qty" readonly="1"/>
+                            <field name="already_received" readonly="1"/>
+                            <field name="qty_to_receive"/>
+                        </tree>
+                    </field>
+                    <footer>
+                        <button name="action_confirm_allocation" string="Confirm Allocation" 
+                                type="object" class="btn-primary"/>
+                        <button string="Skip" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Allocate Receiving Wizard Action -->
+        <record id="action_allocate_receiving_wizard" model="ir.actions.act_window">
+            <field name="name">Allocate to Projects</field>
+            <field name="res_model">allocate.receiving.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+    </data>
+</odoo>

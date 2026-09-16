@@ -1,0 +1,8 @@
+<odoo noupdate="1">
+    <record id="document_type_qm" model="buz.document.type"><field name="name">Quality Manual</field><field name="code">QM</field><field name="sequence">10</field></record>
+    <record id="document_type_qp" model="buz.document.type"><field name="name">Quality Procedure</field><field name="code">QP</field><field name="sequence">20</field></record>
+    <record id="document_type_wi" model="buz.document.type"><field name="name">Work Instruction</field><field name="code">WI</field><field name="sequence">30</field></record>
+    <record id="document_type_fm" model="buz.document.type"><field name="name">Form</field><field name="code">FM</field><field name="sequence">40</field></record>
+    <record id="document_type_sd" model="buz.document.type"><field name="name">Supporting Document</field><field name="code">SD</field><field name="sequence">50</field></record>
+    <record id="document_type_ex" model="buz.document.type"><field name="name">External Document</field><field name="code">EX</field><field name="sequence">60</field></record>
+</odoo>

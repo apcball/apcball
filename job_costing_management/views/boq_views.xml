@@ -44,7 +44,8 @@
                         <button name="action_debug_wizard_access" string="Debug Wizard Access" 
                                 type="object" class="btn-secondary" groups="base.group_no_one" invisible="1"/>
                         <button name="action_create_job_cost_lines" string="Create Job Cost Lines" 
-                                type="object" invisible="1"/>
+                                type="object" class="btn-primary"
+                                invisible="not job_cost_sheet_id"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,approved,locked"/>
                     </header>
                     <sheet>
@@ -80,14 +81,44 @@
                             <field name="description"/>
                         </group>
                         <notebook>
-                            <page string="BOQ Lines">
-                                <field name="line_ids" nolabel="1">
+                            <page string="BOQ Material">
+                                <field name="material_line_ids" nolabel="1">
                                     <tree decoration-success="status=='completed'" decoration-warning="status=='ordered'" decoration-info="status=='requisitioned'">
                                         <field name="sequence" widget="handle"/>
                                         <field name="category_id"/>
                                         <field name="item_code"/>
                                         <field name="product_id"/>
                                         <field name="description"/>
+                                        <field name="line_type" column_invisible="1"/>
+                                        <field name="quantity"/>
+                                        <field name="uom_id"/>
+                                        <field name="unit_cost"/>
+                                        <field name="total_cost"/>
+                                        <field name="waste_percentage"/>
+                                        <field name="contingency_percentage"/>
+                                        <field name="adjusted_quantity"/>
+                                        <field name="adjusted_total_cost"/>
+                                        <field name="total_requisitioned_qty" string="Requisitioned"/>
+                                        <field name="total_ordered_qty" string="Ordered"/>
+                                        <field name="total_received_qty" string="Received"/>
+                                        <field name="remaining_qty" string="Remaining"/>
+                                        <field name="purchase_progress" string="Progress %" widget="progressbar"/>
+                                        <field name="status"/>
+                                        <button name="action_create_requisition" string="Create Requisition" 
+                                                type="object" icon="fa-shopping-cart" 
+                                                invisible="remaining_qty &lt;= 0"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="BOQ Labour">
+                                <field name="labour_line_ids" nolabel="1">
+                                    <tree decoration-success="status=='completed'" decoration-warning="status=='ordered'" decoration-info="status=='requisitioned'">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="category_id"/>
+                                        <field name="item_code"/>
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="line_type" column_invisible="1"/>
                                         <field name="quantity"/>
                                         <field name="uom_id"/>
                                         <field name="unit_cost"/>

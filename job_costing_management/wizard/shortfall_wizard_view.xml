@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- PO Shortfall Wizard Form View -->
+        <record id="view_po_shortfall_wizard_form" model="ir.ui.view">
+            <field name="name">po.shortfall.wizard.form</field>
+            <field name="model">po.shortfall.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Close Shortfall">
+                    <field name="has_storable_product" invisible="1"/>
+                    <div class="alert alert-warning" role="alert" invisible="has_storable_product == False">
+                        <strong>Notice:</strong> Receiving adjustment will create stock receipt automatically.
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="po_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="action_type" widget="radio"/>
+                        </group>
+                    </group>
+                    
+                    <separator string="Shortfall Details"/>
+                    <field name="line_ids">
+                        <tree editable="bottom" create="0" delete="0">
+                            <field name="po_line_id" invisible="1"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="product_qty" string="Ordered" readonly="1"/>
+                            <field name="qty_received" string="Current Received" readonly="1"/>
+                            <field name="new_qty_received" string="Adjust Received"/>
+                            <field name="shortfall" readonly="1"/>
+                        </tree>
+                    </field>
+                    
+                    <group class="oe_subtotal_footer oe_right">
+                        <field name="total_shortfall" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    </group>
+
+                    <separator string="Reason"/>
+                    <group>
+                        <field name="reason" placeholder="Explain why the supplier could not deliver the full quantity..." nolabel="1" colspan="2"/>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Additional notes (optional)..." nolabel="1" colspan="2"/>
+                    </group>
+                    <footer>
+                        <button name="action_confirm" string="Confirm Close Shortfall" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

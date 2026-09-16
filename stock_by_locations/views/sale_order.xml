@@ -5,8 +5,8 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <field name="partner_shipping_id" position="after">
-                <field name="picking_location_id" options="{'no_open': True, 'no_create': True}" required="1"
-                string="Deliver From" readonly="state not in ('draft','sent') "/>
+                <field name="picking_location_id" options="{'no_open': True, 'no_create': True}"
+                string="Deliver From"/>
                 <field name="picking_type_id" force_save="1" readonly="1" invisible="1"
                        options="{'no_open': True, 'no_create': True}"/>
             </field>

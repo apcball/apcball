@@ -1,0 +1,30 @@
+<odoo>
+    <record id="view_buz_document_revision_search" model="ir.ui.view"><field name="name">buz.document.revision.search</field><field name="model">buz.document.revision</field><field name="arch" type="xml"><search><field name="document_id"/><field name="revision"/><field name="state"/><filter name="published" string="Published" domain="[('state','=','published')]"/><filter name="draft" string="Draft" domain="[('state','=','draft')]"/><filter name="review" string="Review" domain="[('state','=','review')]"/><filter name="obsolete" string="Obsolete" domain="[('state','=','obsolete')]"/><group expand="0" string="Group By"><filter name="group_document" string="Document" context="{'group_by':'document_id'}"/><filter name="group_state" string="Status" context="{'group_by':'state'}"/></group></search></field></record>
+    <record id="view_buz_document_revision_tree" model="ir.ui.view"><field name="name">buz.document.revision.tree</field><field name="model">buz.document.revision</field><field name="arch" type="xml"><tree decoration-muted="state in ('obsolete','cancelled')"><field name="document_id"/><field name="revision"/><field name="state" widget="badge" decoration-success="state == 'published'" decoration-info="state == 'review'"/><field name="effective_date"/><field name="published_date"/><field name="change_description"/><field name="published_by"/><field name="revision_date" optional="hide"/><field name="create_uid" optional="hide"/></tree></field></record>
+    <record id="view_buz_document_revision_form" model="ir.ui.view">
+        <field name="name">buz.document.revision.form</field><field name="model">buz.document.revision</field>
+        <field name="arch" type="xml"><form string="Document Revision">
+            <header>
+                <button name="action_preview" type="object" string="Preview PDF" invisible="preview_status != 'ready'"/>
+                <button name="action_download" type="object" string="Download Original" invisible="not original_filename"/>
+                <button name="action_send_review" type="object" string="Send to Review" invisible="state != 'draft'" groups="buz_document_control.group_document_manager"/>
+                <button name="action_publish" type="object" string="Publish" class="btn-primary" invisible="state not in ('draft','review')" confirm="Publish this revision? The existing current revision will become Obsolete." groups="buz_document_control.group_document_manager"/>
+                <button name="action_regenerate_preview" type="object" string="Regenerate Preview" help="Generate the PDF preview from the original file" groups="buz_document_control.group_document_manager"/>
+                <button name="action_mark_obsolete" type="object" string="Mark Obsolete" invisible="state != 'published'" confirm="Mark this revision Obsolete? Publish a replacement before obsoleting the current revision." groups="buz_document_control.group_document_manager"/>
+                <button name="action_cancel" type="object" string="Cancel Draft" invisible="state != 'draft'" confirm="Cancel this draft revision?" groups="buz_document_control.group_document_manager"/>
+                <field name="state" widget="statusbar" statusbar_visible="draft,review,published,obsolete"/>
+            </header>
+            <sheet>
+                <div class="alert alert-info" invisible="state not in ('published','obsolete')">Published content is read-only. Create a New Revision from the document to change its content.</div>
+                <div class="oe_title"><h1>Rev.<field name="revision" class="oe_inline" readonly="state not in ('draft','review')"/></h1><field name="document_id" readonly="state not in ('draft','review')"/></div>
+                <notebook>
+                    <page name="overview" string="Overview"><group><group><field name="effective_date" readonly="state not in ('draft','review')"/><field name="review_date" readonly="state not in ('draft','review')"/><field name="revision_date" readonly="state not in ('draft','review')"/><field name="expiration_date" readonly="state not in ('draft','review')"/></group><group><field name="original_filename" readonly="1" force_save="1"/><field name="preview_status" readonly="1"/><div class="alert alert-warning" invisible="preview_status != 'failed'">Preview unavailable. You can still download the original document.</div></group></group><group><field name="change_description" readonly="state not in ('draft','review')"/></group></page>
+                    <page name="original" string="Original Document" groups="buz_document_control.group_document_manager"><group><field name="original_file" filename="original_filename" readonly="state not in ('draft','review')"/></group></page>
+                    <page name="audit" string="Audit Trail" groups="buz_document_control.group_document_manager"><group><group><field name="created_by"/><field name="published_by"/><field name="published_date"/></group><group><field name="obsolete_by"/><field name="obsolete_date"/></group></group></page>
+                </notebook>
+            </sheet>
+            <div class="oe_chatter" groups="buz_document_control.group_document_manager"><field name="message_follower_ids" widget="mail_followers"/><field name="activity_ids" widget="mail_activity"/><field name="message_ids" widget="mail_thread"/></div>
+        </form></field>
+    </record>
+    <record id="action_buz_document_revision" model="ir.actions.act_window"><field name="name">Revision History</field><field name="res_model">buz.document.revision</field><field name="view_mode">tree,form</field></record>
+</odoo>

@@ -1,0 +1,50 @@
+<odoo>
+    <record id="module_category_it_issue" model="ir.module.category">
+        <field name="name">IT Issue</field><field name="sequence">35</field>
+    </record>
+    <record id="group_it_user" model="res.groups">
+        <field name="name">IT User</field>
+        <field name="category_id" ref="module_category_it_issue"/>
+        <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+    </record>
+    <record id="group_it_manager" model="res.groups">
+        <field name="name">IT Manager</field>
+        <field name="category_id" ref="module_category_it_issue"/>
+        <field name="implied_ids" eval="[(4, ref('group_it_user')), (4, ref('stock.group_stock_manager'))]"/>
+    </record>
+    <record id="issue_company_rule" model="ir.rule">
+        <field name="name">IT issues: allowed companies</field>
+        <field name="model_id" ref="model_buz_it_issue"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="issue_visibility_rule" model="ir.rule">
+        <field name="name">IT issues: own or completed</field>
+        <field name="model_id" ref="model_buz_it_issue"/>
+        <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        <field name="domain_force">['|', ('create_uid', '=', user.id), ('state', '=', 'done')]</field>
+    </record>
+    <record id="issue_manager_rule" model="ir.rule">
+        <field name="name">IT managers: all company issues</field>
+        <field name="model_id" ref="model_buz_it_issue"/>
+        <field name="groups" eval="[(4, ref('group_it_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="line_company_rule" model="ir.rule">
+        <field name="name">IT lines: allowed companies</field><field name="model_id" ref="model_buz_it_issue_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="line_visibility_rule" model="ir.rule">
+        <field name="name">IT lines: own or completed</field><field name="model_id" ref="model_buz_it_issue_line"/>
+        <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        <field name="domain_force">['|', ('issue_id.create_uid', '=', user.id), ('issue_id.state', '=', 'done')]</field>
+    </record>
+    <record id="line_manager_rule" model="ir.rule">
+        <field name="name">IT manager lines</field><field name="model_id" ref="model_buz_it_issue_line"/>
+        <field name="groups" eval="[(4, ref('group_it_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="config_company_rule" model="ir.rule">
+        <field name="name">IT settings: allowed companies</field><field name="model_id" ref="model_buz_it_config"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

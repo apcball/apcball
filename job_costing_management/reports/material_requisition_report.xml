@@ -1,6 +1,384 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <data>
-        <!-- Material Requisition Report Template -->
-    </data>
+    <!-- Paper Format for Material Requisition Reports -->
+    <record id="paperformat_material_requisition_report" model="report.paperformat">
+        <field name="name">Material Requisition Report A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">2</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Report Template -->
+    <template id="material_requisition_report_document">
+        <t t-name="job_costing_management.material_requisition_report_document">
+           <t t-call="web.html_container">
+                <t t-foreach="docs.sudo()" t-as="o">
+                    <t t-call="web.external_layout">
+                       <!-- Split order lines into chunks of 13 -->
+                       <t t-set="lines" t-value="o.line_ids"/>
+                       <t t-set="chunk_size" t-value="13"/>
+                       <t t-set="total_lines" t-value="len(lines)"/>
+                       <t t-set="chunks" t-value="[lines[i:i+chunk_size] for i in range(0, total_lines, chunk_size)]"/>
+                       <t t-if="not chunks">
+                           <t t-set="chunks" t-value="[[]]"/>
+                       </t>
+                       
+                       <t t-foreach="chunks" t-as="chunk">
+                           <t t-set="current_chunk_index" t-value="chunk_index"/>
+                           <div class="page">
+
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/employee_purchase_requisition/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: bold;
+                                font-style: normal;
+                            }
+                            @page {
+                                margin-top: 0mm;
+                                margin-bottom: 10mm;
+                                margin-left: 10mm;
+                                margin-right: 10mm;
+                            }
+
+                            body, .page, .row {
+                                margin-top: 0 !important;
+                                padding-top: 0 !important;
+                            }
+
+                            html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px;
+                            }
+
+                            .table {
+                                border-collapse: collapse !important;
+                                width: 100%;
+                            }
+
+                            .table td,
+                            .table th {
+                                border-width: 0.5px !important;
+                                border-style: solid !important;
+                                border-color: #000 !important;
+                                padding:  1px 1px;
+                            }
+
+                            .order-line-table th,
+                            .order-line-table td {
+                                padding-top: 10px !important;
+                                padding-bottom: 10px !important;
+                               line-height: 1.1 !important;
+                            }
+
+                            .no-inner-borders td,
+                            .no-inner-borders th {
+                                border: none !important;
+                            }
+
+                            .table-bordered,
+                            .table-bordered td,
+                            .table-bordered th {
+                                border: none !important;
+                            }
+
+                            .page {
+                                page-break-after: always;
+                            }
+                            .page:last-child {
+                                page-break-after: auto;
+                            }
+
+                            .page-break {
+                                page-break-after: always;
+                              }
+
+                            .vendor-info, .delivery-info {
+                                font-size: 14px;
+                            }
+
+                            .line.name{
+                                max-width: 100px;
+                                white-space: nowrap;
+                                overflow: hidden;
+                                text-overflow: ellipsis;
+                            }
+
+                            /* Order line table styling */
+                            .order-line-table tbody tr {
+                                height: 25px;
+                            }
+
+                            .order-line-table td {
+                                max-height: 25px;
+                                overflow: hidden;
+                                white-space: normal;
+                                word-wrap: break-word;
+                                padding: 2px !important;
+                                vertical-align: middle;
+                            }
+                            .footer-fixed {
+                                position: absolute;
+                                bottom: 0;
+                                width: 100%;
+                                font-size: 16px;
+                                display: flex;
+                                justify-content: space-between;
+                              }
+                              @page {
+                                margin: 10mm 10mm 20mm 10mm; /* ซ้าย ขวา บน ล่าง */
+                                @bottom-left {
+                                    content: "อนุมัติใช้วันที่ 14/09/2563";
+                                    font-size: 14px;
+                                }
+                                @bottom-right {
+                                    content: "FM-PUR-08.REV.01";
+                                    font-size: 14px;
+                                }
+                                }
+                        </style>
+
+
+                        
+                        <!-- Page Number at Top Right -->
+                        <div style="margin-bottom: 10px; text-align: right;">
+                            <span style="font-size: 12px; font-weight: bold;">หน้า <t t-esc="current_chunk_index + 1"/> / <t t-esc="len(chunks)"/></span>
+                        </div>
+
+                        <!-- ส่วนหัว (Header) -->
+                        <div class="row mb-2">
+                            <div class="col-12 text-center">
+                                <div style="font-size: 20px; line-height: 1.6;">
+                                    <strong style="font-size: 24px;" t-field="o.company_id.name"/><br/>
+                                    <strong>
+                                        <span t-if="o.company_id.street" t-field="o.company_id.street"/>
+                                        <span t-if="o.company_id.street2" t-esc="' ' + o.company_id.street2"/>
+                                        <span t-if="o.company_id.city" t-esc="' ' + o.company_id.city"/>
+                                        <span t-if="o.company_id.state_id" t-esc="' ' + o.company_id.state_id.name"/>
+                                        <span t-if="o.company_id.zip" t-esc="' ' + o.company_id.zip"/>
+                                    </strong><br/>
+                                    <strong>
+                                        <t t-if="o.company_id.phone">โทร. <span t-field="o.company_id.phone"/> </t>
+                                        <t t-if="o.company_id.vat">เลขประจำตัวผู้เสียภาษีอากร <span t-field="o.company_id.vat"/> สำนักงานใหญ่</t>
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+
+                <!-- Document Title -->
+                <div class="row mb-2">
+                    <div class="col-12 text-center">
+                        <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: 10px;">ใบขอจัดซื้อ / PURCHASE MATERIAL REQUEST</h2>
+                    </div>
+                </div>
+
+
+                <table style="width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: fixed; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                    <tr>
+                        <!-- ฝั่งซ้าย (70%) ไม่มีเส้นแบ่งบรรทัด -->
+                        <td style="width: 70%; vertical-align: top; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+
+                            <!-- บรรทัดที่ 1 -->
+                            <div style="margin-bottom: 8px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                <strong style="font-size: 20px; font-family: 'Sarabun', Arial, sans-serif;">เลขที่เอกสาร:</strong>
+                            </div>
+
+                            <!-- บรรทัดที่ 2 -->
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">
+                                <div style="width: 25%; display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 13px; height: 13px; border: 1px solid #000; display: flex; align-items: center; justify-content: center;">
+                                    </div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; margin-left: 8px;">ใบเสนอซื้อ</span>
+                                </div>
+                                <div style="width: 25%; display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 13px; height: 13px; border: 1px solid #000; display: flex; align-items: center; justify-content: center;">
+                                    </div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; margin-left: 8px;">ใบเสนอซ่อม</span>
+                                </div>
+                                <div style="width: 25%; display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 13px; height: 13px; border: 1px solid #000; display: flex; align-items: center; justify-content: center;">
+                                    </div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; margin-left: 8px;">ใบเสนอสั่งทำ</span>
+                                </div>
+                                <div style="width: 25%; display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 13px; height: 13px; border: 1px solid #000; display: flex; align-items: center; justify-content: center;">
+                                    </div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; margin-left: 8px;">อื่นๆ(ระบุ)___________</span>
+                                </div>
+                            </div>
+
+                            <!-- บรรทัดที่ 3 -->
+                            <div style="margin-bottom: 8px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                <strong style="font-size:20px; font-family: 'Sarabun', Arial, sans-serif;">เหตุผลในการขอซื้อ:</strong>
+                            </div>
+
+                            <!-- บรรทัดที่ 4 -->
+                            <div style="display: flex; justify-content: space-between; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">
+                                <div style="width: 16.66%; display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 12px; height: 12px; border: 1px solid #000;"></div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">บ้านลูกค้า</span>
+                                </div>
+                                <div style="width: 16.66%; display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 12px; height: 12px; border: 1px solid #000;"></div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">บ้านก่อสร้าง</span>
+                                </div>
+                                <div style="width: 16.66%; display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 12px; height: 12px; border: 1px solid #000;"></div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">ในโครงการ</span>
+                                </div>
+                                <div style="width: 16.66%; display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 12px; height: 12px; border: 1px solid #000;"></div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">สต็อกสินค้า</span>
+                                </div>
+                                <div style="width: 16.66%; display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 12px; height: 12px; border: 1px solid #000;"></div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">ชำรุด/เสียหาย</span>
+                                </div>
+                                <div style="width: 16.66%; display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 12px; height: 12px; border: 1px solid #000;"></div>
+                                    <span style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif; padding-left: 8px;">อื่นๆ(ระบุ)__________</span>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- ฝั่งขวา (30%) มีเส้นแบ่งทุกบรรทัด -->
+                        <td style="width: 30%; vertical-align: top; padding: 0; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                            <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                                <tr>
+                                    <td style="width: 40%; border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                        <strong>วัน/เดือน/ปี:</strong>
+                                     <t t-esc="o.requisition_date.strftime('%d/%m/%Y') if o.requisition_date else ''"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;"><strong style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">แผนก:</strong>
+                                    <t t-esc="o.sudo().department_id.name"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                        <strong style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">วันที่ส่งมอบ:</strong>
+                                        <t t-if="o.request_date">
+                                            <t t-esc="o.request_date.strftime('%d/%m/%Y')"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                        <strong style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">Project:</strong>
+                                        <t t-if="o.project_id">
+                                            <t t-esc="o.project_id.name"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                 <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Sarabun', Arial, sans-serif; margin-top: 10px; border-spacing: 0; border: 1px solid #000;" class="order-line-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">รายการ</th>
+                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">จำนวน</th>
+                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">หน่วย</th>
+                            <th style="width: 40%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">ชื่อและรายละเอียดสิ่งที่ต้องการ</th>
+                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">ราคาต่อหน่วย<br/>(ถ้าทราบ)</th>
+                            <th style="width: 25%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">หมายเหตุ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                       <t t-if="chunk">
+                       <t t-foreach="chunk" t-as="line">
+                            <t t-set="global_line_number" t-value="current_chunk_index * 13 + line_index + 1"/>
+                            <tr>
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                      <t t-esc="global_line_number"/>
+                                </td>
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                    <t t-esc="line.quantity or ''"/>
+                                </td>
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                   <t t-esc="line.uom_id.name if line.uom_id else ''"/>
+                                </td>
+                                <td style="border: 1px solid #000; padding: 0 2px; margin: 0;">
+                                     <t t-esc="line.description or (line.product_id.name if line.product_id else '') or ''"/>
+                                </td>
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                   <t t-esc="line.estimated_cost or ''"/>
+                                </td>
+                                <td style="border: 1px solid #000; padding: 0 2px; margin: 0;">
+                                    <t t-esc="line.notes or ''"/>
+                                </td>
+                            </tr>
+                        </t>
+                        </t>
+                    </tbody>
+                </table>
+
+                <!-- Signature section only on last page -->
+                <t t-if="current_chunk_index == len(chunks) - 1">
+                <table style="width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: fixed; font-size: 16px;">
+                    <tr>
+                        <!-- ช่องที่ 1 -->
+                        <td style="width: 25%; border: 1px solid #000; vertical-align: top; padding: 2px; text-align: center;">
+                            <p style="margin:0;">จัดทำโดย</p>
+                            <br/>
+                            <p style="margin:0;">____________________</p>
+                            <p style="margin:0;">(<span style="display: inline-block; border-bottom: 1px dotted #000; width: 100px; height: 14px;"></span>)</p>
+                            <p style="margin:0;">(______/______/______)</p>
+                        </td>
+                        <!-- ช่องที่ 2 -->
+                        <td style="width: 25%; border: 1px solid #000; vertical-align: top; padding: 2px; text-align: center;">
+                            <p style="margin:0;">อนุมัติโดย</p>
+                            <br/>
+                            <p style="margin:0;"></p>
+                            <p style="margin:0;">_________________________</p>
+                            <p style="margin:0;">(______/______/______)</p>
+                        </td>
+                        <!-- ช่องที่ 3 -->
+                        <td style="width: 25%; border: 1px solid #000; vertical-align: top; padding: 2px; text-align: center;">
+                            <p style="margin:0;"></p>
+                            <br/>
+                            <p style="margin:0;">ต้นฉบับส่งที่เแผนกจัดซื้อ</p>
+                            <p style="margin:0;">สำเนาเก็บที่ผู้จัดทำ</p>
+                        </td>
+                        <!-- ช่องที่ 4 -->
+                        <td style="width: 25%; border: 1px solid #000; vertical-align: top; padding: 2px; text-align: center;">
+                            <br/>
+                            <p style="margin:0;">แผนกผู้จัดซื้อ _________________________</p>
+                            <p style="margin:0;"></p>
+                            <p style="margin:0;">รับงานวันที่ _______________________</p>
+                            <p style="margin:0;">ผู้บันทึก _____________________</p>
+                        </td>
+                    </tr>
+                </table>
+                </t>
+
+                   </div>
+                       </t>
+                  </t>
+               </t>
+             </t>
+         </t>
+    </template>
+
+    <record id="action_material_requisition_report" model="ir.actions.report">
+        <field name="name">ใบขอจัดซื้อ / PURCHASE Meterial REQUEST</field>
+        <field name="model">material.requisition</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">job_costing_management.material_requisition_report_document</field>
+        <field name="report_file">job_costing_management.material_requisition_report_document</field>
+        <field name="print_report_name">'Material Requisition - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_material_requisition"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_material_requisition_report"/>
+   </record>
 </odoo>

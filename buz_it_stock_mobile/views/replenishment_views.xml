@@ -1,0 +1,25 @@
+<odoo>
+    <record id="requisition_it_report_tree" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.it.report.tree</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <tree create="false" decoration-muted="state == 'cancelled'" decoration-success="state == 'received'">
+                <field name="name"/>
+                <field name="request_date"/>
+                <field name="employee_id"/>
+                <field name="it_config_id"/>
+                <field name="it_product_ids" widget="many2many_tags"/>
+                <field name="it_purchase_ids" widget="many2many_tags"/>
+                <field name="state" widget="badge"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_it_replenishment_report" model="ir.actions.server">
+        <field name="name">รายงาน PR เติมคลัง IT</field>
+        <field name="model_id" ref="model_buz_it_issue"/>
+        <field name="state">code</field>
+        <field name="code">action = model.get_replenishment_report()</field>
+    </record>
+</odoo>

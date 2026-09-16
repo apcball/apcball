@@ -7,7 +7,7 @@
             <field name="name">Construction Project Cost Sheet</field>
             <field name="project_id" ref="project.project_project_data"/>
             <field name="state">approved</field>
-            <field name="date_start" eval="(DateTime.now() - timedelta(days=30)).strftime('%Y-%m-%d')"/>
+            <field name="date_start" eval="(datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d')"/>
             <field name="notes">Demo construction project cost sheet for testing</field>
         </record>
         

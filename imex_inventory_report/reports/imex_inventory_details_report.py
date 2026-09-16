@@ -73,7 +73,7 @@ class ImexInventoryDetailsReport(models.Model):
                 [("id", "child_of", location_id.ids)]).ids)
         else:
             locations = tuple(self.env["stock.location"].search(
-                [("usage", "=", "internal")]).ids)
+                [("usage", "in", ("internal", "transit"))]).ids)
         if not locations:
             locations = (-1,)
         return locations

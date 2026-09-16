@@ -23,12 +23,41 @@ class BOQMaterialRequisitionWizard(models.TransientModel):
         ('urgent', 'Urgent')
     ], string='Priority', default='normal')
     
-    # Lines
-    line_ids = fields.One2many('boq.material.requisition.wizard.line', 'wizard_id', string='BOQ Lines')
+    display_in_wizard = fields.Boolean(string='Display in Wizard', default=True)
+    
+    # Wizard State
+    wizard_state = fields.Selection([
+        ('select', 'Select Materials'),
+        ('configure', 'Configure Quantities')
+    ], string='Wizard State', default='select', required=True)
+    
+    # Step 1: Selection
+    boq_line_selection_ids = fields.Many2many('boq.line', string='Select BOQ Lines',
+                                             domain="[('boq_id', '=', boq_id), ('remaining_qty', '>', 0)]")
+    
+    # Step 2: Configuration
+    line_ids = fields.One2many('boq.material.requisition.wizard.line', 'wizard_id', string='Requisition Lines')
+    
+    # Summary Statistics
+    total_lines_count = fields.Integer(string='Total Lines', compute='_compute_statistics', readonly=True)
+    selected_total_quantity = fields.Float(string='Total Requested Quantity', compute='_compute_statistics', readonly=True)
+    selected_total_cost = fields.Float(string='Total Estimated Cost', compute='_compute_statistics', readonly=True, 
+                                       currency_field='currency_id')
+    
+    # Currency for cost display
+    currency_id = fields.Many2one('res.currency', string='Currency', 
+                                 default=lambda self: self.env.company.currency_id)
+    
+    @api.depends('line_ids')
+    def _compute_statistics(self):
+        for record in self:
+            record.total_lines_count = len(record.line_ids)
+            record.selected_total_quantity = sum(record.line_ids.mapped('requested_quantity'))
+            record.selected_total_cost = sum(record.line_ids.mapped('total_cost'))
     
     @api.model
     def default_get(self, fields_list):
-        """Set default values including BOQ lines with remaining quantities"""
+        """Set default values"""
         res = super().default_get(fields_list)
         
         # Get BOQ from context
@@ -38,52 +67,72 @@ class BOQMaterialRequisitionWizard(models.TransientModel):
             res['boq_id'] = boq_id
             res['purpose'] = f'Material requisition from BOQ: {boq.name}'
             
-            # Check if BOQ has any lines
+            # Check availability
             if not boq.line_ids:
-                raise ValidationError(_('The selected BOQ has no lines. Please add BOQ lines before creating a material requisition.'))
-            
-            # Get BOQ lines with products and remaining quantities
-            lines_with_products = boq.line_ids.filtered(lambda l: l.product_id)
-            if not lines_with_products:
-                raise ValidationError(_('The selected BOQ has no lines with products assigned. Please assign products to BOQ lines before creating a material requisition.'))
-            
-            lines_with_remaining = lines_with_products.filtered(lambda l: l.remaining_qty > 0)
-            if not lines_with_remaining:
-                raise ValidationError(_(
-                    'All BOQ lines with products have been fully requisitioned. No remaining quantities available for requisition.\n\n'
-                    'BOQ lines with products: %d\n'
-                    'Lines fully requisitioned: %d'
-                ) % (len(lines_with_products), len(lines_with_products)))
-            
-            line_vals = []
-            for line in lines_with_remaining:
-                # Ensure we have all required data
-                if not line.product_id:
-                    continue  # Skip lines without products
+                raise ValidationError(_('The selected BOQ has no lines.'))
                 
-                line_vals.append((0, 0, {
-                    'boq_line_id': line.id,
-                    'product_id': line.product_id.id,
-                    'description': line.description or line.product_id.name,
-                    'boq_quantity': line.adjusted_quantity,
-                    'requisitioned_quantity': line.total_requisitioned_qty,
-                    'remaining_quantity': line.remaining_qty,
-                    'requested_quantity': line.remaining_qty,  # Default to remaining quantity
-                    'uom_id': line.uom_id.id if line.uom_id else line.product_id.uom_id.id,
-                    'estimated_cost': line.unit_cost,
-                    'selected': False,  # Do not select by default
-                }))
-            
-            if not line_vals:
-                raise ValidationError(_('No valid BOQ lines found for requisition creation. Please ensure BOQ lines have products and remaining quantities.'))
-            
-            res['line_ids'] = line_vals
-        
         return res
     
+    def action_process_selection(self):
+        """Process selected lines and move to configuration step"""
+        self.ensure_one()
+        
+        if not self.boq_line_selection_ids:
+            raise ValidationError(_('Please select at least one material to requisition.'))
+            
+        # Prepare lines for configuration step
+        line_vals = []
+        for line in self.boq_line_selection_ids:
+            # Check if line is already in line_ids to preserve any edits if user goes back and comes forward
+            existing_line = self.line_ids.filtered(lambda l: l.boq_line_id.id == line.id)
+            if existing_line:
+                continue
+                
+            line_vals.append((0, 0, {
+                'boq_line_id': line.id,
+                'product_id': line.product_id.id,
+                'description': line.description or line.product_id.name,
+                'boq_quantity': line.adjusted_quantity,
+                'requisitioned_quantity': line.total_requisitioned_qty,
+                'remaining_quantity': line.remaining_qty,
+                'requested_quantity': line.remaining_qty,
+                'uom_id': line.uom_id.id,
+                'estimated_cost': line.unit_cost,
+                'category_id': line.category_id.id if line.category_id else False,
+                'product_category_id': line.product_id.categ_id.id if line.product_id.categ_id else False,
+            }))
+            
+        if line_vals:
+            self.write({'line_ids': line_vals})
+            
+        self.wizard_state = 'configure'
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': self.env.context,
+        }
+    
+    def action_go_back_to_selection(self):
+        """Go back to selection state"""
+        self.ensure_one()
+        self.wizard_state = 'select'
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': self.env.context,
+        }
+    
     def action_create_requisition(self):
-        """Create material requisition from selected lines"""
-        selected_lines = self.line_ids.filtered('selected')
+        """Create material requisition from configured lines"""
+        self.ensure_one()
+        # All lines in the configuration step are considered selected
+        selected_lines = self.line_ids
         
         if not selected_lines:
             raise ValidationError(_('Please select at least one BOQ line to create requisition.'))
@@ -148,16 +197,23 @@ class BOQMaterialRequisitionWizard(models.TransientModel):
 class BOQMaterialRequisitionWizardLine(models.TransientModel):
     _name = 'boq.material.requisition.wizard.line'
     _description = 'BOQ Material Requisition Wizard Line'
+    _order = 'sequence, id'
 
     wizard_id = fields.Many2one('boq.material.requisition.wizard', string='Wizard', required=True, ondelete='cascade')
-    selected = fields.Boolean(string='Select', default=False)
+    
+    # Sequence for ordering
+    sequence = fields.Integer(string='Sequence', default=10)
     
     # BOQ line information
     boq_line_id = fields.Many2one('boq.line', string='BOQ Line', required=True)
-    product_id = fields.Many2one('product.product', string='Product', required=False)  # Changed to not required
+    product_id = fields.Many2one('product.product', string='Product', required=False)
     description = fields.Text(string='Description', required=True)
-    uom_id = fields.Many2one('uom.uom', string='Unit of Measure', required=False)  # Changed to not required
+    uom_id = fields.Many2one('uom.uom', string='Unit of Measure', required=False)
     estimated_cost = fields.Float(string='Estimated Unit Cost')
+    
+    # Category information for grouping
+    category_id = fields.Many2one('boq.category', string='BOQ Category')
+    product_category_id = fields.Many2one('product.category', string='Product Category')
     
     # Quantity tracking
     boq_quantity = fields.Float(string='BOQ Quantity', readonly=True)
@@ -173,6 +229,14 @@ class BOQMaterialRequisitionWizardLine(models.TransientModel):
         ('complete', 'Fully Requisitioned')
     ], string='Status', compute='_compute_quantity_status')
     
+    # Display flags
+    has_warning = fields.Boolean(string='Has Warning', compute='_compute_quantity_status', store=False)
+    
+    @api.depends('category_id', 'category_id.sequence')
+    def _compute_category_sequence(self):
+        for record in self:
+            record.category_sequence = record.category_id.sequence if record.category_id else 999
+    
     @api.depends('requested_quantity', 'estimated_cost')
     def _compute_total_cost(self):
         for record in self:
@@ -183,10 +247,13 @@ class BOQMaterialRequisitionWizardLine(models.TransientModel):
         for record in self:
             if record.remaining_quantity <= 0:
                 record.quantity_status = 'complete'
+                record.has_warning = False
             elif record.requested_quantity > record.remaining_quantity:
                 record.quantity_status = 'exceed'
+                record.has_warning = True
             else:
                 record.quantity_status = 'within'
+                record.has_warning = False
     
     @api.onchange('boq_line_id')
     def _onchange_boq_line_id(self):
@@ -200,6 +267,9 @@ class BOQMaterialRequisitionWizardLine(models.TransientModel):
             self.requisitioned_quantity = self.boq_line_id.total_requisitioned_qty
             self.remaining_quantity = self.boq_line_id.remaining_qty
             self.requested_quantity = self.boq_line_id.remaining_qty
+            self.category_id = self.boq_line_id.category_id
+            if self.boq_line_id.product_id:
+                self.product_category_id = self.boq_line_id.product_id.categ_id
     
     @api.constrains('requested_quantity')
     def _check_requested_quantity(self):
@@ -208,15 +278,7 @@ class BOQMaterialRequisitionWizardLine(models.TransientModel):
             if record.requested_quantity < 0:
                 raise ValidationError(_('Requested quantity cannot be negative for line: %s') % record.description)
     
-    @api.constrains('product_id', 'selected')
-    def _check_selected_line_data(self):
-        """Ensure selected lines have required data"""
-        for record in self:
-            if record.selected:
-                if not record.product_id:
-                    raise ValidationError(_('Selected line "%s" must have a product assigned.') % record.description)
-                if not record.uom_id:
-                    raise ValidationError(_('Selected line "%s" must have a unit of measure.') % record.description)
+
     
     @api.onchange('requested_quantity')
     def _onchange_requested_quantity(self):

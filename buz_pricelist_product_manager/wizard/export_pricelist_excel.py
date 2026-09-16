@@ -47,7 +47,8 @@ class ExportPricelistExcel(models.TransientModel):
         
         headers = [
             'pricelist', 'Internal Reference', 'product_name', 'variant', 'category',
-            'base_price', 'rule_type', 'price', 'installation_price', 'min_qty', 'date_start', 'date_end', 'product_id_db'
+            'base_price', 'rule_type', 'price', 'installation_price', 'install_cost',
+            'min_qty', 'date_start', 'date_end', 'product_id_db'
         ]
         
         for col, header in enumerate(headers):
@@ -108,14 +109,16 @@ class ExportPricelistExcel(models.TransientModel):
             
             worksheet.write(row, 7, rec.price if rec.rule_type == 'fixed' else 0.0, row_format)
             worksheet.write(row, 8, rec.installation_price, row_format)
-            
-            worksheet.write(row, 9, rec.min_quantity, row_format)
-            worksheet.write(row, 10, rec.date_start, date_format if rec.date_start else row_format)
-            worksheet.write(row, 11, rec.date_end, date_format if rec.date_end else row_format)
+            # install_cost only meaningful on the Standard Cost Pricelist
+            worksheet.write(row, 9, rec.install_cost if rec.pricelist_is_standard_cost else 0.0, row_format)
+
+            worksheet.write(row, 10, rec.min_quantity, row_format)
+            worksheet.write(row, 11, rec.date_start, date_format if rec.date_start else row_format)
+            worksheet.write(row, 12, rec.date_end, date_format if rec.date_end else row_format)
             # Hidden ID column for easier matching if needed (though prompt relies on product match)
             # Prompt "Business Validation ... Product must exist". "Steps ... product = find_product(row)".
             # So we rely on code/name.
-            worksheet.write(row, 12, rec.product_variant_id.id) 
+            worksheet.write(row, 13, rec.product_variant_id.id)
 
             row += 1
 

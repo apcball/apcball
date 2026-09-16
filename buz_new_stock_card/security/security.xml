@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_buz_new_stock_card" model="ir.module.category">
+        <field name="name">Stock Card Value</field>
+        <field name="description">Access to cost/value figures on the Interactive Stock Card report.</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="group_stock_card_see_value" model="res.groups">
+        <field name="name">ดูมูลค่าสินค้า</field>
+        <field name="category_id" ref="module_category_buz_new_stock_card"/>
+        <field name="comment">Users in this group can see cost/value columns (มูลค่าสินค้า, ต้นทุน + Lot) on the Interactive Stock Card report - web view and Excel export. Users outside this group see quantities only.</field>
+        <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>

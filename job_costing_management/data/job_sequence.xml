@@ -38,5 +38,17 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <!-- Procurement Pool Sequence -->
+        <record id="seq_procurement_pool" model="ir.sequence">
+            <field name="name">Procurement Pool</field>
+            <field name="code">procurement.pool</field>
+            <field name="prefix">PP/</field>
+            <field name="suffix">/%(year)s</field>
+            <field name="padding">4</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
     </data>
 </odoo>

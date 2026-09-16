@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_document_control.DocumentCard">
+        <article class="bdc-document-card">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <span t-attf-class="bdc-file-icon bdc-file-#{fileInfo(props.document.original_filename).tone}"><i t-attf-class="fa #{fileInfo(props.document.original_filename).icon}" aria-hidden="true"/></span>
+                <span t-attf-class="bdc-badge bdc-#{props.document.security_level}" t-att-title="badgeLabel(props.document.security_level)"><i t-if="props.document.security_level !== 'general'" class="fa fa-lock me-1" aria-hidden="true"/><t t-esc="badgeLabel(props.document.security_level)"/></span>
+            </div>
+            <button class="bdc-document-title" t-on-click="() => props.onOpen(props.document.id)">
+                <span class="bdc-document-number" t-esc="props.document.document_no"/>
+                <h3 t-esc="props.document.name"/>
+            </button>
+            <div class="bdc-meta"><span t-esc="props.document.department_id?.[1] || '—'"/><span>Rev.<t t-esc="props.document.current_revision || '—'"/></span></div>
+            <div class="bdc-meta"><span t-esc="props.document.document_type_id?.[1] || '—'"/><span t-attf-class="bdc-badge bdc-#{props.document.state}" t-esc="badgeLabel(props.document.state)"/></div>
+            <div class="bdc-card-dates"><span>Effective <t t-esc="props.document.effective_date || '—'"/></span><span>Review <t t-esc="props.document.review_date || '—'"/></span></div>
+            <div class="bdc-card-footer">
+                <small class="text-muted">Updated <t t-esc="(props.document.write_date || '').slice(0, 10)"/></small>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-outline-secondary btn-sm" t-on-click="() => props.onOpen(props.document.id)"><i class="fa fa-eye me-1" aria-hidden="true"/>Preview</button>
+                    <button t-if="props.document.current_revision_id" class="btn btn-light btn-sm" t-on-click="() => props.onDownload(props.document.id)" title="Download Original" aria-label="Download Original"><i class="fa fa-download" aria-hidden="true"/></button>
+                </div>
+            </div>
+        </article>
+    </t>
+    <t t-name="buz_document_control.Dropzone">
+        <div class="bdc-upload-wrapper">
+            <label class="bdc-dropzone" t-att-class="{ 'is-dragging': state.dragging, 'is-busy': state.busy }"
+                t-on-dragover.prevent="() => state.dragging = true" t-on-dragleave.prevent="() => state.dragging = false" t-on-drop.prevent="dropFile">
+                <i t-att-class="state.busy ? 'fa fa-spinner fa-spin' : 'fa fa-cloud-upload'" aria-hidden="true"/>
+                <strong>Drag &amp; Drop Word / Excel / PDF</strong>
+                <span>or <span class="text-primary text-decoration-underline">Browse File</span></span>
+                <input type="file" class="bdc-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png" t-on-change="selectFile" t-att-disabled="props.readonly || state.busy" aria-label="Upload new document"/>
+                <span t-if="fileName" class="bdc-selected-file"><i class="fa fa-check-circle me-1" aria-hidden="true"/><t t-esc="fileName"/></span>
+                <span t-if="state.busy" role="status">Reading document…</span>
+            </label>
+            <div t-if="state.error" class="alert alert-danger mt-2" role="alert" t-esc="state.error"/>
+        </div>
+    </t>
+</templates>

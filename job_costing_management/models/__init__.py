@@ -10,6 +10,9 @@ from . import material_planning
 from . import subcontractor
 from . import job_note
 from . import purchase_order
+from . import procurement_pool
+from . import purchase_allocation
+from . import stock_picking
 from . import account_move
 from . import hr_timesheet
 from . import boq

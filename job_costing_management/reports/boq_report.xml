@@ -1,116 +1,324 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- Paper Format for BOQ Report -->
+        <record id="paperformat_boq_report" model="report.paperformat">
+            <field name="name">BOQ Report A4 Landscape</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Landscape</field>
+            <field name="margin_top">2</field>
+            <field name="margin_bottom">10</field>
+            <field name="margin_left">4</field>
+            <field name="margin_right">4</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">8</field>
+            <field name="dpi">90</field>
+        </record>
 
         <!-- BOQ Report Template -->
         <template id="report_boq_document">
-            <t t-call="web.external_layout">
-                <t t-set="doc" t-value="doc.with_context(lang=doc.env.lang)"/>
-                <div class="page">
-                    <div class="oe_structure"/>
-                    
-                    <div class="row">
-                        <div class="col-12">
-                            <h2>
-                                <span t-field="doc.name"/>
-                                <small class="text-muted">
-                                    - <span t-field="doc.title"/>
-                                </small>
-                            </h2>
-                        </div>
-                    </div>
+            <t t-name="job_costing_management.report_boq_document">
+                <t t-call="web.html_container">
+                    <t t-foreach="docs.sudo()" t-as="o">
+                        <t t-call="web.external_layout">
+                            <!-- Split BOQ lines into chunks of 13 -->
+                            <t t-set="lines" t-value="o.line_ids"/>
+                            <t t-set="chunk_size" t-value="13"/>
+                            <t t-set="total_lines" t-value="len(lines)"/>
+                            <t t-set="chunks" t-value="[lines[i:i+chunk_size] for i in range(0, total_lines, chunk_size)]"/>
+                            <t t-if="not chunks">
+                                <t t-set="chunks" t-value="[[]]"/>
+                            </t>
 
-                    <div class="row mt32 mb32">
-                        <div class="col-6">
-                            <strong>Project:</strong> <span t-field="doc.project_id.name"/><br/>
-                            <strong>Job Order:</strong> <span t-field="doc.job_order_id.name"/><br/>
-                            <strong>BOQ Date:</strong> <span t-field="doc.boq_date"/><br/>
-                            <strong>Revision:</strong> <span t-field="doc.revision"/><br/>
-                        </div>
-                        <div class="col-6">
-                            <strong>Prepared by:</strong> <span t-field="doc.prepared_by.name"/><br/>
-                            <strong>Approved by:</strong> <span t-field="doc.approved_by.name"/><br/>
-                            <strong>Approved Date:</strong> <span t-field="doc.approved_date"/><br/>
-                            <strong>Status:</strong> <span t-field="doc.state"/><br/>
-                        </div>
-                    </div>
+                            <t t-foreach="chunks" t-as="chunk">
+                                <t t-set="current_chunk_index" t-value="chunk_index"/>
+                                <div class="page">
+                                    <style>
+                                        @font-face {
+                                            font-family: 'Sarabun';
+                                            src: url('/employee_purchase_requisition/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                            font-weight: bold;
+                                            font-style: normal;
+                                        }
+                                        @page {
+                                            margin-top: 0mm;
+                                            margin-bottom: 10mm;
+                                            margin-left: 10mm;
+                                            margin-right: 10mm;
+                                        }
 
-                    <div class="row" t-if="doc.description">
-                        <div class="col-12">
-                            <h4>Description</h4>
-                            <p t-field="doc.description"/>
-                        </div>
-                    </div>
+                                        body, .page, .row {
+                                            margin-top: 0 !important;
+                                            padding-top: 0 !important;
+                                        }
 
-                    <div class="row mt32">
-                        <div class="col-12">
-                            <h4>Bill of Quantities</h4>
-                            <table class="table table-sm o_main_table">
-                                <thead>
-                                    <tr>
-                                        <th>Item Code</th>
-                                        <th>Description</th>
-                                        <th>Specification</th>
-                                        <th>Quantity</th>
-                                        <th>Unit</th>
-                                        <th>Unit Cost</th>
-                                        <th>Total Cost</th>
-                                        <th>Waste %</th>
-                                        <th>Adj. Quantity</th>
-                                        <th>Adj. Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <t t-set="current_category" t-value="None"/>
-                                    <t t-foreach="doc.line_ids" t-as="line">
-                                        <t t-if="line.category_id and line.category_id != current_category">
-                                            <tr style="background-color: #f8f9fa;">
-                                                <td colspan="10">
-                                                    <strong t-field="line.category_id.name"/>
-                                                    <span t-if="line.category_id.description"> - <t t-field="line.category_id.description"/></span>
+                                        html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                            font-family: 'Sarabun', sans-serif !important;
+                                            font-size: 20px;
+                                        }
+
+                                        .table {
+                                            border-collapse: collapse !important;
+                                            width: 100%;
+                                        }
+
+                                        .table td,
+                                        .table th {
+                                            border-width: 0.5px !important;
+                                            border-style: solid !important;
+                                            border-color: #000 !important;
+                                            padding: 1px 1px;
+                                        }
+
+                                        .order-line-table th,
+                                        .order-line-table td {
+                                            padding-top: 10px !important;
+                                            padding-bottom: 10px !important;
+                                            line-height: 1.1 !important;
+                                        }
+
+                                        .no-inner-borders td,
+                                        .no-inner-borders th {
+                                            border: none !important;
+                                        }
+
+                                        .table-bordered,
+                                        .table-bordered td,
+                                        .table-bordered th {
+                                            border: none !important;
+                                        }
+
+                                        .page {
+                                            page-break-after: always;
+                                        }
+                                        .page:last-child {
+                                            page-break-after: auto;
+                                        }
+
+                                        /* Order line table styling */
+                                        .order-line-table tbody tr {
+                                            height: 25px;
+                                        }
+
+                                        .order-line-table td {
+                                            max-height: 25px;
+                                            overflow: hidden;
+                                            white-space: normal;
+                                            word-wrap: break-word;
+                                            padding: 2px !important;
+                                            vertical-align: middle;
+                                        }
+
+                                        @page {
+                                            margin: 10mm 10mm 20mm 10mm;
+                                            @bottom-left {
+                                                content: " ";
+                                                font-size: 14px;
+                                            }
+                                            @bottom-right {
+                                                content: " ";
+                                                font-size: 14px;
+                                            }
+                                        }
+                                    </style>
+
+                                    <!-- Page Number at Top Right -->
+                                    <div style="margin-bottom: 10px; text-align: right;">
+                                        <span style="font-size: 12px; font-weight: bold;">หน้า <t t-esc="current_chunk_index + 1"/> / <t t-esc="len(chunks)"/></span>
+                                    </div>
+
+                                    <!-- ส่วนหัว (Header) -->
+                                    <div class="row mb-2">
+                                        <div class="col-12 text-center">
+                                            <div style="font-size: 20px; line-height: 1.6;">
+                                                <strong style="font-size: 24px;" t-field="o.company_id.name"/><br/>
+                                                <strong>
+                                                    <span t-if="o.company_id.street" t-field="o.company_id.street"/>
+                                                    <span t-if="o.company_id.street2" t-esc="' ' + o.company_id.street2"/>
+                                                    <span t-if="o.company_id.city" t-esc="' ' + o.company_id.city"/>
+                                                    <span t-if="o.company_id.state_id" t-esc="' ' + o.company_id.state_id.name"/>
+                                                    <span t-if="o.company_id.zip" t-esc="' ' + o.company_id.zip"/>
+                                                </strong><br/>
+                                                <strong>
+                                                    <t t-if="o.company_id.phone">โทร. <span t-field="o.company_id.phone"/> </t>
+                                                    <t t-if="o.company_id.vat">เลขประจำตัวผู้เสียภาษีอากร <span t-field="o.company_id.vat"/> สำนักงานใหญ่</t>
+                                                </strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Document Title -->
+                                    <div class="row mb-2">
+                                        <div class="col-12 text-center">
+                                            <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: 10px;">ใบถอดแบบวัสดุ (BOQ) / BILL OF QUANTITIES</h2>
+                                        </div>
+                                    </div>
+
+                                    <table style="width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: fixed; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                        <tr>
+                                            <!-- ฝั่งซ้าย (70%) -->
+                                            <td style="width: 70%; vertical-align: top; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                <!-- บรรทัดที่ 1 -->
+                                                <div style="margin-bottom: 8px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                    <strong style="font-size: 20px; font-family: 'Sarabun', Arial, sans-serif;">หัวข้อเรื่อง (Title):</strong>
+                                                    <t t-esc="o.title"/>
+                                                </div>
+
+                                                <!-- บรรทัดที่ 2 -->
+                                                <div style="margin-bottom: 8px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                    <strong style="font-size: 20px; font-family: 'Sarabun', Arial, sans-serif;">รายละเอียด (Description):</strong>
+                                                    <t t-esc="o.description or '-' "/>
+                                                </div>
+
+                                                <!-- บรรทัดที่ 3 -->
+                                                <div style="margin-bottom: 8px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                    <strong style="font-size: 20px; font-family: 'Sarabun', Arial, sans-serif;">Project:</strong>
+                                                    <t t-if="o.project_id">
+                                                        <t t-esc="o.project_id.name"/>
+                                                    </t>
+                                                </div>
+                                            </td>
+
+                                            <!-- ฝั่งขวา (30%) มีเส้นแบ่งทุกบรรทัด -->
+                                            <td style="width: 30%; vertical-align: top; padding: 0; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                                                    <tr>
+                                                        <td style="width: 40%; border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                            <strong>เลขที่เอกสาร:</strong>
+                                                            <t t-esc="o.name"/>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                            <strong>วัน/เดือน/ปี:</strong>
+                                                            <t t-esc="o.boq_date.strftime('%d/%m/%Y') if o.boq_date else ''"/>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                            <strong style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">Revision:</strong>
+                                                            <t t-esc="o.revision or '1.0' "/>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="border: 1px solid #000; padding: 5px; font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">
+                                                            <strong style="font-size: 16px; font-family: 'Sarabun', Arial, sans-serif;">Job Order:</strong>
+                                                            <t t-if="o.job_order_id">
+                                                                <t t-esc="o.job_order_id.name"/>
+                                                            </t>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Sarabun', Arial, sans-serif; margin-top: 10px; border-spacing: 0; border: 1px solid #000;" class="order-line-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 5%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">ลำดับ</th>
+                                                <th style="width: 40%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">รายการ (Description)</th>
+                                                <th style="width: 8%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">จำนวน</th>
+                                                <th style="width: 8%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">หน่วย</th>
+                                                <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">ราคา/หน่วย</th>
+                                                <th style="width: 12%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">จำนวนเงิน</th>
+                                                <th style="width: 17%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">หมายเหตุ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-if="chunk">
+                                                <t t-foreach="chunk" t-as="line">
+                                                    <t t-set="global_line_number" t-value="current_chunk_index * chunk_size + line_index + 1"/>
+                                                    <tr>
+                                                        <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                                            <t t-esc="global_line_number"/>
+                                                        </td>
+                                                        <td style="border: 1px solid #000; padding: 0 2px; margin: 0;">
+                                                            <t t-esc="line.description or (line.product_id.name if line.product_id else '') or ''"/>
+                                                        </td>
+                                                        <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                                            <t t-esc="line.quantity or ''"/>
+                                                        </td>
+                                                        <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                                            <t t-esc="line.uom_id.name if line.uom_id else ''"/>
+                                                        </td>
+                                                        <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                                            <t t-esc="line.unit_cost" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                        </td>
+                                                        <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
+                                                            <t t-esc="line.total_cost" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                        </td>
+                                                        <td style="border: 1px solid #000; padding: 0 2px; margin: 0;">
+                                                            <t t-esc="line.notes or ''"/>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </t>
+                                        </tbody>
+                                        <!-- Show Total Row only on last page -->
+                                        <t t-if="current_chunk_index == len(chunks) - 1">
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="4" style="border: 1px solid #000; text-align: right; padding: 0 5px; font-weight: bold;">รวมทั้งหมด (Total Cost):</td>
+                                                    <td colspan="2" style="border: 1px solid #000; text-align: center; padding: 0 2px; font-weight: bold;">
+                                                        <t t-esc="o.total_cost" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                    </td>
+                                                    <td style="border: 1px solid #000;"></td>
+                                                </tr>
+                                            </tfoot>
+                                        </t>
+                                    </table>
+
+                                    <!-- Signature section only on last page -->
+                                    <t t-if="current_chunk_index == len(chunks) - 1">
+                                        <table style="width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: fixed; font-size: 16px;">
+                                            <tr>
+                                                <!-- ช่องที่ 1 -->
+                                                <td style="width: 33.33%; border: 1px solid #000; vertical-align: top; padding: 2px; text-align: center;">
+                                                    <p style="margin:0;">ผู้จัดทำ (Prepared By)</p>
+                                                    <br/>
+                                                    <p style="margin:0;">____________________</p>
+                                                    <p style="margin:0;">(<t t-if="o.prepared_by"><t t-esc="o.prepared_by.name"/></t><t t-else="">____________________</t>)</p>
+                                                    <p style="margin:0;">(______/______/______)</p>
+                                                </td>
+                                                <!-- ช่องที่ 2 -->
+                                                <td style="width: 33.33%; border: 1px solid #000; vertical-align: top; padding: 2px; text-align: center;">
+                                                    <p style="margin:0;">ผู้ตรวจสอบ (Checked By)</p>
+                                                    <br/>
+                                                    <p style="margin:0;">____________________</p>
+                                                    <p style="margin:0;">(____________________)</p>
+                                                    <p style="margin:0;">(______/______/______)</p>
+                                                </td>
+                                                <!-- ช่องที่ 3 -->
+                                                <td style="width: 33.33%; border: 1px solid #000; vertical-align: top; padding: 2px; text-align: center;">
+                                                    <p style="margin:0;">ผู้อนุมัติ (Approved By)</p>
+                                                    <br/>
+                                                    <p style="margin:0;">____________________</p>
+                                                    <p style="margin:0;">(<t t-if="o.approved_by"><t t-esc="o.approved_by.name"/></t><t t-else="">____________________</t>)</p>
+                                                    <p style="margin:0;">(______/______/______)</p>
                                                 </td>
                                             </tr>
-                                            <t t-set="current_category" t-value="line.category_id"/>
-                                        </t>
-                                        <tr>
-                                            <td><span t-field="line.item_code"/></td>
-                                            <td><span t-field="line.description"/></td>
-                                            <td><span t-field="line.specification"/></td>
-                                            <td class="text-right"><span t-field="line.quantity"/></td>
-                                            <td><span t-field="line.uom_id.name"/></td>
-                                            <td class="text-right"><span t-field="line.unit_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
-                                            <td class="text-right"><span t-field="line.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
-                                            <td class="text-right"><span t-field="line.waste_percentage"/>%</td>
-                                            <td class="text-right"><span t-field="line.adjusted_quantity"/></td>
-                                            <td class="text-right"><span t-field="line.adjusted_total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
-                                        </tr>
+                                        </table>
                                     </t>
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="6" class="text-right"><strong>Total Quantity:</strong></td>
-                                        <td class="text-right"><strong t-field="doc.total_quantity"/></td>
-                                        <td colspan="2" class="text-right"><strong>Total Cost:</strong></td>
-                                        <td class="text-right"><strong t-field="doc.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
 
-                    <div class="oe_structure"/>
-                </div>
+                                </div>
+                            </t>
+                        </t>
+                    </t>
+                </t>
             </t>
         </template>
 
-        <!-- BOQ Report -->
+        <!-- BOQ Report Action -->
         <record id="action_report_boq" model="ir.actions.report">
-            <field name="name">BOQ Report</field>
+            <field name="name">ใบถอดแบบวัสดุ (BOQ)</field>
             <field name="model">boq.boq</field>
-            <field name="report_type">qweb-pdf</field>
-            <field name="report_name">job_costing_management.report_boq_document</field>
-            <field name="report_file">job_costing_management.report_boq_document</field>
-            <field name="binding_model_id" ref="model_boq_boq"/>
+            <field name="report_type">xlsx</field>
+            <field name="report_name">job_costing_management.report_boq_excel</field>
+            <field name="report_file">job_costing_management.report_boq_excel</field>
+            <field name="print_report_name">'BOQ - %s - %s' % (object.name, object.title)</field>
+            <field name="binding_model_id" ref="job_costing_management.model_boq_boq"/>
             <field name="binding_type">report</field>
         </record>
 
