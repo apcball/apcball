@@ -8,6 +8,15 @@ from odoo.tools import float_is_zero, OrderedSet
 class StockMove(models.Model):
     _inherit = "stock.move"
 
+    @staticmethod
+    def _unwrap_price_unit(price_unit):
+        """`_get_price_unit()` returns a plain float except when this module's
+        override finds a location cost history, in which case it returns
+        `{lot: cost}`. Normalize both shapes to a plain float."""
+        if isinstance(price_unit, dict):
+            return next(iter(price_unit.values()))
+        return price_unit
+
     def _create_internal_svl(self, forced_quantity=None):
         """Create a `stock.valuation.layer` from `self`.
 
@@ -21,11 +30,10 @@ class StockMove(models.Model):
             valued_move_lines = move._get_internal_move_lines()
             valued_quantity = 0
             for valued_move_line in valued_move_lines:
-                valued_quantity += valued_move_line.product_uom_id._compute_quantity(valued_move_line.qty_done,
-                                                                                     move.product_id.uom_id)
+                valued_quantity += valued_move_line.quantity_product_uom
 
             new_std_price = move._get_price_unit()  # May be negative (i.e. decrease an out move).
-            unit_cost = abs(next(iter(new_std_price.values())))
+            unit_cost = abs(self._unwrap_price_unit(new_std_price))
 
             in_svl_vals = move.product_id._prepare_internal_in_svl_vals(forced_quantity or valued_quantity, unit_cost,
                                                                         move)
@@ -113,7 +121,7 @@ class StockMove(models.Model):
             if float_is_zero(sum(quantities.values()), precision_rounding=move.product_id.uom_id.rounding):
                 continue
 
-            if move.product_id.lot_valuated:
+            if getattr(move.product_id, 'lot_valuated', False):
                 vals = []
                 for lot_id, qty in quantities.items():
                     out_vals = move.product_id._prepare_out_svl_vals(
@@ -206,18 +214,17 @@ class StockMove(models.Model):
                 valued_move_lines = move._get_internal_move_lines()
             qty_done = 0
             for valued_move_line in valued_move_lines:
-                qty_done += valued_move_line.product_uom_id._compute_quantity(
-                    valued_move_line.qty_done, move.product_id.uom_id)
+                qty_done += valued_move_line.quantity_product_uom
 
             qty = forced_qty or qty_done
-            new_unit_price = move._get_price_unit()  # return cost for product include landed cost for move is in only
+            new_unit_price = self._unwrap_price_unit(move._get_price_unit())  # return cost for product include landed cost for move is in only
             if float_is_zero(product_tot_qty_available, precision_rounding=rounding):
-                new_std_price = next(iter(new_unit_price.values()))
+                new_std_price = new_unit_price
             elif float_is_zero(product_tot_qty_available + move.product_qty, precision_rounding=rounding) \
                     or float_is_zero(product_tot_qty_available + qty, precision_rounding=rounding):
-                new_std_price = next(iter(new_unit_price.values()))
+                new_std_price = new_unit_price
             else:
-                new_std_price = ((amount_unit * product_tot_qty_available) + (next(iter(new_unit_price.values())) * qty)) / (
+                new_std_price = ((amount_unit * product_tot_qty_available) + (new_unit_price * qty)) / (
                             product_tot_qty_available + qty)
             tmpl_dict[move.product_id.id] += qty_done
 
@@ -237,7 +244,7 @@ class StockMove(models.Model):
                         disable_auto_svl=True).sudo().write({'standard_price': new_std_price})
                 std_price_update[move.company_id.id, move.product_id.id] = new_std_price
 
-                incoming_cost = move._get_price_unit()
+                incoming_cost = self._unwrap_price_unit(move._get_price_unit())
 
                 self.env['product.cost.location.history'].create({
                     'company_id': move.company_id.id,
@@ -250,7 +257,7 @@ class StockMove(models.Model):
                     'former_qty': product_tot_qty_available,
                     'former_avg': amount_unit,
                     'incoming_qty': qty,
-                    'incoming_cost': next(iter(incoming_cost.values())),
+                    'incoming_cost': incoming_cost,
                     'move_id': move.id,
                     'name': 'Stock move: ' + move.display_name + ' - '
                             + move.product_id.display_name
