@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="shopee_connector_root_menu" name="Shopee" sequence="10"/>
+    <menuitem id="shopee_connector_root_menu" name="Shopee" sequence="10" web_icon="shopee_connector,static/description/icon.png"/>
     <menuitem id="shopee_connector_config_menu" name="Configurations" parent="shopee_connector_root_menu" sequence="90"/>
     <menuitem id="shopee_connector_log_menu" name="Logs &amp; Queue" parent="shopee_connector_root_menu" sequence="80"/>
 </odoo>

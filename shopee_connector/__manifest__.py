@@ -19,6 +19,6 @@
     ],
     "installable": True,
     "application": True,
-    "icon": "/shopee_odoo_connector/static/description/icon.png",
-    "web_icon": "shopee_odoo_connector,static/description/icon.png",
+    "icon": "/shopee_connector/static/description/icon.png",
+    "web_icon": "shopee_connector,static/description/icon.png",
 }
