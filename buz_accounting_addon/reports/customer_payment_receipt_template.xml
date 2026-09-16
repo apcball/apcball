@@ -121,7 +121,7 @@
                                     <th style="width: 15%;">ชำระเงิน</th>
                                     <th style="width: 30%;">ชื่อ</th>
                                     <th style="width: 15%;">เลขที่เช็ค</th>
-                                    <th style="width: 15%;">วันที่เช็ค</th>
+                                    <th style="width: 15%;">วันที่รับชำระ</th>
                                     <th style="width: 25%;">จำนวนเงินจ่าย</th>
                                 </tr>
                             </thead>

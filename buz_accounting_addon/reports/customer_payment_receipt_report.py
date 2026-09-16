@@ -54,7 +54,7 @@ class CustomerPaymentReceiptReport(models.AbstractModel):
                 "method": dict(payment._fields["buz_payment_channel"].selection).get(payment.buz_payment_channel, "-") if payment.buz_payment_channel else "-",
                 "journal": payment.journal_id.name or "-",
                 "check_number": getattr(payment, "check_number", False) or "-",
-                "date": format_thai_date(payment.date),
+                "date": format_thai_date(payment.received_date or payment.date),
                 "amount": payment.amount or 0.0,
             }]
 
