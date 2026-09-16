@@ -295,33 +295,54 @@ class ShopeeConfig(models.Model):
             for item in info_resp.get("response", {}).get("item_list", []):
                 item_id = item["item_id"]
                 if item.get("has_model"):
-                    model_resp = api.get_model_list(token, item_id)
-                    for model in model_resp.get("response", {}).get("model", []):
+                    models = api.get_model_list(token, item_id).get(
+                        "response", {}
+                    ).get("model", [])
+                    for model in models:
                         sku = model.get("model_sku")
-                        if not sku:
-                            continue
-                        mapping = Mapping.search([
-                            ("shopee_config_id", "=", self.id),
-                            ("shopee_sku", "=", sku),
-                            ("active", "=", True),
-                        ], limit=1)
-                        product = mapping.product_id or Product.search(
-                            [("default_code", "=", sku)], limit=1
-                        )
+                        model_id = model.get("model_id")
+                        if sku:
+                            mapping = Mapping.search([
+                                ("shopee_config_id", "=", self.id),
+                                ("shopee_sku", "=", sku),
+                                ("active", "=", True),
+                            ], limit=1)
+                            product = mapping.product_id or Product.search(
+                                [("default_code", "=", sku)], limit=1
+                            )
+                        else:
+                            # Shopee model has no variant SKU set - fall back to
+                            # a mapping keyed by item_id/model_id (created
+                            # manually, since there's no SKU to auto-match on).
+                            mapping = Mapping.search([
+                                ("shopee_config_id", "=", self.id),
+                                ("shopee_item_id", "=", str(item_id)),
+                                ("shopee_model_id", "=", str(model_id)),
+                                ("active", "=", True),
+                            ], limit=1)
+                            product = mapping.product_id
+                            if not product:
+                                _logger.info(
+                                    "Shopee sync_stock (%s): item %s model %s "
+                                    "has no model_sku and no item/model_id "
+                                    "mapping - skipped.",
+                                    self.name, item_id, model_id,
+                                )
                         if not product:
                             continue
                         product.write({
                             "shopee_item_id": str(item_id),
-                            "shopee_model_id": str(model["model_id"]),
+                            "shopee_model_id": str(model_id),
                             "shopee_stock": self._model_seller_stock(
                                 model.get("stock_info_v2")
                             ),
                             "shopee_last_sync": fields.Datetime.now(),
                         })
-                        Mapping.upsert(
-                            self, sku, product, item_id=item_id,
-                            model_id=model.get("model_id"),
-                        )
+                        if sku:
+                            Mapping.upsert(
+                                self, sku, product, item_id=item_id,
+                                model_id=model_id,
+                            )
                         updated += 1
                 else:
                     sku = item.get("item_sku")
