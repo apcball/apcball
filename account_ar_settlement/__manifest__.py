@@ -27,6 +27,7 @@ Menu Location:
     'license': 'LGPL-3',
     'depends': [
         'account',
+        'buz_accounting_addon',
         'mail',
         'sale',
     ],

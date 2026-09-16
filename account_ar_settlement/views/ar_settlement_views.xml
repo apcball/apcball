@@ -104,6 +104,9 @@
                                    readonly="state != 'draft'"/>
                             <field name="journal_id"
                                    readonly="state != 'draft'"/>
+                            <field name="payment_channel"
+                                   required="state == 'draft'"
+                                   readonly="state != 'draft'"/>
                             <field name="currency_id"
                                    readonly="state != 'draft'"
                                    groups="base.group_multi_currency"/>

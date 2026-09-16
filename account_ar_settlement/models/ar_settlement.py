@@ -42,6 +42,17 @@ class ArSettlement(models.Model):
         states={'confirmed': [('readonly', True)]},
     )
 
+    payment_channel = fields.Selection([
+        ('bank_transfer', 'โอนเงิน'),
+        ('cash', 'เงินสด'),
+        ('cheque', 'เช็ค'),
+        ('card', 'บัตรเครดิต/เดบิต'),
+        ('other', 'อื่น ๆ'),
+    ], string='Payment Channel',
+        states={'confirmed': [('readonly', True)]},
+        help='ช่องทางการชำระเงินจริงของ Customer Payment',
+    )
+
     payment_date = fields.Date(
         string='Payment Date', required=True,
         default=fields.Date.context_today,
@@ -407,6 +418,8 @@ class ArSettlement(models.Model):
         self.ensure_one()
         if self.state != 'draft':
             raise UserError(_('Settlement is already confirmed.'))
+        if not self.payment_channel:
+            raise UserError(_('Please select the actual payment channel before confirming the settlement.'))
 
         # ── Step 0: Auto-fill pay_amount for selected lines ───────────────
         # Do this FIRST so all subsequent calculations use real amounts.
@@ -464,6 +477,7 @@ class ArSettlement(models.Model):
             'currency_id': self.currency_id.id,
             'payment_type': 'inbound',
             'partner_type': 'customer',
+            'buz_payment_channel': self.payment_channel,
             'ref': self.name,
         }
         payment = self.env['account.payment'].create(payment_vals)
