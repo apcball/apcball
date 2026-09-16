@@ -9,7 +9,14 @@
                 <field name="shopee_sku"/>
                 <field name="shopee_item_id"/>
                 <field name="shopee_model_id"/>
+                <field name="shopee_item_name"/>
+                <field name="shopee_model_name"/>
                 <field name="product_id"/>
+                <field name="odoo_sku"/>
+                <field name="shopee_stock"/>
+                <field name="last_stock_sync"/>
+                <field name="last_pushed_stock"/>
+                <field name="last_stock_push"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -22,11 +29,17 @@
                 <sheet>
                     <group>
                         <field name="shopee_config_id"/>
+                        <field name="company_id" invisible="1"/>
                         <field name="shopee_sku"/>
                         <field name="shopee_item_id"/>
                         <field name="shopee_model_id"/>
+                        <field name="shopee_item_name" readonly="1"/>
+                        <field name="shopee_model_name" readonly="1"/>
                         <field name="product_id"/>
+                        <field name="odoo_sku" readonly="1"/>
                         <field name="active"/>
+                        <field name="shopee_stock" readonly="1"/>
+                        <field name="last_stock_sync" readonly="1"/>
                         <field name="last_pushed_stock" readonly="1"/>
                         <field name="last_stock_push" readonly="1"/>
                     </group>

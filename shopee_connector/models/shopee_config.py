@@ -278,8 +278,6 @@ class ShopeeConfig(models.Model):
         self.ensure_one()
         token = self._ensure_valid_token()
         api = self._get_api()
-        Product = self.env["product.product"]
-
         offset = 0
         updated = 0
         Mapping = self.env["shopee.product.mapping"]
@@ -307,9 +305,7 @@ class ShopeeConfig(models.Model):
                                 ("shopee_sku", "=", sku),
                                 ("active", "=", True),
                             ], limit=1)
-                            product = mapping.product_id or Product.search(
-                                [("default_code", "=", sku)], limit=1
-                            )
+                            product = mapping.product_id or Mapping.find_product_by_sku(sku)
                         else:
                             # Shopee model has no variant SKU set - fall back to
                             # a mapping keyed by item_id/model_id (created
@@ -328,21 +324,25 @@ class ShopeeConfig(models.Model):
                                     "mapping - skipped.",
                                     self.name, item_id, model_id,
                                 )
+                        stock_quantity = self._model_seller_stock(
+                            model.get("stock_info_v2")
+                        )
+                        synced_at = fields.Datetime.now()
+                        mapping = Mapping.upsert(
+                            self, sku, product, item_id=item_id,
+                            model_id=model_id, shopee_stock=stock_quantity,
+                            stock_sync_at=synced_at,
+                            item_name=item.get("item_name"),
+                            model_name=model.get("model_name"),
+                        )
                         if not product:
                             continue
                         product.write({
                             "shopee_item_id": str(item_id),
                             "shopee_model_id": str(model_id),
-                            "shopee_stock": self._model_seller_stock(
-                                model.get("stock_info_v2")
-                            ),
-                            "shopee_last_sync": fields.Datetime.now(),
+                            "shopee_stock": stock_quantity,
+                            "shopee_last_sync": synced_at,
                         })
-                        if sku:
-                            Mapping.upsert(
-                                self, sku, product, item_id=item_id,
-                                model_id=model_id,
-                            )
                         updated += 1
                 else:
                     sku = item.get("item_sku")
@@ -353,20 +353,24 @@ class ShopeeConfig(models.Model):
                         ("shopee_sku", "=", sku),
                         ("active", "=", True),
                     ], limit=1)
-                    product = mapping.product_id or Product.search(
-                        [("default_code", "=", sku)], limit=1
+                    product = mapping.product_id or Mapping.find_product_by_sku(sku)
+                    stock_quantity = self._model_seller_stock(
+                        item.get("stock_info_v2")
+                    )
+                    synced_at = fields.Datetime.now()
+                    mapping = Mapping.upsert(
+                        self, sku, product, item_id=item_id,
+                        shopee_stock=stock_quantity, stock_sync_at=synced_at,
+                        item_name=item.get("item_name"),
                     )
                     if not product:
                         continue
                     product.write({
                         "shopee_item_id": str(item_id),
                         "shopee_model_id": False,
-                        "shopee_stock": self._model_seller_stock(
-                            item.get("stock_info_v2")
-                        ),
-                        "shopee_last_sync": fields.Datetime.now(),
+                        "shopee_stock": stock_quantity,
+                        "shopee_last_sync": synced_at,
                     })
-                    Mapping.upsert(self, sku, product, item_id=item_id)
                     updated += 1
 
             if not item_data.get("has_next_page"):

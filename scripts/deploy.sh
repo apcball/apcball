@@ -31,6 +31,7 @@ case "$TARGET" in
     dev)
         echo ">>> Deploying $MODULE to DEV..."
         rsync -az --delete "$SRC" dev:/srv/docker/odoo/custom-addons/"$MODULE"/
+        ssh dev "chmod -R +r /srv/docker/odoo/custom-addons/$MODULE"
         ssh dev "docker exec odoo odoo -d MOG_DEV -u $MODULE --stop-after-init --no-http"
         printf "$UPDATE_LIST_PY" "MOG_DEV" "MOG_DEV" | ssh dev "docker exec -i odoo python3 -c \"\$(cat)\""
         # The upgrade runs in a separate process; HTTP workers still have the
