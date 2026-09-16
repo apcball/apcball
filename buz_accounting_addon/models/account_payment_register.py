@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 
 class AccountPaymentRegister(models.TransientModel):
     _inherit = 'account.payment.register'
+    received_date = fields.Date(string='Received date', default=fields.Date.context_today, copy=False)
     buz_payment_channel = fields.Selection([('bank_transfer', '\u0e42\u0e2d\u0e19\u0e40\u0e07\u0e34\u0e19'), ('cash', '\u0e40\u0e07\u0e34\u0e19\u0e2a\u0e14'), ('cheque', '\u0e40\u0e0a\u0e47\u0e04'), ('card', '\u0e1a\u0e31\u0e15\u0e23\u0e40\u0e04\u0e23\u0e14\u0e34\u0e15/\u0e40\u0e14\u0e1a\u0e34\u0e15'), ('other', '\u0e2d\u0e37\u0e48\u0e19 \u0e46')], string='\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e32\u0e07\u0e01\u0e32\u0e23\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e08\u0e23\u0e34\u0e07')
 
 
@@ -42,12 +43,24 @@ class AccountPaymentRegister(models.TransientModel):
     def _create_payment_vals_from_wizard(self, batch_result):
         vals = super()._create_payment_vals_from_wizard(batch_result)
         vals = self._add_payment_channel(vals)
+        vals = self._add_received_date(vals)
         return self._add_refund_pv_link(vals)
 
     def _create_payment_vals_from_batch(self, batch_result):
         vals = super()._create_payment_vals_from_batch(batch_result)
         vals = self._add_payment_channel(vals)
+        vals = self._add_received_date(vals)
         return self._add_refund_pv_link(vals)
+
+    def _add_received_date(self, vals):
+        """ส่งวันที่รับเงินจริงไปเก็บใน Payment โดยไม่เปลี่ยนวันที่ลงบัญชี"""
+        if (
+            self.payment_type == 'inbound'
+            and self.partner_type == 'customer'
+            and self.received_date
+        ):
+            vals['received_date'] = self.received_date
+        return vals
 
     def _add_payment_channel(self, vals):
         if self.payment_type == 'inbound' and self.partner_type == 'customer' and not self.buz_payment_channel:
