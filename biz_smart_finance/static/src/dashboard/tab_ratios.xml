@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabRatios">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'ratios'" data="props.data"/>
+
+        <!-- 4 กลุ่มอัตราส่วน -->
+        <section t-foreach="ra.groups" t-as="group" t-key="group.key"
+                 class="o_bsf_card span6" t-att-class="zoomCls('ratio_' + group.key)">
+            <button class="o_bsf_zoombtn"
+                    t-on-click="() => this.toggleZoom('ratio_' + group.key)"
+                    t-att-title="isZoomed('ratio_' + group.key) ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ratio_' + group.key) ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ratio_' + group.key) ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b><t t-esc="group.label"/></b>
+                <span>ณ <t t-esc="echoFilters.as_of"/> เทียบ <t t-esc="echoFilters.as_of_prior"/></span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr>
+                            <th>อัตราส่วน</th>
+                            <th class="bsf_num">งวดนี้</th>
+                            <th class="bsf_num">ปีก่อน</th>
+                            <th class="bsf_num">Δ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="group.rows" t-as="row" t-key="row.key"
+                            class="o_bsf_row_click"
+                            t-att-title="flagNotes(row) or 'คลิกดูรายการบัญชีที่ประกอบเป็นตัวเลขนี้'"
+                            t-on-click="() => this.openRow(row)">
+                            <td>
+                                <t t-esc="row.label"/>
+                                <i t-if="row.flags.length"
+                                   class="fa fa-info-circle ms-1"
+                                   style="opacity: .6;"/>
+                            </td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.value, row.unit)"/></td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.prior, row.unit)"/></td>
+                            <td t-attf-class="bsf_num {{ rowDeltaClass(row) }}">
+                                <t t-esc="fmtDeltaUnit(row.delta, row.unit)"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- รายบริษัท -->
+        <section class="o_bsf_card span8" t-att-class="zoomCls('ratio_bu')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ratio_bu')"
+                    t-att-title="isZoomed('ratio_bu') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ratio_bu') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ratio_bu') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>อัตราส่วนรายบริษัท</b>
+                <span>คิดจากตัวเลขของแต่ละบริษัทตามแหล่งที่ตั้งไว้</span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr>
+                            <th>บริษัท</th>
+                            <th class="bsf_num">Current</th>
+                            <th class="bsf_num">D/E</th>
+                            <th class="bsf_num">NPM</th>
+                            <th class="bsf_num">ROE</th>
+                            <th class="bsf_num">DIO</th>
+                            <th class="bsf_num">CCC</th>
+                            <th>แหล่ง</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="ra.by_company" t-as="row" t-key="row.company_id">
+                            <td><t t-esc="row.name"/></td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.current_ratio, 'x')"/></td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.debt_to_equity, 'x')"/></td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.net_margin_pct, 'pct')"/></td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.roe_pct, 'pct')"/></td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.dio_days, 'days')"/></td>
+                            <td class="bsf_num"><t t-esc="fmtValue(row.ccc_days, 'days')"/></td>
+                            <td>
+                                <span class="o_bsf_chip"
+                                      t-attf-style="background: {{ row.source === 'external' ? '#fbbf24' : '#cbd5e1' }};">
+                                    <t t-esc="row.source === 'external' ? 'ภายนอก' : 'Odoo'"/>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- แหล่งข้อมูล / ตัวเลขที่ขาด -->
+        <section class="o_bsf_card span4" t-att-class="zoomCls('ratio_src')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ratio_src')"
+                    t-att-title="isZoomed('ratio_src') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ratio_src') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ratio_src') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>แหล่งข้อมูล</b>
+                <span><t t-esc="sourceLabel"/></span>
+            </div>
+            <div class="o_bsf_empty_note">
+                ตั้งค่าแหล่งข้อมูลต่อบริษัทได้ที่
+                <a t-on-click="openConfig">Smart Finance Settings</a>
+                · ค่าที่ขึ้น "—" คือคำนวณไม่ได้ (ตัวตั้งขาดหรือตัวหารเป็นศูนย์)
+                ไม่ใช่ศูนย์
+            </div>
+            <t t-if="ra.missing_by_company.length">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr><th>บริษัท</th><th>ตัวเลขที่ยังขาด</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="ra.missing_by_company" t-as="row"
+                            t-key="row.company_id" class="o_bsf_row_click"
+                            title="คลิกไปกรอกตัวเลขระบบภายนอก"
+                            t-on-click="() => this.openExtFacts(row.company_id)">
+                            <td><t t-esc="row.name"/></td>
+                            <td><t t-esc="row.missing.join(', ')"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </t>
+        </section>
+    </div>
+</t>
+
+</templates>

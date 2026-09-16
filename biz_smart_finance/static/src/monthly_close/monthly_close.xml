@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.MonthlyClose">
+    <div class="o_bsf_page o_bsf_light">
+
+        <!-- ================= Header ================= -->
+        <div class="o_bsf_header">
+            <button class="o_bsf_iconbtn" t-on-click="goBack" title="กลับ">
+                <i class="fa fa-arrow-left"/>
+            </button>
+            <div>
+                <h1><span class="h_brand">Monthly</span> Close</h1>
+                <span class="h_sub">Smart Finance · สถานะปิดงวดและแหล่งข้อมูลรายบริษัทรายเดือน</span>
+            </div>
+            <div class="o_bsf_spacer"/>
+            <span t-if="state.data" class="o_bsf_stamp">
+                <i class="fa fa-clock-o"/> อัปเดต <t t-esc="state.data.updated_at"/>
+            </span>
+            <button class="o_bsf_iconbtn" t-on-click="load"
+                    t-att-disabled="state.loading" title="รีเฟรช">
+                <i t-attf-class="fa fa-refresh {{ state.loading ? 'fa-spin' : '' }}"/>
+            </button>
+        </div>
+
+        <t t-if="state.loading and !state.data">
+            <div class="o_bsf_loading">
+                <i class="fa fa-spinner fa-spin"/>
+                <span>กำลังรวบรวมสถานะปิดงวด...</span>
+            </div>
+        </t>
+        <t t-elif="state.error">
+            <div class="alert alert-danger m-3">
+                <i class="fa fa-exclamation-triangle me-1"/><t t-esc="state.error"/>
+            </div>
+        </t>
+        <t t-elif="!state.data">
+            <div class="o_bsf_loading">ไม่สามารถโหลดข้อมูลได้ — ลองรีเฟรชอีกครั้ง</div>
+        </t>
+        <t t-else="">
+
+            <!-- ================= Toolbar ================= -->
+            <div class="o_bsf_toolbar">
+                <label>บริษัท</label>
+                <!-- t-att-value + t-att-selected คู่กันเสมอ (ดูคอมเมนต์ใน CFO Cockpit) -->
+                <select class="o_bsf_select" t-att-value="state.companyId"
+                        t-on-change="(ev) => this.setFilter('companyId', ev)">
+                    <option value="">Group (รวมทุกบริษัท)</option>
+                    <t t-foreach="state.data.filters.companies" t-as="company" t-key="company.id">
+                        <option t-att-value="company.id" t-esc="company.name"
+                                t-att-selected="company.id == state.companyId"/>
+                    </t>
+                </select>
+                <label>ปีงบ</label>
+                <select class="o_bsf_select" t-att-value="state.year"
+                        t-att-title="state.data.filters.fy_label"
+                        t-on-change="(ev) => this.setFilter('year', ev)">
+                    <t t-foreach="state.data.filters.years" t-as="year" t-key="year">
+                        <option t-att-value="year" t-esc="'FY' + year"
+                                t-att-selected="year == state.year"/>
+                    </t>
+                </select>
+                <label>หน่วย</label>
+                <div class="o_bsf_segment">
+                    <button t-attf-class="{{ state.unit === 'mb' ? 'active' : '' }}"
+                            t-on-click="() => this.setUnit('mb')">
+                        <t t-esc="state.data.filters.currency"/> (million)</button>
+                    <button t-attf-class="{{ state.unit === 'thb' ? 'active' : '' }}"
+                            t-on-click="() => this.setUnit('thb')"
+                            t-esc="state.data.filters.currency"/>
+                </div>
+                <div class="o_bsf_spacer"/>
+                <span class="o_bsf_stamp">
+                    <t t-esc="state.data.filters.company_label"/> ·
+                    <b t-esc="state.data.filters.fy_label"/>
+                </span>
+            </div>
+
+            <!-- ================= Body ================= -->
+            <div class="o_bsf_body">
+                <BsfTabClose data="state.data" unit="state.unit"/>
+            </div>
+        </t>
+
+        <!-- ฉากหลังของกล่องที่กางเต็มจอ — กดที่ไหนก็ได้เพื่อหุบกลับ -->
+        <div class="o_bsf_zoom_back" t-if="zoomState.key" t-on-click="closeZoom"/>
+    </div>
+</t>
+
+</templates>

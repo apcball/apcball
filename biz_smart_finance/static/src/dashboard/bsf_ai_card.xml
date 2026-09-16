@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.AiCard">
+    <section t-if="configured" class="o_bsf_card o_bsf_ai_card" t-att-class="zoomCls('aicard_1')">
+        <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('aicard_1')"
+                t-att-title="isZoomed('aicard_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                t-att-aria-label="isZoomed('aicard_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+            <i t-attf-class="fa {{ isZoomed('aicard_1') ? 'fa-compress' : 'fa-expand' }}"/>
+        </button>
+        <div class="ai_head">
+            <b><i class="fa fa-magic me-1"/>AI CFO Brief</b>
+            <div class="o_bsf_spacer"/>
+            <button class="o_bsf_iconbtn ai_btn" t-on-click="generate"
+                    t-att-disabled="state.loading">
+                <i t-attf-class="fa {{ state.loading ? 'fa-circle-o-notch fa-spin' : 'fa-bolt' }} me-1"/>
+                <t t-esc="state.loading ? 'กำลังวิเคราะห์...' : 'AI วิเคราะห์แท็บนี้'"/>
+            </button>
+        </div>
+        <div t-if="state.brief" class="ai_body">
+            <p class="ai_summary" t-esc="state.brief.summary"/>
+            <ul class="ai_insights" t-if="state.brief.insights.length">
+                <li t-foreach="state.brief.insights" t-as="insight" t-key="insight_index">
+                    <t t-esc="insight"/>
+                </li>
+            </ul>
+            <div class="ai_actions" t-if="sortedActions.length">
+                <span t-foreach="sortedActions" t-as="action" t-key="action_index"
+                      class="o_bsf_chip ai_action" t-att-title="action.reason">
+                    <t t-esc="action_index + 1"/>. <t t-esc="action.name"/>
+                </span>
+            </div>
+        </div>
+    </section>
+</t>
+
+</templates>

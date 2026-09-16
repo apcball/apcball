@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_forecast_snapshot_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.forecast.snapshot.tree</field>
+        <field name="model">biz.smart.finance.forecast.snapshot</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0">
+                <field name="snapshot_date"/>
+                <field name="company_id"/>
+                <field name="horizon_months"/>
+                <field name="kpi_revenue_12m" widget="monetary"/>
+                <field name="kpi_net_cash_low" widget="monetary"
+                       decoration-danger="kpi_net_cash_low &lt; 0"/>
+                <field name="kpi_pipeline_weighted" widget="monetary"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_forecast_snapshot_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.forecast.snapshot.form</field>
+        <field name="model">biz.smart.finance.forecast.snapshot</field>
+        <field name="arch" type="xml">
+            <form string="ภาพนิ่งพยากรณ์" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="snapshot_date"/>
+                            <field name="company_id"/>
+                            <field name="horizon_months"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="kpi_revenue_12m" widget="monetary"/>
+                            <field name="kpi_net_cash_low" widget="monetary"/>
+                            <field name="kpi_pipeline_weighted" widget="monetary"/>
+                        </group>
+                    </group>
+                    <group string="ข้อมูลกริดเต็ม (JSON)">
+                        <field name="payload_json" nolabel="1" widget="text"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_forecast_snapshot" model="ir.actions.act_window">
+        <field name="name">ภาพนิ่งพยากรณ์</field>
+        <field name="res_model">biz.smart.finance.forecast.snapshot</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีภาพนิ่ง</p>
+            <p>ระบบเก็บภาพกริดพยากรณ์ให้อัตโนมัติทุกต้นเดือน เพื่อให้ย้อนดูได้ว่า
+            "ตอนนั้นเราคาดว่าอย่างไร" แล้วเทียบกับที่เกิดขึ้นจริง</p>
+        </field>
+    </record>
+</odoo>

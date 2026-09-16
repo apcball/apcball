@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_ext_gl_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.gl.tree</field>
+        <field name="model">biz.smart.finance.ext.gl</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="diff" decoration-muted="state == 'draft'">
+                <field name="company_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="line_count"/>
+                <field name="dr_total" widget="monetary"/>
+                <field name="cr_total" widget="monetary"/>
+                <field name="diff" widget="monetary"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'posted'"
+                       decoration-warning="state == 'draft'"/>
+                <field name="source"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_ext_gl_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.gl.form</field>
+        <field name="model">biz.smart.finance.ext.gl</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_post" type="object" string="ยืนยัน"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_reset_to_draft" type="object"
+                            string="กลับเป็นร่าง" invisible="state != 'posted'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not diff">
+                        Trial Balance ไม่ดุล — ผลต่าง (เดบิต − เครดิต) =
+                        <field name="diff" widget="monetary" class="oe_inline"/>
+                        — ยืนยันไม่ได้จนกว่าจะแก้ให้เป็น 0
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"
+                                   readonly="state == 'posted'"/>
+                            <field name="date_from"
+                                   readonly="state == 'posted'"/>
+                            <field name="date_to"
+                                   readonly="state == 'posted'"/>
+                            <field name="period_id"/>
+                        </group>
+                        <group>
+                            <field name="dr_total" widget="monetary"/>
+                            <field name="cr_total" widget="monetary"/>
+                            <field name="diff" widget="monetary"/>
+                            <field name="source"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="note"/>
+                    <field name="line_ids"
+                           readonly="state == 'posted'">
+                        <tree editable="bottom">
+                            <field name="company_id" column_invisible="1"/>
+                            <field name="ext_account_id"/>
+                            <field name="account_type"/>
+                            <field name="opening" widget="monetary"/>
+                            <field name="debit" widget="monetary"/>
+                            <field name="credit" widget="monetary"/>
+                            <field name="balance" widget="monetary"/>
+                            <field name="closing" widget="monetary"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_bsf_ext_gl_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.gl.search</field>
+        <field name="model">biz.smart.finance.ext.gl</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="company_id"/>
+                <filter name="draft_only" string="ยังเป็นร่าง"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="unbalanced" string="ไม่ดุล"
+                        domain="[('diff', '!=', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="บริษัท"
+                            context="{'group_by': 'company_id'}"/>
+                    <filter name="group_state" string="สถานะ"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bsf_ext_gl" model="ir.actions.act_window">
+        <field name="name">Trial Balance ภายนอก</field>
+        <field name="res_model">biz.smart.finance.ext.gl</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มี Trial Balance</p>
+            <p>ใช้เมนู "นำเข้า Trial Balance" เพื่ออัปโหลดไฟล์ หรือกด Create
+            เพื่อกรอกมือ — ยืนยัน (Post) ได้เมื่อผลต่างเดบิต/เครดิตเป็น 0
+            เท่านั้น งวดที่ยืนยันแล้วเท่านั้นที่ CFO Cockpit จะอ่าน</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bsf_ext_gl" name="Trial Balance ภายนอก"
+              parent="menu_bsf_inputs" action="action_bsf_ext_gl"
+              sequence="7"/>
+</odoo>

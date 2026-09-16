@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_vo_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.vo.tree</field>
+        <field name="model">biz.smart.finance.vo</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="company_id" optional="hide"/>
+                <field name="amount" widget="monetary"/>
+                <field name="margin_impact" widget="monetary"/>
+                <field name="state"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_vo_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.vo.form</field>
+        <field name="model">biz.smart.finance.vo</field>
+        <field name="arch" type="xml">
+            <form string="Variation Order">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="project_id"/>
+                            <field name="date"/>
+                            <field name="state"/>
+                        </group>
+                        <group>
+                            <field name="amount" widget="monetary"/>
+                            <field name="margin_impact" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_vo" model="ir.actions.act_window">
+        <field name="name">Variation Orders</field>
+        <field name="res_model">biz.smart.finance.vo</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มี Variation Order</p>
+            <p>บันทึกงานเพิ่ม/ลดกับผลกระทบต่อกำไร เพื่อขึ้นตาราง
+            Variation Orders Impact ในแท็บ Project Margin</p>
+        </field>
+    </record>
+</odoo>

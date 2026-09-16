@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabSales">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'sales'" data="props.data"/>
+        <!-- funnel -->
+        <section class="o_bsf_card" t-att-class="zoomCls('sales_1')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('sales_1')"
+                    t-att-title="isZoomed('sales_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('sales_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('sales_1') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Sales to Cash Funnel (YTD)</b>
+                <span>หน่วย: <t t-esc="unitLabel"/> · Production/Install วัดจาก
+                    earned value ของงาน BOQ (ฐานต่างชนิดกับ Booking — % เป็นทิศทาง)</span>
+            </div>
+            <div class="o_bsf_funnel">
+                <div t-foreach="sales.funnel" t-as="stage" t-key="stage.stage"
+                     class="f_stage" t-on-click="() => this.openStage(stage)"
+                     t-att-title="'คลิกดูเอกสาร ' + stage.label"
+                     t-attf-style="border-top-color: {{ stageColor(stage_index) }};">
+                    <i t-attf-class="fa {{ stageIcon(stage.stage) }}"
+                       t-attf-style="color: {{ stageColor(stage_index) }};"/>
+                    <span class="f_label"><t t-esc="stage.label"/></span>
+                    <span class="f_value bsf_num"><t t-esc="fmtMoney(stage.value)"/></span>
+                    <span class="f_conv" t-if="stage.conv_pct !== null">
+                        <t t-esc="fmtPct(stage.conv_pct)"/>
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- conversion tables -->
+        <section class="o_bsf_card span6" t-att-class="zoomCls('sales_2')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('sales_2')"
+                    t-att-title="isZoomed('sales_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('sales_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('sales_2') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Conversion by Channel</b>
+                <span>ทีมขาย = ช่องทาง · <t t-esc="unitLabel"/></span>
+            </div>
+            <table class="o_bsf_table">
+                <thead>
+                    <tr><th>Channel</th><th>Booking</th><th>Collection</th><th>Conversion</th></tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="sales.by_channel" t-as="row" t-key="row.key"
+                        class="o_bsf_row_click" t-on-click="() => this.openChannel(row)">
+                        <td><t t-esc="row.name"/></td>
+                        <td t-attf-class="{{ zero(row.booking) }}"><t t-esc="fmtMoney(row.booking)"/></td>
+                        <td t-attf-class="{{ zero(row.collection) }}"><t t-esc="fmtMoney(row.collection)"/></td>
+                        <td><t t-esc="fmtPct(row.conv_pct)"/></td>
+                    </tr>
+                    <tr t-if="!sales.by_channel.length"><td colspan="4">ยังไม่มียอดขายในช่วงที่เลือก</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="o_bsf_card span6" t-att-class="zoomCls('sales_3')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('sales_3')"
+                    t-att-title="isZoomed('sales_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('sales_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('sales_3') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Conversion by BU</b>
+                <span>รายบริษัท · <t t-esc="unitLabel"/></span>
+            </div>
+            <table class="o_bsf_table">
+                <thead>
+                    <tr><th>BU</th><th>Booking</th><th>Collection</th><th>Conversion</th></tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="sales.by_bu" t-as="row" t-key="row.key"
+                        class="o_bsf_row_click" t-on-click="() => this.openBu(row)">
+                        <td><t t-esc="row.name"/></td>
+                        <td t-attf-class="{{ zero(row.booking) }}"><t t-esc="fmtMoney(row.booking)"/></td>
+                        <td t-attf-class="{{ zero(row.collection) }}"><t t-esc="fmtMoney(row.collection)"/></td>
+                        <td><t t-esc="fmtPct(row.conv_pct)"/></td>
+                    </tr>
+                    <tr t-if="!sales.by_bu.length"><td colspan="4">ยังไม่มียอดขายในช่วงที่เลือก</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- key metrics -->
+        <section class="o_bsf_card" t-att-class="zoomCls('sales_4')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('sales_4')"
+                    t-att-title="isZoomed('sales_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('sales_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('sales_4') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head"><b>Key Metrics (YTD)</b><span>ตัวชี้วัดสำคัญ</span></div>
+            <div class="o_bsf_kpis">
+                <div class="o_bsf_kpi">
+                    <span class="k_label">DSO</span>
+                    <b class="k_value">
+                        <t t-if="sales.metrics.dso_days !== null">
+                            <t t-esc="fmtInt(sales.metrics.dso_days)"/><em>days</em>
+                        </t>
+                        <t t-else="">—</t>
+                    </b>
+                    <span t-attf-class="k_sub {{ deltaClass(sales.metrics.dso_delta !== null ? -sales.metrics.dso_delta : null) }}">
+                        <t t-if="sales.metrics.dso_delta !== null">
+                            <t t-esc="(sales.metrics.dso_delta &gt; 0 ? '+' : '') + fmtInt(sales.metrics.dso_delta)"/> days YoY
+                        </t>
+                        <t t-if="sales.metrics.dso_target !== null">
+                            · เป้า <t t-esc="fmtInt(sales.metrics.dso_target)"/> วัน
+                        </t>
+                    </span>
+                </div>
+                <div class="o_bsf_kpi">
+                    <span class="k_label">Backlog Coverage</span>
+                    <b class="k_value">
+                        <t t-if="sales.metrics.backlog_coverage_x !== null">
+                            <t t-esc="fmtNum(sales.metrics.backlog_coverage_x, 2)"/><em>x</em>
+                        </t>
+                        <t t-else="">—</t>
+                    </b>
+                    <span class="k_sub">เทียบรายได้ 12 เดือน</span>
+                </div>
+                <div class="o_bsf_kpi">
+                    <span class="k_label">Billing to Collection</span>
+                    <b class="k_value"><t t-esc="fmtPct(sales.metrics.billing_to_collection_pct)"/></b>
+                    <span class="k_sub">เก็บเงินได้จากยอดที่วางบิล</span>
+                </div>
+                <div class="o_bsf_kpi is-click" t-on-click="openTotalAr"
+                     title="คลิกดูใบแจ้งหนี้คงค้าง">
+                    <span class="k_label">Total AR</span>
+                    <b class="k_value"><t t-esc="fmtMoney(sales.metrics.total_ar)"/></b>
+                    <span class="k_sub">ลูกหนี้คงค้างทั้งหมด</span>
+                </div>
+                <div class="o_bsf_kpi is-click" t-on-click="openOverdueAr">
+                    <span class="k_label">Overdue &gt; 60 days</span>
+                    <b class="k_value" style="color: var(--bsf-risk);">
+                        <t t-esc="fmtMoney(sales.metrics.overdue_60)"/>
+                    </b>
+                    <span class="k_sub">คลิกเพื่อดูรายใบ</span>
+                </div>
+            </div>
+        </section>
+    </div>
+</t>
+
+</templates>

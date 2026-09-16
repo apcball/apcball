@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_fact_import_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.fact.import.form</field>
+        <field name="model">biz.smart.finance.fact.import</field>
+        <field name="arch" type="xml">
+            <form string="Import External Figures">
+                <sheet>
+                    <div class="mb-3">
+                        <button name="action_template_csv" type="object" string="ดาวน์โหลดตัวอย่าง CSV" class="btn-link"/>
+                        <button name="action_template_xlsx" type="object" string="ดาวน์โหลดตัวอย่าง Excel พร้อมคำแนะนำ" class="btn-link"/>
+                        <p>แก้ข้อมูลตัวอย่างให้เป็นข้อมูลจริงก่อนนำเข้า · หลังแก้ตาราง กดตรวจสอบข้อมูลโดยไม่ต้องอัปโหลดใหม่</p>
+                    </div>
+                    <div class="alert alert-info" role="status">
+                        ไฟล์ CSV/XLSX แถวแรกเป็นหัวคอลัมน์:
+                        <code>kind, metric_key, category, amount, qty</code> —
+                        kind = <code>inventory</code> (ใส่ category, metric_key เว้นได้)
+                        หรือ <code>ratio_input</code> (ใส่ metric_key เช่น
+                        total_assets, revenue_ytd)
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="file_data" filename="file_name"/>
+                            <field name="file_name" invisible="1"/>
+                            <field name="replace_existing"/>
+                            <field name="state" invisible="1"/>
+                        </group>
+                    </group>
+                    <group invisible="state != 'preview'">
+                        <field name="valid_count"/>
+                        <field name="error_count"/>
+                    </group>
+                    <field name="line_ids" invisible="state != 'preview'">
+                        <tree editable="bottom"
+                              decoration-danger="not valid">
+                            <field name="row_index"/>
+                            <field name="input_errors" column_invisible="1"/>
+                            <field name="kind"/>
+                            <field name="metric_key"/>
+                            <field name="label"/>
+                            <field name="amount"/>
+                            <field name="qty"/>
+                            <field name="warning"/>
+                            <field name="valid" column_invisible="1"/>
+                        </tree>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_preview" type="object" string="ตรวจไฟล์"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_validate" type="object" string="ตรวจสอบข้อมูล"
+                            invisible="state != 'preview'"/>
+                    <button name="action_import" type="object" string="นำเข้า"
+                            class="btn-primary" invisible="state != 'preview'"/>
+                    <button string="ยกเลิก" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_fact_import" model="ir.actions.act_window">
+        <field name="name">Import External Figures</field>
+        <field name="res_model">biz.smart.finance.fact.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_bsf_fact_import" name="Import External Figures"
+              parent="menu_bsf_inputs" action="action_bsf_fact_import"
+              sequence="41"/>
+</odoo>

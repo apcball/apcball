@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_config_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.config.tree</field>
+        <field name="model">biz.smart.finance.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="company_id"/>
+                <field name="min_cash_requirement" widget="monetary"/>
+                <field name="net_debt_equity_target"/>
+                <field name="dso_target_days"/>
+                <field name="margin_leakage_alert_pct"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_config_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.config.form</field>
+        <field name="model">biz.smart.finance.config</field>
+        <field name="arch" type="xml">
+            <form string="Smart Finance Settings">
+                <sheet>
+                    <group>
+                        <group string="บริษัท">
+                            <field name="company_id"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="เป้าหมาย / เพดาน">
+                            <field name="min_cash_requirement" widget="monetary"/>
+                            <field name="net_debt_equity_target"/>
+                            <field name="dso_target_days"/>
+                            <field name="margin_leakage_alert_pct"/>
+                        </group>
+                    </group>
+                    <group string="Scenario (Risk Radar)">
+                        <group string="Downside">
+                            <field name="downside_collection_delay_pct"/>
+                            <field name="downside_margin_hit_pct"/>
+                            <field name="downside_material_cost_pct"/>
+                            <field name="downside_interest_rate_bps"/>
+                            <field name="downside_booking_conversion_pct"/>
+                            <field name="downside_install_delay_days"/>
+                            <field name="downside_fx_move_pct"/>
+                        </group>
+                        <group string="Stress">
+                            <field name="stress_collection_delay_pct"/>
+                            <field name="stress_margin_hit_pct"/>
+                            <field name="stress_material_cost_pct"/>
+                            <field name="stress_interest_rate_bps"/>
+                            <field name="stress_booking_conversion_pct"/>
+                            <field name="stress_install_delay_days"/>
+                            <field name="stress_fx_move_pct"/>
+                        </group>
+                    </group>
+                        <group string="Forecast (พยากรณ์รายเดือน)">
+                        <group>
+                            <field name="include_sales_to_cash"/>
+                            <field name="forecast_horizon_months"/>
+                            <field name="pipeline_default_margin_pct"/>
+                        </group>
+                        <group>
+                            <field name="pipeline_cost_lag_months"/>
+                        </group>
+                    </group>
+                    <group string="Mapping บัญชี (EBITDA / Net Debt)">
+                        <field name="depreciation_account_ids" widget="many2many_tags"/>
+                        <field name="interest_account_ids" widget="many2many_tags"/>
+                        <field name="tax_account_ids" widget="many2many_tags"/>
+                        <field name="debt_account_ids" widget="many2many_tags"/>
+                    </group>
+                    <group string="Mapping บัญชีงบแสดงฐานะการเงิน (แยกบรรทัดย่อยตามรูปแบบงบกลุ่ม)">
+                        <group string="สินทรัพย์">
+                            <field name="bs_loans_subsidiaries_account_ids" widget="many2many_tags"/>
+                            <field name="bs_lt_deposit_account_ids" widget="many2many_tags"/>
+                        </group>
+                        <group string="ส่วนของผู้ถือหุ้น">
+                            <field name="bs_paid_in_capital_account_ids" widget="many2many_tags"/>
+                            <field name="bs_legal_reserve_account_ids" widget="many2many_tags"/>
+                        </group>
+                        <group string="หนี้สินหมุนเวียน">
+                            <field name="bs_bank_overdraft_account_ids" widget="many2many_tags"/>
+                            <field name="bs_deferred_revenue_account_ids" widget="many2many_tags"/>
+                            <field name="bs_related_party_st_account_ids" widget="many2many_tags"/>
+                            <field name="bs_current_ltd_account_ids" widget="many2many_tags"/>
+                            <field name="bs_current_lease_account_ids" widget="many2many_tags"/>
+                            <field name="bs_deferred_tax_liability_account_ids" widget="many2many_tags"/>
+                        </group>
+                        <group string="หนี้สินไม่หมุนเวียน">
+                            <field name="bs_lt_debt_account_ids" widget="many2many_tags"/>
+                            <field name="bs_related_party_lt_account_ids" widget="many2many_tags"/>
+                            <field name="bs_employee_benefit_account_ids" widget="many2many_tags"/>
+                            <field name="bs_lease_liability_account_ids" widget="many2many_tags"/>
+                        </group>
+                        <group string="งบกระแสเงินสด">
+                            <field name="cf_dividend_account_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    <group string="แหล่งข้อมูล (Odoo หรือระบบภายนอก)">
+                        <group>
+                            <field name="inventory_source"/>
+                            <field name="ratio_source"/>
+                            <field name="invoice_source"/>
+                            <field name="budget_source"/>
+                            <field name="inventory_account_ids" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="ext_company_code"/>
+                            <button name="action_sync_external" type="object"
+                                    string="Sync จากระบบภายนอก" class="btn-primary"
+                                    groups="biz_smart_finance.group_bsf_manager"
+                                    invisible="inventory_source != 'external' and ratio_source != 'external' and invoice_source != 'external' and budget_source != 'external'"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_config" model="ir.actions.act_window">
+        <field name="name">Smart Finance Settings</field>
+        <field name="res_model">biz.smart.finance.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ตั้งค่าการเงินต่อบริษัท</p>
+            <p>เงินสดขั้นต่ำ, เป้า D/E, mapping บัญชีดอกเบี้ย/ภาษี/เงินกู้
+            เพื่อให้ CFO Cockpit คำนวณ EBITDA และ Net Debt ได้ครบ</p>
+        </field>
+    </record>
+</odoo>

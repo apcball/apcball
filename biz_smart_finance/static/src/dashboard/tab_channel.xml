@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabChannel">
+    <div class="o_bsf_grid">
+
+        <!-- payload ของแท็บนี้โหลดตอนเปิดครั้งแรก (สไลซ์แยก) -->
+        <section t-if="!ready" class="o_bsf_card">
+            <div class="c_head">
+                <b>วิเคราะห์ช่องทางขาย</b>
+                <span>กำลังดึงงบรายเดือนแยกช่องทาง…</span>
+            </div>
+        </section>
+
+        <t t-if="ready">
+            <!-- ============ ตารางเทียบช่องทาง ============ -->
+            <section class="o_bsf_card" t-att-class="zoomCls('chn_1')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('chn_1')"
+                        t-att-title="isZoomed('chn_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('chn_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('chn_1') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>เทียบช่องทางขาย รายเดือน</b>
+                    <span>
+                        คลิกชื่อช่องทางเพื่อดูงบของช่องทางนั้น ·
+                        <t t-esc="unitLabel"/>
+                    </span>
+                    <div class="o_bsf_spacer"/>
+                    <div class="o_bsf_cmpbar">
+                        <label>มิติช่องทาง</label>
+                        <select class="o_bsf_select" t-att-value="ch.dim"
+                                t-on-change="onDimChange">
+                            <t t-foreach="ch.dims" t-as="dim" t-key="dim.code">
+                                <option t-att-value="dim.code" t-esc="dim.label"
+                                        t-att-selected="dim.code === ch.dim"/>
+                            </t>
+                        </select>
+                        <label>ดูงบของ</label>
+                        <select class="o_bsf_select" t-att-value="ch.channel_id"
+                                t-on-change="onChannelChange">
+                            <option value="0" t-att-selected="!ch.channel_id">
+                                ทุกช่องทาง
+                            </option>
+                            <t t-foreach="ch.channels" t-as="row" t-key="row.key">
+                                <option t-att-value="row.key" t-esc="row.name"
+                                        t-att-selected="row.key === ch.channel_id"/>
+                            </t>
+                        </select>
+                    </div>
+                </div>
+                <div class="o_bsf_chipwrap">
+                    <t t-foreach="ch.matrix.metrics" t-as="metric" t-key="metric.code">
+                        <button t-attf-class="o_bsf_metricchip {{ metric.code === metricDef.code ? 'active' : '' }}"
+                                t-on-click="() => this.selectMetric(metric.code)"
+                                t-esc="metric.label"/>
+                    </t>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table o_bsf_cmptable">
+                        <thead>
+                            <tr>
+                                <th>ช่องทาง</th>
+                                <th t-foreach="columns" t-as="col" t-key="col.index"
+                                    t-att-title="col.date_from + ' – ' + col.date_to">
+                                    <t t-esc="col.label"/>
+                                </th>
+                                <th>รวม</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="ch.matrix.rows" t-as="row" t-key="row.key"
+                                t-attf-class="{{ row.key === ch.channel_id ? 'is-picked' : '' }}">
+                                <td t-attf-class="{{ row.key >= 0 ? 'o_bsf_click' : '' }}"
+                                    t-att-title="row.key >= 0 ? 'ดูงบของ ' + row.name : ''"
+                                    t-on-click="() => this.pickChannel(row)">
+                                    <t t-esc="row.name"/>
+                                </td>
+                                <td t-foreach="columns" t-as="col" t-key="col.index"
+                                    t-attf-class="{{ zero(row.metrics[metricDef.code][col.index]) }}"
+                                    t-att-style="heatStyle(row, col.index)">
+                                    <t t-esc="matrixCell(row, col.index)"/>
+                                </td>
+                                <td class="o_bsf_cmptot"><t t-esc="matrixTotal(row)"/></td>
+                            </tr>
+                            <tr t-if="!ch.matrix.rows.length">
+                                <td t-att-colspan="columns.length + 2">
+                                    ยังไม่มียอดในปีงบนี้
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="o_bsf_empty_note" style="margin-top: 10px;">
+                    ช่องทาง = <b t-esc="ch.dim_label"/> ·
+                    ยอดที่ผูกช่องทางจาก GL ไม่ได้อยู่แถว "ไม่ระบุช่องทาง" และ
+                    ต้นทุน/ค่าใช้จ่ายส่วนกลางถูก<b>เฉลี่ยตามสัดส่วนรายได้ของเดือนนั้น</b>
+                </div>
+            </section>
+
+            <!-- ============ งบกำไรขาดทุนรายเดือน ============ -->
+            <section class="o_bsf_card" t-att-class="zoomCls('chn_2')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('chn_2')"
+                        t-att-title="isZoomed('chn_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('chn_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('chn_2') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>งบกำไรขาดทุนรายเดือน · <t t-esc="ch.channel_label"/></b>
+                    <span>
+                        คลิก <i class="fa fa-caret-right"/> เพื่อกางแถวย่อย ·
+                        คลิกตัวเลขเพื่อดูรายการบัญชี · <t t-esc="unitLabel"/>
+                    </span>
+                    <div class="o_bsf_spacer"/>
+                    <button t-if="ch.channel_id" class="btn btn-secondary btn-sm"
+                            t-on-click="clearChannel">ดูทุกช่องทาง</button>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table o_bsf_cmptable">
+                        <thead>
+                            <tr>
+                                <th>รายการ</th>
+                                <th t-foreach="columns" t-as="col" t-key="col.index"
+                                    t-att-title="col.date_from + ' – ' + col.date_to">
+                                    <t t-esc="col.label"/>
+                                </th>
+                                <th>รวม</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="ch.pnl_rows" t-as="row" t-key="row.key">
+                                <tr t-attf-class="{{ row.kind === 'total' ? 'o_bsf_cmptot' : '' }} {{ row.kind === 'pct' ? 'o_bsf_chn_pct' : '' }}">
+                                    <td t-attf-class="{{ row.kind === 'split' ? 'o_bsf_click' : '' }}"
+                                        t-on-click="() => row.kind === 'split' ? this.toggleSub(row.key) : null">
+                                        <i t-if="row.kind === 'split'"
+                                           t-attf-class="fa {{ isOpen(row.key) ? 'fa-caret-down' : 'fa-caret-right' }} me-1"/>
+                                        <t t-esc="row.label"/>
+                                        <span t-if="allocatedPct(row)" class="sec_sub"
+                                              title="สัดส่วนของยอดนี้ที่มาจากการเฉลี่ย ไม่ใช่ยอดที่ผูกช่องทางจาก GL">
+                                            เฉลี่ยมา <t t-esc="allocatedPct(row)"/>%
+                                        </span>
+                                    </td>
+                                    <t t-if="row.kind === 'pct'">
+                                        <td t-foreach="columns" t-as="col" t-key="col.index">
+                                            <t t-esc="fmtPct(row.values[col.index])"/>
+                                        </td>
+                                        <td><t t-esc="fmtPct(row.total)"/></td>
+                                    </t>
+                                    <t t-else="">
+                                        <td t-foreach="columns" t-as="col" t-key="col.index"
+                                            t-attf-class="o_bsf_click {{ zero(row.values[col.index]) }}"
+                                            t-att-title="'ดูรายการบัญชี · ' + col.label"
+                                            t-on-click="() => this.openCell(row, col.index)">
+                                            <t t-esc="fmtMoney(row.values[col.index])"/>
+                                        </td>
+                                        <td class="o_bsf_cmptot"><t t-esc="fmtMoney(row.total)"/></td>
+                                    </t>
+                                </tr>
+                                <t t-if="isOpen(row.key)">
+                                    <tr t-foreach="row.sub" t-as="sub" t-key="sub.key"
+                                        class="o_bsf_chn_sub">
+                                        <td><t t-esc="sub.name"/></td>
+                                        <td t-foreach="columns" t-as="col" t-key="col.index"
+                                            t-attf-class="{{ subClickable(sub) ? 'o_bsf_click' : '' }} {{ zero(sub.values[col.index]) }}"
+                                            t-on-click="() => this.openSubCell(row, sub, col.index)">
+                                            <t t-esc="fmtMoney(sub.values[col.index])"/>
+                                        </td>
+                                        <td><t t-esc="fmtMoney(sub.total)"/></td>
+                                    </tr>
+                                    <tr t-if="!row.sub.length" class="o_bsf_chn_sub">
+                                        <td t-att-colspan="columns.length + 2">
+                                            ไม่มีแถวย่อยในช่วงนี้
+                                        </td>
+                                    </tr>
+                                </t>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </t>
+    </div>
+</t>
+
+</templates>

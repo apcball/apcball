@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_bsf" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.bsf</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Smart Finance" name="biz_smart_finance"
+                     groups="biz_smart_finance.group_bsf_manager">
+                    <block title="การแสดงผล">
+                        <setting string="สกุลเงินนำเสนอ"
+                                 help="ทั้ง CFO Cockpit จะแสดงเป็นสกุลนี้ โดยแปลงจากสกุลของแต่ละบริษัทด้วยอัตราปิด ณ วันที่เลือก — เว้นว่างไว้จะใช้สกุลเงินของบริษัทที่เลือกในตัวกรอง">
+                            <field name="bsf_presentation_currency_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </setting>
+                    </block>
+                    <block title="External Source (Inventory / Ratios)">
+                        <setting string="Endpoint"
+                                 help="URL ของระบบภายนอกสำหรับดึงมูลค่าสินค้าคงเหลือ/ตัวเลขงบการเงิน — บริษัทที่ใช้ต้องตั้งรหัสบริษัทภายนอกใน Smart Finance Settings">
+                            <field name="bsf_ext_endpoint"/>
+                        </setting>
+                        <setting string="API Key"
+                                 help="ส่งเป็น Authorization: Bearer">
+                            <field name="bsf_ext_api_key" password="True"/>
+                        </setting>
+                    </block>
+                    <block title="AI (OpenRouter)">
+                        <setting string="OpenRouter API Key"
+                                 help="คีย์สำหรับฟีเจอร์ AI ของ CFO Cockpit (Brief / Copilot / รายงาน / เสนอความเสี่ยง)">
+                            <field name="bsf_openrouter_api_key" password="True"/>
+                        </setting>
+                        <setting string="AI Model"
+                                 help="model slug ของ OpenRouter เช่น anthropic/claude-opus-5">
+                            <field name="bsf_ai_model"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

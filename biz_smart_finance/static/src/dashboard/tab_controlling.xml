@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabControlling">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'controlling'" data="props.data"/>
+
+        <t t-if="!co.configured">
+            <section class="o_bsf_card" t-att-class="zoomCls('controlling_1')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('controlling_1')"
+                        t-att-title="isZoomed('controlling_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('controlling_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('controlling_1') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="o_bsf_empty_note">
+                    ยังไม่มีมิติวิเคราะห์ (Analytic Plan) ที่ใช้เป็นศูนย์ต้นทุนได้ —
+                    ไปที่ Accounting ▸ Configuration ▸ Analytic Plans เพื่อสร้างแผน
+                    แล้วผูกบัญชีวิเคราะห์กับใบแจ้งหนี้/บิล จอนี้จึงจะมีตัวเลข
+                </div>
+            </section>
+        </t>
+
+        <t t-else="">
+            <!-- KPI แถวบน -->
+            <section class="o_bsf_card span8" t-att-class="zoomCls('controlling_2')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('controlling_2')"
+                        t-att-title="isZoomed('controlling_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('controlling_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('controlling_2') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Budget vs Actual vs Commitment</b>
+                    <span>
+                        มิติ
+                        <select class="o_bsf_select" style="margin: 0 6px;"
+                                t-att-value="co.plan_id"
+                                t-on-change="onPlanChange">
+                            <t t-foreach="co.plans" t-as="plan" t-key="plan.id">
+                                <option t-att-value="plan.id" t-esc="plan.name"
+                                        t-att-selected="plan.id == co.plan_id"/>
+                            </t>
+                        </select>
+                        · <t t-esc="co.date_from"/> – <t t-esc="co.date_to"/>
+                        · <t t-esc="unitLabel"/>
+                    </span>
+                </div>
+                <div class="o_bsf_kpis">
+                    <div t-attf-class="o_bsf_kpi {{ co.budget_available ? 'is-click' : '' }}"
+                         t-on-click="openAllBudgets">
+                        <span class="k_label">Budget <span t-esc="unitLabel"/></span>
+                        <b class="k_value"><t t-esc="fmtMoney(co.totals.budget)"/></b>
+                        <span class="k_sub">
+                            เฉลี่ยตามวันที่ทับช่วงปีงบ · ที่มา
+                            <t t-esc="budgetSourceLabel"/>
+                        </span>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <span class="k_label">Actual Cost</span>
+                        <b class="k_value"><t t-esc="fmtMoney(co.totals.actual_cost)"/></b>
+                        <span class="k_sub">รายการวิเคราะห์ที่บันทึกแล้ว</span>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <span class="k_label">Commitment</span>
+                        <b class="k_value"><t t-esc="fmtMoney(co.totals.commitment)"/></b>
+                        <span class="k_sub">PO ยืนยันแล้วยังไม่ตั้งบิล</span>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <span class="k_label">Available</span>
+                        <b t-attf-class="k_value {{ co.totals.available &lt; 0 ? 'is-alert' : '' }}">
+                            <t t-esc="fmtMoney(co.totals.available)"/>
+                        </b>
+                        <span class="k_sub">
+                            ใช้ไป <t t-esc="fmtPct(co.totals.utilization_pct)"/> ของงบ
+                        </span>
+                    </div>
+                </div>
+                <div t-if="co.totals.over_count" class="o_bsf_alertcard" style="margin-top: 10px;">
+                    <b><i class="fa fa-exclamation-triangle me-1"/>เกินงบ <t t-esc="fmtInt(co.totals.over_count)"/> ศูนย์ต้นทุน</b>
+                    <div>ยอดใช้จริงรวมภาระผูกพันสูงกว่างบที่ตั้งไว้ — ตรวจรายการด้านล่าง</div>
+                </div>
+            </section>
+
+            <!-- ต้นทุนตามประเภทบัญชี -->
+            <section class="o_bsf_card span4" t-att-class="zoomCls('controlling_3')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('controlling_3')"
+                        t-att-title="isZoomed('controlling_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('controlling_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('controlling_3') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Cost Breakdown</b>
+                    <span>แยกตามประเภทบัญชี GL · <t t-esc="unitLabel"/></span>
+                </div>
+                <t t-if="co.has_gl_link">
+                    <div class="o_bsf_stack">
+                        <span t-foreach="typeBar" t-as="seg" t-key="seg.index"
+                              t-attf-style="width: {{ seg.pct }}%; background: {{ seg.color }};"/>
+                    </div>
+                    <table class="o_bsf_table">
+                        <tbody>
+                            <tr t-foreach="typeBar" t-as="seg" t-key="seg.index">
+                                <td>
+                                    <i class="dot" t-attf-style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: {{ seg.color }};"/>
+                                    <t t-esc="seg.label"/>
+                                </td>
+                                <td class="bsf_num"><t t-esc="fmtMoney(seg.amount)"/></td>
+                                <td><t t-esc="fmtPct(seg.pct)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+                <t t-else="">
+                    <div class="o_bsf_empty_note">
+                        รายการวิเคราะห์ในช่วงนี้ยังไม่ผูกกับบัญชีแยกประเภท
+                        (ส่วนใหญ่มาจาก timesheet) — ต้นทุนจะแยกตามประเภทบัญชีได้
+                        เมื่อมีใบแจ้งหนี้/บิลที่ระบุ Analytic Distribution
+                    </div>
+                </t>
+            </section>
+
+            <!-- ตารางศูนย์ต้นทุน -->
+            <section class="o_bsf_card" t-att-class="zoomCls('controlling_4')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('controlling_4')"
+                        t-att-title="isZoomed('controlling_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('controlling_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('controlling_4') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Cost Centers</b>
+                    <span>
+                        <t t-esc="co.plan_name"/> ·
+                        แสดง <t t-esc="fmtInt(co.rows.length)"/> จาก
+                        <t t-esc="fmtInt(co.row_count)"/> รายการ
+                        <t t-if="co.budget_available">
+                            · <a t-on-click="openAllBudgets" style="color: var(--bsf-primary); cursor: pointer;">ดูงบประมาณ</a>
+                        </t>
+                    </span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr>
+                                <th>ศูนย์ต้นทุน</th>
+                                <th class="bsf_num">Budget</th>
+                                <th class="bsf_num">Actual Cost</th>
+                                <th class="bsf_num">Commitment</th>
+                                <th class="bsf_num">Available</th>
+                                <th style="min-width: 150px;">Utilization</th>
+                                <th class="bsf_num">Revenue</th>
+                                <th class="bsf_num">Net</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="co.rows" t-as="row" t-key="row.analytic_id">
+                                <td class="o_bsf_click"
+                                    t-att-title="'คลิกดูรายการวิเคราะห์ของ ' + row.name"
+                                    t-on-click="() => this.openAnalyticLines(row)">
+                                    <span t-if="row.code" style="opacity: .7; margin-right: 6px;"
+                                          t-esc="row.code"/>
+                                    <t t-esc="row.name"/>
+                                </td>
+                                <td t-attf-class="bsf_num {{ zero(row.budget) }} o_bsf_click"
+                                    t-on-click="() => this.openBudget(row)">
+                                    <t t-esc="fmtMoney(row.budget)"/>
+                                </td>
+                                <td t-attf-class="bsf_num {{ zero(row.actual_cost) }} o_bsf_click"
+                                    t-on-click="() => this.openAnalyticLines(row)">
+                                    <t t-esc="fmtMoney(row.actual_cost)"/>
+                                </td>
+                                <td t-attf-class="bsf_num {{ zero(row.commitment) }} o_bsf_click"
+                                    t-on-click="() => this.openCommitment(row)">
+                                    <t t-esc="fmtMoney(row.commitment)"/>
+                                </td>
+                                <td t-attf-class="bsf_num {{ row.available &lt; 0 ? 'is-alert' : '' }}">
+                                    <t t-esc="fmtMoney(row.available)"/>
+                                </td>
+                                <td>
+                                    <t t-if="row.utilization_pct === null">
+                                        <span style="opacity: .5;">ไม่ได้ตั้งงบ</span>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="o_bsf_meter">
+                                            <span t-attf-style="width: {{ barWidth(row) }}%; background: {{ barColor(row) }};"/>
+                                        </div>
+                                        <span class="o_bsf_meter_label"
+                                              t-attf-style="color: {{ barColor(row) }};">
+                                            <t t-esc="fmtPct(row.utilization_pct)"/>
+                                        </span>
+                                    </t>
+                                </td>
+                                <td t-attf-class="bsf_num {{ zero(row.actual_revenue) }}">
+                                    <t t-esc="fmtMoney(row.actual_revenue)"/>
+                                </td>
+                                <td t-attf-class="bsf_num {{ row.actual_net &lt; 0 ? 'is-alert' : '' }}">
+                                    <t t-esc="fmtMoney(row.actual_net)"/>
+                                </td>
+                            </tr>
+                            <tr t-if="!co.rows.length">
+                                <td colspan="8">
+                                    ยังไม่มีรายการวิเคราะห์หรืองบประมาณในมิตินี้ช่วงปีงบที่เลือก
+                                </td>
+                            </tr>
+                            <tr t-if="co.rows.length" style="border-top: 1px solid var(--bsf-border);">
+                                <td><b>รวม</b></td>
+                                <td class="bsf_num"><b><t t-esc="fmtMoney(co.totals.budget)"/></b></td>
+                                <td class="bsf_num"><b><t t-esc="fmtMoney(co.totals.actual_cost)"/></b></td>
+                                <td class="bsf_num"><b><t t-esc="fmtMoney(co.totals.commitment)"/></b></td>
+                                <td t-attf-class="bsf_num {{ co.totals.available &lt; 0 ? 'is-alert' : '' }}">
+                                    <b><t t-esc="fmtMoney(co.totals.available)"/></b>
+                                </td>
+                                <td><b><t t-esc="fmtPct(co.totals.utilization_pct)"/></b></td>
+                                <td class="bsf_num"><b><t t-esc="fmtMoney(co.totals.actual_revenue)"/></b></td>
+                                <td class="bsf_num"><b><t t-esc="fmtMoney(co.totals.actual_net)"/></b></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </t>
+    </div>
+</t>
+
+</templates>

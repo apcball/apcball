@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_deal_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.deal.tree</field>
+        <field name="model">biz.smart.finance.deal</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" decoration-muted="stage in ('won', 'lost')">
+                <field name="expected_sign_date"/>
+                <field name="name"/>
+                <field name="partner_id" optional="show"/>
+                <field name="customer_name" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="amount" widget="monetary" sum="มูลค่าคาด"/>
+                <field name="probability" widget="percentage_pie" optional="hide"/>
+                <field name="probability" string="%"/>
+                <field name="weighted_amount" widget="monetary" sum="ถ่วงน้ำหนัก"/>
+                <field name="stage" widget="badge"
+                       decoration-success="stage == 'won'"
+                       decoration-danger="stage == 'lost'"/>
+                <field name="duration_months"/>
+                <field name="billing_pattern_id"/>
+                <field name="expected_margin_pct" optional="hide"/>
+                <field name="project_id" optional="show"
+                       required="stage == 'won'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_deal_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.deal.form</field>
+        <field name="model">biz.smart.finance.deal</field>
+        <field name="arch" type="xml">
+            <form string="งานขาย">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="ชื่อดีล / โครงการ"/></h1>
+                    </div>
+                    <group>
+                        <group string="ลูกค้าและมูลค่า">
+                            <field name="partner_id"/>
+                            <field name="customer_name"
+                                   invisible="partner_id != False"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="probability"/>
+                            <field name="weighted_amount" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="แผนงานและการวางบิล">
+                            <field name="stage"/>
+                            <field name="expected_sign_date"/>
+                            <field name="duration_months"/>
+                            <field name="billing_pattern_id"/>
+                            <field name="expected_margin_pct"/>
+                            <field name="project_id" required="stage == 'won'"/>
+                            <field name="sale_order_id"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert"
+                         invisible="stage != 'won'">
+                        ดีลที่ชนะแล้วจะไม่ถูกนับในกริดพยากรณ์อีก — ระบบไปนับ
+                        แผนวางบิลของโครงการที่ผูกไว้แทน เพื่อไม่ให้มูลค่าถูกนับซ้ำ
+                    </div>
+                    <group string="บันทึก">
+                        <field name="note" nolabel="1" placeholder="เงื่อนไข ข้อสังเกต คู่แข่ง ฯลฯ"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_bsf_deal_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.deal.search</field>
+        <field name="model">biz.smart.finance.deal</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <filter name="filter_open" string="ยังไม่ปิดดีล"
+                        domain="[('stage', 'in', ('lead', 'proposal', 'nego'))]"/>
+                <filter name="filter_won" string="ชนะแล้ว"
+                        domain="[('stage', '=', 'won')]"/>
+                <separator/>
+                <filter name="filter_this_year" string="คาดเซ็นปีนี้"
+                        domain="[('expected_sign_date', '&gt;=', context_today().strftime('%Y-01-01'))]"/>
+                <group expand="0" string="จัดกลุ่ม">
+                    <filter name="group_stage" string="ขั้น" context="{'group_by': 'stage'}"/>
+                    <filter name="group_month" string="เดือนที่คาดเซ็น"
+                            context="{'group_by': 'expected_sign_date:month'}"/>
+                    <filter name="group_company" string="บริษัท" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bsf_deal" model="ir.actions.act_window">
+        <field name="name">งานขาย (Pipeline)</field>
+        <field name="res_model">biz.smart.finance.deal</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_filter_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีงานขายในระบบ</p>
+            <p>กรอกดีลที่ยังไม่เซ็นสัญญา — มูลค่า × ความน่าจะเป็น จะถูกกระจาย
+            ลงกริดพยากรณ์ตามแบบแผนวางบิลที่เลือก</p>
+        </field>
+    </record>
+</odoo>

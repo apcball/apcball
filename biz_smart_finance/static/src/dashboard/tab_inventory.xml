@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabInventory">
+    <div>
+        <!-- KPI band -->
+        <div class="o_bsf_kpis">
+            <div class="o_bsf_kpi is-click" t-on-click="openGlItems"
+                 title="คลิกดูรายการบัญชีสินค้าคงเหลือ (ถ้า map บัญชีไว้)">
+                <span class="k_label">Inventory Value <span t-esc="unitLabel"/></span>
+                <b class="k_value">
+                    <t t-if="inv.kpis.total_value !== null" t-esc="fmtMoney(inv.kpis.total_value)"/>
+                    <t t-else="">—</t>
+                </b>
+                <span t-attf-class="k_sub {{ deltaClass(inv.kpis.yoy_pct, false) }}">
+                    <t t-esc="fmtDelta(inv.kpis.yoy_pct)"/> YoY
+                </span>
+            </div>
+            <div class="o_bsf_kpi">
+                <span class="k_label">Inventory Turnover (T12M)</span>
+                <b class="k_value"><t t-esc="fmtTurn(inv.kpis.turnover)"/></b>
+                <span class="k_sub">COGS 12 เดือน ÷ สต๊อกเฉลี่ย</span>
+            </div>
+            <div class="o_bsf_kpi">
+                <span class="k_label">Days of Inventory (DIO)</span>
+                <b class="k_value"><t t-esc="fmtDays(inv.kpis.dio_days)"/></b>
+                <span class="k_sub">วันหมุนเวียนสินค้า — เข้า CCC แล้ว</span>
+            </div>
+            <div class="o_bsf_kpi" t-if="inv.kpis.recon_shown">
+                <span class="k_label">กระทบยอด SVL ↔ GL</span>
+                <b class="k_value">
+                    <t t-if="inv.kpis.recon_ok"><i class="fa fa-check-circle" style="color: var(--bsf-good);"/> ตรง</t>
+                    <t t-else=""><i class="fa fa-exclamation-triangle" style="color: var(--bsf-risk);"/> ต่าง <t t-esc="fmtMoney(inv.kpis.recon_diff)"/></t>
+                </b>
+                <span class="k_sub is-click" t-on-click="openGlItems">
+                    GL: <t t-esc="fmtMoney(inv.kpis.gl_value)"/> · คลิกดูรายการ
+                </span>
+            </div>
+            <div class="o_bsf_kpi">
+                <span class="k_label">แหล่งข้อมูล</span>
+                <b class="k_value" style="font-size: 1rem;"><t t-esc="sourceLabel"/></b>
+                <span class="k_sub" t-if="inv.source !== 'odoo'">
+                    <a t-on-click="openExtFacts">ดู/แก้ตัวเลขภายนอก</a>
+                </span>
+                <span class="k_sub" t-else="">stock valuation ณ สิ้นงวด</span>
+            </div>
+        </div>
+
+        <div class="o_bsf_grid">
+            <BsfAiCard tab="'inventory'" data="props.data"/>
+
+            <!-- แนวโน้มรายงวด -->
+            <section class="o_bsf_card span8" t-att-class="zoomCls('inv_1')"
+                     t-if="inv.trend_available">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('inv_1')"
+                        t-att-title="isZoomed('inv_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('inv_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('inv_1') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Inventory Value Trend</b>
+                    <span>มูลค่า ณ สิ้นงวด เทียบปีก่อน · <t t-esc="unitLabel"/></span>
+                </div>
+                <t t-set="chart" t-value="trendChart"/>
+                <svg t-att-viewBox="'0 0 ' + chart.width + ' ' + chart.height"
+                     preserveAspectRatio="xMidYMid meet" class="o_bsf_chart">
+                    <t t-foreach="chart.gridlines" t-as="grid" t-key="grid_index">
+                        <line class="grid_line" t-att-x1="chart.padX" t-att-y1="grid.y"
+                              t-att-x2="chart.width - 8" t-att-y2="grid.y"/>
+                        <text class="grid_text" t-att-x="chart.padX - 6"
+                              t-att-y="grid.y + 3" text-anchor="end">
+                            <t t-esc="fmtAxis(grid.v)"/>
+                        </text>
+                    </t>
+                    <t t-foreach="chart.bars" t-as="bar" t-key="bar.index">
+                        <rect class="bar" t-att-x="bar.x" t-att-y="bar.y"
+                              t-att-width="bar.w" t-att-height="bar.h"/>
+                    </t>
+                    <t t-foreach="chart.series" t-as="serie" t-key="serie.key">
+                        <polyline t-att-class="serie.cls" t-att-points="serie.polyline"/>
+                    </t>
+                    <t t-foreach="chart.labels" t-as="lab" t-key="lab.index">
+                        <text class="grid_text" t-att-x="lab.x"
+                              t-att-y="chart.height - 6" text-anchor="middle">
+                            <t t-esc="lab.label"/>
+                        </text>
+                    </t>
+                </svg>
+                <div class="o_bsf_legend">
+                    <span><i class="dot" style="background: var(--bsf-c1);"/>มูลค่าคงคลังปีนี้</span>
+                    <span><i class="dot" style="background: var(--bsf-good);"/>งวดเดียวกันปีก่อน</span>
+                </div>
+            </section>
+
+            <!-- สัดส่วนหมวด -->
+            <section class="o_bsf_card span4" t-att-class="zoomCls('inv_2')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('inv_2')"
+                        t-att-title="isZoomed('inv_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('inv_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('inv_2') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>มูลค่าตามหมวดสินค้า</b>
+                    <span>ณ <t t-esc="echoFilters.as_of"/> · <t t-esc="unitLabel"/></span>
+                </div>
+                <t t-if="inv.by_category.length">
+                    <div class="o_bsf_stack">
+                        <span t-foreach="categoryBar" t-as="seg" t-key="seg.index"
+                              t-attf-style="width: {{ seg.pct }}%; background: {{ seg.color }};"/>
+                    </div>
+                    <div class="o_bsf_scroll_x">
+                        <table class="o_bsf_table">
+                            <thead>
+                                <tr><th>หมวด</th><th class="bsf_num">มูลค่า</th><th class="bsf_num">จำนวน</th><th class="bsf_num">%</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="categoryBar" t-as="seg" t-key="seg.index"
+                                    t-att-class="seg.categ_id ? 'o_bsf_row_click' : ''"
+                                    t-att-title="seg.categ_id ? 'คลิกดูสินค้าในหมวด' : ''"
+                                    t-on-click="() => this.openCategory(seg)">
+                                    <td><i t-attf-style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: {{ seg.color }};"/><t t-esc="seg.name"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(seg.value)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtNum(seg.qty, 0)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtPct(seg.share_pct)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+                <div class="o_bsf_empty_note" t-else="">
+                    <t t-if="inv.source === 'odoo' and !inv.stock_available">
+                        ไม่มีโมดูล Stock — แสดงได้เฉพาะยอด GL ที่ map ไว้
+                    </t>
+                    <t t-else="">ยังไม่มีข้อมูลรายหมวดของงวดนี้</t>
+                </div>
+            </section>
+
+            <!-- top products -->
+            <section class="o_bsf_card span8" t-att-class="zoomCls('inv_3')"
+                     t-if="inv.top_products.length">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('inv_3')"
+                        t-att-title="isZoomed('inv_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('inv_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('inv_3') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Top 15 สินค้าตามมูลค่า</b>
+                    <span>คลิกเปิดสินค้า · มูลค่า <t t-esc="unitLabel"/>
+                          · ต้นทุน/หน่วยเป็น <t t-esc="currencyName"/> เสมอ</span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr><th>รหัส</th><th>สินค้า</th><th class="bsf_num">จำนวน</th><th class="bsf_num">ต้นทุนเฉลี่ย/หน่วย (<t t-esc="currencyName"/>)</th><th class="bsf_num">มูลค่า</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="inv.top_products" t-as="row" t-key="row.product_id"
+                                class="o_bsf_row_click" title="คลิกเปิดสินค้า"
+                                t-on-click="() => this.openProduct(row)">
+                                <td><t t-esc="row.code"/></td>
+                                <td><t t-esc="row.name"/></td>
+                                <td class="bsf_num"><t t-esc="fmtNum(row.qty, 0)"/></td>
+                                <td class="bsf_num">
+                                    <t t-if="row.avg_cost !== null" t-esc="fmtNum(row.avg_cost, 2)"/>
+                                    <t t-else="">—</t>
+                                </td>
+                                <td class="bsf_num"><t t-esc="fmtMoney(row.value)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- per company -->
+            <section class="o_bsf_card span4" t-att-class="zoomCls('inv_4')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('inv_4')"
+                        t-att-title="isZoomed('inv_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('inv_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('inv_4') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>รายบริษัท</b>
+                    <span>มูลค่า / turnover / DIO ตามแหล่งของแต่ละบริษัท</span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr><th>บริษัท</th><th class="bsf_num">มูลค่า</th><th class="bsf_num">Turnover</th><th class="bsf_num">DIO</th><th>แหล่ง</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="inv.by_company" t-as="row" t-key="row.company_id">
+                                <td><t t-esc="row.name"/></td>
+                                <td class="bsf_num">
+                                    <t t-if="row.value !== null" t-esc="fmtMoney(row.value)"/>
+                                    <t t-else="">—</t>
+                                </td>
+                                <td class="bsf_num"><t t-esc="fmtTurn(row.turnover)"/></td>
+                                <td class="bsf_num"><t t-esc="fmtDays(row.dio_days)"/></td>
+                                <td>
+                                    <span class="o_bsf_chip"
+                                          t-attf-style="background: {{ row.source === 'external' ? '#fbbf24' : '#cbd5e1' }};">
+                                        <t t-esc="row.source === 'external' ? 'ภายนอก' : 'Odoo'"/>
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+</t>
+
+</templates>

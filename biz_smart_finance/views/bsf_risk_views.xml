@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_risk_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.risk.tree</field>
+        <field name="model">biz.smart.finance.risk</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="level == 'high'" decoration-warning="level == 'medium'">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="project_id" optional="show"/>
+                <field name="category"/>
+                <field name="impact"/>
+                <field name="likelihood"/>
+                <field name="score"/>
+                <field name="level"/>
+                <field name="trend"/>
+                <field name="financial_impact" sum="ผลกระทบรวม" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="action_owner_id" optional="show"/>
+                <field name="action_status" optional="show"/>
+                <field name="target_date" optional="show"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_risk_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.risk.form</field>
+        <field name="model">biz.smart.finance.risk</field>
+        <field name="arch" type="xml">
+            <form string="Risk">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="open,mitigated,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="ความเสี่ยง เช่น ลูกค้ารายใหญ่จ่ายช้า"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="project_id"/>
+                            <field name="category"/>
+                            <field name="trend"/>
+                        </group>
+                        <group>
+                            <field name="impact"/>
+                            <field name="likelihood"/>
+                            <field name="score"/>
+                            <field name="level"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="เฝ้าระวัง">
+                            <field name="early_warning"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="financial_impact"/>
+                        </group>
+                        <group string="แผนรับมือ">
+                            <field name="action"/>
+                            <field name="action_owner_id"/>
+                            <field name="action_status"/>
+                            <field name="target_date"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_risk" model="ir.actions.act_window">
+        <field name="name">Risk Register</field>
+        <field name="res_model">biz.smart.finance.risk</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีความเสี่ยงในทะเบียน</p>
+            <p>บันทึกความเสี่ยงพร้อม Impact/Likelihood แล้วระบบจะขึ้น
+            Risk Radar และ Top Risks ให้อัตโนมัติ</p>
+        </field>
+    </record>
+
+    <record id="view_bsf_risk_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.risk.search</field>
+        <field name="model">biz.smart.finance.risk</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="project_id"/>
+                <filter name="open" string="เปิดอยู่" domain="[('state', '=', 'open')]"/>
+                <filter name="high" string="High" domain="[('level', '=', 'high')]"/>
+                <filter name="at_risk" string="แผนรับมือเสี่ยงพลาดเป้า"
+                        domain="[('action_status', '=', 'at_risk')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="บริษัท" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_category" string="หมวด" context="{'group_by': 'category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

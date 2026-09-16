@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- แบบแผนวางบิลตั้งต้น — แก้/เพิ่มได้ที่ Smart Finance > ข้อมูลนำเข้า -->
+    <record id="billing_pattern_deposit_30_40_30" model="biz.smart.finance.billing.pattern">
+        <field name="name">มัดจำ 30 · ระหว่างงาน 40 · ส่งมอบ 30</field>
+    </record>
+    <record id="billing_pattern_deposit_30_40_30_l1" model="biz.smart.finance.billing.pattern.line">
+        <field name="pattern_id" ref="billing_pattern_deposit_30_40_30"/>
+        <field name="name">มัดจำตอนเซ็น</field>
+        <field name="offset_months">0</field>
+        <field name="percent">30</field>
+    </record>
+    <record id="billing_pattern_deposit_30_40_30_l2" model="biz.smart.finance.billing.pattern.line">
+        <field name="pattern_id" ref="billing_pattern_deposit_30_40_30"/>
+        <field name="name">ระหว่างผลิต/ติดตั้ง</field>
+        <field name="offset_months">1</field>
+        <field name="percent">40</field>
+    </record>
+    <record id="billing_pattern_deposit_30_40_30_l3" model="biz.smart.finance.billing.pattern.line">
+        <field name="pattern_id" ref="billing_pattern_deposit_30_40_30"/>
+        <field name="name">ส่งมอบงาน</field>
+        <field name="offset_months">3</field>
+        <field name="percent">30</field>
+    </record>
+
+    <record id="billing_pattern_equal_3" model="biz.smart.finance.billing.pattern">
+        <field name="name">งวดเท่ากัน 3 เดือน</field>
+    </record>
+    <record id="billing_pattern_equal_3_l1" model="biz.smart.finance.billing.pattern.line">
+        <field name="pattern_id" ref="billing_pattern_equal_3"/>
+        <field name="name">งวดที่ 1</field>
+        <field name="offset_months">0</field>
+        <field name="percent">33.34</field>
+    </record>
+    <record id="billing_pattern_equal_3_l2" model="biz.smart.finance.billing.pattern.line">
+        <field name="pattern_id" ref="billing_pattern_equal_3"/>
+        <field name="name">งวดที่ 2</field>
+        <field name="offset_months">1</field>
+        <field name="percent">33.33</field>
+    </record>
+    <record id="billing_pattern_equal_3_l3" model="biz.smart.finance.billing.pattern.line">
+        <field name="pattern_id" ref="billing_pattern_equal_3"/>
+        <field name="name">งวดที่ 3</field>
+        <field name="offset_months">2</field>
+        <field name="percent">33.33</field>
+    </record>
+
+    <record id="billing_pattern_on_delivery" model="biz.smart.finance.billing.pattern">
+        <field name="name">เก็บครั้งเดียวตอนส่งมอบ</field>
+    </record>
+    <record id="billing_pattern_on_delivery_l1" model="biz.smart.finance.billing.pattern.line">
+        <field name="pattern_id" ref="billing_pattern_on_delivery"/>
+        <field name="name">ส่งมอบงาน</field>
+        <field name="offset_months">3</field>
+        <field name="percent">100</field>
+    </record>
+</odoo>

@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabForecast">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'forecast'" data="props.data"/>
+
+        <!-- ตัวเลือกมุมมอง + ปุ่ม AI -->
+        <section class="o_bsf_card">
+            <div class="o_bsf_fcbar">
+                <div class="o_bsf_fcpills">
+                    <button t-foreach="sections" t-as="sec" t-key="sec.id"
+                            t-attf-class="o_bsf_fcpill {{ state.section === sec.id ? 'is-active' : '' }}"
+                            t-on-click="() => this.setSection(sec.id)">
+                        <i t-attf-class="fa {{ sec.icon }} me-1"/><t t-esc="sec.label"/>
+                    </button>
+                </div>
+                <div class="o_bsf_fcmeta">
+                    <span>พยากรณ์ <b><t t-esc="forecast.horizon_months"/></b> เดือน
+                        · <t t-esc="unitLabel"/></span>
+                    <button t-if="isManager and aiConfigured" class="o_bsf_fcai"
+                            t-att-disabled="state.drafting"
+                            t-on-click="draftWithAi">
+                        <i t-attf-class="fa {{ state.drafting ? 'fa-spinner fa-spin' : 'fa-magic' }} me-1"/>
+                        ให้ AI ร่าง forecast
+                    </button>
+                    <a t-if="isManager" t-on-click="openDraftLines">ร่างที่รอยืนยัน</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== เงินสดรายเดือน ==================== -->
+        <t t-if="state.section === 'cash'">
+            <section class="o_bsf_card span8" t-att-class="zoomCls('fc_1')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('fc_1')"
+                        t-att-title="isZoomed('fc_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('fc_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('fc_1') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>เงินสดคงเหลือรายเดือน</b>
+                    <span>รวมงานที่เซ็นแล้วและงานขายถ่วงน้ำหนัก · <t t-esc="unitLabel"/></span>
+                </div>
+                <svg t-att-width="cashChart.width" t-att-height="cashChart.height"
+                     t-attf-viewBox="0 0 {{ cashChart.width }} {{ cashChart.height }}"
+                     preserveAspectRatio="xMidYMid meet" class="o_bsf_chart">
+                    <t t-foreach="cashChart.gridlines" t-as="grid" t-key="grid_index">
+                        <line class="grid_line" t-att-x1="cashChart.padX" t-att-y1="grid.y"
+                              t-att-x2="cashChart.width - 8" t-att-y2="grid.y"/>
+                        <text class="grid_text" t-att-x="cashChart.padX - 6" t-att-y="grid.y + 3"
+                              text-anchor="end"><t t-esc="fmtAxis(grid.v)"/></text>
+                    </t>
+                    <line t-if="cashChart.minY &gt;= 0" class="line_min"
+                          t-att-x1="cashChart.padX" t-att-y1="cashChart.minY"
+                          t-att-x2="cashChart.width - 8" t-att-y2="cashChart.minY"/>
+                    <polyline t-if="cashChart.actualPolyline" class="line_actual"
+                              t-att-points="cashChart.actualPolyline"/>
+                    <polyline t-if="cashChart.forecastPolyline" class="line_forecast"
+                              t-att-points="cashChart.forecastPolyline"/>
+                    <t t-foreach="cashChart.points" t-as="pt" t-key="pt.index">
+                        <circle t-attf-class="pt {{ pt.belowMin ? 'is-below' : '' }}"
+                                t-att-cx="pt.x" t-att-cy="pt.y" r="3"/>
+                        <!-- ป้ายเว้นอัน — 13-19 คอลัมน์บน viewBox 640px ชนกันแน่
+                             และป้ายสุดท้ายต้องชิดขวา ไม่งั้นโดนขอบ viewBox ตัด -->
+                        <text t-if="pt.index % 2 === 0" class="grid_text"
+                              t-att-x="pt.x" t-att-y="cashChart.height - 6"
+                              t-att-text-anchor="pt.index === cashChart.points.length - 1 ? 'end' : 'middle'"
+                        ><t t-esc="pt.label"/></text>
+                    </t>
+                </svg>
+                <div class="o_bsf_legend">
+                    <span><i class="dot" style="background: var(--bsf-primary);"/>เงินสดคงเหลือ</span>
+                    <span><i class="dot" style="background: var(--bsf-risk);"/>เงินสดขั้นต่ำ</span>
+                </div>
+            </section>
+
+            <section class="o_bsf_card span4">
+                <t t-if="cash.alerts.length">
+                    <div class="o_bsf_alertcard">
+                        <b><i class="fa fa-exclamation-triangle me-1"/>เงินสดต่ำกว่าขั้นต่ำ</b>
+                        <div><t t-esc="cash.alerts.length"/> เดือนในช่วงพยากรณ์</div>
+                        <div class="a_big"><t t-esc="cash.alerts[0].label"/></div>
+                        <div>ขาด
+                            <b class="bsf_num"><t t-esc="fmtMoney(cash.alerts[0].gap)"/></b>
+                            · ขั้นต่ำ
+                            <b class="bsf_num"><t t-esc="fmtMoney(cash.min_cash)"/></b>
+                        </div>
+                    </div>
+                </t>
+                <t t-elif="cash.has_min_cash">
+                    <div class="o_bsf_okcard">
+                        <b><i class="fa fa-check-circle me-1"/>เงินสดสูงกว่าขั้นต่ำตลอดช่วง</b>
+                        <div>ต่ำสุดที่ <t t-esc="cash.low_month.label"/>:
+                            <span class="bsf_num"><t t-esc="fmtMoney(cash.low_month.closing)"/></span>
+                        </div>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_bsf_empty_note">
+                        ยังไม่ได้ตั้งค่าเงินสดขั้นต่ำ — Smart Finance ▸ Configuration ▸ Settings
+                    </div>
+                </t>
+                <div class="o_bsf_kpis">
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">เงินสดยกมา</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(cash.opening)"/></div>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">เงินสดต่ำสุดในช่วง</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(cash.low_month.closing)"/></div>
+                        <div class="k_sub"><t t-esc="cash.low_month.label"/></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="o_bsf_card" t-att-class="zoomCls('fc_2')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('fc_2')"
+                        t-att-title="isZoomed('fc_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('fc_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('fc_2') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>ตารางกระแสเงินสดรายเดือน</b>
+                    <span>เดือนแรกรวมยอดเกินกำหนดแล้ว · คอลัมน์ท้าย "หลังจากนี้"
+                        คือทุกอย่างที่ตกหลังช่วงพยากรณ์ (ไม่มีเงินหาย)</span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr>
+                                <th>รายการ</th>
+                                <th t-foreach="cash.rows" t-as="m" t-key="m.index"
+                                    t-attf-class="{{ m.is_tail ? 'is-tail' : '' }}">
+                                    <t t-esc="m.label"/>
+                                    <div style="font-weight: 400;"><t t-esc="m.sub"/></div>
+                                </th>
+                                <th>รวม</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="cashRows" t-as="metric" t-key="metric.key">
+                                <td t-attf-class="{{ metric.layer2 ? 'o_bsf_layer2' : '' }}">
+                                    <t t-esc="metric.label"/>
+                                </td>
+                                <td t-foreach="cash.rows" t-as="m" t-key="m.index"
+                                    t-attf-class="{{ zero(m[metric.key]) }} {{ m.is_tail ? 'is-tail' : '' }} {{ (metric.key === 'closing' &amp;&amp; m.below_min) ? 'is-alert' : '' }} {{ metric.drill ? 'o_bsf_click' : '' }}"
+                                    t-att-title="metric.drill ? ('คลิกดูรายการ ' + m.label) : ''"
+                                    t-on-click="() => this.openCashDrill(metric, m)">
+                                    <t t-esc="(metric.sign &lt; 0 &amp;&amp; m[metric.key]) ? ('(' + fmtMoney(m[metric.key]) + ')') : fmtMoney(m[metric.key])"/>
+                                </td>
+                                <td class="is-total"><t t-esc="cashTotal(metric)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="o_bsf_empty_note">
+                    แถวสีจาง = ชั้นที่ 2 (งานขายที่ยังไม่เซ็น × ความน่าจะเป็น) —
+                    ดีลที่ชนะแล้วจะย้ายไปนับเป็นงานตามสัญญาโดยอัตโนมัติ
+                </div>
+            </section>
+        </t>
+
+        <!-- ==================== กำไรขาดทุน ==================== -->
+        <t t-if="state.section === 'pnl'">
+            <section class="o_bsf_card span8">
+                <div class="o_bsf_kpis">
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">รายได้คาดตลอดช่วง</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(pnl.total.revenue)"/></div>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">ต้นทุน+ค่าใช้จ่าย</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(pnl.total.cost)"/></div>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">กำไรคาดการณ์</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(pnl.total.margin)"/></div>
+                        <div class="k_sub"><t t-esc="fmtPct(pnl.total.margin_pct)"/></div>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">พึ่งพางานขายที่ยังไม่เซ็น</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtPct(pipeline.revenue_share_pct)"/></div>
+                        <div class="k_sub">ของรายได้คาดทั้งช่วง</div>
+                    </div>
+                </div>
+                <div class="o_bsf_empty_note">
+                    รายได้แบ่งสองชั้น: <b>งานที่เซ็นแล้ว</b> รับรู้ตามแผนงานจริงของ
+                    โครงการ (เฉพาะงานที่ถือมูลค่าตามสัญญา จึงไม่นับซ้ำ) ส่วน
+                    <b>งานขาย</b> คูณความน่าจะเป็นก่อนเสมอ — ยิ่งสัดส่วนชั้นที่สองสูง
+                    แผนยิ่งเปราะต่อดีลที่หลุด
+                </div>
+            </section>
+            <section class="o_bsf_card span4">
+                <div class="c_head">
+                    <b>ยอดจริงเดือนนี้</b>
+                    <span><t t-esc="pnl.actual_label"/></span>
+                </div>
+                <table class="o_bsf_table">
+                    <tbody>
+                        <tr><td>รายได้</td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(pnl.actual_mtd.revenue)"/></td></tr>
+                        <tr><td>ต้นทุนขาย</td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(pnl.actual_mtd.cost)"/></td></tr>
+                        <tr><td>ค่าใช้จ่าย</td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(pnl.actual_mtd.opex)"/></td></tr>
+                        <tr><td><b>กำไร</b></td>
+                            <td class="bsf_num"><b><t t-esc="fmtMoney(pnl.actual_mtd.margin)"/></b></td></tr>
+                    </tbody>
+                </table>
+                <div class="o_bsf_empty_note">
+                    ยอดจริงจากบัญชีตั้งแต่ต้นเดือนถึงวันนี้ — เทียบกับคอลัมน์เดือนแรกของตารางพยากรณ์
+                </div>
+            </section>
+
+            <section class="o_bsf_card" t-att-class="zoomCls('fc_3')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('fc_3')"
+                        t-att-title="isZoomed('fc_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('fc_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('fc_3') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>กำไรขาดทุนคาดการณ์รายเดือน</b>
+                    <span>รับรู้รายได้ตามแผนงาน (เฉพาะงานที่ถือมูลค่าตามสัญญา)
+                        + ต้นทุนคงเหลือของโครงการ · <t t-esc="unitLabel"/></span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr>
+                                <th>รายการ</th>
+                                <th t-foreach="months" t-as="m" t-key="m.index"
+                                    t-attf-class="{{ m.is_tail ? 'is-tail' : '' }}">
+                                    <t t-esc="m.label"/>
+                                </th>
+                                <th>รวม</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="pnlRows" t-as="row" t-key="row.key">
+                                <td t-attf-class="{{ row.layer2 ? 'o_bsf_layer2' : '' }}">
+                                    <t t-if="row.strong"><b><t t-esc="row.label"/></b></t>
+                                    <t t-else=""><t t-esc="row.label"/></t>
+                                </td>
+                                <td t-foreach="months" t-as="m" t-key="m.index"
+                                    t-attf-class="{{ m.is_tail ? 'is-tail' : '' }}">
+                                    <t t-esc="pnlCell(row, m.index)"/>
+                                </td>
+                                <td class="is-total"><t t-esc="pnlTotal(row)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </t>
+
+        <!-- ==================== งานขาย ==================== -->
+        <t t-if="state.section === 'pipeline'">
+            <section class="o_bsf_card span4">
+                <div class="o_bsf_kpis">
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">ดีลที่ยังไม่ปิด</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtInt(pipeline.totals.count)"/></div>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">มูลค่ารวม</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(pipeline.totals.amount)"/></div>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">ถ่วงน้ำหนักแล้ว</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(pipeline.totals.weighted)"/></div>
+                    </div>
+                </div>
+                <div class="o_bsf_empty_note">
+                    <a t-on-click="openDeals">เปิดรายการงานขายทั้งหมด</a> เพื่อเพิ่ม/แก้ดีล
+                    — ดีลที่ชนะแล้วต้องผูกโครงการ ระบบจะเลิกนับที่นี่แล้วไปนับ
+                    แผนวางบิลของโครงการจริงแทน
+                </div>
+            </section>
+
+            <section class="o_bsf_card span8">
+                <div class="c_head">
+                    <b>เงินเข้าจากงานขายรายเดือน (ถ่วงน้ำหนัก)</b>
+                    <span>กระจายตามแบบแผนวางบิลของแต่ละดีล นับจากเดือนที่คาดว่าจะเซ็น
+                        + รอบเก็บเงินของบริษัท · <t t-esc="unitLabel"/></span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr><th t-foreach="months" t-as="m" t-key="m.index"
+                                    t-attf-class="{{ m.is_tail ? 'is-tail' : '' }}">
+                                <t t-esc="m.label"/></th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td t-foreach="months" t-as="m" t-key="m.index"
+                                    t-attf-class="{{ zero(pipeline.weighted_by_month[m.index]) }} {{ m.is_tail ? 'is-tail' : '' }}">
+                                    <t t-esc="fmtMoney(pipeline.weighted_by_month[m.index])"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="o_bsf_card" t-att-class="zoomCls('fc_4')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('fc_4')"
+                        t-att-title="isZoomed('fc_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('fc_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('fc_4') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>รายการงานขายที่ยังไม่เซ็น</b>
+                    <span>เรียงตามวันที่คาดว่าจะเซ็น</span>
+                </div>
+                <t t-if="pipeline.rows.length">
+                    <div class="o_bsf_scroll_x">
+                        <table class="o_bsf_table">
+                            <thead>
+                                <tr>
+                                    <th class="o_bsf_txt">คาดเซ็น</th>
+                                    <th class="o_bsf_txt">ดีล</th>
+                                    <th class="o_bsf_txt">ลูกค้า</th>
+                                    <th class="o_bsf_txt">ขั้น</th>
+                                    <th>มูลค่า</th><th>%</th><th>ถ่วงน้ำหนัก</th>
+                                    <th>ระยะงาน</th>
+                                    <th class="o_bsf_txt">แบบแผนวางบิล</th>
+                                    <th>กำไรคาด</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="pipeline.rows" t-as="deal" t-key="deal.id">
+                                    <td class="o_bsf_txt"><t t-esc="deal.sign_date"/></td>
+                                    <td class="o_bsf_txt o_bsf_click"
+                                        t-on-click="() => this.openDeal(deal.id)">
+                                        <t t-esc="deal.name"/>
+                                    </td>
+                                    <td class="o_bsf_txt"><t t-esc="deal.customer"/></td>
+                                    <td class="o_bsf_txt"><t t-esc="deal.stage_label"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(deal.amount)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtInt(deal.probability)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(deal.weighted)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtInt(deal.duration_months)"/> ด.</td>
+                                    <td class="o_bsf_txt"><t t-esc="deal.pattern"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtPct(deal.margin_pct)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_bsf_empty_note">
+                        ยังไม่มีงานขายในระบบ — <a t-on-click="openDeals">กรอกดีลแรก</a>
+                        แล้วกริดพยากรณ์จะเห็นรายได้ที่ยังไม่เซ็นสัญญาทันที
+                    </div>
+                </t>
+            </section>
+        </t>
+
+        <!-- ==================== ต้นทุนคงเหลือ ==================== -->
+        <t t-if="state.section === 'ctc'">
+            <section class="o_bsf_card span4">
+                <div class="o_bsf_kpis">
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">ต้นทุนคงเหลือรวม</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtMoney(ctc.total)"/></div>
+                    </div>
+                    <div class="o_bsf_kpi">
+                        <div class="k_label">โครงการที่แผนจบแล้ว</div>
+                        <div class="k_value bsf_num"><t t-esc="fmtInt(ctc.overdue_count)"/></div>
+                        <div class="k_sub">แต่ต้นทุนยังไม่ครบ</div>
+                    </div>
+                </div>
+            </section>
+            <section class="o_bsf_card span8">
+                <div class="o_bsf_empty_note">
+                    ต้นทุนคงเหลือ = EAC ของ Work Package หักต้นทุนที่ใช้ไปแล้ว (ชุดเดียวกับ
+                    แท็บ Project Margin) เกลี่ยลงเดือนตามกำหนดจบงาน — โครงการที่แผนจบไปแล้ว
+                    ถือว่าต้องจ่ายทันที จึงลงคอลัมน์เดือนแรกทั้งก้อน
+                </div>
+            </section>
+
+            <section class="o_bsf_card" t-att-class="zoomCls('fc_5')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('fc_5')"
+                        t-att-title="isZoomed('fc_5') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('fc_5') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('fc_5') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>ต้นทุนที่ยังต้องจ่ายต่อโครงการ</b>
+                    <span>เรียงจากมากไปน้อย (สูงสุด 25 โครงการ) · <t t-esc="unitLabel"/></span>
+                </div>
+                <t t-if="ctc.rows.length">
+                    <div class="o_bsf_scroll_x">
+                        <table class="o_bsf_table">
+                            <thead>
+                                <tr>
+                                    <th class="o_bsf_txt">โครงการ</th>
+                                    <th class="o_bsf_txt">บริษัท</th>
+                                    <th>งบรวม</th>
+                                    <th>EAC</th><th>ใช้ไปแล้ว</th><th>คงเหลือ</th>
+                                    <th class="o_bsf_txt">กำหนดจบ</th>
+                                    <th>เหลือ (เดือน)</th><th>ต่อเดือน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="ctc.rows" t-as="row" t-key="row.project_id"
+                                    t-attf-class="{{ row.schedule_overdue ? 'is-alert' : '' }}">
+                                    <td class="o_bsf_txt o_bsf_click"
+                                        t-on-click="() => this.openProject(row.project_id)">
+                                        <t t-esc="row.name"/>
+                                    </td>
+                                    <td class="o_bsf_txt"><t t-esc="row.company"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(row.budget_total)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(row.eac)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(row.cost_to_date)"/></td>
+                                    <td class="bsf_num"><b><t t-esc="fmtMoney(row.cost_to_complete)"/></b></td>
+                                    <td class="o_bsf_txt">
+                                        <t t-esc="row.end_date or '—'"/>
+                                        <span t-if="row.schedule_overdue" class="ms-1"
+                                              title="แผนจบไปแล้วแต่ต้นทุนยังไม่ครบ">⚠</span>
+                                    </td>
+                                    <td class="bsf_num"><t t-esc="fmtNum(row.months_left)"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(row.run_rate)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_bsf_empty_note">ไม่มีโครงการที่มีต้นทุนคงเหลือ</div>
+                </t>
+            </section>
+        </t>
+    </div>
+</t>
+
+</templates>

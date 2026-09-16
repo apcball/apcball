@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_invoice_import_shortcut" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.invoice.import.shortcut</field>
+        <field name="model">biz.smart.finance.ext.invoice</field>
+        <field name="inherit_id" ref="view_bsf_ext_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <header>
+                    <button name="%(action_bsf_doc_import)d" type="action" string="นำเข้าไฟล์ CSV / Excel" display="always" groups="biz_smart_finance.group_bsf_manager" context="{'default_mode': 'invoice'}"/>
+                </header>
+            </xpath>
+            <xpath expr="//tree/field[@name='source']" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_bsf_budget_import_shortcut" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.budget.import.shortcut</field>
+        <field name="model">biz.smart.finance.ext.budget</field>
+        <field name="inherit_id" ref="view_bsf_ext_budget_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <header>
+                    <button name="%(action_bsf_doc_import)d" type="action" string="นำเข้าไฟล์ CSV / Excel" display="always" groups="biz_smart_finance.group_bsf_manager" context="{'default_mode': 'budget'}"/>
+                </header>
+            </xpath>
+            <xpath expr="//tree/field[@name='source']" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_bsf_fact_import_shortcut" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.fact.import.shortcut</field>
+        <field name="model">biz.smart.finance.ext.fact</field>
+        <field name="inherit_id" ref="view_bsf_ext_fact_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <header>
+                    <button name="%(action_bsf_fact_import)d" type="action" string="นำเข้าไฟล์ CSV / Excel" display="always" groups="biz_smart_finance.group_bsf_manager" context="{}"/>
+                </header>
+            </xpath>
+            <xpath expr="//tree/field[@name='source']" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_bsf_gl_import_shortcut" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.gl.import.shortcut</field>
+        <field name="model">biz.smart.finance.ext.gl</field>
+        <field name="inherit_id" ref="view_bsf_ext_gl_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <header>
+                    <button name="%(action_bsf_tb_import)d" type="action" string="นำเข้าไฟล์ CSV / Excel" display="always" groups="biz_smart_finance.group_bsf_manager" context="{}"/>
+                </header>
+            </xpath>
+            <xpath expr="//tree/field[@name='source']" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_bsf_ext_fact_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.fact.form</field>
+        <field name="model">biz.smart.finance.ext.fact</field>
+        <field name="arch" type="xml">
+            <form string="ตัวเลขการเงิน / สินค้าคงเหลือ">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="date"/>
+                            <field name="kind"/>
+                            <field name="metric_key" readonly="kind == 'inventory'"/>
+                        </group>
+                        <group>
+                            <field name="label" invisible="kind != 'inventory'"/>
+                            <field name="amount"/>
+                            <field name="qty" invisible="kind != 'inventory'"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="ข้อมูลเพิ่มเติม" col="4">
+                        <field name="source"/>
+                        <field name="external_ref"/>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_ext_fact" model="ir.actions.act_window">
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

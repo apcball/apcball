@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_period_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.period.tree</field>
+        <field name="model">biz.smart.finance.period</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'closed'"
+                  decoration-danger="tb_diff">
+                <field name="company_id"/>
+                <field name="name"/>
+                <field name="period_index"/>
+                <field name="gl_source"/>
+                <field name="invoice_source"/>
+                <field name="inventory_source"/>
+                <field name="ratio_source"/>
+                <field name="budget_source"/>
+                <field name="gl_id"/>
+                <field name="tb_diff" widget="monetary"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'closed'"
+                       decoration-info="state == 'review'"/>
+                <field name="currency_id" column_invisible="1"/>
+                <button name="action_set_source_range" type="object"
+                        string="ตั้งแหล่งข้อมูล" icon="fa-exchange"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_period_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.period.form</field>
+        <field name="model">biz.smart.finance.period</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_close" type="object" string="ปิดงวด"
+                            class="btn-primary" invisible="state == 'closed'"/>
+                    <button name="action_reopen" type="object" string="เปิดงวดใหม่"
+                            invisible="state != 'closed'"/>
+                    <button name="action_set_source_range" type="object"
+                            string="ตั้งแหล่งข้อมูล"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="open,review,closed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id" readonly="state == 'closed'"/>
+                            <field name="date_from" readonly="state == 'closed'"/>
+                            <field name="date_to" readonly="state == 'closed'"/>
+                            <field name="fy_year"/>
+                            <field name="period_index"/>
+                        </group>
+                        <group>
+                            <field name="gl_source"/>
+                            <field name="invoice_source"/>
+                            <field name="inventory_source"/>
+                            <field name="ratio_source"/>
+                            <field name="budget_source"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="gl_id"/>
+                        <field name="tb_diff" widget="monetary"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="closed_by" readonly="1"/>
+                        <field name="closed_date" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_bsf_period_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.period.search</field>
+        <field name="model">biz.smart.finance.period</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="company_id"/>
+                <field name="name"/>
+                <field name="fy_year"/>
+                <filter name="external_gl" string="GL ภายนอก"
+                        domain="[('gl_source', '=', 'external')]"/>
+                <filter name="open_only" string="ยังไม่ปิดงวด"
+                        domain="[('state', '!=', 'closed')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="บริษัท"
+                            context="{'group_by': 'company_id'}"/>
+                    <filter name="group_fy" string="ปีงบ"
+                            context="{'group_by': 'fy_year'}"/>
+                    <filter name="group_state" string="สถานะ"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bsf_period" model="ir.actions.act_window">
+        <field name="name">ทะเบียนงวด (Monthly Close Cockpit)</field>
+        <field name="res_model">biz.smart.finance.period</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_group_fy': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีงวด</p>
+            <p>ใช้เมนู "สร้างงวดรายปี" เพื่อสร้าง 12 งวดของปีงบให้บริษัทหนึ่ง
+            แล้วตั้งแหล่งข้อมูลของแต่ละแท็บทีละเดือนได้ — เดือนที่ไม่มีแถวที่นี่
+            ใช้ค่าตั้งต้นจากการตั้งค่า Smart Finance ของบริษัทนั้นเหมือนเดิม</p>
+        </field>
+    </record>
+
+    <!-- วิซาร์ดสร้างงวดรายปี -->
+    <record id="view_bsf_period_generate_wizard_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.period.generate.wizard.form</field>
+        <field name="model">biz.smart.finance.period.generate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="สร้างงวดรายปี">
+                <group>
+                    <field name="company_id"/>
+                    <field name="fy_year"/>
+                </group>
+                <footer>
+                    <button name="action_apply" type="object" string="สร้าง"
+                            class="btn-primary"/>
+                    <button string="ยกเลิก" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_period_generate_wizard" model="ir.actions.act_window">
+        <field name="name">สร้างงวดรายปี</field>
+        <field name="res_model">biz.smart.finance.period.generate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- วิซาร์ดตั้งแหล่งข้อมูลของงวดที่เลือก -->
+    <record id="view_bsf_period_source_wizard_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.period.source.wizard.form</field>
+        <field name="model">biz.smart.finance.period.source.wizard</field>
+        <field name="arch" type="xml">
+            <form string="ตั้งแหล่งข้อมูลของงวด">
+                <field name="period_ids" widget="many2many_tags" readonly="1"/>
+                <group>
+                    <field name="gl_source"/>
+                    <field name="invoice_source"/>
+                    <field name="inventory_source"/>
+                    <field name="ratio_source"/>
+                    <field name="budget_source"/>
+                </group>
+                <footer>
+                    <button name="action_apply" type="object" string="ตั้งค่า"
+                            class="btn-primary"/>
+                    <button string="ยกเลิก" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_bsf_period" name="ทะเบียนงวด"
+              parent="menu_bsf_inputs" action="action_bsf_period"
+              sequence="5"/>
+    <menuitem id="menu_bsf_period_generate" name="สร้างงวดรายปี"
+              parent="menu_bsf_inputs" action="action_bsf_period_generate_wizard"
+              sequence="4"/>
+</odoo>

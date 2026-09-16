@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_bsf" model="ir.module.category">
+        <field name="name">Smart Finance</field>
+        <field name="description">CFO Cockpit และข้อมูลการเงินระดับบริหาร</field>
+        <field name="sequence">32</field>
+    </record>
+
+    <record id="group_bsf_user" model="res.groups">
+        <field name="name">CFO Cockpit / Viewer</field>
+        <field name="category_id" ref="module_category_bsf"/>
+        <field name="comment">เห็น dashboard และข้อมูลการเงินระดับบริหาร (อ่านอย่างเดียว)</field>
+    </record>
+
+    <record id="group_bsf_manager" model="res.groups">
+        <field name="name">CFO Cockpit / Manager</field>
+        <field name="category_id" ref="module_category_bsf"/>
+        <field name="implied_ids" eval="[(4, ref('group_bsf_user'))]"/>
+        <field name="comment">ตั้งค่า/กรอกข้อมูลการเงิน (config, forecast, risk, VO)</field>
+    </record>
+
+    <!-- multi-company: เห็นเฉพาะบริษัทที่ผู้ใช้มีสิทธิ์ -->
+    <record id="rule_bsf_config_company" model="ir.rule">
+        <field name="name">Smart Finance config: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_config"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_collection_followup_company" model="ir.rule">
+        <field name="name">Smart Finance collection follow-up: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_collection_followup"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_forecast_line_company" model="ir.rule">
+        <field name="name">Smart Finance forecast line: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_forecast_line"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_deal_company" model="ir.rule">
+        <field name="name">Smart Finance deal: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_deal"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_billing_pattern_company" model="ir.rule">
+        <field name="name">Smart Finance billing pattern: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_billing_pattern"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_forecast_snapshot_company" model="ir.rule">
+        <field name="name">Smart Finance forecast snapshot: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_forecast_snapshot"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_risk_company" model="ir.rule">
+        <field name="name">Smart Finance risk: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_risk"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_ext_fact_company" model="ir.rule">
+        <field name="name">Smart Finance ext fact: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_ext_fact"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_ext_invoice_company" model="ir.rule">
+        <field name="name">Smart Finance ext invoice: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_ext_invoice"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_ext_budget_company" model="ir.rule">
+        <field name="name">Smart Finance ext budget: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_ext_budget"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_vo_company" model="ir.rule">
+        <field name="name">Smart Finance VO: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_vo"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_ext_account_company" model="ir.rule">
+        <field name="name">Smart Finance ext account: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_ext_account"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_ext_gl_company" model="ir.rule">
+        <field name="name">Smart Finance ext gl: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_ext_gl"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_period_company" model="ir.rule">
+        <field name="name">Smart Finance period: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_period"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_bank_company" model="ir.rule">
+        <field name="name">Smart Finance bank: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_bank"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_bank_facility_company" model="ir.rule">
+        <field name="name">Smart Finance bank facility: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_bank_facility"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_bank_transfer_company" model="ir.rule">
+        <field name="name">Smart Finance bank transfer: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_bank_transfer"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- บทสนทนา Copilot เป็นของส่วนตัว — เห็น/แก้ได้เฉพาะของตัวเอง -->
+    <record id="rule_bsf_conversation_own" model="ir.rule">
+        <field name="name">Smart Finance conversation: own only</field>
+        <field name="model_id" ref="model_biz_smart_finance_conversation"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_bsf_message_own" model="ir.rule">
+        <field name="name">Smart Finance message: own conversation only</field>
+        <field name="model_id" ref="model_biz_smart_finance_message"/>
+        <field name="domain_force">[('conversation_id.user_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_bsf_report_company" model="ir.rule">
+        <field name="name">Smart Finance AI report: multi-company</field>
+        <field name="model_id" ref="model_biz_smart_finance_report"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

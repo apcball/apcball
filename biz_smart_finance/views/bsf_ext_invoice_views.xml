@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_ext_invoice_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.invoice.tree</field>
+        <field name="model">biz.smart.finance.ext.invoice</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" decoration-muted="not amount_residual">
+                <field name="company_id"/>
+                <field name="doc_type"/>
+                <field name="number"/>
+                <field name="partner_name"/>
+                <field name="partner_id" optional="hide"/>
+                <field name="date"/>
+                <field name="date_due"/>
+                <field name="amount_total" widget="monetary" sum="ยอดรวม"/>
+                <field name="amount_untaxed" widget="monetary" optional="hide"/>
+                <field name="amount_residual" widget="monetary" sum="ยอดค้าง"/>
+                <field name="source" widget="badge"
+                       decoration-info="source == 'api'"
+                       decoration-warning="source == 'manual'"/>
+                <field name="external_ref" optional="hide"/>
+                <field name="note" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_ext_invoice_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.invoice.form</field>
+        <field name="model">biz.smart.finance.ext.invoice</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="doc_type"/>
+                            <field name="number"/>
+                            <field name="partner_name"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="date_due"/>
+                            <field name="amount_total"/>
+                            <field name="amount_untaxed"/>
+                            <field name="amount_residual"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="source"/>
+                        <field name="external_ref"/>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_bsf_ext_invoice_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.invoice.search</field>
+        <field name="model">biz.smart.finance.ext.invoice</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="number"/>
+                <field name="partner_name"/>
+                <field name="external_ref"/>
+                <filter name="type_ar" string="ลูกหนี้ (AR)"
+                        domain="[('doc_type', '=', 'ar')]"/>
+                <filter name="type_ap" string="เจ้าหนี้ (AP)"
+                        domain="[('doc_type', '=', 'ap')]"/>
+                <separator/>
+                <filter name="open_only" string="ยังค้างอยู่"
+                        domain="[('amount_residual', '!=', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="บริษัท"
+                            context="{'group_by': 'company_id'}"/>
+                    <filter name="group_type" string="ประเภท"
+                            context="{'group_by': 'doc_type'}"/>
+                    <filter name="group_due" string="ครบกำหนด"
+                            context="{'group_by': 'date_due'}"/>
+                    <filter name="group_source" string="ที่มา"
+                            context="{'group_by': 'source'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bsf_ext_invoice" model="ir.actions.act_window">
+        <field name="name">External Invoices (AR/AP)</field>
+        <field name="res_model">biz.smart.finance.ext.invoice</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีเอกสารจากระบบภายนอก</p>
+            <p>กรอกใบแจ้งหนี้ค้างรับ (AR) และบิลค้างจ่าย (AP) ของบริษัทที่ตั้ง
+            แหล่งข้อมูลใบแจ้งหนี้เป็น "ระบบภายนอก" — ตัวเลขจะไปโผล่ที่ AR aging,
+            AP &amp; Payment Plan, Cash Forecast และกรวย Sales to Cash
+            เหมือนเอกสารใน Odoo ทุกประการ</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bsf_ext_invoice" name="External Invoices"
+              parent="menu_bsf_inputs" action="action_bsf_ext_invoice"
+              sequence="42"/>
+</odoo>

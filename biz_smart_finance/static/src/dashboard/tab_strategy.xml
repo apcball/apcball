@@ -1,0 +1,69 @@
+<templates xml:space="preserve">
+<t t-name="biz_smart_finance.TabStrategy">
+<div class="o_bsf_strategy">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <button class="btn btn-outline-primary" t-on-click="() => this.openList('cost_period')">ข้อมูลต้นทุนรายเดือน</button>
+        <button class="btn btn-outline-primary" t-on-click="() => this.openList('cost_scenario')">จำลองทางเลือก</button>
+        <button class="btn btn-outline-primary" t-on-click="() => this.openList('strategy')">กลยุทธ์ / KPI</button>
+        <button class="btn btn-outline-primary" t-on-click="() => this.openList('my_actions')">งานของฉัน</button>
+        <button class="btn btn-primary" t-if="state.data?.is_manager" t-on-click="evaluate" t-att-disabled="state.evaluating">
+            <i t-if="state.evaluating" class="fa fa-spinner fa-spin me-1"/>ประเมินปัญหาและสร้างประเด็น
+        </button>
+        <button class="btn btn-light" t-on-click="() => this.load()" t-att-disabled="state.loading">รีเฟรช</button>
+    </div>
+    <p t-if="state.loading"><i class="fa fa-spinner fa-spin"/> กำลังวิเคราะห์...</p>
+    <div t-elif="state.error" class="alert alert-danger" t-esc="state.error"/>
+    <t t-elif="state.data">
+        <t t-if="props.mode === 'cost'">
+            <p class="text-muted"><t t-esc="state.data.note"/> · เดือน <t t-esc="state.data.month"/> · หน่วย <t t-esc="props.unit === 'mb' ? 'ล้าน' : 'เต็มจำนวน'"/></p>
+            <section t-foreach="state.data.companies" t-as="co" t-key="co.company_id" class="o_bsf_card mb-4">
+                <div class="c_head"><b><t t-esc="co.company"/> · <t t-esc="co.currency"/></b><span>เดือน <t t-esc="co.month"/> · ข้อมูลสะสม <t t-esc="co.months_available"/> / <t t-esc="co.months_expected"/> เดือน</span></div>
+                <div t-if="!co.current" class="alert alert-info">ยังไม่มีข้อมูลต้นทุนยืนยันของเดือนที่เลือก เริ่มที่ “ข้อมูลต้นทุนรายเดือน” และดาวน์โหลดแม่แบบนำเข้า</div>
+                <t t-else="">
+                    <div t-if="co.current.reason" class="alert alert-warning" t-esc="co.current.reason"/>
+                    <div class="o_bsf_kpis mb-3">
+                        <div class="o_bsf_kpi"><span class="k_label">ยอดขายคุ้มทุน · <t t-esc="co.currency"/></span><b class="k_value" t-esc="this.money(co.current.break_even)"/><span class="k_sub">ยอดขายจริง <t t-esc="this.money(co.current.sales)"/></span></div>
+                        <div class="o_bsf_kpi"><span class="k_label">ยอดขายที่ยังขาด</span><b class="k_value" t-att-class="co.current.sales_gap > 0 ? 'text-danger' : ''" t-esc="this.money(co.current.sales_gap)"/><span class="k_sub">อัตรากำไรส่วนเกิน <t t-esc="this.number(co.current.contribution_pct)"/>%</span></div>
+                        <div class="o_bsf_kpi"><span class="k_label">กำไรดำเนินงาน</span><b class="k_value" t-att-class="co.current.operating_profit &lt; 0 ? 'text-danger' : ''" t-esc="this.money(co.current.operating_profit)"/><span class="k_sub">หลังค่าใช้จ่ายครั้งเดียว</span></div>
+                        <div class="o_bsf_kpi"><span class="k_label">บุคลากร / ยอดขาย</span><b class="k_value"><t t-esc="this.number(co.current.personnel_pct)"/>%</b><span class="k_sub">รวมเงินเดือน OT และสวัสดิการ</span></div>
+                    </div>
+                    <div class="o_bsf_scroll_x"><table class="o_bsf_table"><thead><tr><th>ตัวชี้วัด</th><th>เดือนที่เลือก</th><th>เดือนก่อน</th><th>สะสมปีงบ</th></tr></thead><tbody>
+                    <tr t-foreach="metrics" t-as="metric" t-key="metric.key">
+                        <td t-esc="metric.label"/>
+                        <td t-esc="metric.ratio ? this.number(co.current[metric.key]) : this.money(co.current[metric.key])"/>
+                        <td t-esc="metric.ratio ? this.number(co.previous?.[metric.key]) : this.money(co.previous?.[metric.key])"/>
+                        <td t-esc="metric.ratio ? this.number(co.ytd[metric.key]) : this.money(co.ytd[metric.key])"/>
+                    </tr></tbody></table></div>
+                    <p t-if="co.ytd.reason" class="text-warning mt-2" t-esc="co.ytd.reason"/>
+                    <details class="mt-3"><summary>ค่าใช้จ่ายตามหมวดและฝ่าย</summary>
+                        <table class="o_bsf_table"><thead><tr><th>หมวด</th><th>จำนวนเงิน</th></tr></thead><tbody><tr t-foreach="co.current.categories" t-as="cat" t-key="cat.key"><td t-esc="cat.name"/><td t-esc="this.money(cat.amount)"/></tr></tbody></table>
+                        <div class="o_bsf_scroll_x"><table class="o_bsf_table"><thead><tr><th>ฝ่าย</th><th>ยอดขาย</th><th>ต้นทุน</th><th>บุคลากร</th><th>FTE</th><th>คุ้มทุน</th><th>หมายเหตุ</th></tr></thead><tbody>
+                        <tr t-foreach="co.current.departments" t-as="dep" t-key="dep.id"><td t-esc="dep.name"/><td t-esc="this.money(dep.sales)"/><td t-esc="this.money(dep.cost)"/><td t-esc="this.money(dep.personnel)"/><td t-esc="this.number(dep.fte)"/><td t-esc="this.money(dep.break_even)"/><td t-esc="dep.reason"/></tr>
+                        </tbody></table></div>
+                    </details>
+                    <details class="mt-3"><summary>แนวโน้มรายเดือน</summary><table class="o_bsf_table"><thead><tr><th>เดือน</th><th>ยอดขาย</th><th>ต้นทุน</th><th>กำไร</th><th>คุ้มทุน</th></tr></thead><tbody>
+                    <tr t-foreach="co.history" t-as="m" t-key="m.id"><td><a href="#" t-on-click.prevent="() => this.open('cost.period', m.id)" t-esc="m.month"/></td><td t-esc="this.money(m.sales)"/><td t-esc="this.money(m.cost)"/><td t-esc="this.money(m.operating_profit)"/><td t-esc="this.money(m.break_even)"/></tr>
+                    </tbody></table></details>
+                    <div class="mt-3"><b>เทียบกับบัญชี:</b><span t-if="co.reconciliation.reason" t-esc="co.reconciliation.reason"/><t t-else=""> ส่วนต่างยอดขาย <t t-esc="this.money(co.reconciliation.sales_difference)"/> · ส่วนต่างค่าใช้จ่ายรวม <t t-esc="this.money(co.reconciliation.cost_difference)"/><p t-esc="co.reconciliation.note"/></t></div>
+                </t>
+            </section>
+            <section class="o_bsf_card"><b>สูตรและความหมาย</b><p>กำไรส่วนเกิน = ยอดขาย − ต้นทุนผันแปร · จุดคุ้มทุน = (ต้นทุนคงที่ + ค่าใช้จ่ายครั้งเดียว) ÷ อัตรากำไรส่วนเกิน</p><p>รวมค่าเสื่อมในต้นทุนดำเนินงาน แยกดอกเบี้ยและภาษีออก ไม่ถือว่ากำไรคุ้มทุนคือเงินสดเพียงพอ และไม่สรุปว่าเงินเดือนสูงจากอัตราส่วนเพียงตัวเดียว</p></section>
+        </t>
+        <t t-else="">
+            <section class="o_bsf_card mb-3"><div class="c_head"><b>เป้าหมายกลยุทธ์รายไตรมาส</b></div>
+            <p t-if="!state.data.goals.length">เริ่มกำหนดแผนรายปีและ KPI รายไตรมาสที่เมนู “กลยุทธ์ / KPI”</p>
+            <div class="o_bsf_scroll_x"><table class="o_bsf_table" t-if="state.data.goals.length"><thead><tr><th>KPI</th><th>บริษัท</th><th>ไตรมาส</th><th>ฐาน</th><th>เป้า</th><th>จริง</th><th>หน่วย</th><th>เจ้าของ</th><th>ครบกำหนด</th></tr></thead><tbody>
+            <tr t-foreach="state.data.goals" t-as="g" t-key="g.id"><td><a href="#" t-on-click.prevent="() => this.open('goal', g.id)" t-esc="g.name"/></td><td t-esc="g.company"/><td t-esc="g.quarter"/><td t-esc="g.monetary ? this.money(g.baseline) : this.number(g.baseline)"/><td t-esc="g.monetary ? this.money(g.target) : this.number(g.target)"/><td t-esc="g.monetary ? this.money(g.actual) : this.number(g.actual)"/><td><t t-esc="g.unit"/><t t-if="g.monetary and props.unit === 'mb'"> (ล้าน)</t></td><td t-esc="g.owner"/><td t-esc="g.due"/></tr>
+            </tbody></table></div></section>
+            <section class="o_bsf_card mb-3"><div class="c_head"><b>ประเด็นสำคัญและแนวทางแก้ไข</b><span>ผลกระทบเป็นมูลค่าที่เกี่ยวข้อง ยังไม่ใช่ผลประหยัด</span></div>
+            <p t-if="!state.data.issues.length">ยังไม่มีประเด็น กด “ประเมินปัญหาและสร้างประเด็น” หรือเพิ่มประเด็นเอง</p>
+            <article t-foreach="state.data.issues" t-as="issue" t-key="issue.id" class="border-bottom py-3"><a href="#" t-on-click.prevent="() => this.open('issue', issue.id)"><b t-esc="issue.name"/></a><span class="ms-2" t-esc="issue.company"/><p class="mb-1" t-esc="issue.evidence"/><p class="mb-1" t-esc="issue.recommendation"/><span><t t-esc="this.money(issue.impact)"/> <t t-esc="issue.currency"/><t t-if="props.unit === 'mb'"> (ล้าน)</t></span><button t-if="state.data.is_manager" class="btn btn-sm btn-outline-primary ms-3" t-on-click="() => this.createAction(issue.id)">สร้าง/เปิด Action</button></article>
+            </section>
+            <section class="o_bsf_card"><div class="c_head"><b>Action ที่ต้องติดตาม</b></div><p t-if="!state.data.actions.length">ยังไม่มี Action ที่เปิดอยู่</p><table t-if="state.data.actions.length" class="o_bsf_table"><thead><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>ครบกำหนด</th><th>สถานะ</th><th>ความคืบหน้า</th></tr></thead><tbody>
+            <tr t-foreach="state.data.actions" t-as="a" t-key="a.id" t-att-class="a.overdue ? 'text-danger' : ''"><td><a href="#" t-on-click.prevent="() => this.open('action', a.id)" t-esc="a.name"/><span t-if="a.blocked"> · ติดขัด</span></td><td t-esc="a.owner"/><td t-esc="a.due"/><td><t t-esc="a.state"/><span t-if="a.overdue"> · เกินกำหนด</span></td><td><t t-esc="this.number(a.progress)"/>%</td></tr>
+            </tbody></table></section>
+        </t>
+    </t>
+</div>
+</t>
+</templates>

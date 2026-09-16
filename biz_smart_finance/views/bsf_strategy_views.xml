@@ -1,0 +1,681 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <menuitem id="menu_bsf_strategy_root" name="กลยุทธ์และควบคุมต้นทุน" parent="menu_bsf_root" sequence="30" groups="biz_smart_finance.group_bsf_user" />
+    <record id="view_bsf_cost_department_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.cost.department.tree</field>
+        <field name="model">biz.smart.finance.cost.department</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="company_id" />
+                <field name="revenue_center" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_cost_department_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.cost.department.form</field>
+        <field name="model">biz.smart.finance.cost.department</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name" />
+                        <field name="company_id" />
+                        <field name="revenue_center" />
+                        <field name="active" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_cost_department" model="ir.actions.act_window">
+        <field name="name">ฝ่ายวิเคราะห์ต้นทุน</field>
+        <field name="res_model">biz.smart.finance.cost.department</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_cost_department" name="ฝ่ายวิเคราะห์ต้นทุน" parent="menu_bsf_strategy_root" action="action_bsf_cost_department" />
+    <record id="view_bsf_cost_period_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.cost.period.tree</field>
+        <field name="model">biz.smart.finance.cost.period</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="currency_id" column_invisible="1" />
+                <field name="name" />
+                <field name="month" />
+                <field name="company_id" />
+                <field name="state" readonly="1" />
+                <field name="sales" />
+                <field name="fixed" />
+                <field name="variable" />
+                <field name="operating_profit" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_cost_period_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.cost.period.form</field>
+        <field name="model">biz.smart.finance.cost.period</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object" string="ยืนยันข้อมูล" class="oe_highlight" invisible="state != 'draft'" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_revision" type="object" string="สร้างฉบับแก้ไข" invisible="state != 'confirmed'" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_import" type="object" string="นำเข้า CSV/XLSX" invisible="state != 'draft'" groups="biz_smart_finance.group_bsf_manager" />
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id" />
+                            <field name="currency_id" readonly="1" string="สกุลเงินบริษัท" />
+                            <field name="month" />
+                            <field name="state" readonly="1" />
+                            <field name="origin_id" readonly="1" />
+                            <field name="confirmed_by" />
+                            <field name="confirmed_at" />
+                        </group>
+                        <group>
+                            <field name="complete" />
+                            <field name="target_profit" />
+                            <field name="has_budget" />
+                            <field name="budget_cost" />
+                            <field name="notes" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="รายได้และต้นทุน">
+                            <p>ใส่ยอดระดับฝ่ายและส่วนกลางเพียงครั้งเดียว ไม่กรอกยอดรวมบริษัทซ้ำ ส่วนคงที่ 0% คือผันแปรทั้งหมด</p>
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom">
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="company_id" column_invisible="1" />
+                                    <field name="name" />
+                                    <field name="source_key" />
+                                    <field name="department_id" />
+                                    <field name="category" />
+                                    <field name="amount" />
+                                    <field name="fixed_pct" />
+                                    <field name="one_off" />
+                                    <field name="allocation_complete" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="กำลังคน">
+                            <field name="staffing_ids" readonly="state != 'draft'">
+                                <tree editable="bottom">
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="company_id" column_invisible="1" />
+                                    <field name="department_id" />
+                                    <field name="headcount" />
+                                    <field name="fte" />
+                                    <field name="complete" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ผลวิเคราะห์">
+                            <group>
+                                <field name="sales" />
+                                <field name="variable" />
+                                <field name="fixed" />
+                                <field name="one_off" />
+                                <field name="personnel" />
+                                <field name="operating_profit" />
+                                <field name="break_even" />
+                                <field name="calculation_note" />
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" />
+                    <field name="activity_ids" />
+                    <field name="message_ids" />
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_cost_period" model="ir.actions.act_window">
+        <field name="name">ข้อมูลต้นทุนรายเดือน</field>
+        <field name="res_model">biz.smart.finance.cost.period</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_cost_period" name="ข้อมูลต้นทุนรายเดือน" parent="menu_bsf_strategy_root" action="action_bsf_cost_period" />
+    <record id="view_bsf_strategy_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.strategy.tree</field>
+        <field name="model">biz.smart.finance.strategy</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="company_id" />
+                <field name="owner_id" />
+                <field name="date_start" />
+                <field name="date_end" />
+                <field name="state" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_strategy_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.strategy.form</field>
+        <field name="model">biz.smart.finance.strategy</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name" />
+                        <field name="company_id" />
+                        <field name="owner_id" />
+                        <field name="date_start" />
+                        <field name="date_end" />
+                        <field name="state" />
+                        <field name="objective" />
+                    </group>
+                    <notebook>
+                        <page string="เป้ารายไตรมาส">
+                            <field name="goal_ids">
+                                <tree editable="bottom">
+                                    <field name="company_id" column_invisible="1" />
+                                    <field name="name" />
+                                    <field name="quarter" />
+                                    <field name="category" />
+                                    <field name="owner_id" />
+                                    <field name="baseline" />
+                                    <field name="target" />
+                                    <field name="actual" />
+                                    <field name="unit" />
+                                    <field name="direction" />
+                                    <field name="due_date" />
+                                    <field name="evidence" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ทบทวนรายเดือน">
+                            <field name="review_ids">
+                                <tree editable="bottom">
+                                    <field name="company_id" column_invisible="1" />
+                                    <field name="month" />
+                                    <field name="name" />
+                                    <field name="evidence" />
+                                    <field name="decisions" />
+                                    <field name="reviewer_id" />
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" />
+                    <field name="activity_ids" />
+                    <field name="message_ids" />
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_strategy" model="ir.actions.act_window">
+        <field name="name">กลยุทธ์รายปี</field>
+        <field name="res_model">biz.smart.finance.strategy</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_strategy" name="กลยุทธ์รายปี" parent="menu_bsf_strategy_root" action="action_bsf_strategy" />
+    <record id="view_bsf_goal_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.goal.tree</field>
+        <field name="model">biz.smart.finance.goal</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="company_id" />
+                <field name="quarter" />
+                <field name="baseline" />
+                <field name="target" />
+                <field name="actual" />
+                <field name="unit" />
+                <field name="due_date" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_goal_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.goal.form</field>
+        <field name="model">biz.smart.finance.goal</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name" />
+                        <field name="strategy_id" />
+                        <field name="company_id" />
+                        <field name="quarter" />
+                        <field name="category" />
+                        <field name="owner_id" />
+                        <field name="baseline" />
+                        <field name="target" />
+                        <field name="actual" />
+                        <field name="unit" />
+                        <field name="direction" />
+                        <field name="due_date" />
+                        <field name="evidence" />
+                        <field name="progress_pct" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_goal" model="ir.actions.act_window">
+        <field name="name">KPI รายไตรมาส</field>
+        <field name="res_model">biz.smart.finance.goal</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="view_bsf_issue_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.issue.tree</field>
+        <field name="model">biz.smart.finance.issue</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="currency_id" column_invisible="1" />
+                <field name="name" />
+                <field name="company_id" />
+                <field name="month" />
+                <field name="category" />
+                <field name="priority" />
+                <field name="financial_impact" />
+                <field name="state" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_issue_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.issue.form</field>
+        <field name="model">biz.smart.finance.issue</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_create_action" type="object" string="สร้าง/เปิด Action" class="oe_highlight" groups="biz_smart_finance.group_bsf_manager" />
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name" />
+                        <field name="company_id" />
+                        <field name="currency_id" readonly="1" string="สกุลเงินบริษัท" />
+                        <field name="month" />
+                        <field name="category" />
+                        <field name="priority" />
+                        <field name="financial_impact" />
+                        <field name="state" />
+                        <field name="goal_id" />
+                        <field name="risk_id" />
+                        <field name="followup_id" />
+                        <field name="observed_at" />
+                    </group>
+                    <group>
+                        <field name="evidence" />
+                        <field name="suspected_cause" />
+                        <field name="confirmed_cause" />
+                        <field name="recommendation" />
+                    </group>
+                    <field name="action_ids">
+                        <tree>
+                            <field name="currency_id" column_invisible="1" />
+                            <field name="company_id" column_invisible="1" />
+                            <field name="name" />
+                            <field name="owner_id" />
+                            <field name="due_date" />
+                            <field name="state" />
+                            <field name="progress" />
+                        </tree>
+                    </field>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" />
+                    <field name="activity_ids" />
+                    <field name="message_ids" />
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_issue" model="ir.actions.act_window">
+        <field name="name">ประเด็นและหลักฐาน</field>
+        <field name="res_model">biz.smart.finance.issue</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_issue" name="ประเด็นและหลักฐาน" parent="menu_bsf_strategy_root" action="action_bsf_issue" />
+    <record id="view_bsf_action_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.action.tree</field>
+        <field name="model">biz.smart.finance.action</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="currency_id" column_invisible="1" />
+                <field name="name" />
+                <field name="company_id" />
+                <field name="owner_id" />
+                <field name="due_date" />
+                <field name="priority" />
+                <field name="state" />
+                <field name="progress" />
+                <field name="overdue" />
+                <field name="blocked" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_action_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.action.form</field>
+        <field name="model">biz.smart.finance.action</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" type="object" string="ส่งอนุมัติ" invisible="state != 'draft'" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_approve" type="object" string="อนุมัติ" invisible="state != 'review'" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_start" type="object" string="เริ่มงาน" invisible="state != 'approved'" />
+                    <button name="action_verify" type="object" string="ส่งตรวจผล" invisible="state != 'doing'" />
+                    <button name="action_done" type="object" string="ปิดงาน" invisible="state != 'verify'" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_rework" type="object" string="ส่งกลับแก้ไข" invisible="state != 'verify'" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_reopen" type="object" string="เปิดทบทวน" invisible="state != 'done'" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_cancel" type="object" string="ยกเลิก" invisible="state in ('done', 'cancelled')" groups="biz_smart_finance.group_bsf_manager" />
+                    <field name="state" widget="statusbar" statusbar_visible="draft,review,approved,doing,verify,done" />
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" />
+                            <field name="company_id" />
+                            <field name="currency_id" readonly="1" string="สกุลเงินบริษัท" />
+                            <field name="category" />
+                            <field name="owner_id" />
+                            <field name="due_date" />
+                            <field name="priority" />
+                        </group>
+                        <group>
+                            <field name="plan_revision" />
+                            <field name="approved_by" />
+                            <field name="verified_by" />
+                            <field name="overdue" />
+                            <field name="blocked" />
+                            <field name="progress" />
+                        </group>
+                    </group>
+                    <group>
+                        <field name="instructions" />
+                        <field name="shared_evidence" />
+                        <field name="progress_note" />
+                        <field name="result_evidence" />
+                    </group>
+                    <notebook>
+                        <page string="ฝ่ายการเงิน" groups="biz_smart_finance.group_bsf_user">
+                            <group>
+                                <field name="issue_id" />
+                                <field name="goal_id" />
+                                <field name="risk_id" />
+                                <field name="followup_id" />
+                                <field name="expected_saving" />
+                                <field name="implementation_cost" />
+                                <field name="verified_saving" />
+                            </group>
+                            <field name="review_ids">
+                                <tree>
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="company_id" column_invisible="1" />
+                                    <field name="month" />
+                                    <field name="accepted_saving" />
+                                    <field name="verified" />
+                                    <field name="verified_by" />
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" />
+                    <field name="activity_ids" />
+                    <field name="message_ids" />
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="view_bsf_action_kanban" model="ir.ui.view">
+        <field name="name">biz.smart.finance.action.kanban</field>
+        <field name="model">biz.smart.finance.action</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" records_draggable="false">
+                <field name="name" />
+                <field name="state" />
+                <field name="owner_id" />
+                <field name="due_date" />
+                <field name="progress" />
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <strong>
+                                <field name="name" />
+                            </strong>
+                            <div>
+                                <field name="owner_id" />
+                            </div>
+                            <div>
+                                <field name="due_date" />
+                            </div>
+                            <field name="progress" widget="progressbar" />
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    <record id="action_bsf_action" model="ir.actions.act_window">
+        <field name="name">Action ทั้งหมด</field>
+        <field name="res_model">biz.smart.finance.action</field>
+        <field name="view_mode">kanban,tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_action" name="Action ทั้งหมด" parent="menu_bsf_strategy_root" action="action_bsf_action" />
+    <record id="view_bsf_action_review_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.action.review.tree</field>
+        <field name="model">biz.smart.finance.action.review</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="currency_id" column_invisible="1" />
+                <field name="action_id" />
+                <field name="month" />
+                <field name="raw_reduction" />
+                <field name="normalized_saving" />
+                <field name="accepted_saving" />
+                <field name="verified" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_action_review_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.action.review.form</field>
+        <field name="model">biz.smart.finance.action.review</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_accept" type="object" string="ตรวจรับผล" class="oe_highlight" invisible="verified" groups="biz_smart_finance.group_bsf_manager" />
+                </header>
+                <sheet>
+                    <group>
+                        <field name="action_id" />
+                        <field name="company_id" />
+                        <field name="currency_id" readonly="1" string="สกุลเงินบริษัท" />
+                        <field name="month" />
+                        <field name="base_period_id" />
+                        <field name="actual_period_id" />
+                        <field name="raw_reduction" />
+                        <field name="normalized_saving" />
+                        <field name="calculation_note" />
+                        <field name="accepted_saving" />
+                        <field name="evidence" />
+                        <field name="verified" />
+                        <field name="verified_by" />
+                        <field name="action_revision" />
+                        <field name="verified_at" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_action_review" model="ir.actions.act_window">
+        <field name="name">ตรวจรับผล Action</field>
+        <field name="res_model">biz.smart.finance.action.review</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_action_review" name="ตรวจรับผล Action" parent="menu_bsf_strategy_root" action="action_bsf_action_review" />
+    <record id="view_bsf_cost_scenario_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.cost.scenario.tree</field>
+        <field name="model">biz.smart.finance.cost.scenario</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="currency_id" column_invisible="1" />
+                <field name="name" />
+                <field name="company_id" />
+                <field name="base_period_id" />
+                <field name="kind" />
+                <field name="start_month" />
+                <field name="months" />
+                <field name="stale" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_bsf_cost_scenario_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.cost.scenario.form</field>
+        <field name="model">biz.smart.finance.cost.scenario</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_capture" type="object" string="1. เก็บฐานและตั้งค่าเริ่มต้น" invisible="captured_at" groups="biz_smart_finance.group_bsf_manager" />
+                    <button name="action_simulate" type="object" string="2. จำลองผล" class="oe_highlight" invisible="not captured_at" groups="biz_smart_finance.group_bsf_manager" />
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" />
+                            <field name="company_id" />
+                            <field name="currency_id" readonly="1" string="สกุลเงินบริษัท" />
+                            <field name="base_period_id" />
+                            <field name="kind" />
+                            <field name="start_month" />
+                            <field name="months" />
+                        </group>
+                        <group>
+                            <field name="new_sales" />
+                            <field name="variable_pct" />
+                            <field name="one_time_cost" />
+                            <field name="captured_at" />
+                            <field name="stale" />
+                        </group>
+                    </group>
+                    <group>
+                        <field name="assumptions" />
+                    </group>
+                    <notebook>
+                        <page string="ลดต้นทุนคงที่">
+                            <field name="effect_ids">
+                                <tree editable="bottom">
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="company_id" column_invisible="1" />
+                                    <field name="action_id" />
+                                    <field name="source_line_id" />
+                                    <field name="monthly_saving" />
+                                    <field name="alternative_group" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="เงินสด">
+                            <p>กรอกส่วนต่างเทียบ Forecast ฐาน การเลื่อนเงินรับต้องหักเดือนเดิมและเพิ่มเดือนใหม่ รวมค่าใช้จ่ายเปลี่ยนแผนด้วย</p>
+                            <field name="cash_complete" />
+                            <field name="cash_ids">
+                                <tree editable="bottom">
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="company_id" column_invisible="1" />
+                                    <field name="reference" />
+                                    <field name="shift_key" />
+                                    <field name="action_id" />
+                                    <field name="month" />
+                                    <field name="delta" />
+                                    <field name="note" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ผลก่อน–หลัง">
+                            <field name="result_html" widget="html" />
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_bsf_cost_scenario" model="ir.actions.act_window">
+        <field name="name">จำลองทางเลือก</field>
+        <field name="res_model">biz.smart.finance.cost.scenario</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_cost_scenario" name="จำลองทางเลือก" parent="menu_bsf_strategy_root" action="action_bsf_cost_scenario" />
+    <record id="action_bsf_my_actions" model="ir.actions.act_window">
+        <field name="name">งานของฉัน</field>
+        <field name="res_model">biz.smart.finance.action</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('owner_id', '=', uid)]</field>
+    </record>
+    <menuitem id="menu_bsf_my_actions_root" name="งาน CFO ของฉัน" action="action_bsf_my_actions" sequence="16" groups="biz_smart_finance.group_bsf_action_owner" />
+    <record id="view_bsf_cost_config" model="ir.ui.view">
+        <field name="name">CFO cost thresholds</field>
+        <field name="model">biz.smart.finance.config</field>
+        <field name="inherit_id" ref="view_bsf_config_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="เกณฑ์ต้นทุนและกลยุทธ์ (0 = ยังไม่ตั้ง)">
+                    <field name="cost_personnel_pct" />
+                    <field name="cost_ot_pct" />
+                    <field name="cost_growth_gap_pp" />
+                    <field name="cost_cm_drop_pp" />
+                    <field name="cost_dio_days" />
+                    <field name="cost_channel_margin_pct" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="cron_bsf_action_overdue" model="ir.cron">
+        <field name="name">CFO: ติดตาม Action เกินกำหนด</field>
+        <field name="model_id" ref="model_biz_smart_finance_action" />
+        <field name="state">code</field>
+        <field name="code">model._cron_overdue()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+    </record>
+    <record id="view_bsf_cost_import_form" model="ir.ui.view">
+        <field name="name">CFO cost import</field>
+        <field name="model">biz.smart.finance.cost.import</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <button name="action_template_csv" type="object" string="ตัวอย่าง CSV" />
+                    <button name="action_template_xlsx" type="object" string="ตัวอย่าง XLSX" />
+                    <p>รหัส source_key เดิมจะอัปเดตรายการในชุดร่าง ไม่บวกซ้ำ ต้องสร้างฝ่ายก่อนนำเข้า ช่อง department ว่างคือยังไม่จัดสรร</p>
+                    <group>
+                        <field name="company_id" />
+                        <field name="period_id" />
+                        <field name="file_data" filename="file_name" />
+                        <field name="file_name" invisible="1" />
+                        <field name="state" invisible="1" />
+                    </group>
+                    <group invisible="state != 'preview'">
+                        <field name="valid_count" />
+                        <field name="error_count" />
+                    </group>
+                    <field name="line_ids" invisible="state != 'preview'">
+                        <tree editable="bottom" decoration-danger="not valid">
+                            <field name="valid" column_invisible="1" />
+                            <field name="row_index" />
+                            <field name="source_key" />
+                            <field name="name" />
+                            <field name="department" />
+                            <field name="category" />
+                            <field name="amount" />
+                            <field name="fixed_pct" />
+                            <field name="one_off" />
+                            <field name="allocation_complete" />
+                            <field name="warning" />
+                        </tree>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_preview" type="object" string="ตรวจไฟล์" invisible="state != 'draft'" />
+                    <button name="action_validate" type="object" string="ตรวจข้อมูล" invisible="state != 'preview'" />
+                    <button name="action_import" type="object" string="นำเข้าชุดร่าง" class="btn-primary" invisible="state != 'preview'" />
+                    <button special="cancel" string="ยกเลิก" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

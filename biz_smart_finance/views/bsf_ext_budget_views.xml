@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_ext_budget_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.budget.tree</field>
+        <field name="model">biz.smart.finance.ext.budget</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="company_id"/>
+                <field name="analytic_account_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="amount" widget="monetary" sum="งบรวม"/>
+                <field name="source" widget="badge"
+                       decoration-info="source == 'api'"
+                       decoration-warning="source == 'manual'"/>
+                <field name="external_ref" optional="hide"/>
+                <field name="note" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_ext_budget_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.budget.search</field>
+        <field name="model">biz.smart.finance.ext.budget</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="analytic_account_id"/>
+                <field name="external_ref"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="บริษัท"
+                            context="{'group_by': 'company_id'}"/>
+                    <filter name="group_analytic" string="ศูนย์ต้นทุน"
+                            context="{'group_by': 'analytic_account_id'}"/>
+                    <filter name="group_from" string="ตั้งแต่วันที่"
+                            context="{'group_by': 'date_from'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bsf_ext_budget" model="ir.actions.act_window">
+        <field name="name">External Budgets</field>
+        <field name="res_model">biz.smart.finance.ext.budget</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีงบจากระบบภายนอก</p>
+            <p>กรอกงบต้นทุนต่อศูนย์ต้นทุน (analytic account) และช่วงวันที่ —
+            แท็บ Controlling จะเฉลี่ยตามจำนวนวันที่ทับกับงวดที่ดูอยู่
+            เหมือนงบของ Odoo</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bsf_ext_budget" name="External Budgets"
+              parent="menu_bsf_inputs" action="action_bsf_ext_budget"
+              sequence="43"/>
+</odoo>

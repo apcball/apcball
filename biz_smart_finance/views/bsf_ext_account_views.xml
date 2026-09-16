@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_ext_account_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.account.tree</field>
+        <field name="model">biz.smart.finance.ext.account</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="company_id"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="account_type"/>
+                <field name="is_depreciation" widget="boolean_toggle"/>
+                <field name="is_interest" widget="boolean_toggle"/>
+                <field name="is_tax" widget="boolean_toggle"/>
+                <field name="is_debt" widget="boolean_toggle"/>
+                <field name="is_inventory" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_ext_account_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.account.search</field>
+        <field name="model">biz.smart.finance.ext.account</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="บริษัท"
+                            context="{'group_by': 'company_id'}"/>
+                    <filter name="group_type" string="ประเภทบัญชี"
+                            context="{'group_by': 'account_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bsf_ext_account" model="ir.actions.act_window">
+        <field name="name">ผังบัญชีภายนอก (Legacy Chart)</field>
+        <field name="res_model">biz.smart.finance.ext.account</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีบัญชีภายนอก</p>
+            <p>ผังบัญชีของระบบเดิม — ใช้รหัส/ชื่อของระบบนั้นตรง ๆ แล้ว map แค่
+            ประเภทบัญชีมาที่ชุดของ Odoo เพื่อให้ไหลเข้างบดุล/งบกำไรขาดทุน/งบ
+            กระแสเงินสดได้ — นำเข้า Trial Balance จะสร้างแถวที่นี่ให้อัตโนมัติ
+            ถ้ายังไม่มี</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bsf_ext_account" name="ผังบัญชีภายนอก"
+              parent="menu_bsf_inputs" action="action_bsf_ext_account"
+              sequence="6"/>
+</odoo>

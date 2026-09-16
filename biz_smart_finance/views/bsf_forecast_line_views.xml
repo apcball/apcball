@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_forecast_line_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.forecast.line.tree</field>
+        <field name="model">biz.smart.finance.forecast.line</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" decoration-warning="state == 'draft'">
+                <field name="name"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'draft'"
+                       decoration-success="state == 'confirmed'"/>
+                <field name="company_id"/>
+                <field name="flow_type"/>
+                <field name="category"/>
+                <field name="amount" widget="monetary"/>
+                <field name="recurrence"/>
+                <field name="day_of_month" optional="show"/>
+                <field name="date" optional="hide"/>
+                <field name="date_start" optional="hide"/>
+                <field name="date_end" optional="hide"/>
+                <field name="ai_note" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <button name="action_confirm" type="object" icon="fa-check"
+                        title="ยืนยันให้เข้ากริดพยากรณ์"
+                        invisible="state != 'draft'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_forecast_line_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.forecast.line.search</field>
+        <field name="model">biz.smart.finance.forecast.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <filter name="filter_draft" string="ร่างจาก AI (รอยืนยัน)"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_confirmed" string="ใช้งานอยู่"
+                        domain="[('state', '=', 'confirmed')]"/>
+                <separator/>
+                <filter name="filter_out" string="เงินออก" domain="[('flow_type', '=', 'out')]"/>
+                <filter name="filter_in" string="เงินเข้า" domain="[('flow_type', '=', 'in')]"/>
+                <group expand="0" string="จัดกลุ่ม">
+                    <filter name="group_category" string="หมวด" context="{'group_by': 'category'}"/>
+                    <filter name="group_company" string="บริษัท" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_bsf_forecast_line_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.forecast.line.form</field>
+        <field name="model">biz.smart.finance.forecast.line</field>
+        <field name="arch" type="xml">
+            <form string="Cash Flow Line">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="company_id"/>
+                            <field name="flow_type"/>
+                            <field name="category"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="recurrence"/>
+                            <field name="date" invisible="recurrence != 'once'" required="recurrence == 'once'"/>
+                            <field name="day_of_month" invisible="recurrence != 'monthly'"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="state"/>
+                            <field name="ai_note" invisible="not ai_note"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_forecast_line" model="ir.actions.act_window">
+        <field name="name">Cash Flow Lines (Payroll / Opex / Tax)</field>
+        <field name="res_model">biz.smart.finance.forecast.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีรายการกระแสเงินสดประจำ</p>
+            <p>กรอกเงินเดือน ค่าเช่า ภาษี และรายการเงินเข้า-ออกอื่นที่ไม่อยู่ในระบบเอกสาร
+            เพื่อให้ 13-Week Cash Forecast แม่นขึ้น</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,482 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabCash">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'cash'" data="props.data"/>
+
+        <!-- ตัวเลือกมุมมอง -->
+        <section class="o_bsf_card">
+            <div class="o_bsf_fcbar">
+                <div class="o_bsf_fcpills">
+                    <button t-foreach="sections" t-as="sec" t-key="sec.id"
+                            t-attf-class="o_bsf_fcpill {{ state.section === sec.id ? 'is-active' : '' }}"
+                            t-on-click="() => this.setSection(sec.id)">
+                        <i t-attf-class="fa {{ sec.icon }} me-1"/><t t-esc="sec.label"/>
+                    </button>
+                </div>
+                <div class="o_bsf_fcmeta">
+                    <span t-if="cash.banks.configured">
+                        กระจายเงินรายธนาคาร: <t t-esc="sharesBasisLabel"/>
+                    </span>
+                    <button t-if="isManager and state.section === 'treasury' and cash.banks.configured"
+                            class="o_bsf_fcai" t-att-disabled="state.suggesting"
+                            t-on-click="suggestTransfers">
+                        <i t-attf-class="fa {{ state.suggesting ? 'fa-spinner fa-spin' : 'fa-magic' }} me-1"/>
+                        เสนอแผนโอน
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ภาพรวมกลุ่ม ==================== -->
+        <t t-if="state.section === 'group'">
+            <!-- KPI band -->
+            <div class="o_bsf_kpis">
+                <div class="o_bsf_kpi">
+                    <span class="k_label">Total Cash</span>
+                    <b class="k_value"><t t-esc="fmtMoney(cash.kpis.total_cash)"/></b>
+                    <span class="k_sub">เงินสดรวมทั้งกลุ่ม</span>
+                </div>
+                <div class="o_bsf_kpi">
+                    <span class="k_label">Available Cash</span>
+                    <b class="k_value"><t t-esc="fmtMoney(cash.kpis.available_cash)"/></b>
+                    <span class="k_sub">เงินสดพร้อมใช้</span>
+                </div>
+                <div class="o_bsf_kpi">
+                    <span class="k_label">Restricted Cash</span>
+                    <b class="k_value"><t t-esc="fmtMoney(cash.kpis.restricted_cash)"/></b>
+                    <span class="k_sub">เงินสดถูกกันไว้</span>
+                </div>
+                <div class="o_bsf_kpi">
+                    <span class="k_label">13-Week Minimum Cash</span>
+                    <b class="k_value"><t t-esc="fmtMoney(cash.kpis.min_13w)"/></b>
+                    <span class="k_sub">ยอดต่ำสุดที่คาดการณ์ · <t t-esc="cash.kpis.min_13w_label"/></span>
+                </div>
+                <div class="o_bsf_kpi">
+                    <span class="k_label">Bank Concentration</span>
+                    <b class="k_value"><t t-esc="fmtPct(cash.kpis.concentration_pct)"/></b>
+                    <span class="k_sub">สัดส่วนเงินสดสูงสุดต่อกลุ่ม
+                        <t t-if="cash.kpis.top_bank_label">· Top Bank: <t t-esc="cash.kpis.top_bank_label"/></t>
+                    </span>
+                </div>
+            </div>
+
+            <!-- chart -->
+            <section class="o_bsf_card span8" t-att-class="zoomCls('cash_1')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_1')"
+                        t-att-title="isZoomed('cash_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cash_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cash_1') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>13-Week Cash Flow Forecast</b>
+                    <span>ประมาณการกระแสเงินสด 13 สัปดาห์ · <t t-esc="unitLabel"/></span>
+                </div>
+                <select t-if="cash.banks.configured" class="o_bsf_select"
+                        t-att-value="state.bank" t-on-change="onBankChange">
+                    <option value="0" t-att-selected="0 == state.bank">All Banks (Total Group)</option>
+                    <t t-foreach="bankOptions" t-as="bank" t-key="bank.bank_id">
+                        <option t-att-value="bank.bank_id" t-esc="bank.name"
+                                t-att-selected="bank.bank_id == state.bank"/>
+                    </t>
+                </select>
+                <svg t-att-width="cashChart.width" t-att-height="cashChart.height"
+                     t-attf-viewBox="0 0 {{ cashChart.width }} {{ cashChart.height }}"
+                     preserveAspectRatio="xMidYMid meet" class="o_bsf_chart">
+                    <t t-foreach="cashChart.gridlines" t-as="grid" t-key="grid_index">
+                        <line class="grid_line" t-att-x1="cashChart.padX" t-att-y1="grid.y"
+                              t-att-x2="cashChart.width - 8" t-att-y2="grid.y"/>
+                        <text class="grid_text" t-att-x="cashChart.padX - 6" t-att-y="grid.y + 3"
+                              text-anchor="end"><t t-esc="fmtAxis(grid.v)"/></text>
+                    </t>
+                    <line t-if="cashChart.minY &gt;= 0" class="line_min"
+                          t-att-x1="cashChart.padX" t-att-y1="cashChart.minY"
+                          t-att-x2="cashChart.width - 8" t-att-y2="cashChart.minY"/>
+                    <line t-if="!state.bank and cashChart.bufferY &gt;= 0" class="line_buffer"
+                          t-att-x1="cashChart.padX" t-att-y1="cashChart.bufferY"
+                          t-att-x2="cashChart.width - 8" t-att-y2="cashChart.bufferY"/>
+                    <polyline t-if="cashChart.actualPolyline" class="line_actual"
+                              t-att-points="cashChart.actualPolyline"/>
+                    <polyline t-if="cashChart.forecastPolyline" class="line_forecast"
+                              t-att-points="cashChart.forecastPolyline"/>
+                    <t t-foreach="cashChart.points" t-as="pt" t-key="pt.index">
+                        <circle t-attf-class="pt {{ pt.belowMin ? 'is-below' : '' }}"
+                                t-att-cx="pt.x" t-att-cy="pt.y" r="3"/>
+                        <!-- ครบทั้ง 13 สัปดาห์ + วันที่เริ่มสัปดาห์บรรทัดล่าง -->
+                        <text class="grid_text" t-att-x="pt.x" t-att-y="cashChart.labelY"
+                              t-att-text-anchor="pt.anchor"><t t-esc="pt.label"/></text>
+                        <text t-if="pt.sub" class="grid_sub" t-att-x="pt.x"
+                              t-att-y="cashChart.subY"
+                              t-att-text-anchor="pt.anchor"><t t-esc="pt.sub"/></text>
+                    </t>
+                </svg>
+                <div class="o_bsf_legend">
+                    <span><i class="dot" style="background: var(--bsf-primary);"/>Actual / Forecast (เส้นประ)</span>
+                    <span><i class="dot" style="background: var(--bsf-risk);"/>Min Cash Line</span>
+                    <span t-if="!state.bank"><i class="dot" style="background: var(--bsf-neutral);"/>Operating Buffer</span>
+                </div>
+            </section>
+
+            <!-- min cash alert -->
+            <section class="o_bsf_card span4" t-att-class="zoomCls('cash_2')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_2')"
+                        t-att-title="isZoomed('cash_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cash_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cash_2') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <t t-if="cash.min_cash_alert.count">
+                    <div class="o_bsf_alertcard">
+                        <b><i class="fa fa-exclamation-triangle me-1"/>Minimum Cash Alert</b>
+                        <div>เงินสดคาดการณ์ต่ำกว่าขั้นต่ำ</div>
+                        <div class="a_big">
+                            <t t-esc="cash.min_cash_alert.first_label"/> –
+                            <t t-esc="cash.min_cash_alert.last_label"/>
+                        </div>
+                        <div>
+                            Minimum Cash Requirement:
+                            <b class="bsf_num"><t t-esc="fmtMoney(cash.min_cash_alert.min_cash)"/></b>
+                            · ขาดสูงสุด
+                            <b class="bsf_num"><t t-esc="fmtMoney(cash.min_cash_alert.worst_gap)"/></b>
+                        </div>
+                    </div>
+                </t>
+                <t t-elif="cash.min_cash_alert.has_min_cash">
+                    <div class="o_bsf_okcard">
+                        <b><i class="fa fa-check-circle me-1"/>เงินสดสูงกว่าขั้นต่ำตลอด 13 สัปดาห์</b>
+                        <div>Minimum Cash:
+                            <span class="bsf_num"><t t-esc="fmtMoney(cash.min_cash_alert.min_cash)"/></span>
+                        </div>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_bsf_empty_note">
+                        ยังไม่ได้ตั้งค่าเงินสดขั้นต่ำ — ไปที่ Smart Finance ▸ Configuration ▸ Settings
+                    </div>
+                </t>
+            </section>
+
+            <!-- collection review: หนี้เกินกำหนดที่ยังไม่มีนัดรับเงิน (ไม่รวมใน collections leg) -->
+            <section t-if="collectionReview.count" class="o_bsf_card span4" t-att-class="zoomCls('cash_2b')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_2b')"
+                        t-att-title="isZoomed('cash_2b') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cash_2b') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cash_2b') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="o_bsf_alertcard">
+                    <b><i class="fa fa-question-circle me-1"/>Collection Review</b>
+                    <div>หนี้เกินกำหนดที่ยังไม่มีนัดรับเงิน — ไม่รวมในกระแสเงินสดคาดการณ์ด้านบน</div>
+                    <div class="a_big"><t t-esc="fmtMoney(collectionReview.total)"/></div>
+                    <div><t t-esc="collectionReview.count"/> รายการ</div>
+                    <table class="o_bsf_table">
+                        <tbody>
+                            <t t-foreach="collectionReview.rows.slice(0, 8)" t-as="row" t-key="row_index">
+                                <tr>
+                                    <td><t t-esc="row.partner_id and row.partner_id[1]"/></td>
+                                    <td><t t-esc="row.due_date"/></td>
+                                    <td class="bsf_num"><t t-esc="fmtMoney(row.amount)"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    <div t-if="collectionReview.count > 8" class="o_bsf_empty_note">
+                        และอีก <t t-esc="collectionReview.count - 8"/> รายการ
+                    </div>
+                </div>
+            </section>
+
+            <!-- weekly summary table -->
+            <section class="o_bsf_card" t-att-class="zoomCls('cash_3')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_3')"
+                        t-att-title="isZoomed('cash_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cash_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cash_3') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Cash Flow Summary</b>
+                    <span>สรุปกระแสเงินสดรายสัปดาห์ · <t t-esc="unitLabel"/>
+                        · สัปดาห์แรก = Actual ที่เหลือ Forecast</span>
+                    <label class="o_bsf_check ms-auto">
+                        <input type="checkbox" t-att-checked="forecast.include_sales_to_cash"
+                               t-on-change="toggleSalesToCash"/>
+                        รวม Sales to Cash ใน Forecast
+                    </label>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr>
+                                <th>รายการ</th>
+                                <th t-foreach="forecast.rows" t-as="week" t-key="week.index">
+                                    <t t-esc="week.label"/>
+                                    <div style="font-weight: 400;"><t t-esc="week.sub"/></div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="summaryRows" t-as="metric" t-key="metric.key">
+                                <td><t t-esc="metric.label"/></td>
+                                <td t-foreach="forecast.rows" t-as="week" t-key="week.index"
+                                    t-attf-class="{{ zero(week[metric.key]) }} {{ (metric.key === 'closing' &amp;&amp; week.below_min) ? 'is-alert' : '' }} {{ metric.drill ? 'o_bsf_click' : '' }}"
+                                    t-att-title="metric.drill ? ('คลิกดูรายการ ' + week.label) : ''"
+                                    t-on-click="() => this.openWeekDrill(metric, week)">
+                                    <t t-esc="(metric.sign &lt; 0 &amp;&amp; week[metric.key]) ? ('(' + fmtMoney(week[metric.key]) + ')') : fmtMoney(week[metric.key])"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="o_bsf_empty_note">
+                    รายจ่ายประจำ (เงินเดือน/ค่าเช่า/ภาษี) มาจากหน้า
+                    <a t-on-click="openForecastLines">Cash Flow Lines</a> — กรอกเพิ่มได้เอง
+                </div>
+            </section>
+        </t>
+
+        <!-- ==================== รายธนาคาร ==================== -->
+        <t t-if="state.section === 'bank'">
+            <t t-if="!cash.banks.configured">
+                <section class="o_bsf_card">
+                    <div class="o_bsf_empty_note">
+                        ยังไม่มีทะเบียนธนาคาร — ไปที่ Smart Finance ▸ ข้อมูลนำเข้า ▸
+                        ทะเบียนธนาคาร เพื่อผูกสมุดรายวันเข้าธนาคาร
+                    </div>
+                </section>
+            </t>
+            <t t-else="">
+                <!-- แจ้งเตือนรายธนาคาร -->
+                <section t-if="cash.banks.alerts.length" class="o_bsf_card">
+                    <div class="o_bsf_alertcard" t-foreach="cash.banks.alerts" t-as="alert" t-key="alert.bank_id + '_' + alert.week_index">
+                        <b><i class="fa fa-exclamation-triangle me-1"/>
+                            <t t-esc="alert.bank_name"/> ต่ำกว่า buffer ใน <t t-esc="alert.label"/>
+                        </b>
+                        <div>
+                            คาดการณ์ยอดคงเหลือ <b class="bsf_num"><t t-esc="fmtMoney(alert.projected)"/></b>
+                            เทียบขั้นต่ำ <b class="bsf_num"><t t-esc="fmtMoney(alert.min_balance)"/></b>
+                            · ขาด <b class="bsf_num"><t t-esc="fmtMoney(alert.gap)"/></b>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bank Balance by Bank -->
+                <section class="o_bsf_card" t-att-class="zoomCls('cash_4')">
+                    <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_4')"
+                            t-att-title="isZoomed('cash_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                            t-att-aria-label="isZoomed('cash_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                        <i t-attf-class="fa {{ isZoomed('cash_4') ? 'fa-compress' : 'fa-expand' }}"/>
+                    </button>
+                    <div class="c_head">
+                        <b>Bank Balance by Bank</b>
+                        <span>เงินสดแยกธนาคาร · <t t-esc="unitLabel"/></span>
+                    </div>
+                    <div class="o_bsf_scroll_x">
+                        <table class="o_bsf_table">
+                            <thead>
+                                <tr>
+                                    <th class="o_bsf_txt">Bank</th>
+                                    <th>Current Balance</th>
+                                    <th>Available Limit</th>
+                                    <th>Forecast Closing W13</th>
+                                    <th class="o_bsf_txt">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="cash.banks.rows" t-as="bank" t-key="bank.bank_id"
+                                    t-attf-class="{{ bank.status === 'at_risk' ? 'is-alert' : '' }}">
+                                    <td class="o_bsf_txt"><t t-esc="bank.name"/></td>
+                                    <td><t t-esc="fmtMoney(bank.current_balance)"/></td>
+                                    <td><t t-esc="bank.bank_id ? fmtMoney(bankAvailableLimit(bank.bank_id)) : '—'"/></td>
+                                    <td><t t-esc="fmtMoney(bankForecastClosing(bank))"/></td>
+                                    <td class="o_bsf_txt">
+                                        <span t-if="bank.bank_id" class="o_bsf_chip"
+                                              t-attf-style="background: {{ bankStatusColor(bank.status) }};">
+                                            <t t-esc="bankStatusLabel(bank.status)"/>
+                                        </span>
+                                        <span t-else="">—</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Cash Position by Bank (Weekly) -->
+                <section class="o_bsf_card" t-att-class="zoomCls('cash_5')">
+                    <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_5')"
+                            t-att-title="isZoomed('cash_5') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                            t-att-aria-label="isZoomed('cash_5') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                        <i t-attf-class="fa {{ isZoomed('cash_5') ? 'fa-compress' : 'fa-expand' }}"/>
+                    </button>
+                    <div class="c_head">
+                        <b>Cash Position by Bank (Weekly)</b>
+                        <span>สถานะเงินสดรายสัปดาห์แยกธนาคาร · <t t-esc="unitLabel"/></span>
+                    </div>
+                    <div class="o_bsf_scroll_x">
+                        <table class="o_bsf_table" t-foreach="cash.banks.rows" t-as="bankPos" t-key="bankPos.bank_id">
+                            <thead>
+                                <tr>
+                                    <th class="o_bsf_txt" colspan="1"><b><t t-esc="bankPos.name"/></b></th>
+                                    <th t-foreach="cash.banks.weeks" t-as="week" t-key="week.index">
+                                        <t t-esc="week.label"/>
+                                        <div style="font-weight: 400;"><t t-esc="week.sub"/></div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="o_bsf_txt">Opening Balance</td>
+                                    <td t-foreach="bankPos.weeks" t-as="week" t-key="week_index">
+                                        <t t-esc="fmtMoney(week.opening)"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="o_bsf_txt">Receipts</td>
+                                    <td t-foreach="bankPos.weeks" t-as="week" t-key="week_index">
+                                        <t t-esc="fmtMoney(week.receipts)"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="o_bsf_txt">Payments</td>
+                                    <td t-foreach="bankPos.weeks" t-as="week" t-key="week_index">
+                                        <t t-esc="week.payments ? ('(' + fmtMoney(week.payments) + ')') : fmtMoney(week.payments)"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="o_bsf_txt">Interbank Transfer (Net)</td>
+                                    <td t-foreach="bankPos.weeks" t-as="week" t-key="week_index">
+                                        <t t-esc="week.transfer_net &lt; 0 ? ('(' + fmtMoney(-week.transfer_net) + ')') : fmtMoney(week.transfer_net)"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="o_bsf_txt is-total">Ending Balance</td>
+                                    <td t-foreach="bankPos.weeks" t-as="week" t-key="week_index"
+                                        t-attf-class="is-total {{ week.below_min ? 'is-alert' : '' }}">
+                                        <t t-esc="fmtMoney(week.ending)"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </t>
+        </t>
+
+        <!-- ==================== Treasury ==================== -->
+        <t t-if="state.section === 'treasury'">
+            <!-- Interbank Transfer Plan -->
+            <section class="o_bsf_card span7" t-att-class="zoomCls('cash_6')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_6')"
+                        t-att-title="isZoomed('cash_6') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cash_6') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cash_6') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Interbank Transfer Plan</b>
+                    <span>แผนโอนเงินระหว่างธนาคาร · <t t-esc="unitLabel"/></span>
+                    <button t-if="cash.transfers.can_edit" class="o_bsf_fcai" t-on-click="openNewTransfer">
+                        <i class="fa fa-plus me-1"/>บันทึกแผนโอนใหม่
+                    </button>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr>
+                                <th class="o_bsf_txt">#</th>
+                                <th class="o_bsf_txt">Source Account</th>
+                                <th class="o_bsf_txt">Destination Account</th>
+                                <th>Amount</th>
+                                <th class="o_bsf_txt">Purpose</th>
+                                <th class="o_bsf_txt">Approval Status</th>
+                                <th class="o_bsf_txt">Execution Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="cash.transfers.rows" t-as="transfer" t-key="transfer.id"
+                                class="o_bsf_row_click" t-on-click="() => this.openTransfer(transfer)">
+                                <td class="o_bsf_txt"><t t-esc="transfer_index + 1"/></td>
+                                <td class="o_bsf_txt"><t t-esc="transfer.source_bank_name"/></td>
+                                <td class="o_bsf_txt"><t t-esc="transfer.dest_bank_name"/></td>
+                                <td><t t-esc="fmtMoney(transfer.amount)"/></td>
+                                <td class="o_bsf_txt"><t t-esc="purposeLabel(transfer.purpose)"/></td>
+                                <td class="o_bsf_txt"><t t-esc="transferStateLabel(transfer.state)"/></td>
+                                <td class="o_bsf_txt"><t t-esc="transfer.execution_date"/></td>
+                            </tr>
+                            <tr t-if="!cash.transfers.rows.length">
+                                <td class="o_bsf_txt" colspan="7">ยังไม่มีแผนโอนเงิน</td>
+                            </tr>
+                        </tbody>
+                        <tfoot t-if="cash.transfers.rows.length">
+                            <tr>
+                                <td class="o_bsf_txt" colspan="3">Total</td>
+                                <td><t t-esc="fmtMoney(cash.transfers.total)"/></td>
+                                <td class="o_bsf_txt" colspan="3"/>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Bank Facility & Utilisation -->
+            <section class="o_bsf_card span5" t-att-class="zoomCls('cash_7')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cash_7')"
+                        t-att-title="isZoomed('cash_7') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cash_7') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cash_7') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Bank Facility &amp; Utilisation</b>
+                    <span>วงเงินสินเชื่อและการใช้วงเงิน · <t t-esc="unitLabel"/></span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr>
+                                <th class="o_bsf_txt">Bank</th>
+                                <th class="o_bsf_txt">Facility Type</th>
+                                <th>Credit Limit</th>
+                                <th>Available Limit</th>
+                                <th>Utilisation</th>
+                                <th class="o_bsf_txt">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="cash.facilities.rows" t-as="fac" t-key="fac.id">
+                                <td class="o_bsf_txt"><t t-esc="fac.bank_name"/></td>
+                                <td class="o_bsf_txt"><t t-esc="fac.name"/></td>
+                                <td><t t-esc="fmtMoney(fac.credit_limit)"/></td>
+                                <td><t t-esc="fmtMoney(fac.available)"/></td>
+                                <td>
+                                    <span class="o_bsf_meter">
+                                        <span t-attf-style="width: {{ barWidth(fac) }}%; background: {{ barColor(fac) }};"/>
+                                    </span>
+                                    <span class="o_bsf_meter_label" t-attf-style="color: {{ barColor(fac) }};">
+                                        <t t-esc="fmtPct(fac.utilisation_pct)"/>
+                                    </span>
+                                </td>
+                                <td class="o_bsf_txt">
+                                    <span class="o_bsf_chip" t-attf-style="background: {{ facilityStatusColor(fac.status) }};">
+                                        <t t-esc="facilityStatusLabel(fac.status)"/>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr t-if="!cash.facilities.rows.length">
+                                <td class="o_bsf_txt" colspan="6">ยังไม่มีวงเงินสินเชื่อ</td>
+                            </tr>
+                        </tbody>
+                        <tfoot t-if="cash.facilities.rows.length">
+                            <tr>
+                                <td class="o_bsf_txt">Total</td>
+                                <td class="o_bsf_txt"/>
+                                <td><t t-esc="fmtMoney(cash.facilities.total.credit_limit)"/></td>
+                                <td><t t-esc="fmtMoney(cash.facilities.total.available)"/></td>
+                                <td colspan="2"><t t-esc="fmtPct(cash.facilities.total.utilisation_pct)"/></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+        </t>
+    </div>
+</t>
+
+</templates>

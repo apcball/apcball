@@ -1,0 +1,83 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_bsf_config_user,bsf.config user,model_biz_smart_finance_config,group_bsf_user,1,0,0,0
+access_bsf_config_manager,bsf.config manager,model_biz_smart_finance_config,group_bsf_manager,1,1,1,1
+access_bsf_delivery_plan_user,bsf.delivery plan user,model_biz_smart_finance_delivery_plan,group_bsf_user,1,0,0,0
+access_bsf_delivery_plan_manager,bsf.delivery plan manager,model_biz_smart_finance_delivery_plan,group_bsf_manager,1,1,1,1
+access_bsf_collection_followup_user,bsf.collection followup user,model_biz_smart_finance_collection_followup,group_bsf_user,1,1,1,0
+access_bsf_collection_followup_manager,bsf.collection followup manager,model_biz_smart_finance_collection_followup,group_bsf_manager,1,1,1,1
+access_bsf_forecast_line_user,bsf.forecast.line user,model_biz_smart_finance_forecast_line,group_bsf_user,1,0,0,0
+access_bsf_forecast_line_manager,bsf.forecast.line manager,model_biz_smart_finance_forecast_line,group_bsf_manager,1,1,1,1
+access_bsf_deal_user,bsf.deal user,model_biz_smart_finance_deal,group_bsf_user,1,0,0,0
+access_bsf_deal_manager,bsf.deal manager,model_biz_smart_finance_deal,group_bsf_manager,1,1,1,1
+access_bsf_billing_pattern_user,bsf.billing.pattern user,model_biz_smart_finance_billing_pattern,group_bsf_user,1,0,0,0
+access_bsf_billing_pattern_manager,bsf.billing.pattern manager,model_biz_smart_finance_billing_pattern,group_bsf_manager,1,1,1,1
+access_bsf_billing_pattern_line_user,bsf.billing.pattern.line user,model_biz_smart_finance_billing_pattern_line,group_bsf_user,1,0,0,0
+access_bsf_billing_pattern_line_manager,bsf.billing.pattern.line manager,model_biz_smart_finance_billing_pattern_line,group_bsf_manager,1,1,1,1
+access_bsf_forecast_snapshot_user,bsf.forecast.snapshot user,model_biz_smart_finance_forecast_snapshot,group_bsf_user,1,0,0,0
+access_bsf_forecast_snapshot_manager,bsf.forecast.snapshot manager,model_biz_smart_finance_forecast_snapshot,group_bsf_manager,1,1,1,1
+access_bsf_risk_user,bsf.risk user,model_biz_smart_finance_risk,group_bsf_user,1,0,0,0
+access_bsf_risk_manager,bsf.risk manager,model_biz_smart_finance_risk,group_bsf_manager,1,1,1,1
+access_bsf_vo_user,bsf.vo user,model_biz_smart_finance_vo,group_bsf_user,1,0,0,0
+access_bsf_vo_manager,bsf.vo manager,model_biz_smart_finance_vo,group_bsf_manager,1,1,1,1
+access_bsf_conversation_user,bsf.conversation user,model_biz_smart_finance_conversation,group_bsf_user,1,1,1,1
+access_bsf_message_user,bsf.message user,model_biz_smart_finance_message,group_bsf_user,1,1,1,1
+access_bsf_report_user,bsf.report user,model_biz_smart_finance_report,group_bsf_user,1,0,1,0
+access_bsf_report_manager,bsf.report manager,model_biz_smart_finance_report,group_bsf_manager,1,1,1,1
+access_bsf_export_wizard_user,bsf.export.wizard user,model_biz_smart_finance_export_wizard,group_bsf_user,1,1,1,1
+access_bsf_ext_fact_user,bsf.ext.fact user,model_biz_smart_finance_ext_fact,group_bsf_user,1,0,0,0
+access_bsf_ext_fact_manager,bsf.ext.fact manager,model_biz_smart_finance_ext_fact,group_bsf_manager,1,1,1,1
+access_bsf_fact_import_manager,bsf.fact.import manager,model_biz_smart_finance_fact_import,group_bsf_manager,1,1,1,1
+access_bsf_fact_import_line_manager,bsf.fact.import.line manager,model_biz_smart_finance_fact_import_line,group_bsf_manager,1,1,1,1
+access_bsf_ext_invoice_user,bsf.ext.invoice user,model_biz_smart_finance_ext_invoice,group_bsf_user,1,0,0,0
+access_bsf_ext_invoice_manager,bsf.ext.invoice manager,model_biz_smart_finance_ext_invoice,group_bsf_manager,1,1,1,1
+access_bsf_ext_budget_user,bsf.ext.budget user,model_biz_smart_finance_ext_budget,group_bsf_user,1,0,0,0
+access_bsf_ext_budget_manager,bsf.ext.budget manager,model_biz_smart_finance_ext_budget,group_bsf_manager,1,1,1,1
+access_bsf_doc_import_manager,bsf.doc.import manager,model_biz_smart_finance_doc_import,group_bsf_manager,1,1,1,1
+access_bsf_doc_import_line_manager,bsf.doc.import.line manager,model_biz_smart_finance_doc_import_line,group_bsf_manager,1,1,1,1
+access_bsf_ext_account_user,bsf.ext.account user,model_biz_smart_finance_ext_account,group_bsf_user,1,0,0,0
+access_bsf_ext_account_manager,bsf.ext.account manager,model_biz_smart_finance_ext_account,group_bsf_manager,1,1,1,1
+access_bsf_ext_gl_user,bsf.ext.gl user,model_biz_smart_finance_ext_gl,group_bsf_user,1,0,0,0
+access_bsf_ext_gl_manager,bsf.ext.gl manager,model_biz_smart_finance_ext_gl,group_bsf_manager,1,1,1,1
+access_bsf_ext_gl_line_user,bsf.ext.gl.line user,model_biz_smart_finance_ext_gl_line,group_bsf_user,1,0,0,0
+access_bsf_ext_gl_line_manager,bsf.ext.gl.line manager,model_biz_smart_finance_ext_gl_line,group_bsf_manager,1,1,1,1
+access_bsf_period_user,bsf.period user,model_biz_smart_finance_period,group_bsf_user,1,0,0,0
+access_bsf_period_manager,bsf.period manager,model_biz_smart_finance_period,group_bsf_manager,1,1,1,1
+access_bsf_period_generate_wizard_manager,bsf.period.generate.wizard manager,model_biz_smart_finance_period_generate_wizard,group_bsf_manager,1,1,1,1
+access_bsf_period_source_wizard_manager,bsf.period.source.wizard manager,model_biz_smart_finance_period_source_wizard,group_bsf_manager,1,1,1,1
+access_bsf_tb_import_manager,bsf.tb.import manager,model_biz_smart_finance_tb_import,group_bsf_manager,1,1,1,1
+access_bsf_tb_import_line_manager,bsf.tb.import.line manager,model_biz_smart_finance_tb_import_line,group_bsf_manager,1,1,1,1
+access_bsf_bank_user,bsf.bank user,model_biz_smart_finance_bank,group_bsf_user,1,0,0,0
+access_bsf_bank_manager,bsf.bank manager,model_biz_smart_finance_bank,group_bsf_manager,1,1,1,1
+access_bsf_bank_facility_user,bsf.bank.facility user,model_biz_smart_finance_bank_facility,group_bsf_user,1,0,0,0
+access_bsf_bank_facility_manager,bsf.bank.facility manager,model_biz_smart_finance_bank_facility,group_bsf_manager,1,1,1,1
+access_bsf_bank_transfer_user,bsf.bank.transfer user,model_biz_smart_finance_bank_transfer,group_bsf_user,1,0,0,0
+access_bsf_bank_transfer_manager,bsf.bank.transfer manager,model_biz_smart_finance_bank_transfer,group_bsf_manager,1,1,1,1
+access_bsf_cost_department_user,CFO cost.department user,model_biz_smart_finance_cost_department,group_bsf_user,1,0,0,0
+access_bsf_cost_department_manager,CFO cost.department manager,model_biz_smart_finance_cost_department,group_bsf_manager,1,1,1,1
+access_bsf_cost_period_user,CFO cost.period user,model_biz_smart_finance_cost_period,group_bsf_user,1,0,0,0
+access_bsf_cost_period_manager,CFO cost.period manager,model_biz_smart_finance_cost_period,group_bsf_manager,1,1,1,1
+access_bsf_cost_line_user,CFO cost.line user,model_biz_smart_finance_cost_line,group_bsf_user,1,0,0,0
+access_bsf_cost_line_manager,CFO cost.line manager,model_biz_smart_finance_cost_line,group_bsf_manager,1,1,1,1
+access_bsf_cost_staffing_user,CFO cost.staffing user,model_biz_smart_finance_cost_staffing,group_bsf_user,1,0,0,0
+access_bsf_cost_staffing_manager,CFO cost.staffing manager,model_biz_smart_finance_cost_staffing,group_bsf_manager,1,1,1,1
+access_bsf_strategy_user,CFO strategy user,model_biz_smart_finance_strategy,group_bsf_user,1,0,0,0
+access_bsf_strategy_manager,CFO strategy manager,model_biz_smart_finance_strategy,group_bsf_manager,1,1,1,1
+access_bsf_goal_user,CFO goal user,model_biz_smart_finance_goal,group_bsf_user,1,0,0,0
+access_bsf_goal_manager,CFO goal manager,model_biz_smart_finance_goal,group_bsf_manager,1,1,1,1
+access_bsf_strategy_review_user,CFO strategy.review user,model_biz_smart_finance_strategy_review,group_bsf_user,1,0,0,0
+access_bsf_strategy_review_manager,CFO strategy.review manager,model_biz_smart_finance_strategy_review,group_bsf_manager,1,1,1,1
+access_bsf_issue_user,CFO issue user,model_biz_smart_finance_issue,group_bsf_user,1,0,0,0
+access_bsf_issue_manager,CFO issue manager,model_biz_smart_finance_issue,group_bsf_manager,1,1,1,1
+access_bsf_action_user,CFO action user,model_biz_smart_finance_action,group_bsf_user,1,0,0,0
+access_bsf_action_manager,CFO action manager,model_biz_smart_finance_action,group_bsf_manager,1,1,1,1
+access_bsf_action_review_user,CFO action.review user,model_biz_smart_finance_action_review,group_bsf_user,1,0,0,0
+access_bsf_action_review_manager,CFO action.review manager,model_biz_smart_finance_action_review,group_bsf_manager,1,1,1,1
+access_bsf_cost_scenario_user,CFO cost.scenario user,model_biz_smart_finance_cost_scenario,group_bsf_user,1,0,0,0
+access_bsf_cost_scenario_manager,CFO cost.scenario manager,model_biz_smart_finance_cost_scenario,group_bsf_manager,1,1,1,1
+access_bsf_cost_effect_user,CFO cost.effect user,model_biz_smart_finance_cost_effect,group_bsf_user,1,0,0,0
+access_bsf_cost_effect_manager,CFO cost.effect manager,model_biz_smart_finance_cost_effect,group_bsf_manager,1,1,1,1
+access_bsf_cost_cash_effect_user,CFO cost.cash.effect user,model_biz_smart_finance_cost_cash_effect,group_bsf_user,1,0,0,0
+access_bsf_cost_cash_effect_manager,CFO cost.cash.effect manager,model_biz_smart_finance_cost_cash_effect,group_bsf_manager,1,1,1,1
+access_bsf_action_assignee,CFO own action,model_biz_smart_finance_action,group_bsf_action_owner,1,1,0,0
+access_bsf_cost_import_manager,CFO import,model_biz_smart_finance_cost_import,group_bsf_manager,1,1,1,1
+access_bsf_cost_import_line_manager,CFO import,model_biz_smart_finance_cost_import_line,group_bsf_manager,1,1,1,1

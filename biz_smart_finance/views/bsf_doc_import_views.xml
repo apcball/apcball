@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_doc_import_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.doc.import.form</field>
+        <field name="model">biz.smart.finance.doc.import</field>
+        <field name="arch" type="xml">
+            <form string="Import External Documents">
+                <sheet>
+                    <div class="mb-3">
+                        <button name="action_template_csv" type="object" string="ดาวน์โหลดตัวอย่าง CSV" class="btn-link"/>
+                        <button name="action_template_xlsx" type="object" string="ดาวน์โหลดตัวอย่าง Excel พร้อมคำแนะนำ" class="btn-link"/>
+                        <p>แก้ข้อมูลตัวอย่างให้เป็นข้อมูลจริงก่อนนำเข้า · หลังแก้ตาราง กดตรวจสอบข้อมูลโดยไม่ต้องอัปโหลดใหม่</p>
+                    </div>
+                    <div class="alert alert-info" role="status"
+                         invisible="mode != 'invoice'">
+                        ไฟล์ CSV/XLSX แถวแรกเป็นหัวคอลัมน์:
+                        <code>doc_type, number, partner, date, date_due,
+                        amount_total, amount_untaxed, amount_residual</code> —
+                        doc_type = <code>ar</code> (ใบแจ้งหนี้ขาย) หรือ
+                        <code>ap</code> (บิลซื้อ), วันที่รูปแบบ YYYY-MM-DD,
+                        ยอดเงินเป็นบวกทั้งสองฝั่ง (ใบลดหนี้ใส่ติดลบ)
+                    </div>
+                    <div class="alert alert-info" role="status"
+                         invisible="mode != 'budget'">
+                        ไฟล์ CSV/XLSX แถวแรกเป็นหัวคอลัมน์:
+                        <code>analytic, date_from, date_to, amount</code> —
+                        analytic = รหัสหรือชื่อศูนย์ต้นทุนที่มีอยู่จริงใน Odoo
+                        (หาไม่เจอ/ซ้ำ = แถวนั้นเป็น error และบล็อกการนำเข้า)
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="mode"/>
+                        </group>
+                        <group>
+                            <field name="file_data" filename="file_name"/>
+                            <field name="file_name" invisible="1"/>
+                            <field name="replace_existing"/>
+                            <field name="state" invisible="1"/>
+                        </group>
+                    </group>
+                    <group invisible="state != 'preview'">
+                        <field name="valid_count"/>
+                        <field name="error_count"/>
+                    </group>
+                    <field name="line_ids" invisible="state != 'preview'">
+                        <tree editable="bottom" decoration-danger="not valid">
+                            <field name="row_index"/>
+                            <field name="input_errors" column_invisible="1"/>
+                            <field name="doc_type"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="number"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="partner_name"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="partner_id" optional="hide"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="date"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="date_due"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="amount_total"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="amount_untaxed" optional="hide"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="amount_residual"
+                                   column_invisible="parent.mode != 'invoice'"/>
+                            <field name="analytic_account_id"
+                                   column_invisible="parent.mode != 'budget'"/>
+                            <field name="date_from"
+                                   column_invisible="parent.mode != 'budget'"/>
+                            <field name="date_to"
+                                   column_invisible="parent.mode != 'budget'"/>
+                            <field name="amount"
+                                   column_invisible="parent.mode != 'budget'"/>
+                            <field name="warning"/>
+                            <field name="valid" column_invisible="1"/>
+                        </tree>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_preview" type="object" string="ตรวจไฟล์"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_validate" type="object" string="ตรวจสอบข้อมูล"
+                            invisible="state != 'preview'"/>
+                    <button name="action_import" type="object" string="นำเข้า"
+                            class="btn-primary" invisible="state != 'preview'"/>
+                    <button string="ยกเลิก" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_doc_import" model="ir.actions.act_window">
+        <field name="name">Import Invoices / Budgets</field>
+        <field name="res_model">biz.smart.finance.doc.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_bsf_doc_import" name="Import Invoices / Budgets"
+              parent="menu_bsf_inputs" action="action_bsf_doc_import"
+              sequence="44"/>
+</odoo>

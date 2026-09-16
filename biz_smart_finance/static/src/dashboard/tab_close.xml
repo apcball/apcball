@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabClose">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'close'" data="props.data"/>
+
+        <section class="o_bsf_card span12" t-att-class="zoomCls('close_grid')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('close_grid')"
+                    t-att-title="isZoomed('close_grid') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('close_grid') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('close_grid') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Monthly Close Cockpit — <t t-esc="close.fy_label"/></b>
+                <span>
+                    สถานะปิดงวดและแหล่งข้อมูลของแต่ละแท็บ รายบริษัทรายเดือน ·
+                    <a t-on-click="openGenerateWizard">สร้างงวดรายปี</a>
+                    ·
+                    <a t-on-click="openTbImport">นำเข้า Trial Balance</a>
+                </span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr>
+                            <th>บริษัท</th>
+                            <th>งวด</th>
+                            <th>สถานะ</th>
+                            <t t-foreach="sourceFields" t-as="sf" t-key="sf[0]">
+                                <th><t t-esc="sf[1]"/></th>
+                            </t>
+                            <th>TB</th>
+                            <th class="bsf_num">ผลต่าง TB</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="close.rows" t-as="row"
+                            t-key="row.company_id + '_' + row.date_from"
+                            class="o_bsf_row_click"
+                            t-on-click="() => this.openPeriod(row)">
+                            <td><t t-esc="row.company_name"/></td>
+                            <td><t t-esc="row.label"/></td>
+                            <td>
+                                <span class="o_bsf_chip"
+                                      t-attf-style="background: {{ stateColor(row.state) }};">
+                                    <t t-esc="stateLabel(row.state)"/>
+                                </span>
+                            </td>
+                            <t t-foreach="sourceFields" t-as="sf" t-key="sf[0]">
+                                <td>
+                                    <span class="o_bsf_chip"
+                                          t-attf-style="background: {{ sourceColor(row[sf[0]]) }};">
+                                        <t t-esc="sourceLabel(row[sf[0]])"/>
+                                    </span>
+                                </td>
+                            </t>
+                            <td>
+                                <i t-if="row.gl_posted" class="fa fa-check-circle text-success"
+                                   title="มี Trial Balance ยืนยันแล้ว"/>
+                                <i t-elif="row.gl_source === 'external'"
+                                   class="fa fa-exclamation-triangle text-warning"
+                                   title="ยังไม่มี Trial Balance ยืนยัน"/>
+                            </td>
+                            <td t-attf-class="bsf_num {{ row.tb_diff ? 'is-down' : '' }}">
+                                <t t-esc="row.tb_diff ? fmtMoney(row.tb_diff) : '—'"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="o_bsf_empty_note">
+                คลิกแถวเพื่อตั้งค่างวดนั้น (แหล่งข้อมูล / ปิดงวด) — งวดที่ไม่มีแถว
+                ทะเบียนใช้ค่าตั้งต้นจาก
+                <a t-on-click="() => this.openList('Smart Finance Settings', 'biz.smart.finance.config', [])">
+                    Smart Finance Settings
+                </a>
+            </div>
+        </section>
+    </div>
+</t>
+
+</templates>
