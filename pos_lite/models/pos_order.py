@@ -1,6 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-from datetime import timedelta
+import pytz
 import base64
 import io
 import logging
@@ -478,9 +478,10 @@ class PosLiteOrder(models.Model):
     # ─── Invoice / Picking preparation ─────────────────────────
 
     def _get_document_date(self):
-        """Invoice/stock document date: always order date + 1 day."""
+        """Invoice document date: the POS order date in Asia/Bangkok."""
         self.ensure_one()
-        return self.date_order.date() + timedelta(days=1)
+        tz = pytz.timezone('Asia/Bangkok')
+        return pytz.utc.localize(self.date_order).astimezone(tz).date()
 
     def _prepare_invoice_vals(self):
         self.ensure_one()
@@ -612,6 +613,25 @@ class PosLiteOrder(models.Model):
     def _process_stock_picking(self, picking):
         picking.action_confirm()
         picking.action_assign()
+        # Re-verify reservation actually succeeded: action_assign() takes the
+        # real row lock on stock.quant, so this catches the case where another
+        # order grabbed the stock between our earlier advisory qty_available
+        # check and now. Without this, a picking with nothing reserved still
+        # validates "successfully" with 0 done qty and the order silently
+        # completes as if stock was shipped.
+        if not self.is_return:
+            unfulfilled = picking.move_ids_without_package.filtered(
+                lambda m: m.product_id.type != 'service' and m.state != 'assigned'
+            )
+            if unfulfilled:
+                names = ', '.join(
+                    m.product_id.display_name for m in unfulfilled[:5]
+                )
+                raise UserError(_(
+                    'Stock for "%s" is no longer available (reserved/taken by '
+                    'another order). Order %s cannot be processed — refresh '
+                    'and check stock before trying again.'
+                ) % (names, picking.origin or picking.name))
         # Products tracked by lot/serial must be assigned manually — auto-filling
         # whatever Odoo reserved would silently mis-assign lots.
         tracked = picking.move_ids_without_package.filtered(
@@ -641,12 +661,9 @@ class PosLiteOrder(models.Model):
         elif isinstance(result, dict) and result.get('res_model') == 'stock.backorder.confirmation':
             wizard = self.env['stock.backorder.confirmation'].with_context(result.get('context', {})).create({})
             wizard.process_cancel_backorder()
-        # Stock is validated now, but the transaction/valuation date must reflect
-        # order date + 1 day, not "now" — backdate picking + moves post-validation.
-        doc_date = fields.Datetime.to_datetime(self._get_document_date())
-        picking.write({'date_done': doc_date})
-        picking.move_ids.write({'date': doc_date})
-        picking.move_ids.move_line_ids.write({'date': doc_date})
+        # Stock is cut at the real validation moment (ตัด stock ตามจริง):
+        # button_validate() stamps date_done / move.date / move_line.date and the
+        # valuation layers with "now", which is what we want — no backdating.
 
     # ─── Actions: Flow ──────────────────────────────────────────
 
