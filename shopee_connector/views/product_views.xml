@@ -33,4 +33,39 @@
         <field name="state">code</field>
         <field name="code">records.action_push_shopee_stock()</field>
     </record>
+
+    <record id="view_product_product_tree_shopee" model="ir.ui.view">
+        <field name="name">product.product.tree.shopee</field>
+        <field name="model">product.product</field>
+        <field name="arch" type="xml">
+            <tree string="Shopee Stock" create="false">
+                <field name="default_code"/>
+                <field name="name"/>
+                <field name="shopee_item_id"/>
+                <field name="shopee_model_id"/>
+                <field name="shopee_stock"/>
+                <field name="shopee_pushed_stock"/>
+                <field name="shopee_last_sync"/>
+                <field name="shopee_stock_push_date"/>
+                <field name="shopee_sync_stock_out"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_shopee_stock" model="ir.actions.act_window">
+        <field name="name">Stock</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_product_product_tree_shopee"/>
+        <field name="domain">[('shopee_item_id', '!=', False)]</field>
+    </record>
+
+    <record id="action_sync_shopee_stock_server" model="ir.actions.server">
+        <field name="name">Sync Stock from Shopee</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_sync_shopee_stock()</field>
+    </record>
 </odoo>

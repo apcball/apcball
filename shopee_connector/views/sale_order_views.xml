@@ -21,4 +21,7 @@
         <field name="view_mode">tree,form</field>
         <field name="domain">[('is_shopee_order', '=', True)]</field>
     </record>
+    <menuitem id="shopee_connector_orders_menu" name="Orders"
+              parent="shopee_connector_root_menu" action="action_shopee_orders"
+              sequence="30"/>
 </odoo>
