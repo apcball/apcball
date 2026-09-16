@@ -18,6 +18,14 @@ Hosted on Contabo VPS. DEV: Docker. PROD: systemd. Postgres 16. See `SERVER.md` 
 
 ## Commands
 
+## Change and deployment safeguards
+
+- Commit or push only after explicit user confirmation.
+- Get manual confirmation before bumping a module version.
+- Deploy to DEV first, test there, and only then deploy to PROD.
+- Every direct `rsync` deployment must run `chmod -R +r` on the synced module afterward, because rsync can set files to mode `600`.
+- Deploy through `scripts/deploy.sh <dev|prod> <module_name>`.
+
 Requires SSH aliases in `~/.ssh/config`:
 - `dev` — DEV server (Docker `odoo:17.0`)
 - `mog-prod` — PROD server (systemd instance1)
@@ -25,12 +33,14 @@ Requires SSH aliases in `~/.ssh/config`:
 ### Deploy DEV
 ```bash
 rsync -az --delete "./<module>/" dev:/srv/docker/odoo/custom-addons/<module>/
+ssh dev "chmod -R +r /srv/docker/odoo/custom-addons/<module>/"
 ssh dev "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
 ```
 
 ### Deploy PROD
 ```bash
 rsync -az --delete "./<module>/" mog-prod:/opt/instance1/odoo17/custom-addons/<module>/
+ssh mog-prod "chmod -R +r /opt/instance1/odoo17/custom-addons/<module>/"
 ssh mog-prod "sudo systemctl restart instance1"
 ```
 
@@ -49,6 +59,16 @@ docker compose -f docker-compose.test.yml up --abort-on-container-exit
 pip install pylint pylint-odoo
 pylint --load-plugins=pylint_odoo <module>/
 ```
+
+### Production server access
+
+```bash
+# Interactive Odoo shell against MOG_LIVE
+ssh mog-prod "cd /opt/instance1/odoo17 && source /opt/instance1/odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http"
+```
+
+- Direct `psql` credentials are in `/etc/instance1.conf`.
+- Refresh materialized report models (for example `imex_inventory_report` or `stock_valuation`) through the Odoo shell with `env['<model_name>'].init()`.
 
 ### Deploy script
 Use `scripts/deploy.sh <dev|prod> <module_name>` — single entry point for both environments.
@@ -120,5 +140,3 @@ Connect to live Odoo DB via MCP. Available tools:
 
 - ใช้ `odoo_query('sale_order_search', ...)` ตอนต้องการ fields ที่ `odoo_search` ไม่มี (เช่น `delivery_status`, `invoice_status`)
 - ใช้ `odoo_query('account_move_search', ...)` เช็คสถานะการชำเงินของ invoice (`payment_state`, `amount_residual`)
-
-
