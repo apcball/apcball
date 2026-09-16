@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'AR Settlement Engine',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.3',
     'category': 'Accounting',
     'summary': 'Advanced Accounts Receivable Settlement with VAT grouping, trade channels, credit notes, and payment difference handling',
     'description': """

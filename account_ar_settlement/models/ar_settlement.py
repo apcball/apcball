@@ -53,6 +53,17 @@ class ArSettlement(models.Model):
         domain=[('type', 'in', ['bank', 'cash'])],
         states={'confirmed': [('readonly', True)]},
     )
+    payment_channel = fields.Selection([
+        ('bank_transfer', 'Bank Transfer'),
+        ('cash', 'Cash'),
+        ('cheque', 'Cheque'),
+        ('card', 'Credit/Debit Card'),
+        ('other', 'Other'),
+    ], string='Payment Channel',
+        states={'confirmed': [('readonly', True)]},
+        help='Real payment channel, mirrors buz_accounting_addon.account.payment.buz_payment_channel '
+             'which account.payment.action_post() requires on every customer inbound payment.',
+    )
     currency_id = fields.Many2one(
         'res.currency', string='Currency', required=True,
         default=lambda self: self.env.company.currency_id,
@@ -250,6 +261,10 @@ class ArSettlement(models.Model):
             self.currency_id = (
                 self.journal_id.currency_id or self.env.company.currency_id
             )
+            if not self.payment_channel:
+                self.payment_channel = (
+                    'cash' if self.journal_id.type == 'cash' else 'bank_transfer'
+                )
 
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
@@ -456,9 +471,20 @@ class ArSettlement(models.Model):
             raise UserError(
                 _('Net bank deposit (Received − Bank Fee) must be greater than zero.')
             )
+
+        # Payments created through the ORM do not execute the form onchange
+        # that normally selects a payment method.  Odoo requires an inbound
+        # method before the customer payment can be posted.
+        payment_method_line = self.journal_id.inbound_payment_method_line_ids[:1]
+        if not payment_method_line:
+            raise UserError(_(
+                'Please configure an inbound payment method on the payment journal.'
+            ))
+
         payment_vals = {
             'partner_id': self.partner_id.id,
             'journal_id': self.journal_id.id,
+            'payment_method_line_id': payment_method_line.id,
             'date': self.payment_date,
             'amount': net_amount,
             'currency_id': self.currency_id.id,
@@ -466,6 +492,16 @@ class ArSettlement(models.Model):
             'partner_type': 'customer',
             'ref': self.name,
         }
+        # buz_accounting_addon.account.payment.action_post() requires
+        # buz_payment_channel on every customer inbound payment. Payments
+        # created through the ORM skip the field's form default, so forward
+        # our own payment_channel when that module is installed.
+        if 'buz_payment_channel' in self.env['account.payment']._fields:
+            if not self.payment_channel:
+                raise UserError(_(
+                    'Please select a Payment Channel before confirming the settlement.'
+                ))
+            payment_vals['buz_payment_channel'] = self.payment_channel
         payment = self.env['account.payment'].create(payment_vals)
         payment.action_post()
 
