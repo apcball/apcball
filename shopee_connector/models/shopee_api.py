@@ -196,8 +196,8 @@ class ShopeeAPI:
             return
         try:
             self.log_callback(
-                method=method,
-                path=path,
+                http_method=method,
+                endpoint=path,
                 request_data={"params": _mask(params), "body": _mask(body or {})},
                 response_data=_mask_value(response),
                 status=status,
