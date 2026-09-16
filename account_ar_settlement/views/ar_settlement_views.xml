@@ -102,6 +102,8 @@
                         <group>
                             <field name="payment_date"
                                    readonly="state != 'draft'"/>
+                            <field name="received_date"
+                                   readonly="state != 'draft'"/>
                             <field name="journal_id"
                                    readonly="state != 'draft'"/>
                             <field name="payment_channel"

@@ -48,6 +48,13 @@ class ArSettlement(models.Model):
         states={'confirmed': [('readonly', True)]},
         tracking=True,
     )
+    received_date = fields.Date(
+        string='Received date',
+        default=fields.Date.context_today,
+        states={'confirmed': [('readonly', True)]},
+        tracking=True,
+        help='วันที่รับชำระเงินจริง แยกจาก Payment Date ซึ่งเป็นวันที่ลงบัญชี',
+    )
     journal_id = fields.Many2one(
         'account.journal', string='Payment Journal', required=True,
         domain=[('type', 'in', ['bank', 'cash'])],
@@ -492,6 +499,9 @@ class ArSettlement(models.Model):
             'partner_type': 'customer',
             'ref': self.name,
         }
+        # ส่งต่อเฉพาะเมื่อโมดูลที่เพิ่มฟิลด์นี้ใน account.payment ติดตั้งอยู่
+        if 'received_date' in self.env['account.payment']._fields:
+            payment_vals['received_date'] = self.received_date
         # buz_accounting_addon.account.payment.action_post() requires
         # buz_payment_channel on every customer inbound payment. Payments
         # created through the ORM skip the field's form default, so forward
