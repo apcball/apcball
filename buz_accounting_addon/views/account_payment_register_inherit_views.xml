@@ -6,6 +6,9 @@
         <field name="model">account.payment.register</field>
         <field name="inherit_id" ref="account.view_account_payment_register_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_method_line_id']" position="after">
+                <field name="buz_payment_channel" invisible="payment_type != 'inbound'" required="payment_type == 'inbound'"/>
+            </xpath>
                         <xpath expr="//field[@name='amount']" position="attributes">
                 <attribute name="readonly">context.get('buz_customer_refund_pv_id')</attribute>
             </xpath>

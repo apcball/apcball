@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Refund PV ใช้ Payment form และ sequence มาตรฐานของ Odoo โดยไม่เพิ่มช่องแก้เลข -->
+    <record id="view_account_payment_form_inherit_payment_channel" model="ir.ui.view">
+        <field name="name">account.payment.form.inherit.payment.channel</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_method_line_id']" position="after">
+                <field name="buz_payment_channel"
+                       invisible="partner_type != 'customer' or payment_type not in ('inbound', 'receive')"
+                       readonly="0"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

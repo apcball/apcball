@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, api, _
+from odoo import models, api, fields, _
 from odoo.exceptions import UserError
 import logging
 
@@ -9,6 +9,8 @@ _logger = logging.getLogger(__name__)
 
 class AccountPaymentRegister(models.TransientModel):
     _inherit = 'account.payment.register'
+    buz_payment_channel = fields.Selection([('bank_transfer', '\u0e42\u0e2d\u0e19\u0e40\u0e07\u0e34\u0e19'), ('cash', '\u0e40\u0e07\u0e34\u0e19\u0e2a\u0e14'), ('cheque', '\u0e40\u0e0a\u0e47\u0e04'), ('card', '\u0e1a\u0e31\u0e15\u0e23\u0e40\u0e04\u0e23\u0e14\u0e34\u0e15/\u0e40\u0e14\u0e1a\u0e34\u0e15'), ('other', '\u0e2d\u0e37\u0e48\u0e19 \u0e46')], string='\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e32\u0e07\u0e01\u0e32\u0e23\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e08\u0e23\u0e34\u0e07')
+
 
     @api.depends('source_amount', 'source_amount_currency', 'source_currency_id', 'currency_id', 'group_payment')
     def _compute_amount(self):
@@ -39,11 +41,20 @@ class AccountPaymentRegister(models.TransientModel):
 
     def _create_payment_vals_from_wizard(self, batch_result):
         vals = super()._create_payment_vals_from_wizard(batch_result)
+        vals = self._add_payment_channel(vals)
         return self._add_refund_pv_link(vals)
 
     def _create_payment_vals_from_batch(self, batch_result):
         vals = super()._create_payment_vals_from_batch(batch_result)
+        vals = self._add_payment_channel(vals)
         return self._add_refund_pv_link(vals)
+
+    def _add_payment_channel(self, vals):
+        if self.payment_type == 'inbound' and self.partner_type == 'customer' and not self.buz_payment_channel:
+            raise UserError(_('\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e32\u0e07\u0e01\u0e32\u0e23\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e08\u0e23\u0e34\u0e07\u0e01\u0e48\u0e2d\u0e19 Register Payment'))
+        if self.buz_payment_channel:
+            vals['buz_payment_channel'] = self.buz_payment_channel
+        return vals
 
     def _validate_refund_pv(self):
         """ตรวจเงื่อนไข Refund PV ก่อนให้ Odoo สร้าง Post และ Reconcile payment."""
