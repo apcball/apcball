@@ -497,8 +497,11 @@ class StockCardReport(models.AbstractModel):
                 "location_name": line["location_dest_id"][1] if in_qty else line["location_id"][1],
             }
             if can_see_value:
-                running_value += self._line_value_delta(line, scope_location_ids, value_context)
+                delta = self._line_value_delta(line, scope_location_ids, value_context)
+                running_value += delta
                 row["value"] = running_value
+                row["value_in"] = delta if delta >= 0 else 0.0
+                row["value_out"] = -delta if delta < 0 else 0.0
             rows.append(row)
             total_in += in_qty
             total_out += out_qty

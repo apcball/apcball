@@ -92,7 +92,7 @@
     .o_sc_page_size { display: flex; align-items: center; gap: 8px; margin: 0; white-space: nowrap; .form-select { width: 74px; border-color: #dce2f0; } }
     .o_sc_table_scroll { overflow-x: auto; border: 1px solid var(--sc-line); border-radius: 5px; }
     .o_stock_card_table {
-        margin: 0; min-width: 1000px; font-size: 13px; color: var(--sc-ink);
+        margin: 0; min-width: 1000px; font-size: 11px; color: var(--sc-ink);
         th { background: #f3f5fb; font-weight: 600; white-space: nowrap; }
         th, td { padding: 4px 12px; vertical-align: middle; border-bottom: 1px solid var(--sc-line); }
         td { font-variant-numeric: tabular-nums; }

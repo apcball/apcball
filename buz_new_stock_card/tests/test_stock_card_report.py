@@ -177,6 +177,26 @@ class TestStockCardReport(TransactionCase):
         self.assertEqual(data["lines"][0]["out"], 30.0)
         self.assertEqual(data["lines"][0]["balance"], 70.0)
 
+    def test_value_in_out_split(self):
+        self.env.user.groups_id = [Command.link(
+            self.env.ref("buz_new_stock_card.group_stock_card_see_value").id
+        )]
+        self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 30.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_supplier, self.loc_a, 20.0, self._dt("2024-06-15 10:00:00"))
+        data = self.engine.get_stock_card_data(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30", page_size=20, page=0,
+        )
+        out_line, in_line = data["lines"][0], data["lines"][1]
+        self.assertGreater(out_line["value_out"], 0.0)
+        self.assertEqual(out_line["value_in"], 0.0)
+        self.assertGreater(in_line["value_in"], 0.0)
+        self.assertEqual(in_line["value_out"], 0.0)
+        self.assertAlmostEqual(
+            out_line["value_in"] - out_line["value_out"],
+            out_line["value"] - data["opening_value"],
+        )
+
     def test_internal_transfer_excluded_when_scope_covers_both_sides(self):
         self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
         self._mk_move(self.loc_a, self.loc_b, 50.0, self._dt("2024-06-10 08:00:00"))

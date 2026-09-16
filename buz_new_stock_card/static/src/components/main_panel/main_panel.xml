@@ -65,6 +65,8 @@
                                 <th scope="col">ประเภท</th><th scope="col" class="text-end">รับ (เข้า)</th><th scope="col" class="text-end">จ่าย (ออก)</th>
                                 <th scope="col" class="text-end">ยอดคงเหลือ</th>
                                 <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่าสินค้า (บาท)</th>
+                                <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่ารับ (บาท)</th>
+                                <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่าจ่าย (บาท)</th>
                                 <th scope="col">สถานที่จัดเก็บ</th>
                             </tr></thead>
                             <tbody>
@@ -78,6 +80,8 @@
                                     <td class="text-end o_sc_qty_out" t-esc="line['out'] ? fmt(line['out']) : '—'"/>
                                     <td class="text-end fw-bold" t-esc="fmt(line.balance)"/>
                                     <td t-if="props.state.cardData.can_see_value" class="text-end" t-esc="fmt(line.value)"/>
+                                    <td t-if="props.state.cardData.can_see_value" class="text-end o_sc_qty_in" t-esc="line.value_in ? fmt(line.value_in) : '—'"/>
+                                    <td t-if="props.state.cardData.can_see_value" class="text-end o_sc_qty_out" t-esc="line.value_out ? fmt(line.value_out) : '—'"/>
                                     <td t-esc="line.location_name"/>
                                 </tr>
                             </tbody>

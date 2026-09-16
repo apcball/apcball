@@ -326,7 +326,7 @@ class StockCardController(http.Controller):
         sheet.set_column("E:E", 20)
         sheet.set_column("F:I", 12)
         if show_value:
-            sheet.set_column("J:J", 16)
+            sheet.set_column("J:L", 16)
 
         row = 0
         sheet.write(row, 0, "Stock Card", fmts["title"])
@@ -353,6 +353,8 @@ class StockCardController(http.Controller):
                    "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ"]
         if show_value:
             headers.append("มูลค่าสินค้า (บาท)")
+            headers.append("มูลค่ารับ (บาท)")
+            headers.append("มูลค่าจ่าย (บาท)")
         for col, label in enumerate(headers):
             sheet.write(row, col, label, fmts["header"])
         row += 1
@@ -364,6 +366,8 @@ class StockCardController(http.Controller):
         sheet.write(row, 8, data["opening_balance"], fmts["num"])
         if show_value:
             sheet.write(row, 9, data["opening_value"], fmts["num"])
+            sheet.write(row, 10, 0.0, fmts["num"])
+            sheet.write(row, 11, 0.0, fmts["num"])
         row += 1
 
         for line in data["lines"]:
@@ -382,4 +386,6 @@ class StockCardController(http.Controller):
             sheet.write(row, 8, line["balance"], fmts["num"])
             if show_value:
                 sheet.write(row, 9, line.get("value", 0.0), fmts["num"])
+                sheet.write(row, 10, line.get("value_in", 0.0), fmts["num"])
+                sheet.write(row, 11, line.get("value_out", 0.0), fmts["num"])
             row += 1
