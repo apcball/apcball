@@ -28,6 +28,7 @@ class SaleOrder(models.Model):
 
     proposal_no = fields.Char(string='Proposal Number', readonly=True, copy=False)
     quotation_no = fields.Char(string='Quotation Number', copy=False)
+    quotation_date = fields.Date(string='Quotation Date')
     project_name = fields.Char(string='Project Name')
     customer_name = fields.Char(string='Customer Name')
     terms_conditions = fields.Text(string='Terms and Conditions')
