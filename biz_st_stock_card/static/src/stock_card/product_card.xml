@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_st_stock_card.ProductCard">
+        <div class="sc-root sc-card-root o_action">
+
+            <div class="sc-header">
+                <button type="button" class="sc-back" title="กลับไปสต๊อกการ์ด"
+                        t-on-click="() => this.goBack()">
+                    <i class="fa fa-arrow-left"/>
+                </button>
+                <div class="sc-header-main">
+                    <h1>
+                        <span class="sc-card-code" t-if="state.data and state.data.product.code"
+                              t-esc="'[' + state.data.product.code + ']'"/>
+                        <span t-esc="state.data ? state.data.product.name : 'รายละเอียดสินค้า'"/>
+                    </h1>
+                    <div class="sc-subtitle" t-if="state.data">
+                        <span t-esc="state.data.product.categ_name"/>
+                        <span class="sc-dot">·</span>
+                        <span t-esc="'หน่วย ' + state.data.product.uom_name"/>
+                        <span class="sc-dot">·</span>
+                        <span t-esc="state.data.company.names"/>
+                        <span class="sc-dot">·</span>
+                        <span t-esc="state.data.labels.period"/>
+                        <span class="sc-dot">·</span>
+                        <span t-esc="state.data.checks.day_count + ' วันที่มีการเคลื่อนไหว'"/>
+                    </div>
+                </div>
+                <div class="sc-kpis" t-if="state.data">
+                    <div t-foreach="summary" t-as="card" t-key="card.label"
+                         t-att-class="'sc-kpi sc-kpi-' + card.tone">
+                        <div class="sc-kpi-label" t-esc="card.label"/>
+                        <div class="sc-kpi-qty" t-esc="card.qty"/>
+                        <div class="sc-kpi-value" t-if="card.value !== null" t-esc="card.value"/>
+                    </div>
+                    <div class="sc-kpi sc-kpi-cost" t-if="showValue and avgCost !== null">
+                        <div class="sc-kpi-label">ต้นทุนเฉลี่ย/หน่วย</div>
+                        <div class="sc-kpi-qty" t-esc="avgCost"/>
+                        <div class="sc-kpi-value" t-esc="state.data.company.currency_symbol"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sc-filters">
+                <div class="sc-filter-row">
+                    <div class="sc-field">
+                        <label>สินค้า</label>
+                        <select class="sc-card-product" t-att-value="state.productId"
+                                t-on-change="(ev) => this.onProductChange(ev)">
+                            <option t-foreach="state.products" t-as="product" t-key="product.id"
+                                    t-att-value="product.id"
+                                    t-att-selected="product.id === state.productId ? 'selected' : undefined"
+                                    t-esc="product.name"/>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label>ตั้งแต่</label>
+                        <input type="date" t-att-value="state.options.date_from"
+                               t-on-change="(ev) => this.onDateChange('date_from', ev)"/>
+                    </div>
+                    <div class="sc-field">
+                        <label>ถึง</label>
+                        <input type="date" t-att-value="state.options.date_to"
+                               t-on-change="(ev) => this.onDateChange('date_to', ev)"/>
+                    </div>
+                    <div class="sc-presets">
+                        <button t-foreach="presets" t-as="preset" t-key="preset.id"
+                                type="button" class="sc-chip"
+                                t-on-click="() => this.applyPreset(preset.id)"
+                                t-esc="preset.label"/>
+                    </div>
+
+                    <div class="sc-actions">
+                        <button type="button" class="btn btn-sm btn-light"
+                                t-on-click="() => this.openProductForm()">
+                            <i class="fa fa-cube me-1"/>เปิดข้อมูลสินค้า
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary"
+                                t-att-disabled="state.loading or undefined"
+                                t-on-click="() => this.load()">
+                            <i class="fa fa-refresh"
+                               t-att-class="state.loading ? 'fa-spin' : ''"/>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <t t-if="state.data">
+                <t t-set="checks" t-value="state.data.checks"/>
+
+                <div class="sc-alert sc-alert-bad" t-if="!checks.qty_reconciled">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    ผลรวมรายวันไม่ตรงกับยอดของสินค้า ผลต่าง
+                    <b t-esc="checks.qty_difference"/> — อย่าเพิ่งใช้ตัวเลขในหน้านี้
+                </div>
+                <div class="sc-alert sc-alert-bad"
+                     t-if="checks.show_value and !checks.value_reconciled">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    มูลค่ารายวันไม่ตรงกับมูลค่าของสินค้า ผลต่าง
+                    <b t-esc="checks.value_difference"/>
+                </div>
+                <div class="sc-alert sc-alert-bad" t-if="checks.balance_broken_by_filter">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    ตัวกรองตัดการปรับปรุงยอดหรือของเสียออก สมการ
+                    <b>คงเหลือ = ยกมา + รับ − จ่าย</b> จึงไม่เป็นจริงในหน้านี้
+                </div>
+                <div class="sc-alert sc-alert-info"
+                     t-if="checks.show_value and checks.svl_scope_limited">
+                    <i class="fa fa-filter me-2"/>
+                    ชั้นมูลค่าสินค้า (SVL) ไม่มีมิติคลัง มูลค่าที่แสดงจึงเป็นส่วนแบ่งของคลังที่เลือก
+                    ตามสัดส่วนจำนวน ส่วน <b>ราคา/หน่วย</b> เป็นต้นทุนจริงของวันนั้นทั้งบริษัท
+                </div>
+                <div class="sc-alert sc-alert-ok"
+                     t-if="checks.show_value and checks.svl_reconciled">
+                    <i class="fa fa-check-circle me-2"/>
+                    มูลค่าในงวดกระทบกับชั้นมูลค่าสินค้า (SVL) ครบถ้วน
+                    <b t-esc="checks.svl_period_value"/>
+                </div>
+                <div class="sc-alert sc-alert-info" t-if="checks.value_hidden_reason">
+                    <i class="fa fa-lock me-2"/>
+                    คุณไม่มีสิทธิ์ดูมูลค่าสินค้า หน้านี้แสดงเฉพาะจำนวน
+                </div>
+                <div class="sc-alert sc-alert-warn" t-if="checks.interwarehouse.line_count">
+                    <i class="fa fa-exchange me-2"/>
+                    ยอด "รับเข้า" และ "จ่ายออก" นับการโอนข้ามคลังสองครั้งโดยตั้งใจ งวดนี้มี
+                    <b t-esc="checks.interwarehouse.line_count"/> บรรทัด รวม
+                    <b t-esc="checks.interwarehouse.qty"/> หน่วย — ยอดยกมาและคงเหลือไม่กระทบ
+                </div>
+                <div class="sc-alert sc-alert-warn" t-if="checks.opening_skipped">
+                    <i class="fa fa-info-circle me-2"/>
+                    รายงานนี้ตั้งค่าไม่คำนวณยอดยกมา ยอดคงเหลือสะสมจึงเริ่มจากศูนย์
+                </div>
+            </t>
+
+            <div class="sc-progress" t-if="state.reloading"><div/></div>
+
+            <div class="sc-body">
+                <div class="sc-loading" t-if="state.loading and !state.data">
+                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+                <div class="sc-table-wrap" t-elif="state.data">
+                    <table class="sc-table sc-card-table">
+                        <thead>
+                            <tr class="sc-head-groups">
+                                <th t-foreach="headerGroups" t-as="group" t-key="group_index"
+                                    t-att-colspan="group.span"
+                                    t-att-rowspan="group.isGroup ? 1 : 2"
+                                    t-esc="group.label"/>
+                            </tr>
+                            <tr class="sc-head-subs">
+                                <t t-foreach="columns" t-as="col" t-key="col.key">
+                                    <th t-if="col.group" t-esc="col.label"/>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-att-class="rowClass(openingRow)">
+                                <t t-call="biz_st_stock_card.ProductCardCells">
+                                    <t t-set="row" t-value="openingRow"/>
+                                </t>
+                            </tr>
+                            <tr t-foreach="state.data.days" t-as="day" t-key="day.date"
+                                t-att-class="rowClass(day)"
+                                t-on-click="() => this.openDay(day)">
+                                <t t-call="biz_st_stock_card.ProductCardCells">
+                                    <t t-set="row" t-value="day"/>
+                                </t>
+                            </tr>
+                            <tr t-if="!state.data.days.length">
+                                <td class="sc-card-empty" t-att-colspan="columns.length">
+                                    ไม่มีการเคลื่อนไหวของสินค้านี้ในช่วงที่เลือก
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <t t-call="biz_st_stock_card.ProductCardCells">
+                                    <t t-set="row" t-value="totalRow"/>
+                                </t>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="biz_st_stock_card.ProductCardCells">
+        <t t-foreach="columns" t-as="col" t-key="col.key">
+            <td t-if="col.type === 'text'" class="sc-cell-date">
+                <span t-esc="cellValue(row, col)"/>
+                <span class="sc-sub" t-if="row.move_count"
+                      t-esc="row.move_count + ' รายการ'"/>
+            </td>
+            <td t-elif="isBlank(row, col)" class="sc-cell-num"/>
+            <td t-elif="col.type === 'change'" class="sc-cell-num sc-cell-change">
+                <span t-if="row.change &gt; 0" class="sc-up">
+                    <i class="fa fa-arrow-up"/><span t-esc="changeValue(row)"/>
+                </span>
+                <span t-elif="row.change &lt; 0" class="sc-down">
+                    <i class="fa fa-arrow-down"/><span t-esc="changeValue(row)"/>
+                </span>
+            </td>
+            <td t-else="" class="sc-cell-num"
+                t-att-class="{
+                    'sc-cell-in': col.group === 'รับเข้า',
+                    'sc-cell-out': col.group === 'จ่ายออก',
+                    'sc-cell-neg': row.flag === 'negative' and col.key.startsWith('balance_'),
+                }"
+                t-esc="cellValue(row, col)"/>
+        </t>
+    </t>
+
+</templates>

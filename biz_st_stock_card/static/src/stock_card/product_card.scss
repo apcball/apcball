@@ -1,0 +1,81 @@
+// การ์ดสินค้ารายวัน — ต่อยอดจาก .sc-root ของสต๊อกการ์ด (token, หัวจอ, KPI, แบนเนอร์
+// และตารางถูกใช้ซ้ำทั้งชุด) ที่นี่มีเฉพาะสิ่งที่เป็นของการ์ดจริง ๆ เท่านั้น
+.sc-card-root {
+    .sc-card-code {
+        margin-right: 8px;
+        color: var(--sc-muted);
+        font-weight: 500;
+    }
+    .sc-kpi-cost {
+        border-left: 3px solid #6941C6;
+        background: #F9F5FF;
+    }
+    // ปุ่มย้อนกลับ — breadcrumb ของ Odoo ก็กลับได้ แต่ปุ่มในจอทำให้ไม่ต้องเงยขึ้นไปหา
+    .sc-back {
+        width: 30px;
+        height: 30px;
+        margin-top: 2px;
+        border: 1px solid var(--sc-border);
+        border-radius: var(--sc-radius);
+        background: #FFFFFF;
+        color: var(--sc-muted);
+
+        &:hover { border-color: var(--sc-primary); color: var(--sc-primary); }
+    }
+    .sc-header { align-items: flex-start; }
+    .sc-header-main { flex: 1; }
+
+    .sc-card-product {
+        min-width: 260px;
+        max-width: 420px;
+    }
+
+    .sc-card-table {
+        td { vertical-align: middle; }
+
+        .sc-cell-date { white-space: nowrap; font-weight: 500; }
+        .sc-cell-in { background: rgba(2, 122, 72, 0.04); }
+        .sc-cell-out { background: rgba(180, 35, 24, 0.04); }
+
+        // แถวที่มีของเข้า/ออก ให้เห็นได้จากหางตา โดยไม่กลบสีของแถวที่กำลังชี้อยู่
+        .sc-card-row-day.sc-card-row-in > .sc-cell-date { box-shadow: inset 3px 0 0 var(--sc-in); }
+        .sc-card-row-day.sc-card-row-out > .sc-cell-date { box-shadow: inset 3px 0 0 var(--sc-out); }
+        .sc-card-row-day.sc-card-row-in.sc-card-row-out > .sc-cell-date {
+            box-shadow: inset 3px 0 0 var(--sc-primary);
+        }
+
+        // ยอดคงเหลือติดลบ = สัญญาณว่าข้อมูลมีปัญหา ต้องสะดุดตาแม้อ่านเร็ว ๆ
+        .sc-cell-neg { color: var(--sc-out); font-weight: 700; background: #FEF3F2; }
+
+        .sc-card-row-opening > td {
+            background: var(--sc-head);
+            font-weight: 600;
+            border-bottom: 1px solid var(--sc-border-strong);
+        }
+        .sc-card-row-day:hover > td { background: var(--sc-primary-soft); }
+    }
+
+    .sc-cell-change {
+        font-weight: 600;
+        .sc-up { color: var(--sc-in); }
+        .sc-down { color: var(--sc-out); }
+        i { margin-right: 3px; font-size: 10px; }
+    }
+    .sc-card-empty {
+        padding: 24px;
+        text-align: center;
+        color: var(--sc-muted);
+    }
+}
+
+// ชื่อสินค้าในรายงานหลักเป็นลิงก์เปิดการ์ดรายวัน — ต้องเห็นว่ากดได้ตั้งแต่ยังไม่ชี้
+// จึงใช้เส้นใต้ประ ไม่ใช่เปลี่ยนสีตอน hover อย่างเดียว (แถวทั้งแถวก็กดได้อยู่แล้ว
+// ผู้ใช้จะแยกไม่ออกว่าตรงไหนทำอะไร)
+.sc-root .sc-name-link {
+    color: var(--sc-primary);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    cursor: pointer;
+
+    &:hover { text-decoration: underline solid; }
+}

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_card_wizard_form" model="ir.ui.view">
+        <field name="name">biz.stock.card.wizard.form</field>
+        <field name="model">biz.stock.card.wizard</field>
+        <field name="arch" type="xml">
+            <form string="สต๊อกการ์ด">
+                <group>
+                    <group string="ช่วงเวลา">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="date_format" widget="radio" options="{'horizontal': True}"/>
+                    </group>
+                    <group string="บริษัท">
+                        <field name="company_ids" widget="many2many_tags"/>
+                        <field name="is_multi_company" invisible="1"/>
+                        <field name="company_mode" invisible="not is_multi_company"/>
+                    </group>
+                </group>
+                <group>
+                    <group string="การจัดกลุ่ม">
+                        <field name="group_mode" widget="radio"/>
+                        <field name="group_categ"/>
+                        <field name="group_location"/>
+                        <field name="group_lot"/>
+                        <field name="unfold_level"/>
+                    </group>
+                    <group string="ตัวกรอง">
+                        <field name="warehouse_ids" widget="many2many_tags"/>
+                        <field name="location_ids" widget="many2many_tags"/>
+                        <field name="categ_ids" widget="many2many_tags"/>
+                        <field name="product_ids" widget="many2many_tags"/>
+                        <field name="lot_ids" widget="many2many_tags"/>
+                        <field name="picking_type_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <group>
+                    <group string="ขอบเขตข้อมูล">
+                        <field name="include_inventory"/>
+                        <field name="include_scrap"/>
+                        <field name="include_consignment"/>
+                        <field name="opening_basis"/>
+                        <field name="display_product"/>
+                        <field name="detail_mode"/>
+                    </group>
+                    <group string="มูลค่า">
+                        <field name="can_see_value" invisible="1"/>
+                        <field name="show_value" invisible="not can_see_value"/>
+                        <field name="value_mode" invisible="not can_see_value or not show_value"/>
+                        <field name="value_date_basis" invisible="not can_see_value or not show_value"/>
+                        <div colspan="2" class="text-muted" invisible="can_see_value">
+                            คุณไม่มีสิทธิ์ดูมูลค่าสินค้า รายงานจะแสดงเฉพาะจำนวน
+                        </div>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_view_report" string="ดูบนหน้าจอ"
+                            type="object" class="btn-primary"/>
+                    <button name="action_print_pdf" string="พิมพ์ PDF"
+                            type="object" class="btn-secondary"/>
+                    <button name="action_export_xlsx" string="ดาวน์โหลด Excel"
+                            type="object" class="btn-secondary"/>
+                    <button string="ยกเลิก" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stock_card_wizard" model="ir.actions.act_window">
+        <field name="name">พิมพ์สต๊อกการ์ด</field>
+        <field name="res_model">biz.stock.card.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

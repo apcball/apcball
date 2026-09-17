@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_st_stock_card.ScTable">
+        <div class="sc-table-wrap">
+            <table class="sc-table">
+                <thead>
+                    <tr class="sc-head-groups">
+                        <th t-foreach="headerGroups" t-as="group" t-key="group_index"
+                            t-att-colspan="group.span"
+                            t-att-rowspan="group.isGroup ? 1 : 2"
+                            t-esc="group.label"/>
+                    </tr>
+                    <tr class="sc-head-subs">
+                        <t t-foreach="columns" t-as="col" t-key="col.key">
+                            <th t-if="col.group" t-esc="col.label"/>
+                        </t>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="props.data.lines" t-as="line" t-key="line.id"
+                        t-att-class="rowClass(line)"
+                        t-on-click="() => this.onRowClick(line)">
+                        <t t-foreach="columns" t-as="col" t-key="col.key">
+                            <td t-if="col.type === 'text'" class="sc-cell-code"
+                                t-esc="cellValue(line, col)"/>
+                            <td t-elif="col.type === 'uom'" class="sc-cell-uom"
+                                t-esc="cellValue(line, col)"/>
+                            <td t-elif="col.type === 'name'" class="sc-cell-name"
+                                t-att-style="indent(line)">
+                                <span class="sc-caret" t-if="line.unfoldable"
+                                      t-on-click.stop="() => this.onCaretClick(line)">
+                                    <i class="fa"
+                                       t-att-class="line.unfolded ? 'fa-caret-down' : 'fa-caret-right'"/>
+                                </span>
+                                <span class="sc-caret sc-caret-void" t-else=""/>
+                                <span class="sc-name"
+                                      t-att-class="{'sc-name-link': isProductLink(line)}"
+                                      t-att-title="isProductLink(line) ? 'ดูรายละเอียดสินค้ารายวัน' : undefined"
+                                      t-on-click="(ev) => this.onNameClick(line, ev)"
+                                      t-esc="line.name"/>
+                                <span class="sc-sub" t-if="line.sub" t-esc="line.sub"/>
+                                <span class="sc-doc"
+                                      t-if="line.kind === 'move' and line.code and !line.code_is_name"
+                                      t-esc="line.code"/>
+                                <span class="sc-badge sc-badge-neg" t-if="line.flag === 'negative'">ติดลบ</span>
+                                <span class="sc-badge" t-if="line.flag === 'no_value'">ไม่มีมูลค่า</span>
+                            </td>
+                            <td t-elif="isBlank(line, col)" class="sc-cell-num"/>
+                            <td t-else="" class="sc-cell-num" t-esc="cellValue(line, col)"/>
+                        </t>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <t t-foreach="columns" t-as="col" t-key="col.key">
+                            <td t-if="col.type === 'text'"/>
+                            <td t-elif="col.type === 'uom'" class="sc-cell-uom"/>
+                            <td t-elif="col.type === 'name'" class="sc-cell-name"
+                                t-esc="props.data.totals.name"/>
+                            <td t-elif="col.key.startsWith('balance_')" class="sc-cell-num"/>
+                            <td t-else="" class="sc-cell-num"
+                                t-esc="cellValue(props.data.totals, col)"/>
+                        </t>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </t>
+
+</templates>

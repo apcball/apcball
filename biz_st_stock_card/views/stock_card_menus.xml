@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- เมนูแม่ stock.menu_warehouse_report เป็น group_stock_manager อยู่แล้ว
+         ใส่ group_stock_user ตรงนี้จะได้เมนูที่มองไม่เห็น ซึ่งดูเหมือนบั๊ก -->
+    <menuitem id="menu_stock_card_screen"
+              name="สต๊อกการ์ด (Stock Card)"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_card_screen"
+              sequence="210"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_stock_card_wizard"
+              name="พิมพ์สต๊อกการ์ด (PDF / Excel)"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_card_wizard"
+              sequence="211"
+              groups="stock.group_stock_manager"/>
+</odoo>

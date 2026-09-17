@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_st_stock_card.StockCard">
+        <div class="sc-root o_action">
+
+            <div class="sc-header">
+                <div class="sc-header-main">
+                    <h1 t-esc="state.data ? state.data.labels.title : 'สต๊อกการ์ด'"/>
+                    <div class="sc-subtitle" t-if="state.data">
+                        <span t-esc="state.data.company.names"/>
+                        <span class="sc-dot">·</span>
+                        <span t-esc="state.data.labels.period"/>
+                        <span class="sc-dot">·</span>
+                        <span t-esc="state.data.labels.levels"/>
+                        <span class="sc-dot">·</span>
+                        <span t-esc="groupCount + ' กลุ่ม'"/>
+                    </div>
+                </div>
+                <div class="sc-kpis" t-if="state.data">
+                    <div t-foreach="summary" t-as="card" t-key="card.label"
+                         t-att-class="'sc-kpi sc-kpi-' + card.tone">
+                        <div class="sc-kpi-label" t-esc="card.label"/>
+                        <div class="sc-kpi-qty" t-esc="card.qty"/>
+                        <div class="sc-kpi-value" t-if="card.value !== null" t-esc="card.value"/>
+                    </div>
+                </div>
+            </div>
+
+            <ScFilterBar options="state.options"
+                         companies="state.data ? state.data.allowed_companies : []"
+                         warehouses="state.data ? state.data.warehouses : []"
+                         pickingTypes="state.data ? state.data.picking_types : []"
+                         levels="state.data ? state.data.levels : []"
+                         loading="state.loading"
+                         onChange.bind="updateOptions"
+                         onRefresh.bind="load"
+                         onPrint.bind="print"
+                         onUnfoldAll.bind="unfoldAll"
+                         onFoldAll.bind="foldAll"/>
+
+            <t t-if="state.data">
+                <t t-set="checks" t-value="state.data.checks"/>
+
+                <div class="sc-alert sc-alert-bad" t-if="checks.balance_broken_by_filter">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    ตัวกรองตัดการปรับปรุงยอดหรือของเสียออก สมการ
+                    <b>คงเหลือ = ยกมา + รับ − จ่าย</b> จึงไม่เป็นจริงในรายงานฉบับนี้
+                </div>
+                <div class="sc-alert sc-alert-bad" t-if="checks.mixed_currency.length">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    มีบริษัทที่ใช้สกุลเงินต่างจากรายงานนี้ ยอดถูกบวกกันตรง ๆ โดยไม่แปลงค่า —
+                    <t t-foreach="checks.mixed_currency" t-as="company" t-key="company.id">
+                        <span t-esc="company.name"/> (<span t-esc="company.currency"/>)
+                    </t>
+                </div>
+                <div class="sc-alert sc-alert-info"
+                     t-if="state.options.show_value and checks.svl_scope_limited">
+                    <i class="fa fa-filter me-2"/>
+                    ชั้นมูลค่าสินค้า (SVL) ไม่มีมิติคลังหรือที่เก็บ รายงานที่กรองคลังไว้จึงกระทบยอด
+                    กับมูลค่าทั้งบริษัทไม่ได้ — มูลค่าที่แสดงเป็นส่วนแบ่งของคลังที่เลือก
+                    คำนวณจากสัดส่วนจำนวนของทั้งสินค้า
+                </div>
+                <div class="sc-alert sc-alert-bad"
+                     t-if="state.options.show_value and !checks.svl_reconciled and !checks.svl_scope_limited">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    มูลค่าในรายงานไม่กระทบกับชั้นมูลค่าสินค้า (SVL) ผลต่าง
+                    <b t-esc="checks.svl_difference"/>
+                </div>
+                <div class="sc-alert sc-alert-ok"
+                     t-if="state.options.show_value and checks.svl_reconciled">
+                    <i class="fa fa-check-circle me-2"/>
+                    มูลค่าในงวดกระทบกับชั้นมูลค่าสินค้า (SVL) ครบถ้วน
+                    <b t-esc="checks.svl_period_value"/>
+                    <t t-if="checks.imputed_internal.value">
+                        — ในจำนวนนี้เป็นมูลค่าประมาณของการโอนภายใน
+                        <b t-esc="checks.imputed_internal.value"/>
+                    </t>
+                </div>
+                <div class="sc-alert sc-alert-info" t-if="checks.value_hidden_reason">
+                    <i class="fa fa-lock me-2"/>
+                    คุณไม่มีสิทธิ์ดูมูลค่าสินค้า รายงานนี้แสดงเฉพาะจำนวน
+                </div>
+                <div class="sc-alert sc-alert-warn" t-if="checks.detail_downgraded">
+                    <i class="fa fa-info-circle me-2"/>
+                    การแสดงรายการเคลื่อนไหวทั้งหมดต้องกรองสินค้าหรือหมวดก่อน
+                    ระบบจึงลดเหลือเฉพาะกลุ่มที่กางอยู่
+                </div>
+                <div class="sc-alert sc-alert-warn" t-if="checks.truncated_leaves">
+                    <i class="fa fa-info-circle me-2"/>
+                    มี <b t-esc="checks.truncated_leaves"/>
+                    กลุ่มที่แสดงรายการเคลื่อนไหวไม่ครบ — แถวปิดท้ายถือยอดที่เหลือไว้แล้ว
+                </div>
+                <div class="sc-alert sc-alert-warn" t-if="checks.interwarehouse.line_count">
+                    <i class="fa fa-exchange me-2"/>
+                    ยอด "รับ" และ "จ่าย" นับการโอนข้ามคลังสองครั้งโดยตั้งใจ
+                    (จ่ายออกของคลังต้นทาง + รับเข้าของคลังปลายทาง) งวดนี้มี
+                    <b t-esc="checks.interwarehouse.line_count"/> บรรทัด รวม
+                    <b t-esc="checks.interwarehouse.qty"/> หน่วย — ยอดยกมาและคงเหลือไม่กระทบ
+                </div>
+            </t>
+
+            <div class="sc-progress" t-if="state.reloading"><div/></div>
+
+            <div class="sc-body">
+                <div class="sc-loading" t-if="state.loading and !state.data">
+                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+                <ScTable t-elif="state.data" data="state.data"
+                         onToggleFold.bind="toggleFold"
+                         onDrillDown.bind="drillDown"
+                         onOpenProduct.bind="openProductCard"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

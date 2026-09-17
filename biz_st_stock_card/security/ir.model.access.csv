@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_biz_stock_card_wizard_user,biz.stock.card.wizard.user,model_biz_stock_card_wizard,stock.group_stock_user,1,1,1,1
+access_biz_stock_card_wizard_manager,biz.stock.card.wizard.manager,model_biz_stock_card_wizard,stock.group_stock_manager,1,1,1,1

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_stock_card_screen" model="ir.actions.client">
+        <field name="name">สต๊อกการ์ด</field>
+        <field name="tag">biz_st_stock_card.stock_card</field>
+    </record>
+
+    <!-- เปิดจากปุ่ม "รายละเอียด" ที่แถวสินค้าของสต๊อกการ์ด จึงไม่ต้องมีเมนูของตัวเอง -->
+    <record id="action_product_card" model="ir.actions.client">
+        <field name="name">รายละเอียดสินค้า</field>
+        <field name="tag">biz_st_stock_card.product_card</field>
+    </record>
+
+</odoo>
