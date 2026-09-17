@@ -126,6 +126,20 @@ Standard Odoo 17: `models/`, `views/`, `security/`, `data/`, `wizard/`, `report/
 
 `__pycache__/`, `*.pyc`, `uploads/`, `*.tar.gz`, `.env`, `.venv/`, lockfiles from other tools (`.thclaws/`, `.codewhale/`, `.deepseek/`). Module `README.*` files are Odoo app store descriptions only.
 
+## Clean Production
+
+When the user requests “เตรียมไฟล์ `<module>` แบบ Clean Production”, check this section before preparing the module.
+
+- Confirm that `<module>` exists and contains `__manifest__.py`. If the module is missing or ambiguous, ask the user before proceeding.
+- Review the manifest and referenced files so files required to install or run the module are preserved.
+- Clean the specified module directory in place. Do not create a separate staging copy.
+- For this explicit Clean Production request, remove generated cache and development artifacts that are not needed at runtime, including `__pycache__/`, `*.pyc`, logs, temporary files, and build output.
+- Remove `.env`, `.venv/`, and credential or local configuration files found inside the module directory.
+- Do not modify the contents of module `README.*` files.
+- Do not delete `uploads/`, `*.tar.gz`, tests, or any file whose role is uncertain without first checking whether the module needs it. If its necessity cannot be verified, stop and report the file for user review.
+- After cleanup, verify that `__manifest__.py` and its referenced files remain present. Report what was removed and what was kept.
+- This request authorizes local file cleanup only. It does not authorize uploading, installing, upgrading, or deploying to DEV or PROD.
+
 ## MCP Tools (Odoo Query)
 
 Connect to live Odoo DB via MCP. Available tools:
