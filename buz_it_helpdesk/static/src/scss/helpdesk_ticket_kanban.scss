@@ -96,6 +96,12 @@
         border-color: #c6c7c8;
     }
 
+    .o_kanban_ticket_stage.ticket-stage-rejected {
+        color: #842029;
+        background-color: #f8d7da;
+        border-color: #f1aeb5;
+    }
+
     .o_kanban_record_body {
         padding: .45rem 0;
         border-top: 1px solid #f0f1f2;

@@ -1,5 +1,7 @@
 import logging
 
+from markupsafe import Markup, escape
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import html2plaintext
@@ -9,6 +11,12 @@ _logger = logging.getLogger(__name__)
 RESOLUTION_CONFIRMATION_SUMMARY = 'Confirm IT Resolution'
 APPROVAL_ACTIVITY_SUMMARY = 'Helpdesk Approval Request'
 SLA_GROUPS = 'buz_it_helpdesk.group_it_support_agent'
+TICKET_REJECTION_REASON_TYPES = [
+    ('invalid', 'Invalid Request'),
+    ('duplicate', 'Duplicate'),
+    ('out_of_scope', 'Out of Scope'),
+    ('other', 'Other'),
+]
 
 
 class HelpdeskTicket(models.Model):
@@ -104,6 +112,19 @@ class HelpdeskTicket(models.Model):
         default=lambda self: self.env.ref('buz_it_helpdesk.stage_draft'),
         group_expand='_read_group_stage_ids',
     )
+    ticket_rejection_reason_type = fields.Selection(
+        TICKET_REJECTION_REASON_TYPES,
+        string='Rejection Type',
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    ticket_rejection_reason = fields.Text(
+        string='Rejection Details',
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
     priority = fields.Selection(
         [
             ('0', 'Low'),
@@ -193,7 +214,14 @@ class HelpdeskTicket(models.Model):
     active = fields.Boolean(default=True)
     is_draft_stage = fields.Boolean(compute='_compute_is_draft_stage')
     is_closed_stage = fields.Boolean(compute='_compute_is_closed_stage')
+    is_rejected_stage = fields.Boolean(compute='_compute_is_rejected_stage')
     show_receive_button = fields.Boolean(compute='_compute_show_receive_button')
+    show_reject_ticket_button = fields.Boolean(
+        compute='_compute_show_reject_ticket_button',
+    )
+    show_reopen_rejected_ticket_button = fields.Boolean(
+        compute='_compute_show_reopen_rejected_ticket_button',
+    )
     show_pending_user_button = fields.Boolean(compute='_compute_workflow_buttons')
     show_resume_work_button = fields.Boolean(compute='_compute_workflow_buttons')
     show_resolve_button = fields.Boolean(compute='_compute_workflow_buttons')
@@ -256,6 +284,12 @@ class HelpdeskTicket(models.Model):
         for ticket in self:
             ticket.is_closed_stage = ticket.stage_id == closed_stage
 
+    @api.depends('stage_id')
+    def _compute_is_rejected_stage(self):
+        rejected_stage = self.env.ref('buz_it_helpdesk.stage_rejected')
+        for ticket in self:
+            ticket.is_rejected_stage = ticket.stage_id == rejected_stage
+
     @api.depends('stage_id', 'assigned_user_id')
     @api.depends_context('uid')
     def _compute_show_receive_button(self):
@@ -265,6 +299,28 @@ class HelpdeskTicket(models.Model):
             ticket.show_receive_button = (
                 is_agent and ticket.stage_id == new_stage
                 and not ticket.assigned_user_id
+            )
+
+    @api.depends('stage_id', 'assigned_user_id')
+    @api.depends_context('uid')
+    def _compute_show_reject_ticket_button(self):
+        new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+        is_agent = self._is_support_agent()
+        for ticket in self:
+            ticket.show_reject_ticket_button = (
+                is_agent
+                and ticket.stage_id == new_stage
+                and not ticket.assigned_user_id
+            )
+
+    @api.depends('stage_id')
+    @api.depends_context('uid')
+    def _compute_show_reopen_rejected_ticket_button(self):
+        rejected_stage = self.env.ref('buz_it_helpdesk.stage_rejected')
+        is_manager = self._is_helpdesk_manager()
+        for ticket in self:
+            ticket.show_reopen_rejected_ticket_button = (
+                is_manager and ticket.stage_id == rejected_stage
             )
 
     @api.depends('stage_id', 'assigned_user_id')
@@ -1236,6 +1292,108 @@ class HelpdeskTicket(models.Model):
         self._complete_receive_activities()
         return True
 
+    def action_open_ticket_reject_wizard(self):
+        self.ensure_one()
+        self._assert_can_reject_ticket()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Reject Ticket'),
+            'res_model': 'buz.helpdesk.ticket.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'view_id': self.env.ref(
+                'buz_it_helpdesk.view_helpdesk_ticket_reject_wizard'
+            ).id,
+            'context': {
+                'default_ticket_id': self.id,
+                'active_model': self._name,
+                'active_ids': [self.id],
+            },
+        }
+
+    def _assert_can_reject_ticket(self):
+        self.ensure_one()
+        if not self._is_support_agent():
+            raise UserError(_('Only IT Support Agents can reject tickets.'))
+        if (
+            self.stage_id != self.env.ref('buz_it_helpdesk.stage_new')
+            or self.assigned_user_id
+        ):
+            raise UserError(_(
+                'Only New tickets that have not been received can be rejected.'
+            ))
+
+    def _reject_ticket(self, reason_type, reason):
+        self.ensure_one()
+        if not self._is_support_agent():
+            raise UserError(_('Only IT Support Agents can reject tickets.'))
+        if reason_type not in dict(
+            self._fields['ticket_rejection_reason_type'].selection
+        ):
+            raise ValidationError(_('Select a valid rejection type.'))
+        reason = (reason or '').strip()
+        if not reason:
+            raise ValidationError(_('Rejection details are required.'))
+
+        # ใช้ row lock เดียวกับการ Receive แล้วตรวจสถานะซ้ำหลังได้ lock
+        self.env.cr.execute(
+            'SELECT id FROM buz_helpdesk_ticket WHERE id = %s FOR UPDATE',
+            (self.id,),
+        )
+        self.invalidate_recordset(['stage_id', 'assigned_user_id'])
+        self._assert_can_reject_ticket()
+
+        reason_label = dict(
+            self._fields['ticket_rejection_reason_type'].selection
+        )[reason_type]
+        self._write_workflow_fields({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_rejected').id,
+            'ticket_rejection_reason_type': reason_type,
+            'ticket_rejection_reason': reason,
+        })
+        self.message_post(
+            body=Markup(
+                '<p><strong>%s</strong></p>'
+                '<p><strong>%s:</strong> %s</p>'
+            ) % (
+                escape(_('This ticket was rejected before work started.')),
+                escape(_(reason_label)),
+                escape(reason),
+            ),
+            partner_ids=[self.requester_id.partner_id.id],
+            subtype_xmlid='mail.mt_comment',
+        )
+        return True
+
+    def action_reopen_rejected_ticket(self):
+        self.ensure_one()
+        if not self._is_helpdesk_manager():
+            raise UserError(_(
+                'Only Helpdesk Managers can reopen rejected tickets.'
+            ))
+        self.env.cr.execute(
+            'SELECT id FROM buz_helpdesk_ticket WHERE id = %s FOR UPDATE',
+            (self.id,),
+        )
+        self.invalidate_recordset(['stage_id'])
+        rejected_stage = self.env.ref('buz_it_helpdesk.stage_rejected')
+        if self.stage_id != rejected_stage:
+            raise UserError(_('Only Rejected tickets can be reopened.'))
+
+        self._write_workflow_fields({
+            'stage_id': self.env.ref('buz_it_helpdesk.stage_new').id,
+            'ticket_rejection_reason_type': False,
+            'ticket_rejection_reason': False,
+        })
+        self.message_post(
+            body=_('This rejected ticket was reopened by %s.') % (
+                self.env.user.display_name
+            ),
+            partner_ids=[self.requester_id.partner_id.id],
+            subtype_xmlid='mail.mt_comment',
+        )
+        return True
+
     def _complete_receive_activities(self):
         """Complete the intake activities after a ticket is received."""
         self.ensure_one()
@@ -1403,6 +1561,9 @@ class HelpdeskTicket(models.Model):
             'approval_requested_at', 'approval_decided_by',
             'approval_decided_at', 'approval_rejection_reason',
         }
+        rejection_protected = {
+            'ticket_rejection_reason_type', 'ticket_rejection_reason',
+        }
         sla_protected = {
             'sla_start_at', 'sla_response_at', 'sla_resolution_at',
         }
@@ -1414,6 +1575,11 @@ class HelpdeskTicket(models.Model):
             raise UserError(_(
                 'Approval status and decision fields can only be changed '
                 'through the approval workflow.'
+            ))
+        if rejection_protected.intersection(vals):
+            raise UserError(_(
+                'Ticket rejection details can only be changed through the '
+                'rejection workflow.'
             ))
         if is_requester_only and not is_manager:
             draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')

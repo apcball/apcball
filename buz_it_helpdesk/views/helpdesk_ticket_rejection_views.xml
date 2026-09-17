@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_helpdesk_ticket_reject_wizard" model="ir.ui.view">
+        <field name="name">buz.helpdesk.ticket.reject.wizard.form</field>
+        <field name="model">buz.helpdesk.ticket.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject Ticket">
+                <group>
+                    <field name="ticket_id"/>
+                    <field name="reason_type"/>
+                    <field name="reason" placeholder="Explain why this ticket is rejected..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="Reject Ticket" type="object" class="btn-danger"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

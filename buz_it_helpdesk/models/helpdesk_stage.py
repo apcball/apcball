@@ -29,6 +29,7 @@ class HelpdeskStage(models.Model):
             self.env.ref('buz_it_helpdesk.stage_pending_user').id,
             self.env.ref('buz_it_helpdesk.stage_resolved').id,
             self.env.ref('buz_it_helpdesk.stage_closed').id,
+            self.env.ref('buz_it_helpdesk.stage_rejected').id,
         }
 
     def write(self, vals):

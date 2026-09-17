@@ -14,6 +14,7 @@
                 <field name="category_type_id"/>
                 <field name="team_id"/>
                 <field name="stage_id"/>
+                <field name="ticket_rejection_reason_type"/>
                 <filter name="my_tickets" string="My Tickets" domain="[('requester_id', '=', uid)]"/>
                 <filter name="open" string="Open" domain="[('active', '=', True)]"/>
                 <filter name="closed" string="Archived" domain="[('active', '=', False)]"/>
@@ -39,6 +40,7 @@
                 <field name="category_type_id"/>
                 <field name="assigned_user_id"/>
                 <field name="stage_id"/>
+                <field name="ticket_rejection_reason_type"/>
                 <field name="priority" widget="priority"/>
             </tree>
         </field>
@@ -77,7 +79,7 @@
                                     <span t-attf-class="badge o_kanban_ticket_priority {{ record.priority.raw_value == '3' ? 'text-bg-danger' : record.priority.raw_value == '2' ? 'text-bg-warning' : record.priority.raw_value == '1' ? 'text-bg-info' : 'text-bg-secondary' }}">
                                         <field name="priority"/>
                                     </span>
-                                    <span t-attf-class="badge o_kanban_ticket_stage {{ record.stage_id.value == 'In Progress' ? 'ticket-stage-progress' : record.stage_id.value == 'Pending User' ? 'ticket-stage-pending' : record.stage_id.value == 'New' ? 'ticket-stage-new' : record.stage_id.value == 'Resolved' ? 'ticket-stage-resolved' : record.stage_id.value == 'Closed' ? 'ticket-stage-closed' : 'ticket-stage-draft' }}">
+                                    <span t-attf-class="badge o_kanban_ticket_stage {{ record.stage_id.value == 'In Progress' ? 'ticket-stage-progress' : record.stage_id.value == 'Pending User' ? 'ticket-stage-pending' : record.stage_id.value == 'New' ? 'ticket-stage-new' : record.stage_id.value == 'Resolved' ? 'ticket-stage-resolved' : record.stage_id.value == 'Closed' ? 'ticket-stage-closed' : record.stage_id.value == 'Rejected' ? 'ticket-stage-rejected' : 'ticket-stage-draft' }}">
                                         <field name="stage_id"/>
                                     </span>
                                     <div class="o_dropdown_kanban dropdown">
@@ -143,6 +145,8 @@
                     <field name="stage_id" widget="statusbar" options="{'clickable': False}"/>
                     <button name="action_create_ticket" string="Create Ticket" type="object" class="btn-primary" invisible="not is_draft_stage"/>
                     <button name="action_receive_ticket" string="Receive Ticket" type="object" class="btn-primary" invisible="not show_receive_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_open_ticket_reject_wizard" string="Reject Ticket" type="object" class="btn-danger" invisible="not show_reject_ticket_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
+                    <button name="action_reopen_rejected_ticket" string="Reopen Ticket" type="object" class="btn-secondary" invisible="not show_reopen_rejected_ticket_button" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_request_user" string="Waiting for User" type="object" class="btn-secondary" invisible="not show_pending_user_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_resume_work" string="Resume Work" type="object" class="btn-primary" invisible="not show_resume_work_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                     <button name="action_mark_resolved" string="Mark Resolved" type="object" class="btn-success" invisible="not show_resolve_button" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
@@ -156,7 +160,10 @@
                     <button name="action_open_line_connection" string="LINE Connection" type="object" class="btn-secondary" invisible="not show_line_connection_shortcut" groups="buz_it_helpdesk.group_it_requester"/>
                     <field name="is_draft_stage" invisible="1"/>
                     <field name="is_closed_stage" invisible="1"/>
+                    <field name="is_rejected_stage" invisible="1"/>
                     <field name="show_receive_button" invisible="1"/>
+                    <field name="show_reject_ticket_button" invisible="1"/>
+                    <field name="show_reopen_rejected_ticket_button" invisible="1"/>
                     <field name="show_pending_user_button" invisible="1"/>
                     <field name="show_resume_work_button" invisible="1"/>
                     <field name="show_resolve_button" invisible="1"/>
@@ -214,6 +221,10 @@
                             <field name="approval_decided_at" readonly="1"/>
                             <field name="approval_rejection_reason" readonly="1" invisible="approval_state != 'rejected'"/>
                         </group>
+                    </group>
+                    <group string="Rejection Details" invisible="not is_rejected_stage">
+                        <field name="ticket_rejection_reason_type" readonly="1"/>
+                        <field name="ticket_rejection_reason" readonly="1"/>
                     </group>
                     <div class="o_buz_helpdesk_attachment_sla_layout">
                         <div class="o_buz_helpdesk_attachment_column">
