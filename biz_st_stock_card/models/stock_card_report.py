@@ -34,7 +34,9 @@ QTY_KEYS = ("opening_qty", "in_qty", "out_qty", "closing_qty")
 # จำนวนเฉพาะส่วนที่ "ข้ามขอบเขตมูลค่าของบริษัท" ใช้เป็นตัวถ่วงน้ำหนักตอนกระจายมูลค่า SVL
 EXT_QTY_KEYS = ("in_qty_ext", "out_qty_ext")
 VAL_KEYS = (
-    "opening_value", "in_value", "out_value", "adj_value", "closing_value",
+    "opening_value", "in_value", "out_value", "adj_value",
+    # ปรับมูลค่าแยกต้นทุนนำเข้า (landed cost) กับการตีมูลค่าใหม่ — adj_value = ผลรวม
+    "adj_lc_value", "adj_reval_value", "closing_value",
 )
 # ส่วนของ in_value/out_value ที่มี SVL หนุนหลังจริง (ที่เหลือคือค่าประมาณของการโอนภายใน)
 EXT_VAL_KEYS = ("in_value_ext", "out_value_ext")
@@ -261,8 +263,17 @@ class StockCardReport(models.AbstractModel):
             normalized["detail_mode"] = "unfolded"
         if normalized["value_mode"] not in ("imputed", "svl"):
             normalized["value_mode"] = "imputed"
-        if normalized["value_date_basis"] not in ("move", "svl_create"):
+        if normalized["value_date_basis"] not in ("move", "svl_create", "accounting"):
             normalized["value_date_basis"] = "move"
+        # "accounting" ต้องใช้ ``stock.valuation.layer.accounting_date`` ที่มีเฉพาะ
+        # ตอนติดตั้ง stock_fifo_by_location — ไม่มีก็ลดระดับกลับ "move" เงียบ ๆ ไม่ error
+        normalized["value_date_basis_downgraded"] = False
+        if normalized["value_date_basis"] == "accounting" and not self._svl_has_accounting_date():
+            normalized["value_date_basis"] = "move"
+            normalized["value_date_basis_downgraded"] = True
+        # มี ``stock.valuation.layer.warehouse_id`` เป็นฟิลด์ stored จริงหรือไม่ (core มีแบบ
+        # compute ไม่ stored เสมอ) — ถ้ามีจะกระจายมูลค่าตามคลังแบบเป๊ะแทนสัดส่วนจำนวน
+        normalized["exact_svl_warehouse"] = self._svl_has_stored_warehouse()
         if normalized["opening_basis"] not in ("moves", "none"):
             normalized["opening_basis"] = "moves"
         if normalized["display_product"] not in ("movement", "not_zero", "all"):
@@ -497,15 +508,42 @@ class StockCardReport(models.AbstractModel):
         return domain
 
     @api.model
+    def _svl_has_accounting_date(self):
+        """มีฟิลด์ ``accounting_date`` บน SVL หรือไม่ (เติมโดย stock_fifo_by_location)"""
+        return "accounting_date" in self.env["stock.valuation.layer"]._fields
+
+    @api.model
+    def _svl_has_stored_warehouse(self):
+        """``warehouse_id`` บน SVL เป็นฟิลด์ stored จริงหรือไม่
+
+        core มี ``warehouse_id`` แบบ compute ไม่ stored เสมอ (derive จาก move) —
+        ต้องเช็ค ``.store`` ไม่ใช่แค่การมีอยู่ของฟิลด์ ไม่งั้นจะเข้าใจผิดว่ามีทุกที่
+        """
+        field = self.env["stock.valuation.layer"]._fields.get("warehouse_id")
+        return bool(field and field.store)
+
+    @api.model
     def _svl_date_domain(self, opt, operator, bound):
         """วันที่ของ SVL
 
-        SVL **ไม่มีฟิลด์วันที่** — ``_order`` ของมันคือ ``create_date`` ซึ่งเป็นเวลาที่
-        บันทึกถูกสร้าง ไม่ใช่เวลาที่ของเคลื่อนไหว การใช้ ``stock_move_id.date`` ก่อน
-        ทำให้มูลค่าตกงวดเดียวกับจำนวนที่มันสังกัด (โมดูล biz_mrp_backdate ใช้กฎเดียวกัน)
+        SVL **ไม่มีฟิลด์วันที่แน่นอนในตัวมันเอง** — ``_order`` ของมันคือ ``create_date``
+        ซึ่งเป็นเวลาที่บันทึกถูกสร้าง ไม่ใช่เวลาที่ของเคลื่อนไหว
+
+        - ``"move"`` (ค่าตั้งต้น): ใช้ ``stock_move_id.date`` ก่อน ทำให้มูลค่าตกงวด
+          เดียวกับจำนวนที่มันสังกัด (โมดูล biz_mrp_backdate ใช้กฎเดียวกัน)
+        - ``"accounting"``: ใช้ ``COALESCE(accounting_date, create_date)`` — กฎเดียวกับ
+          ``stock_fifo_valuation_report`` ที่แยก accounting_date ออกจาก create_date
+          ไว้เพื่อให้รายงานนี้กับ Stock Valuation ของ core เห็นชั้นย้อนวันที่ตรงกัน
+        - ``"svl_create"``: ใช้ ``create_date`` ตรง ๆ
         """
         if opt["value_date_basis"] == "svl_create":
             return [("create_date", operator, bound)]
+        if opt["value_date_basis"] == "accounting":
+            return [
+                "|",
+                "&", ("accounting_date", "!=", False), ("accounting_date", operator, bound),
+                "&", ("accounting_date", "=", False), ("create_date", operator, bound),
+            ]
         return [
             "|",
             "&", ("stock_move_id", "!=", False), ("stock_move_id.date", operator, bound),
@@ -798,38 +836,84 @@ class StockCardReport(models.AbstractModel):
     # ==================================================================
     @api.model
     def _read_svl_buckets(self, opt):
-        """Q3-Q7 — มูลค่าแม่นยำที่ระดับ (บริษัท, สินค้า)
+        """Q3-Q7 — มูลค่าแม่นยำที่ระดับ (บริษัท, สินค้า[, คลัง])
 
         ``unit_cost`` มี ``group_operator=None`` จึงรวมยอดไม่ได้เด็ดขาด ต้นทุนเฉลี่ย
         คำนวณเป็น SUM(value)/SUM(quantity) เสมอ
+
+        เมื่อ ``exact_svl_warehouse`` เป็นจริง (ติดตั้ง stock_fifo_by_location ที่ทำ
+        ``warehouse_id`` เป็น stored) จะ groupby คลังด้วยตรง ๆ — ไม่ต้องกระจายตาม
+        สัดส่วนจำนวนแบบที่ ``_allocate_value`` ทำตอนไม่มีมิติคลังบน SVL อีกต่อไป
+        ตรงกับวิธีของ ``stock_fifo_valuation_report`` ที่ groupby ``svl.warehouse_id``
         """
         svl = self._svl_model(opt)
         base = self._svl_domain(opt)
         period = self._svl_period_domain(opt)
-        buckets = {"opening": {}, "in": {}, "out": {}, "adj": {}, "control": {}}
+        exact_wh = opt["exact_svl_warehouse"]
+        has_lc = "stock_landed_cost_id" in svl._fields
+        groupby = ["company_id", "product_id"] + (["warehouse_id"] if exact_wh else [])
+        buckets = {
+            "opening": {}, "in": {}, "out": {},
+            "adj_lc": {}, "adj_reval": {}, "control": {},
+        }
+
+        def _key(company, product, warehouse=None):
+            if exact_wh:
+                return (company.id, product.id, warehouse.id if warehouse else 0)
+            return (company.id, product.id)
+
+        def _unpack(row):
+            if exact_wh:
+                company, product, warehouse, value, qty = row
+            else:
+                company, product, value, qty = row
+                warehouse = None
+            return company, product, warehouse, value, qty
 
         if opt["opening_basis"] != "none":
-            for company, product, value, qty in svl._read_group(
+            for row in svl._read_group(
                 base + self._svl_date_domain(opt, "<", opt["datetime_from"]),
-                groupby=["company_id", "product_id"],
+                groupby=groupby,
                 aggregates=["value:sum", "quantity:sum"],
             ):
-                buckets["opening"][(company.id, product.id)] = (value or 0.0, qty or 0.0)
+                company, product, warehouse, value, qty = _unpack(row)
+                buckets["opening"][_key(company, product, warehouse)] = (value or 0.0, qty or 0.0)
 
         for bucket, extra in (
             ("in", [("quantity", ">", 0)]),
             ("out", [("quantity", "<", 0)]),
-            ("adj", [("quantity", "=", 0)]),
         ):
-            for company, product, value, qty in svl._read_group(
+            for row in svl._read_group(
                 period + extra,
-                groupby=["company_id", "product_id"],
+                groupby=groupby,
                 aggregates=["value:sum", "quantity:sum"],
             ):
+                company, product, warehouse, value, qty = _unpack(row)
                 # ฝั่งจ่ายออกเก็บเป็นค่าบวก (ธรรมเนียมรับ/จ่ายไทย — ไม่มีเลขติดลบในตาราง)
-                buckets[bucket][(company.id, product.id)] = (
+                buckets[bucket][_key(company, product, warehouse)] = (
                     -(value or 0.0) if bucket == "out" else (value or 0.0),
                     abs(qty or 0.0),
+                )
+
+        # ปรับมูลค่า (quantity = 0) แยกต้นทุนนำเข้า (landed cost) กับการตีมูลค่าใหม่
+        # ตรงกับ landed_cost_value/revaluation_value ของ stock_fifo_valuation_report
+        # ``stock_landed_cost_id`` มีเฉพาะตอนติดตั้ง stock_landed_costs — ไม่มีก็รวม
+        # ทุกอย่างไว้ที่ adj_reval แทน (ผลรวมยังถูก แค่แยกละเอียดไม่ได้)
+        adj_specs = (
+            [("adj_lc", [("stock_landed_cost_id", "!=", False)]),
+             ("adj_reval", [("stock_landed_cost_id", "=", False)])]
+            if has_lc else
+            [("adj_reval", [])]
+        )
+        for bucket, lc_extra in adj_specs:
+            for row in svl._read_group(
+                period + [("quantity", "=", 0)] + lc_extra,
+                groupby=groupby,
+                aggregates=["value:sum", "quantity:sum"],
+            ):
+                company, product, warehouse, value, qty = _unpack(row)
+                buckets[bucket][_key(company, product, warehouse)] = (
+                    value or 0.0, abs(qty or 0.0)
                 )
 
         for company, value, count in svl._read_group(
@@ -840,57 +924,74 @@ class StockCardReport(models.AbstractModel):
 
     @api.model
     def _allocate_value(self, nodes, denominators, svl, opt, stats):
-        """กระจายมูลค่า SVL ลงต้นไม้ตามสัดส่วนจำนวน แล้วประมาณมูลค่าการโอนภายใน
+        """กระจายมูลค่า SVL ลงต้นไม้ แล้วประมาณมูลค่าการโอนภายใน
 
-        SVL ไม่มีมิติคลัง/ที่เก็บ/ล็อต มูลค่าต่ำกว่าระดับสินค้าจึงเป็นการเฉลี่ยเสมอ
-        แต่ **ผลรวมยังตรงกับ SVL เป๊ะโดยโครงสร้าง** เพราะเศษที่กระจายไม่ลงถูกดันไป
-        อยู่ในแถว value_adj ของสินค้านั้นแทนที่จะหายไปเฉย ๆ
+        เมื่อ ``exact_svl_warehouse`` เป็นจริง มูลค่าจะถูกจับกลุ่มที่ระดับ
+        (บริษัท, สินค้า, คลัง) ตรงกับที่ ``_read_svl_buckets`` groupby มา — ระดับคลัง
+        จึงแม่นยำเป๊ะ ไม่ใช่การเฉลี่ย ส่วนระดับที่เก็บ/ล็อตใต้คลังยังไม่มีมิติบน SVL
+        จึงยังกระจายตามสัดส่วนจำนวนเหมือนเดิม (``_spread``) ไม่ว่าจะ exact หรือไม่
+
+        เมื่อไม่มี ``exact_svl_warehouse`` (ไม่ได้ติดตั้ง stock_fifo_by_location) จะ
+        กระจายตามสัดส่วนจำนวนตั้งแต่ระดับคลังเหมือนพฤติกรรมเดิมทั้งหมด — ผลรวมยัง
+        ตรงกับ SVL เป๊ะโดยโครงสร้างเสมอ เพราะเศษที่กระจายไม่ลงถูกดันไปอยู่ในแถว
+        "ไม่ระบุคลัง" ของสินค้านั้นแทนที่จะหายไปเฉย ๆ
         """
+        exact_wh = opt["exact_svl_warehouse"]
+
+        def _gkey(key):
+            return (key[K_COMPANY], key[K_PRODUCT], key[K_WH]) if exact_wh \
+                else (key[K_COMPANY], key[K_PRODUCT])
+
         by_product = {}
         for key, node in nodes.items():
-            by_product.setdefault((key[K_COMPANY], key[K_PRODUCT]), []).append(node)
+            by_product.setdefault(_gkey(key), []).append(node)
         denom_by_product = by_product
         if denominators is not nodes:
             denom_by_product = {}
             for key, node in denominators.items():
-                denom_by_product.setdefault((key[K_COMPANY], key[K_PRODUCT]), []).append(node)
+                denom_by_product.setdefault(_gkey(key), []).append(node)
 
-        # SVL อาจมีสินค้าที่ไม่มีความเคลื่อนไหวเลยในงวด (เช่นปรับมูลค่าล้วน ๆ) ถ้าไม่ดึง
-        # เข้ามาด้วย มูลค่าก้อนนั้นจะหายไปเงียบ ๆ และการกระทบยอดกับ SVL จะพังทันที
+        # SVL อาจมีสินค้า(/คลัง)ที่ไม่มีความเคลื่อนไหวเลยในงวด (เช่นปรับมูลค่าล้วน ๆ)
+        # ถ้าไม่ดึงเข้ามาด้วย มูลค่าก้อนนั้นจะหายไปเงียบ ๆ และการกระทบยอดกับ SVL จะพัง
         # ทำเฉพาะตอนไม่ได้กรองคลัง/ที่เก็บ เพราะรายงานที่กรองแล้วเป็นเพียงส่วนย่อยอยู่แล้ว
         if denominators is nodes:
-            for bucket in ("opening", "in", "out", "adj"):
-                for pair in svl.get(bucket) or {}:
-                    by_product.setdefault(pair, [])
+            for bucket in ("opening", "in", "out", "adj_lc", "adj_reval"):
+                for gkey in svl.get(bucket) or {}:
+                    by_product.setdefault(gkey, [])
 
         exact = denominators is nodes
         imputed_net = 0.0
         imputed_abs = 0.0
-        for (company_id, product_id), group in by_product.items():
-            opening_value, _opening_qty = svl["opening"].get((company_id, product_id), (0.0, 0.0))
-            in_value, in_qty_svl = svl["in"].get((company_id, product_id), (0.0, 0.0))
-            out_value, _out_qty = svl["out"].get((company_id, product_id), (0.0, 0.0))
-            adj_value, _adj_qty = svl["adj"].get((company_id, product_id), (0.0, 0.0))
+        for gkey, group in by_product.items():
+            company_id, product_id = gkey[0], gkey[1]
+            warehouse_id = gkey[2] if exact_wh else 0
+            opening_value, _opening_qty = svl["opening"].get(gkey, (0.0, 0.0))
+            in_value, in_qty_svl = svl["in"].get(gkey, (0.0, 0.0))
+            out_value, _out_qty = svl["out"].get(gkey, (0.0, 0.0))
+            adj_lc_value, _adj_lc_qty = svl["adj_lc"].get(gkey, (0.0, 0.0))
+            adj_reval_value, _adj_reval_qty = svl["adj_reval"].get(gkey, (0.0, 0.0))
 
             spread = (
                 (opening_value, "opening_qty", "opening_value"),
                 (in_value, "in_qty_ext", "in_value_ext"),
                 (out_value, "out_qty_ext", "out_value_ext"),
-                (adj_value, "closing_qty", "adj_value"),
+                (adj_lc_value, "closing_qty", "adj_lc_value"),
+                (adj_reval_value, "closing_qty", "adj_reval_value"),
             )
-            denom_group = denom_by_product.get((company_id, product_id), group)
+            denom_group = denom_by_product.get(gkey, group)
             for amount, weight_key, target_key in spread:
                 self._spread(nodes, group, denom_group, amount, weight_key, target_key,
-                             company_id, product_id, exact)
+                             company_id, product_id, warehouse_id, exact)
 
             for node in group:
                 node["in_value"] = node["in_value_ext"]
                 node["out_value"] = node["out_value_ext"]
+                node["adj_value"] = node["adj_lc_value"] + node["adj_reval_value"]
 
             if opt["value_mode"] == "imputed":
                 # ต้นทุนต่อหน่วยของงวด ใช้ตีมูลค่าการโอนภายในทั้งสองขาด้วยตัวเลขเดียวกัน
                 # ทั้งคู่จึงหักล้างกันที่ระดับบริษัท และการกระทบยอด SVL ยังเป็นจริง
-                base_value = opening_value + in_value + adj_value
+                base_value = opening_value + in_value + adj_lc_value + adj_reval_value
                 base_qty = sum(n["opening_qty"] for n in group) + in_qty_svl
                 unit_cost = base_value / base_qty if base_qty else 0.0
                 if unit_cost:
@@ -912,12 +1013,13 @@ class StockCardReport(models.AbstractModel):
 
     @api.model
     def _spread(self, nodes, group, denom_group, amount, weight_key, target_key,
-                company_id, product_id, exact):
+                company_id, product_id, warehouse_id, exact):
         """กระจาย ``amount`` ให้โหนดตามน้ำหนัก ``weight_key``
 
         ตัวหารเป็นศูนย์ (เช่นการปรับมูลค่าสินค้าที่ไม่มีจำนวนเคลื่อนไหวเลยในงวด) →
-        ยอดทั้งก้อนไปอยู่โหนด "ไม่ระบุคลัง" ของสินค้านั้น ผลรวมจึงยังตรงกับ SVL
-        เป๊ะ และผู้ใช้เห็นว่ามีมูลค่าที่ระบุคลังไม่ได้อยู่เท่าไร แทนที่จะหายไปเงียบ ๆ
+        ยอดทั้งก้อนไปอยู่โหนด "ไม่ระบุคลัง" (หรือ "ไม่ระบุที่เก็บ" ของคลังนั้นถ้ารู้
+        คลังแน่ชัดจาก ``warehouse_id``) ผลรวมจึงยังตรงกับ SVL เป๊ะ และผู้ใช้เห็นว่ามี
+        มูลค่าที่ระบุลงไม่ได้อยู่เท่าไร แทนที่จะหายไปเงียบ ๆ
         """
         if not amount:
             return
@@ -926,7 +1028,7 @@ class StockCardReport(models.AbstractModel):
             if not exact:
                 # รายงานถูกกรองไว้ มูลค่าที่ระบุที่ไม่ได้จึงไม่ใช่ของขอบเขตนี้
                 return
-            fallback = self._unassigned_node(nodes, group, company_id, product_id)
+            fallback = self._unassigned_node(nodes, group, company_id, product_id, warehouse_id)
             fallback[target_key] += amount
             return
         allocated = 0.0
@@ -945,9 +1047,15 @@ class StockCardReport(models.AbstractModel):
             last[target_key] += amount - allocated
 
     @api.model
-    def _unassigned_node(self, nodes, group, company_id, product_id):
-        """โหนดรับมูลค่าที่ระบุคลังไม่ได้ — คลัง/ที่เก็บ/ล็อต = 0 ("ไม่ระบุ")"""
-        key = (company_id, 0, product_id, 0, 0)
+    def _unassigned_node(self, nodes, group, company_id, product_id, warehouse_id=0):
+        """โหนดรับมูลค่าที่ระบุลงไม่ได้ — ที่เก็บ/ล็อต = 0 ("ไม่ระบุ") เสมอ
+
+        ``warehouse_id`` เป็น 0 ("ไม่ระบุคลัง") เว้นแต่รู้คลังแน่ชัดจาก SVL
+        (``exact_svl_warehouse``) แล้วแค่ไม่มีโหนดของคลังนั้นในขอบเขตรายงาน — กรณีนี้
+        ยังเก็บคลังไว้ได้ ("ไม่ระบุที่เก็บ" ของคลังนั้น) แม่นยำกว่าเหวี่ยงไปกองที่
+        "ไม่ระบุคลัง" เฉย ๆ
+        """
+        key = (company_id, warehouse_id, product_id, 0, 0)
         node = nodes.get(key)
         if node is None:
             node = nodes[key] = _zero_measures()
@@ -1496,12 +1604,14 @@ class StockCardReport(models.AbstractModel):
         จำนวนแถวจึงน้อยพอที่จะอ่านมาซอยใน Python ได้ กฎการเลือกวันต้องตรงกับ
         ``_svl_date_domain()`` เป๊ะ ไม่งั้นมูลค่าจะตกคนละงวดกับที่โดเมนคัดมา
         """
+        fields_to_read = ["quantity", "value", "stock_move_id", "create_date"]
+        if opt["value_date_basis"] == "accounting":
+            fields_to_read.append("accounting_date")
         rows = self._svl_model(opt).search_read(
-            self._svl_period_domain(opt),
-            ["quantity", "value", "stock_move_id", "create_date"],
+            self._svl_period_domain(opt), fields_to_read,
         )
         move_dates = {}
-        if opt["value_date_basis"] != "svl_create":
+        if opt["value_date_basis"] == "move":
             move_ids = [r["stock_move_id"][0] for r in rows if r["stock_move_id"]]
             if move_ids:
                 move_dates = {
@@ -1515,7 +1625,9 @@ class StockCardReport(models.AbstractModel):
         buckets = {}
         for row in rows:
             stamp = row["create_date"]
-            if opt["value_date_basis"] != "svl_create" and row["stock_move_id"]:
+            if opt["value_date_basis"] == "accounting":
+                stamp = row.get("accounting_date") or row["create_date"]
+            elif opt["value_date_basis"] == "move" and row["stock_move_id"]:
                 stamp = move_dates.get(row["stock_move_id"][0]) or row["create_date"]
             day = self._local_day(stamp, zone)
             if not day:
@@ -1993,8 +2105,15 @@ class StockCardReport(models.AbstractModel):
             if show_value:
                 columns.append({"group": group, "label": "มูลค่า", "key": value_key, "type": "money"})
         if show_value:
+            # แยกต้นทุนนำเข้า (landed cost) กับการตีมูลค่าใหม่ ตรงกับ
+            # landed_cost_value/revaluation_value ของ stock_fifo_valuation_report
             columns.append(
-                {"group": "", "label": "ปรับมูลค่า", "key": "adj_value", "type": "money"}
+                {"group": "ปรับมูลค่า", "label": "ต้นทุนนำเข้า", "key": "adj_lc_value",
+                 "type": "money"}
+            )
+            columns.append(
+                {"group": "ปรับมูลค่า", "label": "ตีมูลค่าใหม่", "key": "adj_reval_value",
+                 "type": "money"}
             )
         columns.append({"group": "คงเหลือ", "label": "จำนวน", "key": "closing_qty", "type": "qty"})
         if show_value:
@@ -2040,7 +2159,10 @@ class StockCardReport(models.AbstractModel):
             for line in lines if line.get("counts_to_total")
         )
         difference = round(report_external - svl_period, decimals)
-        # SVL ไม่มีมิติคลัง/ที่เก็บ รายงานที่กรองคลังจึงเทียบกับยอด SVL ทั้งบริษัทไม่ได้
+        # ``svl_period`` เป็นยอด SVL ทั้งบริษัทเสมอ (query ไม่กรองคลัง/ที่เก็บ) ส่วน
+        # ``report_external`` นับเฉพาะแถวในขอบเขตที่กรอง — กรองคลังหรือที่เก็บแล้ว
+        # ทั้งสองยอดจึงเทียบกันไม่ได้อีกต่อไป ไม่ว่าการกระจายมูลค่าจะเป๊ะ (exact_svl_
+        # warehouse) แค่ไหนก็ตาม เพราะเป็นคนละขอบเขต ไม่ใช่ปัญหาความแม่นยำของการกระจาย
         scope_limited = bool(opt["warehouse_ids"] or opt["location_ids"])
 
         negative = [
@@ -2054,6 +2176,10 @@ class StockCardReport(models.AbstractModel):
             "value_hidden_reason": opt["value_hidden_reason"],
             "value_mode": opt["value_mode"],
             "value_date_basis": opt["value_date_basis"],
+            "value_date_basis_downgraded": opt["value_date_basis_downgraded"],
+            # จริง = มูลค่าระดับคลังมาจาก svl.warehouse_id ตรง ๆ (stock_fifo_by_location
+            # ติดตั้งอยู่) เท็จ = ยังเป็นการกระจายตามสัดส่วนจำนวนแบบเดิม (ค่าประมาณ)
+            "svl_warehouse_exact": opt["exact_svl_warehouse"],
             "svl_period_value": round(svl_period, decimals),
             "report_period_value": round(report_external, decimals),
             "svl_difference": difference,
@@ -2118,8 +2244,11 @@ class StockCardReport(models.AbstractModel):
             "warehouses": warehouses or _("ทุกคลัง"),
             "value_mode": _("ประมาณมูลค่าการโอนภายใน") if opt["value_mode"] == "imputed"
                           else _("เฉพาะมูลค่าที่มี SVL"),
-            "value_date_basis": _("วันที่เคลื่อนไหว") if opt["value_date_basis"] == "move"
-                                else _("วันที่บันทึกมูลค่า"),
+            "value_date_basis": {
+                "move": _("วันที่เคลื่อนไหว"),
+                "svl_create": _("วันที่บันทึกมูลค่า"),
+                "accounting": _("วันที่บัญชี (accounting_date)"),
+            }[opt["value_date_basis"]],
             "detail_mode": {
                 "none": _("ไม่แสดงรายการเคลื่อนไหว"),
                 "unfolded": _("แสดงรายการเคลื่อนไหวเฉพาะกลุ่มที่กาง"),

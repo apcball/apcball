@@ -200,6 +200,58 @@ class TestStockCardValue(StockCardCommon):
             row["avg_cost"], row["closing_value"] / row["closing_qty"], places=4
         )
 
+    def test_adj_lc_and_adj_reval_sum_to_adj_value(self):
+        """ปรับมูลค่าแยกต้นทุนนำเข้า/ตีมูลค่าใหม่ แต่ผลรวมต้องเท่ากับ adj_value เดิม"""
+        self.product.standard_price = 12.0
+        layer = self.env["stock.valuation.layer"].search(
+            [("product_id", "=", self.product.id), ("quantity", "=", 0)],
+            order="id desc", limit=1,
+        )
+        self._backdate_svl(layer, self.d2)
+        data = self._data()
+        row = self._find(data, "product", self.product.id)
+        self.assertAlmostEqual(
+            row["adj_lc_value"] + row["adj_reval_value"], row["adj_value"], places=2
+        )
+        self.assertAlmostEqual(
+            data["totals"]["adj_lc_value"] + data["totals"]["adj_reval_value"],
+            data["totals"]["adj_value"], places=2,
+        )
+
+    def test_accounting_value_date_basis_still_reconciles_when_available(self):
+        """เกณฑ์วันที่บัญชี (accounting_date) ต้องกระทบยอดกับ SVL ได้เหมือนเกณฑ์อื่น
+
+        ไม่มี stock_fifo_by_location ติดตั้ง → ไม่มีฟิลด์นี้ ข้ามเทสไปเงียบ ๆ
+        """
+        if not self.report._svl_has_accounting_date():
+            self.skipTest("stock_fifo_by_location (accounting_date) not installed")
+        data = self._data(value_date_basis="accounting")
+        checks = data["checks"]
+        self.assertFalse(checks["value_date_basis_downgraded"])
+        self.assertTrue(checks["svl_reconciled"], "diff=%s" % checks["svl_difference"])
+
+    def test_svl_layer_without_warehouse_does_not_vanish_when_exact(self):
+        """ชั้นมูลค่าที่ไม่มี warehouse_id (เช่นปรับต้นทุนจากใบเสร็จ) ต้องยังโผล่เป็น
+        โหนด "ไม่ระบุคลัง" แม้ตอน exact_svl_warehouse เป็นจริง ไม่หายไปเงียบ ๆ
+
+        ไม่มี stock_fifo_by_location ติดตั้ง (warehouse_id ไม่ stored) → ข้ามเทส
+        """
+        if not self.report._svl_has_stored_warehouse():
+            self.skipTest("stock_fifo_by_location (stored warehouse_id) not installed")
+        ghost = self._make_product("SC No Warehouse", self.categ, 10.0)
+        layer = self.env["stock.valuation.layer"].create({
+            "company_id": self.company.id, "product_id": ghost.id,
+            "quantity": 0.0, "unit_cost": 0.0, "value": 250.0,
+            "description": "SC no-warehouse revaluation",
+        })
+        self._backdate_svl(layer, self.d2)
+        data = self.report.get_report_data(self._options(product_ids=[ghost.id]))
+        self.assertTrue(data["checks"]["svl_reconciled"],
+                        "diff=%s" % data["checks"]["svl_difference"])
+        unassigned = self._find(data, "wh", 0)
+        self.assertIsNotNone(unassigned, "the value must be visible under an unassigned row")
+        self.assertAlmostEqual(unassigned["adj_value"], 250.0, places=2)
+
     def test_consignment_lines_excluded_by_default(self):
         owner = self.env["res.partner"].create({"name": "SC Consignee"})
         self._do(self.product_b, 12, self.supplier, self.stock_a, self.d1, owner=owner)

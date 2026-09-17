@@ -68,7 +68,14 @@ class StockCardWizard(models.TransientModel):
         string="วิธีคิดมูลค่า", required=True, default="imputed",
     )
     value_date_basis = fields.Selection(
-        [("move", "วันที่ของการเคลื่อนไหว"), ("svl_create", "วันที่บันทึกมูลค่า")],
+        [
+            ("move", "วันที่ของการเคลื่อนไหว"),
+            ("svl_create", "วันที่บันทึกมูลค่า"),
+            # ต้องติดตั้ง stock_fifo_by_location (มีฟิลด์ accounting_date บน SVL)
+            # ไม่มีก็ลดระดับกลับ "move" อัตโนมัติที่ตัวเครื่องยนต์ — ตรงกับเกณฑ์ของ
+            # stock_fifo_valuation_report
+            ("accounting", "วันที่บัญชี (ตรงกับรายงาน FIFO)"),
+        ],
         string="เกณฑ์วันที่ของมูลค่า", required=True, default="move",
     )
     opening_basis = fields.Selection(

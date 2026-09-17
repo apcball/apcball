@@ -54,6 +54,17 @@ class TestStockCardAccess(StockCardCommon):
         self.assertEqual(options["unfolded"], ["ok-1/prod-2"])
         self.assertEqual(options["product_ids"], [7])
 
+    def test_accounting_value_date_basis_downgrades_without_the_field(self):
+        """ไม่มี stock_fifo_by_location ติดตั้ง → ไม่มี accounting_date บน SVL
+
+        ต้องลดระดับกลับ "move" เงียบ ๆ พร้อมติดแฟล็กบอกเหตุผล ไม่ error
+        """
+        options = self.report._normalize_options(self._options(value_date_basis="accounting"))
+        if self.report._svl_has_accounting_date():
+            self.skipTest("stock_fifo_by_location is installed in this test DB")
+        self.assertEqual(options["value_date_basis"], "move")
+        self.assertTrue(options["value_date_basis_downgraded"])
+
     def test_normalize_options_is_idempotent(self):
         once = self.report._normalize_options(self._options())
         twice = self.report._normalize_options(once)

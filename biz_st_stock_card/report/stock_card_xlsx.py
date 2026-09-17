@@ -289,7 +289,18 @@ class StockCardXlsx(models.AbstractModel):
                 )),
                 (_("วิธีคิดมูลค่า"), data["labels"]["value_mode"]),
                 (_("เกณฑ์วันที่ของมูลค่า"), data["labels"]["value_date_basis"]),
+                (_("มูลค่าระดับคลัง"), _(
+                    "แม่นยำ — อ่านจาก stock.valuation.layer.warehouse_id ตรงตัว "
+                    "(ติดตั้ง stock_fifo_by_location)"
+                ) if checks["svl_warehouse_exact"] else _(
+                    "ประมาณ — กระจายตามสัดส่วนจำนวน เพราะ SVL ไม่มีมิติคลังบนระบบนี้"
+                )),
             ]
+            if checks["value_date_basis_downgraded"]:
+                rows.append((_("หมายเหตุ"), _(
+                    "ขอเกณฑ์วันที่บัญชี (accounting_date) แต่ระบบนี้ไม่มีฟิลด์นั้น "
+                    "จึงลดระดับไปใช้วันที่ของการเคลื่อนไหวแทน"
+                )))
         else:
             rows.append((_("มูลค่า"), _("ไม่แสดง — ผู้ใช้ไม่มีสิทธิ์ดูมูลค่าสินค้า")))
         rows.append((_("การโอนข้ามคลัง"), _(
