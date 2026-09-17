@@ -205,6 +205,7 @@ class HelpdeskTicket(models.Model):
         compute='_compute_show_request_rework_button',
     )
     is_editable = fields.Boolean(compute='_compute_is_editable')
+    can_edit_category = fields.Boolean(compute='_compute_can_edit_category')
     can_edit_category_priority = fields.Boolean(
         compute='_compute_can_edit_category_priority',
     )
@@ -335,6 +336,22 @@ class HelpdeskTicket(models.Model):
                     is_manager
                     and (not ticket.category_id or not ticket.priority)
                     and ticket.stage_id not in (resolved_stage, closed_stage)
+                )
+
+    @api.depends('stage_id', 'requester_id')
+    @api.depends_context('uid')
+    def _compute_can_edit_category(self):
+        draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+        new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+        is_support_agent = self._is_support_agent()
+        for ticket in self:
+            if ticket.stage_id == draft_stage:
+                ticket.can_edit_category = (
+                    is_support_agent or ticket.requester_id == self.env.user
+                )
+            else:
+                ticket.can_edit_category = (
+                    is_support_agent and ticket.stage_id == new_stage
                 )
 
     def _is_legacy_sla_setup_ticket(self):
@@ -1408,22 +1425,43 @@ class HelpdeskTicket(models.Model):
                     raise UserError(_(
                         'A Requester can only edit their own Draft ticket.'
                     ))
-        if {'category_id', 'priority'}.intersection(vals):
+        if 'category_id' in vals:
+            draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+            new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+            is_support_agent = self._is_support_agent()
+            for ticket in self:
+                if ticket.stage_id == draft_stage:
+                    continue
+                if ticket.stage_id != new_stage or not is_support_agent:
+                    raise UserError(_(
+                        'Category cannot be changed after the ticket is '
+                        'received.'
+                    ))
+                if 'category_id' in vals and not vals['category_id']:
+                    raise ValidationError(_('Category cannot be cleared.'))
+
+        if 'priority' in vals:
             draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
             for ticket in self:
                 if ticket.stage_id == draft_stage:
                     continue
                 if not ticket._can_manager_complete_legacy_sla_setup():
                     raise UserError(_(
-                        'Category and Priority cannot be changed after the '
-                        'ticket enters New.'
+                        'Priority cannot be changed after the ticket enters '
+                        'New.'
                     ))
-                if 'category_id' in vals and not vals['category_id']:
-                    raise ValidationError(_('Category cannot be cleared.'))
                 if 'priority' in vals and not vals['priority']:
                     raise ValidationError(_('Priority cannot be cleared.'))
             if len(self) == 1 and not vals.get('priority') and not self.priority:
                 vals['priority'] = '1'
+        if 'category_id' in vals and 'category_type_id' not in vals:
+            category_id = vals['category_id']
+            if any(
+                ticket.category_type_id
+                and ticket.category_type_id.category_id.id != category_id
+                for ticket in self
+            ):
+                vals['category_type_id'] = False
         if 'approval_manager_id' in vals:
             for ticket in self:
                 if ticket.approval_state not in ('none', 'rejected'):
@@ -1475,11 +1513,21 @@ class HelpdeskTicket(models.Model):
             raise UserError(_('Only a Manager can change assignment.'))
         if not is_manager:
             draft_stage = self.env.ref('buz_it_helpdesk.stage_draft')
+            new_stage = self.env.ref('buz_it_helpdesk.stage_new')
+            category_only = bool({'category_id'} & set(vals)) and set(vals) <= {
+                'category_id', 'category_type_id',
+            }
             for ticket in self:
                 if (
                     ticket.stage_id != draft_stage
                     and ticket.assigned_user_id != self.env.user
                 ):
+                    if (
+                        category_only
+                        and ticket.stage_id == new_stage
+                        and self._is_support_agent()
+                    ):
+                        continue
                     raise UserError(
                         _('Only the assigned agent can edit this ticket.')
                     )
