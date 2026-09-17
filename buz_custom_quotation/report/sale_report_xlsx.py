@@ -5,6 +5,8 @@ import base64
 import io
 import os
 
+from PIL import Image
+
 from odoo import models
 from odoo.modules.module import get_module_resource
 from odoo.tools import html2plaintext
@@ -25,13 +27,24 @@ class SaleOrderBathroomXlsx(models.AbstractModel):
 
     @staticmethod
     def _product_image(product):
-        image = product.image_128 if product and product.image_128 else False
-        if not image:
+        """คืนภาพที่มีความละเอียดสูงสุดพร้อมขนาด โดยไม่ย่อข้อมูลที่ฝังในไฟล์."""
+        if not product:
             return None
-        try:
-            return io.BytesIO(base64.b64decode(image))
-        except (ValueError, TypeError):
-            return None
+
+        for field_name in ("image_1920", "image_1024", "image_512", "image_256", "image_128"):
+            image = getattr(product, field_name, False)
+            if not image:
+                continue
+            try:
+                image_data = base64.b64decode(image)
+                with Image.open(io.BytesIO(image_data)) as source_image:
+                    width, height = source_image.size
+                if width and height:
+                    return {"data": io.BytesIO(image_data), "width": width, "height": height}
+            except (OSError, ValueError, TypeError):
+                # ถ้ารูปขนาดนี้เสีย ให้ลองใช้รูปย่อที่ Odoo เตรียมไว้แทน
+                continue
+        return None
 
     @staticmethod
     def _format_date(value):
@@ -60,7 +73,7 @@ class SaleOrderBathroomXlsx(models.AbstractModel):
         sheet.set_margins(0.25, 0.25, 0.35, 0.35)
         sheet.set_column("A:A", 7)
         sheet.set_column("B:B", 34)
-        sheet.set_column("C:C", 15)
+        sheet.set_column("C:C", 18)
         sheet.set_column("D:D", 12)
         sheet.set_column("E:E", 16)
         sheet.set_column("F:F", 12)
@@ -132,7 +145,7 @@ class SaleOrderBathroomXlsx(models.AbstractModel):
             row += 1
             uom_formats = {}
             for sequence, line in enumerate(order.order_line, 1):
-                sheet.set_row(row, 58)
+                sheet.set_row(row, 68)
                 if line.display_type:
                     sheet.merge_range(row, 0, row, 7, line.name or "", subtitle_fmt if line.display_type == "line_section" else text_fmt)
                     row += 1
@@ -142,7 +155,27 @@ class SaleOrderBathroomXlsx(models.AbstractModel):
                 sheet.write(row, 1, line.name or "", text_fmt)
                 product_image = self._product_image(line.product_id)
                 if product_image:
-                    sheet.insert_image(row, 2, "product.png", {"image_data": product_image, "x_scale": 0.35, "y_scale": 0.35, "object_position": 1})
+                    # ปรับเฉพาะขนาดแสดงผล; image_data ยังคงเป็นภาพเต็มความละเอียดเพื่อคัดลอกไปใช้ต่อ
+                    display_scale = min(
+                        100.0 / product_image["width"],
+                        72.0 / product_image["height"],
+                        1.0,
+                    )
+                    display_width = product_image["width"] * display_scale
+                    display_height = product_image["height"] * display_scale
+                    sheet.insert_image(
+                        row,
+                        2,
+                        "product.png",
+                        {
+                            "image_data": product_image["data"],
+                            "x_scale": display_scale,
+                            "y_scale": display_scale,
+                            "x_offset": max(0, round((131 - display_width) / 2)),
+                            "y_offset": max(0, round((91 - display_height) / 2)),
+                            "object_position": 1,
+                        },
+                    )
                 uom_name = line.product_uom.name or ""
                 if uom_name not in uom_formats:
                     safe_uom = uom_name.replace('"', '""')
