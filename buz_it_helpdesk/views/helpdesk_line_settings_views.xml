@@ -7,5 +7,6 @@
     <record id="action_helpdesk_line_connection" model="ir.actions.client">
         <field name="name">LINE Connection</field>
         <field name="tag">buz_it_helpdesk.line_connection</field>
+        <field name="target">new</field>
     </record>
 </odoo>

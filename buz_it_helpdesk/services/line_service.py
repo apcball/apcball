@@ -5,6 +5,7 @@ import hmac
 import re
 import secrets
 import time
+from urllib.parse import quote
 
 import requests
 
@@ -23,6 +24,7 @@ GROUP_PARAMETER_PREFIX = 'buz_it_helpdesk.line_group_id'
 USER_PARAMETER_PREFIX = 'buz_it_helpdesk.line_user_id'
 REVERSE_PARAMETER_PREFIX = 'buz_it_helpdesk.line_user_hash'
 CODE_PARAMETER_PREFIX = 'buz_it_helpdesk.line_connection_code'
+BOT_INFO_PARAMETER_PREFIX = 'buz_it_helpdesk.line_bot_info'
 CODE_TTL = 600
 LINE_GROUP_RE = re.compile(r'^C[0-9a-fA-F]{32}$')
 REQUEST_TIMEOUT = 10
@@ -99,6 +101,41 @@ class HelpdeskLineService(models.AbstractModel):
                 else self._parameter(self._group_parameter_key(company))
             ),
         }
+
+    @api.model
+    def _public_bot_details(self, token=None):
+        """Fetch or reuse public OA details, keyed to the active token hash."""
+        token = (token or self._parameter(TOKEN_PARAMETER)).strip()
+        if not token:
+            return {}
+        parameters = self.env['ir.config_parameter'].sudo()
+        prefix = BOT_INFO_PARAMETER_PREFIX
+        token_hash = self._hash_value(token)
+        if parameters.get_param('%s.token_hash' % prefix) != token_hash:
+            response = self._request(
+                'GET', LINE_INFO_URL, 'bot', headers=self._headers(token)
+            )
+            payload = response.json()
+            info = {
+                'display_name': payload.get('displayName') or '',
+                'basic_id': payload.get('basicId') or '',
+                'picture_url': payload.get('pictureUrl') or '',
+            }
+            parameters.set_param('%s.display_name' % prefix, info['display_name'])
+            parameters.set_param('%s.basic_id' % prefix, info['basic_id'])
+            parameters.set_param('%s.picture_url' % prefix, info['picture_url'])
+            parameters.set_param('%s.token_hash' % prefix, token_hash)
+        else:
+            info = {
+                'display_name': parameters.get_param('%s.display_name' % prefix, ''),
+                'basic_id': parameters.get_param('%s.basic_id' % prefix, ''),
+                'picture_url': parameters.get_param('%s.picture_url' % prefix, ''),
+            }
+        info['add_friend_url'] = (
+            'https://line.me/R/ti/p/%s' % quote(info['basic_id'], safe='')
+            if info['basic_id'] else ''
+        )
+        return info
 
     @api.model
     def _validate_group_id(self, group_id, required=True):
@@ -321,8 +358,13 @@ class HelpdeskLineService(models.AbstractModel):
         self._check_manager()
         company = self._allowed_company(company_id)
         token = (token or '').strip()
-        group_id = self._validate_group_id(group_id, required=False)
         parameters = self.env['ir.config_parameter'].sudo()
+        if token and token != self._parameter(TOKEN_PARAMETER):
+            raise UserError(_(
+                'A new Channel Access Token must pass Bot and destination tests. '
+                'Use Save & Test LINE.'
+            ))
+        group_id = self._validate_group_id(group_id, required=False)
         if token:
             parameters.set_param(TOKEN_PARAMETER, token)
         if (channel_secret or '').strip():
@@ -345,7 +387,9 @@ class HelpdeskLineService(models.AbstractModel):
         line_user_id = self._parameter(self._user_key(user.id))
         masked = '%s...%s' % (line_user_id[:4], line_user_id[-4:]) \
             if line_user_id else ''
-        return {'connected': bool(line_user_id), 'line_user_masked': masked}
+        result = {'connected': bool(line_user_id), 'line_user_masked': masked}
+        result.update(self._public_bot_details())
+        return result
 
     @api.model
     def create_line_connection_code(self):
@@ -467,46 +511,75 @@ class HelpdeskLineService(models.AbstractModel):
             'bot',
             headers=headers,
         )
-        group_response = self._request(
-            'GET',
-            LINE_GROUP_SUMMARY_URL % values['group_id'],
-            'group',
-            headers=headers,
-        )
         bot = bot_response.json()
-        group = group_response.json()
-        if group.get('groupId') != values['group_id']:
-            raise UserError(_('LINE returned a different Group ID.'))
+        token_changed = values['token'] != self._parameter(TOKEN_PARAMETER)
+        companies = self.env.companies.sorted(lambda record: record.name)
+        targets = []
+        if token_changed:
+            for target_company in companies:
+                target_group_id = (
+                    values['group_id'] if target_company == company
+                    else self._parameter(self._group_parameter_key(target_company))
+                )
+                if not target_group_id:
+                    raise UserError(_(
+                        'Configure a LINE Group ID for every accessible company '
+                        'before replacing the shared Channel Access Token (%s is missing).'
+                    ) % target_company.display_name)
+                targets.append((target_company, self._validate_group_id(target_group_id)))
+        else:
+            targets.append((company, values['group_id']))
 
-        test_message = _(
-            '[TEST] IT Helpdesk\n'
-            'Company: %(company)s\n'
-            'Group: %(group)s\n'
-            'Configured by: %(user)s\n'
-            'Time: %(time)s\n'
-            'New Ticket notifications will be sent to this group.'
-        ) % {
-            'company': company.display_name,
-            'group': group.get('groupName') or values['group_id'],
-            'user': self.env.user.display_name,
-            'time': self._local_datetime_string(),
-        }
-        self._send_group_message(
-            values['group_id'],
-            test_message,
-            values['token'],
-        )
+        groups = []
+        for target_company, target_group_id in targets:
+            response = self._request(
+                'GET', LINE_GROUP_SUMMARY_URL % target_group_id,
+                'group', headers=headers,
+            )
+            group = response.json()
+            if group.get('groupId') != target_group_id:
+                raise UserError(_('LINE returned a different Group ID.'))
+            groups.append((target_company, target_group_id, group))
 
+        for target_company, target_group_id, group in groups:
+            test_message = _(
+                '[TEST] IT Helpdesk\n'
+                'Company: %(company)s\n'
+                'Group: %(group)s\n'
+                'Configured by: %(user)s\n'
+                'Time: %(time)s\n'
+                'New Ticket notifications will be sent to this group.'
+            ) % {
+                'company': target_company.display_name,
+                'group': group.get('groupName') or target_group_id,
+                'user': self.env.user.display_name,
+                'time': self._local_datetime_string(),
+            }
+            self._send_group_message(target_group_id, test_message, values['token'])
+
+        parameters = self.env['ir.config_parameter'].sudo()
+        token_hash = self._hash_value(values['token'])
+        parameters.set_param('%s.display_name' % BOT_INFO_PARAMETER_PREFIX, bot.get('displayName') or '')
+        parameters.set_param('%s.basic_id' % BOT_INFO_PARAMETER_PREFIX, bot.get('basicId') or '')
+        parameters.set_param('%s.picture_url' % BOT_INFO_PARAMETER_PREFIX, bot.get('pictureUrl') or '')
+        parameters.set_param('%s.token_hash' % BOT_INFO_PARAMETER_PREFIX, token_hash)
+        if token_changed:
+            parameters.set_param(TOKEN_PARAMETER, values['token'])
         saved = self.save_line_settings(
             company.id,
-            token=token,
+            token='',
             group_id=values['group_id'],
             channel_secret=channel_secret,
         )
+        group = next(item[2] for item in groups if item[0] == company)
+        info = self._public_bot_details(values['token'])
         saved.update({
-            'bot_name': bot.get('displayName') or '',
-            'bot_basic_id': bot.get('basicId') or '',
+            'bot_name': info['display_name'],
+            'bot_basic_id': info['basic_id'],
+            'bot_picture_url': info['picture_url'],
+            'add_friend_url': info['add_friend_url'],
             'group_name': group.get('groupName') or '',
             'group_id': values['group_id'],
+            'tested_company_count': len(groups),
         })
         return saved

@@ -30,6 +30,7 @@ without dependencies on custom or business modules.
     ],
     'assets': {
         'web.assets_backend': [
+            'buz_it_helpdesk/static/src/lib/qrcode-generator.js',
             'buz_it_helpdesk/static/src/js/helpdesk_attachment_preview.js',
             'buz_it_helpdesk/static/src/js/helpdesk_ticket_kanban_visibility.js',
             'buz_it_helpdesk/static/src/js/helpdesk_line_settings.js',

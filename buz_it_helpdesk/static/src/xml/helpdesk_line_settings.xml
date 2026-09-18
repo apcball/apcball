@@ -75,7 +75,7 @@
                         <h3>LINE destination confirmed</h3>
                         <dl>
                             <dt>Company</dt><dd><t t-esc="state.result.companyName"/></dd>
-                            <dt>Bot</dt><dd><t t-esc="state.result.botName"/> <span t-if="state.result.botBasicId">(<t t-esc="state.result.botBasicId"/>)</span></dd>
+                            <dt>Bot</dt><dd><img t-if="state.result.botPictureUrl" class="o_line_bot_avatar" t-att-src="state.result.botPictureUrl" alt="LINE OA"/> <t t-esc="state.result.botName"/> <span t-if="state.result.botBasicId">(<t t-esc="state.result.botBasicId"/>)</span></dd>
                             <dt>Group</dt><dd><t t-esc="state.result.groupName"/></dd>
                             <dt>Group ID</dt><dd class="font-monospace"><t t-esc="state.result.groupId"/></dd>
                         </dl>

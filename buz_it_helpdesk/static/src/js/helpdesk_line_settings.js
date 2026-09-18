@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -127,14 +127,16 @@ export class HelpdeskLineSettings extends Component {
             this.state.result = {
                 botName: data.bot_name,
                 botBasicId: data.bot_basic_id,
+                botPictureUrl: data.bot_picture_url,
+                addFriendUrl: data.add_friend_url,
                 groupName: data.group_name,
                 groupId: data.group_id,
                 companyName: data.company_name,
             };
-            this.notification.add(
-                `LINE test message sent to ${data.group_name || data.group_id}.`,
-                { type: "success" },
-            );
+            const testMessage = data.tested_company_count > 1
+                ? "LINE test messages sent to " + data.tested_company_count + " company destinations."
+                : "LINE test message sent to " + (data.group_name || data.group_id) + ".";
+            this.notification.add(testMessage, { type: "success" });
         } catch (error) {
             const message = this.errorMessage(error);
             this.state.error = message;
@@ -151,38 +153,122 @@ export class HelpdeskLineConnection extends Component {
     setup() {
         this.orm = useService("orm");
         this.notification = useService("notification");
-        this.state = useState({loading: true, connected: false, masked: "", code: "", expires: 0, error: ""});
+        this.action = useService("action");
+        this.state = useState({
+            softReminder: Boolean(this.props.action?.context?.soft_line_reminder),
+            loading: true, connected: false, masked: "", code: "",
+            expiresAt: 0, expiresAtText: "", remaining: 0, error: "", botName: "",
+            basicId: "", pictureUrl: "", addFriendUrl: "", qrDataUrl: "", qrError: "",
+        });
+        this.pollTimer = null;
+        this.expiryTimer = null;
         onWillStart(() => this.load());
+        onWillUnmount(() => this.clearTimers());
     }
 
     errorMessage(error) {
         return error?.data?.message || error?.message || "Unable to process LINE connection.";
     }
 
+    clearTimers() {
+        clearInterval(this.pollTimer);
+        clearInterval(this.expiryTimer);
+    }
+
     async load() {
         try {
             const data = await this.orm.call(LINE_SERVICE_MODEL, "get_line_connection_status", []);
-            this.state.connected = data.connected;
-            this.state.masked = data.line_user_masked || "";
-        } catch (error) { this.state.error = this.errorMessage(error); }
-        finally { this.state.loading = false; }
+            this.applyStatus(data);
+        } catch (error) {
+            this.state.error = this.errorMessage(error);
+        } finally {
+            this.state.loading = false;
+        }
+    }
+
+    applyStatus(data) {
+        this.state.connected = data.connected;
+        this.state.masked = data.line_user_masked || "";
+        this.state.botName = data.display_name || "";
+        this.state.basicId = data.basic_id || "";
+        this.state.pictureUrl = data.picture_url || "";
+        this.state.addFriendUrl = data.add_friend_url || "";
+        this.refreshQr();
+        if (data.connected) {
+            this.state.code = "";
+            this.clearTimers();
+        }
+    }
+
+    refreshQr() {
+        this.state.qrError = "";
+        if (!this.state.addFriendUrl) {
+            this.state.qrDataUrl = "";
+            return;
+        }
+        try {
+            if (typeof window.qrcode !== "function") {
+                throw new Error("QR code generator is unavailable in the backend assets.");
+            }
+            const qr = window.qrcode(0, "M");
+            qr.addData(this.state.addFriendUrl);
+            qr.make();
+            this.state.qrDataUrl = qr.createDataURL(6, 2);
+        } catch (error) {
+            this.state.qrDataUrl = "";
+            this.state.qrError = "Unable to generate the LINE QR code. Refresh the page or contact your Helpdesk Manager.";
+            console.error("Unable to generate LINE Official Account QR code.", error);
+        }
     }
 
     async createCode() {
+        this.state.error = "";
         try {
             const data = await this.orm.call(LINE_SERVICE_MODEL, "create_line_connection_code", []);
             this.state.code = data.code;
-            this.state.expires = data.expires_in;
-        } catch (error) { this.state.error = this.errorMessage(error); }
+            this.state.expiresAt = Date.now() + data.expires_in * 1000;
+            this.state.expiresAtText = new Date(this.state.expiresAt).toLocaleTimeString();
+            this.state.remaining = data.expires_in;
+            this.startPolling();
+        } catch (error) {
+            this.state.error = this.errorMessage(error);
+        }
+    }
+
+    startPolling() {
+        this.clearTimers();
+        this.pollTimer = setInterval(() => this.load(), 2000);
+        this.expiryTimer = setInterval(() => {
+            this.state.remaining = Math.max(0, Math.ceil((this.state.expiresAt - Date.now()) / 1000));
+            if (!this.state.remaining) {
+                this.state.code = "";
+                this.clearTimers();
+            }
+        }, 500);
+    }
+
+    async copyCode() {
+        try {
+            await navigator.clipboard.writeText(this.state.code);
+            this.notification.add("Connection code copied.", {type: "success"});
+        } catch {
+            this.state.error = "Could not copy the code. Select and copy it manually.";
+        }
+    }
+
+    async remindLater() {
+        await this.action.doAction({type: "ir.actions.act_window_close"});
     }
 
     async cancel() {
         if (!window.confirm("Disconnect this LINE account from Odoo?")) return;
         try {
-            await this.orm.call(LINE_SERVICE_MODEL, "cancel_line_connection", []);
-            this.state.connected = false; this.state.masked = ""; this.state.code = "";
+            const data = await this.orm.call(LINE_SERVICE_MODEL, "cancel_line_connection", []);
+            this.applyStatus(data);
             this.notification.add("LINE account disconnected.", {type: "success"});
-        } catch (error) { this.state.error = this.errorMessage(error); }
+        } catch (error) {
+            this.state.error = this.errorMessage(error);
+        }
     }
 }
 

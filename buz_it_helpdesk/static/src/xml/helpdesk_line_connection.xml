@@ -1,17 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="buz_it_helpdesk.HelpdeskLineConnection">
-        <div class="o_helpdesk_line_settings">
-            <div class="o_line_settings_header"><div><h1>LINE Connection</h1><p>Connect your Odoo user to the IT LINE Official Account.</p></div><span class="badge text-bg-light">Private mapping</span></div>
+        <div class="o_helpdesk_line_settings o_line_connection_modal">
+            <div class="o_line_settings_header">
+                <div><h1>LINE Connection</h1><p>Connect your Odoo user to the Official Account.</p></div>
+                <span t-if="state.connected" class="badge text-bg-success">Connected</span>
+            </div>
             <div t-if="state.loading" class="o_helpdesk_line_settings_loading">Loading LINE connection...</div>
             <div t-else="" class="o_helpdesk_line_settings_card">
-                <div t-if="state.error" class="alert alert-danger"><t t-esc="state.error"/></div>
-                <div t-if="state.connected" class="alert alert-success">Connected LINE account: <span class="font-monospace"><t t-esc="state.masked"/></span></div>
-                <div t-else="" class="alert alert-info">Not connected. Add the OA as a friend, then send the one-time code to the Bot.</div>
-                <div t-if="state.code" class="alert alert-warning">Send this code to the Bot: <strong class="font-monospace fs-3"><t t-esc="state.code"/></strong><br/>It expires in <t t-esc="state.expires"/> seconds and can be used once.</div>
-                <div class="o_line_settings_actions">
-                    <button type="button" class="btn btn-primary" t-on-click="createCode" t-if="!state.connected">Create connection code</button>
-                    <button type="button" class="btn btn-outline-danger" t-on-click="cancel" t-if="state.connected">Disconnect LINE</button>
+                <div t-if="state.error" class="alert alert-danger" role="alert"><t t-esc="state.error"/></div>
+                <div t-if="state.connected" class="alert alert-success">
+                    Connected LINE account: <span class="font-monospace"><t t-esc="state.masked"/></span>
+                </div>
+                <div t-else="" class="o_line_oa_identity">
+                    <img t-if="state.pictureUrl" t-att-src="state.pictureUrl" alt="LINE Official Account profile"/>
+                    <div class="o_line_oa_identity_fallback" t-else=""><i class="fa fa-comments"/></div>
+                    <div><strong><t t-esc="state.botName or 'LINE Official Account'"/></strong>
+                        <div class="text-muted"><t t-esc="state.basicId"/></div>
+                    </div>
+                </div>
+                <div t-if="state.connected" class="o_line_connected_body">
+                    <p>This Odoo user is linked to the LINE account above.</p>
+                    <button type="button" class="btn btn-outline-danger" t-on-click="cancel">Disconnect LINE</button>
+                    <button t-if="state.softReminder" type="button" class="btn btn-secondary ms-2" t-on-click="remindLater">Connect later</button>
+                </div>
+                <div t-elif="!state.addFriendUrl" class="alert alert-warning">
+                    LINE Official Account is not configured. Ask a Helpdesk Manager to verify the Channel Access Token in LINE Settings.
+                    <button t-if="state.softReminder" type="button" class="btn btn-secondary ms-2" t-on-click="remindLater">Connect later</button>
+                </div>
+                <div t-else="" class="o_line_connect_flow">
+                    <p class="o_line_connect_instruction">Add this Official Account as a friend, then create a one-time connection code.</p>
+                    <div t-if="state.qrError" class="alert alert-warning" role="alert"><t t-esc="state.qrError"/></div>
+                    <div class="o_line_qr_desktop" t-if="state.qrDataUrl">
+                        <img t-att-src="state.qrDataUrl" alt="Scan to add the LINE Official Account"/>
+                        <span>Scan with LINE on your phone</span>
+                    </div>
+                    <a class="btn btn-success o_line_add_friend_mobile" t-att-href="state.addFriendUrl" target="_blank" rel="noopener">
+                        <i class="fa fa-comment me-2"/>Open Official Account in LINE
+                    </a>
+                    <div t-if="state.code" class="o_line_connection_code">
+                        <div>Send this code to the Official Account in LINE</div>
+                        <strong class="font-monospace"><t t-esc="state.code"/></strong>
+                        <button type="button" class="btn btn-outline-primary" t-on-click="copyCode"><i class="fa fa-copy me-1"/>Copy code</button>
+                        <small t-if="state.remaining">Expires at <t t-esc="state.expiresAtText"/> (in <t t-esc="state.remaining"/> seconds)</small>
+                        <small t-else="" class="text-danger">This code expired. Create a new code to continue.</small>
+                    </div>
+                    <div class="o_line_settings_actions">
+                        <button type="button" class="btn btn-primary" t-on-click="createCode" t-att-disabled="state.remaining > 0">
+                            <t t-esc="state.code ? 'Create a new code' : 'I added the Official Account'"/>
+                        </button>
+                        <button t-if="state.softReminder" type="button" class="btn btn-secondary" t-on-click="remindLater">Connect later</button>
+                    </div>
+                    <div class="o_line_waiting_status" t-if="state.code and state.remaining">
+                        <i class="fa fa-spinner fa-spin me-2"/>Waiting for LINE to confirm the connection...
+                    </div>
                 </div>
             </div>
         </div>

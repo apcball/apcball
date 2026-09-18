@@ -194,3 +194,125 @@
         }
     }
 }
+
+
+.o_line_connection_modal {
+    max-height: 75vh;
+    overflow-y: auto;
+
+    .o_line_oa_identity {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+
+        img, .o_line_oa_identity_fallback {
+            width: 56px;
+            height: 56px;
+            flex: 0 0 56px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .o_line_oa_identity_fallback {
+            display: grid;
+            place-items: center;
+            background: #06c755;
+            color: white;
+            font-size: 24px;
+        }
+    }
+
+    .o_line_connect_flow {
+        display: grid;
+        grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+        align-items: center;
+        gap: 20px;
+    }
+
+    .o_line_connect_instruction {
+        grid-column: 1 / -1;
+        margin: 0;
+        color: #334155;
+    }
+
+    .o_line_qr_desktop {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        text-align: center;
+        color: #475569;
+
+        img {
+            width: 210px;
+            height: 210px;
+            image-rendering: pixelated;
+        }
+    }
+
+    .o_line_add_friend_mobile {
+        display: none;
+    }
+
+    .o_line_connection_code {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        min-width: 0;
+
+        strong {
+            font-size: 2rem;
+            letter-spacing: .16em;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    .o_line_waiting_status {
+        grid-column: 1 / -1;
+        color: #475569;
+    }
+}
+
+.o_line_bot_avatar {
+    width: 32px;
+    height: 32px;
+    margin-inline-end: 8px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+}
+
+@media (max-width: 700px) {
+    .o_line_connection_modal {
+        max-height: 80vh;
+
+        .o_line_connect_flow {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .o_line_connect_instruction,
+        .o_line_waiting_status {
+            grid-column: auto;
+        }
+
+        .o_line_qr_desktop {
+            display: none;
+        }
+
+        .o_line_add_friend_mobile {
+            display: inline-flex;
+            justify-content: center;
+            width: 100%;
+            padding: 12px;
+        }
+    }
+}

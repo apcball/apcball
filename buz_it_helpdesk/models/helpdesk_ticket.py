@@ -760,6 +760,15 @@ class HelpdeskTicket(models.Model):
                 note=note,
             )
         self._send_line_notification()
+        if self.requester_id == self.env.user:
+            line_service = self.env['buz.helpdesk.line.service']
+            if not line_service._parameter(line_service._user_key(self.env.user.id)):
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'buz_it_helpdesk.line_connection',
+                    'target': 'new',
+                    'context': {'soft_line_reminder': True},
+                }
         return True
 
     def _approval_manager_is_valid(self):
@@ -961,6 +970,7 @@ class HelpdeskTicket(models.Model):
         return {
             'type': 'ir.actions.client',
             'tag': 'buz_it_helpdesk.line_connection',
+            'target': 'new',
         }
 
     def action_send_line_message(self, body):
