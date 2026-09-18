@@ -196,89 +196,231 @@
 }
 
 
-.o_line_connection_modal {
-    max-height: 75vh;
+// จำกัดรูปแบบกรอบ Odoo เฉพาะหน้าต่างเชื่อมต่อ LINE ซึ่งมีหัวข้อและปุ่มปิดของตัวเอง
+.modal-dialog:has(.o_line_connection_modal) {
+    width: 532px;
+    max-width: calc(100% - 16px);
+
+    .modal-content { border-radius: 10px; overflow: hidden; }
+    .modal-header, .modal-footer { display: none; }
+    .modal-body { padding: 0; }
+}
+
+.o_helpdesk_line_settings.o_line_connection_modal {
+    height: auto;
+    min-height: 0;
+    max-height: 85vh;
     overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 22px 14px;
+    color: #171c43;
+    background: #fff;
+
+    .o_line_settings_header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 8px;
+
+        h1 { margin: 0 0 3px; color: #171c43; font-size: 24px; font-weight: 700; }
+        p { margin: 0; color: #737d98; font-size: 13px; }
+    }
+
+    .o_line_header_text { flex: 1; min-width: 0; }
+    .o_line_close {
+        align-self: flex-start;
+        flex: 0 0 28px;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #81899c;
+        font-size: 18px;
+        &:hover { color: #171c43; background: #f3f4f8; }
+    }
+
+    .o_line_brand_icon {
+        display: grid;
+        place-items: center;
+        flex: 0 0 46px;
+        width: 46px;
+        height: 46px;
+        border-radius: 11px;
+        background: #06c755;
+
+        span {
+            position: relative;
+            display: grid;
+            place-items: center;
+            width: 33px;
+            height: 28px;
+            border-radius: 50%;
+            background: white;
+            color: #06b84e;
+            font: 700 10px Arial, sans-serif;
+            &::after {
+                content: '';
+                position: absolute;
+                bottom: -4px;
+                left: 13px;
+                border-top: 7px solid white;
+                border-right: 7px solid transparent;
+            }
+        }
+    }
+
+    .o_line_connection_badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 11px;
+        margin-bottom: 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.3;
+        .fa { font-size: 10px; }
+        &.is_disconnected { background: #fbe4e7; color: #c62339; }
+        &.is_connected { background: #dcfce7; color: #15803d; }
+    }
+
+    .o_line_connection_card {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
 
     .o_line_oa_identity {
+        margin-bottom: 12px;
+        padding: 14px 15px;
+        border: 1px solid #e3e9f2;
+        border-radius: 8px;
+        background: #f6f9fc;
+        h2 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+    }
+    .o_line_oa_profile {
         display: flex;
         align-items: center;
         gap: 14px;
-        margin-bottom: 18px;
-        padding: 14px;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        background: #f8fafc;
-
-        img, .o_line_oa_identity_fallback {
-            width: 56px;
-            height: 56px;
-            flex: 0 0 56px;
-            border-radius: 50%;
+        > img, > .o_line_brand_icon {
+            width: 50px;
+            height: 50px;
+            flex: 0 0 50px;
+            border-radius: 11px;
             object-fit: cover;
         }
-
-        .o_line_oa_identity_fallback {
-            display: grid;
-            place-items: center;
-            background: #06c755;
-            color: white;
-            font-size: 24px;
-        }
+    }
+    .o_line_oa_details {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 3px;
+        overflow-wrap: anywhere;
+        strong { font-size: 15px; }
+        .text-muted { color: #737d98 !important; font-size: 13px; }
     }
 
     .o_line_connect_flow {
         display: grid;
-        grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
-        align-items: center;
-        gap: 20px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: stretch;
+        gap: 12px;
     }
-
-    .o_line_connect_instruction {
-        grid-column: 1 / -1;
-        margin: 0;
-        color: #334155;
+    .o_line_qr_desktop, .o_line_connection_steps {
+        min-width: 0;
+        padding: 16px 12px 12px;
+        border: 1px solid #e3e9f2;
+        border-radius: 8px;
+        h2 { margin: 0 0 10px; font-size: 14px; font-weight: 700; line-height: 1.5; }
     }
-
     .o_line_qr_desktop {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 14px;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
+        gap: 5px;
+        background: #f6f9fc;
         text-align: center;
-        color: #475569;
-
+        h2 { margin-bottom: 0; }
         img {
-            width: 210px;
-            height: 210px;
+            width: 146px;
+            max-width: 100%;
+            height: auto;
+            padding: 10px;
+            border: 1px solid #e3e9f2;
+            border-radius: 6px;
+            background: #fff;
             image-rendering: pixelated;
         }
+        span { color: #65708a; font-size: 12px; }
     }
-
-    .o_line_add_friend_mobile {
-        display: none;
+    .o_line_connection_steps {
+        h2 { font-size: 16px; }
+        ol { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: line-step; }
+        li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            counter-increment: line-step;
+            font-size: 12px;
+            line-height: 1.6;
+            &::before {
+                content: counter(line-step);
+                display: grid;
+                place-items: center;
+                flex: 0 0 29px;
+                height: 29px;
+                border-radius: 50%;
+                background: #e1f2ff;
+                color: #0876f9;
+                font-size: 16px;
+                font-weight: 700;
+            }
+            + li { margin-top: 15px; }
+        }
     }
-
+    .o_line_add_friend_mobile { display: none; }
+    .o_line_connection_code, .o_line_qr_error, .o_line_create_code,
+    .o_line_waiting_status, .o_line_code_hint { grid-column: 1 / -1; }
     .o_line_connection_code {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
         min-width: 0;
-
-        strong {
-            font-size: 2rem;
-            letter-spacing: .16em;
-            overflow-wrap: anywhere;
-        }
+        padding: 16px;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+        background: #f8fbff;
+        strong { font-size: 2rem; letter-spacing: .16em; overflow-wrap: anywhere; }
+    }
+    .o_line_create_code {
+        width: 100%;
+        min-height: 40px;
+        border-color: #209e64;
+        border-radius: 7px;
+        background: #209e64;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 700;
+        &:hover:not(:disabled) { background: #188550; border-color: #188550; }
+    }
+    .o_line_code_hint { color: #79849f; text-align: center; font-size: 11px; }
+    .o_line_waiting_status { color: #65708a; font-size: 13px; }
+    .o_line_modal_footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
+        .btn { min-width: 62px; border: 1px solid #e1e5ef; border-radius: 7px; background: #f2f3f9; color: #303650; }
     }
 
-    .o_line_waiting_status {
-        grid-column: 1 / -1;
-        color: #475569;
+    @media (max-width: 480px) {
+        padding: 16px;
+        .o_line_settings_header { gap: 10px; h1 { font-size: 22px; } }
+        .o_line_connect_flow { grid-template-columns: minmax(0, 1fr); }
+        .o_line_add_friend_mobile { display: flex; justify-content: center; padding: 10px; }
     }
 }
 
@@ -289,75 +431,4 @@
     border-radius: 50%;
     object-fit: cover;
     vertical-align: middle;
-}
-
-@media (max-width: 700px) {
-    .o_line_connection_modal {
-        max-height: 80vh;
-
-        .o_line_connect_flow {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
-        .o_line_connect_instruction,
-        .o_line_waiting_status {
-            grid-column: auto;
-        }
-
-        .o_line_qr_desktop {
-            display: none;
-        }
-
-        .o_line_add_friend_mobile {
-            display: inline-flex;
-            justify-content: center;
-            width: 100%;
-            padding: 12px;
-        }
-    }
-}
-
-.o_line_connection_card {
-    .o_line_oa_identity { margin-bottom: 22px; }
-    .o_line_oa_details {
-        display: flex; min-width: 0; flex-direction: column; gap: 3px; overflow-wrap: anywhere;
-        strong { color: #172554; font-size: 18px; }
-    }
-    .o_line_connect_flow {
-        grid-template-columns: minmax(210px, 1fr) minmax(220px, 260px);
-        align-items: stretch; gap: 16px 24px;
-    }
-    .o_line_connection_steps {
-        grid-column: 1; grid-row: 1; padding: 18px;
-        border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;
-        h2 { margin: 0 0 12px; color: #172554; font-size: 18px; font-weight: 700; }
-        ol { margin: 0; padding-inline-start: 22px; color: #334155; }
-        li + li { margin-top: 10px; }
-    }
-    .o_line_qr_desktop {
-        grid-column: 2; grid-row: 1; padding: 10px;
-        img { width: 190px; height: 190px; }
-    }
-    .o_line_connection_code, .o_line_qr_error, .o_line_create_code, .o_line_waiting_status {
-        grid-column: 1 / -1;
-    }
-    .o_line_connection_code {
-        padding: 16px; border: 1px solid #dbeafe; border-radius: 10px; background: #f8fbff;
-    }
-    .o_line_create_code { width: 100%; min-height: 48px; font-weight: 700; }
-    .o_line_modal_footer {
-        display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 16px;
-        border-top: 1px solid #e2e8f0;
-    }
-}
-@media (max-width: 700px) {
-    .o_line_connection_card .o_line_connect_flow { grid-template-columns: minmax(0, 1fr); }
-    .o_line_connection_card .o_line_connection_steps,
-    .o_line_connection_card .o_line_qr_desktop,
-    .o_line_connection_card .o_line_connection_code,
-    .o_line_connection_card .o_line_qr_error,
-    .o_line_connection_card .o_line_create_code,
-    .o_line_connection_card .o_line_waiting_status {
-        grid-column: 1; grid-row: auto;
-    }
 }
