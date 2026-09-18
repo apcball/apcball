@@ -647,9 +647,6 @@ class PosLiteOrder(models.Model):
                 'Open the picking %s and select lots manually before validating.'
             ) % (picking.origin or picking.name, tracked_names, picking.name))
         for move in picking.move_ids_without_package:
-            for move_line in move.move_line_ids:
-                done_qty = move.product_uom_qty
-                move_line.quantity = done_qty
             if not move.move_line_ids:
                 move._action_assign()
         result = picking.button_validate()
@@ -659,6 +656,25 @@ class PosLiteOrder(models.Model):
             })
             wizard.process()
         elif isinstance(result, dict) and result.get('res_model') == 'stock.backorder.confirmation':
+            # A backorder wizard means Odoo couldn't fully complete some move(s).
+            # Never silently accept that here — an already-posted invoice with an
+            # unfulfilled delivery and no trace is exactly the failure mode this
+            # guards against. Raise so the caller's savepoint (action_process_order)
+            # rolls back the invoice too.
+            short = picking.move_ids_without_package.filtered(
+                lambda m: m.product_id.type != 'service'
+                and m.state != 'cancel'
+                and m.product_uom_qty > m.quantity
+            )
+            if short:
+                names = ', '.join(
+                    '%s (%s/%s)' % (m.product_id.display_name, m.quantity, m.product_uom_qty)
+                    for m in short[:5]
+                )
+                raise UserError(_(
+                    'ตัดสต็อก "%s" ไม่ครบสำหรับออเดอร์ %s (มีของไม่พอ). '
+                    'กรุณารีเฟรชและตรวจสอบสต็อกก่อนทำรายการใหม่.'
+                ) % (names, picking.origin or picking.name))
             wizard = self.env['stock.backorder.confirmation'].with_context(result.get('context', {})).create({})
             wizard.process_cancel_backorder()
         # Stock is cut at the real validation moment (ตัด stock ตามจริง):
@@ -813,8 +829,6 @@ class PosLiteOrder(models.Model):
                         reverse_picking.action_confirm()
                         reverse_picking.action_assign()
                         for move in reverse_picking.move_ids_without_package:
-                            for ml in move.move_line_ids:
-                                ml.quantity = ml.reserved_uom_qty or move.product_uom_qty
                             if not move.move_line_ids:
                                 move._action_assign()
                         validate_result = reverse_picking.button_validate()
@@ -824,6 +838,20 @@ class PosLiteOrder(models.Model):
                                     validate_result.get('context', {})
                                 ).create({'pick_ids': [fields.Command.set(reverse_picking.ids)]}).process()
                             elif validate_result.get('res_model') == 'stock.backorder.confirmation':
+                                short = reverse_picking.move_ids_without_package.filtered(
+                                    lambda m: m.product_id.type != 'service'
+                                    and m.state != 'cancel'
+                                    and m.product_uom_qty > m.quantity
+                                )
+                                if short:
+                                    names = ', '.join(
+                                        '%s (%s/%s)' % (m.product_id.display_name, m.quantity, m.product_uom_qty)
+                                        for m in short[:5]
+                                    )
+                                    raise UserError(_(
+                                        'คืนสต็อก "%s" ไม่ครบสำหรับออเดอร์ %s (มีของไม่พอ). '
+                                        'กรุณารีเฟรชและตรวจสอบสต็อกก่อนทำรายการใหม่.'
+                                    ) % (names, reverse_picking.origin or reverse_picking.name))
                                 self.env['stock.backorder.confirmation'].with_context(
                                     validate_result.get('context', {})
                                 ).create({}).process_cancel_backorder()
