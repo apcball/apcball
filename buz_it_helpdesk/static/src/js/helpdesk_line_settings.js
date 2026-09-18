@@ -216,7 +216,7 @@ export class HelpdeskLineConnection extends Component {
             this.state.qrDataUrl = qr.createDataURL(6, 2);
         } catch (error) {
             this.state.qrDataUrl = "";
-            this.state.qrError = "Unable to generate the LINE QR code. Refresh the page or contact your Helpdesk Manager.";
+            this.state.qrError = "สร้าง QR Code ไม่สำเร็จ กรุณาโหลดหน้าใหม่หรือติดต่อ Helpdesk Manager";
             console.error("Unable to generate LINE Official Account QR code.", error);
         }
     }
@@ -250,22 +250,26 @@ export class HelpdeskLineConnection extends Component {
     async copyCode() {
         try {
             await navigator.clipboard.writeText(this.state.code);
-            this.notification.add("Connection code copied.", {type: "success"});
+            this.notification.add("คัดลอกรหัสเชื่อมต่อแล้ว", {type: "success"});
         } catch {
-            this.state.error = "Could not copy the code. Select and copy it manually.";
+            this.state.error = "คัดลอกรหัสไม่สำเร็จ กรุณาเลือกและคัดลอกรหัสด้วยตนเอง";
         }
     }
 
-    async remindLater() {
+    async close() {
         await this.action.doAction({type: "ir.actions.act_window_close"});
     }
 
+    async remindLater() {
+        await this.close();
+    }
+
     async cancel() {
-        if (!window.confirm("Disconnect this LINE account from Odoo?")) return;
+        if (!window.confirm("ต้องการยกเลิกการเชื่อมต่อบัญชี LINE นี้หรือไม่?")) return;
         try {
             const data = await this.orm.call(LINE_SERVICE_MODEL, "cancel_line_connection", []);
             this.applyStatus(data);
-            this.notification.add("LINE account disconnected.", {type: "success"});
+            this.notification.add("ยกเลิกการเชื่อมต่อบัญชี LINE แล้ว", {type: "success"});
         } catch (error) {
             this.state.error = this.errorMessage(error);
         }

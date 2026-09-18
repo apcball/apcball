@@ -3,58 +3,32 @@
     <t t-name="buz_it_helpdesk.HelpdeskLineConnection">
         <div class="o_helpdesk_line_settings o_line_connection_modal">
             <div class="o_line_settings_header">
-                <div><h1>LINE Connection</h1><p>Connect your Odoo user to the Official Account.</p></div>
-                <span t-if="state.connected" class="badge text-bg-success">Connected</span>
+                <div><h1>เชื่อมต่อ LINE</h1><p>รับแจ้งเมื่อ Ticket แก้ไขเสร็จ และให้ IT Support ติดต่อคุณทาง LINE ได้</p></div>
+                <span t-if="!state.loading" t-att-class="state.connected ? 'badge text-bg-success' : 'badge text-bg-secondary'"><t t-esc="state.connected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'"/></span>
             </div>
-            <div t-if="state.loading" class="o_helpdesk_line_settings_loading">Loading LINE connection...</div>
-            <div t-else="" class="o_helpdesk_line_settings_card">
+            <div t-if="state.loading" class="o_helpdesk_line_settings_loading" role="status"><i class="fa fa-spinner fa-spin me-2"/>กำลังโหลดข้อมูลการเชื่อมต่อ LINE...</div>
+            <div t-else="" class="o_helpdesk_line_settings_card o_line_connection_card">
                 <div t-if="state.error" class="alert alert-danger" role="alert"><t t-esc="state.error"/></div>
-                <div t-if="state.connected" class="alert alert-success">
-                    Connected LINE account: <span class="font-monospace"><t t-esc="state.masked"/></span>
-                </div>
-                <div t-else="" class="o_line_oa_identity">
-                    <img t-if="state.pictureUrl" t-att-src="state.pictureUrl" alt="LINE Official Account profile"/>
+                <div t-if="state.botName or state.basicId or state.pictureUrl" class="o_line_oa_identity">
+                    <img t-if="state.pictureUrl" t-att-src="state.pictureUrl" t-att-alt="state.botName"/>
                     <div class="o_line_oa_identity_fallback" t-else=""><i class="fa fa-comments"/></div>
-                    <div><strong><t t-esc="state.botName or 'LINE Official Account'"/></strong>
-                        <div class="text-muted"><t t-esc="state.basicId"/></div>
-                    </div>
+                    <div class="o_line_oa_details"><span class="text-muted">LINE Official Account</span><strong><t t-esc="state.botName"/></strong><div class="text-muted"><t t-esc="state.basicId"/></div></div>
                 </div>
                 <div t-if="state.connected" class="o_line_connected_body">
-                    <p>This Odoo user is linked to the LINE account above.</p>
-                    <button type="button" class="btn btn-outline-danger" t-on-click="cancel">Disconnect LINE</button>
-                    <button t-if="state.softReminder" type="button" class="btn btn-secondary ms-2" t-on-click="remindLater">Connect later</button>
+                    <div class="alert alert-success">บัญชี LINE นี้เชื่อมต่อกับผู้ใช้ Odoo แล้ว <span t-if="state.masked" class="font-monospace"><t t-esc="state.masked"/></span></div>
+                    <button type="button" class="btn btn-outline-danger" t-on-click="cancel">ยกเลิกการเชื่อมต่อ</button>
                 </div>
-                <div t-elif="!state.addFriendUrl" class="alert alert-warning">
-                    LINE Official Account is not configured. Ask a Helpdesk Manager to verify the Channel Access Token in LINE Settings.
-                    <button t-if="state.softReminder" type="button" class="btn btn-secondary ms-2" t-on-click="remindLater">Connect later</button>
-                </div>
+                <div t-elif="!state.addFriendUrl" class="alert alert-warning">ยังไม่ได้ตั้งค่า LINE Official Account โปรดให้ Helpdesk Manager ตรวจสอบ Channel Access Token ใน LINE Settings.</div>
                 <div t-else="" class="o_line_connect_flow">
-                    <p class="o_line_connect_instruction">Add this Official Account as a friend, then create a one-time connection code.</p>
-                    <div t-if="state.qrError" class="alert alert-warning" role="alert"><t t-esc="state.qrError"/></div>
-                    <div class="o_line_qr_desktop" t-if="state.qrDataUrl">
-                        <img t-att-src="state.qrDataUrl" alt="Scan to add the LINE Official Account"/>
-                        <span>Scan with LINE on your phone</span>
-                    </div>
-                    <a class="btn btn-success o_line_add_friend_mobile" t-att-href="state.addFriendUrl" target="_blank" rel="noopener">
-                        <i class="fa fa-comment me-2"/>Open Official Account in LINE
-                    </a>
-                    <div t-if="state.code" class="o_line_connection_code">
-                        <div>Send this code to the Official Account in LINE</div>
-                        <strong class="font-monospace"><t t-esc="state.code"/></strong>
-                        <button type="button" class="btn btn-outline-primary" t-on-click="copyCode"><i class="fa fa-copy me-1"/>Copy code</button>
-                        <small t-if="state.remaining">Expires at <t t-esc="state.expiresAtText"/> (in <t t-esc="state.remaining"/> seconds)</small>
-                        <small t-else="" class="text-danger">This code expired. Create a new code to continue.</small>
-                    </div>
-                    <div class="o_line_settings_actions">
-                        <button type="button" class="btn btn-primary" t-on-click="createCode" t-att-disabled="state.remaining > 0">
-                            <t t-esc="state.code ? 'Create a new code' : 'I added the Official Account'"/>
-                        </button>
-                        <button t-if="state.softReminder" type="button" class="btn btn-secondary" t-on-click="remindLater">Connect later</button>
-                    </div>
-                    <div class="o_line_waiting_status" t-if="state.code and state.remaining">
-                        <i class="fa fa-spinner fa-spin me-2"/>Waiting for LINE to confirm the connection...
-                    </div>
+                    <div class="o_line_connection_steps"><h2>วิธีเชื่อมต่อ</h2><ol><li>เพิ่มเพื่อน LINE Official Account โดยสแกน QR Code หรือเปิด LINE OA บนมือถือ</li><li>กดปุ่มด้านล่างเพื่อสร้างรหัส แล้วส่งรหัสในแชต LINE OA</li><li>รอระบบยืนยันการเชื่อมต่อโดยอัตโนมัติ</li></ol></div>
+                    <div class="o_line_qr_desktop" t-if="state.qrDataUrl"><img t-att-src="state.qrDataUrl" alt="QR Code สำหรับเพิ่มเพื่อน LINE Official Account"/><span>สแกน QR Code ด้วย LINE บนโทรศัพท์</span></div>
+                    <a class="btn btn-success o_line_add_friend_mobile" t-att-href="state.addFriendUrl" target="_blank" rel="noopener"><i class="fa fa-comment me-2"/>เปิด LINE OA</a>
+                    <div t-if="state.qrError" class="alert alert-warning o_line_qr_error" role="alert"><t t-esc="state.qrError"/></div>
+                    <div t-if="state.code" class="o_line_connection_code"><div>ส่งรหัสนี้ในแชต LINE Official Account</div><strong class="font-monospace"><t t-esc="state.code"/></strong><button type="button" class="btn btn-outline-primary" t-on-click="copyCode"><i class="fa fa-copy me-1"/>คัดลอกรหัส</button><small>รหัสมีอายุ 10 นาที</small><small t-if="state.remaining">หมดอายุเวลา <t t-esc="state.expiresAtText"/> (เหลือ <t t-esc="state.remaining"/> วินาที)</small><small t-else="" class="text-danger">รหัสหมดอายุแล้ว กรุณาสร้างรหัสใหม่</small></div>
+                    <button type="button" class="btn btn-primary o_line_create_code" t-on-click="createCode" t-att-disabled="state.remaining > 0"><t t-esc="state.code ? 'สร้างรหัสใหม่' : 'เพิ่มเพื่อนแล้ว — สร้างรหัส'"/></button>
+                    <div class="o_line_waiting_status" t-if="state.code and state.remaining" role="status"><i class="fa fa-spinner fa-spin me-2"/>กำลังรอ LINE ยืนยันการเชื่อมต่อ...</div>
                 </div>
+                <div class="o_line_modal_footer"><button type="button" class="btn btn-secondary" t-on-click="close">ปิด</button></div>
             </div>
         </div>
     </t>
