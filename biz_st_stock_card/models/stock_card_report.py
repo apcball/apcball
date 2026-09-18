@@ -19,7 +19,7 @@
 
 import logging
 import re
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 import pytz
 
@@ -94,8 +94,8 @@ class StockCardReport(models.AbstractModel):
         :return: dict {options, company, companies, allowed_companies, warehouses,
                        picking_types, levels, lines, totals, checks, labels}
         """
-        if not self.env.user.has_group("stock.group_stock_user"):
-            raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานคลังสินค้า"))
+        if not self.env.user.has_group("biz_st_stock_card.group_stock_card_user"):
+            raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานสต๊อกการ์ด"))
 
         opt = self._normalize_options(options)
         companies = self.env["res.company"].browse(opt["company_ids"])
@@ -147,6 +147,31 @@ class StockCardReport(models.AbstractModel):
             "totals": totals,
             "checks": checks,
             "labels": self._build_labels(opt, maps),
+        }
+
+    @api.model
+    def get_warehouse_choices(self, options=None):
+        """รายชื่อคลัง/บริษัทเบา ๆ สำหรับตัวเลือกก่อนเลือกคลัง — ไม่แตะ stock.move.line/SVL เลย
+
+        หน้าจอ interactive เรียกตัวนี้ก่อน ``get_report_data()`` เสมอ เพื่อให้ผู้ใช้
+        เลือกคลัง (หรือกด "ทุกคลัง" ชัดเจน) ก่อนที่จะยิงคิวรีหนักของรายงานจริง
+        """
+        if not self.env.user.has_group("biz_st_stock_card.group_stock_card_user"):
+            raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานสต๊อกการ์ด"))
+
+        opt = {"company_ids": self._resolve_company_ids(options or {})}
+        warehouses = self._scoped("stock.warehouse", opt).search_read(
+            [("company_id", "in", opt["company_ids"])], ["name", "code", "company_id"]
+        )
+        return {
+            "warehouses": [
+                {"id": wh["id"], "name": wh["name"], "code": wh["code"],
+                 "company_id": wh["company_id"][0] if wh["company_id"] else 0}
+                for wh in warehouses
+            ],
+            "allowed_companies": [
+                {"id": c.id, "name": c.name} for c in self.env.user.company_ids
+            ],
         }
 
     @api.model
@@ -207,6 +232,17 @@ class StockCardReport(models.AbstractModel):
         if date_to < date_from:
             date_from, date_to = date_to, date_from
 
+        # ยอดยกมาก่อนวัน cutoff ไม่น่าเชื่อถือ (มักตั้งไว้หลังพิมพ์สต๊อกตั้งต้นใหม่)
+        # ใช้ system parameter ตัวเดียวกับ stock_fifo_valuation_report — ตั้งครั้งเดียว
+        # สองรายงานเห็นวันตัดเดียวกันเสมอ ไม่ต้องมีค่า config แยกที่หลุดไม่ตรงกัน
+        cutoff_date = self._get_cutoff_date()
+        date_from_downgraded = False
+        if date_from < cutoff_date:
+            date_from = cutoff_date
+            date_from_downgraded = True
+            if date_to < date_from:
+                date_to = date_from
+
         tz = opt.get("tz") or self.env.user.tz or "UTC"
         try:
             pytz.timezone(tz)
@@ -221,6 +257,8 @@ class StockCardReport(models.AbstractModel):
             "company_mode": opt.get("company_mode") or "consolidated",
             "date_from": fields.Date.to_string(date_from),
             "date_to": fields.Date.to_string(date_to),
+            "cutoff_date": fields.Date.to_string(cutoff_date),
+            "date_from_downgraded": date_from_downgraded,
             "tz": tz,
             "datetime_from": fields.Datetime.to_string(dt_from),
             "datetime_to": fields.Datetime.to_string(dt_to),
@@ -339,10 +377,17 @@ class StockCardReport(models.AbstractModel):
 
         ``stock.move.line.date`` เก็บเป็น UTC ถ้าเทียบกับวันที่ตรง ๆ ของที่รับเข้า
         ตอน 23:30 เวลาไทยของวันสุดท้ายจะหลุดงวดไปอยู่เดือนถัดไป
+
+        ขอบบน ``datetime_to`` เป็น **จุดเริ่มต้นของวันถัดจาก date_to** (exclusive)
+        ไม่ใช่ 23:59:59 ของ date_to (inclusive) — ทุกจุดที่ใช้ ``datetime_to`` ต้อง
+        เทียบด้วย ``<`` เท่านั้น ตรงกับ ``stock_fifo_valuation_report._bangkok_day_range_to_utc``
+        ที่ใช้ ``[utc_lower, utc_upper)`` แบบ half-open เป๊ะ ไม่งั้นรายการที่ timestamp
+        ตกวินาทีสุดท้ายของ date_to (23:59:59.000001-.999999) จะถูกนับใน FIFO report
+        แต่หลุดจากสต๊อกการ์ด
         """
         zone = pytz.timezone(tz)
         start = zone.localize(datetime.combine(date_from, time.min))
-        end = zone.localize(datetime.combine(date_to, time(23, 59, 59)))
+        end = zone.localize(datetime.combine(date_to + timedelta(days=1), time.min))
         return (
             start.astimezone(pytz.UTC).replace(tzinfo=None),
             end.astimezone(pytz.UTC).replace(tzinfo=None),
@@ -369,6 +414,19 @@ class StockCardReport(models.AbstractModel):
         if opt["group_lot"]:
             levels.append("lot")
         return levels
+
+    @api.model
+    def _get_cutoff_date(self):
+        """ยอดยกมาก่อนวันนี้ไม่น่าเชื่อถือ (มักตั้งหลังพิมพ์สต๊อกตั้งต้นใหม่)
+
+        อ่าน system parameter เดียวกับ ``stock_fifo_valuation_report`` เจตนา —
+        ตั้งค่าที่เดียว ทั้งสองรายงานเห็นวันตัดตรงกันเสมอ ไม่มีค่า config คนละตัว
+        ที่หลุดไม่ตรงกันภายหลัง
+        """
+        cutoff = self.env["ir.config_parameter"].sudo().get_param(
+            "stock_fifo_valuation_report.cutoff_date"
+        )
+        return fields.Date.to_date(cutoff) if cutoff else fields.Date.to_date("1900-01-01")
 
     @api.model
     def _can_see_value(self):
@@ -555,7 +613,7 @@ class StockCardReport(models.AbstractModel):
         return (
             self._svl_domain(opt)
             + self._svl_date_domain(opt, ">=", opt["datetime_from"])
-            + self._svl_date_domain(opt, "<=", opt["datetime_to"])
+            + self._svl_date_domain(opt, "<", opt["datetime_to"])
         )
 
     # ==================================================================
@@ -688,7 +746,7 @@ class StockCardReport(models.AbstractModel):
         else:
             domain = domain + [
                 ("date", ">=", opt["datetime_from"]),
-                ("date", "<=", opt["datetime_to"]),
+                ("date", "<", opt["datetime_to"]),
             ]
         return self._scoped("stock.move.line", opt)._read_group(
             domain,
@@ -879,48 +937,87 @@ class StockCardReport(models.AbstractModel):
                 company, product, warehouse, value, qty = _unpack(row)
                 buckets["opening"][_key(company, product, warehouse)] = (value or 0.0, qty or 0.0)
 
-        for bucket, extra in (
-            ("in", [("quantity", ">", 0)]),
-            ("out", [("quantity", "<", 0)]),
-        ):
-            for row in svl._read_group(
-                period + extra,
-                groupby=groupby,
-                aggregates=["value:sum", "quantity:sum"],
-            ):
-                company, product, warehouse, value, qty = _unpack(row)
-                # ฝั่งจ่ายออกเก็บเป็นค่าบวก (ธรรมเนียมรับ/จ่ายไทย — ไม่มีเลขติดลบในตาราง)
-                buckets[bucket][_key(company, product, warehouse)] = (
-                    -(value or 0.0) if bucket == "out" else (value or 0.0),
-                    abs(qty or 0.0),
-                )
-
-        # ปรับมูลค่า (quantity = 0) แยกต้นทุนนำเข้า (landed cost) กับการตีมูลค่าใหม่
-        # ตรงกับ landed_cost_value/revaluation_value ของ stock_fifo_valuation_report
-        # ``stock_landed_cost_id`` มีเฉพาะตอนติดตั้ง stock_landed_costs — ไม่มีก็รวม
-        # ทุกอย่างไว้ที่ adj_reval แทน (ผลรวมยังถูก แค่แยกละเอียดไม่ได้)
-        adj_specs = (
-            [("adj_lc", [("stock_landed_cost_id", "!=", False)]),
-             ("adj_reval", [("stock_landed_cost_id", "=", False)])]
-            if has_lc else
-            [("adj_reval", [])]
-        )
-        for bucket, lc_extra in adj_specs:
-            for row in svl._read_group(
-                period + [("quantity", "=", 0)] + lc_extra,
-                groupby=groupby,
-                aggregates=["value:sum", "quantity:sum"],
-            ):
-                company, product, warehouse, value, qty = _unpack(row)
-                buckets[bucket][_key(company, product, warehouse)] = (
-                    value or 0.0, abs(qty or 0.0)
-                )
-
-        for company, value, count in svl._read_group(
-            period, groupby=["company_id"], aggregates=["value:sum", "__count"]
-        ):
-            buckets["control"][company.id] = (value or 0.0, count or 0)
+        self._read_svl_period_buckets(svl, period, exact_wh, has_lc, buckets)
         return buckets
+
+    @api.model
+    def _read_svl_period_buckets(self, svl, period, exact_wh, has_lc, buckets):
+        """in/out/adj_lc/adj_reval/control ของงวด — ทั้งหมดในคิวรีเดียว
+
+        เดิมเป็น 5 ``_read_group`` แยกกัน (โดเมนของงวดเหมือนกันทุกตัว ต่างกันแค่
+        ``quantity``/``stock_landed_cost_id``) ยิง 5 round-trip ไปที่ตารางเดียวกัน
+        รวบเป็นคิวรีเดียวด้วย ``FILTER (WHERE ...)`` ของ Postgres แทน — ยังใช้
+        ``_where_calc`` ของ ORM แปลงโดเมนเป็น SQL (เคารพ join ของ dotted-path เดิม
+        ทุกเส้นทาง) มีแต่ส่วน ``SELECT``/``GROUP BY`` ที่เขียนเอง ผลลัพธ์ต้องตรงกับ
+        แบบแยกคิวรีเป๊ะ ไม่งั้น SVL reconciliation จะพัง
+        """
+        table = svl._table
+        query = svl._where_calc(period)
+        from_clause, where_clause, params = query.get_sql()
+
+        group_cols = ["%s.company_id" % table, "%s.product_id" % table]
+        if exact_wh:
+            group_cols.append("%s.warehouse_id" % table)
+        group_sql = ", ".join(group_cols)
+
+        if has_lc:
+            adj_lc_where = (
+                "%s.quantity = 0 AND %s.stock_landed_cost_id IS NOT NULL" % (table, table)
+            )
+            adj_reval_where = (
+                "%s.quantity = 0 AND %s.stock_landed_cost_id IS NULL" % (table, table)
+            )
+        else:
+            adj_lc_where = "FALSE"
+            adj_reval_where = "%s.quantity = 0" % table
+
+        sql = """
+            SELECT %(group_sql)s,
+                COALESCE(SUM(%(t)s.value) FILTER (WHERE %(t)s.quantity > 0), 0) AS in_value,
+                COALESCE(SUM(%(t)s.quantity) FILTER (WHERE %(t)s.quantity > 0), 0) AS in_qty,
+                COUNT(*) FILTER (WHERE %(t)s.quantity > 0) AS in_count,
+                COALESCE(SUM(%(t)s.value) FILTER (WHERE %(t)s.quantity < 0), 0) AS out_value,
+                COALESCE(SUM(%(t)s.quantity) FILTER (WHERE %(t)s.quantity < 0), 0) AS out_qty,
+                COUNT(*) FILTER (WHERE %(t)s.quantity < 0) AS out_count,
+                COALESCE(SUM(%(t)s.value) FILTER (WHERE %(adj_lc)s), 0) AS adj_lc_value,
+                COUNT(*) FILTER (WHERE %(adj_lc)s) AS adj_lc_count,
+                COALESCE(SUM(%(t)s.value) FILTER (WHERE %(adj_reval)s), 0) AS adj_reval_value,
+                COUNT(*) FILTER (WHERE %(adj_reval)s) AS adj_reval_count,
+                COALESCE(SUM(%(t)s.value), 0) AS control_value,
+                COUNT(*) AS control_count
+            FROM %(from_clause)s
+            WHERE %(where_clause)s
+            GROUP BY %(group_sql)s
+        """ % {
+            "group_sql": group_sql, "t": table,
+            "adj_lc": adj_lc_where, "adj_reval": adj_reval_where,
+            "from_clause": from_clause, "where_clause": where_clause,
+        }
+        self.env.cr.execute(sql, params)
+
+        control_totals = {}
+        for row in self.env.cr.dictfetchall():
+            key = (
+                (row["company_id"], row["product_id"], row["warehouse_id"] or 0)
+                if exact_wh else (row["company_id"], row["product_id"])
+            )
+            if row["in_count"]:
+                buckets["in"][key] = (row["in_value"], row["in_qty"])
+            if row["out_count"]:
+                # ฝั่งจ่ายออกเก็บเป็นค่าบวก (ธรรมเนียมรับ/จ่ายไทย — ไม่มีเลขติดลบในตาราง)
+                buckets["out"][key] = (-row["out_value"], -row["out_qty"])
+            # โดเมนของ adj_lc/adj_reval บังคับ quantity = 0 เสมอ ผลรวม qty จึงเป็น 0.0
+            # เหมือนของเดิม (``abs(qty)`` ของแถวที่ quantity เป็น 0 ทุกแถว)
+            if row["adj_lc_count"]:
+                buckets["adj_lc"][key] = (row["adj_lc_value"], 0.0)
+            if row["adj_reval_count"]:
+                buckets["adj_reval"][key] = (row["adj_reval_value"], 0.0)
+            totals = control_totals.setdefault(row["company_id"], [0.0, 0])
+            totals[0] += row["control_value"]
+            totals[1] += row["control_count"]
+
+        for company_id, (value, count) in control_totals.items():
+            buckets["control"][company_id] = (value, count)
 
     @api.model
     def _allocate_value(self, nodes, denominators, svl, opt, stats):
@@ -1298,11 +1395,27 @@ class StockCardReport(models.AbstractModel):
         out = []
         budget = opt["detail_total_limit"]
         details_by_parent = {}
+        pending = []  # (leaf, records, truncated) — ยังไม่ผูกกับ stock.move
+        all_move_ids = set()
         for leaf in leaves:
             if budget <= 0:
                 break
-            rows, truncated = self._read_leaf_details(leaf, opt, maps, min(opt["detail_limit"], budget))
-            budget -= len(rows)
+            records, truncated = self._read_leaf_lines(leaf, opt, maps, min(opt["detail_limit"], budget))
+            budget -= len(records)
+            pending.append((leaf, records, truncated))
+            all_move_ids.update(r["move_id"][0] for r in records if r["move_id"])
+
+        # ดึง stock.move ครั้งเดียวรวมทุกใบ แทนที่จะยิงแยกใบละครั้ง (คิวรีหายไปสูงสุด ~200 ครั้ง)
+        moves = {
+            m["id"]: m
+            for m in self._scoped("stock.move", opt).sudo().search_read(
+                [("id", "in", sorted(all_move_ids))],
+                ["picking_type_id", "is_inventory", "scrapped", "origin", "partner_id"],
+            )
+        } if all_move_ids else {}
+
+        for leaf, records, truncated in pending:
+            rows = self._assemble_leaf_rows(leaf, records, moves, opt, maps)
             stats["detail_rows"] += len(rows)
             if truncated:
                 stats["truncated_leaves"] += 1
@@ -1335,14 +1448,18 @@ class StockCardReport(models.AbstractModel):
         ]
 
     @api.model
-    def _read_leaf_details(self, leaf, opt, maps, limit):
-        """Q8 — บรรทัดการเคลื่อนไหวของใบเดียว เรียงตามเอกสาร (date, id)"""
+    def _read_leaf_lines(self, leaf, opt, maps, limit):
+        """Q8 — บรรทัดการเคลื่อนไหวดิบของใบเดียว เรียงตามเอกสาร (date, id)
+
+        แยกจาก ``_assemble_leaf_rows`` เพื่อให้ ``_attach_details`` รวบ stock.move
+        ของทุกใบเป็นคิวรีเดียวได้ทีหลัง — โดเมน/limit/truncation ต่อใบไม่เปลี่ยน
+        """
         keys = set(leaf["leaf_keys"])
         first = leaf["leaf_keys"][0]
         locs = self._leaf_location_ids(leaf, opt, maps)
         domain = self._base_domain(opt) + [
             ("date", ">=", opt["datetime_from"]),
-            ("date", "<=", opt["datetime_to"]),
+            ("date", "<", opt["datetime_to"]),
             ("company_id", "in", sorted({key[K_COMPANY] for key in keys})),
             ("product_id", "=", first[K_PRODUCT]),
             "|", ("location_id", "in", locs), ("location_dest_id", "in", locs),
@@ -1359,19 +1476,14 @@ class StockCardReport(models.AbstractModel):
             order="date, id", limit=limit + 1,
         )
         truncated = len(records) > limit
-        records = records[:limit]
+        return records[:limit], truncated
+
+    @api.model
+    def _assemble_leaf_rows(self, leaf, records, moves, opt, maps):
+        """ผูกบรรทัดดิบของใบเดียวกับ stock.move ที่ดึงมารวมแล้ว แล้วคัดตาม fact key เดิม"""
         if not records:
-            return [], False
-
-        move_ids = [r["move_id"][0] for r in records if r["move_id"]]
-        moves = {
-            m["id"]: m
-            for m in self._scoped("stock.move", opt).sudo().search_read(
-                [("id", "in", move_ids)],
-                ["picking_type_id", "is_inventory", "scrapped", "origin", "partner_id"],
-            )
-        } if move_ids else {}
-
+            return []
+        keys = set(leaf["leaf_keys"])
         rows = []
         for record in records:
             src_id = record["location_id"][0]
@@ -1404,7 +1516,7 @@ class StockCardReport(models.AbstractModel):
                 "direction": direction, "external": external,
                 "src": src, "dst": dst,
             })
-        return rows, truncated
+        return rows
 
     @api.model
     def _running_balance(self, leaf, rows, opt, truncated):
@@ -1586,7 +1698,7 @@ class StockCardReport(models.AbstractModel):
         """
         domain = self._base_domain(opt) + [
             ("date", ">=", opt["datetime_from"]),
-            ("date", "<=", opt["datetime_to"]),
+            ("date", "<", opt["datetime_to"]),
         ]
         model = self._scoped("stock.move.line", opt).with_context(tz=opt["tz"])
         return model._read_group(
@@ -1817,8 +1929,8 @@ class StockCardReport(models.AbstractModel):
 
         :return: dict {options, company, product, totals, days, checks, labels}
         """
-        if not self.env.user.has_group("stock.group_stock_user"):
-            raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานคลังสินค้า"))
+        if not self.env.user.has_group("biz_st_stock_card.group_stock_card_user"):
+            raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานสต๊อกการ์ด"))
 
         opt = self._card_options(options, product_id)
         product_id = opt["product_ids"][0]
@@ -1986,7 +2098,7 @@ class StockCardReport(models.AbstractModel):
     def _drill_moves(self, parts, opt, maps):
         domain = self._base_domain(opt) + [
             ("date", ">=", opt["datetime_from"]),
-            ("date", "<=", opt["datetime_to"]),
+            ("date", "<", opt["datetime_to"]),
         ]
         if parts.get("co"):
             domain.append(("company_id", "=", parts["co"]))
@@ -2213,6 +2325,8 @@ class StockCardReport(models.AbstractModel):
             "detail_rows": stats.get("detail_rows", 0),
             "group_count": sum(1 for line in lines if line["kind"] == "group"),
             "opening_skipped": opt["opening_basis"] == "none",
+            "cutoff_date": opt["cutoff_date"],
+            "date_from_downgraded": opt["date_from_downgraded"],
         }
 
     @api.model

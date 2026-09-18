@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- สิทธิ์เปิดดู/พิมพ์รายงานสต๊อกการ์ดโดยเฉพาะ — ตั้งใจให้เป็นกลุ่มเดี่ยว ไม่ผูกกับ
+         Stock Manager หรือกลุ่มไหนทั้งสิ้น ผู้ดูแลระบบต้องไปเลือกผู้ใช้เข้ากลุ่มนี้เอง
+         ทีละคนที่ Settings > Users
+         imply stock.group_stock_user ไว้ เพราะเมนูอยู่ใต้ stock.menu_stock_root ซึ่งต้อง
+         มีกลุ่มนี้ (หรือ manager) อยู่แล้วถึงจะเห็นแอป Inventory เลย ไม่งั้นเข้าเมนูไม่ถึง -->
+    <record id="group_stock_card_user" model="res.groups">
+        <field name="name">ดูสต๊อกการ์ด (Stock Card)</field>
+        <field name="category_id" ref="base.module_category_inventory_inventory"/>
+        <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+        <field name="comment">
+            สิทธิ์เปิดหน้าจอ/พิมพ์รายงานสต๊อกการ์ด (biz_st_stock_card) — ไม่ผูกกับ Stock
+            Manager โดยอัตโนมัติ ต้องเพิ่มผู้ใช้เข้ากลุ่มนี้เองทีละคน
+        </field>
+    </record>
+
+    <!-- รุ่นก่อนหน้าของโมดูลนี้เคยให้ Stock Manager imply กลุ่มนี้อัตโนมัติ — ภายหลัง
+         เปลี่ยนใจให้เป็นกลุ่มเดี่ยวที่ผู้ดูแลระบบเลือกผู้ใช้เอง การลบ record บล็อกด้านบน
+         ออกจากไฟล์ข้อมูลอย่างเดียว **ไม่ทำให้ Odoo ถอน implied_ids ที่เคยเขียนไปแล้ว**
+         ต้องสั่ง unlink (3, ...) ตรง ๆ ทุกครั้งที่อัปเกรด เพื่อรับประกันว่าจะไม่ผูกกลับมาเงียบ ๆ -->
+    <record id="stock.group_stock_manager" model="res.groups">
+        <field name="implied_ids" eval="[(3, ref('group_stock_card_user'))]"/>
+    </record>
+</odoo>

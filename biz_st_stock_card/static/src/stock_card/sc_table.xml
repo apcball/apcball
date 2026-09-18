@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
     <t t-name="biz_st_stock_card.ScTable">
-        <div class="sc-table-wrap">
+        <div class="sc-table-wrap" t-ref="wrap">
             <table class="sc-table">
                 <thead>
                     <tr class="sc-head-groups">
@@ -18,7 +18,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr t-foreach="props.data.lines" t-as="line" t-key="line.id"
+                    <tr t-if="topSpacerHeight" class="sc-spacer">
+                        <td t-att-colspan="columns.length"
+                            t-attf-style="height:{{topSpacerHeight}}px;padding:0;border:0;"/>
+                    </tr>
+                    <tr t-foreach="visibleLines" t-as="line" t-key="line.id"
                         t-att-class="rowClass(line)"
                         t-on-click="() => this.onRowClick(line)">
                         <t t-foreach="columns" t-as="col" t-key="col.key">
@@ -49,6 +53,10 @@
                             <td t-elif="isBlank(line, col)" class="sc-cell-num"/>
                             <td t-else="" class="sc-cell-num" t-esc="cellValue(line, col)"/>
                         </t>
+                    </tr>
+                    <tr t-if="bottomSpacerHeight" class="sc-spacer">
+                        <td t-att-colspan="columns.length"
+                            t-attf-style="height:{{bottomSpacerHeight}}px;padding:0;border:0;"/>
                     </tr>
                 </tbody>
                 <tfoot>

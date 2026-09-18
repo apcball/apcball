@@ -1,14 +1,27 @@
 /** @odoo-module **/
 
-import { Component } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { fmtMoney, fmtQty } from "@biz_st_stock_card/stock_card/sc_format";
 import { headerGroups } from "@biz_st_stock_card/stock_card/sc_shared";
+
+// ต้องใกล้เคียงความสูงจริงของแถว (ดู .sc-table td ใน stock_card.scss) — ใช้แค่คำนวณ
+// หน้าต่างที่มองเห็น ความคลาดเคลื่อนเล็กน้อยจากแถวที่ตัวหนังสือยาวจนขึ้นบรรทัดใหม่
+// ไม่กระทบตัวเลขรายงาน แค่ทำให้ spacer สูงคลาดจากจริงนิดหน่อย ซึ่ง overscan ชดเชยให้
+const ROW_HEIGHT = 26;
+const OVERSCAN = 15;
+// รายงานที่กางแล้วไม่กี่ร้อยแถวไม่คุ้มที่จะยุ่งกับการคำนวณหน้าต่างเลย — คงพฤติกรรมเดิม
+const VIRTUALIZE_THRESHOLD = 300;
 
 /**
  * ตารางสต๊อกการ์ดแบบลำดับชั้น
  *
  * server ส่ง lines มาเรียงพร้อมแสดงแล้ว component นี้แค่วาดตามลำดับ ไม่จัดเรียงเอง
  * และไม่คำนวณตัวเลขใหม่แม้แต่ช่องเดียว
+ *
+ * เมื่อแถวเกิน ``VIRTUALIZE_THRESHOLD`` จะวาดเฉพาะแถวที่อยู่ในหรือใกล้ viewport
+ * (ประมาณด้วยความสูงคงที่ + overscan) แทนการยัด DOM node ทุกแถวลงจอเดียว —
+ * รายงานที่กางเต็มหลายพันแถวจะได้ไม่ทำให้เบราว์เซอร์ค้าง ตัวเลข/การจัดกลุ่มยังมาจาก
+ * ``props.data.lines`` เส้นเดียวเหมือนเดิมทุกประการ แค่เลือกช่วงที่วาดเท่านั้น
  */
 export class ScTable extends Component {
     static template = "biz_st_stock_card.ScTable";
@@ -18,6 +31,59 @@ export class ScTable extends Component {
         onDrillDown: Function,
         onOpenProduct: Function,
     };
+
+    setup() {
+        this.wrapRef = useRef("wrap");
+        this.vState = useState({ start: 0, end: VIRTUALIZE_THRESHOLD });
+        this._onScroll = () => this._updateWindow();
+        onMounted(() => {
+            this.wrapRef.el.addEventListener("scroll", this._onScroll, { passive: true });
+            this._updateWindow();
+        });
+        onPatched(() => this._updateWindow());
+        onWillUnmount(() => {
+            this.wrapRef.el.removeEventListener("scroll", this._onScroll);
+        });
+    }
+
+    get virtualized() {
+        return this.props.data.lines.length > VIRTUALIZE_THRESHOLD;
+    }
+
+    /** ช่วงแถวที่ควรวาด ณ ตำแหน่งเลื่อนปัจจุบัน — เผื่อ overscan ทั้งบนและล่าง */
+    _updateWindow() {
+        if (!this.virtualized || !this.wrapRef.el) {
+            return;
+        }
+        const total = this.props.data.lines.length;
+        const start = Math.max(
+            0, Math.min(total, Math.floor(this.wrapRef.el.scrollTop / ROW_HEIGHT) - OVERSCAN)
+        );
+        const visibleCount = Math.ceil(this.wrapRef.el.clientHeight / ROW_HEIGHT) + OVERSCAN * 2;
+        const end = Math.min(total, start + visibleCount);
+        if (start !== this.vState.start || end !== this.vState.end) {
+            this.vState.start = start;
+            this.vState.end = end;
+        }
+    }
+
+    get visibleLines() {
+        if (!this.virtualized) {
+            return this.props.data.lines;
+        }
+        return this.props.data.lines.slice(this.vState.start, this.vState.end);
+    }
+
+    get topSpacerHeight() {
+        return this.virtualized ? this.vState.start * ROW_HEIGHT : 0;
+    }
+
+    get bottomSpacerHeight() {
+        if (!this.virtualized) {
+            return 0;
+        }
+        return Math.max(0, (this.props.data.lines.length - this.vState.end) * ROW_HEIGHT);
+    }
 
     get showValue() {
         return this.props.data.options.show_value;

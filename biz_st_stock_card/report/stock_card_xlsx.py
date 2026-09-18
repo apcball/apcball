@@ -317,6 +317,11 @@ class StockCardXlsx(models.AbstractModel):
                 "ขอให้แสดงรายการเคลื่อนไหวทั้งหมดโดยไม่ได้กรองสินค้าหรือหมวด "
                 "ระบบจึงลดเหลือเฉพาะกลุ่มที่กางอยู่"
             )))
+        if checks["date_from_downgraded"]:
+            rows.append((_("หมายเหตุ"), _(
+                "วันที่เริ่มต้นก่อนวัน cutoff (%s) ยอดยกมาก่อนหน้านั้นไม่น่าเชื่อถือ "
+                "ระบบจึงตัดวันเริ่มต้นให้เป็นวัน cutoff แทน ตรงกับ Stock FIFO Valuation Report"
+            ) % checks["cutoff_date"]))
         if checks["truncated_leaves"]:
             rows.append((_("คำเตือน"), _(
                 "%s กลุ่มแสดงรายการเคลื่อนไหวไม่ครบ (เกินขีดจำกัดต่อกลุ่ม) "

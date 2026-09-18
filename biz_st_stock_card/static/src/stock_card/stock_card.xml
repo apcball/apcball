@@ -28,8 +28,8 @@
             </div>
 
             <ScFilterBar options="state.options"
-                         companies="state.data ? state.data.allowed_companies : []"
-                         warehouses="state.data ? state.data.warehouses : []"
+                         companies="filterCompanies"
+                         warehouses="filterWarehouses"
                          pickingTypes="state.data ? state.data.picking_types : []"
                          levels="state.data ? state.data.levels : []"
                          loading="state.loading"
@@ -86,6 +86,12 @@
                     การแสดงรายการเคลื่อนไหวทั้งหมดต้องกรองสินค้าหรือหมวดก่อน
                     ระบบจึงลดเหลือเฉพาะกลุ่มที่กางอยู่
                 </div>
+                <div class="sc-alert sc-alert-warn" t-if="checks.date_from_downgraded">
+                    <i class="fa fa-info-circle me-2"/>
+                    วันที่เริ่มต้นก่อนวัน cutoff (<b t-esc="checks.cutoff_date"/>) ยอดยกมาก่อนหน้านั้น
+                    ไม่น่าเชื่อถือ — ตัดวันเริ่มต้นให้เป็นวัน cutoff แทน ตรงกับ Stock FIFO
+                    Valuation Report
+                </div>
                 <div class="sc-alert sc-alert-warn" t-if="checks.truncated_leaves">
                     <i class="fa fa-info-circle me-2"/>
                     มี <b t-esc="checks.truncated_leaves"/>
@@ -105,6 +111,10 @@
             <div class="sc-body">
                 <div class="sc-loading" t-if="state.loading and !state.data">
                     <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+                <div class="sc-wh-prompt" t-elif="!state.data">
+                    <i class="fa fa-filter fa-2x mb-2"/>
+                    <p>เลือกคลังสินค้าในตัวกรองด้านบนก่อนเริ่มดูรายงาน (หรือเลือก "ทุกคลัง")</p>
                 </div>
                 <ScTable t-elif="state.data" data="state.data"
                          onToggleFold.bind="toggleFold"

@@ -213,12 +213,19 @@ class StockCardWizard(models.TransientModel):
     # Buttons
     # ------------------------------------------------------------------
     def action_view_report(self):
-        """เปิดหน้าจอสต๊อกการ์ดแบบ interactive ด้วยตัวกรองชุดนี้"""
+        """เปิดหน้าจอสต๊อกการ์ดแบบ interactive ด้วยตัวกรองชุดนี้
+
+        จอ interactive เริ่มยุบทุกแถวไว้ก่อนเสมอ (ข้อมูลมากอาจมีหลายพันแถวตั้งแต่
+        ระดับแรก) ผู้ใช้กดขยายเองทีละแถว — ต่างจาก PDF/Excel ที่ยังกางระดับแรกให้
+        ตามค่าฟอร์ม (ดู ``_options_for_output``) เพราะกระดาษกางเพิ่มทีหลังไม่ได้
+        """
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id(
             "biz_st_stock_card.action_stock_card_screen"
         )
-        action["context"] = {"sc_options": self._get_options()}
+        options = self._get_options()
+        options["unfold_level"] = 0
+        action["context"] = {"sc_options": options}
         return action
 
     def action_print_pdf(self):
@@ -230,6 +237,9 @@ class StockCardWizard(models.TransientModel):
     def action_export_xlsx(self):
         self.ensure_one()
         options = self._options_for_output()
+        # เจนไฟล์ก่อน write ครั้งเดียว — กันไม่ให้แถว wizard นี้ค้างเปิดอยู่ตลอด
+        # การคำนวณรายงานที่หนัก (แต่ก่อนมันเป็น create แล้วค่อย write คนละจังหวะ
+        # คร่อมทั้ง get_report_data() ยาว ๆ ชนกับ autovacuum ของ transient model)
         content = self.env["biz.stock.card.xlsx"].generate(options)
         filename = _("สต๊อกการ์ด_%s_%s.xlsx") % (options["date_from"], options["date_to"])
         self.write({

@@ -146,6 +146,7 @@
         select { width: 100%; }
     }
     .sc-menu-empty { padding: 6px; font-size: 12px; color: var(--sc-muted); }
+    .sc-menu-sep { height: 1px; margin: 4px 0; background: var(--sc-border); }
 
     // ------------------------------------------------------ axis pill
     .sc-axis {
@@ -207,6 +208,9 @@
     // ----------------------------------------------------------- table
     .sc-body { flex: 1; min-height: 0; padding: 8px 16px 16px; display: flex; }
     .sc-loading { margin: auto; color: var(--sc-muted); }
+    .sc-wh-prompt {
+        margin: auto; text-align: center; color: var(--sc-muted); max-width: 360px;
+    }
     .sc-table-wrap {
         flex: 1;
         min-height: 0;

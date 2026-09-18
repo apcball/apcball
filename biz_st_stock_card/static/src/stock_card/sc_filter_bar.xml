@@ -29,6 +29,12 @@
                         <span t-esc="warehouseLabel"/><i class="fa fa-caret-down ms-1"/>
                     </button>
                     <div class="sc-menu" t-if="state.whMenuOpen">
+                        <label class="sc-menu-all">
+                            <input type="checkbox" t-att-checked="props.options.all_warehouses"
+                                   t-on-change="() => this.chooseAllWarehouses()"/>
+                            <span>ทุกคลัง</span>
+                        </label>
+                        <div class="sc-menu-sep"/>
                         <label t-foreach="props.warehouses" t-as="wh" t-key="wh.id">
                             <input type="checkbox" t-att-checked="isPicked('warehouse_ids', wh.id)"
                                    t-on-change="() => this.togglePicked('warehouse_ids', wh.id)"/>

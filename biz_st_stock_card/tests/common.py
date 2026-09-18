@@ -106,9 +106,32 @@ class StockCardCommon(TransactionCase):
             "location_id": cls.virtual.id, "company_id": cls.company.id,
         })
 
+        # real_time valuation ต้องมีบัญชี input/output/valuation ของหมวดเอง —
+        # สร้างของเทสเองแทนพึ่งค่าบริษัทที่ตั้งไว้ (ฐาน DEV อาจไม่มีค่าเริ่มต้นนี้)
+        acc_input = cls.env["account.account"].create({
+            "name": "SC Stock Interim (Received)", "code": "SCTEST.IN",
+            "account_type": "asset_current",
+        })
+        acc_output = cls.env["account.account"].create({
+            "name": "SC Stock Interim (Delivered)", "code": "SCTEST.OUT",
+            "account_type": "asset_current",
+        })
+        acc_valuation = cls.env["account.account"].create({
+            "name": "SC Stock Valuation", "code": "SCTEST.VAL",
+            "account_type": "asset_current",
+        })
+        stock_journal = cls.env["account.journal"].search(
+            [("company_id", "=", cls.company.id), ("type", "=", "general"),
+             ("code", "=", "STJ")], limit=1,
+        )
+
         cls.categ = cls.env["product.category"].create({
             "name": "SC Category", "property_cost_method": "average",
             "property_valuation": "real_time",
+            "property_stock_account_input_categ_id": acc_input.id,
+            "property_stock_account_output_categ_id": acc_output.id,
+            "property_stock_valuation_account_id": acc_valuation.id,
+            "property_stock_journal": stock_journal.id if stock_journal else False,
         })
         cls.categ_other = cls.env["product.category"].create({
             "name": "SC Category Other", "property_cost_method": "average",

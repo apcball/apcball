@@ -78,14 +78,18 @@ export class ScFilterBar extends Component {
 
     get warehouseLabel() {
         const ids = this.props.options.warehouse_ids || [];
-        if (!ids.length) {
-            return "ทุกคลัง";
-        }
         if (ids.length === 1) {
             const found = this.props.warehouses.find((w) => w.id === ids[0]);
             return found ? found.name : "1 คลัง";
         }
-        return `${ids.length} คลัง`;
+        if (ids.length > 1) {
+            return `${ids.length} คลัง`;
+        }
+        return this.props.options.all_warehouses ? "ทุกคลัง" : "เลือกคลัง";
+    }
+
+    chooseAllWarehouses() {
+        this.props.onChange({ warehouse_ids: [], all_warehouses: true });
     }
 
     isPicked(field, id) {
@@ -101,6 +105,11 @@ export class ScFilterBar extends Component {
         if (field === "company_ids" && !next.length) {
             return;
         }
-        this.props.onChange({ [field]: next });
+        const changes = { [field]: next };
+        // เลือกคลังเจาะจงแล้ว ต้องเลิกโหมด "ทุกคลัง" เดิม ไม่งั้นตัวกรองขัดกันเอง
+        if (field === "warehouse_ids") {
+            changes.all_warehouses = false;
+        }
+        this.props.onChange(changes);
     }
 }

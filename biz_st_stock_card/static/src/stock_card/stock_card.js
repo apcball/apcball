@@ -23,8 +23,42 @@ export class StockCard extends Component {
             data: null,
             // ปล่อยให้ server เติมค่าตั้งต้น (ช่วงวันที่, เขตเวลา) — ไม่คำนวณซ้ำบน client
             options: this.props.action.context.sc_options || {},
+            // ยังไม่เลือกคลัง (หรือกด "ทุกคลัง") จะไม่ยิงคิวรีหนักของรายงานจริง
+            warehouseChoices: null,
         });
-        onWillStart(() => this.load());
+        onWillStart(() => this.warehouseGateReady ? this.load() : this.loadWarehouseChoices());
+    }
+
+    get warehouseGateReady() {
+        const options = this.state.options;
+        return !!((options.warehouse_ids && options.warehouse_ids.length) || options.all_warehouses);
+    }
+
+    /** คลัง/บริษัทให้ ScFilterBar ใช้ก่อนมีข้อมูลจริง — จาก endpoint เบา ไม่ใช่รายงานหนัก */
+    get filterWarehouses() {
+        if (this.state.data) {
+            return this.state.data.warehouses;
+        }
+        return this.state.warehouseChoices ? this.state.warehouseChoices.warehouses : [];
+    }
+
+    get filterCompanies() {
+        if (this.state.data) {
+            return this.state.data.allowed_companies;
+        }
+        return this.state.warehouseChoices ? this.state.warehouseChoices.allowed_companies : [];
+    }
+
+    async loadWarehouseChoices() {
+        this.state.loading = true;
+        try {
+            const choices = await this.orm.call(
+                "biz.stock.card.report", "get_warehouse_choices", [this.state.options]
+            );
+            this.state.warehouseChoices = choices;
+        } finally {
+            this.state.loading = false;
+        }
     }
 
     async load() {
@@ -46,6 +80,10 @@ export class StockCard extends Component {
 
     async updateOptions(changes) {
         Object.assign(this.state.options, changes);
+        // ยังไม่เลือกคลัง (หรือ "ทุกคลัง") — อย่าเพิ่งยิงคิวรีหนัก แค่รับตัวกรองไว้ก่อน
+        if (!this.state.data && !this.warehouseGateReady) {
+            return;
+        }
         await this.load();
     }
 

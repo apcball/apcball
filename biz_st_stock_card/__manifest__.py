@@ -39,6 +39,7 @@
     ],
     "external_dependencies": {"python": ["xlsxwriter"]},
     "data": [
+        "security/stock_card_security.xml",
         "security/ir.model.access.csv",
         "wizard/stock_card_wizard_views.xml",
         "report/stock_card_templates.xml",
