@@ -198,7 +198,7 @@
 
 // จำกัดรูปแบบกรอบ Odoo เฉพาะหน้าต่างเชื่อมต่อ LINE ซึ่งมีหัวข้อและปุ่มปิดของตัวเอง
 .modal-dialog:has(.o_line_connection_modal) {
-    width: 532px;
+    width: 600px;
     max-width: calc(100% - 16px);
 
     .modal-content { border-radius: 10px; overflow: hidden; }
@@ -325,7 +325,7 @@
 
     .o_line_connect_flow {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) max-content;
         align-items: stretch;
         gap: 12px;
     }
@@ -366,6 +366,7 @@
             counter-increment: line-step;
             font-size: 12px;
             line-height: 1.6;
+            white-space: nowrap;
             &::before {
                 content: counter(line-step);
                 display: grid;
@@ -416,10 +417,11 @@
         .btn { min-width: 62px; border: 1px solid #e1e5ef; border-radius: 7px; background: #f2f3f9; color: #303650; }
     }
 
-    @media (max-width: 480px) {
+    @media (max-width: 600px) {
         padding: 16px;
         .o_line_settings_header { gap: 10px; h1 { font-size: 22px; } }
         .o_line_connect_flow { grid-template-columns: minmax(0, 1fr); }
+        .o_line_connection_steps { overflow-x: auto; }
         .o_line_add_friend_mobile { display: flex; justify-content: center; padding: 10px; }
     }
 }
