@@ -109,6 +109,13 @@ class PosLiteOrder(models.Model):
     partner_address = fields.Char(tracking=True)
     partner_invoice_id = fields.Many2one('res.partner', string='Invoice Address', domain="['|', ('parent_id', '=', partner_id), ('id', '=', partner_id)]")
     partner_shipping_id = fields.Many2one('res.partner', string='Delivery Address', domain="['|', ('parent_id', '=', partner_id), ('id', '=', partner_id)]")
+    partner_email = fields.Char(related='partner_id.email', readonly=True, related_sudo=False)
+    invoice_contact_address = fields.Char(
+        related='partner_invoice_id.contact_address', readonly=True, related_sudo=False,
+    )
+    shipping_contact_address = fields.Char(
+        related='partner_shipping_id.contact_address', readonly=True, related_sudo=False,
+    )
     partner_tax_id = fields.Char(tracking=True)
     warehouse_id = fields.Many2one(
         'stock.warehouse', required=True,

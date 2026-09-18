@@ -1,0 +1,136 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# * pos_lite
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Order Date"
+msgstr "วันที่สั่งซื้อ"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Customer"
+msgstr "ลูกค้า"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Invoice Address"
+msgstr "ที่อยู่ในใบกำกับภาษี"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Delivery Address"
+msgstr "ที่อยู่จัดส่งสินค้า"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Additional Information"
+msgstr "ข้อมูลเพิ่มเติม"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Session Information"
+msgstr "ข้อมูล Session"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Order Summary"
+msgstr "สรุปคำสั่งซื้อ"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Created by"
+msgstr "สร้างโดย"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Created on"
+msgstr "สร้างเมื่อ"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Last Updated"
+msgstr "อัพเดตล่าสุด"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Untaxed"
+msgstr "ยอดรวมก่อนภาษี"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Tax"
+msgstr "ภาษี"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Total"
+msgstr "ยอดรวมทั้งสิ้น"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Margin"
+msgstr "กำไร"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Margin %"
+msgstr "อัตรากำไร"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Paid"
+msgstr "ชำระแล้ว"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Due"
+msgstr "ยอดค้างชำระ"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Change"
+msgstr "เงินทอน"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Order Lines"
+msgstr "รายการสินค้า"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Notes"
+msgstr "หมายเหตุ"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Phone"
+msgstr "โทรศัพท์"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Email"
+msgstr "อีเมล"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Address"
+msgstr "ที่อยู่"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Subtotal"
+msgstr "มูลค่าสินค้า"
+
+#. module: pos_lite
+#: model_terms:ir.ui.view,arch_db:pos_lite.view_pos_lite_order_form
+msgid "Cost"
+msgstr "ต้นทุน"
