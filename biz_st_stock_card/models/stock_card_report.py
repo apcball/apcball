@@ -581,6 +581,25 @@ class StockCardReport(models.AbstractModel):
         return bool(field and field.store)
 
     @api.model
+    def _svl_move_ids_for_date(self, opt, operator, bound):
+        """id ของ ``stock.move`` ที่ผ่านเงื่อนไขวันที่ — resolve ล่วงหน้าแทน dotted path
+
+        เดิม ``stock_move_id.date`` ใน domain ของ SVL ทำให้ ORM คอมไพล์เป็น
+        ``stock_move_id IN (SELECT ... WHERE date ...)`` ที่ผูกอยู่ใน OR สอง branch —
+        Postgres วางแผนเป็น correlated/bitmap-OR scan ที่ใช้ index ไม่ได้ดี เคสจริง
+        2026-09-18: 2 query ค้าง DataFileRead 2+ นาที CPU 100% พร้อมกัน (รายงานไม่กรอง
+        สินค้า = สแกนเกือบเต็ม stock_valuation_layer 268k แถว)
+
+        resolve เป็น id list ก่อนด้วย search() ธรรมดา ใช้ ``stock_move__date_index``
+        ได้ตรง ๆ แล้วส่ง ``stock_move_id IN (id, id, ...)`` ให้ query หลัก ซึ่งใช้
+        ``stock_valuation_layer__stock_move_id_index`` ได้ปกติ
+        """
+        domain = [("company_id", "in", opt["company_ids"]), ("date", operator, bound)]
+        if opt["product_ids"]:
+            domain.append(("product_id", "in", opt["product_ids"]))
+        return self._scoped("stock.move", opt).sudo().search(domain).ids
+
+    @api.model
     def _svl_date_domain(self, opt, operator, bound):
         """วันที่ของ SVL
 
@@ -588,7 +607,8 @@ class StockCardReport(models.AbstractModel):
         ซึ่งเป็นเวลาที่บันทึกถูกสร้าง ไม่ใช่เวลาที่ของเคลื่อนไหว
 
         - ``"move"`` (ค่าตั้งต้น): ใช้ ``stock_move_id.date`` ก่อน ทำให้มูลค่าตกงวด
-          เดียวกับจำนวนที่มันสังกัด (โมดูล biz_mrp_backdate ใช้กฎเดียวกัน)
+          เดียวกับจำนวนที่มันสังกัด (โมดูล biz_mrp_backdate ใช้กฎเดียวกัน) — id ของ
+          move resolve ล่วงหน้าผ่าน ``_svl_move_ids_for_date`` (ดู docstring ที่นั่น)
         - ``"accounting"``: ใช้ ``COALESCE(accounting_date, create_date)`` — กฎเดียวกับ
           ``stock_fifo_valuation_report`` ที่แยก accounting_date ออกจาก create_date
           ไว้เพื่อให้รายงานนี้กับ Stock Valuation ของ core เห็นชั้นย้อนวันที่ตรงกัน
@@ -602,9 +622,10 @@ class StockCardReport(models.AbstractModel):
                 "&", ("accounting_date", "!=", False), ("accounting_date", operator, bound),
                 "&", ("accounting_date", "=", False), ("create_date", operator, bound),
             ]
+        move_ids = self._svl_move_ids_for_date(opt, operator, bound)
         return [
             "|",
-            "&", ("stock_move_id", "!=", False), ("stock_move_id.date", operator, bound),
+            ("stock_move_id", "in", move_ids),
             "&", ("stock_move_id", "=", False), ("create_date", operator, bound),
         ]
 
