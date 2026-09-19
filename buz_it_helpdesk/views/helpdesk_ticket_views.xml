@@ -268,6 +268,5 @@
         <field name="res_model">buz.helpdesk.ticket</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_helpdesk_ticket_search"/>
-        <field name="domain" eval="[('stage_id', '!=', ref('buz_it_helpdesk.stage_draft'))]"/>
     </record>
 </odoo>
