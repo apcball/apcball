@@ -39,6 +39,7 @@ without dependencies on custom or business modules.
             'buz_it_helpdesk/static/src/xml/helpdesk_line_connection.xml',
             'buz_it_helpdesk/static/src/scss/helpdesk_attachment_preview.scss',
             'buz_it_helpdesk/static/src/scss/helpdesk_ticket_kanban.scss',
+            'buz_it_helpdesk/static/src/scss/helpdesk_ticket_form.scss',
             'buz_it_helpdesk/static/src/scss/helpdesk_line_settings.scss',
         ],
     },

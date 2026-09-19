@@ -1,0 +1,123 @@
+.o_buz_helpdesk_ticket_form {
+    --buz-helpdesk-primary: #0b789e;
+    --buz-helpdesk-border: #d9e2ec;
+    --buz-helpdesk-surface: #f5f9fc;
+
+    background: var(--buz-helpdesk-surface);
+    padding: 1rem;
+
+    .o_buz_helpdesk_ticket_layout {
+        align-items: flex-start;
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+    }
+
+    .o_buz_helpdesk_ticket_main,
+    .o_buz_helpdesk_ticket_sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        min-width: 0;
+    }
+
+    .o_buz_helpdesk_ticket_card {
+        background: #fff;
+        border: 1px solid var(--buz-helpdesk-border);
+        border-radius: .65rem;
+        box-shadow: 0 1px 3px rgba(24, 56, 85, .06);
+        min-width: 0;
+        padding: 1rem;
+
+        .o_form_label,
+        .o_form_field {
+            max-width: 100%;
+        }
+
+        .o_field_widget {
+            min-width: 0;
+        }
+    }
+
+    .o_buz_helpdesk_card_title {
+        align-items: center;
+        border-bottom: 1px solid #edf2f7;
+        color: #17324d;
+        display: flex;
+        font-size: 1.05rem;
+        font-weight: 600;
+        gap: .5rem;
+        margin-bottom: .85rem;
+        padding-bottom: .65rem;
+    }
+
+    .o_buz_helpdesk_problem_card {
+        .o_buz_helpdesk_problem_fields {
+            margin-bottom: .75rem;
+            width: 100%;
+
+            .o_form_label,
+            .o_field_widget {
+                min-width: 0;
+            }
+        }
+
+        .oe_title {
+            margin-bottom: .9rem;
+
+            h1 {
+                margin-bottom: 0;
+            }
+        }
+
+        > .o_form_label,
+        > .o_field_widget {
+            margin-bottom: .6rem;
+        }
+
+        > .o_horizontal_separator {
+            margin-top: 1rem;
+        }
+    }
+
+    .o_buz_helpdesk_attachment_card {
+        .o_horizontal_separator {
+            margin-top: 0;
+        }
+    }
+
+    .o_buz_helpdesk_ticket_full_width {
+        background: #fff;
+        border: 1px solid var(--buz-helpdesk-border);
+        border-radius: .65rem;
+        margin-top: 1rem;
+        padding: 1rem;
+    }
+
+    .o_form_view & .o_form_label {
+        color: #334e68;
+    }
+
+    .o_form_view & .oe_title h1 input {
+        border-bottom-color: #86b7d5;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .o_buz_helpdesk_ticket_form {
+        .o_buz_helpdesk_ticket_layout {
+            grid-template-columns: 1fr;
+        }
+    }
+}
+
+@media (max-width: 575.98px) {
+    .o_buz_helpdesk_ticket_form {
+        padding: .5rem;
+
+        .o_buz_helpdesk_ticket_card,
+        .o_buz_helpdesk_ticket_full_width {
+            padding: .75rem;
+        }
+    }
+}
