@@ -1,16 +1,18 @@
 .o_buz_helpdesk_ticket_form {
     --buz-helpdesk-primary: #0b789e;
-    --buz-helpdesk-border: #d9e2ec;
-    --buz-helpdesk-surface: #f5f9fc;
+    --buz-helpdesk-border: #dce9f2;
+    --buz-helpdesk-surface: #f3f8fc;
 
     background: var(--buz-helpdesk-surface);
-    padding: 1rem;
+    padding: 1.25rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
 
     .o_buz_helpdesk_ticket_layout {
         align-items: flex-start;
         display: grid;
         gap: 1rem;
-        grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     }
 
     .o_buz_helpdesk_ticket_main,
@@ -24,10 +26,10 @@
     .o_buz_helpdesk_ticket_card {
         background: #fff;
         border: 1px solid var(--buz-helpdesk-border);
-        border-radius: .65rem;
+        border-radius: .75rem;
         box-shadow: 0 1px 3px rgba(24, 56, 85, .06);
         min-width: 0;
-        padding: 1rem;
+        padding: 1.25rem;
 
         .o_form_label,
         .o_form_field {
@@ -53,6 +55,9 @@
 
     .o_buz_helpdesk_problem_card {
         .o_buz_helpdesk_problem_fields {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem 1.5rem;
             margin-bottom: .75rem;
             width: 100%;
 
@@ -63,6 +68,8 @@
         }
 
         .oe_title {
+            max-width: none;
+            width: 100%;
             margin-bottom: .9rem;
 
             h1 {
@@ -89,9 +96,10 @@
     .o_buz_helpdesk_ticket_full_width {
         background: #fff;
         border: 1px solid var(--buz-helpdesk-border);
-        border-radius: .65rem;
+        border-radius: .75rem;
         margin-top: 1rem;
-        padding: 1rem;
+        padding: 1.25rem;
+        min-width: 0;
     }
 
     .o_form_view & .o_form_label {
@@ -101,9 +109,62 @@
     .o_form_view & .oe_title h1 input {
         border-bottom-color: #86b7d5;
     }
+
+    .o_buz_helpdesk_labeled_field {
+        min-width: 0;
+
+        > .o_form_label {
+            display: block;
+            margin-bottom: .4rem;
+            color: #334e68;
+        }
+
+        > .o_field_widget {
+            width: 100%;
+        }
+    }
+
+    .o_buz_helpdesk_ticket_card,
+    .o_buz_helpdesk_ticket_full_width {
+        .o_input:not([type="checkbox"]):not([type="radio"]) {
+            border: 1px solid var(--buz-helpdesk-border);
+            border-radius: .375rem;
+            padding: .5rem .65rem;
+
+            &:focus {
+                border-color: var(--buz-helpdesk-primary);
+                outline: 2px solid rgba(11, 120, 158, .15);
+                outline-offset: 1px;
+            }
+        }
+
+        .o_field_many2one .o_input {
+            padding-right: 1.75rem;
+        }
+
+        .o_field_widget,
+        .o_group,
+        .o_inner_group,
+        .o_cell {
+            min-width: 0;
+        }
+
+        .o_field_widget.o_readonly_modifier:not(.o_field_x2many) {
+            overflow-wrap: anywhere;
+        }
+
+        .o_field_x2many {
+            max-width: 100%;
+
+            .o_list_renderer {
+                max-width: 100%;
+                overflow-x: auto;
+            }
+        }
+    }
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 1199.98px) {
     .o_buz_helpdesk_ticket_form {
         .o_buz_helpdesk_ticket_layout {
             grid-template-columns: 1fr;
@@ -111,13 +172,39 @@
     }
 }
 
-@media (max-width: 575.98px) {
+@media (max-width: 767.98px) {
     .o_buz_helpdesk_ticket_form {
-        padding: .5rem;
+        padding: .75rem;
+
+        .o_buz_helpdesk_problem_card .o_buz_helpdesk_problem_fields {
+            grid-template-columns: minmax(0, 1fr);
+            gap: .75rem;
+        }
 
         .o_buz_helpdesk_ticket_card,
         .o_buz_helpdesk_ticket_full_width {
             padding: .75rem;
+
+            // จัด Label เหนือช่องโดยไม่เปลี่ยน Widget หรือเงื่อนไขสิทธิ์
+            .o_inner_group {
+                grid-template-columns: minmax(0, 1fr);
+                width: 100%;
+                flex-basis: 100%;
+
+                > .o_cell {
+                    grid-column: 1 / -1;
+                    max-width: 100%;
+                }
+            }
+
+            .o_form_label {
+                white-space: normal;
+            }
+
+            .o_input:not([type="checkbox"]):not([type="radio"]) {
+                font-size: 16px;
+                min-height: 44px;
+            }
         }
     }
 }

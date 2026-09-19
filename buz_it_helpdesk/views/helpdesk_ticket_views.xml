@@ -188,16 +188,22 @@
                                     <label for="subject" string="หัวข้อ / Subject" class="oe_edit_only"/>
                                     <h1><field name="subject" placeholder="ระบุหัวข้อ Ticket / Enter ticket subject" readonly="not is_editable"/></h1>
                                 </div>
-                                <group class="o_buz_helpdesk_problem_fields" col="2">
-                                    <field name="category_id" string="หมวดหมู่ / Category" required="is_draft_stage" force_save="1" readonly="not can_edit_category"/>
-                                    <field name="category_type_id" string="ประเภท / Type" readonly="not is_editable"
-                                           domain="[('id', 'in', category_type_ids)]"
-                                           invisible="not show_category_type"/>
+                                <div class="o_buz_helpdesk_problem_fields">
+                                    <div class="o_buz_helpdesk_labeled_field">
+                                        <label for="category_id"/>
+                                        <field name="category_id" string="หมวดหมู่ / Category" required="is_draft_stage" force_save="1" readonly="not can_edit_category"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field" invisible="not show_category_type">
+                                        <label for="category_type_id"/>
+                                        <field name="category_type_id" string="ประเภท / Type" readonly="not is_editable"
+                                               domain="[('id', 'in', category_type_ids)]"
+                                               invisible="not show_category_type"/>
+                                    </div>
                                     <field name="category_type_ids" invisible="1"/>
                                     <field name="show_category_type" invisible="1"/>
                                     <field name="can_edit_category_priority" invisible="1"/>
                                     <field name="can_edit_category" invisible="1"/>
-                                </group>
+                                </div>
                                 <separator string="รายละเอียด / Description"/>
                                 <field name="description" nolabel="1" readonly="not is_editable"/>
                             </div>
