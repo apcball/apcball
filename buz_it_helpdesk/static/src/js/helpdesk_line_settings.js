@@ -156,7 +156,7 @@ export class HelpdeskLineConnection extends Component {
         this.action = useService("action");
         this.state = useState({
             softReminder: Boolean(this.props.action?.context?.soft_line_reminder),
-            loading: true, connected: false, masked: "", code: "",
+            loading: true, statusLoaded: false, connected: false, masked: "", code: "",
             expiresAt: 0, expiresAtText: "", remaining: 0, error: "", botName: "",
             basicId: "", pictureUrl: "", addFriendUrl: "", qrDataUrl: "", qrError: "",
         });
@@ -187,6 +187,7 @@ export class HelpdeskLineConnection extends Component {
     }
 
     applyStatus(data) {
+        this.state.statusLoaded = true;
         this.state.connected = data.connected;
         this.state.masked = data.line_user_masked || "";
         this.state.botName = data.display_name || "";
@@ -198,6 +199,14 @@ export class HelpdeskLineConnection extends Component {
             this.state.code = "";
             this.clearTimers();
         }
+    }
+
+    startConnection() {
+        if (this.state.connected) {
+            return;
+        }
+        this.state.softReminder = false;
+        this.state.error = "";
     }
 
     refreshQr() {

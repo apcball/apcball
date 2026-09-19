@@ -198,7 +198,7 @@
 
 // จำกัดรูปแบบกรอบ Odoo เฉพาะหน้าต่างเชื่อมต่อ LINE ซึ่งมีหัวข้อและปุ่มปิดของตัวเอง
 .modal-dialog:has(.o_line_connection_modal) {
-    width: 600px;
+    width: 640px;
     max-width: calc(100% - 16px);
 
     .modal-content { border-radius: 10px; overflow: hidden; }
@@ -215,6 +215,168 @@
     padding: 20px 22px 14px;
     color: #171c43;
     background: #fff;
+
+    .o_line_invitation {
+        position: relative;
+        padding: 38px 44px 32px;
+        text-align: center;
+    }
+
+    .o_line_invitation_close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #68758c;
+        font-size: 20px;
+        line-height: 28px;
+        &:hover { background: #f3f4f8; color: #171c43; }
+    }
+
+    .o_line_invitation_brand {
+        display: grid;
+        place-items: center;
+        width: 76px;
+        height: 76px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        background: #06c755;
+        box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .08);
+
+        span {
+            position: relative;
+            display: grid;
+            place-items: center;
+            width: 53px;
+            height: 43px;
+            border-radius: 50%;
+            background: #fff;
+            color: #06b84e;
+            font: 700 16px Arial, sans-serif;
+            &::after {
+                content: '';
+                position: absolute;
+                bottom: -6px;
+                left: 21px;
+                border-top: 12px solid #fff;
+                border-right: 12px solid transparent;
+            }
+        }
+    }
+
+    .o_line_invitation_success {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        color: #168b4c;
+        font-size: 16px;
+        font-weight: 600;
+        .fa { font-size: 25px; }
+    }
+
+    .o_line_invitation h1 {
+        margin: 0;
+        color: #172033;
+        font-size: 27px;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .o_line_invitation_subtitle {
+        margin: 8px 0 26px;
+        color: #69758a;
+        font-size: 18px;
+        line-height: 1.5;
+    }
+
+    .o_line_invitation_benefits {
+        display: grid;
+        gap: 12px;
+        width: max-content;
+        max-width: 100%;
+        margin: 0 auto 25px;
+        text-align: left;
+    }
+
+    .o_line_invitation_benefit {
+        display: flex;
+        align-items: center;
+        gap: 19px;
+        color: #172033;
+        font-size: 17px;
+        line-height: 1.4;
+    }
+
+    .o_line_benefit_icon {
+        display: grid;
+        place-items: center;
+        flex: 0 0 58px;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        background: #e5f8eb;
+        color: #159b50;
+        font-size: 27px;
+    }
+
+    .o_line_invitation_note {
+        padding-top: 23px;
+        border-top: 1px solid #e1e5eb;
+        color: #69758a;
+        font-size: 15px;
+        line-height: 1.5;
+    }
+
+    .o_line_invitation_actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 13px;
+        margin-top: 26px;
+
+        .btn {
+            min-height: 52px;
+            border-radius: 6px;
+            font-size: 17px;
+            font-weight: 600;
+        }
+    }
+
+    .o_line_invitation_later {
+        border: 1px solid #aeb8c7;
+        background: #fff;
+        color: #172033;
+        &:hover { background: #f7f8fa; }
+    }
+
+    .o_line_invitation_connect {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        border-color: #20a653;
+        background: #20ae58;
+        color: #fff;
+        &:hover { border-color: #168b46; background: #168b46; color: #fff; }
+        > .fa { margin-left: 3px; font-size: 16px; }
+    }
+
+    .o_line_button_icon {
+        display: inline-grid;
+        place-items: center;
+        width: 25px;
+        height: 20px;
+        border-radius: 50%;
+        background: #fff;
+        color: #159b50;
+        font: 700 7px Arial, sans-serif;
+    }
 
     .o_line_settings_header {
         display: flex;
@@ -419,6 +581,12 @@
 
     @media (max-width: 600px) {
         padding: 16px;
+        .o_line_invitation { padding: 34px 20px 24px; }
+        .o_line_invitation h1 { font-size: 22px; }
+        .o_line_invitation_subtitle { font-size: 16px; }
+        .o_line_invitation_benefit { gap: 12px; font-size: 15px; }
+        .o_line_benefit_icon { flex-basis: 50px; width: 50px; height: 50px; font-size: 23px; }
+        .o_line_invitation_actions { grid-template-columns: 1fr; }
         .o_line_settings_header { gap: 10px; h1 { font-size: 22px; } }
         .o_line_connect_flow { grid-template-columns: minmax(0, 1fr); }
         .o_line_connection_steps { overflow-x: auto; }
