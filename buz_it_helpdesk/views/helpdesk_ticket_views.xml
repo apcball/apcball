@@ -211,6 +211,44 @@
                                 <separator string="ไฟล์แนบ / Attachments"/>
                                 <field name="attachment_ids" widget="buz_helpdesk_attachment_preview" nolabel="1" readonly="not is_editable"/>
                             </div>
+                            <div class="o_buz_helpdesk_ticket_card o_buz_helpdesk_approval_card" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
+                                <div class="o_buz_helpdesk_card_title">การอนุมัติ / Approval</div>
+                                <field name="approval_manager_domain_ids" invisible="1"/>
+                                <div class="o_buz_helpdesk_approval_fields">
+                                    <div class="o_buz_helpdesk_labeled_field">
+                                        <label for="approval_manager_id"/>
+                                        <field name="approval_manager_id" readonly="approval_state not in ['none', 'rejected']" options="{'no_create': True, 'no_open': True}"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field">
+                                        <label for="approval_state"/>
+                                        <field name="approval_state" widget="badge" decoration-muted="approval_state == 'none'" decoration-warning="approval_state == 'pending'" decoration-success="approval_state == 'approved'" decoration-danger="approval_state == 'rejected'" readonly="1"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field">
+                                        <label for="approval_requested_by"/>
+                                        <field name="approval_requested_by" readonly="1"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field">
+                                        <label for="approval_requested_at"/>
+                                        <field name="approval_requested_at" readonly="1"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field">
+                                        <label for="approval_decided_by"/>
+                                        <field name="approval_decided_by" readonly="1"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field">
+                                        <label for="approval_decided_at"/>
+                                        <field name="approval_decided_at" readonly="1"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field o_buz_helpdesk_approval_wide">
+                                        <label for="approval_request_note"/>
+                                        <field name="approval_request_note" readonly="approval_state not in ['none', 'rejected']" placeholder="Reason or context for the approval request"/>
+                                    </div>
+                                    <div class="o_buz_helpdesk_labeled_field o_buz_helpdesk_approval_wide" invisible="approval_state != 'rejected'">
+                                        <label for="approval_rejection_reason"/>
+                                        <field name="approval_rejection_reason" readonly="1" invisible="approval_state != 'rejected'"/>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="o_buz_helpdesk_ticket_sidebar">
                             <div class="o_buz_helpdesk_ticket_card">
@@ -255,17 +293,6 @@
                         </div>
                     </div>
                     <div class="o_buz_helpdesk_repair_section_anchor"/>
-                    <group class="o_buz_helpdesk_ticket_full_width" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
-                            <field name="approval_manager_domain_ids" invisible="1"/>
-                            <field name="approval_manager_id" readonly="approval_state not in ['none', 'rejected']" options="{'no_create': True, 'no_open': True}"/>
-                            <field name="approval_state" widget="badge" decoration-muted="approval_state == 'none'" decoration-warning="approval_state == 'pending'" decoration-success="approval_state == 'approved'" decoration-danger="approval_state == 'rejected'" readonly="1"/>
-                            <field name="approval_request_note" readonly="approval_state not in ['none', 'rejected']" placeholder="Reason or context for the approval request"/>
-                            <field name="approval_requested_by" readonly="1"/>
-                            <field name="approval_requested_at" readonly="1"/>
-                            <field name="approval_decided_by" readonly="1"/>
-                            <field name="approval_decided_at" readonly="1"/>
-                            <field name="approval_rejection_reason" readonly="1" invisible="approval_state != 'rejected'"/>
-                    </group>
                     <group string="Rejection Details" class="o_buz_helpdesk_ticket_full_width" invisible="not is_rejected_stage">
                         <field name="ticket_rejection_reason_type" readonly="1"/>
                         <field name="ticket_rejection_reason" readonly="1"/>
