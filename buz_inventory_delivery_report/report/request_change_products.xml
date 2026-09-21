@@ -313,7 +313,7 @@
                             <!-- กล่องที่ 3: 35% ขวาสุด -->
                             <div class="document-info" style="width: 35%; padding: 6px 8px;">
                                 <div>วันที่เอกสาร: <t t-esc="o.date"/></div>
-                                <div>วันที่ดำเนินการ: <t t-esc="o.date_done.strftime('%d/%m/%Y') if o.date_done else ''"/></div>
+                                <div>Effective Date: <t t-esc="o.date_done.strftime('%d/%m/%Y') if o.date_done else ''"/></div>
                                 <div>ผู้ติดต่อพนักงาน: <t t-esc="o.employee_contact_id.name or ''"/></div>
                                 <div>Sale ผู้ดูแล: <t t-esc="o.employee_contact_id.name or ''"/></div>
                                 <div>สถานที่รับกลับ: <t t-esc="o.note or ''"/></div>

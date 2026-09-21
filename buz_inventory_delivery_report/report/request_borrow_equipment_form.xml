@@ -205,13 +205,19 @@
                         </div>
                     </div>
 
-                    <!-- เลขที่เอกสาร + วันที่แจ้ง + วันที่ Confirm -->
+                    <!-- เลขที่เอกสาร วันที่ดำเนินการจริง Job No และวันที่ -->
                     <div style="flex: 1; text-align: right;margin-top: -40px;line-height: -5; ">
                         <div style="margin-bottom: 5px;line-height: -5;">
                             <strong>
                                 เลขที่เอกสาร:
                             </strong>
                             <span t-field="o.name" />
+                        </div>
+                        <div style="margin-bottom: 5px;margin-top: -10px;line-height: -5;">
+                            <strong>
+                                Effective Date:
+                            </strong>
+                            <span t-field="o.date_done" t-options='{"widget": "date"}'/>
                         </div>
                         <div style="margin-bottom: 5px;margin-top: -10px;line-height: -5;">
                             <strong>
@@ -222,7 +228,7 @@
                         </div>
                         <div style="margin-bottom: 5px;margin-top: -10px;line-height: -5;">
                             <strong>
-                                วันที่
+                                วันที่:
                             </strong>
                             <span t-field="o.date_confirmed" t-options='{"widget": "datetime"}'/>
                         </div>

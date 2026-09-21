@@ -205,6 +205,10 @@
                                          <strong style="width: 60%; display: inline-block; font-size: 20px;">เลขที่:</strong>
                                          <span t-field="o.name" style="font-size: 20px;"/>
                                     </div>
+                                    <div class="mb-0" style="margin-bottom:-6px !important;">
+                                         <strong style="width: 60%; display: inline-block; font-size: 20px;">Effective Date:</strong>
+                                         <span t-field="o.date_done" t-options='{"widget": "date"}' style="font-size: 20px;"/>
+                                    </div>
                                     <div class="mb-0" style="margin-bottom:0px !important;">
                                          <strong style="width: 60%; display: inline-block; font-size: 20px;">Sale:</strong>
                                          <span t-field="o.sale_id.user_id.name" style="font-size: 20px;"/>
