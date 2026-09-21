@@ -114,19 +114,25 @@
                                             </tr>
                                         </table>
                                     </td>
-                                    <td style="width: 40%; vertical-align: top; border: none; padding: 0;">
-                                        <table style="width: 100%; border: none;">
+                                    <td style="width: 40%; vertical-align: top; border: none; padding: 0 0 0 24px;">
+                                        <table style="width: 100%; border: none; border-collapse: separate; border-spacing: 0 3px;">
                                             <tr>
-                                                <td style="width: 100px; vertical-align: top; border: none; padding: 3px 0; text-align: right; padding-right: 15px;">เลขที่เอกสาร</td>
-                                                <td style="vertical-align: top; border: none; padding: 3px 0;"><span t-field="o.name"/></td>
+                                                <td style="vertical-align: top; border: none; padding: 4px 12px 4px 0; text-align: left; white-space: nowrap;">เลขที่เอกสาร</td>
+                                                <td colspan="3" style="vertical-align: top; border: none; padding: 4px 0; text-align: left;">
+                                                    <span t-field="o.name"/>
+                                                </td>
                                             </tr>
                                             <tr>
-                                                <td style="vertical-align: top; border: none; padding: 3px 0; text-align: right; padding-right: 15px;">วันที่</td>
-                                                <td style="vertical-align: top; border: none; padding: 3px 0;"><span t-field="o.scheduled_date" t-options='{"widget": "date"}'/></td>
+                                                <td style="vertical-align: top; border: none; padding: 4px 12px 4px 0; text-align: left; white-space: nowrap;">วันที่</td>
+                                                <td colspan="3" style="vertical-align: top; border: none; padding: 4px 0; white-space: nowrap;"><span t-field="o.scheduled_date" t-options='{"widget": "date"}'/></td>
                                             </tr>
                                             <tr>
-                                                <td style="vertical-align: top; border: none; padding: 3px 0; text-align: right; padding-right: 15px;">Ref</td>
-                                                <td style="vertical-align: top; border: none; padding: 3px 0;">
+                                                <td style="vertical-align: top; border: none; padding: 4px 12px 4px 0; text-align: left; white-space: nowrap;">Effective Date</td>
+                                                <td colspan="3" style="vertical-align: top; border: none; padding: 4px 0; white-space: nowrap;"><span t-field="o.date_done" t-options='{"widget": "date"}'/></td>
+                                            </tr>
+                                            <tr>
+                                                <td style="vertical-align: top; border: none; padding: 4px 12px 4px 0; text-align: left; white-space: nowrap;">Ref.</td>
+                                                <td colspan="3" style="vertical-align: top; border: none; padding: 4px 0; text-align: left; word-wrap: break-word;">
                                                     <t t-set="bills" t-value="po.invoice_ids.filtered(lambda i: i.state != 'cancel').mapped('name') if po else []"/>
                                                     <span t-esc="', '.join([b for b in bills if b and b != '/']) if bills and any(b != '/' for b in bills) else o.origin"/>
                                                 </td>
