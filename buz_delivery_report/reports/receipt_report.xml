@@ -197,12 +197,12 @@
                 <!-- Right: Document Details -->
                 <div class="col-6">
                     <div class="info-box">
-                        <div class="mb-2">
-                            <strong style="width: 20%; display: inline-block;">วันที่ Effective Date:</strong>
-                            <span t-field="doc.date_done" t-options='{"widget": "date"}'/>
+                        <div class="mb-2" style="white-space: nowrap;">
+                            <strong style="display: inline-block; width: 120px; white-space: nowrap;">Effective Date:</strong>
+                            <span style="display: inline;" t-field="doc.date_done" t-options='{"widget": "date"}'/>
                         </div>
                         <div class="mb-2">
-                            <strong style="width: 20%; display: inline-block;">เลขที่เอกสาร:</strong>
+                            <strong style="display: inline-block; width: 120px; white-space: nowrap;">เลขที่เอกสาร:</strong>
                             <span t-field="doc.name"/>
                             <span class="ml-4">
                                 <strong style="width: 20%; display: inline-block;">เลขที่ใบสั่งซื้อ:</strong>
@@ -211,12 +211,12 @@
                         </div>
                         <div class="mb-2">
                             <t t-set="vendor_bill" t-value="doc.purchase_id.invoice_ids[:1] if doc.purchase_id else False"/>
-                            <strong style="width: 30%; display: inline-block;">เลขที่ใบกำกับภาษี:</strong>
+                            <strong style="display: inline-block; width: 120px; white-space: nowrap;">เลขที่ใบกำกับภาษี:</strong>
                             <span t-if="vendor_bill" t-field="vendor_bill.name"/>
                             <span t-else="">-</span>
                         </div>
                         <div class="mb-2">
-                            <strong style="width: 20%; display: inline-block;">ที่อยู่จัดส่ง:</strong>
+                            <strong style="display: inline-block; width: 120px; white-space: nowrap;">ที่อยู่จัดส่ง:</strong>
                             <span t-field="doc.location_dest_id.warehouse_id.name"/>
                         </div>
                     </div>

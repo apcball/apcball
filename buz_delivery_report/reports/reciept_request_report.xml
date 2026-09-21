@@ -154,23 +154,23 @@
                                     <div class="col-6">
                                         <div class="info-box" style="height: 200px;">
                                             <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">ผู้ขอ:</strong>
+                                                <strong style="width: 19%; display: inline-block;">ผู้ขอ:</strong>
                                                 <span t-esc="doc.user_id.name or '-'"/>
                                             </div>
                                             <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">แผนก:</strong>
+                                                <strong style="width: 19%; display: inline-block;">แผนก:</strong>
                                                 <span t-esc="doc.location_id.warehouse_id.name or '-'"/>
                                             </div>
                                             <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">ที่อยู่:</strong>
+                                                <strong style="width: 19%; display: inline-block;">ที่อยู่:</strong>
                                                 <span t-esc="doc.location_id.complete_name or '-'"/>
                                             </div>
                                             <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">โทรศัพท์:</strong>
+                                                <strong style="width: 19%; display: inline-block;">โทรศัพท์:</strong>
                                                 <span t-esc="doc.partner_id.phone or '-'"/>
                                             </div>
                                             <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">วัตถุประสงค์:</strong>
+                                                <strong style="width: 19%; display: inline-block;">วัตถุประสงค์:</strong>
                                                 <span t-field="doc.delivery_note"/>
                                             </div>
                                         </div>
@@ -178,27 +178,27 @@
                                     <div class="col-6">
                                         <div class="info-box" style="height: 200px;">
                                             <div class="mb-2" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
-                                                <strong style="display: inline-block; min-width: 140px;">วันที่ Effective Date:</strong>
+                                                <strong style="display: inline-block; min-width: 116px;">Effective Date:</strong>
                                                 <span style="display: inline;" t-field="doc.date_done" t-options='{"widget": "date"}'/>
                                             </div>
-                                            <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">เลขที่เอกสาร:</strong>
+                                            <div class="mb-2" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                                                <strong style="display: inline-block; min-width: 116px;">เลขที่เอกสาร:</strong>
                                                 <span t-field="doc.name" style="display: inline-block; margin-right: 25px;"/>
                                                 <span class="ml-4">
                                                     <strong style="width: 20%; display: inline-block;">เลขที่อ้างอิง:</strong>
                                                     <span t-field="doc.origin"/>
                                                 </span>
                                             </div>
-                                            <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">สถานที่ต้นทาง:</strong>
+                                            <div class="mb-2" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                                                <strong style="display: inline-block; min-width: 116px;">สถานที่ต้นทาง:</strong>
                                                 <span t-field="doc.location_id.complete_name"/>
                                             </div>
-                                            <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">สถานที่ปลายทาง:</strong>
+                                            <div class="mb-2" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                                                <strong style="display: inline-block; min-width: 116px;">สถานที่ปลายทาง:</strong>
                                                 <span t-field="doc.location_dest_id.complete_name"/>
                                             </div>
-                                            <div class="mb-2">
-                                                <strong style="width: 25%; display: inline-block;">ระยะเวลายืม:</strong>
+                                            <div class="mb-2" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                                                <strong style="display: inline-block; min-width: 116px;">ระยะเวลายืม:</strong>
                                                 <span>365</span>
                                             </div>
                                         </div>

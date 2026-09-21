@@ -310,6 +310,10 @@
                                                     <strong style="width: 30%; display: inline-block;">วันที่ต้องการสินค้า:</strong>
                                                     <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
                                                 </div>
+                                                 <div class="mb-2">
+                                                     <strong style="width: 30%; display: inline-block;">Effective Date:</strong>
+                                                     <span t-field="doc.date_done" t-options='{"widget": "date"}'/>
+                                                 </div>
                                             </div>
                                         </div>
                                     </div>
