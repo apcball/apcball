@@ -13,12 +13,14 @@ class TestBomExcelReport(TransactionCase):
         cls.product_model = cls.env["product.product"]
         cls.uom = cls.env.ref("uom.product_uom_unit")
 
-    def _create_bom(self, bom_type, with_component=True):
+    def _create_bom(self, bom_type, with_component=True, reference=None):
         parent = self.product_model.create({"name": "BOM Excel Parent"})
         values = {
             "product_tmpl_id": parent.product_tmpl_id.id,
             "type": bom_type,
         }
+        if reference is not None:
+            values["code"] = reference
         if with_component:
             component = self.product_model.create({"name": "BOM Excel Component"})
             values["bom_line_ids"] = [
@@ -84,3 +86,35 @@ class TestBomExcelReport(TransactionCase):
         self.assertIn(expected_label, shared_strings)
         self.assertNotIn(b"Storable Product", shared_strings)
         self.assertNotIn(b"Consumable", shared_strings)
+
+    def test_reference_is_used_for_bom_name(self):
+        bom = self._create_bom("normal", reference="BOM-REF-001")
+
+        rows = self.report._prepare_rows(bom)
+
+        self.assertEqual({row["bom_name"] for row in rows}, {"BOM-REF-001"})
+        self.assertNotIn("BOM Excel Parent", rows[0]["bom_name"])
+
+    def test_missing_reference_keeps_bom_name_empty(self):
+        bom = self._create_bom("normal", reference=None)
+
+        rows = self.report._prepare_rows(bom)
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({row["bom_name"] for row in rows}, {""})
+
+    def test_generated_workbook_keeps_missing_reference_empty(self):
+        import xlsxwriter
+
+        bom = self._create_bom("normal", reference=None)
+        stream = io.BytesIO()
+        workbook = xlsxwriter.Workbook(stream, {"in_memory": True})
+
+        self.report.generate_xlsx_report(workbook, {}, bom)
+        workbook.close()
+
+        with zipfile.ZipFile(stream) as archive:
+            worksheet = archive.read("xl/worksheets/sheet1.xml").decode()
+
+        self.assertIn('r="C3"', worksheet)
+        self.assertNotIn("BOM Excel Parent", worksheet)

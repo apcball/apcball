@@ -61,9 +61,7 @@ class BomExcelReport(models.AbstractModel):
             parent_values = {
                 "product_code": self._product_code(parent),
                 "product_name": self._product_name(parent),
-                "bom_name": self._text(
-                    bom.code or bom.product_tmpl_id.name or bom.product_id.name
-                ),
+                "bom_name": self._text(bom.code),
                 # ฟิลด์ note อาจไม่มีใน mrp.bom ของบางระบบ จึงใช้ค่าว่างแทน
                 # ฟิลด์ note อาจไม่มีใน mrp.bom ของบางระบบ จึงใช้ค่าว่างแทน
                 "note": self._text(getattr(bom, "note", "")),
