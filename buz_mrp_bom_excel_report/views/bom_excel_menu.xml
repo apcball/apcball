@@ -1,10 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem
-        id="menu_bom_excel_report"
-        name="Export BOM Excel"
-        parent="mrp.menu_mrp_bom"
-        action="action_bom_excel_wizard"
-        groups="mrp.group_mrp_user"
-        sequence="90"/>
 </odoo>

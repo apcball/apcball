@@ -93,6 +93,32 @@ class TestBomExcelReport(TransactionCase):
             ["BOM-REF-001", "", "BOM-REF-002", ""],
         )
 
+    def test_bom_report_action_is_bound_to_bom_action_menu(self):
+        action = self.env.ref(
+            "buz_mrp_bom_excel_report.action_bom_excel_selected_report"
+        )
+
+        self.assertEqual(action.binding_model_id.model, "mrp.bom")
+        self.assertEqual(action.binding_type, "action")
+
+    def test_selected_boms_are_used_for_export(self):
+        first_bom = self._create_bom("normal", reference="BOM-REF-001")
+        second_bom = self._create_bom("phantom", reference="BOM-REF-002")
+
+        selected = self.report._get_boms(second_bom)
+
+        self.assertEqual(selected.ids, [second_bom.id])
+        self.assertNotIn(first_bom.id, selected.ids)
+
+    def test_no_selection_returns_accessible_boms(self):
+        first_bom = self._create_bom("normal", reference="BOM-REF-001")
+        second_bom = self._create_bom("phantom", reference="BOM-REF-002")
+
+        all_boms = self.report._get_boms()
+
+        self.assertIn(first_bom.id, all_boms.ids)
+        self.assertIn(second_bom.id, all_boms.ids)
+
     def test_bom_type_label_is_present_without_components(self):
         bom = self._create_bom("phantom", with_component=False)
 
