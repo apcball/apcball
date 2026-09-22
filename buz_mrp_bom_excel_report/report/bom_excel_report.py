@@ -94,9 +94,24 @@ class BomExcelReport(models.AbstractModel):
                 })
         return rows
 
+    def _selected_boms(self, records, data):
+        """Resolve selected BOMs without confusing wizard records with BOMs."""
+        if records and records._name == "mrp.bom":
+            return records.exists()
+
+        context = (data or {}).get("context") or {}
+        active_model = context.get("active_model") or self.env.context.get(
+            "active_model"
+        )
+        active_ids = context.get("active_ids") or self.env.context.get(
+            "active_ids"
+        )
+        if active_model == "mrp.bom" and active_ids:
+            return self.env["mrp.bom"].browse(active_ids).exists()
+        return None
+
     def generate_xlsx_report(self, workbook, data, records):
-        del data
-        selected_boms = records if records and records._name == "mrp.bom" else None
+        selected_boms = self._selected_boms(records, data)
         rows = self._prepare_rows(self._get_boms(selected_boms))
 
         title_format = workbook.add_format({
@@ -179,3 +194,7 @@ class BomExcelReport(models.AbstractModel):
 
         if not rows:
             sheet.merge_range(2, 0, 2, last_col, "ไม่พบข้อมูล BOM", center_format)
+
+
+class BomExcelSelectedReport(BomExcelReport):
+    _name = "report.buz_mrp_bom_excel_report.bom_excel_selected_xlsx"

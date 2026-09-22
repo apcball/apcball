@@ -100,6 +100,16 @@ class TestBomExcelReport(TransactionCase):
 
         self.assertEqual(action.binding_model_id.model, "mrp.bom")
         self.assertEqual(action.binding_type, "action")
+        self.assertEqual(
+            action.report_name,
+            "buz_mrp_bom_excel_report.bom_excel_selected_xlsx",
+        )
+        self.assertNotEqual(
+            action.report_name,
+            self.env.ref(
+                "buz_mrp_bom_excel_report.action_bom_excel_report"
+            ).report_name,
+        )
 
     def test_selected_boms_are_used_for_export(self):
         first_bom = self._create_bom("normal", reference="BOM-REF-001")
@@ -109,6 +119,49 @@ class TestBomExcelReport(TransactionCase):
 
         self.assertEqual(selected.ids, [second_bom.id])
         self.assertNotIn(first_bom.id, selected.ids)
+
+    def test_active_ids_are_used_when_report_records_are_not_boms(self):
+        first_bom = self._create_bom("normal", reference="BOM-REF-001")
+        second_bom = self._create_bom("phantom", reference="BOM-REF-002")
+        wizard = self.env["buz.mrp.bom.excel.wizard"].create({})
+
+        selected = self.report._selected_boms(
+            wizard,
+            {
+                "context": {
+                    "active_model": "mrp.bom",
+                    "active_ids": [second_bom.id],
+                },
+            },
+        )
+
+        self.assertEqual(selected.ids, [second_bom.id])
+        self.assertNotIn(first_bom.id, selected.ids)
+
+    def test_no_active_ids_falls_back_to_all_boms(self):
+        wizard = self.env["buz.mrp.bom.excel.wizard"].create({})
+
+        selected = self.report._selected_boms(wizard, {"context": {}})
+
+        self.assertIsNone(selected)
+
+    def test_selected_report_writes_only_selected_bom(self):
+        first_bom = self._create_bom("normal", reference="BOM-REF-001")
+        second_bom = self._create_bom("phantom", reference="BOM-REF-002")
+        selected_report = self.env[
+            "report.buz_mrp_bom_excel_report.bom_excel_selected_xlsx"
+        ].with_context(active_model="mrp.bom")
+
+        content, file_type = selected_report.create_xlsx_report(
+            [second_bom.id], {}
+        )
+
+        self.assertEqual(file_type, "xlsx")
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            shared_strings = archive.read("xl/sharedStrings.xml").decode()
+        self.assertIn("BOM-REF-002", shared_strings)
+        self.assertNotIn("BOM-REF-001", shared_strings)
+        self.assertNotEqual(first_bom.id, second_bom.id)
 
     def test_no_selection_returns_accessible_boms(self):
         first_bom = self._create_bom("normal", reference="BOM-REF-001")
