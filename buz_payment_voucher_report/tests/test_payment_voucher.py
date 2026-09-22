@@ -76,6 +76,8 @@ class TestPaymentVoucherReport(tests.TransactionCase):
                 if payment_type == 'inbound' else self.payment_method_out
             ).id,
             'date': date or datetime.date.today(),
+            'received_date': (date or datetime.date.today()) + datetime.timedelta(days=1),
+            'buz_payment_channel': 'bank_transfer',
         }
         payment = self.env['account.payment'].create(payment_vals)
         payment.action_post()
@@ -175,8 +177,32 @@ class TestPaymentVoucherReport(tests.TransactionCase):
         workbook.add_worksheet.assert_called_once_with('Payment Voucher')
         self.assertTrue(sheet.write.called, "XLSX report should write rows")
         self.assertTrue(
-            any(call.args[1] == 2 and call.args[2] == 'PVR001' for call in sheet.write.call_args_list),
+            any(call.args[1] == 3 and call.args[2] == 'PVR001' for call in sheet.write.call_args_list),
             "XLSX report should write partner code column",
+        )
+        self.assertTrue(
+            any(
+                call.args[0] == 4 and call.args[1] == 2
+                and call.args[2] == 'Received date'
+                for call in sheet.write.call_args_list
+            ),
+            "XLSX report should include Received date column",
+        )
+        self.assertTrue(
+            any(
+                call.args[0] == 4 and call.args[1] == 8
+                and call.args[2] == 'Payment Channel'
+                for call in sheet.write.call_args_list
+            ),
+            "XLSX report should include Payment Channel column",
+        )
+        self.assertTrue(
+            any(
+                call.args[0] == 5 and call.args[1] == 8
+                and call.args[2] == 'โอนเงิน'
+                for call in sheet.write.call_args_list
+            ),
+            "XLSX report should export the configured payment channel",
         )
 
     def test_wizard_filter(self):

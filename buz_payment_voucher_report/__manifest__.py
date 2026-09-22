@@ -24,6 +24,7 @@
         'mail',
         'report_xlsx',
         'buz_custom_partner',
+        'buz_accounting_addon',
     ],
     'data': [
         'security/ir.model.access.csv',
