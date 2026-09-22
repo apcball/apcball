@@ -1,6 +1,6 @@
 {
     "name": "BOM Excel Report",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.0.1",
     "category": "Manufacturing",
     "summary": "Export all Bills of Materials to a fixed-format Excel report",
     "description": "Export first-level BOM components to Excel with fixed columns.",

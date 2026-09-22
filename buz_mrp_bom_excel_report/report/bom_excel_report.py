@@ -32,12 +32,12 @@ class BomExcelReport(models.AbstractModel):
         """Return only the product name without a bracketed code prefix."""
         return self._product_parts(product)[1]
 
-    def _product_type(self, product):
-        if not product:
+    def _bom_type(self, bom):
+        if not bom:
             return ""
-        field = product._fields["detailed_type"]
+        field = bom._fields["type"]
         selection = dict(field._description_selection(self.env))
-        return selection.get(product.detailed_type, self._text(product.detailed_type))
+        return selection.get(bom.type, self._text(bom.type))
 
     def _parent_product(self, bom):
         return bom.product_id or bom.product_tmpl_id.product_variant_id
@@ -67,6 +67,7 @@ class BomExcelReport(models.AbstractModel):
                 # ฟิลด์ note อาจไม่มีใน mrp.bom ของบางระบบ จึงใช้ค่าว่างแทน
                 # ฟิลด์ note อาจไม่มีใน mrp.bom ของบางระบบ จึงใช้ค่าว่างแทน
                 "note": self._text(getattr(bom, "note", "")),
+                "bom_type": self._bom_type(bom),
             }
             lines = bom.bom_line_ids.sorted(key=lambda line: line.sequence)
             if not lines:
@@ -76,7 +77,6 @@ class BomExcelReport(models.AbstractModel):
                     "component_name": "",
                     "quantity": None,
                     "uom": "",
-                    "product_type": "",
                 })
                 continue
 
@@ -88,7 +88,6 @@ class BomExcelReport(models.AbstractModel):
                     "component_name": self._product_name(component),
                     "quantity": line.product_qty,
                     "uom": self._text(line.product_uom_id.name),
-                    "product_type": self._product_type(component),
                 })
         return rows
 
@@ -147,7 +146,7 @@ class BomExcelReport(models.AbstractModel):
             ("รายการชื่อสินค้า", 38, "component_name", text_format),
             ("จำนวน", 12, "quantity", number_format),
             ("หน่วย", 12, "uom", center_format),
-            ("ประเภท", 16, "product_type", center_format),
+            ("ประเภท", 16, "bom_type", center_format),
         ]
 
         sheet = workbook.add_worksheet("BOM Report")
