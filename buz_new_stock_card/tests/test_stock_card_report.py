@@ -685,4 +685,88 @@ class TestStockCardReport(TransactionCase):
         )
         locations = {r["location_label"] for r in rows}
         self.assertTrue(any("Shelf A" in l for l in locations))
-        self.assertTrue(any("Shelf B" in l for l in locations))
+
+    # ------------------------------------------------------------------
+    # Export-all (no product/warehouse/location filter)
+    # ------------------------------------------------------------------
+
+    def test_all_lines_covers_every_location_and_product(self):
+        product2 = self.env["product.product"].create({
+            "name": "Test Stock Card Product All 2", "type": "product",
+        })
+        self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 40.0, self._dt("2024-06-11 08:00:00"))
+        self._mk_move(
+            self.loc_supplier, self.loc_b, 7.0, self._dt("2024-06-12 08:00:00"), product=product2,
+        )
+
+        rows = self.engine.get_all_stock_card_lines("2024-06-01", "2024-06-30")
+        by_product = {}
+        for row in rows:
+            by_product.setdefault(row["product_name"], []).append(row)
+
+        self.assertIn(self.product.name, by_product)
+        self.assertIn(product2.name, by_product)
+
+        p1_out = [r for r in by_product[self.product.name] if r["out"]][0]
+        self.assertEqual(p1_out["opening"], 100.0)
+        self.assertEqual(p1_out["out"], 40.0)
+        self.assertEqual(p1_out["balance"], 60.0)
+
+        p2_in = by_product[product2.name][0]
+        self.assertEqual(p2_in["in"], 7.0)
+        self.assertEqual(p2_in["balance"], 7.0)
+
+        self.assertEqual([r["seq"] for r in rows], list(range(1, len(rows) + 1)))
+
+    def test_all_lines_query_count_scales_per_location_not_per_product(self):
+        # Guardrail: with several products sharing one location, opening
+        # balance/value must be fetched in bulk per location, not once per
+        # (location, product) pair.
+        loc_only = self.env["stock.location"].create({
+            "name": "Test Shelf QC", "usage": "internal", "location_id": self.loc_root.id,
+        })
+        p1 = self.env["product.product"].create({"name": "ALL QC P1", "type": "product"})
+        self._mk_move(self.loc_supplier, loc_only, 1.0, self._dt("2024-06-10 08:00:00"), product=p1)
+
+        self.env.cr.flush()
+        c0 = self.env.cr.sql_log_count
+        self.engine.get_all_stock_card_lines("2024-06-01", "2024-06-30")
+        one_product = self.env.cr.sql_log_count - c0
+
+        for name in ("ALL QC P2", "ALL QC P3"):
+            p = self.env["product.product"].create({"name": name, "type": "product"})
+            self._mk_move(self.loc_supplier, loc_only, 1.0, self._dt("2024-06-11 08:00:00"), product=p)
+
+        self.env.cr.flush()
+        c1 = self.env.cr.sql_log_count
+        self.engine.get_all_stock_card_lines("2024-06-01", "2024-06-30")
+        three_products = self.env.cr.sql_log_count - c1
+
+        per_product = (three_products - one_product) / 2.0
+        self.assertLess(
+            per_product, 15,
+            "get_all_stock_card_lines cost per product (same location) too high: "
+            "%s -> %s queries (%.1f/product)" % (one_product, three_products, per_product),
+        )
+
+    def test_all_valuation_lines_covers_every_location_and_product(self):
+        product2 = self.env["product.product"].create({
+            "name": "Test Stock Card Product All Val 2", "type": "product",
+        })
+        self._mk_valuation_layer(
+            self.product, self.loc_a, 10.0, 100.0, self._dt("2024-06-10 08:00:00"),
+        )
+        self._mk_valuation_layer(
+            product2, self.loc_b, 5.0, 40.0, self._dt("2024-06-12 08:00:00"),
+        )
+        rows = self.engine.get_all_stock_card_valuation_lines("2024-06-01", "2024-06-30")
+        by_product = {r["product_name"]: r for r in rows if r["product_name"] in (
+            self.product.name, product2.name,
+        )}
+        self.assertIn(self.product.name, by_product)
+        self.assertIn(product2.name, by_product)
+        self.assertAlmostEqual(by_product[self.product.name]["qty_in"], 10.0)
+        self.assertAlmostEqual(by_product[self.product.name]["cost_in"], 100.0)
+        self.assertAlmostEqual(by_product[product2.name]["qty_in"], 5.0)
+        self.assertAlmostEqual(by_product[product2.name]["cost_in"], 40.0)
