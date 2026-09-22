@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bom_excel_wizard_form" model="ir.ui.view">
+        <field name="name">buz.mrp.bom.excel.wizard.form</field>
+        <field name="model">buz.mrp.bom.excel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export BOM Excel">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Export BOM Excel</h2>
+                    </div>
+                    <p>ระบบจะส่งออก BOM ทั้งหมดที่ผู้ใช้มีสิทธิ์เข้าถึง โดยแสดงส่วนประกอบระดับแรก</p>
+                </sheet>
+                <footer>
+                    <button name="action_export" string="Export BOM Excel" type="object" class="btn-primary"/>
+                    <button string="ยกเลิก" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bom_excel_wizard" model="ir.actions.act_window">
+        <field name="name">Export BOM Excel</field>
+        <field name="res_model">buz.mrp.bom.excel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_bom_excel_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+</odoo>
