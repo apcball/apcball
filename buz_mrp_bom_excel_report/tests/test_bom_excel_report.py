@@ -13,8 +13,17 @@ class TestBomExcelReport(TransactionCase):
         cls.product_model = cls.env["product.product"]
         cls.uom = cls.env.ref("uom.product_uom_unit")
 
-    def _create_bom(self, bom_type, with_component=True, reference=None):
-        parent = self.product_model.create({"name": "BOM Excel Parent"})
+    def _create_bom(
+        self,
+        bom_type,
+        with_component=True,
+        reference=None,
+        component_count=2,
+    ):
+        parent = self.product_model.create({
+            "name": "BOM Excel Parent",
+            "default_code": "BOM-PARENT-001",
+        })
         values = {
             "product_tmpl_id": parent.product_tmpl_id.id,
             "type": bom_type,
@@ -22,19 +31,16 @@ class TestBomExcelReport(TransactionCase):
         if reference is not None:
             values["code"] = reference
         if with_component:
-            component = self.product_model.create({"name": "BOM Excel Component"})
-            values["bom_line_ids"] = [
-                Command.create({
+            values["bom_line_ids"] = []
+            for index in range(component_count):
+                component = self.product_model.create({
+                    "name": f"BOM Excel Component {index + 1}",
+                })
+                values["bom_line_ids"].append(Command.create({
                     "product_id": component.id,
-                    "product_qty": 1,
+                    "product_qty": index + 1,
                     "product_uom_id": self.uom.id,
-                }),
-                Command.create({
-                    "product_id": component.id,
-                    "product_qty": 2,
-                    "product_uom_id": self.uom.id,
-                }),
-            ]
+                }))
         return self.env["mrp.bom"].create(values)
 
     def _expected_bom_type_label(self, bom):
@@ -56,6 +62,36 @@ class TestBomExcelReport(TransactionCase):
                     rows[0]["bom_type"],
                     {"Storable Product", "Consumable", "Service"},
                 )
+
+    def test_parent_values_are_shown_only_on_first_component_row(self):
+        bom = self._create_bom(
+            "normal",
+            reference="BOM-REF-001",
+            component_count=3,
+        )
+
+        rows = self.report._prepare_rows(bom)
+
+        self.assertEqual(len(rows), 3)
+        self.assertNotEqual(rows[0]["product_code"], "")
+        self.assertNotEqual(rows[0]["product_name"], "")
+        self.assertEqual(rows[0]["bom_name"], "BOM-REF-001")
+        for row in rows[1:]:
+            self.assertEqual(row["product_code"], "")
+            self.assertEqual(row["product_name"], "")
+            self.assertEqual(row["bom_name"], "")
+
+    def test_each_bom_starts_a_new_parent_value_group(self):
+        first_bom = self._create_bom("normal", reference="BOM-REF-001")
+        second_bom = self._create_bom("phantom", reference="BOM-REF-002")
+
+        rows = self.report._prepare_rows(first_bom | second_bom)
+
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(
+            [row["bom_name"] for row in rows],
+            ["BOM-REF-001", "", "BOM-REF-002", ""],
+        )
 
     def test_bom_type_label_is_present_without_components(self):
         bom = self._create_bom("phantom", with_component=False)
@@ -92,7 +128,10 @@ class TestBomExcelReport(TransactionCase):
 
         rows = self.report._prepare_rows(bom)
 
-        self.assertEqual({row["bom_name"] for row in rows}, {"BOM-REF-001"})
+        self.assertEqual(
+            [row["bom_name"] for row in rows],
+            ["BOM-REF-001", ""],
+        )
         self.assertNotIn("BOM Excel Parent", rows[0]["bom_name"])
 
     def test_missing_reference_keeps_bom_name_empty(self):
@@ -118,3 +157,24 @@ class TestBomExcelReport(TransactionCase):
 
         self.assertIn('r="C3"', worksheet)
         self.assertNotIn("BOM Excel Parent", worksheet)
+
+    def test_generated_workbook_does_not_repeat_parent_values(self):
+        import xlsxwriter
+
+        bom = self._create_bom(
+            "normal",
+            reference="BOM-REF-001",
+            component_count=3,
+        )
+        stream = io.BytesIO()
+        workbook = xlsxwriter.Workbook(stream, {"in_memory": True})
+
+        self.report.generate_xlsx_report(workbook, {}, bom)
+        workbook.close()
+
+        with zipfile.ZipFile(stream) as archive:
+            worksheet = archive.read("xl/worksheets/sheet1.xml").decode()
+
+        self.assertEqual(worksheet.count('r="C3"'), 1)
+        self.assertIn('<c r="C4" s="3"/>', worksheet)
+        self.assertIn('<c r="C5" s="3"/>', worksheet)

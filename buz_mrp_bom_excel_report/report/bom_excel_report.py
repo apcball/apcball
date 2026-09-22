@@ -78,10 +78,15 @@ class BomExcelReport(models.AbstractModel):
                 })
                 continue
 
-            for line in lines:
+            for line_index, line in enumerate(lines):
                 component = line.product_id
                 rows.append({
                     **parent_values,
+                    **({} if line_index == 0 else {
+                        "product_code": "",
+                        "product_name": "",
+                        "bom_name": "",
+                    }),
                     "component_code": self._product_code(component),
                     "component_name": self._product_name(component),
                     "quantity": line.product_qty,
