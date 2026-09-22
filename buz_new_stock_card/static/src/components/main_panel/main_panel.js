@@ -1,12 +1,32 @@
 /** @odoo-module **/
 
-import { Component } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 
 export class MainPanel extends Component {
     static template = "buz_new_stock_card.MainPanel";
     static props = [
         "state", "onRetry", "onChangePage", "onChangePageSize", "openDocument",
     ];
+
+    setup() {
+        this.local = useState({ view: 'table' });
+    }
+
+    movement(line) {
+        const type = line.doc_type || '';
+        if (/โอน|internal/i.test(type)) { return { kind: 'transfer', icon: 'fa-exchange', label: type }; }
+        if (/ปรับ|adjust|inventory/i.test(type)) { return { kind: 'adjustment', icon: 'fa-clock-o', label: type }; }
+        if (!line['in'] && !line['out']) { return { kind: 'opening', icon: 'fa-square-o', label: type || 'ยอดยกมา' }; }
+        return line['out'] ? { kind: 'out', icon: 'fa-arrow-down', label: type || 'จ่ายออก' }
+            : { kind: 'in', icon: 'fa-arrow-up', label: type || 'รับเข้า' };
+    }
+
+    get graphRows() {
+        const lines = this.props.state.cardData?.lines || [];
+        const max = Math.max(1, ...lines.map(line => Math.max(Math.abs(line['in'] || 0), Math.abs(line['out'] || 0))));
+        return lines.map(line => ({ ...line, inWidth: Math.abs(line['in'] || 0) / max * 100,
+            outWidth: Math.abs(line['out'] || 0) / max * 100 }));
+    }
 
     fmt(n) {
         return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -28,10 +48,10 @@ export class MainPanel extends Component {
     get summaryCards() {
         const data = this.props.state.cardData;
         const cards = [
-            { key: "opening", label: "ยอดยกมา", icon: "fa-clone", value: data.opening_balance, valueBaht: data.opening_value },
-            { key: "in", label: "รับทั้งหมด", icon: "fa-sign-in", value: data.total_in, valueBaht: data.total_in_value },
-            { key: "out", label: "จ่ายทั้งหมด", icon: "fa-sign-out", value: data.total_out, valueBaht: data.total_out_value },
-            { key: "balance", label: "คงเหลือ", icon: "fa-cube", value: data.closing_balance, valueBaht: data.closing_value },
+            { key: "opening", label: "ยอดยกมา (ต้นงวด)", icon: "fa-cubes", value: data.opening_balance, valueBaht: data.opening_value },
+            { key: "in", label: "รับเข้า", icon: "fa-long-arrow-up", value: data.total_in, valueBaht: data.total_in_value },
+            { key: "out", label: "จ่ายออก", icon: "fa-long-arrow-down", value: data.total_out, valueBaht: data.total_out_value },
+            { key: "balance", label: "ยอดคงเหลือ (ปลายงวด)", icon: "fa-cube", value: data.closing_balance, valueBaht: data.closing_value },
         ];
         if (!data.can_see_value) {
             cards.forEach((card) => delete card.valueBaht);

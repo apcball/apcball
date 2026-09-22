@@ -1,6 +1,8 @@
 /** @odoo-module **/
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { browser } from "@web/core/browser/browser";
+import { session } from "@web/session";
 import { Component, onWillUnmount, useState } from "@odoo/owl";
 import { Sidebar } from "../sidebar/sidebar";
 import { MainPanel } from "../main_panel/main_panel";
@@ -15,6 +17,7 @@ export class StockCardAction extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.company = useService("company");
+        this.user = useService("user");
         this.requestId = 0;
         this.state = useState({
             productId: false, productName: "",
@@ -202,6 +205,46 @@ export class StockCardAction extends Component {
                 default_show_movements_only: this.state.showMovementsOnly,
             },
         });
+    }
+
+    saveFavorite() {
+        if (!this.validFilters()) { return; }
+        const { productId, productName, dateFrom, dateTo, warehouseId,
+            selectedLocationId, selectedLocationName, includeChildren, showMovementsOnly } = this.state;
+        try {
+            browser.localStorage.setItem(this.favoriteKey, JSON.stringify({ productId, productName,
+                dateFrom, dateTo, warehouseId, selectedLocationId, selectedLocationName,
+                includeChildren, showMovementsOnly }));
+            this.notification.add('บันทึกตัวกรองโปรดในเบราว์เซอร์นี้แล้ว', { type: 'success' });
+        } catch {
+            this.notification.add('ไม่สามารถบันทึกตัวกรองในเบราว์เซอร์นี้ได้', { type: 'warning' });
+        }
+    }
+
+    get favoriteKey() {
+        return `buz_new_stock_card.favorite.${session.db}.${this.user.userId}.${this.state.companyId}`;
+    }
+
+    loadFavorite() {
+        try {
+            const favorite = JSON.parse(browser.localStorage.getItem(this.favoriteKey) || 'null');
+            if (!favorite) {
+                this.notification.add('ยังไม่มีตัวกรองโปรดสำหรับบริษัทนี้', { type: 'info' });
+                return;
+            }
+            this.invalidate({ location: true, product: true });
+            for (const key of ['productId', 'productName', 'dateFrom', 'dateTo', 'warehouseId',
+                'selectedLocationId', 'selectedLocationName', 'includeChildren', 'showMovementsOnly']) {
+                if (Object.hasOwn(favorite, key)) { this.state[key] = favorite[key]; }
+            }
+            this.search();
+        } catch {
+            this.notification.add('ไม่สามารถโหลดตัวกรองโปรดได้', { type: 'warning' });
+        }
+    }
+
+    printReport() {
+        window.print();
     }
 
     openDocument(resModel, resId) {

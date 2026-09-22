@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, useState, onWillStart, onWillUnmount } from "@odoo/owl";
+import { Component, useState, useRef, onWillStart, onWillUnmount } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { RecordAutocomplete } from "@web/core/record_selectors/record_autocomplete";
 import { LocationTree } from "./location_tree";
@@ -18,7 +18,8 @@ export class Sidebar extends Component {
         this.orm = useService("orm");
         this.companyService = useService("company");
         this.notification = useService("notification");
-        this.local = useState({ warehouses: [], loading: false, error: null });
+        this.local = useState({ warehouses: [], loading: false, error: null, advanced: false });
+        this.dateFromRef = useRef('dateFrom');
         this.warehouseRequest = 0;
         this.productRequest = 0;
         onWillUnmount(() => { this.warehouseRequest++; this.productRequest++; });
@@ -93,6 +94,35 @@ export class Sidebar extends Component {
 
     onDateToChange(ev) {
         this.props.onSetDateTo(ev.target.value);
+    }
+
+    get periods() {
+        return [
+            { key: 'today', label: 'วันนี้' }, { key: 'week', label: '7 วัน' },
+            { key: 'days', label: '30 วัน' }, { key: 'month', label: 'เดือนนี้' },
+            { key: 'year', label: 'ปีนี้' },
+        ];
+    }
+
+    onCustomDate() {
+        this.dateFromRef.el.focus();
+        this.dateFromRef.el.showPicker?.();
+    }
+
+    periodStart(key) {
+        const today = luxon.DateTime.local();
+        return ({ today, week: today.minus({ days: 6 }), days: today.minus({ days: 29 }),
+            month: today.startOf('month'), year: today.startOf('year') })[key].toISODate();
+    }
+
+    isPeriod(key) {
+        return this.props.state.dateFrom === this.periodStart(key)
+            && this.props.state.dateTo === luxon.DateTime.local().toISODate();
+    }
+
+    setPeriod(key) {
+        this.props.onSetDateFrom(this.periodStart(key));
+        this.props.onSetDateTo(luxon.DateTime.local().toISODate());
     }
 
     async onCompanyChange(ev) {
