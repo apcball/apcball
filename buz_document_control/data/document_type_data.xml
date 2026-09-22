@@ -6,4 +6,5 @@
     <record id="document_type_sd" model="buz.document.type"><field name="name">Supporting Document</field><field name="code">SD</field><field name="sequence">50</field></record>
     <record id="document_type_ex" model="buz.document.type"><field name="name">External Document</field><field name="code">EX</field><field name="sequence">60</field></record>
     <record id="document_type_lab" model="buz.document.type"><field name="name">Lab</field><field name="code">LAB</field><field name="sequence">70</field></record>
+    <record id="document_type_ok" model="buz.document.type"><field name="name">Organizational Knowledge</field><field name="code">OKL</field><field name="sequence">80</field></record>
 </odoo>

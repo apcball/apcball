@@ -74,6 +74,8 @@
     .bdc-type-purple { --type-color: #8877ef; --type-bg: #f3f0ff; }
     .bdc-type-cyan { --type-color: #08b4cd; --type-bg: #e8f8fb; }
     .bdc-type-gray { --type-color: #a4b8c5; --type-bg: #f2f6f9; }
+    .bdc-type-indigo { --type-color: #6366f1; --type-bg: #eef0fe; }
+    .bdc-type-pink { --type-color: #ec4899; --type-bg: #fdeef5; }
     .bdc-categories { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .bdc-category { display: grid; grid-template-columns: 31px minmax(0, 1fr); gap: 3px 10px; padding: 12px; min-height: 103px; background: var(--type-bg); box-shadow: none; border-color: transparent;
         > i { grid-row: 1 / 3; display: grid; place-items: center; align-self: start; width: 31px; height: 33px; border-radius: 8px; font-size: 18px; color: white; background: var(--type-color); box-shadow: 0 3px 6px #3341550c; }
