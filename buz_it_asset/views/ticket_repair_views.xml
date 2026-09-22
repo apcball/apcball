@@ -114,7 +114,7 @@
             </xpath>
             <xpath expr="//field[@name='maintenance_ids']/tree/field[@name='repair_result']" position="after">
                 <field name="repair_outcome" optional="show"/>
-                <field name="replacement_asset_id" optional="hide"/>
+                <field name="replacement_asset_id" optional="hide" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
             </xpath>
             <xpath expr="//field[@name='maintenance_ids']/form" position="attributes">
                 <attribute name="edit">0</attribute>
@@ -126,7 +126,7 @@
                 <field name="repair_result"/>
                 <field name="recommendations"/>
                 <field name="performed_by_id"/>
-                <field name="replacement_asset_id"/>
+                <field name="replacement_asset_id" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                 <field name="diagnosis" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
                 <field name="repair_part_ids" groups="buz_it_helpdesk.group_it_support_agent,buz_it_helpdesk.group_it_helpdesk_manager">
                     <tree create="0" delete="0">
