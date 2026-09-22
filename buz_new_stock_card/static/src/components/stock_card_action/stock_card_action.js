@@ -58,12 +58,12 @@ export class StockCardAction extends Component {
         Object.assign(this.state, { productId, productName });
     }
 
-    async onSelectLocation(locationId, locationName, selectable) {
+    async onSelectLocation(locationId, locationName, selectable, fetch = true) {
         Object.assign(this.state, {
             selectedLocationId: locationId, selectedLocationName: locationName,
             includeChildren: selectable === false, page: 0,
         });
-        await this.fetchCardData();
+        if (fetch) { await this.fetchCardData(); }
     }
 
     onSetDateFrom(value) { this.invalidate(); this.state.dateFrom = value; }

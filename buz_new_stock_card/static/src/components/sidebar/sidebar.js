@@ -22,7 +22,8 @@ export class Sidebar extends Component {
         this.dateFromRef = useRef('dateFrom');
         this.warehouseRequest = 0;
         this.productRequest = 0;
-        onWillUnmount(() => { this.warehouseRequest++; this.productRequest++; });
+        this.locationRequest = 0;
+        onWillUnmount(() => { this.warehouseRequest++; this.productRequest++; this.locationRequest++; });
 
         onWillStart(async () => {
             await this.loadWarehouses();
@@ -49,8 +50,20 @@ export class Sidebar extends Component {
 
     get companyContext() { return { allowed_company_ids: [this.props.state.companyId] }; }
     get productDomain() { return [["company_id", "in", [false, this.props.state.companyId]]]; }
+    get locationDomain() {
+        const domain = [
+            ["usage", "=", "internal"],
+            ["company_id", "in", [false, this.props.state.companyId]],
+        ];
+        const warehouse = this.local.warehouses.find((wh) => wh.id === this.props.state.warehouseId);
+        if (warehouse?.view_location_id) {
+            domain.push(["id", "child_of", warehouse.view_location_id]);
+        }
+        return domain;
+    }
 
     onWarehouseChange(ev) {
+        this.locationRequest++;
         this.props.onSetWarehouse(ev.target.value ? parseInt(ev.target.value, 10) : false);
     }
 
@@ -64,8 +77,13 @@ export class Sidebar extends Component {
         return this.props.state.productId ? [this.props.state.productId] : [];
     }
 
+    locationGetIds() {
+        return this.props.state.selectedLocationId ? [this.props.state.selectedLocationId] : [];
+    }
+
     onReset() {
         this.productRequest++;
+        this.locationRequest++;
         this.props.onReset();
     }
 
@@ -84,6 +102,27 @@ export class Sidebar extends Component {
         } catch (error) {
             if (request === this.productRequest) {
                 this.notification.add("ไม่สามารถโหลดข้อมูลสินค้าได้ กรุณาลองใหม่", { type: "danger" });
+            }
+        }
+    }
+
+    async onUpdateLocation(ids) {
+        const request = ++this.locationRequest;
+        const companyId = this.props.state.companyId;
+        if (!ids.length) {
+            this.props.onSelectLocation(false, "", true, false);
+            return;
+        }
+        try {
+            const [location] = await this.orm.read(
+                "stock.location", [ids[0]], ["complete_name"], { context: this.companyContext },
+            );
+            if (request === this.locationRequest && companyId === this.props.state.companyId && location) {
+                this.props.onSelectLocation(location.id, location.complete_name, true, false);
+            }
+        } catch (error) {
+            if (request === this.locationRequest) {
+                this.notification.add("ไม่สามารถโหลดสถานที่จัดเก็บได้ กรุณาลองใหม่", { type: "danger" });
             }
         }
     }
@@ -127,6 +166,7 @@ export class Sidebar extends Component {
 
     async onCompanyChange(ev) {
         this.productRequest++;
+        this.locationRequest++;
         this.props.onSetCompany(parseInt(ev.target.value, 10));
         await this.loadWarehouses();
     }

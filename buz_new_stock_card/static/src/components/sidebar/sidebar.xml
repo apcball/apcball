@@ -40,8 +40,13 @@
                     </select>
                 </div>
                 <div><label for="sc-location">สถานที่จัดเก็บ (Location)</label>
-                    <input id="sc-location" class="form-control" readonly="readonly"
-                        t-att-value="props.state.selectedLocationName or props.state.scopeLabel or 'ทั้งหมดในคลังสินค้า'"/>
+                    <div id="sc-location" class="o_sc_product_input o_sc_location_input">
+                        <i class="fa fa-map-marker o_sc_product_placeholder" aria-hidden="true"/>
+                        <RecordAutocomplete resModel="'stock.location'" update.bind="onUpdateLocation" multiSelect="false"
+                            getIds.bind="locationGetIds" value="props.state.selectedLocationName"
+                            fieldString="'สถานที่จัดเก็บ (Location)'" placeholder="'ทุกสถานที่จัดเก็บ'"
+                            domain="locationDomain" context="companyContext"/>
+                    </div>
                 </div>
                 <div class="o_sc_filter_actions">
                 <button class="btn btn-primary o_sc_search" t-on-click="props.onSearch" t-att-disabled="props.state.loading or local.loading">
