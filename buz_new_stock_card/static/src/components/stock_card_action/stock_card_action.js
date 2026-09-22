@@ -103,8 +103,8 @@ export class StockCardAction extends Component {
 
     validFilters() {
         let message;
-        if (!this.state.productId) {
-            message = "กรุณาเลือกสินค้า";
+        if (!this.state.productId && !this.state.warehouseId && !this.state.selectedLocationId) {
+            message = "กรุณาเลือกสินค้า หรือ คลังสินค้า/โลเคชั่น";
         } else if (!this.state.dateFrom || !this.state.dateTo || this.state.dateFrom > this.state.dateTo) {
             message = "กรุณาระบุช่วงวันที่ให้ถูกต้อง วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด";
         }
@@ -130,6 +130,31 @@ export class StockCardAction extends Component {
                 filters.selectedLocationId ? [filters.selectedLocationId] : [], filters.includeChildren,
             ], options);
             if (requestId !== this.requestId) { return; }
+
+            if (!filters.productId) {
+                const rows = await this.orm.call("buz.stock.card.report", "get_scoped_stock_card_lines", [
+                    scope.location_ids, filters.dateFrom, filters.dateTo, scope.label,
+                    [filters.companyId], filters.showMovementsOnly,
+                ], options);
+                if (requestId !== this.requestId) { return; }
+                const totalCount = rows.length;
+                const start = filters.page * filters.pageSize;
+                const cardData = {
+                    mode: "multi",
+                    lines: rows.slice(start, start + filters.pageSize),
+                    total_count: totalCount,
+                    page_size: filters.pageSize,
+                    has_prev: filters.page > 0,
+                    has_next: start + filters.pageSize < totalCount,
+                    can_see_value: rows.length ? rows[0].value !== undefined : false,
+                };
+                Object.assign(this.state, {
+                    cardData, product: null, scopeLabel: scope.label,
+                    locationTree: [], locationCounts: {},
+                });
+                return;
+            }
+
             const [cardData, [product], tree] = await Promise.all([
                 this.orm.call("buz.stock.card.report", "get_stock_card_data", [
                     filters.productId, scope.location_ids, filters.dateFrom, filters.dateTo,

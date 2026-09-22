@@ -1269,7 +1269,23 @@ class StockCardReport(models.AbstractModel):
 
     @staticmethod
     def _finalize_valuation_rows(rows, sort_key):
+        """Sort, then add a running ยอดยกมา (opening_qty/opening_value) and
+        ยอดคงเหลือ/มูลค่าสินค้าคงเหลือ (balance_qty/balance_value) per row,
+        tracked separately per (location, product) group so mixed-scope
+        exports (all products / all locations) don't cross-contaminate
+        balances between products."""
         rows.sort(key=sort_key)
+        running = {}
+        for row in rows:
+            key = (row["location_label"], row["product_default_code"], row["product_name"])
+            qty, value = running.get(key, (0.0, 0.0))
+            row["opening_qty"] = qty
+            row["opening_value"] = value
+            qty += row["qty_in"] - row["qty_out"]
+            value += row["cost_in"] - row["cost_out"]
+            running[key] = (qty, value)
+            row["balance_qty"] = qty
+            row["balance_value"] = value
         for idx, row in enumerate(rows, start=1):
             row["seq"] = idx
             del row["_sort_dt"]

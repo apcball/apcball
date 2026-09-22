@@ -11,10 +11,10 @@
             </div>
             <div t-elif="!props.state.cardData" class="o_sc_panel o_sc_empty">
                 <i aria-hidden="true" class="fa fa-cube fa-3x mb-3"/><h2>ดูความเคลื่อนไหวของสินค้า</h2>
-                <p>เลือกสินค้า ช่วงวันที่ และคลังสินค้า แล้วกดค้นหา</p>
+                <p>เลือกสินค้า หรือ คลังสินค้า/โลเคชั่น พร้อมช่วงวันที่ แล้วกดค้นหา</p>
             </div>
             <t t-else="">
-                <section class="o_product_header o_sc_panel">
+                <section t-if="props.state.product" class="o_product_header o_sc_panel">
                     <div class="d-flex justify-content-between align-items-start gap-3">
                         <div>
                             <div class="d-flex align-items-center gap-3 mb-1">
@@ -36,7 +36,13 @@
                         <span class="o_sc_scope">สถานที่จัดเก็บ : <t t-esc="props.state.scopeLabel"/></span>
                     </div>
                 </section>
-                <section class="o_sc_summary_grid" aria-label="สรุปจำนวนสินค้า">
+                <section t-else="" class="o_product_header o_sc_panel">
+                    <h2>คลังสินค้า/โลเคชั่น : <t t-esc="props.state.scopeLabel"/></h2>
+                    <div class="o_sc_product_meta">
+                        <span>พบ <t t-esc="props.state.cardData.total_count"/> รายการเคลื่อนไหว (ทุกสินค้า)</span>
+                    </div>
+                </section>
+                <section t-if="props.state.product" class="o_sc_summary_grid" aria-label="สรุปจำนวนสินค้า">
                     <div t-foreach="summaryCards" t-as="card" t-key="card.key" class="o_summary_card" t-att-class="'o_card_' + card.key">
                         <div class="o_sc_card_icon"><i t-att-class="'fa ' + card.icon" aria-hidden="true"/></div>
                         <div><div class="o_sc_card_label" t-esc="card.label"/><div class="o_sc_card_value" t-esc="fmt(card.value)"/><div class="o_sc_card_uom" t-esc="uom"/>
@@ -61,8 +67,12 @@
                     <div t-else="" class="o_sc_table_scroll" tabindex="0" aria-label="รายการเคลื่อนไหวสินค้า">
                         <table class="table o_stock_card_table">
                             <thead><tr>
-                                <th scope="col">#</th><th scope="col">วันที่ / เวลา</th><th scope="col">เอกสาร</th><th scope="col">อ้างอิง</th>
-                                <th scope="col">ประเภท</th><th scope="col" class="text-end">รับ (เข้า)</th><th scope="col" class="text-end">จ่าย (ออก)</th>
+                                <th scope="col">#</th>
+                                <th t-if="isMulti" scope="col">รหัส/ชื่อสินค้า</th>
+                                <th scope="col">วันที่ / เวลา</th><th scope="col">เอกสาร</th><th scope="col">อ้างอิง</th>
+                                <th scope="col">ประเภท</th>
+                                <th t-if="isMulti" scope="col" class="text-end">ยอดยกมา</th>
+                                <th scope="col" class="text-end">รับ (เข้า)</th><th scope="col" class="text-end">จ่าย (ออก)</th>
                                 <th scope="col" class="text-end">ยอดคงเหลือ</th>
                                 <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่าสินค้า (บาท)</th>
                                 <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่ารับ (บาท)</th>
@@ -71,18 +81,21 @@
                             </tr></thead>
                             <tbody>
                                 <tr t-foreach="props.state.cardData.lines" t-as="line" t-key="line.seq">
-                                    <td t-esc="line.seq"/><td class="text-nowrap" t-esc="line.date"/>
+                                    <td t-esc="line.seq"/>
+                                    <td t-if="isMulti" t-esc="(line.product_default_code ? line.product_default_code + ' - ' : '') + (line.product_name or '')"/>
+                                    <td class="text-nowrap" t-esc="line.date"/>
                                     <td><button t-if="line.res_model and line.res_id" class="btn btn-link o_sc_doc_link" t-on-click="() => this.onDocClick(line)" t-esc="line.doc_number"/>
                                         <span t-else="" t-esc="line.doc_number or '—'"/></td>
-                                    <td t-esc="line.reference or '—'"/>
+                                    <td t-esc="line.reference or line.note or '—'"/>
                                     <td><span class="o_sc_movement_icon" t-att-class="line['out'] ? 'is-out' : 'is-in'"><i aria-hidden="true" t-att-class="line['out'] ? 'fa fa-sign-out' : 'fa fa-sign-in'"/></span><t t-esc="line.doc_type or (line['out'] ? 'จ่ายสินค้า' : 'รับสินค้า')"/></td>
+                                    <td t-if="isMulti" class="text-end" t-esc="fmt(line.opening)"/>
                                     <td class="text-end o_sc_qty_in" t-esc="line['in'] ? fmt(line['in']) : '—'"/>
                                     <td class="text-end o_sc_qty_out" t-esc="line['out'] ? fmt(line['out']) : '—'"/>
                                     <td class="text-end fw-bold" t-esc="fmt(line.balance)"/>
                                     <td t-if="props.state.cardData.can_see_value" class="text-end" t-esc="fmt(line.value)"/>
                                     <td t-if="props.state.cardData.can_see_value" class="text-end o_sc_qty_in" t-esc="line.value_in ? fmt(line.value_in) : '—'"/>
                                     <td t-if="props.state.cardData.can_see_value" class="text-end o_sc_qty_out" t-esc="line.value_out ? fmt(line.value_out) : '—'"/>
-                                    <td t-esc="line.location_name"/>
+                                    <td t-esc="lineLocation(line)"/>
                                 </tr>
                             </tbody>
                         </table>
