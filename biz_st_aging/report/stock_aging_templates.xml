@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="stock_aging_thai_style">
+        <style type="text/css">
+            <t t-out="font_css"/>
+            .ag-report { font-family: Sarabun, sans-serif; font-size: 7.5px; color: #101828; }
+            .ag-report h1 { font-size: 15px; font-weight: bold; margin: 0 0 2px 0; }
+            .ag-report h2 { font-size: 11px; font-weight: bold; margin: 0 0 5px 0; }
+            .ag-meta { font-size: 7.5px; color: #475467; margin-bottom: 5px; line-height: 1.5; }
+            .ag-meta span { margin-right: 12px; }
+            .ag-kpis { width: 100%; border-collapse: separate; border-spacing: 4px 0; margin-bottom: 6px; }
+            .ag-kpis td {
+                border: 1px solid #D0D5DD; padding: 3px 6px; width: 16.6%;
+                vertical-align: top;
+            }
+            .ag-kpi-label { font-size: 7px; color: #667085; }
+            .ag-kpi-value { font-size: 11px; font-weight: bold; white-space: nowrap; }
+            .ag-kpi-sub { font-size: 7px; color: #667085; }
+            .ag-warn {
+                font-size: 7.5px; font-weight: bold; color: #B42318;
+                border: 1px solid #FDA29B; background: #FEF3F2;
+                padding: 3px 6px; margin-bottom: 4px;
+            }
+            .ag-ok {
+                font-size: 7.5px; font-weight: bold; color: #027A48;
+                border: 1px solid #A6F4C5; background: #ECFDF3;
+                padding: 3px 6px; margin-bottom: 4px;
+            }
+            .ag-table { width: 100%; border-collapse: collapse; }
+            .ag-table thead { display: table-header-group; }
+            .ag-table tfoot { display: table-row-group; }
+            .ag-table tr { page-break-inside: avoid; }
+            .ag-table th {
+                border: 1px solid #98A2B3; background: #F2F4F7;
+                padding: 2px 3px; font-weight: bold; text-align: center;
+            }
+            .ag-table th.ag-b0 { background: #ECFDF3; }
+            .ag-table th.ag-b1 { background: #F0FDF4; }
+            .ag-table th.ag-b2 { background: #FFFAEB; }
+            .ag-table th.ag-b3 { background: #FEF0C7; }
+            .ag-table th.ag-b4 { background: #FEE4E2; }
+            .ag-table th.ag-b5 { background: #FECDCA; }
+            .ag-table td { border: 1px solid #D0D5DD; padding: 1px 3px; }
+            .ag-num { text-align: right; white-space: nowrap; }
+            .ag-code { white-space: nowrap; }
+            .ag-center { text-align: center; white-space: nowrap; }
+            .ag-lv0 td { background: #EAECF0; font-weight: bold; }
+            .ag-lv1 td { background: #F9FAFB; font-weight: bold; }
+            .ag-total td {
+                background: #F2F4F7; font-weight: bold; border-top: 1px solid #667085;
+            }
+            .ag-grand td {
+                background: #D1E9FF; font-weight: bold;
+                border-top: 2px solid #1570EF; border-bottom: 2px double #1570EF;
+            }
+            .ag-negative { color: #B42318; font-weight: bold; }
+            .ag-st-normal { color: #027A48; }
+            .ag-st-slow { color: #B54708; }
+            .ag-st-non_moving { color: #B42318; }
+            .ag-st-obsolete { color: #7A271A; font-weight: bold; }
+            .ag-sign { margin-top: 22px; width: 100%; border-collapse: collapse; }
+            .ag-sign td {
+                width: 33.33%; text-align: center; font-size: 8px;
+                padding-top: 26px; vertical-align: bottom;
+            }
+            .ag-sign .ag-sign-line {
+                border-top: 1px dotted #101828; margin: 0 12px; padding-top: 3px;
+            }
+        </style>
+    </template>
+
+    <template id="report_stock_aging_doc">
+        <t t-call="web.html_container">
+            <t t-call="web.internal_layout">
+                <div class="page ag-report">
+                    <t t-set="opt" t-value="d['options']"/>
+                    <t t-set="checks" t-value="d['checks']"/>
+                    <t t-set="kpis" t-value="d['kpis']"/>
+                    <t t-call="biz_st_aging.stock_aging_thai_style"/>
+
+                    <h1 t-out="d['company']['names']"/>
+                    <h2>
+                        <t t-out="d['labels']['title']"/>
+                        <t t-out="d['labels']['as_of']"/>
+                    </h2>
+                    <div class="ag-meta">
+                        <span>จัดกลุ่ม: <t t-out="d['labels']['levels']"/></span>
+                        <span>คลัง: <t t-out="d['labels']['warehouses']"/></span>
+                        <span>หลักการอายุ: <t t-out="d['labels']['age_basis']"/></span>
+                        <t t-if="opt['show_value']">
+                            <span>มูลค่า: <t t-out="d['labels']['cost_basis']"/></span>
+                        </t>
+                        <span><t t-out="d['labels']['usage_window']"/></span>
+                        <span>เกณฑ์: <t t-out="d['labels']['thresholds']"/></span>
+                        <span>ตัวกรอง: <t t-out="d['labels']['filters']"/></span>
+                        <span>เขตเวลา: <t t-out="d['labels']['timezone']"/></span>
+                        <span>พิมพ์เมื่อ: <t t-out="printed_on"/> โดย <t t-out="printed_by"/></span>
+                    </div>
+
+                    <table class="ag-kpis">
+                        <tr>
+                            <td>
+                                <div class="ag-kpi-label">มูลค่าสินค้าคงเหลือ</div>
+                                <div class="ag-kpi-value">
+                                    <t t-if="opt['show_value']">
+                                        <span t-out="kpis['closing_value'] or 0.0"
+                                              t-options="{'widget': 'float', 'precision': decimal_places}"/>
+                                    </t>
+                                    <t t-else="">-</t>
+                                </div>
+                                <div class="ag-kpi-sub">
+                                    จำนวน <span t-out="kpis['closing_qty'] or 0.0"
+                                                t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="ag-kpi-label">อายุเฉลี่ย</div>
+                                <div class="ag-kpi-value">
+                                    <t t-if="kpis['avg_age'] is not None"><t t-out="kpis['avg_age']"/> วัน</t>
+                                    <t t-else="">-</t>
+                                </div>
+                            </td>
+                            <t t-foreach="kpis['over']" t-as="over">
+                                <td>
+                                    <div class="ag-kpi-label">มูลค่า &gt; <t t-out="over['edge']"/> วัน</div>
+                                    <div class="ag-kpi-value">
+                                        <t t-if="opt['show_value']">
+                                            <span t-out="over['value'] or 0.0"
+                                                  t-options="{'widget': 'float', 'precision': decimal_places}"/>
+                                            <t t-if="over['pct_value'] is not None">
+                                                (<t t-out="over['pct_value']"/>%)
+                                            </t>
+                                        </t>
+                                        <t t-else="">
+                                            <span t-out="over['qty'] or 0.0"
+                                                  t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                                            <t t-if="over['pct_qty'] is not None">
+                                                (<t t-out="over['pct_qty']"/>%)
+                                            </t>
+                                        </t>
+                                    </div>
+                                </td>
+                            </t>
+                            <td>
+                                <div class="ag-kpi-label">สินค้าเสี่ยง (Non-Moving / Obsolete)</div>
+                                <div class="ag-kpi-value"><t t-out="kpis['risk']['count']"/> รายการ</div>
+                                <div class="ag-kpi-sub">จาก <t t-out="kpis['risk']['product_count']"/> สินค้า</div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div t-if="checks['mixed_currency']" class="ag-warn">
+                        คำเตือน: มีบริษัทที่ใช้สกุลเงินต่างจากรายงานนี้ ยอดถูกบวกกันตรง ๆ โดยไม่แปลงค่า —
+                        <t t-foreach="checks['mixed_currency']" t-as="c">
+                            <span t-out="c['name']"/> (<span t-out="c['currency']"/>)
+                        </t>
+                    </div>
+                    <div t-if="opt['show_value'] and checks['svl_scope_limited']" class="ag-meta">
+                        หมายเหตุ: ชั้นมูลค่าสินค้า (SVL) ไม่มีมิติคลัง/ที่เก็บ/ล็อต รายงานที่กรองไว้
+                        จึงกระทบยอดกับมูลค่าทั้งบริษัทไม่ได้ — มูลค่าที่แสดงเป็นส่วนแบ่งตามสัดส่วนจำนวน
+                    </div>
+                    <div t-if="opt['show_value'] and not checks['svl_reconciled'] and not checks['svl_scope_limited']"
+                         class="ag-warn">
+                        คำเตือน: มูลค่าในรายงานไม่กระทบกับชั้นมูลค่าสินค้า (SVL) ผลต่าง
+                        <span t-out="checks['svl_difference']"
+                              t-options="{'widget': 'float', 'precision': 2}"/>
+                    </div>
+                    <div t-if="opt['show_value'] and checks['svl_reconciled']" class="ag-ok">
+                        มูลค่าคงเหลือกระทบกับชั้นมูลค่าสินค้า (SVL) ครบถ้วน:
+                        <span t-out="checks['svl_value']"
+                              t-options="{'widget': 'float', 'precision': 2}"/>
+                    </div>
+                    <div t-if="checks['unlayered_qty']" class="ag-warn">
+                        คำเตือน: มีจำนวน <span t-out="checks['unlayered_qty']"
+                              t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                        หน่วยที่หาวันรับเข้าไม่ได้ (คงเหลือมากกว่ารายการรับเข้าทั้งหมด) ถูกนับไว้ในช่วงเก่าสุด
+                    </div>
+                    <div t-if="checks['bucket_qty_difference']" class="ag-meta">
+                        หมายเหตุ: ยอดคงเหลือติดลบ <span t-out="checks['bucket_qty_difference']"
+                              t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                        หน่วย ไม่ถูกจัดเข้าช่วงอายุ
+                    </div>
+
+                    <table class="ag-table">
+                        <thead>
+                            <tr>
+                                <t t-foreach="columns" t-as="col">
+                                    <th t-if="not col['group'] and col['group_first']"
+                                        rowspan="2" t-out="col['label']"/>
+                                    <th t-elif="col['group'] and col['group_span']"
+                                        t-att-colspan="col['group_span']"
+                                        t-att-class="col.get('bucket') and ('ag-' + col['bucket']) or ''"
+                                        t-out="col['group']"/>
+                                </t>
+                            </tr>
+                            <tr>
+                                <t t-foreach="columns" t-as="col">
+                                    <th t-if="col['group']"
+                                        t-att-class="col.get('bucket') and ('ag-' + col['bucket']) or ''"
+                                        t-out="col['label']"/>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="d['lines']" t-as="line"
+                                t-att-class="
+                                    line['kind'] == 'group_total' and 'ag-total'
+                                    or (line['level'] == 0 and 'ag-lv0')
+                                    or (line['level'] == 1 and 'ag-lv1')
+                                    or ''">
+                                <t t-foreach="columns" t-as="col">
+                                    <t t-set="value" t-value="line.get(col['key'])"/>
+                                    <td t-if="col['type'] == 'text'" class="ag-code"
+                                        t-out="line.get('code') or ''"/>
+                                    <td t-elif="col['type'] == 'uom'" class="ag-code"
+                                        t-out="line.get('uom_name') or ''"/>
+                                    <td t-elif="col['type'] == 'name'"
+                                        t-att-style="'padding-left:%spx' % (3 + 9 * (line.get('level') or 0))">
+                                        <span t-att-class="line.get('flag') == 'negative' and 'ag-negative' or ''"
+                                              t-out="line.get('name') or ''"/>
+                                    </td>
+                                    <td t-elif="col['type'] == 'status'" class="ag-center">
+                                        <span t-if="value" t-att-class="'ag-st-' + value"
+                                              t-out="status_labels.get(value, value)"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td t-elif="col['type'] == 'qty'" class="ag-num">
+                                        <span t-if="value" t-out="value"
+                                              t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td t-elif="col['type'] == 'money'" class="ag-num">
+                                        <span t-if="value" t-out="value"
+                                              t-options="{'widget': 'float', 'precision': decimal_places}"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td t-elif="col['type'] == 'days'" class="ag-num">
+                                        <span t-if="value is not None and value is not False" t-out="value"
+                                              t-options="{'widget': 'float', 'precision': 0}"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td t-else="" class="ag-num">
+                                        <span t-if="value is not None and value is not False" t-out="value"
+                                              t-options="{'widget': 'float', 'precision': 1}"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="ag-grand">
+                                <t t-foreach="columns" t-as="col">
+                                    <t t-set="value" t-value="d['totals'].get(col['key'])"/>
+                                    <td t-if="col['type'] == 'text'"/>
+                                    <td t-elif="col['type'] == 'uom'"/>
+                                    <td t-elif="col['type'] == 'name'" t-out="d['totals']['name']"/>
+                                    <td t-elif="col['type'] == 'qty' and col['additive']" class="ag-num">
+                                        <span t-out="value or 0.0"
+                                              t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                                    </td>
+                                    <td t-elif="col['type'] == 'money'" class="ag-num">
+                                        <span t-out="value or 0.0"
+                                              t-options="{'widget': 'float', 'precision': decimal_places}"/>
+                                    </td>
+                                    <td t-elif="col['key'] == 'avg_age'" class="ag-num">
+                                        <span t-if="value is not None and value is not False" t-out="value"
+                                              t-options="{'widget': 'float', 'precision': 0}"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td t-else="" class="ag-center">-</td>
+                                </t>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div class="ag-meta" style="margin-top:5px">
+                        อายุนับแบบ FIFO จากวันที่รับเข้าที่ระดับ <t t-out="checks['age_granularity']"/>
+                        (ของที่เหลือคือของที่รับเข้าล่าสุด) · ใช้เฉลี่ย/เดือน = จำนวนที่จ่ายออกจากบริษัท
+                        (ไม่นับโอนภายใน/ปรับปรุงยอด/ของเสีย) ÷ <t t-out="opt['usage_months']"/> เดือน ·
+                        MOS = คงเหลือ ÷ ใช้เฉลี่ยต่อเดือน
+                    </div>
+
+                    <table class="ag-sign">
+                        <tr>
+                            <td><div class="ag-sign-line">ผู้จัดทำ</div></td>
+                            <td><div class="ag-sign-line">ผู้ตรวจสอบ</div></td>
+                            <td><div class="ag-sign-line">ผู้อนุมัติ</div></td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

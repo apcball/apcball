@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_st_aging.StockAging">
+        <div class="ag-root o_action">
+
+            <div class="ag-header">
+                <div class="ag-header-main">
+                    <h1 t-esc="state.data ? state.data.labels.title : 'อายุสินค้าคงเหลือ (Stock Aging)'"/>
+                    <div class="ag-subtitle" t-if="state.data">
+                        <span t-esc="state.data.company.names"/>
+                        <span class="ag-dot">·</span>
+                        <span t-esc="state.data.labels.as_of"/>
+                        <span class="ag-dot">·</span>
+                        <span t-esc="state.data.labels.usage_window"/>
+                        <span class="ag-dot">·</span>
+                        <span t-esc="state.data.labels.levels"/>
+                        <span class="ag-dot">·</span>
+                        <span t-esc="groupCount + ' กลุ่ม'"/>
+                    </div>
+                </div>
+            </div>
+
+            <AgFilterBar options="state.options"
+                         companies="state.data ? state.data.allowed_companies : []"
+                         warehouses="state.data ? state.data.warehouses : []"
+                         categories="state.data ? state.data.categories : []"
+                         levels="state.data ? state.data.levels : []"
+                         loading="state.loading"
+                         onChange.bind="updateOptions"
+                         onRefresh="() => this.load(true)"
+                         onReset.bind="resetFilters"
+                         onPrint.bind="print"
+                         onOpenConfig.bind="openConfig"
+                         onUnfoldAll.bind="unfoldAll"
+                         onFoldAll.bind="foldAll"/>
+
+            <div class="ag-kpi-cards" t-if="state.data">
+                <div t-foreach="kpiCards" t-as="card" t-key="card.key"
+                     t-att-class="'ag-card ag-card-' + card.tone">
+                    <div class="ag-card-icon"><i class="fa" t-att-class="card.icon"/></div>
+                    <div class="ag-card-body">
+                        <div class="ag-card-label" t-esc="card.label"/>
+                        <div class="ag-card-value">
+                            <span t-esc="card.value"/>
+                            <span class="ag-card-sub" t-if="card.sub" t-esc="card.sub"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <t t-if="state.data">
+                <t t-set="checks" t-value="state.data.checks"/>
+                <div class="ag-alert ag-alert-bad" t-if="checks.mixed_currency.length">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    มีบริษัทที่ใช้สกุลเงินต่างจากรายงานนี้ ยอดถูกบวกกันตรง ๆ โดยไม่แปลงค่า —
+                    <t t-foreach="checks.mixed_currency" t-as="company" t-key="company.id">
+                        <span t-esc="company.name"/> (<span t-esc="company.currency"/>)
+                    </t>
+                </div>
+                <div class="ag-alert ag-alert-info"
+                     t-if="state.options.show_value and checks.svl_scope_limited">
+                    <i class="fa fa-filter me-2"/>
+                    ชั้นมูลค่าสินค้า (SVL) ไม่มีมิติคลัง/ที่เก็บ/ล็อต รายงานที่กรองไว้จึงกระทบยอดกับมูลค่า
+                    ทั้งบริษัทไม่ได้ — มูลค่าที่แสดงเป็นส่วนแบ่งตามสัดส่วนจำนวน
+                </div>
+                <div class="ag-alert ag-alert-bad"
+                     t-if="state.options.show_value and !checks.svl_reconciled and !checks.svl_scope_limited">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    มูลค่าในรายงานไม่กระทบกับชั้นมูลค่าสินค้า (SVL) ผลต่าง
+                    <b t-esc="checks.svl_difference"/>
+                </div>
+                <div class="ag-alert ag-alert-ok"
+                     t-if="state.options.show_value and checks.svl_reconciled">
+                    <i class="fa fa-check-circle me-2"/>
+                    มูลค่าคงเหลือกระทบกับชั้นมูลค่าสินค้า (SVL) ครบถ้วน
+                    <b t-esc="checks.svl_value"/>
+                </div>
+                <div class="ag-alert ag-alert-info" t-if="checks.value_hidden_reason">
+                    <i class="fa fa-lock me-2"/>
+                    คุณไม่มีสิทธิ์ดูมูลค่าสินค้า รายงานนี้แสดงเฉพาะจำนวน
+                </div>
+                <div class="ag-alert ag-alert-warn" t-if="checks.unlayered_qty">
+                    <i class="fa fa-info-circle me-2"/>
+                    มี <b t-esc="checks.unlayered_qty"/> หน่วยที่หาวันรับเข้าไม่ได้
+                    (คงเหลือมากกว่ารายการรับเข้าทั้งประวัติ) ถูกนับไว้ในช่วงเก่าสุด
+                </div>
+                <div class="ag-alert ag-alert-warn" t-if="checks.negative_balances.length">
+                    <i class="fa fa-info-circle me-2"/>
+                    มียอดคงเหลือติดลบ <b t-esc="checks.negative_balances.length"/> รายการ
+                    — ไม่ถูกจัดเข้าช่วงอายุ (รวม <b t-esc="checks.bucket_qty_difference"/> หน่วย)
+                </div>
+            </t>
+
+            <div class="ag-progress" t-if="state.reloading"><div/></div>
+
+            <div class="ag-body">
+                <div class="ag-loading" t-if="state.loading and !state.data">
+                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+                <AgTable t-elif="state.data" data="state.data"
+                         onToggleFold.bind="toggleFold"
+                         onDrillDown.bind="drillDown"
+                         onOpenProduct.bind="openProduct"/>
+            </div>
+
+            <div class="ag-legend" t-if="state.data">
+                <span>อายุนับแบบ FIFO จากวันที่รับเข้าที่ระดับ <b t-esc="state.data.checks.age_granularity"/></span>
+                <span class="ag-dot">·</span>
+                <span>ใช้เฉลี่ย/เดือน = จ่ายออกจากบริษัทใน <t t-esc="state.data.options.usage_months"/> เดือน ÷ เดือน (ไม่นับโอนภายใน/ปรับปรุงยอด/ของเสีย)</span>
+                <span class="ag-dot">·</span>
+                <span>MOS = คงเหลือ ÷ ใช้เฉลี่ย/เดือน</span>
+                <span class="ag-dot">·</span>
+                <span t-esc="state.data.labels.thresholds"/>
+                <span class="ag-dot">·</span>
+                <span>* = ไม่เคยจ่ายออก นับจากวันรับเข้าเก่าสุด</span>
+            </div>
+        </div>
+    </t>
+
+</templates>

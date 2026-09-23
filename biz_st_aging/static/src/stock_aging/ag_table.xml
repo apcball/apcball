@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_st_aging.AgTable">
+        <div class="ag-table-wrap">
+            <table class="ag-table">
+                <thead>
+                    <tr class="ag-head-1">
+                        <th t-foreach="tiers.tier1" t-as="cell" t-key="cell.key"
+                            t-att-colspan="cell.colspan" t-att-rowspan="cell.rowspan"
+                            t-att-class="cell.caption ? 'ag-head-caption' : ''"
+                            t-esc="cell.label"/>
+                    </tr>
+                    <tr class="ag-head-2">
+                        <th t-foreach="tiers.tier2" t-as="cell" t-key="cell.key"
+                            t-att-colspan="cell.colspan"
+                            t-att-class="'ag-head-' + cell.bucket"
+                            t-esc="cell.label"/>
+                    </tr>
+                    <tr class="ag-head-3">
+                        <th t-foreach="tiers.tier3" t-as="cell" t-key="cell.key"
+                            t-att-class="cell.bucket ? 'ag-head-' + cell.bucket : ''"
+                            t-esc="cell.label"/>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="props.data.lines" t-as="line" t-key="line.id"
+                        t-att-class="rowClass(line)"
+                        t-on-click="() => this.onRowClick(line)">
+                        <t t-foreach="columns" t-as="col" t-key="col.key">
+                            <td t-if="col.type === 'text'" class="ag-cell-code"
+                                t-esc="cellValue(line, col)"/>
+                            <td t-elif="col.type === 'uom'" class="ag-cell-uom"
+                                t-esc="cellValue(line, col)"/>
+                            <td t-elif="col.type === 'name'" class="ag-cell-name"
+                                t-att-style="indent(line)">
+                                <span class="ag-caret" t-if="line.unfoldable"
+                                      t-on-click.stop="() => this.onCaretClick(line)">
+                                    <i class="fa"
+                                       t-att-class="line.unfolded ? 'fa-caret-down' : 'fa-caret-right'"/>
+                                </span>
+                                <span class="ag-caret ag-caret-void" t-else=""/>
+                                <span class="ag-name"
+                                      t-att-class="{'ag-name-link': isProductLink(line)}"
+                                      t-att-title="isProductLink(line) ? 'ดูรายละเอียดสินค้า' : undefined"
+                                      t-on-click="(ev) => this.onNameClick(line, ev)"
+                                      t-esc="line.name"/>
+                                <span class="ag-sub" t-if="line.sub" t-esc="line.sub"/>
+                                <span class="ag-badge ag-badge-neg" t-if="line.flag === 'negative'">ติดลบ</span>
+                                <span class="ag-badge ag-badge-warn" t-if="line.flag === 'unlayered'"
+                                      title="คงเหลือมากกว่ารายการรับเข้าทั้งประวัติ">หาวันรับไม่ได้</span>
+                                <span class="ag-badge" t-if="line.flag === 'no_value'">ไม่มีมูลค่า</span>
+                            </td>
+                            <td t-elif="col.type === 'status'" class="ag-cell-status">
+                                <span t-if="line.status" t-att-class="'ag-status ag-status-' + line.status"
+                                      t-esc="statusLabel(line.status)"/>
+                                <span t-else="" class="ag-muted">-</span>
+                            </td>
+                            <td t-elif="col.type === 'days' and col.key === 'no_move_days'"
+                                t-att-class="cellClass(col)"
+                                t-att-title="line.no_move_is_estimate ? 'ไม่เคยจ่ายออก — นับจากวันรับเข้าเก่าสุด' : undefined">
+                                <t t-esc="cellValue(line, col)"/>
+                                <sup t-if="line.no_move_is_estimate" class="ag-muted">*</sup>
+                            </td>
+                            <td t-else="" t-att-class="cellClass(col)" t-esc="cellValue(line, col)"/>
+                        </t>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <t t-foreach="columns" t-as="col" t-key="col.key">
+                            <td t-if="col.type === 'name'" class="ag-cell-name" t-esc="totalValue(col)"/>
+                            <td t-elif="col.type === 'status'" class="ag-cell-status"/>
+                            <td t-else="" t-att-class="cellClass(col)" t-esc="totalValue(col)"/>
+                        </t>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </t>
+
+</templates>

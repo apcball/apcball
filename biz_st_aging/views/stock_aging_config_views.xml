@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_aging_config_form" model="ir.ui.view">
+        <field name="name">biz.stock.aging.config.form</field>
+        <field name="model">biz.stock.aging.config</field>
+        <field name="arch" type="xml">
+            <form string="ตั้งค่าอายุสินค้าคงเหลือ">
+                <sheet>
+                    <group>
+                        <field name="company_id" options="{'no_create': True}"/>
+                    </group>
+                    <group>
+                        <group string="ช่วงอายุ (วัน)">
+                            <field name="bucket_1"/>
+                            <field name="bucket_2"/>
+                            <field name="bucket_3"/>
+                            <field name="bucket_4"/>
+                            <field name="bucket_5"/>
+                            <div colspan="2" class="text-muted">
+                                ช่วงที่ 6 = เก่ากว่าช่วงที่ 5 · KPI "มูลค่าเกิน" ใช้ขอบช่วงที่ 3, 4 และ 5
+                            </div>
+                        </group>
+                        <group string="เกณฑ์สถานะ">
+                            <field name="slow_mos_months"/>
+                            <field name="non_moving_days"/>
+                            <field name="obsolete_days"/>
+                            <div colspan="2" class="text-muted">
+                                ลำดับการตัดสิน: ตาย → ไม่เคลื่อนไหว → ช้า (MOS เกินเกณฑ์ หรือไม่มีการใช้เลย) → ปกติ
+                            </div>
+                        </group>
+                    </group>
+                    <group string="การใช้เฉลี่ย">
+                        <field name="usage_months"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_stock_aging_config_tree" model="ir.ui.view">
+        <field name="name">biz.stock.aging.config.tree</field>
+        <field name="model">biz.stock.aging.config</field>
+        <field name="arch" type="xml">
+            <tree string="ตั้งค่าอายุสินค้าคงเหลือ">
+                <field name="company_id"/>
+                <field name="bucket_1"/>
+                <field name="bucket_2"/>
+                <field name="bucket_3"/>
+                <field name="bucket_4"/>
+                <field name="bucket_5"/>
+                <field name="usage_months"/>
+                <field name="non_moving_days"/>
+                <field name="obsolete_days"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_stock_aging_config" model="ir.actions.act_window">
+        <field name="name">ตั้งค่าอายุสินค้าคงเหลือ</field>
+        <field name="res_model">biz.stock.aging.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>
