@@ -135,6 +135,29 @@ class StockAgingReport(models.AbstractModel):
     # Public API
     # ==================================================================
     @api.model
+    def get_filter_options(self, options=None):
+        """ตัวเลือกตัวกรอง (คลัง/หมวด/บริษัท/ระดับ) โดยไม่คำนวณตัวรายงาน
+
+        ใช้เติมแถบตัวกรองตอนเปิดหน้าจอครั้งแรก — เบาเพราะอ่านแค่มิติ (``_load_maps``)
+        ไม่แตะ ``stock.move.line``/SVL เลย ผู้ใช้เลือกตัวกรองแล้วกด "ค้นหา" ค่อยเรียก
+        ``get_report_data`` ของจริง กันไม่ให้บริษัทที่ข้อมูลเยอะเปิดจอแล้วเจอ Invalid
+        Operation (เกิน ``max_lines``) ทันทีโดยยังไม่ทันได้กรองอะไรเลย
+        """
+        if not self.env.user.has_group("stock.group_stock_user"):
+            raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานคลังสินค้า"))
+        opt = self._normalize_options(options)
+        maps = self._load_maps(opt)
+        return {
+            "options": opt,
+            "allowed_companies": [
+                {"id": c.id, "name": c.name} for c in self.env.user.company_ids
+            ],
+            "warehouses": maps["warehouse_list"],
+            "categories": maps["categ_list"],
+            "levels": [{"type": lv, "label": LEVEL_LABEL[lv]} for lv in opt["levels"]],
+        }
+
+    @api.model
     def get_report_data(self, options=None):
         """คืนข้อมูลอายุสินค้าคงเหลือทั้งชุดสำหรับ options ที่ให้มา
 
@@ -623,13 +646,36 @@ class StockAgingReport(models.AbstractModel):
         return [("company_id", "in", opt["company_ids"])] + self._product_domain(opt, "product_id")
 
     @api.model
+    def _svl_move_ids_for_date(self, opt, operator, bound):
+        """id ของ ``stock.move`` ที่ผ่านเงื่อนไขวันที่ — resolve ล่วงหน้าแทน dotted path
+
+        เดิม ``stock_move_id.date`` ใน domain ของ SVL ทำให้ ORM คอมไพล์เป็น
+        ``stock_move_id IN (SELECT ... WHERE date ...)`` ที่ผูกอยู่ใน OR สอง branch —
+        Postgres วางแผนเป็น correlated/bitmap-OR scan ที่ใช้ index ไม่ได้ดี ``biz_st_stock_card``
+        เจอเคสจริง 2026-09-18: 2 query ค้าง 2+ นาที CPU 100% พร้อมกัน (รายงานไม่กรองสินค้า =
+        สแกนเกือบเต็ม stock_valuation_layer 268k แถว) — ``biz_st_aging`` เข้าเคสเดียวกันได้
+        (รายงานทั้งบริษัท ณ วันที่ย้อนหลัง ไม่กรองสินค้า)
+
+        resolve เป็น id list ก่อนด้วย search() ธรรมดา ใช้ดัชนีบน stock.move ได้ตรง ๆ แล้วส่ง
+        ``stock_move_id IN (id, id, ...)`` ให้ query หลัก ซึ่งใช้ index บน SVL.stock_move_id
+        ได้ปกติ
+        """
+        domain = [
+            ("company_id", "in", opt["company_ids"]),
+            ("date", operator, bound),
+        ] + self._product_domain(opt, "product_id")
+        return self._scoped("stock.move", opt).sudo().search(domain, order="id").ids
+
+    @api.model
     def _svl_date_domain(self, opt, operator, bound):
         """SVL ไม่มีฟิลด์วันที่ — ใช้ ``stock_move_id.date`` ก่อน fallback ``create_date``
         (ชั้นที่ไม่ผูก move เช่นปรับราคาต้นทุน/landed cost ต้องมีคู่ ``stock_move_id = False``)
+        id ของ move resolve ล่วงหน้าผ่าน ``_svl_move_ids_for_date`` (ดู docstring ที่นั่น)
         """
+        move_ids = self._svl_move_ids_for_date(opt, operator, bound)
         return [
             "|",
-            "&", ("stock_move_id", "!=", False), ("stock_move_id.date", operator, bound),
+            ("stock_move_id", "in", move_ids),
             "&", ("stock_move_id", "=", False), ("create_date", operator, bound),
         ]
 

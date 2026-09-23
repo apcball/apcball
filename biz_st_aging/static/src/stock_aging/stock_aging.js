@@ -20,10 +20,26 @@ export class StockAging extends Component {
             // reloading = โหลดรอบต่อ ๆ ไป ตารางเดิมยังอยู่บนจอ การกางจึงไม่กะพริบ
             reloading: false,
             data: null,
+            // ตัวเลือกตัวกรอง (คลัง/หมวด/บริษัท) โหลดครั้งเดียวตอนเปิดจอ เบากว่า get_report_data มาก
+            // — ตารางยังไม่มีข้อมูลจนกว่าผู้ใช้จะกด "ค้นหา" กันบริษัทข้อมูลเยอะเปิดจอแล้วเจอ error ทันที
+            filterOptions: null,
             // ปล่อยให้ server เติมค่าตั้งต้น (ณ วันที่, เขตเวลา, config) — ไม่คำนวณซ้ำบน client
             options: this.props.action.context.ag_options || {},
         });
-        onWillStart(() => this.load());
+        onWillStart(() => this.loadFilterOptions());
+    }
+
+    async loadFilterOptions() {
+        this.state.loading = true;
+        try {
+            const meta = await this.orm.call(
+                "biz.stock.aging.report", "get_filter_options", [this.state.options]
+            );
+            this.state.filterOptions = meta;
+            this.state.options = meta.options;
+        } finally {
+            this.state.loading = false;
+        }
     }
 
     /**
@@ -50,7 +66,17 @@ export class StockAging extends Component {
         }
     }
 
+    /** ใช้กับตัวกรองในแถบ — แค่พักค่าไว้บนจอ ยังไม่ยิง RPC จนกว่าจะกด "ค้นหา" */
+    stageOptions(changes) {
+        Object.assign(this.state.options, changes);
+    }
+
+    async search() {
+        await this.load();
+    }
+
     async updateOptions(changes) {
+        // ใช้กับปุ่มที่ต้อง refetch ทันที (กาง/หุบ/ปรับปรุงข้อมูล) — มีข้อมูลอยู่แล้วเท่านั้น
         // ถ้า server ปฏิเสธ (เช่น กางแล้วเกิน max_lines) ให้ options กลับไปค่าก่อนหน้า
         // ไม่งั้นทุกการโหลดถัดไปจะติดข้อผิดพลาดเดิมจนกว่าผู้ใช้จะเดาได้ว่าต้องหุบ
         const previous = { ...this.state.options };
@@ -65,7 +91,8 @@ export class StockAging extends Component {
 
     async resetFilters() {
         this.state.options = {};
-        await this.load();
+        this.state.data = null;
+        await this.loadFilterOptions();
     }
 
     async toggleFold(line) {
@@ -111,7 +138,10 @@ export class StockAging extends Component {
             "biz.stock.aging.report", "action_open_config", [this.state.options]
         );
         // ปิดไดอะล็อกตั้งค่าแล้วโหลดใหม่ — ขอบช่วง/เกณฑ์อาจเปลี่ยน
-        this.actionService.doAction(action, { onClose: () => this.load() });
+        // (ยังไม่เคยค้นหา = ยังไม่มีตารางให้โหลดใหม่ แค่รีเฟรชตัวเลือกตัวกรองพอ)
+        this.actionService.doAction(action, {
+            onClose: () => (this.state.data ? this.load() : this.loadFilterOptions()),
+        });
     }
 
     async print(output) {
@@ -120,6 +150,11 @@ export class StockAging extends Component {
             [this.state.options, output]
         );
         this.actionService.doAction(action);
+    }
+
+    // --- filter bar meta ----------------------------------------------
+    get meta() {
+        return this.state.data || this.state.filterOptions || {};
     }
 
     // --- KPI cards ---------------------------------------------------

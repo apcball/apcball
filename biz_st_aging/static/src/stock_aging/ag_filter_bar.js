@@ -16,8 +16,11 @@ export class AgFilterBar extends Component {
         warehouses: { type: Array, optional: true },
         categories: { type: Array, optional: true },
         levels: { type: Array, optional: true },
+        // มีตารางผลลัพธ์อยู่แล้วหรือยัง (ค้นหาไปแล้วอย่างน้อยหนึ่งครั้ง) — คุมปุ่มที่ต้องมีข้อมูลก่อน
+        hasData: { type: Boolean, optional: true },
         loading: { type: Boolean, optional: true },
         onChange: Function,
+        onSearch: Function,
         onRefresh: Function,
         onReset: Function,
         onPrint: Function,

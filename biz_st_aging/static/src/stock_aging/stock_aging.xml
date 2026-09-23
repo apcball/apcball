@@ -22,12 +22,14 @@
             </div>
 
             <AgFilterBar options="state.options"
-                         companies="state.data ? state.data.allowed_companies : []"
-                         warehouses="state.data ? state.data.warehouses : []"
-                         categories="state.data ? state.data.categories : []"
-                         levels="state.data ? state.data.levels : []"
+                         companies="meta.allowed_companies || []"
+                         warehouses="meta.warehouses || []"
+                         categories="meta.categories || []"
+                         levels="meta.levels || []"
+                         hasData="!!state.data"
                          loading="state.loading"
-                         onChange.bind="updateOptions"
+                         onChange.bind="stageOptions"
+                         onSearch.bind="search"
                          onRefresh="() => this.load(true)"
                          onReset.bind="resetFilters"
                          onPrint.bind="print"
@@ -97,6 +99,10 @@
             <div class="ag-body">
                 <div class="ag-loading" t-if="state.loading and !state.data">
                     <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+                <div class="ag-empty" t-elif="!state.data">
+                    <i class="fa fa-search fa-2x mb-2"/>
+                    <div>เลือกตัวกรองที่ต้องการ (คลัง/หมวดสินค้า/สินค้า) แล้วกด "ค้นหา" เพื่อแสดงรายงาน</div>
                 </div>
                 <AgTable t-elif="state.data" data="state.data"
                          onToggleFold.bind="toggleFold"

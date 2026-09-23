@@ -238,6 +238,14 @@
     // ----------------------------------------------------------- table
     .ag-body { flex: 1; min-height: 0; padding: 8px 16px 8px; display: flex; }
     .ag-loading { margin: auto; color: var(--ag-muted); }
+    .ag-empty {
+        margin: auto;
+        color: var(--ag-muted);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
     .ag-table-wrap {
         flex: 1;
         min-height: 0;

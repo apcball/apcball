@@ -72,15 +72,22 @@
                 </div>
 
                 <div class="ag-actions">
+                    <button type="button" class="btn btn-sm btn-primary" title="ค้นหา"
+                            t-att-disabled="props.loading or undefined"
+                            t-on-click="() => props.onSearch()">
+                        <i class="fa fa-search me-1" t-att-class="props.loading ? 'fa-spin' : ''"/>ค้นหา
+                    </button>
                     <button type="button" class="btn btn-sm btn-light"
+                            t-att-disabled="!props.hasData or undefined"
                             t-on-click="() => props.onPrint('pdf')">
                         <i class="fa fa-file-pdf-o me-1"/>PDF
                     </button>
                     <button type="button" class="btn btn-sm btn-light"
+                            t-att-disabled="!props.hasData or undefined"
                             t-on-click="() => props.onPrint('xlsx')">
                         <i class="fa fa-file-excel-o me-1"/>Excel
                     </button>
-                    <button type="button" class="btn btn-sm btn-primary" title="รีเซ็ตตัวกรอง"
+                    <button type="button" class="btn btn-sm btn-light" title="รีเซ็ตตัวกรอง"
                             t-att-disabled="props.loading or undefined"
                             t-on-click="() => props.onReset()">
                         <i class="fa fa-refresh" t-att-class="props.loading ? 'fa-spin' : ''"/>
@@ -120,7 +127,7 @@
                 </div>
 
                 <div class="ag-toggles">
-                    <button type="button" class="btn btn-sm btn-primary"
+                    <button type="button" class="btn btn-sm btn-primary" t-if="props.hasData"
                             t-att-disabled="props.loading or undefined"
                             t-on-click="() => props.onRefresh()">
                         <i class="fa fa-refresh me-1" t-att-class="props.loading ? 'fa-spin' : ''"/>ปรับปรุงข้อมูล
@@ -131,7 +138,7 @@
                     </button>
                 </div>
 
-                <div class="ag-actions">
+                <div class="ag-actions" t-if="props.hasData">
                     <span class="ag-axis-path" t-if="breadcrumb">
                         <i class="fa fa-sitemap me-1"/><span t-esc="breadcrumb"/>
                     </span>
