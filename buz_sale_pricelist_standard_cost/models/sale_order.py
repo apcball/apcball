@@ -25,6 +25,19 @@ class SaleOrder(models.Model):
         block_negative = get_param('sale_pricelist_standard_cost.block_negative_margin') == 'True'
         
         for order in self:
+            # Check Missing Standard Cost (block confirm, product must have cost set first)
+            missing_cost_products = []
+            for line in order.order_line:
+                if line.display_type or line.is_downpayment or not line.product_id:
+                    continue
+                if line.purchase_price <= 0:
+                    missing_cost_products.append(line.product_id.display_name)
+
+            if missing_cost_products:
+                raise ValidationError(_(
+                    "ไม่สามารถ Confirm ได้: สินค้าต่อไปนี้ยังไม่มี Standard Cost กรุณาแจ้งบัญชีต้นทุนให้ตั้งราคาต้นทุนใน Standard Cost Pricelist ก่อน:\n%s"
+                ) % "\n".join("- %s" % name for name in missing_cost_products))
+
             # Check Global Margin
             if min_margin > 0:
                 # Compare as percent (e.g. 10.0 for 10%)
