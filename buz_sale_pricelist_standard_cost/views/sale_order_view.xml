@@ -8,6 +8,12 @@
              <field name="pricelist_id" position="attributes">
                 <attribute name="domain">['&amp;', ('is_standard_cost_pricelist', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]</attribute>
              </field>
+             <!-- Warn on the order form when any line is missing a Cost -->
+             <xpath expr="//field[@name='order_line']" position="before">
+                <div class="alert alert-danger" role="alert" invisible="not missing_cost_warning">
+                    <field name="missing_cost_warning" nolabel="1" readonly="1"/>
+                </div>
+             </xpath>
              <!-- Highlight lines missing a Cost — must be set before Confirm -->
              <xpath expr="//field[@name='order_line']/tree" position="attributes">
                 <attribute name="decoration-danger">purchase_price &lt;= 0 and product_id and not is_downpayment</attribute>

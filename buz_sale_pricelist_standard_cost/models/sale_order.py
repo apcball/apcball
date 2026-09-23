@@ -18,20 +18,33 @@ class SaleOrder(models.Model):
             order.margin = sum(order.order_line.mapped('margin'))
             order.margin_percent = order.amount_untaxed and order.margin / order.amount_untaxed
 
+    missing_cost_warning = fields.Text(compute='_compute_missing_cost_warning')
+
+    @api.depends('order_line.purchase_price', 'order_line.product_id', 'order_line.display_type', 'order_line.is_downpayment')
+    def _compute_missing_cost_warning(self):
+        for order in self:
+            missing = order._get_missing_cost_products()
+            order.missing_cost_warning = _(
+                "สินค้าต่อไปนี้ยังไม่มี Cost กรุณาแจ้งบัญชีต้นทุนให้ตั้งราคาต้นทุนใน Standard Cost Pricelist ก่อน Confirm:\n%s"
+            ) % "\n".join("- %s" % name for name in missing) if missing else False
+
+    def _get_missing_cost_products(self):
+        self.ensure_one()
+        return [
+            line.product_id.display_name
+            for line in self.order_line
+            if not line.display_type and not line.is_downpayment and line.product_id and line.purchase_price <= 0
+        ]
+
     def action_confirm(self):
         # Validation checks
         get_param = self.env['ir.config_parameter'].sudo().get_param
         min_margin = float(get_param('sale_pricelist_standard_cost.minimum_margin_percent', default=0.0))
         block_negative = get_param('sale_pricelist_standard_cost.block_negative_margin') == 'True'
-        
+
         for order in self:
             # Check Missing Standard Cost (block confirm, product must have cost set first)
-            missing_cost_products = []
-            for line in order.order_line:
-                if line.display_type or line.is_downpayment or not line.product_id:
-                    continue
-                if line.purchase_price <= 0:
-                    missing_cost_products.append(line.product_id.display_name)
+            missing_cost_products = order._get_missing_cost_products()
 
             if missing_cost_products:
                 raise ValidationError(_(
