@@ -331,3 +331,83 @@ class TestStockReservationGuard(TransactionCase):
         # Should validate without raising UserError
         picking.button_validate()
         self.assertEqual(picking.state, 'done')
+
+
+class TestMrpRawMaterialReservationGuard(TransactionCase):
+    """MRP raw-material consumption carries no stock.picking and is already
+    'done' by the time its move-line quantity is finalized - the move-line
+    guard's own bypass condition. button_mark_done must catch what the
+    move-line guard structurally can't."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.parent_location = cls.env.ref("stock.stock_location_locations")
+        cls.source_with_stock = cls.env["stock.location"].create(
+            {
+                "name": "MRP Guard Stock",
+                "location_id": cls.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        cls.source_empty = cls.env["stock.location"].create(
+            {
+                "name": "MRP Guard Empty",
+                "location_id": cls.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        cls.raw_product = cls.env["product.product"].create(
+            {"name": "Guard Raw Material", "type": "product"}
+        )
+        cls.fg_product = cls.env["product.product"].create(
+            {"name": "Guard Finished Good", "type": "product"}
+        )
+        cls.env["stock.quant"]._update_available_quantity(
+            cls.raw_product, cls.source_with_stock, 10.0
+        )
+        cls.bom = cls.env["mrp.bom"].create(
+            {
+                "product_tmpl_id": cls.fg_product.product_tmpl_id.id,
+                "product_qty": 1.0,
+                "type": "normal",
+                "bom_line_ids": [
+                    (0, 0, {"product_id": cls.raw_product.id, "product_qty": 1.0})
+                ],
+            }
+        )
+
+    def _create_production(self, source_location, qty=1.0):
+        production = self.env["mrp.production"].create(
+            {
+                "product_id": self.fg_product.id,
+                "product_qty": qty,
+                "product_uom_id": self.fg_product.uom_id.id,
+                "bom_id": self.bom.id,
+                "location_src_id": source_location.id,
+            }
+        )
+        production.action_confirm()
+        production.qty_producing = production.product_qty
+        return production
+
+    def test_block_mark_done_when_raw_material_location_insufficient(self):
+        production = self._create_production(self.source_empty)
+        with self.assertRaises(UserError):
+            production.button_mark_done()
+        self.assertNotEqual(production.state, "done")
+
+    def test_allow_mark_done_when_raw_material_location_has_stock(self):
+        production = self._create_production(self.source_with_stock)
+        production.button_mark_done()
+        # 'to_close' means mark_done itself succeeded (posting is a separate
+        # step in this env); either state proves the guard didn't block it.
+        self.assertIn(production.state, ("done", "to_close"))
+
+    def test_bypass_location_allows_mark_done_from_empty(self):
+        self.env.company.write(
+            {"bypass_reservation_guard_location_ids": [(4, self.source_empty.id)]}
+        )
+        production = self._create_production(self.source_empty)
+        production.button_mark_done()
+        self.assertIn(production.state, ("done", "to_close"))
