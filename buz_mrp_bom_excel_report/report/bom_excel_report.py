@@ -1,5 +1,6 @@
 ﻿import re
 from odoo import models
+from odoo.exceptions import UserError
 
 
 class BomExcelReport(models.AbstractModel):
@@ -198,3 +199,9 @@ class BomExcelReport(models.AbstractModel):
 
 class BomExcelSelectedReport(BomExcelReport):
     _name = "report.buz_mrp_bom_excel_report.bom_excel_selected_xlsx"
+
+    def _selected_boms(self, records, data):
+        selected_boms = super()._selected_boms(records, data)
+        if selected_boms is None or not selected_boms:
+            raise UserError("กรุณาเลือกรายการ BOM อย่างน้อย 1 รายการก่อน Export")
+        return selected_boms

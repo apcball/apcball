@@ -2,6 +2,7 @@ import io
 import zipfile
 
 from odoo import Command
+from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
 
@@ -162,6 +163,36 @@ class TestBomExcelReport(TransactionCase):
         self.assertIn("BOM-REF-002", shared_strings)
         self.assertNotIn("BOM-REF-001", shared_strings)
         self.assertNotEqual(first_bom.id, second_bom.id)
+
+    def test_selected_report_writes_only_multiple_selected_boms(self):
+        selected_boms = self.env["mrp.bom"]
+        self._create_bom("normal", reference="BOM-UNSELECTED")
+        for index in range(80):
+            selected_boms |= self._create_bom(
+                "normal", reference=f"BOM-SELECTED-{index + 1:03d}"
+            )
+
+        selected_report = self.env[
+            "report.buz_mrp_bom_excel_report.bom_excel_selected_xlsx"
+        ]
+        content, file_type = selected_report.create_xlsx_report(
+            selected_boms.ids, {}
+        )
+
+        self.assertEqual(file_type, "xlsx")
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            shared_strings = archive.read("xl/sharedStrings.xml").decode()
+        for index in range(80):
+            self.assertIn(f"BOM-SELECTED-{index + 1:03d}", shared_strings)
+        self.assertNotIn("BOM-UNSELECTED", shared_strings)
+
+    def test_selected_report_rejects_empty_selection(self):
+        selected_report = self.env[
+            "report.buz_mrp_bom_excel_report.bom_excel_selected_xlsx"
+        ]
+
+        with self.assertRaisesRegex(UserError, "กรุณาเลือกรายการ BOM"):
+            selected_report.create_xlsx_report([], {})
 
     def test_no_selection_returns_accessible_boms(self):
         first_bom = self._create_bom("normal", reference="BOM-REF-001")
