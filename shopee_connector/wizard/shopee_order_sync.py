@@ -20,6 +20,11 @@ class ShopeeOrderSyncWizard(models.TransientModel):
         help="Import Orders fetches every Shopee order created since this "
         "date. Orders already in Odoo are skipped.",
     )
+    import_orders_to = fields.Datetime(
+        string="Import Orders To",
+        help="Optional. Restricts Import Orders to orders created up to "
+        "this date instead of now, for a specific date/time range.",
+    )
     result_message = fields.Text(readonly=True)
     state = fields.Selection([("draft", "Draft"), ("done", "Done")], default="draft")
 
@@ -35,12 +40,25 @@ class ShopeeOrderSyncWizard(models.TransientModel):
 
     def action_import_orders(self):
         self.ensure_one()
-        self.config_id.import_orders_from = self.import_orders_from
+        self.config_id.write({
+            "import_orders_from": self.import_orders_from,
+            "import_orders_to": self.import_orders_to,
+        })
         created = self.config_id.action_sync_orders()
-        return self._done(
-            _("Imported %(count)s new order(s) created since %(since)s.")
-            % {"count": created, "since": self.import_orders_from}
-        )
+        if self.import_orders_to:
+            message = _(
+                "Imported %(count)s new order(s) created between "
+                "%(since)s and %(until)s."
+            ) % {
+                "count": created,
+                "since": self.import_orders_from,
+                "until": self.import_orders_to,
+            }
+        else:
+            message = _("Imported %(count)s new order(s) created since %(since)s.") % {
+                "count": created, "since": self.import_orders_from,
+            }
+        return self._done(message)
 
     def action_sync_status(self):
         self.ensure_one()

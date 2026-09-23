@@ -20,8 +20,8 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='amount_total']" position="after">
-                <field name="tag_ids" widget="many2many_tags" optional="show"/>
+            <xpath expr="//field[@name='tag_ids']" position="attributes">
+                <attribute name="optional">show</attribute>
             </xpath>
         </field>
     </record>

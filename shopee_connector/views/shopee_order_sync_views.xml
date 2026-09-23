@@ -10,12 +10,14 @@
                     <group invisible="state == 'done'">
                         <field name="config_id" options="{'no_create': True}"/>
                         <field name="import_orders_from"/>
+                        <field name="import_orders_to"/>
                     </group>
                     <p class="text-muted" invisible="state == 'done'">
-                        Import Orders fetches the orders created since the date
-                        above. Sync Order Status refreshes the status, the
-                        buyer address and the payment details of the orders
-                        already in Odoo, and ignores the date.
+                        Import Orders fetches the orders created between the
+                        two dates above (leave "Import Orders To" empty for
+                        up to now). Sync Order Status refreshes the status,
+                        the buyer address and the payment details of the
+                        orders already in Odoo, and ignores the dates.
                     </p>
                     <field name="result_message" nolabel="1" readonly="1"
                            invisible="state != 'done'"/>

@@ -168,6 +168,12 @@ class ShopeeConfig(models.Model):
         "created since this date (existing orders are skipped), then clears "
         "this field.",
     )
+    import_orders_to = fields.Datetime(
+        string="Import Orders To",
+        help="One-off backfill: when set together with Import Orders From, "
+        "restricts the fetch to orders created up to this date instead of "
+        "now, then clears this field.",
+    )
     last_stock_push = fields.Datetime(readonly=True)
     last_order_status_sync = fields.Datetime(readonly=True)
 
@@ -548,10 +554,11 @@ class ShopeeConfig(models.Model):
     def action_sync_orders(self):
         """Import new Shopee orders.
 
-        Normally from the last sync. When "Import Orders From" is set, from
-        that date instead (one-off backfill, cleared afterwards). Shopee
-        only accepts a limited time range per get_order_list call, so the
-        period is fetched in windows.
+        Normally from the last sync up to now. When "Import Orders From" is
+        set, from that date instead; "Import Orders To" additionally caps the
+        upper bound (both are a one-off backfill window, cleared afterwards).
+        Shopee only accepts a limited time range per get_order_list call, so
+        the period is fetched in windows.
         """
         self.ensure_one()
         token = self._ensure_valid_token()
@@ -561,16 +568,25 @@ class ShopeeConfig(models.Model):
         sync_from = self.import_orders_from or self.last_order_sync or (
             now - timedelta(days=2)
         )
+        sync_to = self.import_orders_to or now
+        if sync_to > now:
+            sync_to = now
+        if sync_from >= sync_to:
+            raise UserError("Import Orders From must be before Import Orders To.")
         created = 0
         window_start = sync_from
-        while window_start < now:
-            window_end = min(window_start + _ORDER_WINDOW, now)
+        while window_start < sync_to:
+            window_end = min(window_start + _ORDER_WINDOW, sync_to)
             created += self._sync_orders_window(
                 api, token, _unix(window_start), _unix(window_end),
             )
             window_start = window_end
 
-        self.write({"last_order_sync": now, "import_orders_from": False})
+        self.write({
+            "last_order_sync": sync_to,
+            "import_orders_from": False,
+            "import_orders_to": False,
+        })
         _logger.info("Shopee order sync (%s): %s new orders created",
                      self.name, created)
         return created
