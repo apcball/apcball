@@ -86,6 +86,7 @@ class ShopeeRetryQueue(models.Model):
             ("sync_order", "Import Order"),
             ("sync_order_status", "Sync Order Status"),
             ("push_stock", "Push Product Stock"),
+            ("push_price", "Push Product Price"),
             ("sync_stock", "Import Stock"),
         ],
         required=True,
@@ -144,7 +145,7 @@ class ShopeeRetryQueue(models.Model):
             if self.operation_type in ("sync_order", "sync_order_status"):
                 if not isinstance(payload.get("order_sn"), str) or not payload["order_sn"].strip():
                     raise ValueError("Retry payload requires an order_sn string.")
-            if self.operation_type == "push_stock":
+            if self.operation_type in ("push_stock", "push_price"):
                 if type(payload.get("product_id")) is not int or payload["product_id"] <= 0:
                     raise ValueError("Retry payload requires a positive product_id.")
         except ValueError:
@@ -161,6 +162,11 @@ class ShopeeRetryQueue(models.Model):
                     if not product or (product.company_id and product.company_id != config.company_id):
                         raise UserError("Retry product is missing or belongs to another company.")
                     config._push_stock_for_products(product)
+                elif self.operation_type == "push_price":
+                    product = config.env["product.product"].browse(payload["product_id"]).exists()
+                    if not product or (product.company_id and product.company_id != config.company_id):
+                        raise UserError("Retry product is missing or belongs to another company.")
+                    config._push_price_for_products(product)
                 elif self.operation_type == "sync_stock":
                     config.action_sync_stock()
             self.write({"state": "done", "error_message": False})

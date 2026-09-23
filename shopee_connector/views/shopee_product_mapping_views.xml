@@ -22,6 +22,8 @@
                 <field name="last_stock_sync" readonly="1"/>
                 <field name="last_pushed_stock" readonly="1"/>
                 <field name="last_stock_push" readonly="1"/>
+                <field name="last_pushed_price" readonly="1" optional="hide"/>
+                <field name="last_price_push" readonly="1" optional="hide"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -62,6 +64,8 @@
                         <field name="last_stock_sync" readonly="1"/>
                         <field name="last_pushed_stock" readonly="1"/>
                         <field name="last_stock_push" readonly="1"/>
+                        <field name="last_pushed_price" readonly="1"/>
+                        <field name="last_price_push" readonly="1"/>
                     </group>
                 </sheet>
             </form>

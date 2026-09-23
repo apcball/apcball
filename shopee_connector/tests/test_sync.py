@@ -152,6 +152,45 @@ class TestShopeeSync(TransactionCase):
         self.assertEqual(len(calls), 1)
         self.assertTrue(self.product.shopee_stock_push_date)
 
+    def test_push_stock_batches_variants_of_same_item(self):
+        self.config.write({"shopee_push_stock": True})
+        self.product.write({
+            "shopee_item_id": "77",
+            "shopee_model_id": "1",
+            "shopee_sync_stock_out": True,
+        })
+        other = self.env["product.product"].create({
+            "name": "Shopee QA Widget 2", "default_code": "SHOPEE-QA-SYNC-2",
+            "type": "product",
+        })
+        other.write({
+            "shopee_item_id": "77",
+            "shopee_model_id": "2",
+            "shopee_sync_stock_out": True,
+        })
+        single_calls = []
+        batch_calls = []
+
+        def _fake_update(self_api, token, item_id, model_id, qty, location_id=None):
+            single_calls.append((item_id, model_id, qty))
+            return {"response": {}}
+
+        def _fake_batch(self_api, token, item_id, stock_list):
+            batch_calls.append((item_id, list(stock_list)))
+            return {"response": {}}
+
+        with patch.object(ShopeeAPI, "update_stock", _fake_update), \
+             patch.object(ShopeeAPI, "update_stock_batch", _fake_batch):
+            pushed = self.config._push_stock_for_products(self.product | other)
+
+        self.assertEqual(pushed, 2)
+        self.assertEqual(single_calls, [])
+        self.assertEqual(len(batch_calls), 1)
+        self.assertEqual(batch_calls[0][0], 77)
+        self.assertEqual(
+            sorted(entry["model_id"] for entry in batch_calls[0][1]), [1, 2]
+        )
+
     # ------------------------------------------------------------------
     def _sgz_payloads(self, model_sku=""):
         item_list = {"response": {"item": [{"item_id": 55}], "has_next_page": False}}

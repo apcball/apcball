@@ -44,6 +44,27 @@ class ProductProduct(models.Model):
     shopee_stock_push_date = fields.Datetime(
         string="Shopee Last Stock Push", readonly=True, copy=False
     )
+    shopee_sync_price_out = fields.Boolean(
+        string="Push Price to Shopee",
+        default=False,
+        copy=False,
+        help="When enabled and the shop connection has price push turned on, "
+        "this variant's Odoo sales price is pushed to Shopee. Off by default "
+        "- price pushes are higher-risk than stock pushes.",
+    )
+    shopee_price = fields.Float(
+        string="Shopee Price",
+        readonly=True,
+        copy=False,
+        help="Price as last reported/pushed to Shopee. Reference only.",
+    )
+    shopee_pushed_price = fields.Float(
+        string="Shopee Last Pushed Price", readonly=True, copy=False,
+        help="Last price sent to Shopee. Used to skip unchanged pushes.",
+    )
+    shopee_price_push_date = fields.Datetime(
+        string="Shopee Last Price Push", readonly=True, copy=False
+    )
 
     @api.depends("shopee_item_id")
     def _compute_shopee_linked(self):

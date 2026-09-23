@@ -137,6 +137,12 @@ class ShopeeConfig(models.Model):
         help="Master switch. When on, this shop's linked products push their "
         "Odoo free-to-use quantity back to Shopee (manual button or cron).",
     )
+    shopee_push_price = fields.Boolean(
+        string="Push Price to Shopee",
+        default=False,
+        help="Master switch. When on, this shop's linked products push their "
+        "Odoo sales price back to Shopee (manual button or cron).",
+    )
     shopee_warehouse_id = fields.Many2one(
         "stock.warehouse",
         string="Stock Source Warehouse",
@@ -175,6 +181,7 @@ class ShopeeConfig(models.Model):
         "now, then clears this field.",
     )
     last_stock_push = fields.Datetime(readonly=True)
+    last_price_push = fields.Datetime(readonly=True)
     last_order_status_sync = fields.Datetime(readonly=True)
 
     @api.onchange("company_id")
@@ -795,8 +802,10 @@ class ShopeeConfig(models.Model):
                 lambda p: p.shopee_sync_stock_out
             )
 
-        pushed = 0
-        failures = []
+        # Build the list of variants to push first, then group by Shopee
+        # item_id so items with several models/variants go out in a single
+        # update_stock call instead of one call per variant.
+        entries = []
         for product in targets.with_context(**stock_context):
             qty = int(max(product.free_qty, 0))
             mapping = Mapping.search([
@@ -829,34 +838,60 @@ class ShopeeConfig(models.Model):
             )
             if not item_id:
                 continue
-            try:
-                api.update_stock(
-                    token,
-                    int(item_id),
-                    int(model_id) if model_id else 0,
-                    qty,
-                    location_id=mapping.shopee_location_id if mapping else False,
-                )
-            except ShopeeAPIError as exc:
-                failures.append(f"{product.default_code or product.display_name}: {exc}")
-                self.env["shopee.retry.queue"].enqueue(
-                    self, "push_stock", {"product_id": product.id}, str(exc)
-                )
-                _logger.warning("Shopee stock push failed for %s: %s",
-                                product.default_code, exc)
-                continue
-            product.write({
-                "shopee_pushed_stock": qty,
-                "shopee_stock": qty,
-                "shopee_stock_push_date": fields.Datetime.now(),
+            entries.append({
+                "product": product,
+                "mapping": mapping,
+                "qty": qty,
+                "item_id": int(item_id),
+                "model_id": int(model_id) if model_id else 0,
+                "location_id": mapping.shopee_location_id if mapping else False,
             })
-            if mapping:
-                mapping.write({
-                    "last_pushed_stock": qty,
+
+        pushed = 0
+        failures = []
+        by_item = {}
+        for entry in entries:
+            by_item.setdefault(entry["item_id"], []).append(entry)
+
+        for item_id, item_entries in by_item.items():
+            try:
+                if len(item_entries) == 1:
+                    entry = item_entries[0]
+                    api.update_stock(
+                        token, item_id, entry["model_id"], entry["qty"],
+                        location_id=entry["location_id"],
+                    )
+                else:
+                    stock_list = [{
+                        "model_id": entry["model_id"],
+                        "quantity": entry["qty"],
+                        "location_id": entry["location_id"],
+                    } for entry in item_entries]
+                    api.update_stock_batch(token, item_id, stock_list)
+            except ShopeeAPIError as exc:
+                for entry in item_entries:
+                    product = entry["product"]
+                    failures.append(f"{product.default_code or product.display_name}: {exc}")
+                    self.env["shopee.retry.queue"].enqueue(
+                        self, "push_stock", {"product_id": product.id}, str(exc)
+                    )
+                    _logger.warning("Shopee stock push failed for %s: %s",
+                                    product.default_code, exc)
+                continue
+            for entry in item_entries:
+                product, mapping, qty = entry["product"], entry["mapping"], entry["qty"]
+                product.write({
+                    "shopee_pushed_stock": qty,
                     "shopee_stock": qty,
-                    "last_stock_push": fields.Datetime.now(),
+                    "shopee_stock_push_date": fields.Datetime.now(),
                 })
-            pushed += 1
+                if mapping:
+                    mapping.write({
+                        "last_pushed_stock": qty,
+                        "shopee_stock": qty,
+                        "last_stock_push": fields.Datetime.now(),
+                    })
+                pushed += 1
 
         self.last_stock_push = fields.Datetime.now()
         _logger.info("Shopee stock push (%s): %s ok, %s failed",
@@ -875,6 +910,137 @@ class ShopeeConfig(models.Model):
             "tag": "display_notification",
             "params": {
                 "title": "Shopee stock push",
+                "message": f"{pushed} update(s) sent to Shopee.",
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # Actions - Push price (Odoo -> Shopee)
+    # ------------------------------------------------------------------
+    def _push_price_for_products(self, products=None, force=False):
+        """Push sales price to Shopee for the given (or all linked) products.
+
+        Same shape as ``_push_stock_for_products``: variants sharing a Shopee
+        item_id go out in a single update_price call. ``force`` (Product
+        Mapping button): push even when the price hasn't changed. Returns the
+        number of successful price updates.
+        """
+        self.ensure_one()
+        self = self.with_company(self.company_id).with_context(allowed_company_ids=self.company_id.ids)
+        if products is not None:
+            products = products.with_env(self.env)
+            if any(product.company_id and product.company_id != self.company_id for product in products):
+                raise UserError("Cannot push another company's price to this shop.")
+        if not self.shopee_push_price:
+            raise UserError(
+                f"Shop '{self.name}': 'Push Price to Shopee' is not enabled."
+            )
+        token = self._ensure_valid_token()
+        api = self._get_api()
+
+        Mapping = self.env["shopee.product.mapping"]
+        if products is not None:
+            targets = products
+        else:
+            mapped_products = Mapping.search([
+                ("shopee_config_id", "=", self.id),
+                ("active", "=", True),
+                ("product_id.shopee_sync_price_out", "=", True),
+            ]).mapped("product_id")
+            targets = self.env["product.product"].search([
+                ("shopee_item_id", "!=", False),
+                ("shopee_sync_price_out", "=", True),
+            ]) | mapped_products
+        if products is not None and not force:
+            targets = targets.filtered(lambda p: p.shopee_sync_price_out)
+
+        entries = []
+        for product in targets:
+            price = product.lst_price
+            mapping = Mapping.search([
+                ("shopee_config_id", "=", self.id),
+                ("product_id", "=", product.id),
+                ("active", "=", True),
+            ], limit=1)
+            already_pushed = (
+                mapping.last_pushed_price if mapping else product.shopee_pushed_price
+            )
+            pushed_at = mapping.last_price_push if mapping else product.shopee_price_push_date
+            if not force and price == already_pushed and pushed_at:
+                continue
+            item_id = (
+                (mapping.shopee_item_id if mapping else False)
+                or product.shopee_item_id
+            )
+            model_id = (
+                (mapping.shopee_model_id if mapping else False)
+                or product.shopee_model_id
+            )
+            if not item_id:
+                continue
+            entries.append({
+                "product": product,
+                "mapping": mapping,
+                "price": price,
+                "item_id": int(item_id),
+                "model_id": int(model_id) if model_id else 0,
+            })
+
+        pushed = 0
+        failures = []
+        by_item = {}
+        for entry in entries:
+            by_item.setdefault(entry["item_id"], []).append(entry)
+
+        for item_id, item_entries in by_item.items():
+            try:
+                api.update_price(token, item_id, [{
+                    "model_id": entry["model_id"],
+                    "original_price": entry["price"],
+                } for entry in item_entries])
+            except ShopeeAPIError as exc:
+                for entry in item_entries:
+                    product = entry["product"]
+                    failures.append(f"{product.default_code or product.display_name}: {exc}")
+                    self.env["shopee.retry.queue"].enqueue(
+                        self, "push_price", {"product_id": product.id}, str(exc)
+                    )
+                    _logger.warning("Shopee price push failed for %s: %s",
+                                    product.default_code, exc)
+                continue
+            for entry in item_entries:
+                product, mapping, price = entry["product"], entry["mapping"], entry["price"]
+                product.write({
+                    "shopee_pushed_price": price,
+                    "shopee_price": price,
+                    "shopee_price_push_date": fields.Datetime.now(),
+                })
+                if mapping:
+                    mapping.write({
+                        "last_pushed_price": price,
+                        "last_price_push": fields.Datetime.now(),
+                    })
+                pushed += 1
+
+        self.last_price_push = fields.Datetime.now()
+        _logger.info("Shopee price push (%s): %s ok, %s failed",
+                     self.name, pushed, len(failures))
+        if failures and products is not None:
+            raise UserError(
+                "Some price pushes failed:\n" + "\n".join(failures[:20])
+            )
+        return pushed
+
+    def action_push_price(self):
+        self.ensure_one()
+        pushed = self._push_price_for_products()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Shopee price push",
                 "message": f"{pushed} update(s) sent to Shopee.",
                 "type": "success",
                 "sticky": False,
@@ -909,6 +1075,16 @@ class ShopeeConfig(models.Model):
                 config._push_stock_for_products()
             except Exception:
                 _logger.exception("Shopee stock push failed for %s", config.name)
+
+    @api.model
+    def cron_push_price(self):
+        for config in self.search(
+            [("active", "=", True), ("shopee_push_price", "=", True)]
+        ):
+            try:
+                config._push_price_for_products()
+            except Exception:
+                _logger.exception("Shopee price push failed for %s", config.name)
 
     @api.model
     def cron_sync_order_status(self):

@@ -1,6 +1,6 @@
 {
     "name": "Shopee Odoo Connector",
-    "version": "17.0.2.18.0",
+    "version": "17.0.2.19.0",
     "category": "Sales/Sales",
     "summary": "Full Shopee Open Platform v2 Integration",
     "author": "Custom Developer",

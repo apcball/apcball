@@ -61,6 +61,8 @@ class ShopeeProductMapping(models.Model):
     )
     last_pushed_stock = fields.Integer(readonly=True)
     last_stock_push = fields.Datetime(readonly=True)
+    last_pushed_price = fields.Float(readonly=True)
+    last_price_push = fields.Datetime(readonly=True)
 
     _sql_constraints = [
         (

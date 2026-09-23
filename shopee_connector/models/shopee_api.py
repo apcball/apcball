@@ -403,3 +403,40 @@ class ShopeeAPI:
         entry["seller_stock"] = [seller_stock]
         body = {"item_id": int(item_id), "stock_list": [entry]}
         return self._post(path, access_token, body=body)
+
+    def update_stock_batch(self, access_token, item_id, stock_list):
+        """Push seller stock for several models of one item in one call.
+
+        ``stock_list``: iterable of ``{"model_id", "quantity", "location_id"}``
+        (``location_id`` optional). One item's models must be sent together -
+        Shopee's ``update_stock`` takes one ``item_id`` per request.
+        """
+        path = "/api/v2/product/update_stock"
+        entries = []
+        for row in stock_list:
+            entry = {}
+            if row.get("model_id"):
+                entry["model_id"] = int(row["model_id"])
+            seller_stock = {"stock": int(max(row["quantity"], 0))}
+            if row.get("location_id"):
+                seller_stock["location_id"] = str(row["location_id"])
+            entry["seller_stock"] = [seller_stock]
+            entries.append(entry)
+        body = {"item_id": int(item_id), "stock_list": entries}
+        return self._post(path, access_token, body=body)
+
+    def update_price(self, access_token, item_id, price_list):
+        """Push seller price for one or more models of an item in one call.
+
+        ``price_list``: iterable of ``{"model_id", "original_price"}``.
+        ``model_id`` 0 / omitted targets an item with no models.
+        """
+        path = "/api/v2/product/update_price"
+        entries = []
+        for row in price_list:
+            entry = {"original_price": float(row["original_price"])}
+            if row.get("model_id"):
+                entry["model_id"] = int(row["model_id"])
+            entries.append(entry)
+        body = {"item_id": int(item_id), "price_list": entries}
+        return self._post(path, access_token, body=body)
