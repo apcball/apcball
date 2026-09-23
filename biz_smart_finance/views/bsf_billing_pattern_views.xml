@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_billing_pattern_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.billing.pattern.tree</field>
+        <field name="model">biz.smart.finance.billing.pattern</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_billing_pattern_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.billing.pattern.form</field>
+        <field name="model">biz.smart.finance.billing.pattern</field>
+        <field name="arch" type="xml">
+            <form string="แบบแผนวางบิล">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="เช่น มัดจำ 30 - ระหว่างงาน 40 - ส่งมอบ 30"/></h1>
+                    </div>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="line_ids">
+                        <tree editable="bottom">
+                            <field name="offset_months"/>
+                            <field name="name"/>
+                            <field name="percent" sum="รวม (ต้องเท่ากับ 100)"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_billing_pattern" model="ir.actions.act_window">
+        <field name="name">แบบแผนวางบิล</field>
+        <field name="res_model">biz.smart.finance.billing.pattern</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีแบบแผนวางบิล</p>
+            <p>บอกว่าเงินจะเข้ากี่เปอร์เซ็นต์ที่เดือนไหน นับจากเดือนที่เซ็นสัญญา
+            (0 = เดือนที่เซ็น) — ผลรวมต้องเท่ากับ 100</p>
+        </field>
+    </record>
+</odoo>

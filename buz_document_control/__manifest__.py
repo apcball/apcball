@@ -1,7 +1,7 @@
 {
     "name": "BUZ ISO Document Control",
     "summary": "ISO document distribution and revision control",
-    "version": "17.0.1.2.0",
+    "version": "17.0.1.4.0",
     "category": "Documents",
     "author": "Mogen Co., Ltd.",
     "license": "LGPL-3",

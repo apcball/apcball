@@ -22,6 +22,7 @@
                             string="Cancel"
                             type="object"
                             class="btn-secondary"
+                            groups="biz_monthly_analytic_budget.group_monthly_budget_manager"
                             invisible="state != 'pending'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="pending,approved,rejected"/>

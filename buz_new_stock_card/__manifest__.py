@@ -1,6 +1,6 @@
 {
     "name": "Interactive Stock Card",
-    "version": "17.0.1.3.0",
+    "version": "17.0.1.4.0",
     "category": "Inventory/Reports",
     "summary": "Interactive Owl-based stock card report with location tree drill-down",
     "author": "Mogen Co., Ltd.",

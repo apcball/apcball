@@ -53,6 +53,45 @@ class TestShopeeSync(TransactionCase):
         self.assertEqual(self.product.shopee_item_id, "55")
         self.assertEqual(self.product.shopee_model_id, "900")
         self.assertEqual(self.product.shopee_stock, 7)
+        mapping = self.env["shopee.product.mapping"].search([
+            ("shopee_config_id", "=", self.config.id),
+            ("shopee_sku", "=", self.sku),
+        ])
+        self.assertEqual(mapping.product_id, self.product)
+        self.assertEqual(mapping.shopee_stock, 7)
+        self.assertTrue(mapping.last_stock_sync)
+
+    def test_find_product_by_sku_ignores_case_and_whitespace(self):
+        self.product.default_code = "Shopee-Variant-%s" % self.product.id
+        product = self.env["shopee.product.mapping"].find_product_by_sku(
+            "  shopee-variant-%s  " % self.product.id
+        )
+        self.assertEqual(product, self.product)
+
+    def test_sync_stock_creates_pending_mapping_without_variant_sku(self):
+        item_list = {"response": {"item": [{"item_id": 55}], "has_next_page": False}}
+        base_info = {"response": {"item_list": [
+            {"item_id": 55, "item_name": "Test item", "has_model": True}
+        ]}}
+        model_list = {"response": {"model": [{
+            "model_id": 900, "model_name": "Blue", "model_sku": "",
+            "stock_info_v2": {"summary_info": {"total_available_stock": 7}},
+        }]}}
+        with patch.object(ShopeeAPI, "get_item_list", return_value=item_list), \
+             patch.object(ShopeeAPI, "get_item_base_info", return_value=base_info), \
+             patch.object(ShopeeAPI, "get_model_list", return_value=model_list):
+            updated = self.config.action_sync_stock()
+
+        mapping = self.env["shopee.product.mapping"].search([
+            ("shopee_config_id", "=", self.config.id),
+            ("shopee_item_id", "=", "55"),
+            ("shopee_model_id", "=", "900"),
+        ])
+        self.assertEqual(updated, 0)
+        self.assertFalse(mapping.product_id)
+        self.assertEqual(mapping.shopee_item_name, "Test item")
+        self.assertEqual(mapping.shopee_model_name, "Blue")
+        self.assertEqual(mapping.shopee_stock, 7)
 
     def test_create_from_shopee_draft_order(self):
         customer = self.env["res.partner"].search(

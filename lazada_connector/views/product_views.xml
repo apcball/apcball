@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- lazada_item_id / lazada_stock live on product.product (variant level,
+         since Lazada SKUs are matched against product.default_code which is
+         variant-specific). Extend the variant form, not the template form. -->
+    <record id="view_product_product_form_lazada" model="ir.ui.view">
+        <field name="name">product.product.form.lazada</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Lazada" name="lazada_group">
+                    <field name="lazada_item_id" readonly="1"/>
+                    <field name="lazada_sku_id" readonly="1"/>
+                    <field name="lazada_stock" readonly="1"/>
+                    <field name="lazada_last_sync" readonly="1"/>
+                    <field name="lazada_sync_stock_out"/>
+                    <field name="lazada_pushed_stock" readonly="1"/>
+                    <field name="lazada_stock_push_date" readonly="1"/>
+                    <button name="action_push_lazada_stock" type="object"
+                            string="Push Stock to Lazada" class="btn-secondary"
+                            invisible="not lazada_item_id"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_push_lazada_stock_server" model="ir.actions.server">
+        <field name="name">Push Stock to Lazada</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">records.action_push_lazada_stock()</field>
+    </record>
+
+    <record id="view_product_product_tree_lazada" model="ir.ui.view">
+        <field name="name">product.product.tree.lazada</field>
+        <field name="model">product.product</field>
+        <field name="arch" type="xml">
+            <tree string="Lazada Stock" create="false">
+                <field name="default_code"/>
+                <field name="name"/>
+                <field name="lazada_item_id"/>
+                <field name="lazada_sku_id"/>
+                <field name="lazada_stock"/>
+                <field name="lazada_pushed_stock"/>
+                <field name="lazada_last_sync"/>
+                <field name="lazada_stock_push_date"/>
+                <field name="lazada_sync_stock_out"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_lazada_stock" model="ir.actions.act_window">
+        <field name="name">Stock</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_product_product_tree_lazada"/>
+        <field name="domain">[('lazada_item_id', '!=', False)]</field>
+    </record>
+    <menuitem id="lazada_connector_stock_menu" name="Stock"
+              parent="lazada_connector_root_menu" action="action_lazada_stock"
+              sequence="20"/>
+
+    <record id="action_sync_lazada_stock_server" model="ir.actions.server">
+        <field name="name">Sync Stock from Lazada</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_sync_lazada_stock()</field>
+    </record>
+</odoo>

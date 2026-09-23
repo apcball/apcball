@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_ext_fact_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.fact.tree</field>
+        <field name="model">biz.smart.finance.ext.fact</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="company_id"/>
+                <field name="date"/>
+                <field name="kind"/>
+                <field name="metric_key"/>
+                <field name="label"/>
+                <field name="amount" widget="monetary"/>
+                <field name="qty" optional="hide"/>
+                <field name="source" widget="badge"
+                       decoration-info="source == 'api'"
+                       decoration-warning="source == 'manual'"/>
+                <field name="external_ref" optional="hide"/>
+                <field name="note" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_ext_fact_search" model="ir.ui.view">
+        <field name="name">biz.smart.finance.ext.fact.search</field>
+        <field name="model">biz.smart.finance.ext.fact</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="metric_key"/>
+                <field name="label"/>
+                <field name="external_ref"/>
+                <filter name="kind_inventory" string="สินค้าคงเหลือ"
+                        domain="[('kind', '=', 'inventory')]"/>
+                <filter name="kind_ratio" string="ตัวเลขอัตราส่วน"
+                        domain="[('kind', '=', 'ratio_input')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="บริษัท"
+                            context="{'group_by': 'company_id'}"/>
+                    <filter name="group_date" string="วันสิ้นงวด"
+                            context="{'group_by': 'date'}"/>
+                    <filter name="group_kind" string="ประเภท"
+                            context="{'group_by': 'kind'}"/>
+                    <filter name="group_source" string="ที่มา"
+                            context="{'group_by': 'source'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bsf_ext_fact" model="ir.actions.act_window">
+        <field name="name">External Figures</field>
+        <field name="res_model">biz.smart.finance.ext.fact</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีตัวเลขจากระบบภายนอก</p>
+            <p>กรอกมูลค่าสินค้าคงเหลือรายหมวด และตัวเลขงบการเงิน (สินทรัพย์ หนี้สิน
+            รายได้ ฯลฯ) ของบริษัทที่ตั้งแหล่งข้อมูลเป็น "ระบบภายนอก" —
+            หรือใช้เมนูนำเข้าไฟล์ / ปุ่ม Sync ในหน้า Settings</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bsf_ext_fact" name="External Figures"
+              parent="menu_bsf_inputs" action="action_bsf_ext_fact"
+              sequence="40"/>
+</odoo>

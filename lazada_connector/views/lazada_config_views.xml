@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_lazada_config_form" model="ir.ui.view">
+        <field name="name">lazada.config.form</field>
+        <field name="model">lazada.config</field>
+        <field name="arch" type="xml">
+            <form string="Lazada Seller Connection">
+                <header>
+                    <button name="action_get_authorization_url" type="object" string="1. Get Authorization Link" class="btn-primary"/>
+                    <button name="action_test_connection" type="object" string="Test Connection" class="btn-secondary"/>
+                    <button name="action_save_manual_tokens" type="object" string="Save Manual Tokens" class="btn-secondary"/>
+                    <button name="action_sync_stock" type="object" string="Sync Stock Now" class="btn-secondary"/>
+                    <button name="action_sync_orders" type="object" string="Import Orders Now" class="btn-secondary"/>
+                    <button name="action_sync_order_status" type="object" string="Sync Order Status" class="btn-secondary"/>
+                    <button name="action_push_stock" type="object" string="Push Stock Now" class="btn-secondary" invisible="not lazada_push_stock"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="active"/>
+                        <field name="environment"/>
+                        <field name="region"/>
+                        <field name="company_id" options="{'no_create': True}"/>
+                    </group>
+                    <group string="Credentials (from Lazada Open Platform App Detail)">
+                        <field name="app_key"/>
+                        <field name="app_secret" password="True"/>
+                        <field name="seller_id"/>
+                        <field name="redirect_url" placeholder="https://yourdomain.com/lazada/callback"/>
+                        <field name="webhook_secret" password="True"/>
+                    </group>
+                    <group string="Order Import">
+                        <field name="customer_partner_id"/>
+                    </group>
+                    <group string="Authorization">
+                        <div class="o_form_label">After Lazada approval, the callback exchanges the token automatically. If it fails, create a new authorization link; Lazada codes are single-use.</div>
+                    </group>
+                    <group string="Manual Tokens (optional)">
+                        <field name="temp_access_token" password="True"/>
+                        <field name="temp_refresh_token" password="True"/>
+                        <field name="temp_token_expires_at"/>
+                    </group>
+                    <group string="Stock Push (Odoo -&gt; Lazada)">
+                        <field name="lazada_push_stock"/>
+                        <field name="lazada_warehouse_id" invisible="not lazada_push_stock" required="lazada_push_stock"/>
+                        <field name="last_stock_push" readonly="1"/>
+                    </group>
+                    <group string="Token Status">
+                        <field name="access_token" readonly="1"/>
+                        <field name="token_expires_at" readonly="1"/>
+                        <field name="oauth_state" readonly="1"/>
+                    </group>
+                    <group string="Sync Status">
+                        <field name="last_stock_sync" readonly="1"/>
+                        <field name="last_order_sync" readonly="1"/>
+                        <field name="last_order_status_sync" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_lazada_config_list" model="ir.ui.view">
+        <field name="name">lazada.config.list</field>
+        <field name="model">lazada.config</field>
+        <field name="arch" type="xml">
+            <tree string="Lazada Seller Connections">
+                <field name="name"/>
+                <field name="region"/>
+                <field name="seller_id"/>
+                <field name="active"/>
+                <field name="last_stock_sync"/>
+                <field name="last_order_sync"/>
+                <field name="last_order_status_sync"/>
+                <field name="last_stock_push"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_lazada_config" model="ir.actions.act_window">
+        <field name="name">Lazada Seller Connections</field>
+        <field name="res_model">lazada.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="lazada_connector_config_action_menu" name="Seller Connections" parent="lazada_connector_config_menu" action="action_lazada_config" sequence="10"/>
+</odoo>

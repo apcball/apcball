@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="group_bsf_action_owner" model="res.groups">
+        <field name="name">ผู้รับ Action</field>
+        <field name="category_id" ref="module_category_bsf" />
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]" />
+    </record>
+    <record id="group_bsf_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_bsf_action_owner'))]" />
+    </record>
+    <record id="rule_bsf_cost_department_scope" model="ir.rule">
+        <field name="name">CFO cost.department: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_cost_department" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_cost_period_scope" model="ir.rule">
+        <field name="name">CFO cost.period: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_cost_period" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_cost_line_scope" model="ir.rule">
+        <field name="name">CFO cost.line: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_cost_line" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_cost_staffing_scope" model="ir.rule">
+        <field name="name">CFO cost.staffing: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_cost_staffing" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_strategy_scope" model="ir.rule">
+        <field name="name">CFO strategy: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_strategy" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_goal_scope" model="ir.rule">
+        <field name="name">CFO goal: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_goal" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_strategy_review_scope" model="ir.rule">
+        <field name="name">CFO strategy.review: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_strategy_review" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_issue_scope" model="ir.rule">
+        <field name="name">CFO issue: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_issue" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_action_scope" model="ir.rule">
+        <field name="name">CFO action: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_action" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_action_review_scope" model="ir.rule">
+        <field name="name">CFO action.review: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_action_review" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_cost_scenario_scope" model="ir.rule">
+        <field name="name">CFO cost.scenario: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_cost_scenario" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_cost_effect_scope" model="ir.rule">
+        <field name="name">CFO cost.effect: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_cost_effect" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_cost_cash_effect_scope" model="ir.rule">
+        <field name="name">CFO cost.cash.effect: company scope</field>
+        <field name="model_id" ref="model_biz_smart_finance_cost_cash_effect" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bsf_action_finance_read" model="ir.rule">
+        <field name="name">Finance: read actions</field>
+        <field name="model_id" ref="model_biz_smart_finance_action" />
+        <field name="groups" eval="[(4, ref('group_bsf_user'))]" />
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_write" eval="False" />
+        <field name="perm_create" eval="False" />
+        <field name="perm_unlink" eval="False" />
+    </record>
+    <record id="rule_bsf_action_owner_read" model="ir.rule">
+        <field name="name">Assignee: own action</field>
+        <field name="model_id" ref="model_biz_smart_finance_action" />
+        <field name="groups" eval="[(4, ref('group_bsf_action_owner'))]" />
+        <field name="domain_force">[('owner_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_bsf_action_manager_all" model="ir.rule">
+        <field name="name">Manager: all permitted company actions</field>
+        <field name="model_id" ref="model_biz_smart_finance_action" />
+        <field name="groups" eval="[(4, ref('group_bsf_manager'))]" />
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+</odoo>

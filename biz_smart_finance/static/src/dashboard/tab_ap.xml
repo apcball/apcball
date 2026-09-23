@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabAp">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'ap'" data="props.data"/>
+        <!-- supplier payment calendar -->
+        <section class="o_bsf_card span7" t-att-class="zoomCls('ap_1')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ap_1')"
+                    t-att-title="isZoomed('ap_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ap_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ap_1') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Supplier Payment Calendar</b>
+                <span>แผนจ่ายเจ้าหนี้ 6 สัปดาห์ข้างหน้า · <t t-esc="unitLabel"/></span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr>
+                            <th>สถานะ</th>
+                            <th t-foreach="ap.calendar" t-as="week" t-key="week.index">
+                                <t t-esc="week.label"/>
+                                <div style="font-weight: 400;"><t t-esc="week.sub"/></div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Approved (ตั้งบิลแล้ว)</td>
+                            <td t-foreach="ap.calendar" t-as="week" t-key="week.index"
+                                t-attf-class="{{ zero(week.approved) }} o_bsf_click"
+                                t-att-title="'คลิกดูบิลครบกำหนด ' + week.label"
+                                t-on-click="() => this.openCalendarApproved(week)">
+                                <t t-esc="fmtMoney(week.approved)"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Pending (ตามแผนจ่าย)</td>
+                            <td t-foreach="ap.calendar" t-as="week" t-key="week.index"
+                                t-attf-class="{{ zero(week.pending) }} o_bsf_click"
+                                t-att-title="'คลิกดูแผนจ่าย ' + week.label"
+                                t-on-click="() => this.openCalendarPending(week)">
+                                <t t-esc="fmtMoney(week.pending)"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="o_bsf_empty_note">
+                <span t-attf-class="{{ ap.overdue_total ? 'is-alert' : '' }}"
+                      t-attf-style="{{ ap.overdue_total ? 'color: var(--bsf-risk); font-weight: 700;' : '' }}">
+                    Overdue (เกินกำหนดแล้ว): <t t-esc="fmtMoney(ap.overdue_total)"/>
+                </span>
+                · <a t-on-click="openOverdueBills">ดูรายใบ</a>
+            </div>
+        </section>
+
+        <!-- aging -->
+        <section class="o_bsf_card span5" t-att-class="zoomCls('ap_2')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ap_2')"
+                    t-att-title="isZoomed('ap_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ap_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ap_2') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>AP Aging</b>
+                <span>อายุเจ้าหนี้ · รวม <t t-esc="fmtMoney(ap.aging.total)"/>
+                    <t t-if="ap.source !== 'odoo'">
+                        · ที่มา <t t-esc="ap.source === 'external' ? 'ระบบภายนอก' : 'ผสม Odoo + ภายนอก'"/>
+                    </t></span>
+            </div>
+            <div class="o_bsf_stack">
+                <span t-foreach="agingBar" t-as="seg" t-key="seg.index"
+                      t-attf-style="width: {{ seg.pct }}%; background: {{ seg.color }};"/>
+            </div>
+            <table class="o_bsf_table">
+                <tbody>
+                    <tr t-foreach="agingBar" t-as="seg" t-key="seg.index"
+                        class="o_bsf_row_click" t-att-title="'คลิกดูบิล ' + seg.label"
+                        t-on-click="() => this.openAgingBucket(seg)">
+                        <td><i class="dot" t-attf-style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: {{ seg.color }};"/><t t-esc="seg.label"/></td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(seg.amount)"/></td>
+                        <td><t t-esc="fmtPct(seg.pct)"/></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- top suppliers -->
+        <section class="o_bsf_card span6" t-att-class="zoomCls('ap_3')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ap_3')"
+                    t-att-title="isZoomed('ap_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ap_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ap_3') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Top Suppliers</b>
+                <span>ยอดเจ้าหนี้คงค้างสูงสุด · <t t-esc="unitLabel"/></span>
+            </div>
+            <table class="o_bsf_table">
+                <thead>
+                    <tr><th>Supplier</th><th>AP Balance</th><th>% of Total</th><th>Overdue</th></tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="ap.top_suppliers" t-as="row" t-key="row.partner_id"
+                        class="o_bsf_row_click" t-on-click="() => this.openSupplier(row)">
+                        <td>
+                            <t t-esc="row.name"/>
+                            <i t-if="row.strategic" class="fa fa-star ms-1"
+                               style="color: var(--bsf-accent);" title="Strategic supplier"/>
+                        </td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(row.balance)"/></td>
+                        <td><t t-esc="fmtPct(row.pct_of_total)"/></td>
+                        <td t-attf-class="bsf_num {{ row.overdue ? 'is-alert' : 'is-zero' }}">
+                            <t t-esc="fmtMoney(row.overdue)"/>
+                        </td>
+                    </tr>
+                    <tr t-if="!ap.top_suppliers.length"><td colspan="4">ไม่มีเจ้าหนี้คงค้าง</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- priority + committed -->
+        <section class="o_bsf_card span6" t-att-class="zoomCls('ap_4')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ap_4')"
+                    t-att-title="isZoomed('ap_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ap_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ap_4') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Payment Priority Ranking</b>
+                <span>คะแนน = ค้างนาน 50% + ยอด 30% + strategic 20%</span>
+            </div>
+            <table class="o_bsf_table">
+                <thead>
+                    <tr><th>Supplier</th><th>Priority Score</th><th>ค้างนาน (วัน)</th><th>ยอด</th></tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="ap.priority" t-as="row" t-key="row.partner_id"
+                        class="o_bsf_row_click" t-on-click="() => this.openSupplier(row)">
+                        <td>
+                            <t t-esc="row.name"/>
+                            <i t-if="row.strategic" class="fa fa-star ms-1"
+                               style="color: var(--bsf-accent);"/>
+                        </td>
+                        <td class="bsf_num"><b><t t-esc="row.score"/></b></td>
+                        <td><t t-esc="fmtInt(row.overdue_days)"/></td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(row.amount)"/></td>
+                    </tr>
+                    <tr t-if="!ap.priority.length"><td colspan="4">ไม่มีเจ้าหนี้คงค้าง</td></tr>
+                </tbody>
+            </table>
+            <div class="c_head" style="margin-top: 12px;">
+                <b>Committed Material Purchases</b>
+                <span>PO ยืนยันแล้วยังไม่ตั้งบิล · <a t-on-click="openOpenPos" style="color: var(--bsf-primary); cursor: pointer;">ดู PO</a></span>
+            </div>
+            <table class="o_bsf_table">
+                <tbody>
+                    <tr class="o_bsf_row_click" t-on-click="() => this.openCommittedBucket('b30', 'Within 30 Days')">
+                        <td>Within 30 Days</td><td class="bsf_num"><t t-esc="fmtMoney(ap.committed_po.b30)"/></td></tr>
+                    <tr class="o_bsf_row_click" t-on-click="() => this.openCommittedBucket('b31_60', '31 - 60 Days')">
+                        <td>31 - 60 Days</td><td class="bsf_num"><t t-esc="fmtMoney(ap.committed_po.b31_60)"/></td></tr>
+                    <tr class="o_bsf_row_click" t-on-click="() => this.openCommittedBucket('b61_90', '61 - 90 Days')">
+                        <td>61 - 90 Days</td><td class="bsf_num"><t t-esc="fmtMoney(ap.committed_po.b61_90)"/></td></tr>
+                    <tr class="o_bsf_row_click" t-on-click="() => this.openCommittedBucket('b90_plus', 'มากกว่า 90 Days')">
+                        <td>&gt; 90 Days</td><td class="bsf_num"><t t-esc="fmtMoney(ap.committed_po.b90_plus)"/></td></tr>
+                    <tr class="o_bsf_row_click" t-on-click="openOpenPos">
+                        <td><b>Total (<t t-esc="ap.committed_po.count"/> PO)</b></td>
+                        <td class="bsf_num"><b><t t-esc="fmtMoney(ap.committed_po.total)"/></b></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- planned payments vs cash -->
+        <section class="o_bsf_card span8" t-att-class="zoomCls('ap_5')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ap_5')"
+                    t-att-title="isZoomed('ap_5') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ap_5') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ap_5') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Planned Payments vs Cash Availability</b>
+                <span>13 สัปดาห์ · <t t-esc="unitLabel"/></span>
+            </div>
+            <svg t-att-width="planChart.width" t-att-height="planChart.height"
+                 t-attf-viewBox="0 0 {{ planChart.width }} {{ planChart.height }}"
+                 preserveAspectRatio="xMidYMid meet" class="o_bsf_chart">
+                <t t-foreach="planChart.gridlines" t-as="grid" t-key="grid_index">
+                    <line class="grid_line" t-att-x1="planChart.padX" t-att-y1="grid.y"
+                          t-att-x2="planChart.width - 8" t-att-y2="grid.y"/>
+                    <text class="grid_text" t-att-x="planChart.padX - 6" t-att-y="grid.y + 3"
+                          text-anchor="end"><t t-esc="fmtAxis(grid.v)"/></text>
+                </t>
+                <t t-foreach="planChart.bars" t-as="bar" t-key="bar.index">
+                    <rect class="bar" t-att-x="bar.x" t-att-y="bar.y"
+                          t-att-width="bar.w" t-att-height="bar.h"/>
+                </t>
+                <line t-if="planChart.minY &gt;= 0" class="line_min"
+                      t-att-x1="planChart.padX" t-att-y1="planChart.minY"
+                      t-att-x2="planChart.width - 8" t-att-y2="planChart.minY"/>
+                <t t-foreach="planChart.series" t-as="serie" t-key="serie.key">
+                    <polyline t-att-class="serie.cls" t-att-points="serie.polyline"/>
+                </t>
+                <t t-foreach="planChart.labels" t-as="lab" t-key="lab.index">
+                    <!-- ครบทั้ง 13 สัปดาห์ + วันที่เริ่มสัปดาห์บรรทัดล่าง -->
+                    <text class="grid_text" t-att-x="lab.x" t-att-y="planChart.labelY"
+                          text-anchor="middle"><t t-esc="lab.label"/></text>
+                    <text t-if="lab.sub" class="grid_sub" t-att-x="lab.x"
+                          t-att-y="planChart.subY"
+                          text-anchor="middle"><t t-esc="lab.sub"/></text>
+                </t>
+            </svg>
+            <div class="o_bsf_legend">
+                <span><i class="dot" style="background: var(--bsf-c1);"/>Planned Payments</span>
+                <span><i class="dot" style="background: var(--bsf-good);"/>Cash Availability (ก่อนจ่าย AP)</span>
+                <span><i class="dot" style="background: var(--bsf-primary); opacity: .6;"/>Cash After Payments</span>
+                <span><i class="dot" style="background: var(--bsf-risk);"/>Min Cash Line</span>
+            </div>
+        </section>
+
+        <!-- conflict -->
+        <section class="o_bsf_card span4" t-att-class="zoomCls('ap_6')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ap_6')"
+                    t-att-title="isZoomed('ap_6') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ap_6') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ap_6') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <t t-if="ap.conflict.has_conflict">
+                <div class="o_bsf_alertcard">
+                    <b><i class="fa fa-exclamation-triangle me-1"/>Cash Conflict Alert</b>
+                    <div>ความสามารถจ่ายไม่พอรักษาเงินสดขั้นต่ำ</div>
+                    <table class="o_bsf_table" style="margin-top: 6px;">
+                        <tbody>
+                            <tr t-foreach="ap.conflict.weeks" t-as="week" t-key="week_index">
+                                <td><t t-esc="week.label"/></td>
+                                <td class="is-alert bsf_num">-<t t-esc="fmtMoney(week.shortfall)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 6px;"><b>Action Required:</b>
+                        พิจารณาเลื่อนจ่าย supplier ที่ priority ต่ำ หรือเร่งเก็บเงินลูกหนี้</div>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_bsf_okcard">
+                    <b><i class="fa fa-check-circle me-1"/>ไม่มี Cash Conflict</b>
+                    <div>แผนจ่ายทั้งหมดยังรักษาเงินสดขั้นต่ำได้ตลอด 13 สัปดาห์</div>
+                </div>
+            </t>
+        </section>
+    </div>
+</t>
+
+</templates>

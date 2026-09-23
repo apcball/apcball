@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= Bank ================= -->
+    <record id="view_bsf_bank_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.bank.tree</field>
+        <field name="model">biz.smart.finance.bank</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id" optional="hide"/>
+                <field name="min_balance" widget="monetary"/>
+                <field name="is_restricted"/>
+                <field name="restricted_amount" widget="monetary"/>
+                <field name="receipt_share_pct"/>
+                <field name="payment_share_pct"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_bank_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.bank.form</field>
+        <field name="model">biz.smart.finance.bank</field>
+        <field name="arch" type="xml">
+            <form string="Bank">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="เช่น Bangkok Bank"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="bank_id"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="min_balance" widget="monetary"/>
+                            <field name="is_restricted"/>
+                            <field name="restricted_amount" widget="monetary"
+                                   invisible="is_restricted"/>
+                        </group>
+                    </group>
+                    <group string="สัดส่วนเงินเข้า-ออก (ตั้งทับ) — 0 = ให้ระบบคิดจากประวัติ">
+                        <group>
+                            <field name="receipt_share_pct"/>
+                        </group>
+                        <group>
+                            <field name="payment_share_pct"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="สมุดรายวัน">
+                            <field name="journal_ids">
+                                <tree editable="bottom">
+                                    <field name="name"/>
+                                    <field name="type"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="วงเงินสินเชื่อ">
+                            <field name="facility_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="facility_type"/>
+                                    <field name="credit_limit" widget="monetary"/>
+                                    <field name="drawn_basis"/>
+                                    <field name="drawn_amount" widget="monetary"/>
+                                    <field name="drawn_account_ids" widget="many2many_tags"
+                                           optional="show"/>
+                                    <field name="expiry_date" optional="show"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_bank" model="ir.actions.act_window">
+        <field name="name">ทะเบียนธนาคาร</field>
+        <field name="res_model">biz.smart.finance.bank</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีทะเบียนธนาคาร</p>
+            <p>เพิ่มธนาคารแล้วผูกสมุดรายวัน เพื่อขึ้นตาราง Bank Balance,
+            Cash Position by Bank และแผนโอนระหว่างธนาคารในแท็บ Cash &amp; Liquidity —
+            หรือใช้ปุ่ม "สร้างจากสมุดรายวันธนาคาร" ด้านล่างเพื่อสร้างอัตโนมัติ</p>
+        </field>
+    </record>
+
+    <record id="action_bsf_bank_seed_from_journals" model="ir.actions.server">
+        <field name="name">สร้างจากสมุดรายวันธนาคาร</field>
+        <field name="model_id" ref="model_biz_smart_finance_bank"/>
+        <field name="binding_model_id" ref="model_biz_smart_finance_bank"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = model.action_bsf_seed_from_journals()</field>
+    </record>
+
+    <!-- ================= Facility ================= -->
+    <record id="view_bsf_bank_facility_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.bank.facility.tree</field>
+        <field name="model">biz.smart.finance.bank.facility</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="bank_id"/>
+                <field name="name"/>
+                <field name="facility_type"/>
+                <field name="credit_limit" widget="monetary"/>
+                <field name="drawn_basis"/>
+                <field name="drawn_amount" widget="monetary"/>
+                <field name="expiry_date" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_bank_facility_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.bank.facility.form</field>
+        <field name="model">biz.smart.finance.bank.facility</field>
+        <field name="arch" type="xml">
+            <form string="Bank Facility">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="เช่น OD บัวหลวง"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="bank_id"/>
+                            <field name="facility_type"/>
+                            <field name="expiry_date"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="credit_limit" widget="monetary"/>
+                            <field name="drawn_basis"/>
+                            <field name="drawn_amount" widget="monetary"
+                                   invisible="drawn_basis != 'manual'"/>
+                            <field name="drawn_account_ids" widget="many2many_tags"
+                                   invisible="drawn_basis != 'gl'"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="หมายเหตุ"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_bank_facility" model="ir.actions.act_window">
+        <field name="name">วงเงินสินเชื่อ</field>
+        <field name="res_model">biz.smart.finance.bank.facility</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีวงเงินสินเชื่อ</p>
+            <p>บันทึกวงเงิน OD/Revolving/Term Loan ต่อธนาคาร เพื่อขึ้นตาราง
+            Bank Facility &amp; Utilisation ในแท็บ Cash &amp; Liquidity</p>
+        </field>
+    </record>
+
+    <!-- ================= Transfer ================= -->
+    <record id="view_bsf_bank_transfer_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.bank.transfer.tree</field>
+        <field name="model">biz.smart.finance.bank.transfer</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'cancel'" decoration-success="state == 'done'">
+                <field name="execution_date"/>
+                <field name="source_bank_id"/>
+                <field name="dest_bank_id"/>
+                <field name="amount" widget="monetary"/>
+                <field name="purpose"/>
+                <field name="origin" optional="show"/>
+                <field name="state"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_bank_transfer_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.bank.transfer.form</field>
+        <field name="model">biz.smart.finance.bank.transfer</field>
+        <field name="arch" type="xml">
+            <form string="Interbank Transfer">
+                <header>
+                    <button name="action_approve" type="object" string="อนุมัติ"
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_done" type="object" string="โอนแล้ว"
+                            class="oe_highlight" invisible="state != 'approved'"/>
+                    <button name="action_cancel" type="object" string="ยกเลิก"
+                            invisible="state not in ('draft', 'approved')"/>
+                    <button name="action_draft" type="object" string="ตั้งเป็นร่าง"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,approved,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="source_bank_id"/>
+                            <field name="dest_bank_id"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="execution_date"/>
+                            <field name="purpose"/>
+                            <field name="origin" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="หมายเหตุ"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_bank_transfer" model="ir.actions.act_window">
+        <field name="name">แผนโอนระหว่างธนาคาร</field>
+        <field name="res_model">biz.smart.finance.bank.transfer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีแผนโอนเงิน</p>
+            <p>บันทึกแผนโอนเงินระหว่างธนาคารเอง หรือกดปุ่ม "เสนอแผนโอน"
+            ในแท็บ Cash &amp; Liquidity ให้ระบบเสนอให้จากช่องว่างที่คาดว่าจะหลุด
+            buffer ใน 13 สัปดาห์</p>
+        </field>
+    </record>
+
+    <!-- เมนูอยู่ในไฟล์นี้ (ไม่ใช่ bsf_dashboard_views.xml) เพราะต้องอ้าง action
+         ที่นิยามข้างบน — ไฟล์นี้โหลดหลัง bsf_dashboard_views.xml (มี
+         menu_bsf_inputs) ตามลำดับใน __manifest__.py -->
+    <menuitem id="menu_bsf_bank" name="ทะเบียนธนาคาร"
+              parent="menu_bsf_inputs" action="action_bsf_bank"
+              sequence="40"/>
+    <menuitem id="menu_bsf_bank_facility" name="วงเงินสินเชื่อ"
+              parent="menu_bsf_inputs" action="action_bsf_bank_facility"
+              sequence="41"/>
+    <menuitem id="menu_bsf_bank_transfer" name="แผนโอนระหว่างธนาคาร"
+              parent="menu_bsf_inputs" action="action_bsf_bank_transfer"
+              sequence="42"/>
+</odoo>

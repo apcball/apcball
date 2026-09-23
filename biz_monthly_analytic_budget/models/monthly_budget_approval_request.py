@@ -298,6 +298,8 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
         )
 
     def action_cancel(self):
+        if not self.env.user.has_group('biz_monthly_analytic_budget.group_monthly_budget_manager'):
+            raise UserError(_('Only Monthly Budget Managers can cancel budget requests.'))
         for rec in self:
             if rec.state not in ('pending',):
                 raise UserError(_('Only pending requests can be cancelled.'))

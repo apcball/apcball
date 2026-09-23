@@ -60,6 +60,9 @@ Features:
         'wizard/start_sale_wizard_view.xml',
     ],
     'assets': {
+        'web.assets_backend': [
+            'pos_lite/static/src/scss/pos_order_form.scss',
+        ],
         'web.report_assets_common': [
             '/pos_lite/static/fonts/Sarabun-Regular.ttf',
             '/pos_lite/static/fonts/Sarabun-Bold.ttf',

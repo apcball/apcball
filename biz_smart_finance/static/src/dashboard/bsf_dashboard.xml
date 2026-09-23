@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.Dashboard">
+    <div t-attf-class="o_bsf_page {{ state.theme === 'light' ? 'o_bsf_light' : '' }}">
+
+        <!-- ================= Header ================= -->
+        <div class="o_bsf_header">
+            <button class="o_bsf_iconbtn" t-on-click="goBack" title="กลับ">
+                <i class="fa fa-arrow-left"/>
+            </button>
+            <div>
+                <h1><span class="h_brand">CFO</span> Cockpit</h1>
+                <span class="h_sub">Smart Finance · เงินสด กำไร ความเสี่ยง ทั้งกลุ่มในจอเดียว</span>
+            </div>
+            <div class="o_bsf_spacer"/>
+            <span t-if="state.data" class="o_bsf_stamp">
+                <i class="fa fa-clock-o"/> อัปเดต <t t-esc="state.data.updated_at"/>
+            </span>
+            <button class="o_bsf_iconbtn" t-on-click="toggleTheme"
+                    t-att-title="state.theme === 'dark' ? 'สลับเป็นธีมสว่าง' : 'สลับเป็นธีมเข้ม'">
+                <i t-attf-class="fa {{ state.theme === 'dark' ? 'fa-sun-o' : 'fa-moon-o' }}"/>
+            </button>
+            <button class="o_bsf_iconbtn" t-on-click="() => this.exportReport('pdf')"
+                    t-att-disabled="state.exporting" title="ส่งออกงบการเงินเป็น PDF">
+                <i t-attf-class="fa {{ state.exporting === 'pdf' ? 'fa-spinner fa-spin' : 'fa-file-pdf-o' }}"/>
+            </button>
+            <button class="o_bsf_iconbtn" t-on-click="() => this.exportReport('xlsx')"
+                    t-att-disabled="state.exporting" title="ส่งออกงบการเงินเป็น Excel">
+                <i t-attf-class="fa {{ state.exporting === 'xlsx' ? 'fa-spinner fa-spin' : 'fa-file-excel-o' }}"/>
+            </button>
+            <button class="o_bsf_iconbtn" t-on-click="print" title="พิมพ์หน้าจอ">
+                <i class="fa fa-print"/>
+            </button>
+            <button class="o_bsf_iconbtn" t-on-click="load"
+                    t-att-disabled="state.loading" title="รีเฟรช">
+                <i t-attf-class="fa fa-refresh {{ state.loading ? 'fa-spin' : '' }}"/>
+            </button>
+        </div>
+
+        <t t-if="state.loading and !state.data">
+            <div class="o_bsf_loading">
+                <i class="fa fa-spinner fa-spin"/>
+                <span>กำลังรวบรวมข้อมูลการเงินทั้งกลุ่ม...</span>
+            </div>
+        </t>
+        <t t-elif="state.error">
+            <div class="alert alert-danger m-3">
+                <i class="fa fa-exclamation-triangle me-1"/><t t-esc="state.error"/>
+            </div>
+        </t>
+        <t t-elif="!state.data">
+            <div class="o_bsf_loading">ไม่สามารถโหลดข้อมูลได้ — ลองรีเฟรชอีกครั้ง</div>
+        </t>
+        <t t-else="">
+
+            <!-- ================= CFO navigation ================= -->
+            <nav class="o_bsf_mainnav" aria-label="CFO Cockpit หมวดหลัก">
+                <t t-foreach="menuGroups" t-as="group" t-key="group.id">
+                    <button t-attf-class="o_bsf_mainnav_item {{ state.menuGroup === group.id ? 'active' : '' }}"
+                            t-on-click="() => this.selectMenuGroup(group)">
+                        <i t-attf-class="fa {{ group.icon }}"/>
+                        <span t-esc="group.label"/>
+                    </button>
+                </t>
+            </nav>
+
+            <nav t-if="tabs.length > 1" class="o_bsf_tabs" aria-label="CFO Cockpit เมนูย่อย">
+                <t t-foreach="tabs" t-as="tab" t-key="tab.id">
+                    <button t-attf-class="o_bsf_tab {{ state.tab === tab.id ? 'active' : '' }}"
+                            t-on-click="() => this.setTab(tab.id)">
+                        <i t-attf-class="fa {{ tab.icon }}"/>
+                        <t t-esc="tab.label"/>
+                    </button>
+                </t>
+            </nav>
+
+            <!-- ================= Toolbar ================= -->
+            <div class="o_bsf_toolbar">
+                <label>บริษัท</label>
+                <!-- t-att-value บน select อย่างเดียวไม่พอ: ตอน render แรก
+                     value ถูกเซ็ตก่อน option จึงหลุดเป็นตัวแรกเสมอ —
+                     ใส่ t-att-selected (defaultSelected) คู่กันเสมอ -->
+                <select class="o_bsf_select" t-att-value="state.companyId"
+                        t-on-change="(ev) => this.setFilter('companyId', ev)">
+                    <option value="">Group (รวมทุกบริษัท)</option>
+                    <t t-foreach="state.data.filters.companies" t-as="company" t-key="company.id">
+                        <!-- ห้ามเรียก global (String/parseInt) ใน template — ใช้ == เทียบเลขกับสตริง -->
+                        <option t-att-value="company.id" t-esc="company.name"
+                                t-att-selected="company.id == state.companyId"/>
+                    </t>
+                </select>
+                <label>ปีงบ</label>
+                <select class="o_bsf_select" t-att-value="state.year"
+                        t-att-title="state.data.filters.fy_label"
+                        t-on-change="(ev) => this.setFilter('year', ev)">
+                    <t t-foreach="state.data.filters.years" t-as="year" t-key="year">
+                        <option t-att-value="year" t-esc="'FY' + year"
+                                t-att-selected="year == state.year"/>
+                    </t>
+                </select>
+                <!-- งวดบัญชีมาจาก server เสมอ: ปีงบไม่ตรงปีปฏิทินจะได้ P1..P12
+                     ตามเดือนจริงของปีงบนั้น (ปีปฏิทิน = ม.ค.–ธ.ค. เหมือนเดิม) -->
+                <label>ถึงงวด</label>
+                <select class="o_bsf_select" t-att-value="state.month"
+                        t-on-change="(ev) => this.setFilter('month', ev)">
+                    <t t-foreach="state.data.filters.periods" t-as="period" t-key="period.index">
+                        <option t-att-value="period.index" t-esc="period.label"
+                                t-att-selected="period.index == state.month"/>
+                    </t>
+                </select>
+                <label>หน่วย</label>
+                <div class="o_bsf_segment">
+                    <button t-attf-class="{{ state.unit === 'mb' ? 'active' : '' }}"
+                            t-on-click="() => this.setUnit('mb')">
+                        <t t-esc="state.data.filters.currency"/> (million)</button>
+                    <button t-attf-class="{{ state.unit === 'thb' ? 'active' : '' }}"
+                            t-on-click="() => this.setUnit('thb')"
+                            t-esc="state.data.filters.currency"/>
+                </div>
+                <div class="o_bsf_spacer"/>
+                <span class="o_bsf_stamp">
+                    <t t-esc="state.data.filters.company_label"/> ·
+                    ข้อมูลถึง <t t-esc="state.data.filters.as_of"/>
+                    · <b t-esc="state.data.filters.currency"/>
+                    <t t-if="state.data.filters.multi_currency">
+                        <i class="fa fa-exchange ms-1"
+                           t-att-title="'แปลงหลายสกุลเป็น ' + state.data.filters.currency + ' ด้วยอัตราปิด ณ ' + state.data.filters.as_of"/>
+                    </t>
+                    <t t-if="state.data.filters.period_closed">
+                        · <b class="o_bsf_locked" title="งวดถูกล็อกแล้ว ตัวเลขถือเป็นตัวเลขปิดงวด">
+                            <i class="fa fa-lock me-1"/>ปิดงวดแล้ว</b>
+                    </t>
+                    <t t-if="state.scenario !== 'base'">
+                        · scenario: <b t-esc="state.scenario"/>
+                    </t>
+                </span>
+            </div>
+
+            <!-- ================= Hints (ข้อมูลที่ยังไม่ได้ตั้งค่า) =================
+                 ยุบไว้เป็นค่าตั้งต้นแบบ SAP Message Indicator — เป็นข้อความ
+                 ตั้งค่าที่อ่านครั้งเดียวก็พอ ไม่ควรกินพื้นที่จอทุกครั้งที่เปิด -->
+            <div class="o_bsf_hints" t-if="state.data.empty_hints.length">
+                <button class="o_bsf_hint_toggle" t-on-click="toggleHints"
+                        t-att-aria-expanded="state.hintsOpen ? 'true' : 'false'"
+                        title="ข้อมูลที่ยังไม่ได้ตั้งค่า — กดเพื่อดูรายละเอียด">
+                    <i class="fa fa-info-circle"/>
+                    <span>ข้อมูลที่ยังไม่ได้ตั้งค่า
+                        (<t t-esc="state.data.empty_hints.length"/>)</span>
+                    <i t-attf-class="fa {{ state.hintsOpen ? 'fa-angle-up' : 'fa-angle-down' }}"/>
+                </button>
+                <t t-if="state.hintsOpen">
+                    <div t-foreach="state.data.empty_hints" t-as="hint" t-key="hint.code"
+                         class="o_bsf_hint">
+                        <i class="fa fa-info-circle"/>
+                        <span style="flex: 1;"><t t-esc="hint.message"/></span>
+                        <a t-on-click="() => this.openHint(hint)">ไปกรอกข้อมูล</a>
+                    </div>
+                </t>
+            </div>
+
+            <!-- ================= Body ================= -->
+            <div class="o_bsf_body">
+                <BsfTabOverview t-if="state.tab === 'overview'" data="state.data" unit="state.unit"
+                                onTab.bind="setTab"/>
+                <BsfTabStrategy t-elif="state.tab === 'strategy' || state.tab === 'cost'" filters="rpcFilters" mode="state.tab" unit="state.unit"/>
+                <BsfTabStatements t-elif="state.tab === 'statements'" data="state.data" unit="state.unit"
+                                  onCompare.bind="setCompare"/>
+                <BsfTabRatios t-elif="state.tab === 'ratios'" data="state.data" unit="state.unit"/>
+                <BsfTabCompare t-elif="state.tab === 'compare'" data="state.data" unit="state.unit"
+                               onCompare.bind="setCompare"/>
+                <BsfTabControlling t-elif="state.tab === 'controlling'" data="state.data" unit="state.unit"
+                                   onPlan.bind="setPlan"/>
+                <BsfTabCash t-elif="state.tab === 'cash'" data="state.data" unit="state.unit"
+                            onReload.bind="load" onSalesToCash.bind="setSalesToCash"/>
+                <BsfTabForecast t-elif="state.tab === 'forecast'" data="state.data" unit="state.unit"/>
+                <BsfTabSales t-elif="state.tab === 'sales'" data="state.data" unit="state.unit"/>
+                <BsfTabChannel t-elif="state.tab === 'channel'" data="state.data" unit="state.unit"
+                               onChannel.bind="setChannel"/>
+                <BsfTabMargin t-elif="state.tab === 'margin'" data="state.data" unit="state.unit"/>
+                <BsfTabAp t-elif="state.tab === 'ap'" data="state.data" unit="state.unit"/>
+                <BsfTabInventory t-elif="state.tab === 'inventory'" data="state.data" unit="state.unit"/>
+                <BsfTabRisk t-elif="state.tab === 'risk'" data="state.data" unit="state.unit"
+                            onScenario.bind="setScenario" onUnit.bind="setUnit"/>
+                <BsfTabAi t-elif="state.tab === 'ai'" data="state.data" unit="state.unit"/>
+            </div>
+        </t>
+
+        <!-- ฉากหลังของกล่องที่กางเต็มจอ — กดที่ไหนก็ได้เพื่อหุบกลับ
+             (การ์ดที่กางอยู่ position: fixed ทับฉากนี้อีกชั้นหนึ่ง) -->
+        <div class="o_bsf_zoom_back" t-if="zoomState.key" t-on-click="closeZoom"/>
+    </div>
+</t>
+
+</templates>

@@ -446,6 +446,7 @@ class StockCardReport(models.AbstractModel):
 
         limit = page_size or None
         lines = self._read_lines_with_base_qty(detail_domain, order=order, limit=limit, offset=offset)
+        self._prefetch_documents(lines)
 
         # Value ledger: full-range move-line set is needed up front to build
         # the pro-rata denominators (_get_move_qty_totals) correctly - a move
@@ -454,6 +455,8 @@ class StockCardReport(models.AbstractModel):
         # unlimited fetch happens regardless of group membership.
         can_see_value = self._can_see_value()
         all_lines = self._read_lines_with_base_qty(detail_domain, order=order)
+        if all_lines is not lines:
+            self._prefetch_documents(all_lines)
 
         value_context = None
         opening_value = 0.0
@@ -629,8 +632,11 @@ class StockCardReport(models.AbstractModel):
                 "_sort_key": (location_label, default_code or "", product_name or "", str(line["date"]), line["id"]),
             }
             if include_value:
-                running_value += self._line_value_delta(line, scope_location_ids, value_context)
+                delta = self._line_value_delta(line, scope_location_ids, value_context)
+                running_value += delta
                 row["value"] = running_value
+                row["value_in"] = delta if delta >= 0 else 0.0
+                row["value_out"] = -delta if delta < 0 else 0.0
             rows.append(row)
         return rows, running_balance
 
@@ -674,32 +680,45 @@ class StockCardReport(models.AbstractModel):
 
         Location = self.env["stock.location"]
         Product = self.env["product.product"]
-        location_names = {}
-        product_info = {}
+
+        # Group pairs by location so the opening balance/value for every
+        # product sharing that location is fetched with one bulk query
+        # (_get_opening_balances_by_product / _get_opening_values_by_product)
+        # instead of one query per (location, product) pair - the pair count
+        # can run into the thousands on a no-filter export-all.
+        pairs_by_location = {}
+        for location_id, product_id in pairs:
+            pairs_by_location.setdefault(location_id, set()).add(product_id)
+
+        all_product_ids = {product_id for _loc, product_id in pairs}
+        location_names = {
+            loc.id: loc.display_name for loc in Location.browse(list(pairs_by_location.keys()))
+        }
+        product_info = {
+            p.id: (p.default_code or "", p.name) for p in Product.browse(list(all_product_ids))
+        }
 
         rows = []
-        for location_id, product_id in pairs:
-            if location_id not in location_names:
-                location_names[location_id] = Location.browse(location_id).display_name
-            if product_id not in product_info:
-                product = Product.browse(product_id)
-                product_info[product_id] = (product.default_code or "", product.name)
-
+        for location_id, product_ids in pairs_by_location.items():
             scope_location_ids = [location_id]
-            opening_balance = self._get_opening_balance(product_id, scope_location_ids, start_utc)
-            opening_value = (
-                self._get_opening_value(product_id, scope_location_ids, start_utc, company_ids)
-                if can_see_value else 0.0
+            opening_by_product = self._get_opening_balances_by_product(
+                product_ids, scope_location_ids, start_utc, company_ids,
             )
-            default_code, product_name = product_info[product_id]
-            product_rows, _closing = self._build_product_scope_rows(
-                scope_location_ids, product_id, opening_balance,
-                start_utc, end_utc, company_ids, show_movements_only,
-                internal_location_ids, location_names[location_id],
-                default_code, product_name,
-                include_value=can_see_value, opening_value=opening_value,
+            opening_value_by_product = (
+                self._get_opening_values_by_product(product_ids, scope_location_ids, start_utc, company_ids)
+                if can_see_value else {}
             )
-            rows.extend(product_rows)
+            for product_id in product_ids:
+                default_code, product_name = product_info[product_id]
+                product_rows, _closing = self._build_product_scope_rows(
+                    scope_location_ids, product_id, opening_by_product.get(product_id, 0.0),
+                    start_utc, end_utc, company_ids, show_movements_only,
+                    internal_location_ids, location_names[location_id],
+                    default_code, product_name,
+                    include_value=can_see_value,
+                    opening_value=opening_value_by_product.get(product_id, 0.0),
+                )
+                rows.extend(product_rows)
 
         rows.sort(key=lambda r: r["_sort_key"])
         for idx, row in enumerate(rows):
@@ -1241,6 +1260,56 @@ class StockCardReport(models.AbstractModel):
         period_rows = self._get_period_valuation_rows(product_id, scope_location_ids, date_from, date_to, company_ids)
         return opening_rows + period_rows
 
+    def _get_valuation_layers_bulk(self, product_ids, location_ids, date_from, date_to, company_ids):
+        """Opening (still-outstanding) and in-period layers for the full
+        product_ids x location_ids id sets, in 2 queries total - grouped by
+        (location_id, product_id) in Python - instead of one opening query +
+        one period query per product or per location in a loop. Mirrors the
+        domains of _get_opening_valuation_rows / _get_period_valuation_rows."""
+        Layer = self.env["stock.valuation.layer"]
+        if isinstance(date_from, str):
+            date_from = fields.Date.from_string(date_from)
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        product_ids = list(product_ids)
+        location_ids = list(location_ids)
+
+        opening_layers = Layer.search([
+            ("product_id", "in", product_ids),
+            ("location_id", "in", location_ids),
+            ("company_id", "in", company_ids),
+            ("remaining_qty", ">", 0),
+            ("stock_move_id.date", "<", date_from),
+        ], order="create_date, id")
+        period_layers = Layer.search([
+            ("product_id", "in", product_ids),
+            ("location_id", "in", location_ids),
+            ("company_id", "in", company_ids),
+            ("stock_move_id.date", ">=", start_utc),
+            ("stock_move_id.date", "<", end_utc),
+        ])
+
+        opening_by_key = {}
+        for layer in opening_layers:
+            opening_by_key.setdefault((layer.location_id.id, layer.product_id.id), []).append(layer)
+        period_by_key = {}
+        for layer in period_layers:
+            period_by_key.setdefault((layer.location_id.id, layer.product_id.id), []).append(layer)
+        return opening_by_key, period_by_key
+
+    def _valuation_rows_for_key(self, location_id, product_id, opening_by_key, period_by_key):
+        """Row list for one (location_id, product_id) key from the bulk-fetched
+        layer dicts, in the same opening-then-period order/fallback labels as
+        _product_scope_valuation_rows."""
+        rows = []
+        for layer in opening_by_key.get((location_id, product_id), []):
+            rows.extend(self._valuation_rows_for_layer(layer, layer.remaining_qty, "ยอดยกมา"))
+        for layer in period_by_key.get((location_id, product_id), []):
+            if layer.quantity > 0:
+                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารรับในปี"))
+            elif layer.quantity < 0:
+                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารจ่ายในปี"))
+        return rows
+
     def _discover_valuation_pairs(self, domain_extra, date_from, date_to, company_ids):
         """(location_id, product_id) pairs with a layer touching the period,
         or with a still-outstanding opening layer, matching domain_extra."""
@@ -1269,7 +1338,23 @@ class StockCardReport(models.AbstractModel):
 
     @staticmethod
     def _finalize_valuation_rows(rows, sort_key):
+        """Sort, then add a running ยอดยกมา (opening_qty/opening_value) and
+        ยอดคงเหลือ/มูลค่าสินค้าคงเหลือ (balance_qty/balance_value) per row,
+        tracked separately per (location, product) group so mixed-scope
+        exports (all products / all locations) don't cross-contaminate
+        balances between products."""
         rows.sort(key=sort_key)
+        running = {}
+        for row in rows:
+            key = (row["location_label"], row["product_default_code"], row["product_name"])
+            qty, value = running.get(key, (0.0, 0.0))
+            row["opening_qty"] = qty
+            row["opening_value"] = value
+            qty += row["qty_in"] - row["qty_out"]
+            value += row["cost_in"] - row["cost_out"]
+            running[key] = (qty, value)
+            row["balance_qty"] = qty
+            row["balance_value"] = value
         for idx, row in enumerate(rows, start=1):
             row["seq"] = idx
             del row["_sort_dt"]
@@ -1304,11 +1389,12 @@ class StockCardReport(models.AbstractModel):
         location_ids = {loc_id for loc_id, _prod_id in pairs}
         if not location_ids:
             return []
+        opening_by_key, period_by_key = self._get_valuation_layers_bulk(
+            [product_id], location_ids, date_from, date_to, company_ids,
+        )
         rows = []
         for location_id in location_ids:
-            rows.extend(self._product_scope_valuation_rows(
-                product_id, [location_id], date_from, date_to, company_ids,
-            ))
+            rows.extend(self._valuation_rows_for_key(location_id, product_id, opening_by_key, period_by_key))
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["_sort_dt"]),
         )
@@ -1330,11 +1416,13 @@ class StockCardReport(models.AbstractModel):
         product_ids = {prod_id for _loc_id, prod_id in pairs}
         if not product_ids:
             return []
+        opening_by_key, period_by_key = self._get_valuation_layers_bulk(
+            product_ids, scope_location_ids, date_from, date_to, company_ids,
+        )
         rows = []
         for product_id in product_ids:
-            rows.extend(self._product_scope_valuation_rows(
-                product_id, scope_location_ids, date_from, date_to, company_ids,
-            ))
+            for location_id in scope_location_ids:
+                rows.extend(self._valuation_rows_for_key(location_id, product_id, opening_by_key, period_by_key))
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
         )
@@ -1348,11 +1436,17 @@ class StockCardReport(models.AbstractModel):
         if not company_ids:
             company_ids = self.env.companies.ids
         pairs = self._discover_valuation_pairs([], date_from, date_to, company_ids)
-        rows = []
+        pairs_by_location = {}
         for location_id, product_id in pairs:
-            rows.extend(self._product_scope_valuation_rows(
-                product_id, [location_id], date_from, date_to, company_ids,
-            ))
+            pairs_by_location.setdefault(location_id, set()).add(product_id)
+
+        rows = []
+        for location_id, product_ids in pairs_by_location.items():
+            opening_by_key, period_by_key = self._get_valuation_layers_bulk(
+                product_ids, [location_id], date_from, date_to, company_ids,
+            )
+            for product_id in product_ids:
+                rows.extend(self._valuation_rows_for_key(location_id, product_id, opening_by_key, period_by_key))
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
         )

@@ -1,4 +1,5 @@
 import logging
+import secrets
 import time
 import urllib.parse
 from datetime import timedelta
@@ -17,6 +18,13 @@ class ShopeeConfig(models.Model):
     _name = "shopee.config"
     _description = "Shopee Shop Connection"
     _check_company_auto = True
+    _sql_constraints = [
+        (
+            "company_shop_unique",
+            "unique(company_id, environment, shop_id)",
+            "A Shopee shop can only be configured once per company and environment.",
+        ),
+    ]
 
     name = fields.Char(required=True, default="Shopee Shop")
     active = fields.Boolean(default=True)
@@ -39,15 +47,20 @@ class ShopeeConfig(models.Model):
         "res.partner",
         string="Marketplace Customer",
         check_company=True,
-        help="Draft Sale Orders imported from Shopee are billed to this "
-        "partner. The real buyer name goes to 'Customer Reference' and the "
-        "recipient address to the order notes.",
+        help="Fallback partner for orders whose buyer cannot be mapped. "
+        "Normally each Shopee buyer is mapped to a shop-specific contact.",
     )
 
     redirect_url = fields.Char(
         string="Redirect URL",
         help="Must match the Test/Live Redirect URL Domain configured on "
         "the Shopee Open Platform app.",
+    )
+    oauth_state = fields.Char(readonly=True, copy=False)
+    webhook_secret = fields.Char(
+        string="Webhook Secret", copy=False,
+        help="Optional secret used to validate webhook signatures. If empty, "
+        "the partner key is used.",
     )
 
     access_token = fields.Char(readonly=True, copy=False)
@@ -94,6 +107,7 @@ class ShopeeConfig(models.Model):
     last_stock_sync = fields.Datetime(readonly=True)
     last_order_sync = fields.Datetime(readonly=True)
     last_stock_push = fields.Datetime(readonly=True)
+    last_order_status_sync = fields.Datetime(readonly=True)
 
     @api.onchange("company_id")
     def _onchange_company_id(self):
@@ -113,7 +127,11 @@ class ShopeeConfig(models.Model):
             partner_key=self.partner_key,
             shop_id=self.shop_id,
             environment=self.environment,
+            log_callback=self._write_api_log,
         )
+
+    def _write_api_log(self, **values):
+        self.env["shopee.api.log"].create_api_log(self, **values)
 
     def _ensure_valid_token(self):
         """Refresh access_token if it's missing or expired."""
@@ -132,6 +150,8 @@ class ShopeeConfig(models.Model):
                     "Re-authorize or paste a fresh token."
                 )
             api = self._get_api()
+            if not self.shop_id:
+                raise UserError("Shop ID is required to refresh the access token.")
             data = api.refresh_access_token(self.refresh_token, int(self.shop_id))
             # Sandbox v2 returns token fields flat; classic API nests them
             resp = data.get("response") or data
@@ -144,10 +164,10 @@ class ShopeeConfig(models.Model):
         self.write(
             {
                 "access_token": resp["access_token"],
-                "refresh_token": resp["refresh_token"],
+                "refresh_token": resp.get("refresh_token") or self.refresh_token,
                 # Shopee access_token is valid 4h; refresh a bit early
                 "token_expires_at": fields.Datetime.now()
-                + timedelta(seconds=resp.get("expire_in", 14400) - 120),
+                + timedelta(seconds=max(resp.get("expire_in", 14400) - 120, 60)),
             }
         )
 
@@ -159,7 +179,9 @@ class ShopeeConfig(models.Model):
         if not self.redirect_url:
             raise UserError("Set a Redirect URL first (must match the app's domain).")
         api = self._get_api()
-        url = api.get_authorization_url(self.redirect_url)
+        state = secrets.token_urlsafe(24)
+        self.write({"oauth_state": state})
+        url = api.get_authorization_url(self.redirect_url, state=state)
         return {
             "type": "ir.actions.act_url",
             "url": url,
@@ -190,7 +212,7 @@ class ShopeeConfig(models.Model):
         resp = data.get("response") or data
         if not resp.get("access_token"):
             raise UserError(f"Token exchange failed: {data}")
-        self.write({"shop_id": str(shop_id)})
+        self.write({"shop_id": str(shop_id), "oauth_state": False})
         self._store_tokens(resp)
         self.temp_auth_code = False
 
@@ -256,10 +278,9 @@ class ShopeeConfig(models.Model):
         self.ensure_one()
         token = self._ensure_valid_token()
         api = self._get_api()
-        Product = self.env["product.product"]
-
         offset = 0
         updated = 0
+        Mapping = self.env["shopee.product.mapping"]
         for _page in range(_MAX_PAGES):
             item_resp = api.get_item_list(token, offset=offset)
             item_data = item_resp.get("response", {})
@@ -272,41 +293,83 @@ class ShopeeConfig(models.Model):
             for item in info_resp.get("response", {}).get("item_list", []):
                 item_id = item["item_id"]
                 if item.get("has_model"):
-                    model_resp = api.get_model_list(token, item_id)
-                    for model in model_resp.get("response", {}).get("model", []):
+                    models = api.get_model_list(token, item_id).get(
+                        "response", {}
+                    ).get("model", [])
+                    for model in models:
                         sku = model.get("model_sku")
-                        if not sku:
-                            continue
-                        product = Product.search(
-                            [("default_code", "=", sku)], limit=1
+                        model_id = model.get("model_id")
+                        if sku:
+                            mapping = Mapping.search([
+                                ("shopee_config_id", "=", self.id),
+                                ("shopee_sku", "=", sku),
+                                ("active", "=", True),
+                            ], limit=1)
+                            product = mapping.product_id or Mapping.find_product_by_sku(sku)
+                        else:
+                            # Shopee model has no variant SKU set - fall back to
+                            # a mapping keyed by item_id/model_id (created
+                            # manually, since there's no SKU to auto-match on).
+                            mapping = Mapping.search([
+                                ("shopee_config_id", "=", self.id),
+                                ("shopee_item_id", "=", str(item_id)),
+                                ("shopee_model_id", "=", str(model_id)),
+                                ("active", "=", True),
+                            ], limit=1)
+                            product = mapping.product_id
+                            if not product:
+                                _logger.info(
+                                    "Shopee sync_stock (%s): item %s model %s "
+                                    "has no model_sku and no item/model_id "
+                                    "mapping - skipped.",
+                                    self.name, item_id, model_id,
+                                )
+                        stock_quantity = self._model_seller_stock(
+                            model.get("stock_info_v2")
+                        )
+                        synced_at = fields.Datetime.now()
+                        mapping = Mapping.upsert(
+                            self, sku, product, item_id=item_id,
+                            model_id=model_id, shopee_stock=stock_quantity,
+                            stock_sync_at=synced_at,
+                            item_name=item.get("item_name"),
+                            model_name=model.get("model_name"),
                         )
                         if not product:
                             continue
                         product.write({
                             "shopee_item_id": str(item_id),
-                            "shopee_model_id": str(model["model_id"]),
-                            "shopee_stock": self._model_seller_stock(
-                                model.get("stock_info_v2")
-                            ),
-                            "shopee_last_sync": fields.Datetime.now(),
+                            "shopee_model_id": str(model_id),
+                            "shopee_stock": stock_quantity,
+                            "shopee_last_sync": synced_at,
                         })
                         updated += 1
                 else:
                     sku = item.get("item_sku")
                     if not sku:
                         continue
-                    product = Product.search(
-                        [("default_code", "=", sku)], limit=1
+                    mapping = Mapping.search([
+                        ("shopee_config_id", "=", self.id),
+                        ("shopee_sku", "=", sku),
+                        ("active", "=", True),
+                    ], limit=1)
+                    product = mapping.product_id or Mapping.find_product_by_sku(sku)
+                    stock_quantity = self._model_seller_stock(
+                        item.get("stock_info_v2")
+                    )
+                    synced_at = fields.Datetime.now()
+                    mapping = Mapping.upsert(
+                        self, sku, product, item_id=item_id,
+                        shopee_stock=stock_quantity, stock_sync_at=synced_at,
+                        item_name=item.get("item_name"),
                     )
                     if not product:
                         continue
                     product.write({
                         "shopee_item_id": str(item_id),
                         "shopee_model_id": False,
-                        "shopee_stock": self._model_seller_stock(
-                            item.get("stock_info_v2")
-                        ),
-                        "shopee_last_sync": fields.Datetime.now(),
+                        "shopee_stock": stock_quantity,
+                        "shopee_last_sync": synced_at,
                     })
                     updated += 1
 
@@ -321,17 +384,15 @@ class ShopeeConfig(models.Model):
 
     def action_sync_orders(self):
         self.ensure_one()
-        if not self.customer_partner_id:
-            raise UserError(
-                f"Shop '{self.name}': set a 'Marketplace Customer' before "
-                "syncing orders."
-            )
         token = self._ensure_valid_token()
         api = self._get_api()
         SaleOrder = self.env["sale.order"]
 
         time_to = int(time.time())
-        time_from = time_to - 24 * 60 * 60  # last 24h; widen if needed
+        sync_from = self.last_order_sync or (
+            fields.Datetime.now() - timedelta(days=2)
+        )
+        time_from = int(sync_from.timestamp())
 
         cursor = ""
         created = 0
@@ -345,15 +406,24 @@ class ShopeeConfig(models.Model):
                 for shopee_order in detail_resp.get("response", {}).get(
                     "order_list", []
                 ):
-                    existing = SaleOrder.search(
-                        [("shopee_order_sn", "=", shopee_order["order_sn"])], limit=1
-                    )
+                    existing = SaleOrder.search([
+                        ("shopee_config_id", "=", self.id),
+                        ("shopee_order_sn", "=", shopee_order["order_sn"]),
+                    ], limit=1)
                     if existing:
                         continue
-                    SaleOrder.create_from_shopee(
-                        shopee_order, partner=self.customer_partner_id
-                    )
-                    created += 1
+                    try:
+                        SaleOrder.create_from_shopee(
+                            shopee_order,
+                            config=self,
+                        )
+                        created += 1
+                    except Exception as exc:
+                        self.env["shopee.retry.queue"].enqueue(
+                            self, "sync_order",
+                            {"order_sn": shopee_order["order_sn"]},
+                            str(exc),
+                        )
 
             if not resp.get("more"):
                 break
@@ -366,6 +436,77 @@ class ShopeeConfig(models.Model):
         _logger.info("Shopee order sync (%s): %s new orders created",
                      self.name, created)
         return created
+
+    def import_order_by_sn(self, order_sn):
+        self.ensure_one()
+        token = self._ensure_valid_token()
+        order = self._get_api().get_order_detail(token, [order_sn]).get(
+            "response", {}
+        ).get("order_list", [])
+        if not order:
+            raise UserError(f"Shopee order {order_sn} was not found.")
+        SaleOrder = self.env["sale.order"]
+        existing = SaleOrder.search([
+            ("shopee_config_id", "=", self.id), ("shopee_order_sn", "=", order_sn)
+        ], limit=1)
+        if existing:
+            existing.update_shopee_status(order[0].get("order_status", ""))
+            return existing
+        return SaleOrder.create_from_shopee(order[0], config=self)
+
+    def sync_order_statuses(self, order_sns=None):
+        self.ensure_one()
+        token = self._ensure_valid_token()
+        SaleOrder = self.env["sale.order"]
+        domain = [("is_shopee_order", "=", True), ("shopee_config_id", "=", self.id)]
+        orders = SaleOrder.search(domain, order="id desc", limit=200)
+        if order_sns:
+            orders = orders.filtered(lambda order: order.shopee_order_sn in order_sns)
+        updated = 0
+        api = self._get_api()
+        for start in range(0, len(orders), 50):
+            batch = orders[start:start + 50]
+            details = api.get_order_status(
+                token, batch.mapped("shopee_order_sn")
+            ).get("response", {}).get("order_list", [])
+            for detail in details:
+                order = batch.filtered(
+                    lambda candidate: candidate.shopee_order_sn == detail.get("order_sn")
+                )
+                if order:
+                    order.update_shopee_status(detail.get("order_status", ""))
+                    updated += 1
+        self.last_order_status_sync = fields.Datetime.now()
+        return updated
+
+    def action_sync_order_status(self):
+        self.ensure_one()
+        updated = self.sync_order_statuses()
+        return {
+            "type": "ir.actions.client", "tag": "display_notification",
+            "params": {
+                "title": "Shopee order status",
+                "message": f"{updated} order(s) updated.",
+                "type": "success", "sticky": False,
+            },
+        }
+
+    def process_webhook(self, payload):
+        self.ensure_one()
+        event = payload.get("event_type") or payload.get("code") or ""
+        data = payload.get("data") or payload
+        order_sn = data.get("ordersn") or data.get("order_sn")
+        event_upper = str(event).upper()
+        if "ORDER_STATUS" in event_upper and order_sn:
+            self.sync_order_statuses([order_sn])
+            return "order_status_update"
+        if event_upper in {"ORDER_NEW", "ORDER_CREATE"} and order_sn:
+            self.import_order_by_sn(order_sn)
+            return "order_new"
+        if "STOCK" in event_upper:
+            self.action_sync_stock()
+            return "item_stock_update"
+        return "ignored"
 
     # ------------------------------------------------------------------
     # Actions - Push stock (Odoo -> Shopee)
@@ -388,31 +529,61 @@ class ShopeeConfig(models.Model):
         if not warehouse:
             raise UserError("No warehouse available for stock push.")
 
-        domain = [
-            ("shopee_item_id", "!=", False),
-            ("shopee_sync_stock_out", "=", True),
-        ]
-        targets = products if products is not None else self.env["product.product"].search(domain)
+        Mapping = self.env["shopee.product.mapping"]
+        if products is not None:
+            targets = products
+        else:
+            mapped_products = Mapping.search([
+                ("shopee_config_id", "=", self.id),
+                ("active", "=", True),
+                ("product_id.shopee_sync_stock_out", "=", True),
+            ]).mapped("product_id")
+            targets = self.env["product.product"].search([
+                ("shopee_item_id", "!=", False),
+                ("shopee_sync_stock_out", "=", True),
+            ]) | mapped_products
         if products is not None:
             targets = targets.filtered(
-                lambda p: p.shopee_item_id and p.shopee_sync_stock_out
+                lambda p: p.shopee_sync_stock_out
             )
 
         pushed = 0
         failures = []
         for product in targets.with_context(warehouse=warehouse.id):
             qty = int(max(product.free_qty, 0))
-            if qty == product.shopee_pushed_stock and product.shopee_stock_push_date:
+            mapping = Mapping.search([
+                ("shopee_config_id", "=", self.id),
+                ("product_id", "=", product.id),
+                ("active", "=", True),
+            ], limit=1)
+            already_pushed = (
+                mapping.last_pushed_stock if mapping else product.shopee_pushed_stock
+            )
+            pushed_at = mapping.last_stock_push if mapping else product.shopee_stock_push_date
+            if qty == already_pushed and pushed_at:
+                continue
+            item_id = (
+                (mapping.shopee_item_id if mapping else False)
+                or product.shopee_item_id
+            )
+            model_id = (
+                (mapping.shopee_model_id if mapping else False)
+                or product.shopee_model_id
+            )
+            if not item_id:
                 continue
             try:
                 api.update_stock(
                     token,
-                    int(product.shopee_item_id),
-                    int(product.shopee_model_id) if product.shopee_model_id else 0,
+                    int(item_id),
+                    int(model_id) if model_id else 0,
                     qty,
                 )
             except ShopeeAPIError as exc:
                 failures.append(f"{product.default_code or product.display_name}: {exc}")
+                self.env["shopee.retry.queue"].enqueue(
+                    self, "push_stock", {"product_id": product.id}, str(exc)
+                )
                 _logger.warning("Shopee stock push failed for %s: %s",
                                 product.default_code, exc)
                 continue
@@ -420,6 +591,11 @@ class ShopeeConfig(models.Model):
                 "shopee_pushed_stock": qty,
                 "shopee_stock_push_date": fields.Datetime.now(),
             })
+            if mapping:
+                mapping.write({
+                    "last_pushed_stock": qty,
+                    "last_stock_push": fields.Datetime.now(),
+                })
             pushed += 1
 
         self.last_stock_push = fields.Datetime.now()
@@ -473,6 +649,20 @@ class ShopeeConfig(models.Model):
                 config._push_stock_for_products()
             except Exception:
                 _logger.exception("Shopee stock push failed for %s", config.name)
+
+    @api.model
+    def cron_sync_order_status(self):
+        for config in self.search([("active", "=", True)]):
+            try:
+                config.sync_order_statuses()
+            except Exception:
+                _logger.exception(
+                    "Shopee order status sync failed for %s", config.name
+                )
+
+    @api.model
+    def cron_process_retry_queue(self):
+        self.env["shopee.retry.queue"].cron_process()
 
     @api.model
     def cron_refresh_tokens(self):

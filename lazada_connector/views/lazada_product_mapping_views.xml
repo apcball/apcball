@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_lazada_product_mapping_tree" model="ir.ui.view">
+        <field name="name">lazada.product.mapping.tree</field>
+        <field name="model">lazada.product.mapping</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="lazada_config_id"/>
+                <field name="seller_sku"/>
+                <field name="lazada_item_id"/>
+                <field name="lazada_sku_id"/>
+                <field name="product_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_lazada_product_mapping_form" model="ir.ui.view">
+        <field name="name">lazada.product.mapping.form</field>
+        <field name="model">lazada.product.mapping</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="lazada_config_id"/>
+                        <field name="seller_sku"/>
+                        <field name="lazada_item_id"/>
+                        <field name="lazada_sku_id"/>
+                        <field name="product_id"/>
+                        <field name="active"/>
+                        <field name="last_pushed_stock" readonly="1"/>
+                        <field name="last_stock_push" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_lazada_product_mapping" model="ir.actions.act_window">
+        <field name="name">Product Mappings</field>
+        <field name="res_model">lazada.product.mapping</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="lazada_connector_product_mapping_menu" name="Product Mappings"
+              parent="lazada_connector_config_menu"
+              action="action_lazada_product_mapping" sequence="20"/>
+</odoo>

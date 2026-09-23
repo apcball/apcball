@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- แนวนอน: คงเหลือ + 6 ช่วง × {จำนวน, มูลค่า} + 5 ตัวชี้วัด ≈ 20 คอลัมน์ -->
+    <record id="paperformat_stock_aging" model="report.paperformat">
+        <field name="name">อายุสินค้าคงเหลือ A4 แนวนอน</field>
+        <field name="default">False</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">22</field>
+        <field name="margin_bottom">14</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line">False</field>
+        <field name="header_spacing">10</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_stock_aging" model="ir.actions.report">
+        <field name="name">อายุสินค้าคงเหลือ (Stock Aging)</field>
+        <field name="model">biz.stock.aging.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">biz_st_aging.report_stock_aging_doc</field>
+        <field name="report_file">biz_st_aging.report_stock_aging_doc</field>
+        <field name="paperformat_id" ref="paperformat_stock_aging"/>
+        <field name="print_report_name">'Stock-Aging-%s' % (object.date_to or '')</field>
+    </record>
+</odoo>

@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, useState, onWillStart, onWillUnmount } from "@odoo/owl";
+import { Component, useState, useRef, onWillStart, onWillUnmount } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { RecordAutocomplete } from "@web/core/record_selectors/record_autocomplete";
 import { LocationTree } from "./location_tree";
@@ -18,10 +18,12 @@ export class Sidebar extends Component {
         this.orm = useService("orm");
         this.companyService = useService("company");
         this.notification = useService("notification");
-        this.local = useState({ warehouses: [], loading: false, error: null });
+        this.local = useState({ warehouses: [], loading: false, error: null, advanced: false });
+        this.dateFromRef = useRef('dateFrom');
         this.warehouseRequest = 0;
         this.productRequest = 0;
-        onWillUnmount(() => { this.warehouseRequest++; this.productRequest++; });
+        this.locationRequest = 0;
+        onWillUnmount(() => { this.warehouseRequest++; this.productRequest++; this.locationRequest++; });
 
         onWillStart(async () => {
             await this.loadWarehouses();
@@ -48,8 +50,20 @@ export class Sidebar extends Component {
 
     get companyContext() { return { allowed_company_ids: [this.props.state.companyId] }; }
     get productDomain() { return [["company_id", "in", [false, this.props.state.companyId]]]; }
+    get locationDomain() {
+        const domain = [
+            ["usage", "=", "internal"],
+            ["company_id", "in", [false, this.props.state.companyId]],
+        ];
+        const warehouse = this.local.warehouses.find((wh) => wh.id === this.props.state.warehouseId);
+        if (warehouse?.view_location_id) {
+            domain.push(["id", "child_of", warehouse.view_location_id]);
+        }
+        return domain;
+    }
 
     onWarehouseChange(ev) {
+        this.locationRequest++;
         this.props.onSetWarehouse(ev.target.value ? parseInt(ev.target.value, 10) : false);
     }
 
@@ -63,8 +77,13 @@ export class Sidebar extends Component {
         return this.props.state.productId ? [this.props.state.productId] : [];
     }
 
+    locationGetIds() {
+        return this.props.state.selectedLocationId ? [this.props.state.selectedLocationId] : [];
+    }
+
     onReset() {
         this.productRequest++;
+        this.locationRequest++;
         this.props.onReset();
     }
 
@@ -87,6 +106,27 @@ export class Sidebar extends Component {
         }
     }
 
+    async onUpdateLocation(ids) {
+        const request = ++this.locationRequest;
+        const companyId = this.props.state.companyId;
+        if (!ids.length) {
+            this.props.onSelectLocation(false, "", true, false);
+            return;
+        }
+        try {
+            const [location] = await this.orm.read(
+                "stock.location", [ids[0]], ["complete_name"], { context: this.companyContext },
+            );
+            if (request === this.locationRequest && companyId === this.props.state.companyId && location) {
+                this.props.onSelectLocation(location.id, location.complete_name, true, false);
+            }
+        } catch (error) {
+            if (request === this.locationRequest) {
+                this.notification.add("ไม่สามารถโหลดสถานที่จัดเก็บได้ กรุณาลองใหม่", { type: "danger" });
+            }
+        }
+    }
+
     onDateFromChange(ev) {
         this.props.onSetDateFrom(ev.target.value);
     }
@@ -95,8 +135,38 @@ export class Sidebar extends Component {
         this.props.onSetDateTo(ev.target.value);
     }
 
+    get periods() {
+        return [
+            { key: 'today', label: 'วันนี้' }, { key: 'week', label: '7 วัน' },
+            { key: 'days', label: '30 วัน' }, { key: 'month', label: 'เดือนนี้' },
+            { key: 'year', label: 'ปีนี้' },
+        ];
+    }
+
+    onCustomDate() {
+        this.dateFromRef.el.focus();
+        this.dateFromRef.el.showPicker?.();
+    }
+
+    periodStart(key) {
+        const today = luxon.DateTime.local();
+        return ({ today, week: today.minus({ days: 6 }), days: today.minus({ days: 29 }),
+            month: today.startOf('month'), year: today.startOf('year') })[key].toISODate();
+    }
+
+    isPeriod(key) {
+        return this.props.state.dateFrom === this.periodStart(key)
+            && this.props.state.dateTo === luxon.DateTime.local().toISODate();
+    }
+
+    setPeriod(key) {
+        this.props.onSetDateFrom(this.periodStart(key));
+        this.props.onSetDateTo(luxon.DateTime.local().toISODate());
+    }
+
     async onCompanyChange(ev) {
         this.productRequest++;
+        this.locationRequest++;
         this.props.onSetCompany(parseInt(ev.target.value, 10));
         await this.loadWarehouses();
     }

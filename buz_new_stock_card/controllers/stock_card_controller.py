@@ -212,14 +212,18 @@ class StockCardController(http.Controller):
         sheet.set_column("F:F", 20)
         sheet.set_column("G:H", 18)
         sheet.set_column("I:I", 16)
-        sheet.set_column("J:L", 14)
-        sheet.set_column("M:O", 14)
-        sheet.set_column("P:P", 18)
+        sheet.set_column("J:J", 14)
+        sheet.set_column("K:M", 14)
+        sheet.set_column("N:P", 14)
+        sheet.set_column("Q:R", 16)
+        sheet.set_column("S:S", 18)
 
         headers = ["ลำดับ", "รหัสสินค้า", "ชื่อสินค้า", "Lot", "คลังสินค้า", "โลเคชั่น",
                    "ประเภทเอกสาร", "เลขที่เอกสาร", "วันที่",
+                   "ยอดยกมา",
                    "จำนวนรับ", "ราคาต่อหน่วย(รับ)", "มูลค่ารับ",
-                   "จำนวนจ่าย", "ราคาต่อหน่วย(จ่าย)", "มูลค่าจ่าย", "หมายเหตุ"]
+                   "จำนวนจ่าย", "ราคาต่อหน่วย(จ่าย)", "มูลค่าจ่าย",
+                   "ยอดคงเหลือ", "มูลค่าสินค้าคงเหลือ", "หมายเหตุ"]
         for col, label in enumerate(headers):
             sheet.write(0, col, label, fmts["header"])
 
@@ -238,13 +242,16 @@ class StockCardController(http.Controller):
                 sheet.write_datetime(row, 8, line_date, fmts["date"])
             else:
                 sheet.write(row, 8, "", fmts["date"])
-            sheet.write(row, 9, line["qty_in"], fmts["num"])
-            sheet.write(row, 10, line["unitcost_in"], fmts["num"])
-            sheet.write(row, 11, line["cost_in"], fmts["num"])
-            sheet.write(row, 12, line["qty_out"], fmts["num"])
-            sheet.write(row, 13, line["unitcost_out"], fmts["num"])
-            sheet.write(row, 14, line["cost_out"], fmts["num"])
-            sheet.write(row, 15, line["remark"] or "", fmts["text"])
+            sheet.write(row, 9, line["opening_qty"], fmts["num"])
+            sheet.write(row, 10, line["qty_in"], fmts["num"])
+            sheet.write(row, 11, line["unitcost_in"], fmts["num"])
+            sheet.write(row, 12, line["cost_in"], fmts["num"])
+            sheet.write(row, 13, line["qty_out"], fmts["num"])
+            sheet.write(row, 14, line["unitcost_out"], fmts["num"])
+            sheet.write(row, 15, line["cost_out"], fmts["num"])
+            sheet.write(row, 16, line["balance_qty"], fmts["num"])
+            sheet.write(row, 17, line["balance_value"], fmts["num"])
+            sheet.write(row, 18, line["remark"] or "", fmts["text"])
             row += 1
 
     def _flat_sheet_response(self, rows, filename):

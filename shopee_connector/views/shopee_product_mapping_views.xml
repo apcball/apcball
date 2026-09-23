@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopee_product_mapping_tree" model="ir.ui.view">
+        <field name="name">shopee.product.mapping.tree</field>
+        <field name="model">shopee.product.mapping</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="shopee_config_id"/>
+                <field name="shopee_sku"/>
+                <field name="shopee_item_id"/>
+                <field name="shopee_model_id"/>
+                <field name="shopee_item_name"/>
+                <field name="shopee_model_name"/>
+                <field name="product_id"/>
+                <field name="odoo_sku"/>
+                <field name="shopee_stock"/>
+                <field name="last_stock_sync"/>
+                <field name="last_pushed_stock"/>
+                <field name="last_stock_push"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_shopee_product_mapping_form" model="ir.ui.view">
+        <field name="name">shopee.product.mapping.form</field>
+        <field name="model">shopee.product.mapping</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="shopee_config_id"/>
+                        <field name="company_id" invisible="1"/>
+                        <field name="shopee_sku"/>
+                        <field name="shopee_item_id"/>
+                        <field name="shopee_model_id"/>
+                        <field name="shopee_item_name" readonly="1"/>
+                        <field name="shopee_model_name" readonly="1"/>
+                        <field name="product_id"/>
+                        <field name="odoo_sku" readonly="1"/>
+                        <field name="active"/>
+                        <field name="shopee_stock" readonly="1"/>
+                        <field name="last_stock_sync" readonly="1"/>
+                        <field name="last_pushed_stock" readonly="1"/>
+                        <field name="last_stock_push" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_shopee_product_mapping" model="ir.actions.act_window">
+        <field name="name">Product Mappings</field>
+        <field name="res_model">shopee.product.mapping</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="shopee_connector_product_mapping_menu" name="Product Mappings"
+              parent="shopee_connector_config_menu"
+              action="action_shopee_product_mapping" sequence="20"/>
+</odoo>

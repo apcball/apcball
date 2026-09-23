@@ -1,0 +1,397 @@
+@font-face {
+    font-family: "POS Lite Sarabun";
+    src: url('/pos_lite/static/fonts/Sarabun-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "POS Lite Sarabun";
+    src: url('/pos_lite/static/fonts/Sarabun-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+.o_form_view .o_pos_lite_order_form {
+    --pl-blue: #087cff;
+    --pl-ink: #10224b;
+    --pl-text: #48638c;
+    --pl-border: #dfeaff;
+
+    font-family: "POS Lite Sarabun", sans-serif;
+    color: var(--pl-text);
+
+    &.o_form_sheet_bg, .o_form_sheet_bg {
+        background: #f2f8ff;
+        border-bottom: 0;
+    }
+
+    .o_form_sheet {
+        container-type: inline-size;
+        container-name: pos-lite-order;
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        margin: 0 auto;
+        padding: 14px 28px;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .o_form_statusbar {
+        padding: 6px 20px;
+        border-color: var(--pl-border);
+        background: #f8fbff;
+
+        .btn {
+            border-radius: 9px;
+            padding: 6px 12px;
+        }
+
+        .btn-primary {
+            background: var(--pl-blue);
+            border-color: var(--pl-blue);
+        }
+
+        .btn-secondary {
+            background: #fff;
+            color: #315582;
+            border-color: #d4e4ff;
+        }
+    }
+
+    .oe_button_box {
+        margin-bottom: 12px;
+
+        .oe_stat_button {
+            color: var(--pl-text);
+            border-color: var(--pl-border);
+        }
+    }
+
+    .pl_order_title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        max-width: none;
+        margin: 0 0 12px;
+
+        h1 {
+            margin: 0;
+            flex: 0 1 auto;
+            width: auto;
+            max-width: 100%;
+            font-size: clamp(24px, 2vw, 30px);
+            font-weight: 700;
+            color: var(--pl-ink);
+            overflow-wrap: anywhere;
+            .o_field_widget { width: auto; margin: 0; }
+        }
+
+        > .o_field_widget {
+            width: auto;
+            flex: 0 0 auto;
+            margin: 0;
+        }
+
+        .badge {
+            border-radius: 30px;
+            padding: 5px 16px;
+            font-size: 13px;
+        }
+    }
+
+    .pl_order_meta {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .pl_meta_item {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        min-width: 0;
+
+        > div { min-width: 0; flex: 1; }
+        .pl_meta_icon { font-size: 22px; padding-top: 4px; color: #5276a8; }
+        &:first-child .pl_meta_icon { color: var(--pl-blue); }
+        label { display: block; font-size: 12px; color: #647ea5; margin-bottom: 2px; }
+        .o_field_widget { margin-bottom: 0; font-size: 13px; line-height: 1.4; }
+    }
+
+    .pl_return_info {
+        padding: 8px 0;
+        margin: 0 0 12px;
+        border-top: 1px solid var(--pl-border);
+        h3 { margin: 0 0 6px; font-size: 12px; font-weight: 700; }
+    }
+
+    .pl_return_fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 20px;
+    }
+
+    .pl_return_item {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        min-width: 0;
+        font-size: 13px;
+        label { margin: 0; flex: 0 0 auto; }
+        .o_field_widget { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+        p { margin-bottom: 0; }
+    }
+
+    .pl_exchange_info {
+        margin-top: 0;
+        margin-bottom: 12px;
+        .o_inner_group { margin-bottom: 0; }
+    }
+
+    .pl_order_layout {
+        display: grid;
+        grid-template-columns: minmax(0, 4fr) minmax(270px, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .pl_order_main, .pl_order_sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+    }
+
+    .pl_address_grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .pl_card {
+        min-width: 0;
+        padding: 20px;
+        border: 1px solid var(--pl-border);
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(42, 99, 170, 0.025);
+
+        .o_group { margin-bottom: 0; }
+        .o_inner_group { margin-bottom: 0; }
+        .o_field_widget { margin-bottom: 4px; }
+        .o_field_many2one a { color: var(--pl-blue); }
+        .o_field_char, .o_field_email, .o_field_phone { overflow-wrap: anywhere; }
+    }
+
+    .pl_card_heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 18px;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--pl-ink);
+
+        label { margin: 0; font-weight: inherit; }
+    }
+
+    .pl_card_icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #087cff, #46b7ff);
+        color: #fff;
+        font-size: 22px;
+    }
+
+    .pl_card_customer { background: linear-gradient(120deg, #fff, #f5fbff); }
+    .pl_card_invoice {
+        background: linear-gradient(120deg, #fff, #effbf9);
+        border-color: #d5efeb;
+        .pl_card_icon { background: linear-gradient(135deg, #13b699, #42dac1); }
+    }
+    .pl_card_shipping {
+        background: linear-gradient(120deg, #fff, #fff8ef);
+        border-color: #f2e5d6;
+        .pl_card_icon { background: linear-gradient(135deg, #f8a443, #ffc46e); }
+    }
+    .pl_card_session {
+        min-height: 195px;
+        background: linear-gradient(120deg, #fff, #f8f5ff);
+        border-color: #e6dfff;
+        .pl_card_icon { background: linear-gradient(135deg, #7045ff, #9374ff); }
+    }
+
+    .pl_contact_row {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+        > .fa { flex: 0 0 16px; text-align: center; }
+        > .o_field_widget { min-width: 0; }
+    }
+
+    .pl_contact_address {
+        display: block;
+        white-space: pre-line;
+        line-height: 1.8;
+        margin-top: 8px;
+    }
+
+    .pl_lines_card {
+        padding: 12px;
+        // Odoo's notebook normally bleeds into the sheet gutters. Keep it
+        // within this card, including the table's horizontal scrollbar.
+        .o_notebook, .o_notebook_headers, .tab-content {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .o_notebook_headers { overflow-x: auto; }
+        .nav-tabs { border: 0; gap: 8px; margin-bottom: 10px; padding-left: 0; padding-right: 0; }
+        .nav-link {
+            border: 0;
+            border-radius: 12px;
+            background: #f1f6fc;
+            color: var(--pl-text);
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            &.active { background: var(--pl-blue); color: #fff; }
+        }
+        .tab-content { box-shadow: none; border: 0; padding: 0; }
+        .o_field_x2many { width: 100%; min-width: 0; }
+        .o_list_renderer { overflow-x: auto; }
+        .o_list_table {
+            min-width: 1050px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: var(--pl-text);
+            thead { background: #f1f6fc; color: #536f99; }
+            th { font-size: 12px; padding: 9px 6px; }
+            td { vertical-align: middle; padding: 7px 6px; }
+            .o_field_widget, .o_input, .o_field_widget input,
+            .o_field_widget select, .o_field_widget textarea {
+                font-size: 13px;
+                line-height: 1.4;
+            }
+            .o_field_widget { margin-bottom: 0; }
+            .o_field_image img {
+                max-width: 32px;
+                max-height: 32px;
+                border: 1px solid var(--pl-border);
+                border-radius: 6px;
+            }
+        }
+        .pl_order_lines, .pl_order_lines .o_list_renderer {
+            // Native x2many lists have sheet-wide gutters; this one lives
+            // inside a grid card and must use the card's available width.
+            width: 100% !important;
+            max-width: 100%;
+            min-width: 0;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        .pl_order_lines .o_list_table {
+            // Odoo freezes measured column widths inline while editing.
+            // Keep this table responsive when zoom or its container changes.
+            width: 100% !important;
+            min-width: 900px !important;
+            table-layout: fixed;
+            th, td { padding-left: 4px; padding-right: 4px; }
+            th { width: auto !important; min-width: 0 !important; }
+            th[data-name="product_image"] { width: 38px !important; }
+            th[data-name="product_id"], th[data-name="description"] { width: 15% !important; }
+            th:last-child { width: 28px !important; }
+            td[name="product_id"], td[name="description"] {
+                white-space: normal;
+                overflow-wrap: anywhere;
+                .o_field_widget, .o_field_many2one_selection, .o_field_many2one_extra {
+                    min-width: 0;
+                    max-width: 100%;
+                    white-space: normal;
+                }
+            }
+        }
+    }
+
+    .pl_summary_row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 5px 0;
+
+        label { margin: 0; font-weight: 400; }
+        .o_field_widget {
+            width: auto;
+            margin: 0;
+            text-align: right;
+            flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
+        }
+    }
+
+    .pl_grand_total {
+        padding: 9px 12px;
+        margin: 10px -4px;
+        border: 1px solid #cdeaff;
+        border-radius: 9px;
+        background: #e4f5ff;
+        color: var(--pl-ink);
+        label { font-weight: 700; }
+        .o_field_widget { color: var(--pl-blue); font-size: 22px; font-weight: 700; }
+    }
+
+    .pl_margin_panel {
+        border: 1px solid #d5f3e9;
+        border-radius: 9px;
+        padding: 6px 12px;
+        margin: 0 -4px 12px;
+        background: #edfbf5;
+        .o_field_widget { font-weight: 700; }
+    }
+
+    .pl_payment_summary { border-top: 1px solid var(--pl-border); padding-top: 10px; }
+
+    .o-mail-Form-chatter { margin-top: 20px; width: 100%; max-width: none; }
+
+    // Base this on the actual form space, including browser zoom and any
+    // surrounding Odoo panels, rather than only on the viewport width.
+    @container pos-lite-order (max-width: 1280px) {
+        .pl_order_layout { grid-template-columns: minmax(0, 1fr); }
+        .pl_order_sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    }
+
+    @container pos-lite-order (max-width: 650px) {
+        .pl_address_grid, .pl_order_sidebar { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 1199.98px) {
+        .pl_order_layout { grid-template-columns: minmax(0, 1fr); }
+        .pl_order_meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .pl_order_sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    }
+
+    @media (max-width: 767.98px) {
+        .o_form_sheet { padding: 16px 12px; }
+        .pl_order_meta, .pl_address_grid, .pl_order_sidebar { grid-template-columns: minmax(0, 1fr); }
+        .pl_card { padding: 16px; }
+        .pl_card_session { min-height: 0; }
+        .o_form_statusbar { padding: 8px; }
+        .pl_return_fields { grid-template-columns: minmax(0, 1fr); }
+    }
+}

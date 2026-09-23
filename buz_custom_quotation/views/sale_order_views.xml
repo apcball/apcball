@@ -9,6 +9,7 @@
                 <field name="customer_name" placeholder="Customer Name"/>
                 <field name="project_name" placeholder="Project Name"/>
                 <field name="quotation_no" readonly="0"/>
+                <field name="quotation_date"/>
             </xpath>
         </field>
     </record>

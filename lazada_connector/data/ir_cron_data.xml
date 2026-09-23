@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="cron_lazada_sync_orders" model="ir.cron">
+            <field name="name">Lazada: Import Orders</field>
+            <field name="model_id" ref="model_lazada_config"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_sync_orders()</field>
+            <field name="interval_number">15</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">False</field>
+        </record>
+        <record id="cron_lazada_sync_order_status" model="ir.cron">
+            <field name="name">Lazada: Sync Order Status</field>
+            <field name="model_id" ref="model_lazada_config"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_sync_order_status()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">False</field>
+        </record>
+        <record id="cron_lazada_sync_stock" model="ir.cron">
+            <field name="name">Lazada: Sync Stock</field>
+            <field name="model_id" ref="model_lazada_config"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_sync_stock()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">False</field>
+        </record>
+        <record id="cron_lazada_push_stock" model="ir.cron">
+            <field name="name">Lazada: Push Stock</field>
+            <field name="model_id" ref="model_lazada_config"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_push_stock()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">False</field>
+        </record>
+        <record id="cron_lazada_refresh_tokens" model="ir.cron">
+            <field name="name">Lazada: Refresh Access Tokens</field>
+            <field name="model_id" ref="model_lazada_config"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_refresh_tokens()</field>
+            <field name="interval_number">3</field>
+            <field name="interval_type">hours</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+        <record id="cron_lazada_retry_queue" model="ir.cron">
+            <field name="name">Lazada: Process Retry Queue</field>
+            <field name="model_id" ref="model_lazada_retry_queue"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_process()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

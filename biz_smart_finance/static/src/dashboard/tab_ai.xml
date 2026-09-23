@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabAi">
+    <div class="o_bsf_grid">
+        <div t-if="!configured" class="o_bsf_card">
+            <div class="o_bsf_empty_note">
+                <i class="fa fa-info-circle me-1"/>
+                ยังไม่ได้ตั้งค่า OpenRouter API Key — ไปที่ การตั้งค่า (Settings)
+                ▸ Smart Finance เพื่อเปิดใช้ AI Copilot
+            </div>
+        </div>
+
+        <!-- ซ้าย: บทสนทนา + รายงาน + เครื่องมือ -->
+        <section class="o_bsf_card span4" t-att-class="zoomCls('ai_1')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ai_1')"
+                    t-att-title="isZoomed('ai_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ai_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ai_1') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>บทสนทนา</b>
+                <div class="o_bsf_spacer"/>
+                <button class="o_bsf_iconbtn" t-on-click="newConversation">
+                    <i class="fa fa-plus me-1"/>ใหม่
+                </button>
+            </div>
+            <table class="o_bsf_table">
+                <tbody>
+                    <tr t-foreach="ui.conversations" t-as="conv" t-key="conv.id"
+                        t-attf-class="o_bsf_row_click {{ conv.id === ui.activeId ? 'is-active-row' : '' }}"
+                        t-on-click="() => this.openConversation(conv)">
+                        <td><i class="fa fa-comments-o me-1"/><t t-esc="conv.name"/></td>
+                    </tr>
+                    <tr t-if="!ui.conversations.length">
+                        <td>ยังไม่มีบทสนทนา — พิมพ์คำถามได้เลย</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="c_head" style="margin-top: 14px;">
+                <b>รายงาน CFO</b>
+            </div>
+            <button class="o_bsf_iconbtn ai_btn" style="width: 100%;"
+                    t-on-click="generateReport"
+                    t-att-disabled="!configured || ui.generatingReport">
+                <i t-attf-class="fa {{ ui.generatingReport ? 'fa-circle-o-notch fa-spin' : 'fa-file-text-o' }} me-1"/>
+                <t t-esc="ui.generatingReport ? 'กำลังเขียนรายงาน...' : 'สร้างรายงาน CFO ประจำเดือน'"/>
+            </button>
+            <table class="o_bsf_table" style="margin-top: 6px;">
+                <tbody>
+                    <tr t-foreach="ui.reports" t-as="report" t-key="report.id"
+                        class="o_bsf_row_click" t-on-click="() => this.openReport(report)">
+                        <td><i class="fa fa-file-text-o me-1"/><t t-esc="report.name"/></td>
+                        <td><t t-esc="report.state === 'done' ? '' : report.state"/></td>
+                    </tr>
+                    <tr t-if="!ui.reports.length"><td colspan="2">ยังไม่มีรายงาน</td></tr>
+                </tbody>
+            </table>
+
+            <t t-if="isManager">
+                <div class="c_head" style="margin-top: 14px;">
+                    <b>เครื่องมือ</b>
+                </div>
+                <button class="o_bsf_iconbtn ai_btn" style="width: 100%;"
+                        t-on-click="suggestRisks"
+                        t-att-disabled="!configured || ui.suggesting">
+                    <i t-attf-class="fa {{ ui.suggesting ? 'fa-circle-o-notch fa-spin' : 'fa-exclamation-triangle' }} me-1"/>
+                    <t t-esc="ui.suggesting ? 'กำลังวิเคราะห์...' : 'ให้ AI เสนอความเสี่ยง'"/>
+                </button>
+                <button class="o_bsf_iconbtn" style="width: 100%; margin-top: 4px;"
+                        t-on-click="openRiskRegister">
+                    <i class="fa fa-list me-1"/>เปิด Risk Register
+                </button>
+            </t>
+        </section>
+
+        <!-- ขวา: แชท หรือ report viewer -->
+        <section class="o_bsf_card span8" t-att-class="zoomCls('ai_2')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('ai_2')"
+                    t-att-title="isZoomed('ai_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('ai_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('ai_2') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <t t-if="ui.reportView">
+                <div class="c_head">
+                    <b t-esc="ui.reportView.name"/>
+                    <div class="o_bsf_spacer"/>
+                    <button class="o_bsf_iconbtn" t-on-click="() => { this.ui.reportView = null; }">
+                        <i class="fa fa-comments-o me-1"/>กลับไปแชท
+                    </button>
+                </div>
+                <div class="o_bsf_report_view">
+                    <t t-foreach="reportLines" t-as="line" t-key="line_index">
+                        <h2 t-if="line.kind === 'h1'" class="rv_h1" t-esc="line.text"/>
+                        <h3 t-elif="line.kind === 'h2'" class="rv_h2" t-esc="line.text"/>
+                        <div t-elif="line.kind === 'li'" class="rv_li">• <t t-esc="line.text"/></div>
+                        <p t-else="" class="rv_p" t-esc="line.text"/>
+                    </t>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="c_head">
+                    <b>CFO Copilot</b>
+                    <span t-if="ui.activeName" t-esc="ui.activeName"/>
+                    <span t-else="">ถามอะไรก็ได้เกี่ยวกับการเงินของกลุ่ม — AI ตอบจากข้อมูลจริงใน Cockpit</span>
+                </div>
+                <div class="o_bsf_chat">
+                    <div class="chat_messages">
+                        <div t-foreach="ui.messages" t-as="message" t-key="message_index"
+                             t-attf-class="chat_bubble {{ message.role === 'user' ? 'is-user' : 'is-assistant' }}">
+                            <t t-esc="message.content"/>
+                        </div>
+                        <div t-if="ui.sending" class="chat_bubble is-assistant">
+                            <i class="fa fa-circle-o-notch fa-spin me-1"/>กำลังคิด...
+                        </div>
+                        <div t-if="!ui.messages.length &amp;&amp; !ui.sending" class="o_bsf_empty_note">
+                            ตัวอย่าง: "สรุปสถานะเงินสด 13 สัปดาห์" · "โครงการไหน margin เสี่ยงสุด" ·
+                            "ควรจ่ายเจ้าหนี้รายไหนก่อน"
+                        </div>
+                    </div>
+                    <div class="chat_suggestions" t-if="ui.suggestions.length">
+                        <span t-foreach="ui.suggestions" t-as="sugg" t-key="sugg_index"
+                              class="o_bsf_chip ai_sugg" t-on-click="() => this.askSuggestion(sugg)">
+                            <t t-esc="sugg"/>
+                        </span>
+                    </div>
+                    <div class="chat_input">
+                        <textarea rows="2" placeholder="พิมพ์คำถาม... (Enter เพื่อส่ง)"
+                                  t-ref="chatInput" t-on-input="onInput"
+                                  t-on-keydown="onKeydown"
+                                  t-att-disabled="!configured || ui.sending"/>
+                        <button class="o_bsf_iconbtn ai_btn" t-on-click="send"
+                                t-att-disabled="!configured || ui.sending">
+                            <i class="fa fa-paper-plane"/>
+                        </button>
+                    </div>
+                </div>
+            </t>
+        </section>
+    </div>
+</t>
+
+</templates>

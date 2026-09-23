@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabCompare">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'compare'" data="props.data"/>
+
+        <!-- ยังไม่เปิดเปรียบเทียบ: การ์ดชวนเริ่ม (engine ยังไม่ยิงคิวรีเพิ่ม) -->
+        <section t-if="!cmp.enabled" class="o_bsf_card" t-att-class="zoomCls('cmp_1')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cmp_1')"
+                    t-att-title="isZoomed('cmp_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('cmp_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('cmp_1') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>ช่วงเปรียบเทียบ</b>
+                <span>คอลัมน์ขวาสุดคืองวดที่เลือกใน toolbar · <t t-esc="unitLabel"/></span>
+            </div>
+            <div class="o_bsf_cmpbar">
+                <label>เทียบเป็น</label>
+                <select class="o_bsf_select" t-att-value="cmp.mode"
+                        t-on-change="onModeChange">
+                    <t t-foreach="modes" t-as="mode" t-key="mode.code">
+                        <option t-att-value="mode.code" t-esc="mode.label"
+                                t-att-selected="mode.code === cmp.mode"/>
+                    </t>
+                </select>
+                <label>จำนวนช่วง</label>
+                <select class="o_bsf_select" t-att-value="cmp.count"
+                        t-on-change="onCountChange">
+                    <t t-foreach="counts" t-as="count" t-key="count">
+                        <option t-att-value="count" t-esc="count"
+                                t-att-selected="count == cmp.count"/>
+                    </t>
+                </select>
+                <button class="btn btn-primary btn-sm" t-on-click="enable">เริ่มเปรียบเทียบ</button>
+            </div>
+            <div class="o_bsf_empty_note" style="margin-top: 10px;">
+                เลือกว่าจะเทียบเป็นเดือน ไตรมาส หรือปีงบ แล้วกด "เริ่มเปรียบเทียบ"
+                ระบบจะดึงยอดของทุกช่วงพร้อมกัน (สูงสุด 6 ช่วง) โดยคอลัมน์ขวาสุด
+                คืองวดที่เลือกไว้ใน toolbar ด้านบนเสมอ
+            </div>
+        </section>
+
+        <t t-if="cmp.enabled and cmp.columns.length">
+            <!-- กราฟของแถวที่เลือก + ตัวเลือกช่วง (โหมด/จำนวนช่วง = ยิง server ใหม่) -->
+            <section class="o_bsf_card" t-att-class="zoomCls('cmp_3')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cmp_3')"
+                        t-att-title="isZoomed('cmp_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cmp_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cmp_3') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b t-esc="activeMetric.label"/>
+                    <span>
+                        <t t-if="chartIsMoney"><t t-esc="unitLabel"/> · คลิกแท่งเพื่อดูรายการ</t>
+                        <t t-else="">เปอร์เซ็นต์</t>
+                    </span>
+                    <div class="o_bsf_spacer"/>
+                    <div class="o_bsf_cmpbar">
+                        <label>เทียบเป็น</label>
+                        <select class="o_bsf_select" t-att-value="cmp.mode"
+                                t-on-change="onModeChange">
+                            <t t-foreach="modes" t-as="mode" t-key="mode.code">
+                                <option t-att-value="mode.code" t-esc="mode.label"
+                                        t-att-selected="mode.code === cmp.mode"/>
+                            </t>
+                        </select>
+                        <label>จำนวนช่วง</label>
+                        <select class="o_bsf_select" t-att-value="cmp.count"
+                                t-on-change="onCountChange">
+                            <t t-foreach="counts" t-as="count" t-key="count">
+                                <option t-att-value="count" t-esc="count"
+                                        t-att-selected="count == cmp.count"/>
+                            </t>
+                        </select>
+                        <div class="o_bsf_segment">
+                            <button t-attf-class="{{ state.showDelta ? 'active' : '' }}"
+                                    t-on-click="toggleDelta">แสดง Δ%</button>
+                            <button t-attf-class="{{ state.showDelta ? '' : 'active' }}"
+                                    t-on-click="toggleDelta">เฉพาะยอด</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_bsf_chipwrap">
+                    <t t-foreach="metrics" t-as="metric" t-key="metric.key">
+                        <button t-attf-class="o_bsf_metricchip {{ metric.key === activeMetric.key ? 'active' : '' }}"
+                                t-on-click="() => this.selectMetric(metric.key)"
+                                t-esc="metric.label"/>
+                    </t>
+                </div>
+                <t t-set="chart" t-value="metricChart"/>
+                <svg t-att-viewBox="'0 0 ' + chart.width + ' ' + chart.height"
+                     preserveAspectRatio="xMidYMid meet" class="o_bsf_chart">
+                    <t t-foreach="chart.gridlines" t-as="grid" t-key="grid_index">
+                        <line class="grid_line" t-att-x1="chart.padX" t-att-y1="grid.y"
+                              t-att-x2="chart.width - 8" t-att-y2="grid.y"/>
+                        <text class="grid_text" t-att-x="chart.padX - 6"
+                              t-att-y="grid.y + 3" text-anchor="end">
+                            <t t-esc="fmtChartAxis(grid.v)"/>
+                        </text>
+                    </t>
+                    <t t-foreach="chart.bars" t-as="bar" t-key="bar.index">
+                        <rect class="bar is-click" t-att-x="bar.x" t-att-y="bar.y"
+                              t-att-width="bar.w" t-att-height="bar.h"
+                              t-on-click="() => this.openBar(bar)">
+                            <title><t t-esc="fmtMoney(activeMetric.row.values[bar.index])"/></title>
+                        </rect>
+                    </t>
+                    <t t-foreach="chart.series" t-as="serie" t-key="serie.key">
+                        <polyline t-att-class="serie.cls" t-att-points="serie.polyline"/>
+                    </t>
+                    <t t-foreach="chart.labels" t-as="lab" t-key="lab.index">
+                        <text class="grid_text" t-att-x="lab.x"
+                              t-att-y="chart.height - 6" text-anchor="middle">
+                            <t t-esc="lab.label"/>
+                        </text>
+                    </t>
+                </svg>
+            </section>
+
+            <!-- ตารางหลายงวด: คอลัมน์มาจาก payload ทั้งหมด -->
+            <section class="o_bsf_card" t-att-class="zoomCls('cmp_2')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('cmp_2')"
+                        t-att-title="isZoomed('cmp_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('cmp_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('cmp_2') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>เปรียบเทียบหลายงวด</b>
+                    <span>
+                        คลิกชื่อแถวเพื่อขึ้นกราฟ · คลิกตัวเลขเพื่อดูรายการบัญชี ·
+                        <t t-esc="unitLabel"/>
+                    </span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table o_bsf_cmptable">
+                        <thead>
+                            <tr>
+                                <th>รายการ</th>
+                                <th t-foreach="cmp.columns" t-as="col" t-key="col.index"
+                                    t-att-class="col.is_current ? 'is-current' : ''"
+                                    t-att-title="col.title">
+                                    <t t-esc="col.label"/>
+                                    <div style="font-weight: 400;"><t t-esc="col.sub"/></div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="sections" t-as="sec" t-key="sec.key">
+                                <tr class="o_bsf_cmpsec">
+                                    <td t-att-colspan="cmp.columns.length + 1">
+                                        <b><t t-esc="sec.label"/></b>
+                                        <span class="sec_sub"><t t-esc="sec.sub"/></span>
+                                    </td>
+                                </tr>
+                                <tr t-foreach="sec.rows" t-as="row" t-key="row.key"
+                                    t-attf-class="{{ isActiveRow(row) ? 'is-picked' : '' }} {{ row.kind === 'total' ? 'o_bsf_cmptot' : '' }}">
+                                    <td class="o_bsf_click"
+                                        t-att-title="'ขึ้นกราฟ: ' + row.label"
+                                        t-on-click="() => this.selectMetric(row.key)">
+                                        <i t-attf-class="fa fa-line-chart me-1 {{ isActiveRow(row) ? '' : 'is-faint' }}"/>
+                                        <t t-esc="row.label"/>
+                                        <span t-if="!row.configured" class="sec_sub">ยังไม่ได้ผูกบัญชี</span>
+                                    </td>
+                                    <td t-foreach="cmp.columns" t-as="col" t-key="col.index"
+                                        t-attf-class="o_bsf_click {{ zero(row.values[col.index]) }} {{ col.is_current ? 'is-current' : '' }}"
+                                        t-att-title="'ดูรายการบัญชี · ' + col.title"
+                                        t-on-click="() => this.openCell(row, col.index)">
+                                        <t t-esc="fmtCell(row, col.index)"/>
+                                        <div t-if="state.showDelta and col.index"
+                                             t-attf-class="cell_delta {{ deltaClass(row.delta_pct[col.index], row.good_when_up) }}">
+                                            <t t-esc="fmtDelta(row.delta_pct[col.index])"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </t>
+                            <tr class="o_bsf_cmpsec">
+                                <td t-att-colspan="cmp.columns.length + 1">
+                                    <b>อัตราส่วน</b>
+                                    <span class="sec_sub">คำนวณจากยอดของคอลัมน์นั้น</span>
+                                </td>
+                            </tr>
+                            <tr t-foreach="cmp.kpi_rows" t-as="row" t-key="row.key"
+                                t-att-class="isActiveRow(row) ? 'is-picked' : ''">
+                                <td class="o_bsf_click"
+                                    t-att-title="'ขึ้นกราฟ: ' + row.label"
+                                    t-on-click="() => this.selectMetric(row.key)">
+                                    <i t-attf-class="fa fa-line-chart me-1 {{ isActiveRow(row) ? '' : 'is-faint' }}"/>
+                                    <t t-esc="row.label"/>
+                                </td>
+                                <td t-foreach="cmp.columns" t-as="col" t-key="col.index"
+                                    t-att-class="col.is_current ? 'is-current' : ''">
+                                    <t t-esc="fmtPct(row.values[col.index])"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </t>
+    </div>
+</t>
+
+</templates>

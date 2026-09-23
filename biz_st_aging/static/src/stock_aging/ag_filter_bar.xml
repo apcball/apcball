@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_st_aging.AgFilterBar">
+        <div class="ag-filters">
+
+            <div class="ag-filter-row">
+                <div class="ag-field">
+                    <label>ณ วันที่</label>
+                    <input type="date" t-att-value="props.options.date_to"
+                           t-on-change="onDateChange"/>
+                </div>
+
+                <div class="ag-field ag-menu-host" t-on-click.stop="() => {}">
+                    <label>คลังสินค้า</label>
+                    <button type="button" class="ag-menu-btn"
+                            t-on-click.stop="() => this.state.whMenuOpen = !this.state.whMenuOpen">
+                        <span t-esc="warehouseLabel"/><i class="fa fa-caret-down ms-1"/>
+                    </button>
+                    <div class="ag-menu" t-if="state.whMenuOpen">
+                        <label t-foreach="props.warehouses" t-as="wh" t-key="wh.id">
+                            <input type="checkbox" t-att-checked="isPicked('warehouse_ids', wh.id)"
+                                   t-on-change="() => this.togglePicked('warehouse_ids', wh.id)"/>
+                            <span t-esc="wh.code ? wh.code + ' — ' + wh.name : wh.name"/>
+                        </label>
+                        <div class="ag-menu-empty" t-if="!props.warehouses.length">ไม่มีคลังสินค้า</div>
+                    </div>
+                </div>
+
+                <div class="ag-field">
+                    <label>หมวดสินค้า</label>
+                    <select t-att-value="categValue" t-on-change="onCategChange">
+                        <option value="0">ทั้งหมด</option>
+                        <option t-foreach="props.categories" t-as="categ" t-key="categ.id"
+                                t-att-value="categ.id" t-att-selected="isCategSelected(categ.id)"
+                                t-esc="categ.complete_name"/>
+                    </select>
+                </div>
+
+                <div class="ag-field ag-search">
+                    <label>สินค้า</label>
+                    <div class="ag-search-box">
+                        <input type="text" placeholder="ค้นหาสินค้า..." t-att-value="state.search"
+                               t-on-input="onSearchInput" t-on-keydown="onSearchKey"/>
+                        <button type="button" class="ag-search-btn" title="ค้นหา"
+                                t-on-click="applySearch"><i class="fa fa-search"/></button>
+                        <button type="button" class="ag-search-btn" title="ล้างคำค้น"
+                                t-if="state.search" t-on-click="clearSearch"><i class="fa fa-times"/></button>
+                    </div>
+                </div>
+
+                <div class="ag-field ag-menu-host" t-if="props.companies.length > 1"
+                     t-on-click.stop="() => {}">
+                    <label>บริษัท</label>
+                    <button type="button" class="ag-menu-btn"
+                            t-on-click.stop="() => this.state.companyMenuOpen = !this.state.companyMenuOpen">
+                        <span t-esc="companyLabel"/><i class="fa fa-caret-down ms-1"/>
+                    </button>
+                    <div class="ag-menu" t-if="state.companyMenuOpen">
+                        <label t-foreach="props.companies" t-as="company" t-key="company.id">
+                            <input type="checkbox" t-att-checked="isPicked('company_ids', company.id)"
+                                   t-on-change="() => this.togglePicked('company_ids', company.id)"/>
+                            <span t-esc="company.name"/>
+                        </label>
+                        <hr/>
+                        <select t-att-value="props.options.company_mode"
+                                t-on-change="(ev) => this.onSelectChange('company_mode', ev)">
+                            <option value="consolidated">รวมทุกบริษัท</option>
+                            <option value="split">แยกแถวตามบริษัท</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ag-actions">
+                    <button type="button" class="btn btn-sm btn-primary" title="ค้นหา"
+                            t-att-disabled="props.loading or undefined"
+                            t-on-click="() => props.onSearch()">
+                        <i class="fa fa-search me-1" t-att-class="props.loading ? 'fa-spin' : ''"/>ค้นหา
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light"
+                            t-att-disabled="!props.hasData or undefined"
+                            t-on-click="() => props.onPrint('pdf')">
+                        <i class="fa fa-file-pdf-o me-1"/>PDF
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light"
+                            t-att-disabled="!props.hasData or undefined"
+                            t-on-click="() => props.onPrint('xlsx')">
+                        <i class="fa fa-file-excel-o me-1"/>Excel
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light" title="รีเซ็ตตัวกรอง"
+                            t-att-disabled="props.loading or undefined"
+                            t-on-click="() => props.onReset()">
+                        <i class="fa fa-refresh" t-att-class="props.loading ? 'fa-spin' : ''"/>
+                    </button>
+                </div>
+            </div>
+
+            <div class="ag-filter-row">
+                <div class="ag-axis-pill">
+                    <button t-foreach="axes" t-as="axis" t-key="axis.id" type="button"
+                            t-att-class="props.options.group_mode === axis.id ? 'ag-axis-on' : ''"
+                            t-on-click="() => this.setAxis(axis.id)" t-esc="axis.label"/>
+                </div>
+                <div class="ag-toggles">
+                    <button t-foreach="extraLevels" t-as="level" t-key="level.field"
+                            type="button" class="ag-chip"
+                            t-att-class="props.options[level.field] ? 'ag-chip-on' : ''"
+                            t-on-click="() => this.toggle(level.field)">
+                        <i class="fa" t-att-class="props.options[level.field] ? 'fa-check-square-o' : 'fa-square-o'"/>
+                        <span t-esc="level.label"/>
+                    </button>
+                </div>
+
+                <div class="ag-field">
+                    <label>หลักการอายุ</label>
+                    <select t-att-value="props.options.age_basis"
+                            t-on-change="(ev) => this.onSelectChange('age_basis', ev)">
+                        <option value="node_in">วันที่รับเข้าคลัง (FIFO)</option>
+                    </select>
+                </div>
+                <div class="ag-field" t-if="props.options.show_value">
+                    <label>วิธีคิดมูลค่า</label>
+                    <select t-att-value="props.options.cost_basis"
+                            t-on-change="(ev) => this.onSelectChange('cost_basis', ev)">
+                        <option value="average">ต้นทุนเฉลี่ย ณ วันที่ (ตาม SVL)</option>
+                    </select>
+                </div>
+
+                <div class="ag-toggles">
+                    <button type="button" class="btn btn-sm btn-primary" t-if="props.hasData"
+                            t-att-disabled="props.loading or undefined"
+                            t-on-click="() => props.onRefresh()">
+                        <i class="fa fa-refresh me-1" t-att-class="props.loading ? 'fa-spin' : ''"/>ปรับปรุงข้อมูล
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light"
+                            t-on-click="() => props.onOpenConfig()">
+                        <i class="fa fa-sliders me-1"/>ตั้งค่า Aging
+                    </button>
+                </div>
+
+                <div class="ag-actions" t-if="props.hasData">
+                    <span class="ag-axis-path" t-if="breadcrumb">
+                        <i class="fa fa-sitemap me-1"/><span t-esc="breadcrumb"/>
+                    </span>
+                    <button type="button" class="btn btn-sm btn-light"
+                            t-on-click="() => props.onUnfoldAll()">
+                        <i class="fa fa-angle-double-down me-1"/>กางทั้งหมด
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light"
+                            t-on-click="() => props.onFoldAll()">
+                        <i class="fa fa-angle-double-up me-1"/>ยุบทั้งหมด
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

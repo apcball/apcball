@@ -37,16 +37,31 @@ def _mask(params):
     }
 
 
+def _mask_value(value):
+    if isinstance(value, dict):
+        return {
+            key: ("***" if key in _MASK_KEYS and item else _mask_value(item))
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_mask_value(item) for item in value]
+    return value
+
+
 class ShopeeAPI:
     """Thin wrapper around Shopee Open Platform v2 REST API.
     Not an Odoo model - instantiate from a shopee.config record.
     """
 
-    def __init__(self, partner_id, partner_key, shop_id=None, environment="sandbox"):
+    def __init__(
+        self, partner_id, partner_key, shop_id=None, environment="sandbox",
+        log_callback=None,
+    ):
         self.partner_id = str(partner_id).strip()
         self.partner_key = str(partner_key).strip()
         self.shop_id = str(shop_id).strip() if shop_id else None
         self.host = SANDBOX_HOST if environment == "sandbox" else PRODUCTION_HOST
+        self.log_callback = log_callback
 
     # ------------------------------------------------------------------
     # Signing
@@ -102,6 +117,7 @@ class ShopeeAPI:
         _logger.debug("Shopee %s %s params=%s body=%s",
                       method, path, _mask(query), _mask(body))
 
+        started = time.monotonic()
         delay = 0.5
         last_exc = None
         for attempt in range(3):
@@ -129,20 +145,68 @@ class ShopeeAPI:
             try:
                 data = resp.json()
             except ValueError:
-                resp.raise_for_status()
-                raise ShopeeAPIError("non_json_response", resp.text[:500])
+                data = None
+            if resp.status_code >= 400:
+                message = (data or {}).get("message") if isinstance(data, dict) else resp.text[:500]
+                error = (data or {}).get("error") if isinstance(data, dict) else None
+                exc = ShopeeAPIError(error or f"http_{resp.status_code}", message or "")
+                self._write_log(
+                    method, path, query, body, data or resp.text[:500],
+                    "error", resp.status_code, started, exc,
+                )
+                raise exc
+            if data is None:
+                exc = ShopeeAPIError("non_json_response", resp.text[:500])
+                self._write_log(
+                    method, path, query, body, resp.text[:500],
+                    "error", resp.status_code, started, exc,
+                )
+                raise exc
 
             if data.get("error"):
-                raise ShopeeAPIError(
+                exc = ShopeeAPIError(
                     data.get("error"),
                     data.get("message", ""),
                     data.get("request_id", ""),
                 )
+                self._write_log(
+                    method, path, query, body, data, "error",
+                    resp.status_code, started, exc,
+                )
+                raise exc
             if data.get("warning"):
                 _logger.warning("Shopee %s warning: %s", path, data["warning"])
+            self._write_log(
+                method, path, query, body, data, "success",
+                resp.status_code, started, None,
+            )
             return data
 
-        raise ShopeeAPIError("network", f"{last_exc}")
+        exc = ShopeeAPIError("network", f"{last_exc}")
+        self._write_log(
+            method, path, query, body, None, "error", 0, started, exc,
+        )
+        raise exc
+
+    def _write_log(
+        self, method, path, params, body, response, status,
+        http_status, started, error,
+    ):
+        if not self.log_callback:
+            return
+        try:
+            self.log_callback(
+                http_method=method,
+                endpoint=path,
+                request_data={"params": _mask(params), "body": _mask(body or {})},
+                response_data=_mask_value(response),
+                status=status,
+                http_status=http_status,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                error_message=str(error) if error else False,
+            )
+        except Exception:
+            _logger.exception("Unable to write Shopee API log")
 
     def _get(self, path, access_token, params=None):
         return self._request("GET", path, access_token, params=params)
@@ -155,7 +219,7 @@ class ShopeeAPI:
     # ------------------------------------------------------------------
     # Auth
     # ------------------------------------------------------------------
-    def get_authorization_url(self, redirect_url):
+    def get_authorization_url(self, redirect_url, state=None):
         path = "/api/v2/shop/auth_partner"
         timestamp = int(time.time())
         signature = self._sign(path, timestamp)
@@ -163,6 +227,7 @@ class ShopeeAPI:
         return (
             f"{self.host}{path}?partner_id={self.partner_id}"
             f"&timestamp={timestamp}&sign={signature}&redirect={redirect}"
+            + (f"&state={urllib.parse.quote(str(state), safe='')}" if state else "")
         )
 
     def get_access_token(self, code, shop_id):
@@ -211,6 +276,24 @@ class ShopeeAPI:
             ),
         }
         return self._get(path, access_token, params)
+
+    def get_order_status(self, access_token, order_sn_list):
+        """Return current order details, including the status field."""
+        return self.get_order_detail(access_token, order_sn_list)
+
+    def ship_order(self, access_token, order_sn, package_number=None):
+        path = "/api/v2/logistics/ship_order"
+        body = {"order_sn": order_sn}
+        if package_number:
+            body["package_number"] = package_number
+        return self._post(path, access_token, body=body)
+
+    def cancel_order(self, access_token, order_sn, cancel_reason="OTHER"):
+        path = "/api/v2/order/cancel_order"
+        return self._post(
+            path, access_token,
+            body={"order_sn": order_sn, "cancel_reason": cancel_reason},
+        )
 
     # ------------------------------------------------------------------
     # Products / Stock

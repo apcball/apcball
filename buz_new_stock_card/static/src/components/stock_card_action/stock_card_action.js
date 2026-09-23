@@ -1,6 +1,8 @@
 /** @odoo-module **/
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { browser } from "@web/core/browser/browser";
+import { session } from "@web/session";
 import { Component, onWillUnmount, useState } from "@odoo/owl";
 import { Sidebar } from "../sidebar/sidebar";
 import { MainPanel } from "../main_panel/main_panel";
@@ -15,6 +17,7 @@ export class StockCardAction extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.company = useService("company");
+        this.user = useService("user");
         this.requestId = 0;
         this.state = useState({
             productId: false, productName: "",
@@ -55,12 +58,12 @@ export class StockCardAction extends Component {
         Object.assign(this.state, { productId, productName });
     }
 
-    async onSelectLocation(locationId, locationName, selectable) {
+    async onSelectLocation(locationId, locationName, selectable, fetch = true) {
         Object.assign(this.state, {
             selectedLocationId: locationId, selectedLocationName: locationName,
             includeChildren: selectable === false, page: 0,
         });
-        await this.fetchCardData();
+        if (fetch) { await this.fetchCardData(); }
     }
 
     onSetDateFrom(value) { this.invalidate(); this.state.dateFrom = value; }
@@ -103,8 +106,8 @@ export class StockCardAction extends Component {
 
     validFilters() {
         let message;
-        if (!this.state.productId) {
-            message = "กรุณาเลือกสินค้า";
+        if (!this.state.productId && !this.state.warehouseId && !this.state.selectedLocationId) {
+            message = "กรุณาเลือกสินค้า หรือ คลังสินค้า/โลเคชั่น";
         } else if (!this.state.dateFrom || !this.state.dateTo || this.state.dateFrom > this.state.dateTo) {
             message = "กรุณาระบุช่วงวันที่ให้ถูกต้อง วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด";
         }
@@ -130,6 +133,31 @@ export class StockCardAction extends Component {
                 filters.selectedLocationId ? [filters.selectedLocationId] : [], filters.includeChildren,
             ], options);
             if (requestId !== this.requestId) { return; }
+
+            if (!filters.productId) {
+                const rows = await this.orm.call("buz.stock.card.report", "get_scoped_stock_card_lines", [
+                    scope.location_ids, filters.dateFrom, filters.dateTo, scope.label,
+                    [filters.companyId], filters.showMovementsOnly,
+                ], options);
+                if (requestId !== this.requestId) { return; }
+                const totalCount = rows.length;
+                const start = filters.page * filters.pageSize;
+                const cardData = {
+                    mode: "multi",
+                    lines: rows.slice(start, start + filters.pageSize),
+                    total_count: totalCount,
+                    page_size: filters.pageSize,
+                    has_prev: filters.page > 0,
+                    has_next: start + filters.pageSize < totalCount,
+                    can_see_value: rows.length ? rows[0].value !== undefined : false,
+                };
+                Object.assign(this.state, {
+                    cardData, product: null, scopeLabel: scope.label,
+                    locationTree: [], locationCounts: {},
+                });
+                return;
+            }
+
             const [cardData, [product], tree] = await Promise.all([
                 this.orm.call("buz.stock.card.report", "get_stock_card_data", [
                     filters.productId, scope.location_ids, filters.dateFrom, filters.dateTo,
@@ -177,6 +205,46 @@ export class StockCardAction extends Component {
                 default_show_movements_only: this.state.showMovementsOnly,
             },
         });
+    }
+
+    saveFavorite() {
+        if (!this.validFilters()) { return; }
+        const { productId, productName, dateFrom, dateTo, warehouseId,
+            selectedLocationId, selectedLocationName, includeChildren, showMovementsOnly } = this.state;
+        try {
+            browser.localStorage.setItem(this.favoriteKey, JSON.stringify({ productId, productName,
+                dateFrom, dateTo, warehouseId, selectedLocationId, selectedLocationName,
+                includeChildren, showMovementsOnly }));
+            this.notification.add('บันทึกตัวกรองโปรดในเบราว์เซอร์นี้แล้ว', { type: 'success' });
+        } catch {
+            this.notification.add('ไม่สามารถบันทึกตัวกรองในเบราว์เซอร์นี้ได้', { type: 'warning' });
+        }
+    }
+
+    get favoriteKey() {
+        return `buz_new_stock_card.favorite.${session.db}.${this.user.userId}.${this.state.companyId}`;
+    }
+
+    loadFavorite() {
+        try {
+            const favorite = JSON.parse(browser.localStorage.getItem(this.favoriteKey) || 'null');
+            if (!favorite) {
+                this.notification.add('ยังไม่มีตัวกรองโปรดสำหรับบริษัทนี้', { type: 'info' });
+                return;
+            }
+            this.invalidate({ location: true, product: true });
+            for (const key of ['productId', 'productName', 'dateFrom', 'dateTo', 'warehouseId',
+                'selectedLocationId', 'selectedLocationName', 'includeChildren', 'showMovementsOnly']) {
+                if (Object.hasOwn(favorite, key)) { this.state[key] = favorite[key]; }
+            }
+            this.search();
+        } catch {
+            this.notification.add('ไม่สามารถโหลดตัวกรองโปรดได้', { type: 'warning' });
+        }
+    }
+
+    printReport() {
+        window.print();
     }
 
     openDocument(resModel, resId) {

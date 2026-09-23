@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabMargin">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'margin'" data="props.data"/>
+        <!-- bubble scatter -->
+        <section class="o_bsf_card span8" t-att-class="zoomCls('margin_1')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('margin_1')"
+                    t-att-title="isZoomed('margin_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('margin_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('margin_1') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Project Margin: Budget vs Forecast</b>
+                <span>X = Budget Margin % · Y = Forecast Margin % · ขนาดฟอง = งบโครงการ
+                    · ใต้เส้นทแยง = margin หลุดงบ</span>
+            </div>
+            <svg t-att-width="scatter.width" t-att-height="scatter.height"
+                 t-attf-viewBox="0 0 {{ scatter.width }} {{ scatter.height }}"
+                 preserveAspectRatio="xMidYMid meet" class="o_bsf_chart">
+                <t t-foreach="scatter.ticks" t-as="tick" t-key="tick_index">
+                    <line class="grid_line" t-att-x1="scatter.x0" t-att-y1="tick.y"
+                          t-att-x2="scatter.x1" t-att-y2="tick.y"/>
+                    <text class="grid_text" t-att-x="scatter.x0 - 6" t-att-y="tick.y + 3"
+                          text-anchor="end"><t t-esc="tick.v"/>%</text>
+                    <text class="grid_text" t-att-x="tick.x" t-att-y="scatter.y1 + 14"
+                          text-anchor="middle"><t t-esc="tick.v"/>%</text>
+                </t>
+                <line class="diag" t-att-x1="scatter.diag.x1" t-att-y1="scatter.diag.y1"
+                      t-att-x2="scatter.diag.x2" t-att-y2="scatter.diag.y2"/>
+                <t t-foreach="scatter.bubbles" t-as="bubble" t-key="bubble.project_id">
+                    <circle t-attf-class="bubble {{ bubble.risk_pp &gt; 0 ? 'is-risk' : '' }}"
+                            t-att-cx="bubble.cx" t-att-cy="bubble.cy" t-att-r="bubble.r"
+                            t-on-click="() => this.openProject(bubble)">
+                        <title><t t-esc="bubble.name"/> · Budget <t t-esc="fmtPct(bubble.budget_margin_pct)"/> · Forecast <t t-esc="fmtPct(bubble.forecast_margin_pct)"/></title>
+                    </circle>
+                </t>
+            </svg>
+            <div class="o_bsf_empty_note" t-if="!scatter.bubbles.length">
+                ยังไม่มีโครงการที่มีมูลค่าสัญญา (Gate 1/BOQ) ในบริษัทที่เลือก
+            </div>
+            <div class="o_bsf_empty_note" t-if="margin.scenario_hit_pp">
+                * Forecast margin ถูกหดลง <t t-esc="fmtNum(margin.scenario_hit_pp, 1)"/> pp ตาม scenario ที่เลือก
+            </div>
+        </section>
+
+        <!-- leakage card -->
+        <section class="o_bsf_card span4" t-att-class="zoomCls('margin_2')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('margin_2')"
+                    t-att-title="isZoomed('margin_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('margin_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('margin_2') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b class="o_bsf_click" t-on-click="openProjects"
+                   title="คลิกดูรายการโครงการ">Margin Leakage (YTD)</b>
+                <span>กำไรที่รั่วจากงบ</span>
+            </div>
+            <table class="o_bsf_table">
+                <tbody>
+                    <tr>
+                        <td>Budget Margin<br/><span style="font-size: 10px; color: var(--bsf-muted);">ถ่วงน้ำหนักตามมูลค่าสัญญา</span></td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(margin.leakage.budget_margin)"/></td>
+                    </tr>
+                    <tr>
+                        <td>Forecast Margin</td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(margin.leakage.forecast_margin)"/></td>
+                    </tr>
+                    <tr>
+                        <td><b>Margin Leakage</b></td>
+                        <td t-attf-class="bsf_num {{ margin.leakage.alert ? 'is-alert' : '' }}">
+                            <b><t t-esc="fmtMoney(margin.leakage.leakage_amount)"/></b>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Leakage %</td>
+                        <td t-attf-class="{{ margin.leakage.alert ? 'is-alert' : '' }}">
+                            <t t-esc="fmtPct(margin.leakage.leakage_pct)"/>
+                            <t t-if="margin.leakage.threshold !== null">
+                                (เพดาน <t t-esc="fmtPct(margin.leakage.threshold)"/>)
+                            </t>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- top margin risk projects -->
+        <section class="o_bsf_card span7" t-att-class="zoomCls('margin_3')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('margin_3')"
+                    t-att-title="isZoomed('margin_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('margin_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('margin_3') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Top Projects by Margin Risk</b>
+                <span>เรียงตาม margin ที่หายไป (pp) · <t t-esc="unitLabel"/></span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr>
+                            <th>Project</th><th>Budget Margin</th><th>Forecast Margin</th>
+                            <th>Margin Risk (pp)</th><th>Forecast CTC</th><th>Budget</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="margin.risk_table" t-as="row" t-key="row.project_id"
+                            class="o_bsf_row_click" t-on-click="() => this.openProject(row)">
+                            <td><t t-esc="row.name"/></td>
+                            <td><t t-esc="fmtPct(row.budget_margin_pct)"/></td>
+                            <td><t t-esc="fmtPct(row.forecast_margin_pct)"/></td>
+                            <td t-attf-class="{{ row.risk_pp &gt; 0 ? 'is-alert' : '' }}">
+                                <t t-esc="(row.risk_pp &gt; 0 ? '-' : '+') + fmtNum(Math.abs(row.risk_pp), 1)"/>
+                            </td>
+                            <td><t t-esc="fmtMoney(row.cost_to_complete)"/></td>
+                            <td><t t-esc="fmtMoney(row.budget_total)"/></td>
+                        </tr>
+                        <tr t-if="!margin.risk_table.length"><td colspan="6">ยังไม่มีข้อมูลโครงการ</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- VO impact -->
+        <section class="o_bsf_card span5" t-att-class="zoomCls('margin_4')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('margin_4')"
+                    t-att-title="isZoomed('margin_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('margin_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('margin_4') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Variation Orders Impact</b>
+                <span>ผลงานเพิ่ม/ลดต่อกำไร · <t t-esc="unitLabel"/></span>
+            </div>
+            <table class="o_bsf_table">
+                <thead>
+                    <tr><th>Project</th><th>VO</th><th>Margin Impact</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="margin.vo_table" t-as="row" t-key="row.id"
+                        class="o_bsf_row_click" t-on-click="() => this.openVo(row)">
+                        <td><t t-esc="row.project"/></td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(row.amount)"/></td>
+                        <td t-attf-class="bsf_num {{ row.margin_impact &lt; 0 ? 'is-alert' : '' }}">
+                            <t t-esc="fmtMoney(row.margin_impact)"/>
+                        </td>
+                        <td><t t-esc="voStateLabel(row.state)"/></td>
+                    </tr>
+                    <tr t-if="!margin.vo_table.length">
+                        <td colspan="4">
+                            ยังไม่มี VO — <a t-on-click="openVoList" style="color: var(--bsf-primary); cursor: pointer;">เพิ่มที่ทะเบียน Variation Orders</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</t>
+
+</templates>

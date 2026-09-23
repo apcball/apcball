@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ปิดไว้ก่อน — เปิดเมื่อระบบภายนอกพร้อมให้ดึงจริง -->
+    <record id="cron_bsf_ext_sync" model="ir.cron">
+        <field name="name">Smart Finance: sync external figures</field>
+        <field name="model_id" ref="model_biz_smart_finance_source"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sync()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- ภาพนิ่งพยากรณ์ต้นเดือน — ไว้เทียบย้อนหลังว่า "ตอนนั้นเราคาดว่าอย่างไร" -->
+    <record id="cron_bsf_forecast_snapshot" model="ir.cron">
+        <field name="name">Smart Finance: เก็บภาพนิ่งพยากรณ์รายเดือน</field>
+        <field name="model_id" ref="model_biz_smart_finance_forecast_snapshot"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_snapshot()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopee_api_log_tree" model="ir.ui.view">
+        <field name="name">shopee.api.log.tree</field>
+        <field name="model">shopee.api.log</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="shopee_config_id"/>
+                <field name="log_type"/>
+                <field name="status"/>
+                <field name="endpoint"/>
+                <field name="http_status"/>
+                <field name="duration_ms"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_shopee_api_log_form" model="ir.ui.view">
+        <field name="name">shopee.api.log.form</field>
+        <field name="model">shopee.api.log</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="shopee_config_id"/>
+                        <field name="log_type"/>
+                        <field name="status"/>
+                        <field name="http_method"/>
+                        <field name="endpoint"/>
+                        <field name="http_status"/>
+                        <field name="duration_ms"/>
+                    </group>
+                    <group>
+                        <field name="request_data"/>
+                        <field name="response_data"/>
+                        <field name="error_message"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_shopee_api_log" model="ir.actions.act_window">
+        <field name="name">API Logs</field>
+        <field name="res_model">shopee.api.log</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="view_shopee_retry_queue_tree" model="ir.ui.view">
+        <field name="name">shopee.retry.queue.tree</field>
+        <field name="model">shopee.retry.queue</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="shopee_config_id"/>
+                <field name="operation_type"/>
+                <field name="state"/>
+                <field name="attempts"/>
+                <field name="next_retry_at"/>
+                <field name="error_message"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_shopee_retry_queue_form" model="ir.ui.view">
+        <field name="name">shopee.retry.queue.form</field>
+        <field name="model">shopee.retry.queue</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="shopee_config_id"/>
+                        <field name="operation_type"/>
+                        <field name="state"/>
+                        <field name="attempts"/>
+                        <field name="max_attempts"/>
+                        <field name="next_retry_at"/>
+                    </group>
+                    <group>
+                        <field name="payload"/>
+                        <field name="error_message"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_shopee_retry_queue" model="ir.actions.act_window">
+        <field name="name">Retry Queue</field>
+        <field name="res_model">shopee.retry.queue</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="shopee_connector_api_log_menu" name="API Logs"
+              parent="shopee_connector_log_menu" action="action_shopee_api_log"
+              sequence="10"/>
+    <menuitem id="shopee_connector_retry_queue_menu" name="Retry Queue"
+              parent="shopee_connector_log_menu"
+              action="action_shopee_retry_queue" sequence="20"/>
+</odoo>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- แนวนอน: 4 กลุ่ม × {จำนวน, มูลค่า} + คงเหลือสะสม ไม่มีทางพอในแนวตั้ง
+         ตัวเลขจะถูกตัดขอบโดยไม่มีคำเตือน -->
+    <record id="paperformat_stock_card" model="report.paperformat">
+        <field name="name">สต๊อกการ์ด A4 แนวนอน</field>
+        <field name="default">False</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">22</field>
+        <field name="margin_bottom">14</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
+        <field name="header_line">False</field>
+        <field name="header_spacing">10</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_stock_card" model="ir.actions.report">
+        <field name="name">สต๊อกการ์ด (Stock Card)</field>
+        <field name="model">biz.stock.card.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">biz_st_stock_card.report_stock_card_doc</field>
+        <field name="report_file">biz_st_stock_card.report_stock_card_doc</field>
+        <field name="paperformat_id" ref="paperformat_stock_card"/>
+        <field name="print_report_name">'Stock-Card-%s' % (object.date_to or '')</field>
+    </record>
+</odoo>

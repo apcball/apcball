@@ -58,7 +58,7 @@ export class DocumentDashboard extends Component {
     typeCode(document) {
         return this.state.summary?.document_types.find(type => type.id === document.document_type_id?.[0])?.code || "—";
     }
-    typeTone(code) { return ({ QM: "blue", QP: "green", WI: "orange", FM: "purple", SD: "cyan", EX: "gray" })[code] || "gray"; }
+    typeTone(code) { return ({ QM: "blue", QP: "green", WI: "orange", FM: "purple", SD: "cyan", EX: "gray", LAB: "indigo", OKL: "pink" })[code] || "gray"; }
     attentionStatus(row) {
         if (row.state === "published" && row.review_status !== "ok") return row.review_status;
         return row.pending_revision?.state || (row.state === "published" ? "check" : row.state);

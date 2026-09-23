@@ -5,15 +5,28 @@
             <div class="o_sc_filter_grid">
                 <div class="o_sc_product_filter">
                     <div class="o_sc_filter_label">สินค้า (Product)</div>
+                    <div class="o_sc_product_input">
+                    <img t-if="props.state.productId" t-att-src="'/web/image/product.product/' + props.state.productId + '/image_128'" alt=""/>
+                    <i t-else="" class="fa fa-cube o_sc_product_placeholder" aria-hidden="true"/>
                     <RecordAutocomplete resModel="'product.product'" update.bind="onUpdateProduct" multiSelect="false"
                         getIds.bind="productGetIds" value="props.state.productName" fieldString="'สินค้า (Product)'"
                         placeholder="'ค้นหาสินค้า...'" domain="productDomain" context="companyContext"/>
+                    </div>
                 </div>
-                <div><label for="sc-date-from">วันที่เริ่มต้น</label><input id="sc-date-from" type="date" class="form-control"
+                <div><label for="sc-date-from">วันที่เริ่มต้น</label><input id="sc-date-from" t-ref="dateFrom" type="date" class="form-control"
                     t-att-value="props.state.dateFrom" t-on-change="onDateFromChange"/></div>
                 <div><label for="sc-date-to">วันที่สิ้นสุด</label><input id="sc-date-to" type="date" class="form-control"
                     t-att-value="props.state.dateTo" t-on-change="onDateToChange"/></div>
-                <div><label for="sc-company">บริษัท (Company)</label>
+                <div class="o_sc_periods"><div class="o_sc_filter_label">ช่วงเวลา</div>
+                    <div class="o_sc_period_buttons">
+                        <button t-foreach="periods" t-as="period" t-key="period.key" class="btn"
+                            t-att-class="isPeriod(period.key) ? 'btn-primary' : 'o_sc_outline'"
+                            t-att-aria-pressed="isPeriod(period.key) ? 'true' : 'false'"
+                            t-on-click="() => this.setPeriod(period.key)" t-esc="period.label"/>
+                        <button class="btn o_sc_outline" t-on-click="onCustomDate">กำหนดเอง</button>
+                    </div>
+                </div>
+                <div class="o_sc_company_filter"><label for="sc-company">บริษัท (Company)</label>
                     <select id="sc-company" class="form-select" t-on-change="onCompanyChange">
                         <option t-foreach="companies" t-as="company" t-key="company.id"
                             t-att-value="company.id" t-att-selected="company.id === props.state.companyId"><t t-esc="company.name"/></option>
@@ -26,18 +39,28 @@
                             t-att-value="wh.id" t-att-selected="wh.id === props.state.warehouseId"><t t-esc="wh.name"/></option>
                     </select>
                 </div>
+                <div><label for="sc-location">สถานที่จัดเก็บ (Location)</label>
+                    <div id="sc-location" class="o_sc_product_input o_sc_location_input">
+                        <i class="fa fa-map-marker o_sc_product_placeholder" aria-hidden="true"/>
+                        <RecordAutocomplete resModel="'stock.location'" update.bind="onUpdateLocation" multiSelect="false"
+                            getIds.bind="locationGetIds" value="props.state.selectedLocationName"
+                            fieldString="'สถานที่จัดเก็บ (Location)'" placeholder="'ทุกสถานที่จัดเก็บ'"
+                            domain="locationDomain" context="companyContext"/>
+                    </div>
+                </div>
+                <div class="o_sc_filter_actions">
                 <button class="btn btn-primary o_sc_search" t-on-click="props.onSearch" t-att-disabled="props.state.loading or local.loading">
                     <i aria-hidden="true" class="fa fa-search me-2"/>ค้นหา
                 </button>
                 <button class="btn o_sc_reset" t-on-click="onReset"><i aria-hidden="true" class="fa fa-refresh me-2"/>ล้างค่า</button>
+                <button class="btn o_sc_advanced_toggle" t-att-aria-expanded="local.advanced ? 'true' : 'false'"
+                    t-on-click="() => this.local.advanced = !this.local.advanced"><i class="fa fa-angle-double-right me-2" aria-hidden="true"/>ตัวเลือกขั้นสูง <i class="fa fa-angle-down ms-2" aria-hidden="true"/></button>
+                </div>
             </div>
             <div t-if="local.error" class="text-danger mt-2" role="alert">
                 <t t-esc="local.error"/> <button class="btn btn-link btn-sm" t-on-click="loadWarehouses">ลองใหม่</button>
             </div>
-            <details class="o_sc_advanced">
-                <summary><i aria-hidden="true" class="fa fa-sliders me-2"/>ตัวเลือกขั้นสูง / Advanced locations
-                    <span t-if="props.state.selectedLocationId" class="ms-2" t-esc="props.state.selectedLocationName"/>
-                </summary>
+            <div t-if="local.advanced" class="o_sc_advanced">
                 <div class="o_sc_advanced_content">
                     <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
                         <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.props.onSelectLocation(false, '', true)"
@@ -51,7 +74,7 @@
                     <LocationTree t-else="" nodes="props.state.locationTree" counts="props.state.locationCounts"
                         selectedId="props.state.selectedLocationId" onSelect="props.onSelectLocation"/>
                 </div>
-            </details>
+            </div>
         </section>
     </t>
 </templates>

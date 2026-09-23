@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_collection_followup_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.collection.followup.tree</field>
+        <field name="model">biz.smart.finance.collection.followup</field>
+        <field name="arch" type="xml"><tree>
+            <field name="partner_id"/><field name="promised_amount" widget="monetary"/>
+            <field name="promised_date"/><field name="next_action_date"/><field name="owner_id"/>
+            <field name="dispute"/><field name="state"/><field name="currency_id" column_invisible="1"/>
+        </tree></field>
+    </record>
+    <record id="view_bsf_collection_followup_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.collection.followup.form</field>
+        <field name="model">biz.smart.finance.collection.followup</field>
+        <field name="arch" type="xml"><form string="ติดตามเก็บเงิน"><sheet>
+            <group><group><field name="company_id"/><field name="partner_id"/><field name="owner_id"/>
+            <field name="move_line_id"/><field name="external_invoice_id"/></group><group>
+            <field name="promised_amount" widget="monetary"/><field name="promised_date"/>
+            <field name="next_action_date"/><field name="dispute"/><field name="reason"/><field name="state"/>
+            <field name="currency_id" invisible="1"/></group></group><field name="note"/>
+            <footer><button name="action_done" type="object" string="ปิดงาน" class="btn-primary" invisible="state != 'open'"/>
+            <button string="Close" special="cancel"/></footer>
+        </sheet><chatter/></form></field>
+    </record>
+    <record id="action_bsf_collection_followup" model="ir.actions.act_window">
+        <field name="name">ติดตามเก็บเงิน</field><field name="res_model">biz.smart.finance.collection.followup</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_bsf_collection_followup" name="ติดตามเก็บเงิน" parent="menu_bsf_inputs"
+              action="action_bsf_collection_followup" sequence="18"/>
+
+    <record id="view_sale_order_form_bsf_sales_to_cash" model="ir.ui.view">
+        <field name="name">sale.order.form.bsf.sales.to.cash</field><field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/><field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside"><page string="Sales to Cash">
+                <group><field name="bsf_cash_source"/></group>
+                <field name="bsf_delivery_plan_ids"><tree editable="bottom">
+                    <field name="sale_order_id" column_invisible="1"/><field name="sale_line_id"/><field name="delivery_date"/><field name="quantity"/>
+                    <field name="amount" widget="monetary"/><field name="currency_id" column_invisible="1"/>
+                </tree></field>
+            </page></xpath>
+        </field>
+    </record>
+    <record id="view_partner_form_bsf_sales_to_cash" model="ir.ui.view">
+        <field name="name">res.partner.form.bsf.sales.to.cash</field><field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/><field name="arch" type="xml">
+            <xpath expr="//page[@name='sales_purchases']//group" position="inside">
+                <field name="bsf_billing_mode"/><field name="bsf_billing_days"/>
+                <field name="bsf_credit_limit"/><field name="bsf_collection_owner_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

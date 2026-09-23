@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- เมนูแม่ stock.menu_warehouse_report จำกัดกลุ่มของตัวเองอยู่แล้ว (manager/reporting) —
+         group_stock_aging_user เป็นแค่ชั้นกรองเพิ่มว่าใครในกลุ่มที่มองเห็นเมนูแม่ได้ ยัง "ใช้"
+         รายงานนี้ได้จริงไหม ไม่ได้ปลดล็อกเมนูแม่ให้กว้างขึ้น -->
+    <menuitem id="menu_stock_aging_screen"
+              name="อายุสินค้าคงเหลือ (Stock Aging)"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_aging_screen"
+              sequence="220"
+              groups="group_stock_aging_user"/>
+    <menuitem id="menu_stock_aging_wizard"
+              name="พิมพ์อายุสินค้าคงเหลือ (PDF / Excel)"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_aging_wizard"
+              sequence="221"
+              groups="group_stock_aging_user"/>
+    <menuitem id="menu_stock_aging_config"
+              name="ตั้งค่าอายุสินค้าคงเหลือ"
+              parent="stock.menu_stock_config_settings"
+              action="action_stock_aging_config"
+              sequence="120"
+              groups="stock.group_stock_manager"/>
+</odoo>

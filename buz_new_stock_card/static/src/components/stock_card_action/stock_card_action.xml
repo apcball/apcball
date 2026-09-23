@@ -8,10 +8,12 @@
                     <div><h1>Stock Card</h1><p>ตรวจสอบความเคลื่อนไหวของสินค้าตามช่วงเวลา</p></div>
                 </div>
                 <div class="o_stock_card_toolbar">
-                    <span class="o_stock_card_breadcrumb"><i class="fa fa-home" aria-hidden="true"/> / Inventory / Stock Card</span>
-                    <button class="btn o_help_button" title="วิธีใช้งาน" aria-label="วิธีใช้งาน"
-                            t-on-click="() => this.notification.add('เลือกสินค้าและช่วงวันที่ แล้วกดค้นหา เลือก Location เพิ่มเติมได้ในตัวเลือกขั้นสูง', {type: 'info'})"><i aria-hidden="true" class="fa fa-question-circle"/></button>
-                    <button class="btn btn-success" t-on-click="exportExcel" t-att-disabled="!state.cardData or state.loading"><i aria-hidden="true" class="fa fa-file-excel-o me-2"/>Export Excel</button>
+                    <div class="btn-group">
+                        <button class="btn o_sc_outline" t-on-click="saveFavorite"><i class="fa fa-bookmark-o me-2" aria-hidden="true"/>เพิ่มรายการโปรด</button>
+                        <button class="btn o_sc_outline" t-on-click="loadFavorite" title="โหลดตัวกรองโปรด" aria-label="โหลดตัวกรองโปรด"><i class="fa fa-angle-down" aria-hidden="true"/></button>
+                    </div>
+                    <button class="btn o_sc_outline" t-on-click="printReport" t-att-disabled="!state.cardData or state.loading" title="พิมพ์รายการในหน้าปัจจุบัน"><i class="fa fa-print me-2" aria-hidden="true"/>พิมพ์รายงาน</button>
+                    <button class="btn btn-success" t-on-click="exportExcel" t-att-disabled="!state.cardData or state.loading"><i aria-hidden="true" class="fa fa-file-excel-o me-2"/>Export <i class="fa fa-angle-down ms-3" aria-hidden="true"/></button>
                 </div>
             </header>
             <div class="o_stock_card_body">

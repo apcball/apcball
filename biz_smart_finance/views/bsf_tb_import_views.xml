@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_tb_import_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.tb.import.form</field>
+        <field name="model">biz.smart.finance.tb.import</field>
+        <field name="arch" type="xml">
+            <form string="Import Trial Balance">
+                <sheet>
+                    <div class="mb-3">
+                        <button name="action_template_csv" type="object" string="ดาวน์โหลดตัวอย่าง CSV" class="btn-link"/>
+                        <button name="action_template_xlsx" type="object" string="ดาวน์โหลดตัวอย่าง Excel พร้อมคำแนะนำ" class="btn-link"/>
+                        <p>แก้ข้อมูลตัวอย่างให้เป็นข้อมูลจริงก่อนนำเข้า · หลังแก้ตาราง กดตรวจสอบข้อมูลโดยไม่ต้องอัปโหลดใหม่</p>
+                    </div>
+                    <div class="alert alert-info" role="status">
+                        ไฟล์ CSV/XLSX แถวแรกเป็นหัวคอลัมน์:
+                        <code>code, name, account_type, opening, debit, credit</code>
+                        — บัญชีที่มีรหัสอยู่แล้วในผังภายนอก เว้น name/account_type
+                        ได้ บัญชีใหม่ต้องระบุ account_type (ประเภทของ Odoo)
+                        ระบุช่วงวันที่ให้ตรงกับ Trial Balance ของระบบเดิม
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="file_data" filename="file_name"/>
+                            <field name="file_name" invisible="1"/>
+                            <field name="replace_existing"/>
+                            <field name="state" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group invisible="state != 'preview'">
+                        <group>
+                            <field name="valid_count"/>
+                            <field name="error_count"/>
+                            <field name="new_account_count"/>
+                        </group>
+                        <group>
+                            <field name="dr_total" widget="monetary"/>
+                            <field name="cr_total" widget="monetary"/>
+                            <field name="diff" widget="monetary"
+                                   class="text-danger" invisible="not diff"/>
+                        </group>
+                    </group>
+                    <field name="line_ids" invisible="state != 'preview'">
+                        <tree editable="bottom"
+                              decoration-danger="not valid"
+                              decoration-info="is_new_account and valid">
+                            <field name="row_index"/>
+                            <field name="input_errors" column_invisible="1"/>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="account_type"/>
+                            <field name="opening"/>
+                            <field name="debit"/>
+                            <field name="credit"/>
+                            <field name="is_new_account"/>
+                            <field name="warning"/>
+                            <field name="valid" column_invisible="1"/>
+                        </tree>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_preview" type="object" string="ตรวจไฟล์"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_validate" type="object" string="ตรวจสอบข้อมูล"
+                            invisible="state != 'preview'"/>
+                    <button name="action_import" type="object" string="นำเข้า"
+                            class="btn-primary" invisible="state != 'preview'"/>
+                    <button string="ยกเลิก" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_tb_import" model="ir.actions.act_window">
+        <field name="name">Import Trial Balance</field>
+        <field name="res_model">biz.smart.finance.tb.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_bsf_tb_import" name="นำเข้า Trial Balance"
+              parent="menu_bsf_inputs" action="action_bsf_tb_import"
+              sequence="8"/>
+</odoo>

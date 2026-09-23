@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabRisk">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'risk'" data="props.data"/>
+
+        <!-- ================= หัวแท็บ + ตัวเลือกมุมมอง ================= -->
+        <section class="o_bsf_card">
+            <div class="o_bsf_riskbar">
+                <div class="r_title">
+                    <b>Risk &amp; Scenarios</b>
+                    <span>ความเสี่ยงและสถานการณ์</span>
+                </div>
+                <div class="r_controls">
+                    <label>Scenario</label>
+                    <div class="o_bsf_segment">
+                        <button t-foreach="scenarios" t-as="sc" t-key="sc.code"
+                                t-attf-class="{{ scenario === sc.code ? 'active' : '' }}"
+                                t-on-click="() => this.setScenario(sc.code)"
+                                t-esc="sc.label"/>
+                    </div>
+                    <label>เทียบกับ</label>
+                    <!-- t-att-value อย่างเดียวไม่พอ ต้องมี t-att-selected คู่กัน -->
+                    <select class="o_bsf_select" t-att-value="state.compare"
+                            t-on-change="setCompare">
+                        <option t-foreach="scenarios" t-as="sc" t-key="sc.code"
+                                t-att-value="sc.code" t-esc="sc.label"
+                                t-att-selected="sc.code === state.compare"/>
+                    </select>
+                    <label>ช่วงเวลา</label>
+                    <select class="o_bsf_select" t-att-value="horizon"
+                            t-on-change="setHorizon">
+                        <option t-foreach="horizons" t-as="h" t-key="h"
+                                t-att-value="h" t-att-selected="h === horizon">
+                            <t t-esc="h"/> เดือนข้างหน้า</option>
+                    </select>
+                    <label>หน่วยเงิน</label>
+                    <select class="o_bsf_select" t-att-value="unit"
+                            t-on-change="setUnit">
+                        <option value="mb" t-att-selected="unit === 'mb'">
+                            <t t-esc="currencyName"/> (million)</option>
+                        <option value="thb" t-att-selected="unit === 'thb'"
+                                t-esc="currencyName"/>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= สมมติฐานของสถานการณ์ ================= -->
+        <section class="o_bsf_card" t-att-class="zoomCls('risk_1')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('risk_1')"
+                    t-att-title="isZoomed('risk_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('risk_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('risk_1') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Scenario Assumptions</b>
+                <span>ข้อสมมติของสถานการณ์ (เทียบกับ
+                    <t t-esc="scenarioLabel(state.compare)"/>)</span>
+            </div>
+            <div class="o_bsf_assump">
+                <div t-foreach="assumptionTiles" t-as="tile" t-key="tile.code"
+                     class="a_tile" t-att-title="assumptionTip(tile)">
+                    <i t-attf-class="fa {{ tile.icon }} a_icon"/>
+                    <div class="a_body">
+                        <span class="a_label"><t t-esc="tile.label"/></span>
+                        <span class="a_sub"><t t-esc="tile.label_th"/></span>
+                    </div>
+                    <div class="a_value" t-att-class="tile.delta ? '' : 'is-flat'">
+                        <b><t t-esc="fmtAssumption(tile)"/></b>
+                        <em><t t-esc="tile.unit"/></em>
+                    </div>
+                    <span class="a_note" t-if="tile.note"><t t-esc="tile.note"/></span>
+                </div>
+            </div>
+            <div class="o_bsf_empty_note">
+                <t t-if="scenario === 'base'">
+                    Base คือข้อมูลจริง ไม่มีการปรับสมมติฐาน — เลือก Downside หรือ
+                    Stress เพื่อดูตัวเลขทุกแท็บภายใต้สถานการณ์นั้น ·
+                </t>
+                “เลื่อนรับชำระเงิน” และ “อัตรากำไรขั้นต้น” เป็นตัวคูณที่ engine
+                ใช้จริงกับทุกแท็บ ส่วนที่เหลือใช้กับ Key Outcome และ Sensitivity
+                ของแท็บนี้ — <a t-on-click="openConfig">ตั้งค่าต่อบริษัท</a>
+            </div>
+        </section>
+
+        <!-- ================= ผลลัพธ์หลัก ================= -->
+        <section class="o_bsf_card" t-att-class="zoomCls('risk_2')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('risk_2')"
+                    t-att-title="isZoomed('risk_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('risk_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('risk_2') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Key Outcome</b>
+                <span><t t-esc="horizon"/> เดือนข้างหน้า ·
+                    <t t-esc="scenarioLabel(scenario)"/> เทียบ
+                    <t t-esc="scenarioLabel(state.compare)"/></span>
+            </div>
+            <div class="o_bsf_outcome" t-if="outcome">
+                <div t-foreach="outcomeCards" t-as="card" t-key="card.code"
+                     class="o_tile">
+                    <div class="o_head">
+                        <i t-attf-class="fa {{ card.icon }}"/>
+                        <div>
+                            <span class="o_label"><t t-esc="card.label"/></span>
+                            <span class="o_sub"><t t-esc="card.label_th"/></span>
+                        </div>
+                    </div>
+                    <b t-attf-class="o_value {{ outcomeClass(card) }}">
+                        <t t-esc="outcomeValue(card)"/></b>
+                    <span class="o_unit"><t t-esc="card.unit"/></span>
+                    <div class="o_foot">
+                        <span class="o_ref"><t t-esc="outcomeSub(card)"/></span>
+                        <span t-if="card.delta"
+                              t-attf-class="o_delta {{ deltaClass(card.delta) }}">
+                            <i t-attf-class="fa {{ card.delta > 0 ? 'fa-caret-up' : 'fa-caret-down' }}"/>
+                            <t t-esc="outcomeDelta(card)"/>
+                        </span>
+                    </div>
+                    <span class="o_note"><t t-esc="card.note"/></span>
+                </div>
+            </div>
+            <div class="o_bsf_empty_note" t-else="">
+                ยังไม่มีกริดพยากรณ์รายเดือนให้คำนวณ — ตรวจการตั้งค่าที่แท็บ Forecast
+            </div>
+        </section>
+
+        <!-- ================= ความอ่อนไหว (ตอร์นาโด) ================= -->
+        <section class="o_bsf_card span7" t-att-class="zoomCls('risk_3')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('risk_3')"
+                    t-att-title="isZoomed('risk_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('risk_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('risk_3') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Sensitivity</b>
+                <span>ผลกระทบต่อ EBITDA / เงินสด · ช็อกขนาด
+                    <t t-esc="scenarioLabel(risk.shock_scenario)"/> ทีละตัวแปร ·
+                    <t t-esc="unitLabel"/></span>
+            </div>
+            <svg t-att-width="tornado.width" t-att-height="tornado.height"
+                 t-attf-viewBox="0 0 {{ tornado.width }} {{ tornado.height }}"
+                 preserveAspectRatio="xMidYMid meet" class="o_bsf_chart o_bsf_tornado">
+                <t t-foreach="tornado.ticks" t-as="tick" t-key="tick_index">
+                    <line t-attf-class="grid_line {{ tick.value ? '' : 'is-zero' }}"
+                          t-att-x1="tick.x" t-att-y1="tornado.axisTop"
+                          t-att-x2="tick.x" t-att-y2="tornado.axisBottom"/>
+                    <text class="grid_text" t-att-x="tick.x" t-att-y="tornado.axisTop - 4"
+                          text-anchor="middle"><t t-esc="fmtAxis(tick.value)"/></text>
+                </t>
+                <g t-foreach="tornado.rows" t-as="row" t-key="row.code">
+                    <title><t t-esc="sensitivityTip(row)"/></title>
+                    <text class="t_label" t-att-x="tornado.labelW - 10"
+                          t-att-y="row.textY" text-anchor="end">
+                        <t t-esc="row.label"/> (<t t-esc="row.shock"/>)
+                    </text>
+                    <t t-if="!row.zero">
+                        <rect class="t_neg" t-att-x="row.negX" t-att-y="row.barY"
+                              t-att-width="row.length" height="20" rx="3"/>
+                        <rect class="t_pos" t-att-x="row.posX" t-att-y="row.barY"
+                              t-att-width="row.length" height="20" rx="3"/>
+                        <text class="t_value is-neg" t-att-x="row.negLabelX"
+                              t-att-y="row.textY" text-anchor="end">
+                            −<t t-esc="fmtAxis(row.value)"/></text>
+                        <text class="t_value is-pos" t-att-x="row.posLabelX"
+                              t-att-y="row.textY" text-anchor="start">
+                            +<t t-esc="fmtAxis(row.value)"/></text>
+                    </t>
+                    <text t-else="" class="t_value" t-att-x="tornado.center + 8"
+                          t-att-y="row.textY" text-anchor="start">
+                        ยังไม่มีข้อมูลฐานให้คำนวณ</text>
+                </g>
+            </svg>
+            <div class="o_bsf_legend">
+                <span><i class="dot" style="background: var(--bsf-risk);"/>ผลด้านลบ</span>
+                <span><i class="dot" style="background: var(--bsf-c3);"/>ผลด้านบวก</span>
+                <span class="ms-auto">เส้นกลาง = Base (0)</span>
+            </div>
+        </section>
+
+        <!-- ================= แมทริกซ์ความเสี่ยง ================= -->
+        <section class="o_bsf_card span5" t-att-class="zoomCls('risk_4')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('risk_4')"
+                    t-att-title="isZoomed('risk_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('risk_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('risk_4') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Risk Heatmap</b>
+                <span><t t-esc="matrix.axis_label"/> × โครงการ ·
+                    คะแนนสูงสุดในช่อง (Impact × Likelihood)</span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_matrix">
+                    <thead>
+                        <tr>
+                            <th>โครงการ</th>
+                            <th t-foreach="matrix.columns" t-as="col" t-key="col.key"
+                                t-esc="col.label"/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="matrix.rows" t-as="row" t-key="row.key">
+                            <th t-esc="row.label"/>
+                            <td t-foreach="row.cells" t-as="cell" t-key="cell.key"
+                                t-att-title="cellTip(row, cell)"
+                                t-on-click="() => this.openCell(row, cell)">
+                                <span t-if="cell.count" class="m_dot"
+                                      t-attf-style="background: {{ cellColor(cell) }};"
+                                      t-esc="cell.score"/>
+                            </td>
+                        </tr>
+                        <tr t-if="!matrix.rows.length">
+                            <td t-attf-colspan="{{ matrix.columns.length + 1 }}"
+                                class="o_bsf_txt">ยังไม่มีความเสี่ยงในทะเบียน</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="o_bsf_heat_foot">
+                <span class="h_legend" t-foreach="matrixLegend" t-as="lg" t-key="lg.label">
+                    <i t-attf-style="background: {{ lg.color }};"/><t t-esc="lg.label"/>
+                </span>
+            </div>
+            <div class="o_bsf_empty_note" t-if="!risk.register_count">
+                Risk Register ยังว่าง — <a t-on-click="openRegister">เพิ่มความเสี่ยง</a>
+                เพื่อให้แมทริกซ์และตารางด้านล่างมีข้อมูล
+            </div>
+        </section>
+
+        <!-- ================= สัญญาณเตือน + การดำเนินการ ================= -->
+        <section class="o_bsf_card" t-att-class="zoomCls('risk_5')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('risk_5')"
+                    t-att-title="isZoomed('risk_5') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('risk_5') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('risk_5') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Top Early-Warning &amp; Actions</b>
+                <span>สัญญาณเตือนล่วงหน้าและการดำเนินการ (ทะเบียน + ตรวจอัตโนมัติ)</span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr>
+                            <th class="o_bsf_txt">ลำดับ</th>
+                            <th class="o_bsf_txt">Risk</th>
+                            <th class="o_bsf_txt o_bsf_wrap">Early-Warning Indicator</th>
+                            <th>ผลกระทบ · <t t-esc="unitLabel"/></th>
+                            <th class="o_bsf_txt">Action Owner</th>
+                            <th class="o_bsf_txt">Target Date</th>
+                            <th class="o_bsf_txt">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="risk.early_warning" t-as="row" t-key="row_index"
+                            t-attf-class="{{ row.id ? 'o_bsf_row_click' : '' }}"
+                            t-on-click="() => this.openRisk(row)">
+                            <td class="o_bsf_txt">
+                                <span class="o_bsf_rank"
+                                      t-attf-style="background: {{ levelColor(row.level) }};"
+                                      t-esc="row.priority"/>
+                            </td>
+                            <td class="o_bsf_txt"><t t-esc="row.name"/></td>
+                            <td class="o_bsf_txt o_bsf_wrap"><t t-esc="row.indicator"/></td>
+                            <td t-attf-class="{{ row.impact ? 'is-alert' : 'is-zero' }}">
+                                <t t-if="row.impact">−<t t-esc="fmtMoney(row.impact)"/></t>
+                                <t t-else="">—</t>
+                            </td>
+                            <td class="o_bsf_txt">
+                                <t t-esc="row.owner"/>
+                                <t t-if="!row.owner">—</t>
+                            </td>
+                            <td class="o_bsf_txt">
+                                <t t-esc="row.target_date"/>
+                                <t t-if="!row.target_date">—</t>
+                            </td>
+                            <td class="o_bsf_txt">
+                                <i class="dot"
+                                   t-attf-style="background: {{ statusColor(row.status) }};"/>
+                                <t t-esc="row.status_label"/>
+                            </td>
+                        </tr>
+                        <tr t-if="!risk.early_warning.length">
+                            <td colspan="7" class="o_bsf_txt">ไม่มีสัญญาณเตือน</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="o_bsf_empty_note">
+                ผลกระทบเป็นยอดเงินที่ประเมินไว้ในทะเบียนความเสี่ยง ส่วนแถวที่ระบบ
+                ตรวจเองประเมินจากข้อมูลจริง (ช่องว่างเงินสด / ลูกหนี้เกินกำหนด /
+                กำไรที่หลุดงบ) — <a t-on-click="openRegister">เปิดทะเบียนความเสี่ยง</a>
+            </div>
+        </section>
+    </div>
+</t>
+
+</templates>

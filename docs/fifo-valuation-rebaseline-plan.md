@@ -151,11 +151,14 @@ Rules the script enforces (and anyone doing this by hand must follow):
 | Date | Product | WH | Period close | Before (rpt) | After (rpt) | Layer id | Δqty / Δvalue | Backup |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-09-03 | FCA0006100 (1408) | FG10 | 2026-05-31 | 229 / 81,658.26 | 217 / 78,956.23 | 262199 | −12 / −2,702.03 | `svl_bak_fca0006100_20260903` + `/tmp/MOG_LIVE_pre_fca0006100_20260903.dump` |
+| 2026-09-03 | FCA0006100 (1408) | FG10 | — | 217 / 78,956.23 | **229 / 81,658.26 (reverted)** | 262199 deleted | rolled back on request | — |
 
-(Row above was the manual first instance — first try layer 262198 +1,532.99 was
-off a bad hand-SQL baseline of 77,423.24, deleted, redone as 262199. The script
-exists so this does not recur.) Rollback: `DELETE FROM stock_valuation_layer
-WHERE id = 262199;`.
+Row above was the manual first instance — first try layer 262198 +1,532.99 was
+off a bad hand-SQL baseline of 77,423.24, deleted, redone as 262199. Then
+**262199 was deleted too** at the user's request: product 1408 is back to its
+pre-2026-09-03 state (323 layers, identical to `svl_bak_fca0006100_20260903`;
+engine `SUM(remaining_*)` 178 / 63,818.23 never changed). The script exists so
+this method does not have to be done by hand again.
 
 ## 7. Out of scope
 

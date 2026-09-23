@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="lazada_connector_root_menu" name="Lazada" sequence="11"/>
+    <menuitem id="lazada_connector_config_menu" name="Configurations" parent="lazada_connector_root_menu" sequence="90"/>
+    <menuitem id="lazada_connector_log_menu" name="Logs &amp; Queue" parent="lazada_connector_root_menu" sequence="80"/>
+</odoo>

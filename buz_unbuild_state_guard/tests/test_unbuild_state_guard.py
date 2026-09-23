@@ -41,6 +41,7 @@ class TestUnbuildStateGuard(TransactionCase):
                 "name": "Guarded Unbuild Product",
                 "detailed_type": "product",
                 "categ_id": cls.env.ref("product.product_category_all").id,
+                "standard_price": 20.0,
             }
         )
         cls.component = cls.env["product.product"].create(

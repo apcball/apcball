@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- สไตล์แยกไว้ต่างหากเพื่อให้รายงานอื่นในโมดูลนี้เรียกซ้ำได้ -->
+    <template id="stock_card_thai_style">
+        <style type="text/css">
+            <t t-out="font_css"/>
+            .sc-report { font-family: Sarabun, sans-serif; font-size: 9px; color: #101828; }
+            .sc-report h1 { font-size: 16px; font-weight: bold; margin: 0 0 2px 0; }
+            .sc-report h2 { font-size: 12px; font-weight: bold; margin: 0 0 6px 0; }
+            .sc-meta { font-size: 8px; color: #475467; margin-bottom: 6px; line-height: 1.5; }
+            .sc-meta span { margin-right: 14px; }
+            .sc-warn {
+                font-size: 8px; font-weight: bold; color: #B42318;
+                border: 1px solid #FDA29B; background: #FEF3F2;
+                padding: 3px 6px; margin-bottom: 5px;
+            }
+            .sc-ok {
+                font-size: 8px; font-weight: bold; color: #027A48;
+                border: 1px solid #A6F4C5; background: #ECFDF3;
+                padding: 3px 6px; margin-bottom: 5px;
+            }
+            .sc-table { width: 100%; border-collapse: collapse; }
+            /* หัวตารางซ้ำทุกหน้า และห้ามตัดแถวคาหน้า — สต๊อกการ์ดยาวหลายหน้าเสมอ */
+            .sc-table thead { display: table-header-group; }
+            .sc-table tfoot { display: table-row-group; }
+            .sc-table tr { page-break-inside: avoid; }
+            .sc-table th {
+                border: 1px solid #98A2B3; background: #F2F4F7;
+                padding: 3px 4px; font-weight: bold; text-align: center;
+            }
+            .sc-table td { border: 1px solid #D0D5DD; padding: 2px 4px; }
+            .sc-num { text-align: right; white-space: nowrap; }
+            .sc-code { white-space: nowrap; }
+            .sc-lv0 td { background: #EAECF0; font-weight: bold; }
+            .sc-lv1 td { background: #F9FAFB; font-weight: bold; }
+            .sc-total td {
+                background: #F2F4F7; font-weight: bold; border-top: 1px solid #667085;
+            }
+            .sc-move td { color: #344054; }
+            .sc-adj td { color: #6941C6; font-style: italic; }
+            .sc-grand td {
+                background: #D1E9FF; font-weight: bold;
+                border-top: 2px solid #1570EF; border-bottom: 2px double #1570EF;
+            }
+            .sc-negative { color: #B42318; font-weight: bold; }
+            .sc-sign { margin-top: 24px; width: 100%; border-collapse: collapse; }
+            .sc-sign td {
+                width: 33.33%; text-align: center; font-size: 9px;
+                padding-top: 28px; vertical-align: bottom;
+            }
+            .sc-sign .sc-sign-line {
+                border-top: 1px dotted #101828; margin: 0 12px; padding-top: 3px;
+            }
+        </style>
+    </template>
+
+    <template id="report_stock_card_doc">
+        <t t-call="web.html_container">
+            <t t-call="web.internal_layout">
+                <div class="page sc-report">
+                    <t t-set="opt" t-value="d['options']"/>
+                    <t t-set="checks" t-value="d['checks']"/>
+                    <t t-call="biz_st_stock_card.stock_card_thai_style"/>
+
+                    <h1 t-out="d['company']['names']"/>
+                    <h2>
+                        <t t-out="d['labels']['title']"/>
+                        <t t-out="d['labels']['period']"/>
+                    </h2>
+                    <div class="sc-meta">
+                        <span>จัดกลุ่ม: <t t-out="d['labels']['levels']"/></span>
+                        <span>คลัง: <t t-out="d['labels']['warehouses']"/></span>
+                        <span>ยอดยกมา: <t t-out="d['labels']['opening_basis']"/></span>
+                        <span>แสดงสินค้า: <t t-out="d['labels']['filters']"/></span>
+                        <t t-if="opt['show_value']">
+                            <span>มูลค่า: <t t-out="d['labels']['value_mode']"/></span>
+                        </t>
+                        <span>เขตเวลา: <t t-out="d['labels']['timezone']"/></span>
+                        <span>พิมพ์เมื่อ: <t t-out="printed_on"/> โดย <t t-out="printed_by"/></span>
+                    </div>
+
+                    <div t-if="checks['balance_broken_by_filter']" class="sc-warn">
+                        คำเตือน: ตัวกรองตัดการปรับปรุงยอดหรือของเสียออก สมการ
+                        คงเหลือ = ยกมา + รับ − จ่าย จึงไม่เป็นจริงในรายงานฉบับนี้
+                    </div>
+                    <div t-if="checks['mixed_currency']" class="sc-warn">
+                        คำเตือน: มีบริษัทที่ใช้สกุลเงินต่างจากรายงานนี้ ยอดถูกบวกกันตรง ๆ โดยไม่แปลงค่า —
+                        <t t-foreach="checks['mixed_currency']" t-as="c">
+                            <span t-out="c['name']"/> (<span t-out="c['currency']"/>)
+                        </t>
+                    </div>
+                    <div t-if="opt['show_value'] and checks['svl_scope_limited']" class="sc-meta">
+                        หมายเหตุ: ชั้นมูลค่าสินค้า (SVL) ไม่มีมิติคลังหรือที่เก็บ รายงานที่กรองคลังไว้
+                        จึงกระทบยอดกับมูลค่าทั้งบริษัทไม่ได้ — มูลค่าที่แสดงเป็นส่วนแบ่งของคลังที่เลือก
+                        คำนวณจากสัดส่วนจำนวนของทั้งสินค้า
+                    </div>
+                    <div t-if="opt['show_value'] and not checks['svl_reconciled'] and not checks['svl_scope_limited']"
+                         class="sc-warn">
+                        คำเตือน: มูลค่าในรายงานไม่กระทบกับชั้นมูลค่าสินค้า (SVL) ผลต่าง
+                        <span t-out="checks['svl_difference']"
+                              t-options="{'widget': 'float', 'precision': 2}"/>
+                    </div>
+                    <div t-if="opt['show_value'] and checks['svl_reconciled']" class="sc-ok">
+                        มูลค่าในงวดกระทบกับชั้นมูลค่าสินค้า (SVL) ครบถ้วน:
+                        <span t-out="checks['svl_period_value']"
+                              t-options="{'widget': 'float', 'precision': 2}"/>
+                        <t t-if="checks['imputed_internal']['value']">
+                            — ในจำนวนนี้เป็นมูลค่าประมาณของการโอนภายใน
+                            <span t-out="checks['imputed_internal']['value']"
+                                  t-options="{'widget': 'float', 'precision': 2}"/>
+                        </t>
+                    </div>
+                    <div t-if="checks['truncated_leaves']" class="sc-warn">
+                        คำเตือน: มี <t t-out="checks['truncated_leaves']"/>
+                        กลุ่มที่แสดงรายการเคลื่อนไหวไม่ครบ (เกินขีดจำกัดต่อกลุ่ม)
+                    </div>
+                    <div t-if="checks['value_date_basis_downgraded']" class="sc-meta">
+                        หมายเหตุ: ขอเกณฑ์วันที่บัญชี (accounting_date) แต่ระบบนี้ไม่มีฟิลด์นั้น
+                        จึงลดระดับไปใช้วันที่ของการเคลื่อนไหวแทน
+                    </div>
+                    <div t-if="checks['detail_downgraded']" class="sc-meta">
+                        หมายเหตุ: ขอให้แสดงรายการเคลื่อนไหวทั้งหมดโดยไม่ได้กรองสินค้าหรือหมวด
+                        ระบบจึงลดเหลือเฉพาะกลุ่มที่กางอยู่
+                    </div>
+                    <div t-if="checks['date_from_downgraded']" class="sc-meta">
+                        หมายเหตุ: วันที่เริ่มต้นก่อนวัน cutoff (<t t-out="checks['cutoff_date']"/>)
+                        ยอดยกมาก่อนหน้านั้นไม่น่าเชื่อถือ ระบบจึงตัดวันเริ่มต้นให้เป็นวัน cutoff แทน
+                        ตรงกับ Stock FIFO Valuation Report
+                    </div>
+
+                    <table class="sc-table">
+                        <thead>
+                            <tr>
+                                <t t-foreach="columns" t-as="col">
+                                    <th t-if="not col['group'] and col['group_first']"
+                                        rowspan="2"
+                                        t-att-style="col.get('width') and ('width:%s' % col['width'])"
+                                        t-out="col['label']"/>
+                                    <th t-elif="col['group'] and col['group_span']"
+                                        t-att-colspan="col['group_span']"
+                                        t-out="col['group']"/>
+                                </t>
+                            </tr>
+                            <tr>
+                                <t t-foreach="columns" t-as="col">
+                                    <th t-if="col['group']" t-out="col['label']"/>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="d['lines']" t-as="line"
+                                t-att-class="
+                                    line['kind'] == 'move' and 'sc-move'
+                                    or line['kind'] == 'more' and 'sc-move'
+                                    or line['kind'] == 'value_adj' and 'sc-adj'
+                                    or line['kind'] == 'group_total' and 'sc-total'
+                                    or (line['level'] == 0 and 'sc-lv0')
+                                    or (line['level'] == 1 and 'sc-lv1')
+                                    or ''">
+                                <t t-foreach="columns" t-as="col">
+                                    <td t-if="col['type'] == 'text'" class="sc-code">
+                                        <t t-if="line['kind'] in ('move', 'more')"
+                                           t-out="line.get('date_display') or ''"/>
+                                        <t t-else="" t-out="line.get('code') or ''"/>
+                                    </td>
+                                    <td t-elif="col['type'] == 'uom'" class="sc-code"
+                                        t-out="line.get('uom_name') or ''"/>
+                                    <td t-elif="col['type'] == 'name'"
+                                        t-att-style="'padding-left:%spx' % (4 + 11 * (line.get('level') or 0))">
+                                        <span t-att-class="line.get('flag') == 'negative' and 'sc-negative' or ''"
+                                              t-out="line.get('name') or ''"/>
+                                        <t t-if="line['kind'] == 'move' and line.get('code') and not line.get('code_is_name')">
+                                            <span style="color:#667085"> · <t t-out="line['code']"/></span>
+                                        </t>
+                                    </td>
+                                    <td t-elif="col['type'] == 'qty'" class="sc-num">
+                                        <t t-set="qty" t-value="line.get(col['key'])"/>
+                                        <span t-if="qty" t-out="qty"
+                                              t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td t-else="" class="sc-num">
+                                        <t t-set="amount" t-value="line.get(col['key'])"/>
+                                        <span t-if="amount" t-out="amount"
+                                              t-options="{'widget': 'float', 'precision': decimal_places}"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="sc-grand">
+                                <t t-foreach="columns" t-as="col">
+                                    <td t-if="col['type'] == 'text'"/>
+                                    <td t-elif="col['type'] == 'uom'"/>
+                                    <td t-elif="col['type'] == 'name'" t-out="d['totals']['name']"/>
+                                    <td t-elif="col['type'] == 'qty'" class="sc-num">
+                                        <span t-out="d['totals'].get(col['key']) or 0.0"
+                                              t-options="{'widget': 'float', 'precision': qty_precision}"/>
+                                    </td>
+                                    <td t-else="" class="sc-num">
+                                        <span t-out="d['totals'].get(col['key']) or 0.0"
+                                              t-options="{'widget': 'float', 'precision': decimal_places}"/>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div t-if="checks['interwarehouse']['line_count']" class="sc-meta"
+                         style="margin-top:6px">
+                        หมายเหตุ: ยอด "รับ" และ "จ่าย" นับการโอนข้ามคลังสองครั้งโดยตั้งใจ
+                        (เป็นการจ่ายออกของคลังต้นทาง และการรับเข้าของคลังปลายทาง)
+                        ในงวดนี้มี <t t-out="checks['interwarehouse']['line_count']"/> บรรทัด
+                        รวม <span t-out="checks['interwarehouse']['qty']"
+                                  t-options="{'widget': 'float', 'precision': qty_precision}"/> หน่วย
+                        — ยอดยกมาและยอดคงเหลือไม่ได้รับผลกระทบ
+                    </div>
+
+                    <!-- ช่องลงนามอยู่ท้ายรายงานหน้าสุดท้ายเท่านั้น -->
+                    <table class="sc-sign">
+                        <tr>
+                            <td><div class="sc-sign-line">ผู้จัดทำ</div></td>
+                            <td><div class="sc-sign-line">ผู้ตรวจนับ</div></td>
+                            <td><div class="sc-sign-line">ผู้อนุมัติ</div></td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

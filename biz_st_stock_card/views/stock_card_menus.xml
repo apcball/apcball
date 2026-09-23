@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_stock_card_screen"
+              name="สต๊อกการ์ด (Stock Card)"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_card_screen"
+              sequence="210"
+              groups="group_stock_card_user"/>
+    <menuitem id="menu_stock_card_wizard"
+              name="พิมพ์สต๊อกการ์ด (PDF / Excel)"
+              parent="stock.menu_warehouse_report"
+              action="action_stock_card_wizard"
+              sequence="211"
+              groups="group_stock_card_user"/>
+</odoo>

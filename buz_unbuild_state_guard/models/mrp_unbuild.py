@@ -2,7 +2,9 @@
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_is_zero
+from odoo.tools import float_compare
+
+COST_THRESHOLD = 0.0001
 
 
 class MrpUnbuild(models.Model):
@@ -146,15 +148,28 @@ class MrpUnbuild(models.Model):
         }
 
     def _check_component_cost(self):
-        """Block unbuild if any BOM component has zero standard cost — a zero-cost
-        component would silently produce stock at zero value and corrupt valuation."""
+        """Block unbuild if the finished product or any BOM component has near-zero
+        standard cost — either side at ~0 cost would let value appear/disappear
+        for free and corrupt valuation."""
         for record in self:
+            if (
+                record.product_id
+                and float_compare(record.product_id.standard_price, COST_THRESHOLD, precision_digits=4) < 0
+            ):
+                raise UserError(
+                    _(
+                        "ไม่สามารถ Unbuild ได้ เนื่องจากสินค้าที่จะ Unbuild ยังไม่ได้กำหนดต้นทุน (Cost = 0)\n"
+                        "กรุณากำหนดต้นทุนสินค้า (Cost) ให้กับ: %s"
+                    )
+                    % record.product_id.display_name
+                )
+
             bom = record.bom_id or record.mo_bom_id
             if not bom:
                 continue
             zero_cost_lines = bom.bom_line_ids.filtered(
-                lambda l: not float_is_zero(l.product_qty, precision_digits=2)
-                and float_is_zero(l.product_id.standard_price, precision_digits=2)
+                lambda l: float_compare(l.product_qty, 0, precision_digits=2) != 0
+                and float_compare(l.product_id.standard_price, COST_THRESHOLD, precision_digits=4) < 0
             )
             if zero_cost_lines:
                 names = ", ".join(zero_cost_lines.mapped("product_id.display_name"))

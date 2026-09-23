@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biz_st_stock_card.ScAxisToggle">
+        <div class="sc-axis">
+            <div class="sc-axis-pill">
+                <button t-foreach="axes" t-as="axis" t-key="axis.id"
+                        type="button"
+                        t-att-class="props.options.group_mode === axis.id ? 'sc-axis-on' : ''"
+                        t-on-click="() => this.setAxis(axis.id)"
+                        t-esc="axis.label"/>
+            </div>
+            <div class="sc-axis-chips">
+                <button t-foreach="extraLevels" t-as="level" t-key="level.field"
+                        type="button" class="sc-chip"
+                        t-att-class="props.options[level.field] ? 'sc-chip-on' : ''"
+                        t-on-click="() => this.toggle(level.field)">
+                    <i class="fa"
+                       t-att-class="props.options[level.field] ? 'fa-check-square-o' : 'fa-square-o'"/>
+                    <span t-esc="level.label"/>
+                </button>
+            </div>
+            <div class="sc-axis-path" t-if="breadcrumb">
+                <i class="fa fa-sitemap me-1"/><span t-esc="breadcrumb"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

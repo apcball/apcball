@@ -62,3 +62,24 @@ class ProductProduct(models.Model):
                 "sticky": False,
             },
         }
+
+    def action_sync_shopee_stock(self):
+        """Pull Shopee stock for all active shop connections."""
+        configs = self.env["shopee.config"].search([("active", "=", True)])
+        if not configs:
+            raise UserError("No active Shopee shop connection was found.")
+
+        updated = 0
+        for config in configs:
+            updated += config.action_sync_stock()
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Shopee stock sync",
+                "message": f"{updated} product(s) updated from Shopee.",
+                "type": "success",
+                "sticky": False,
+            },
+        }

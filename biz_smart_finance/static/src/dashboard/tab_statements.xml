@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabStatements">
+    <div class="o_bsf_grid">
+        <BsfAiCard tab="'statements'" data="props.data"/>
+
+        <!-- ================= P&amp;L Statement (waterfall) ================= -->
+        <section class="o_bsf_card span6" t-att-class="zoomCls('statements_1')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('statements_1')"
+                    t-att-title="isZoomed('statements_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('statements_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('statements_1') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Profit &amp; Loss Statement</b>
+                <span t-if="!cmpActive">งบกำไรขาดทุน YTD เทียบงวดเดียวกันปีก่อน · <t t-esc="unitLabel"/></span>
+                <span t-else="">งบกำไรขาดทุนหลายงวด · คอลัมน์ขวาสุด = งวดที่เลือกใน toolbar · <t t-esc="unitLabel"/></span>
+                <div class="o_bsf_spacer"/>
+                <t t-call="biz_smart_finance.StmtCmpBar"/>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <t t-call="biz_smart_finance.StmtWaterfall">
+                    <t t-set="rows" t-value="pnlRows"/>
+                    <t t-set="prefix" t-value="'pnl_'"/>
+                    <t t-set="cumulative" t-value="false"/>
+                    <t t-set="showPct" t-value="true"/>
+                </t>
+            </div>
+        </section>
+
+        <!-- ================= Balance Sheet ================= -->
+        <section class="o_bsf_card span6" t-att-class="zoomCls('statements_2')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('statements_2')"
+                    t-att-title="isZoomed('statements_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('statements_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('statements_2') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Balance Sheet</b>
+                <span t-if="!cmpActive">งบแสดงฐานะการเงิน ณ <t t-esc="st.as_of"/> เทียบ <t t-esc="st.as_of_prior"/> · <t t-esc="unitLabel"/></span>
+                <span t-else="">งบแสดงฐานะการเงินหลายงวด · ยอดสะสม ณ วันสิ้นแต่ละคอลัมน์ · <t t-esc="unitLabel"/></span>
+                <div class="o_bsf_spacer"/>
+                <t t-call="biz_smart_finance.StmtCmpBar"/>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <t t-call="biz_smart_finance.StmtWaterfall">
+                    <t t-set="rows" t-value="bsRows"/>
+                    <t t-set="prefix" t-value="'bs_'"/>
+                    <t t-set="cumulative" t-value="true"/>
+                    <t t-set="showPct" t-value="false"/>
+                </t>
+            </div>
+            <div class="o_bsf_empty_note" t-if="!cmpActive and st.balance_sheet.check">
+                <span class="is-alert" style="color: var(--bsf-risk); font-weight: 700;">
+                    งบไม่ดุล <t t-esc="fmtMoney(st.balance_sheet.check)"/> —
+                    ตรวจบัญชีที่ยังไม่จัดประเภท / บัญชีที่ยังไม่ได้ผูกในบรรทัดที่ถูกต้อง
+                </span>
+            </div>
+        </section>
+
+        <!-- ================= Cash Flow (indirect) ================= -->
+        <section class="o_bsf_card span6" t-att-class="zoomCls('statements_3')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('statements_3')"
+                    t-att-title="isZoomed('statements_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('statements_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('statements_3') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>Cash Flow Statement</b>
+                <span t-if="!cmpActive">งบกระแสเงินสดทางอ้อม YTD เทียบงวดก่อน · <t t-esc="unitLabel"/></span>
+                <span t-else="">งบกระแสเงินสดหลายงวด · กระแสในงวดของแต่ละคอลัมน์ · <t t-esc="unitLabel"/></span>
+                <div class="o_bsf_spacer"/>
+                <t t-call="biz_smart_finance.StmtCmpBar"/>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <t t-call="biz_smart_finance.StmtWaterfall">
+                    <t t-set="rows" t-value="cfRows"/>
+                    <t t-set="prefix" t-value="'cf_'"/>
+                    <t t-set="cumulative" t-value="false"/>
+                    <t t-set="showPct" t-value="false"/>
+                </t>
+            </div>
+            <table class="o_bsf_table" t-if="!cmpActive">
+                <tbody>
+                    <tr>
+                        <td>เงินสดต้นงวด</td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(st.cashflow.opening_cash)"/></td>
+                    </tr>
+                    <tr class="o_bsf_row_click"
+                        t-on-click="() => this.openStmtLine({label: 'เงินสดปลายงวด', types: ['asset_cash'], account_ids: [], exclude_ids: []}, true)">
+                        <td><b>เงินสดปลายงวด</b></td>
+                        <td class="bsf_num"><b><t t-esc="fmtMoney(st.cashflow.closing_cash)"/></b></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="o_bsf_empty_note" t-if="!cmpActive and st.cashflow.check">
+                <span class="is-alert" style="color: var(--bsf-risk); font-weight: 700;">
+                    ส่วนต่างกระทบยอดเงินสด <t t-esc="fmtMoney(st.cashflow.check)"/> —
+                    บัญชีนอกโครงงบ (off-balance) / เงินปันผลที่ยังไม่ได้ผูกบัญชี / ผลต่างจังหวะ P&amp;L↔ทุน
+                </span>
+            </div>
+        </section>
+
+        <!-- ================= AR Aging ================= -->
+        <section class="o_bsf_card span6" t-att-class="zoomCls('statements_4')">
+            <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('statements_4')"
+                    t-att-title="isZoomed('statements_4') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                    t-att-aria-label="isZoomed('statements_4') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                <i t-attf-class="fa {{ isZoomed('statements_4') ? 'fa-compress' : 'fa-expand' }}"/>
+            </button>
+            <div class="c_head">
+                <b>AR Aging</b>
+                <span>อายุลูกหนี้ · รวม <t t-esc="fmtMoney(st.ar_aging.total)"/>
+                    · ค้างเกินกำหนด <t t-esc="fmtPct(st.ar_aging.overdue_pct)"/>
+                    <t t-if="st.ar_aging.source !== 'odoo'">
+                        · ที่มา <t t-esc="st.ar_aging.source === 'external' ? 'ระบบภายนอก' : 'ผสม Odoo + ภายนอก'"/>
+                    </t></span>
+            </div>
+            <div class="o_bsf_stack">
+                <span t-foreach="agingBar" t-as="seg" t-key="seg.index"
+                      t-attf-style="width: {{ seg.pct }}%; background: {{ seg.color }};"/>
+            </div>
+            <table class="o_bsf_table">
+                <tbody>
+                    <tr t-foreach="agingBar" t-as="seg" t-key="seg.index"
+                        class="o_bsf_row_click" t-att-title="'คลิกดูใบแจ้งหนี้ ' + seg.label"
+                        t-on-click="() => this.openArBucket(seg)">
+                        <td><i class="dot" t-attf-style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: {{ seg.color }};"/><t t-esc="seg.label"/></td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(seg.amount)"/></td>
+                        <td><t t-esc="fmtPct(seg.pct)"/></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="c_head" style="margin-top: 12px;">
+                <b>Top Customers</b>
+                <span>ลูกหนี้คงค้างสูงสุดรายลูกค้า · <t t-esc="unitLabel"/></span>
+            </div>
+            <div class="o_bsf_scroll_x">
+                <table class="o_bsf_table">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th class="bsf_num">Current</th>
+                            <th class="bsf_num">1-30</th>
+                            <th class="bsf_num">31-60</th>
+                            <th class="bsf_num">&gt; 60</th>
+                            <th class="bsf_num">รวม</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="st.ar_aging.customers" t-as="row" t-key="row.partner_id"
+                            class="o_bsf_row_click" t-on-click="() => this.openCustomer(row)">
+                            <td><t t-esc="row.name"/></td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(row.current)"/></td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(row.b1_30)"/></td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(row.b31_60)"/></td>
+                            <td t-attf-class="bsf_num {{ row.b60_plus ? 'is-alert' : 'is-zero' }}">
+                                <t t-esc="fmtMoney(row.b60_plus)"/>
+                            </td>
+                            <td class="bsf_num"><b><t t-esc="fmtMoney(row.total)"/></b></td>
+                        </tr>
+                        <tr t-if="!st.ar_aging.customers.length">
+                            <td colspan="6">ไม่มีลูกหนี้คงค้าง</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</t>
+
+<!-- แถบเลือกช่วงเทียบ (ใช้ร่วมทั้งการ์ด P&L และงบดุล — ยิงตัวกรอง compare เดียวกัน) -->
+<t t-name="biz_smart_finance.StmtCmpBar">
+    <div class="o_bsf_cmpbar">
+        <label>เทียบเป็น</label>
+        <select class="o_bsf_select" t-on-change="onCmpModeChange">
+            <option value="" t-att-selected="!cmpActive">— ไม่เทียบ (งวดนี้/งวดก่อน) —</option>
+            <t t-foreach="cmpModes" t-as="m" t-key="m.code">
+                <option t-att-value="m.code" t-esc="m.label"
+                        t-att-selected="cmpActive and m.code === cmpMode"/>
+            </t>
+        </select>
+        <t t-if="cmpActive">
+            <label>จำนวนช่วง</label>
+            <select class="o_bsf_select" t-on-change="onCmpCountChange">
+                <t t-foreach="cmpCounts" t-as="c" t-key="c">
+                    <option t-att-value="c" t-esc="c" t-att-selected="c == cmpCount"/>
+                </t>
+            </select>
+        </t>
+    </div>
+</t>
+
+<!-- ตาราง waterfall (P&L / งบดุล) — โหมด 2 คอลัมน์ กางรายบัญชีได้, โหมดเทียบ N คอลัมน์
+     รับ: rows, prefix (คีย์ toggle), cumulative (BS=true), showPct (P&L=true) -->
+<t t-name="biz_smart_finance.StmtWaterfall">
+    <table class="o_bsf_table o_bsf_cmptable">
+        <thead>
+            <tr t-if="!cmpActive">
+                <th>รายการ</th>
+                <th class="bsf_num">งวดนี้</th>
+                <th class="bsf_num">งวดก่อน</th>
+                <th class="bsf_num">Δ</th>
+                <th class="bsf_num">Δ%</th>
+            </tr>
+            <tr t-else="">
+                <th>รายการ</th>
+                <th t-foreach="cmpColumns" t-as="col" t-key="col.index"
+                    t-attf-class="bsf_num {{ col.is_current ? 'is-current' : '' }}"
+                    t-att-title="col.title">
+                    <t t-esc="col.label"/>
+                    <div style="font-weight: 400;"><t t-esc="col.sub"/></div>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <t t-foreach="rows" t-as="row" t-key="row.key">
+                <t t-set="isTot" t-value="row.kind === 'total' or row.kind === 'subtotal'"/>
+                <t t-if="!cmpActive">
+                    <tr t-attf-class="{{ isTot ? 'o_bsf_cmptot' : 'o_bsf_row_click' }} {{ row.sec ? ('o_bsf_bs_' + row.sec) : '' }}">
+                        <td t-if="!isTot"
+                            t-on-click="() => this.toggle(prefix + row.key)"
+                            t-att-title="row.accounts.length ? 'คลิกเพื่อกาง/หุบรายบัญชี' : ''">
+                            <i t-if="row.accounts.length"
+                               t-attf-class="fa {{ isOpen(prefix + row.key) ? 'fa-caret-down' : 'fa-caret-right' }} me-1"/>
+                            <t t-esc="row.label"/>
+                            <span t-if="row.configured === false" class="sec_sub">ยังไม่ได้ผูกบัญชี</span>
+                        </td>
+                        <td t-else="">
+                            <b><t t-esc="row.label"/></b>
+                            <span t-if="showPct and row.pct_of_revenue !== null and row.pct_of_revenue !== undefined"
+                                  style="opacity: .7;">
+                                · <t t-esc="fmtPct(row.pct_of_revenue)"/> ของรายได้
+                            </span>
+                        </td>
+                        <td class="bsf_num o_bsf_click" t-on-click="() => this.openStmtLine(row, cumulative)">
+                            <b t-if="isTot"><t t-esc="fmtMoney(row.amount)"/></b>
+                            <t t-else=""><t t-esc="fmtMoney(row.amount)"/></t>
+                        </td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(row.prior)"/></td>
+                        <td class="bsf_num"><t t-esc="fmtMoney(row.delta)"/></td>
+                        <td t-attf-class="bsf_num {{ deltaClass(row.delta_pct, goodWhenUp(row)) }}">
+                            <t t-esc="fmtDelta(row.delta_pct)"/>
+                        </td>
+                    </tr>
+                    <t t-if="!isTot and isOpen(prefix + row.key)">
+                        <tr t-foreach="row.accounts" t-as="acc" t-key="acc.account_id"
+                            t-attf-class="{{ acc.drillable === false ? '' : 'o_bsf_row_click' }}"
+                            t-on-click="() => this.openAccount(acc, cumulative)">
+                            <td style="padding-left: 26px;">
+                                <span style="opacity: .7; margin-right: 6px;"><t t-esc="acc.code"/></span>
+                                <t t-esc="acc.label"/>
+                            </td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(acc.amount)"/></td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(acc.prior)"/></td>
+                            <td class="bsf_num"><t t-esc="fmtMoney(acc.delta)"/></td>
+                            <td class="bsf_num"><t t-esc="fmtDelta(acc.delta_pct)"/></td>
+                        </tr>
+                    </t>
+                </t>
+                <t t-else="">
+                    <tr t-attf-class="{{ isTot ? 'o_bsf_cmptot' : '' }} {{ row.sec ? ('o_bsf_bs_' + row.sec) : '' }}">
+                        <td>
+                            <t t-esc="row.label"/>
+                            <span t-if="row.configured === false" class="sec_sub">ยังไม่ได้ผูกบัญชี</span>
+                        </td>
+                        <td t-foreach="cmpColumns" t-as="col" t-key="col.index"
+                            t-attf-class="bsf_num o_bsf_click {{ zero(row.values[col.index]) }} {{ col.is_current ? 'is-current' : '' }}"
+                            t-att-title="'ดูรายการบัญชี · ' + col.title"
+                            t-on-click="() => this.openStmtCell(row, col.index)">
+                            <t t-esc="fmtMoney(row.values[col.index])"/>
+                            <div t-if="col.index"
+                                 t-attf-class="cell_delta {{ deltaClass(row.delta_pct[col.index], goodWhenUp(row)) }}">
+                                <t t-esc="fmtDelta(row.delta_pct[col.index])"/>
+                            </div>
+                        </td>
+                    </tr>
+                </t>
+            </t>
+        </tbody>
+    </table>
+</t>
+
+</templates>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_stock_aging_screen" model="ir.actions.client">
+        <field name="name">อายุสินค้าคงเหลือ</field>
+        <field name="tag">biz_st_aging.stock_aging</field>
+    </record>
+</odoo>

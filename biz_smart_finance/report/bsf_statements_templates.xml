@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="bsf_statements_style">
+        <style type="text/css">
+            <t t-out="font_css"/>
+            .bsf-report { font-family: Sarabun, sans-serif; font-size: 10px; color: #101828; }
+            .bsf-report h1 { font-size: 17px; margin: 0 0 2px; }
+            .bsf-report h2 { font-size: 12px; margin: 14px 0 4px; padding-bottom: 2px;
+                             border-bottom: 1px solid #98A2B3; }
+            .bsf-meta { font-size: 9px; color: #475467; margin-bottom: 2px; }
+            .bsf-warn { font-size: 9px; color: #B42318; font-weight: bold; }
+            .bsf-table { width: 100%; border-collapse: collapse; }
+            .bsf-table th, .bsf-table td { border: 1px solid #D0D5DD; padding: 3px 5px; }
+            .bsf-table th { background: #F2F4F7; font-weight: bold; text-align: center; }
+            .bsf-table td.num { text-align: right; white-space: nowrap; }
+            .bsf-sec td { background: #EAECF0; font-weight: bold; }
+            .bsf-tot td { background: #D1E9FF; font-weight: bold; border-top: 2px solid #98A2B3; }
+            .bsf-neg { color: #B42318; }
+            /* ตารางเปรียบเทียบมีได้ถึง 7 คอลัมน์บน A4 แนวตั้ง — ย่อฟอนต์และ
+               บีบ padding เฉพาะตารางนี้ ไม่งั้นคอลัมน์ชื่อรายการถูกบีบจนตัดคำ */
+            .bsf-cmp { font-size: 8.5px; table-layout: fixed; }
+            .bsf-cmp th, .bsf-cmp td { padding: 2px 3px; }
+            .bsf-cmp td.num { font-size: 8px; }
+            .bsf-cmp th:first-child, .bsf-cmp td:first-child { width: 24%; }
+            /* หัวตารางซ้ำทุกหน้า และห้ามตัดแถวคาหน้า — งบยาวหลายหน้าเสมอ */
+            .bsf-table thead { display: table-header-group; }
+            .bsf-table tr { page-break-inside: avoid; }
+            .bsf-block { page-break-inside: auto; }
+            .bsf-sign { width: 100%; margin-top: 26px; border-collapse: collapse; }
+            .bsf-sign td { text-align: center; font-size: 9px; padding-top: 30px;
+                           border-top: 1px dotted #98A2B3; width: 33%; }
+        </style>
+    </template>
+
+    <!-- แถวเทียบสองงวด ใช้ซ้ำทั้ง P&L / BS / Cash Flow -->
+    <template id="bsf_pair_row">
+        <tr t-att-class="row_class">
+            <td t-attf-style="padding-left: {{ 5 + 12 * (indent or 0) }}px;">
+                <t t-if="line.get('code')">
+                    <span style="color:#667085;"><t t-esc="line['code']"/></span>
+                    <span> </span>
+                </t>
+                <t t-esc="line['label']"/>
+            </td>
+            <td class="num" t-attf-class="num {{ line['amount'] &lt; 0 and 'bsf-neg' or '' }}">
+                <t t-esc="line['amount']" t-options="{'widget': 'float', 'precision': 2}"/>
+            </td>
+            <td class="num">
+                <t t-esc="line['prior']" t-options="{'widget': 'float', 'precision': 2}"/>
+            </td>
+            <td class="num" t-if="show_delta">
+                <t t-esc="line['delta']" t-options="{'widget': 'float', 'precision': 2}"/>
+            </td>
+            <td class="num" t-if="show_delta">
+                <t t-if="line.get('delta_pct') is not None">
+                    <t t-esc="line['delta_pct']" t-options="{'widget': 'float', 'precision': 1}"/>%
+                </t>
+                <t t-else="">-</t>
+            </td>
+        </tr>
+    </template>
+
+    <template id="report_statements_doc">
+        <t t-call="web.html_container">
+            <t t-call="web.internal_layout">
+                <div class="page bsf-report">
+                    <t t-call="biz_smart_finance.bsf_statements_style"/>
+
+                    <h1>งบการเงิน · <t t-esc="f['company_label']"/></h1>
+                    <div class="bsf-meta">
+                        <t t-esc="f['fy_label']"/> · ข้อมูลถึง <t t-esc="f['as_of']"/>
+                        (เทียบ <t t-esc="f['as_of_prior']"/>) ·
+                        สกุลเงิน <t t-esc="f['currency']"/>
+                    </div>
+                    <div class="bsf-meta" t-if="f['period_closed']">
+                        งวดนี้ปิดแล้ว (ล็อกถึง <t t-esc="f['lock_date']"/>) — ตัวเลขถือเป็นตัวเลขปิดงวด
+                    </div>
+                    <div class="bsf-warn" t-if="f['multi_currency']">
+                        กลุ่มมีหลายสกุลเงิน — แปลงด้วยอัตราปิด ณ วันสิ้นงวดของแต่ละคอลัมน์
+                        ผลต่างอัตราแลกเปลี่ยนไม่ได้แยกเป็นบรรทัดต่างหาก
+                    </div>
+                    <div class="bsf-meta">
+                        พิมพ์โดย <t t-esc="printed_by"/> เมื่อ <t t-esc="printed_on"/>
+                    </div>
+
+                    <!-- ========== งบกำไรขาดทุน ========== -->
+                    <div class="bsf-block">
+                        <h2>งบกำไรขาดทุน (Profit &amp; Loss)</h2>
+                        <table class="bsf-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">รายการ</th>
+                                    <th>งวดนี้</th><th>งวดก่อน</th><th>ผลต่าง</th><th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="st['pnl']['rows']" t-as="pnl_line">
+                                    <t t-call="biz_smart_finance.bsf_pair_row">
+                                        <t t-set="line" t-value="pnl_line"/>
+                                        <t t-set="indent" t-value="0"/>
+                                        <t t-set="row_class" t-value="pnl_line['kind'] == 'total' and 'bsf-tot' or 'bsf-sec'"/>
+                                        <t t-set="show_delta" t-value="True"/>
+                                    </t>
+                                    <t t-if="pnl_line['kind'] == 'line'"
+                                       t-foreach="pnl_line['accounts']" t-as="account">
+                                        <t t-call="biz_smart_finance.bsf_pair_row">
+                                            <t t-set="line" t-value="account"/>
+                                            <t t-set="indent" t-value="1"/>
+                                            <t t-set="row_class" t-value="''"/>
+                                            <t t-set="show_delta" t-value="True"/>
+                                        </t>
+                                    </t>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ========== งบแสดงฐานะการเงิน ========== -->
+                    <div class="bsf-block">
+                        <h2>งบแสดงฐานะการเงิน (Balance Sheet)</h2>
+                        <table class="bsf-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">รายการ</th>
+                                    <th>งวดนี้</th><th>งวดก่อน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="st['balance_sheet']['rows']" t-as="bs_line">
+                                    <t t-call="biz_smart_finance.bsf_pair_row">
+                                        <t t-set="line" t-value="bs_line"/>
+                                        <t t-set="indent" t-value="bs_line['kind'] == 'subtotal' and 0 or 1"/>
+                                        <t t-set="row_class" t-value="bs_line['kind'] == 'subtotal' and 'bsf-tot' or 'bsf-sec'"/>
+                                        <t t-set="show_delta" t-value="False"/>
+                                    </t>
+                                    <t t-if="bs_line['kind'] == 'line'"
+                                       t-foreach="bs_line['accounts']" t-as="account">
+                                        <t t-call="biz_smart_finance.bsf_pair_row">
+                                            <t t-set="line" t-value="account"/>
+                                            <t t-set="indent" t-value="2"/>
+                                            <t t-set="row_class" t-value="''"/>
+                                            <t t-set="show_delta" t-value="False"/>
+                                        </t>
+                                    </t>
+                                </t>
+                            </tbody>
+                        </table>
+                        <div class="bsf-warn" t-if="st['balance_sheet']['check']">
+                            งบไม่ดุล
+                            <t t-esc="st['balance_sheet']['check']"
+                               t-options="{'widget': 'float', 'precision': 2}"/>
+                            — ตรวจบัญชีที่ยังไม่จัดประเภท (off-balance)
+                        </div>
+                    </div>
+
+                    <!-- ========== งบกระแสเงินสด ========== -->
+                    <div class="bsf-block">
+                        <h2>งบกระแสเงินสด (ทางอ้อม)</h2>
+                        <table class="bsf-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">รายการ</th>
+                                    <th>งวดนี้</th><th>งวดก่อน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="st['cashflow']['rows']" t-as="cf_line">
+                                    <t t-call="biz_smart_finance.bsf_pair_row">
+                                        <t t-set="line" t-value="cf_line"/>
+                                        <t t-set="indent" t-value="cf_line['kind'] == 'subtotal' and 0 or 1"/>
+                                        <t t-set="row_class" t-value="cf_line['kind'] == 'subtotal' and 'bsf-tot' or ''"/>
+                                        <t t-set="show_delta" t-value="False"/>
+                                    </t>
+                                </t>
+                                <tr>
+                                    <td>เงินสดต้นงวด</td>
+                                    <td class="num">
+                                        <t t-esc="st['cashflow']['opening_cash']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num"/>
+                                </tr>
+                                <tr class="bsf-tot">
+                                    <td>เงินสดปลายงวด</td>
+                                    <td class="num">
+                                        <t t-esc="st['cashflow']['closing_cash']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ========== อายุลูกหนี้ ========== -->
+                    <div class="bsf-block">
+                        <h2>อายุลูกหนี้ (AR Aging)</h2>
+                        <table class="bsf-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">ลูกค้า</th>
+                                    <th t-foreach="aging_labels" t-as="bucket"
+                                        t-esc="bucket[1]"/>
+                                    <th>รวม</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="st['ar_aging']['customers']" t-as="customer">
+                                    <td><t t-esc="customer['name']"/></td>
+                                    <td class="num" t-foreach="aging_labels" t-as="bucket">
+                                        <t t-esc="customer[bucket[0]]"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num">
+                                        <t t-esc="customer['total']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="not st['ar_aging']['customers']">
+                                    <td colspan="6">ไม่มีลูกหนี้คงค้าง</td>
+                                </tr>
+                                <tr class="bsf-tot">
+                                    <td>รวมลูกหนี้คงค้าง</td>
+                                    <td class="num" t-foreach="aging_labels" t-as="bucket">
+                                        <t t-esc="st['ar_aging']['buckets'][bucket[0]]"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num">
+                                        <t t-esc="st['ar_aging']['total']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ========== เปรียบเทียบหลายงวด ========== -->
+                    <div class="bsf-block" t-if="cmp.get('enabled') and cmp.get('columns')">
+                        <h2>เปรียบเทียบหลายงวด</h2>
+                        <table class="bsf-table bsf-cmp">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">รายการ</th>
+                                    <th t-foreach="cmp['columns']" t-as="col">
+                                        <t t-esc="col['label']"/><br/>
+                                        <span style="font-weight:normal;"><t t-esc="col['sub']"/></span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="bsf-sec">
+                                    <td t-att-colspan="len(cmp['columns']) + 1">
+                                        งบกำไรขาดทุน (ยอดไหลภายในงวด)
+                                    </td>
+                                </tr>
+                                <tr t-foreach="cmp['pnl_rows']" t-as="line">
+                                    <td><t t-esc="line['label']"/></td>
+                                    <td class="num" t-foreach="cmp['columns']" t-as="col">
+                                        <t t-esc="line['values'][col['index']]"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                </tr>
+                                <tr class="bsf-sec">
+                                    <td t-att-colspan="len(cmp['columns']) + 1">
+                                        ฐานะการเงิน (ยอดคงเหลือ ณ วันสิ้นงวด)
+                                    </td>
+                                </tr>
+                                <tr t-foreach="cmp['bs_rows']" t-as="line">
+                                    <td><t t-esc="line['label']"/></td>
+                                    <td class="num" t-foreach="cmp['columns']" t-as="col">
+                                        <t t-esc="line['values'][col['index']]"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                </tr>
+                                <tr class="bsf-sec">
+                                    <td t-att-colspan="len(cmp['columns']) + 1">อัตราส่วน</td>
+                                </tr>
+                                <tr t-foreach="cmp['kpi_rows']" t-as="line">
+                                    <td><t t-esc="line['label']"/></td>
+                                    <td class="num" t-foreach="cmp['columns']" t-as="col">
+                                        <t t-if="line['values'][col['index']] is not None">
+                                            <t t-esc="line['values'][col['index']]"
+                                               t-options="{'widget': 'float', 'precision': 1}"/>%
+                                        </t>
+                                        <t t-else="">-</t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ========== ศูนย์ต้นทุน ========== -->
+                    <div class="bsf-block" t-if="co['configured'] and co['rows']">
+                        <h2>ศูนย์ต้นทุน (Controlling) · <t t-esc="co['plan_name']"/></h2>
+                        <table class="bsf-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">ศูนย์ต้นทุน</th>
+                                    <th>งบประมาณ</th><th>ใช้จริง</th><th>ภาระผูกพัน</th>
+                                    <th>คงเหลือ</th><th>ใช้ไป %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="co['rows']" t-as="cc">
+                                    <td><t t-esc="cc['name']"/></td>
+                                    <td class="num">
+                                        <t t-esc="cc['budget']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num">
+                                        <t t-esc="cc['actual_cost']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num">
+                                        <t t-esc="cc['commitment']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td t-attf-class="num {{ cc['available'] &lt; 0 and 'bsf-neg' or '' }}">
+                                        <t t-esc="cc['available']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td t-attf-class="num {{ cc['over_budget'] and 'bsf-neg' or '' }}">
+                                        <t t-if="cc['utilization_pct'] is not None">
+                                            <t t-esc="cc['utilization_pct']"
+                                               t-options="{'widget': 'float', 'precision': 1}"/>%
+                                        </t>
+                                        <t t-else="">-</t>
+                                    </td>
+                                </tr>
+                                <tr class="bsf-tot">
+                                    <td>รวม</td>
+                                    <td class="num">
+                                        <t t-esc="co['totals']['budget']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num">
+                                        <t t-esc="co['totals']['actual_cost']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num">
+                                        <t t-esc="co['totals']['commitment']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num">
+                                        <t t-esc="co['totals']['available']"
+                                           t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="num"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ลายเซ็นอยู่นอกตาราง จึงตกอยู่หน้าสุดท้ายเสมอ -->
+                    <table class="bsf-sign">
+                        <tr>
+                            <td>ผู้จัดทำ</td><td>ผู้ตรวจสอบ</td><td>ผู้อนุมัติ</td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

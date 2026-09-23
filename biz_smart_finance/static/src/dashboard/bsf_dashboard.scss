@@ -1,0 +1,1905 @@
+// CFO Cockpit — โครงหน้าจอเต็มความสูง: header/toolbar/tab อยู่กับที่
+// มีเฉพาะ .o_bsf_body ที่ scroll  ธีมสลับด้วย class บน root
+//
+// ชุดสี = "Cockpit Modern" (เปลี่ยนจาก SAP Horizon ตามที่ผู้ใช้ขอ 2026-08-26):
+// แบรนด์เป็น indigo → violet ไล่เฉด, สถานะใช้ emerald / amber / rose
+// ค่าตั้งต้นเป็นธีมมืด และคลาส .o_bsf_light สลับเป็นธีมสว่าง (ค่าตั้งต้นฝั่ง JS)
+//
+// กติกาสีที่ยังต้องรักษา: **สีบอกสถานะเท่านั้น** (บวก/ลบ/เตือน) ส่วนชุด
+// --bsf-c1..c6 เป็นสีของ "ชุดข้อมูล" (ซีรีส์กราฟ/หมวด/แท็บ) ห้ามเอาไปแทน
+// ความหมายเชิงสถานะ ไม่งั้นผู้ใช้อ่านสีผิดความหมาย
+//
+// สเกลตัวอักษร: --bsf-fs-* คุมทั้งจอจากที่เดียว (ปรับใหญ่ขึ้นทั้งชุด
+// 2026-08-26) — อย่าฮาร์ดโค้ด px ใหม่ ให้เพิ่ม token แทน
+
+.o_bsf_page {
+    // ---- ธีมมืด (Midnight) ----
+    --bsf-bg: #0f1420;
+    --bsf-surface: #171d2b;
+    --bsf-surface-2: #212a3b;
+    --bsf-border: #2d3850;
+    --bsf-line: #263047;
+    --bsf-ink: #eef2f8;
+    --bsf-ink-soft: #c9d3e3;
+    --bsf-muted: #94a3b8;
+    --bsf-faint: #6b7a8f;
+    --bsf-accent: #a78bfa;      // violet 400
+    --bsf-primary: #818cf8;     // indigo 400
+    --bsf-primary-strong: #6366f1;
+    --bsf-good: #34d399;        // emerald 400
+    --bsf-warn: #fbbf24;        // amber 400
+    --bsf-risk: #fb7185;        // rose 400
+    --bsf-neutral: #94a3b8;
+    // ชุดสีของ "ชุดข้อมูล" — ใช้กับซีรีส์กราฟ/หมวด/แถบสีการ์ด KPI
+    --bsf-c1: #818cf8;          // indigo
+    --bsf-c2: #38bdf8;          // sky
+    --bsf-c3: #2dd4bf;          // teal
+    --bsf-c4: #34d399;          // emerald
+    --bsf-c5: #fbbf24;          // amber
+    --bsf-c6: #f472b6;          // pink
+    --bsf-grad: linear-gradient(135deg, #818cf8 0%, #38bdf8 100%);
+    --bsf-grad-soft: linear-gradient(135deg,
+        rgba(129, 140, 248, .16) 0%, rgba(56, 189, 248, .08) 100%);
+    --bsf-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px rgba(0, 0, 0, .28);
+    --bsf-shadow-hover: 0 2px 6px rgba(0, 0, 0, .4), 0 14px 32px rgba(0, 0, 0, .34);
+    --bsf-radius: 12px;
+    --bsf-radius-sm: 8px;
+
+    // ---- สเกลตัวอักษร (ใหญ่ขึ้นทั้งชุด) ----
+    --bsf-fs-base: 15.5px;      // ตัวอักษรพื้นของจอ
+    --bsf-fs-xs: 12.5px;        // ป้ายเล็กสุด: stamp / legend / แกนกราฟ
+    --bsf-fs-sm: 13.5px;        // label ของฟอร์ม, หัวตาราง, ข้อความรอง
+    --bsf-fs-md: 14.5px;        // เนื้อตาราง, input, แท็บ
+    --bsf-fs-lg: 17.5px;        // หัวการ์ด
+    --bsf-fs-xl: 21px;          // ชื่อแอป
+    --bsf-fs-kpi: 26px;         // ตัวเลข KPI — ให้ค่าหลักยาว ๆ อ่านครบใน KPI card
+    --bsf-fs-kpi-sm: 28px;      // ตัวเลขรองใน funnel
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bsf-bg);
+    color: var(--bsf-ink);
+    // "72" คือฟอนต์ของ SAP (ไม่มีในเครื่องส่วนใหญ่ และไม่มีอักษรไทย) —
+    // ต้องมีฟอนต์ไทยตามหลังเสมอ ไม่งั้นภาษาไทยจะตกไป serif ของระบบ
+    font-family: "72", "72full", "Sarabun", "Noto Sans Thai", "Segoe UI",
+                 Arial, Helvetica, sans-serif;
+    font-size: var(--bsf-fs-base);
+
+    table,
+    .k_value,
+    .bsf_num {
+        font-variant-numeric: tabular-nums;
+    }
+
+    // จุดที่กดเจาะดูเอกสารได้ — SAP ใช้สีลิงก์ + ขีดใต้ ไม่ใช่สีเน้นพิเศษ
+    .o_bsf_click {
+        cursor: pointer;
+        text-decoration: underline dotted var(--bsf-faint);
+        text-underline-offset: 3px;
+        transition: color .12s ease, background-color .12s ease;
+
+        &:hover {
+            color: var(--bsf-primary) !important;
+            text-decoration: underline solid var(--bsf-primary);
+        }
+    }
+
+    td.o_bsf_click:hover {
+        background: var(--bsf-surface-2);
+    }
+
+    // ---- ธีมสว่าง (Daylight) = ค่าตั้งต้นของจอ ----
+    &.o_bsf_light {
+        --bsf-bg: #f4f6fb;
+        --bsf-surface: #ffffff;
+        --bsf-surface-2: #f1f4fa;
+        --bsf-border: #e2e8f3;
+        --bsf-line: #edf1f8;
+        --bsf-ink: #131c31;
+        --bsf-ink-soft: #33415c;
+        --bsf-muted: #64748b;
+        --bsf-faint: #94a3b8;
+        --bsf-accent: #7c3aed;      // violet 600
+        --bsf-primary: #4f46e5;     // indigo 600
+        --bsf-primary-strong: #4338ca;
+        --bsf-good: #059669;        // emerald 600
+        --bsf-warn: #d97706;        // amber 600
+        --bsf-risk: #e11d48;        // rose 600
+        --bsf-neutral: #64748b;
+        --bsf-c1: #4f46e5;
+        --bsf-c2: #0284c7;
+        --bsf-c3: #0d9488;
+        --bsf-c4: #059669;
+        --bsf-c5: #d97706;
+        --bsf-c6: #db2777;
+        --bsf-grad: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+        --bsf-grad-soft: linear-gradient(135deg,
+            rgba(79, 70, 229, .10) 0%, rgba(14, 165, 233, .05) 100%);
+        --bsf-shadow: 0 1px 2px rgba(15, 23, 42, .06),
+                      0 8px 24px rgba(15, 23, 42, .07);
+        --bsf-shadow-hover: 0 2px 6px rgba(15, 23, 42, .09),
+                            0 14px 32px rgba(15, 23, 42, .10);
+    }
+
+    // ================= header =================
+    .o_bsf_header {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--bsf-border);
+        background: var(--bsf-surface);
+
+        h1 {
+            margin: 0;
+            font-size: var(--bsf-fs-xl);
+            font-weight: 800;
+            letter-spacing: -.2px;
+            color: var(--bsf-ink);
+        }
+
+        .h_sub {
+            display: block;
+            font-size: var(--bsf-fs-sm);
+            color: var(--bsf-muted);
+        }
+
+        // ชื่อแบรนด์ไล่เฉด indigo → sky (ตัวเดียวในจอที่ใช้ gradient กับตัวอักษร)
+        .h_brand {
+            font-weight: 800;
+            background: var(--bsf-grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+    }
+
+    .o_bsf_spacer {
+        flex: 1;
+    }
+
+    .o_bsf_stamp {
+        color: var(--bsf-muted);
+        font-size: var(--bsf-fs-xs);
+    }
+
+    // งวดที่ปิดแล้ว = ตัวเลขนิ่ง แก้ย้อนหลังไม่ได้ (SAP period lock)
+    .o_bsf_locked {
+        color: var(--bsf-good);
+    }
+
+    .o_bsf_iconbtn {
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--bsf-primary);
+        border-radius: var(--bsf-radius-sm);
+        padding: 7px 12px;
+        font-size: var(--bsf-fs-md);
+        cursor: pointer;
+        transition: background-color .12s ease, color .12s ease;
+
+        &:hover {
+            background: var(--bsf-surface-2);
+        }
+
+        &:disabled {
+            color: var(--bsf-faint);
+            cursor: default;
+            background: transparent;
+        }
+    }
+
+    // ================= toolbar =================
+    .o_bsf_toolbar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--bsf-border);
+        background: var(--bsf-surface);
+
+        label {
+            margin: 0;
+            color: var(--bsf-muted);
+            font-size: var(--bsf-fs-sm);
+            font-weight: 600;
+        }
+
+        .o_bsf_check {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid var(--bsf-primary);
+            border-radius: var(--bsf-radius-sm);
+            color: var(--bsf-primary);
+            background: color-mix(in srgb, var(--bsf-primary) 8%, var(--bsf-surface));
+            cursor: pointer;
+
+            input { accent-color: var(--bsf-primary); }
+        }
+    }
+
+    .o_bsf_select {
+        background: var(--bsf-surface);
+        color: var(--bsf-ink);
+        border: 1px solid var(--bsf-border);
+        border-radius: var(--bsf-radius-sm);
+        padding: 6px 11px;
+        font-size: var(--bsf-fs-md);
+        max-width: 260px;
+        transition: border-color .14s ease, box-shadow .14s ease;
+
+        &:focus {
+            outline: none;
+            border-color: var(--bsf-primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb,
+                var(--bsf-primary) 22%, transparent);
+        }
+    }
+
+    .o_bsf_check {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border: 1px solid var(--bsf-primary);
+        border-radius: var(--bsf-radius-sm);
+        color: var(--bsf-primary);
+        background: color-mix(in srgb, var(--bsf-primary) 8%, var(--bsf-surface));
+        cursor: pointer;
+        font-size: var(--bsf-fs-sm);
+        font-weight: 600;
+
+        input { accent-color: var(--bsf-primary); }
+    }
+
+    // Compact BI treatment for the executive cash card: decision metrics stay
+    // above the trend, while the chart remains a quick 13-week signal.
+    .o_bsf_cash_bi {
+        .o_bsf_cash_bi_metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin: 8px 0 4px;
+
+            > div {
+                min-width: 0;
+                padding: 7px 10px;
+                border-left: 3px solid var(--bsf-primary);
+                border-radius: 5px;
+                background: var(--bsf-surface-2);
+            }
+            span { display: block; color: var(--bsf-muted); font-size: var(--bsf-fs-xs); }
+            b { display: block; margin-top: 2px; color: var(--bsf-ink); font-size: var(--bsf-fs-md); white-space: nowrap; }
+            .is-alert { color: var(--bsf-risk); }
+        }
+        .o_bsf_chart { margin-top: 0; }
+        .grid_text { font-size: 10px; }
+        .grid_sub { font-size: 8px; }
+    }
+
+    // ปุ่มสลับหน่วย/ธีม — ตัวที่เลือกเป็นพื้นไล่เฉดตัวอักษรขาว (อ่านชัดกว่า
+    // แบบพื้นจางเดิม และเป็นจุดสีที่ toolbar ต้องการ)
+    .o_bsf_segment {
+        display: inline-flex;
+        border: 1px solid var(--bsf-border);
+        border-radius: 999px;
+        overflow: hidden;
+        padding: 2px;
+        background: var(--bsf-surface-2);
+
+        button {
+            border: 0;
+            background: transparent;
+            color: var(--bsf-ink-soft);
+            padding: 5px 14px;
+            border-radius: 999px;
+            font-size: var(--bsf-fs-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color .14s ease, color .14s ease;
+
+            &:hover {
+                color: var(--bsf-primary);
+            }
+
+            &.active {
+                background: var(--bsf-grad);
+                color: #fff;
+                font-weight: 700;
+                box-shadow: 0 2px 8px color-mix(in srgb,
+                    var(--bsf-primary) 40%, transparent);
+            }
+        }
+    }
+
+    // ================= hints =================
+    .o_bsf_hints {
+        flex: none;
+        padding: 6px 16px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;   // ปุ่มยุบกว้างเท่าข้อความ ไม่กินเต็มแถว
+        gap: 4px;
+
+        // ปุ่มเล็ก ๆ บอกจำนวน กดแล้วค่อยกางรายละเอียด
+        .o_bsf_hint_toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid color-mix(in srgb, var(--bsf-warn) 35%, transparent);
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--bsf-warn) 12%, transparent);
+            color: var(--bsf-warn);
+            font-size: var(--bsf-fs-sm);
+            font-weight: 600;
+            padding: 5px 14px;
+            cursor: pointer;
+            transition: background-color .12s ease;
+
+            &:hover {
+                background: color-mix(in srgb, var(--bsf-warn) 14%, transparent);
+            }
+        }
+
+        // รายการที่กางออกมาต้องกว้างเต็มแถว (ทับ align-items ของ flex แม่)
+        .o_bsf_hint {
+            align-self: stretch;
+        }
+
+        .o_bsf_hint {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: var(--bsf-fs-sm);
+            color: var(--bsf-warn);
+            background: color-mix(in srgb, var(--bsf-warn) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--bsf-warn) 28%, transparent);
+            border-left: 4px solid var(--bsf-warn);
+            border-radius: var(--bsf-radius-sm);
+            padding: 7px 12px;
+
+            a {
+                color: var(--bsf-primary);
+                cursor: pointer;
+                white-space: nowrap;
+            }
+        }
+    }
+
+    // ================= CFO navigation =================
+    .o_bsf_mainnav {
+        flex: none;
+        display: flex;
+        padding: 8px 14px 0;
+        border-bottom: 1px solid var(--bsf-border);
+        overflow-x: auto;
+        background: color-mix(in srgb, var(--bsf-surface) 96%, var(--bsf-primary));
+
+        .o_bsf_mainnav_item {
+            flex: 1 0 150px;
+            min-height: 70px;
+            border: 1px solid transparent;
+            border-bottom: 3px solid transparent;
+            border-radius: 18px 18px 0 0;
+            background: transparent;
+            color: var(--bsf-muted);
+            font-size: clamp(14px, 1.35vw, 19px);
+            font-weight: 700;
+            cursor: pointer;
+            transition: color .14s ease, background-color .14s ease,
+                        border-color .14s ease, box-shadow .14s ease;
+
+            i {
+                display: block;
+                margin-bottom: 6px;
+                font-size: 23px;
+            }
+
+            &:hover {
+                color: var(--bsf-primary);
+                background: color-mix(in srgb, var(--bsf-primary) 7%, transparent);
+            }
+
+            &.active {
+                color: var(--bsf-primary);
+                border-color: color-mix(in srgb, var(--bsf-primary) 14%, transparent);
+                border-bottom-color: var(--bsf-primary);
+                background: var(--bsf-surface);
+                box-shadow: 0 -4px 18px color-mix(in srgb,
+                    var(--bsf-primary) 10%, transparent);
+            }
+        }
+    }
+
+    // ================= sub-tabs =================
+    .o_bsf_tabs {
+        flex: none;
+        display: flex;
+        gap: 2px;
+        margin: 12px 14px 0;
+        padding: 8px 12px 0;
+        border: 1px solid var(--bsf-border);
+        border-radius: 16px;
+        box-shadow: 0 5px 16px color-mix(in srgb, var(--bsf-primary) 8%, transparent);
+        overflow-x: auto;
+
+        // แท็บเป็น pill: ตัวที่เลือกเป็นพื้นไล่เฉด ตัวอื่นเป็นพื้นจางตอน hover
+        .o_bsf_tab {
+            border: 0;
+            background: transparent;
+            color: var(--bsf-muted);
+            border-radius: 999px;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            font-size: var(--bsf-fs-md);
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color .14s ease, background-color .14s ease,
+                        box-shadow .14s ease;
+
+            i {
+                margin-right: 8px;
+                opacity: .9;
+            }
+
+            &:hover {
+                color: var(--bsf-primary);
+                background: color-mix(in srgb, var(--bsf-primary) 10%, transparent);
+            }
+
+            &.active {
+                color: #fff;
+                background: var(--bsf-grad);
+                font-weight: 700;
+                box-shadow: 0 4px 14px color-mix(in srgb,
+                    var(--bsf-primary) 42%, transparent);
+            }
+        }
+    }
+
+    // ================= body / cards =================
+    .o_bsf_body {
+        flex: 1;
+        overflow: auto;
+        padding: 14px 16px 22px;
+    }
+
+    .o_bsf_grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(12, 1fr);
+    }
+
+    .o_bsf_card {
+        grid-column: span 12;
+        background: var(--bsf-surface);
+        border: 1px solid var(--bsf-border);
+        border-radius: var(--bsf-radius);
+        box-shadow: var(--bsf-shadow);
+        padding: 16px 18px;
+        min-width: 0;
+        // จุดยึดของปุ่มกาง/หุบที่มุมขวาบน
+        position: relative;
+
+        .c_head {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--bsf-line);
+            // ขีดสั้นไล่เฉดใต้หัวการ์ด — จุดสีประจำการ์ดโดยไม่รบกวนตัวเลข
+            position: relative;
+
+            &::after {
+                content: "";
+                position: absolute;
+                left: 0;
+                bottom: -1px;
+                width: 44px;
+                height: 3px;
+                border-radius: 999px;
+                background: var(--bsf-grad);
+            }
+
+            b {
+                font-size: var(--bsf-fs-lg);
+                font-weight: 700;
+                letter-spacing: -.2px;
+                color: var(--bsf-ink);
+            }
+
+            span {
+                font-size: var(--bsf-fs-sm);
+                color: var(--bsf-muted);
+            }
+        }
+    }
+
+    // เว้นที่ให้ปุ่มกาง/หุบ ไม่ให้ทับ subtitle ที่ยาว
+    .o_bsf_card > .c_head,
+    .o_bsf_card > .ai_head {
+        padding-right: 26px;
+    }
+
+    // ================= กาง/หุบการ์ด =================
+    // ทุกการ์ดมีปุ่มมุมขวาบน กดแล้วการ์ดลอยขึ้นเต็มจอทับฉากหลังทึบ
+    // กดซ้ำ / กดฉากหลัง / Esc = หุบกลับที่เดิม
+    .o_bsf_zoombtn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 2;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 0;
+        border-radius: var(--bsf-radius-sm);
+        background: transparent;
+        color: var(--bsf-faint);
+        font-size: 12px;
+        line-height: 1;
+        cursor: pointer;
+        opacity: .55;
+        transition: opacity .12s ease, background-color .12s ease, color .12s ease;
+
+        &:hover {
+            opacity: 1;
+            color: var(--bsf-primary);
+            background: var(--bsf-surface-2);
+        }
+    }
+
+    .o_bsf_card:hover .o_bsf_zoombtn {
+        opacity: 1;
+    }
+
+    // .o_bsf_page ไม่มี transform/filter จึงยึด viewport ได้จริง —
+    // ถ้าวันหลังมีใครใส่ transform บน ancestor การ์ดจะกางผิดที่ทันที
+    .o_bsf_card.o_bsf_zoomed {
+        position: fixed;
+        // สูงตามเนื้อหา ไม่ยืดเต็มจอ — การ์ดสั้น ๆ ไม่ต้องมีที่ว่างครึ่งจอ
+        inset: 3vh 3vw auto;
+        max-height: 94vh;
+        z-index: 1061;
+        margin: 0;
+        padding: 18px 20px;
+        overflow: auto;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, .45);
+
+        // กราฟถูกวาดด้วย viewBox — ขยายได้แต่ต้องมีเพดาน ไม่งั้นตัวอักษร
+        // ในกราฟถูกสเกลตามจนใหญ่เกินหน้าจอกว้าง ๆ
+        .o_bsf_chart {
+            display: block;
+            width: 100%;
+            max-width: 1000px;
+            height: auto;
+            margin: 0 auto;
+        }
+
+        // ในสถานะกาง ปุ่มนี้คือ "ปิด" — ต้องเห็นชัดว่ากดได้
+        .o_bsf_zoombtn {
+            top: 12px;
+            right: 14px;
+            opacity: 1;
+            border: 1px solid var(--bsf-border);
+            background: var(--bsf-surface-2);
+            color: var(--bsf-ink-soft);
+        }
+    }
+
+    .o_bsf_zoom_back {
+        position: fixed;
+        inset: 0;
+        z-index: 1060;
+        background: rgba(0, 0, 0, .45);
+    }
+
+    @media (min-width: 992px) {
+        .span6 { grid-column: span 6; }
+        .span4 { grid-column: span 4; }
+        .span8 { grid-column: span 8; }
+        .span3 { grid-column: span 3; }
+        .span9 { grid-column: span 9; }
+        .span7 { grid-column: span 7; }
+        .span5 { grid-column: span 5; }
+    }
+
+    // ================= KPI =================
+    .o_bsf_kpis {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        margin-bottom: 12px;
+        // เผื่อกรณีวางเป็นลูกโดยตรงของ .o_bsf_grid (เช่นแท็บ Cash & Liquidity
+        // ที่มีหลาย section ในกริดเดียว) — ไม่งั้นจะเหลือแค่ 1 คอลัมน์แคบ ๆ
+        // ของกริดนอก แทนที่จะเต็มความกว้าง; ไม่กระทบแท็บที่วาง .o_bsf_kpis
+        // นอกกริด (grid-column ถูกละเว้นถ้า parent ไม่ใช่ grid container)
+        grid-column: 1 / -1;
+
+        // การ์ด KPI: แถบสีบางด้านบนไล่ไปตามลำดับการ์ด (--bsf-c1..c6)
+        // ตัวเลขยังเป็นสีหมึก — สีของแถบคือ "ชุดข้อมูล" ไม่ใช่สถานะ
+        .o_bsf_kpi {
+            position: relative;
+            overflow: hidden;
+            background: var(--bsf-surface);
+            border: 1px solid var(--bsf-border);
+            border-radius: var(--bsf-radius);
+            box-shadow: var(--bsf-shadow);
+            padding: 15px 16px 14px;
+            --k-accent: var(--bsf-c1);
+            transition: background-color .14s ease, box-shadow .14s ease,
+                        transform .14s ease;
+
+            &::before {
+                content: "";
+                position: absolute;
+                inset: 0 0 auto;
+                height: 4px;
+                background: var(--k-accent);
+            }
+
+            &:nth-child(6n + 2) { --k-accent: var(--bsf-c2); }
+            &:nth-child(6n + 3) { --k-accent: var(--bsf-c3); }
+            &:nth-child(6n + 4) { --k-accent: var(--bsf-c4); }
+            &:nth-child(6n + 5) { --k-accent: var(--bsf-c5); }
+            &:nth-child(6n)     { --k-accent: var(--bsf-c6); }
+
+            // KPI ที่เจาะดูเอกสารได้
+            &.is-click {
+                cursor: pointer;
+
+                &:hover {
+                    box-shadow: var(--bsf-shadow-hover);
+                    transform: translateY(-1px);
+                }
+
+                &:hover .k_value {
+                    color: var(--k-accent);
+                }
+            }
+
+            .k_label {
+                display: block;
+                font-size: var(--bsf-fs-sm);
+                font-weight: 600;
+                color: var(--bsf-muted);
+                margin-bottom: 6px;
+            }
+
+            .k_value {
+                display: block;
+                font-size: var(--bsf-fs-kpi);
+                font-weight: 800;
+                letter-spacing: -.6px;
+                color: var(--bsf-ink);
+                line-height: 1.12;
+                transition: color .14s ease;
+
+                &.is-alert { color: var(--bsf-risk); }
+
+                em {
+                    font-style: normal;
+                    font-size: var(--bsf-fs-md);
+                    color: var(--bsf-muted);
+                    margin-left: 4px;
+                }
+            }
+
+            .k_sub {
+                font-size: var(--bsf-fs-sm);
+                color: var(--bsf-muted);
+
+                &.is-up { color: var(--bsf-good); font-weight: 600; }
+                &.is-down { color: var(--bsf-risk); font-weight: 600; }
+            }
+        }
+    }
+
+    // ================= dimension control board =================
+    .o_bsf_dimboard {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    }
+
+    .o_bsf_dim {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 12px 14px;
+        border: 1px solid var(--bsf-border);
+        border-left: 3px solid var(--bsf-neutral);
+        border-radius: var(--bsf-radius-sm);
+        background: var(--bsf-surface-2);
+        color: inherit;
+        cursor: pointer;
+        transition: box-shadow .12s ease, transform .12s ease;
+
+        &:hover {
+            box-shadow: var(--bsf-shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        &.is-good { border-left-color: var(--bsf-good); }
+        &.is-warn { border-left-color: var(--bsf-warn); }
+        &.is-risk { border-left-color: var(--bsf-risk); }
+        &.is-neutral { border-left-color: var(--bsf-neutral); }
+    }
+
+    .o_bsf_dim_head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--bsf-fs-sm);
+        color: var(--bsf-ink-soft);
+
+        i { color: var(--bsf-muted); width: 15px; text-align: center; }
+        b { flex: 1; font-weight: 700; }
+    }
+
+    .o_bsf_dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--bsf-neutral);
+        flex: none;
+
+        &.is-good { background: var(--bsf-good); }
+        &.is-warn { background: var(--bsf-warn); }
+        &.is-risk { background: var(--bsf-risk); }
+        &.is-neutral { background: var(--bsf-neutral); }
+    }
+
+    .o_bsf_dim_val {
+        font-size: var(--bsf-fs-kpi-sm);
+        font-weight: 800;
+        line-height: 1.15;
+        margin: 6px 0 2px;
+    }
+
+    .o_bsf_dim_sub {
+        font-size: var(--bsf-fs-xs);
+        color: var(--bsf-muted);
+    }
+
+    .o_bsf_dim_note {
+        font-size: var(--bsf-fs-xs);
+        color: var(--bsf-ink-soft);
+        margin-top: 4px;
+    }
+
+    // ================= tables =================
+    .o_bsf_table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--bsf-fs-md);
+
+        th,
+        td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--bsf-line);
+            text-align: right;
+            color: var(--bsf-ink-soft);
+            white-space: nowrap;
+        }
+
+        th {
+            background: var(--bsf-surface-2);
+            color: var(--bsf-muted);
+            font-weight: 700;
+            font-size: var(--bsf-fs-sm);
+            letter-spacing: .2px;
+            text-transform: none;
+            border-bottom: 1px solid var(--bsf-border);
+            // ห้ามใส่ position: sticky — ตัวที่ scroll คือ .o_bsf_body (ทั้งหน้า)
+            // หัวตารางจะลอยทับการ์ดอื่น ไม่ใช่ติดอยู่ในตารางของตัวเอง
+
+            &:first-child { border-top-left-radius: var(--bsf-radius-sm); }
+            &:last-child { border-top-right-radius: var(--bsf-radius-sm); }
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+        }
+
+        td.is-zero {
+            color: var(--bsf-faint);
+        }
+
+        // ช่อง Δ ในตาราง (deltaClass) — เดิมมีสีเฉพาะใน KPI band ทำให้
+        // คอลัมน์เทียบงวดก่อนของ Statements/Financial Ratios ติดคลาสแต่ไม่มีสี
+        td.is-up { color: var(--bsf-good); }
+        td.is-down { color: var(--bsf-risk); }
+
+        tr.o_bsf_row_click {
+            cursor: pointer;
+
+            &:hover td {
+                background: color-mix(in srgb, var(--bsf-primary) 8%, transparent);
+                color: var(--bsf-ink);
+            }
+        }
+
+        td.is-alert {
+            color: var(--bsf-risk);
+            font-weight: 700;
+        }
+
+        tr.is-alert td:first-child {
+            color: var(--bsf-risk);
+        }
+
+        // แท็บ Forecast: คอลัมน์ "หลังจากนี้" (นอกช่วงพยากรณ์) และแถวชั้นที่ 2
+        // (งานขายถ่วงน้ำหนัก) ต้องอ่านออกทันทีว่าไม่ใช่ตัวเลขระดับเดียวกับที่เหลือ
+        th.is-tail,
+        td.is-tail {
+            background: color-mix(in srgb, var(--bsf-muted) 10%, transparent);
+        }
+
+        td.is-total {
+            font-weight: 700;
+            color: var(--bsf-ink);
+            border-left: 1px solid var(--bsf-border);
+        }
+
+        // คอลัมน์ที่เป็นข้อความ (ชื่อดีล/ลูกค้า/ขั้น) — ตารางนี้ชิดขวาโดย
+        // ค่าตั้งต้นเพราะส่วนใหญ่เป็นตัวเลข ข้อความชิดขวาอ่านยาก
+        th.o_bsf_txt,
+        td.o_bsf_txt {
+            text-align: left;
+        }
+
+        td.o_bsf_layer2 {
+            color: var(--bsf-muted);
+            font-style: italic;
+        }
+
+        tfoot td {
+            font-weight: 700;
+            color: var(--bsf-ink);
+        }
+    }
+
+    .o_bsf_scroll_x {
+        overflow-x: auto;
+    }
+
+    // ================= compare (BI) =================
+    .o_bsf_cmpbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        label {
+            margin: 0 0 0 6px;
+            color: var(--bsf-muted);
+            font-size: var(--bsf-fs-sm);
+            font-weight: 600;
+
+            &:first-child { margin-left: 0; }
+        }
+    }
+
+    .o_bsf_chipwrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .o_bsf_metricchip {
+        border: 1px solid var(--bsf-border);
+        background: var(--bsf-surface-2);
+        color: var(--bsf-ink-soft);
+        border-radius: 999px;
+        padding: 3px 12px;
+        font-size: var(--bsf-fs-xs);
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover { color: var(--bsf-primary); }
+
+        &.active {
+            background: var(--bsf-grad);
+            border-color: transparent;
+            color: #fff;
+            font-weight: 700;
+        }
+    }
+
+    .o_bsf_cmptable {
+        // หัวข้อกลุ่ม (งบกำไรขาดทุน / ฐานะการเงิน / อัตราส่วน)
+        tr.o_bsf_cmpsec td {
+            background: var(--bsf-surface-2);
+            color: var(--bsf-ink);
+            text-align: left;
+        }
+
+        .sec_sub {
+            color: var(--bsf-muted);
+            font-weight: 400;
+            font-size: var(--bsf-fs-xs);
+            margin-left: 8px;
+        }
+
+        // คอลัมน์งวดที่เลือกอยู่ — เน้นให้ตาหยุดก่อนคอลัมน์ย้อนหลัง
+        th.is-current,
+        td.is-current {
+            background: color-mix(in srgb, var(--bsf-primary) 7%, transparent);
+            color: var(--bsf-ink);
+        }
+
+        tr.is-picked td {
+            box-shadow: inset 0 -2px 0 var(--bsf-primary);
+        }
+
+        // บรรทัดสรุปของงบ waterfall (กำไรขั้นต้น / EBITDA / รวมสินทรัพย์ ฯลฯ)
+        tr.o_bsf_cmptot td {
+            font-weight: 700;
+            border-top: 1px solid var(--bsf-border);
+            background: color-mix(in srgb, var(--bsf-surface-2) 55%, transparent);
+        }
+
+        // บรรทัดย่อยของงบดุลย่อเข้าใต้หมวดหมุนเวียน/ไม่หมุนเวียน
+        tr.o_bsf_bs_ca td:first-child,
+        tr.o_bsf_bs_nca td:first-child,
+        tr.o_bsf_bs_cl td:first-child,
+        tr.o_bsf_bs_ncl td:first-child,
+        tr.o_bsf_bs_eq td:first-child {
+            padding-left: 16px;
+        }
+
+        .cell_delta {
+            font-size: var(--bsf-fs-xs);
+            font-weight: 600;
+
+            &.is-flat { color: var(--bsf-faint); }
+            &.is-up { color: var(--bsf-good); }
+            &.is-down { color: var(--bsf-risk); }
+        }
+
+        .is-faint { color: var(--bsf-faint); }
+
+        // ================= แท็บช่องทางขาย =================
+        // แถวย่อยของงบ (สาขา / ประเภทต้นทุน) — ย่อหน้าให้เห็นว่าอยู่ใต้บรรทัดแม่
+        tr.o_bsf_chn_sub td {
+            color: var(--bsf-muted);
+            font-size: var(--bsf-fs-xs);
+
+            &:first-child { padding-left: 26px; }
+        }
+
+        // บรรทัดอัตราส่วน (% ของรายได้) — เป็นตัวชี้วัด ไม่ใช่ยอดเงิน
+        tr.o_bsf_chn_pct td {
+            color: var(--bsf-primary);
+            font-style: italic;
+        }
+    }
+
+    // ================= charts =================
+    .o_bsf_chart {
+        width: 100%;
+        height: auto;
+
+        .grid_line {
+            stroke: var(--bsf-line);
+            stroke-width: 1;
+        }
+
+        .grid_text {
+            fill: var(--bsf-muted);
+            font-size: 11.5px;
+        }
+
+        // บรรทัดที่สองใต้ป้ายแกน X (วันที่เริ่มสัปดาห์) — เบากว่าป้ายหลัก
+        .grid_sub {
+            fill: var(--bsf-muted);
+            font-size: 9.5px;
+            opacity: 0.75;
+        }
+
+        .line_actual {
+            stroke: var(--bsf-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .line_forecast {
+            stroke: var(--bsf-primary);
+            stroke-width: 2;
+            stroke-dasharray: 5 4;
+            fill: none;
+            opacity: .85;
+        }
+
+        .line_min {
+            stroke: var(--bsf-risk);
+            stroke-width: 1.5;
+            stroke-dasharray: 4 4;
+        }
+
+        // Operating buffer (แท็บ Cash & Liquidity) — เทากว่า/บางกว่า line_min
+        // จงใจ: buffer เป็นเป้าหมายเชิงบวก ไม่ใช่เส้นเตือนอันตรายแบบ min cash
+        .line_buffer {
+            stroke: var(--bsf-neutral);
+            stroke-width: 1.5;
+            stroke-dasharray: 2 3;
+            opacity: .8;
+        }
+
+        .line_before {
+            stroke: var(--bsf-good);
+            stroke-width: 2;
+            stroke-dasharray: 5 4;
+            fill: none;
+        }
+
+        .pt {
+            fill: var(--bsf-primary);
+
+            &.is-below {
+                fill: var(--bsf-risk);
+            }
+        }
+
+        .bar {
+            fill: var(--bsf-c1);
+            opacity: .9;
+            rx: 3;
+        }
+
+        .diag {
+            stroke: var(--bsf-faint);
+            stroke-dasharray: 4 4;
+            stroke-width: 1;
+        }
+
+        .bubble {
+            fill: var(--bsf-primary);
+            opacity: .55;
+            stroke: var(--bsf-primary);
+            cursor: pointer;
+
+            &.is-risk {
+                fill: var(--bsf-risk);
+                stroke: var(--bsf-risk);
+            }
+        }
+    }
+
+    // ================= funnel =================
+    .o_bsf_funnel {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+
+        .f_stage {
+            background: var(--bsf-grad-soft);
+            border: 1px solid var(--bsf-border);
+            border-top: 3px solid var(--f-accent, var(--bsf-c1));
+            border-radius: var(--bsf-radius);
+            padding: 13px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: box-shadow .14s ease, transform .14s ease;
+
+            &:nth-child(6n + 2) { --f-accent: var(--bsf-c2); }
+            &:nth-child(6n + 3) { --f-accent: var(--bsf-c3); }
+            &:nth-child(6n + 4) { --f-accent: var(--bsf-c4); }
+            &:nth-child(6n + 5) { --f-accent: var(--bsf-c5); }
+            &:nth-child(6n)     { --f-accent: var(--bsf-c6); }
+
+            &:hover {
+                box-shadow: var(--bsf-shadow-hover);
+                transform: translateY(-1px);
+            }
+
+            .f_label {
+                display: block;
+                font-size: var(--bsf-fs-sm);
+                font-weight: 600;
+                color: var(--bsf-muted);
+            }
+
+            .f_value {
+                display: block;
+                font-size: var(--bsf-fs-kpi-sm);
+                font-weight: 800;
+                letter-spacing: -.4px;
+                color: var(--bsf-ink);
+            }
+
+            .f_conv {
+                font-size: var(--bsf-fs-sm);
+                font-weight: 600;
+                color: var(--bsf-good);
+            }
+        }
+    }
+
+    // ================= chips / alerts =================
+    .o_bsf_chip {
+        display: inline-block;
+        border-radius: 999px;
+        font-size: var(--bsf-fs-xs);
+        font-weight: 700;
+        padding: 3px 12px;
+        color: #0b1220;
+    }
+
+    // SAP MessageStrip: พื้นจาง ขอบบางรอบด้าน และแถบสีหนาด้านซ้าย
+    .o_bsf_alertcard,
+    .o_bsf_okcard {
+        border: 1px solid var(--bsf-border);
+        border-radius: var(--bsf-radius-sm);
+        padding: 10px 14px;
+    }
+
+    .o_bsf_alertcard {
+        border-left: 4px solid var(--bsf-risk);
+        background: color-mix(in srgb, var(--bsf-risk) 8%, transparent);
+
+        b {
+            color: var(--bsf-risk);
+        }
+
+        .a_big {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--bsf-risk);
+        }
+    }
+
+    .o_bsf_okcard {
+        border-left: 4px solid var(--bsf-good);
+        background: color-mix(in srgb, var(--bsf-good) 8%, transparent);
+
+        b {
+            color: var(--bsf-good);
+        }
+    }
+
+    // ================= heatmap =================
+    // ตารางกินความกว้างการ์ดเต็ม (เดิมล็อก 460px แล้วเหลือที่ว่างครึ่งการ์ด
+    // ทั้งตอนปกติและตอนกางเต็มจอ) — ขนาดช่องคุมด้วย aspect-ratio อย่างเดียว
+    .o_bsf_heatmap {
+        display: grid;
+        grid-template-columns: auto repeat(5, 1fr);
+        gap: 4px;
+        width: 100%;
+
+        .h_axis {
+            font-size: var(--bsf-fs-xs);
+            color: var(--bsf-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .h_cell {
+            aspect-ratio: 1.6;
+            cursor: pointer;
+            border-radius: var(--bsf-radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: var(--bsf-fs-md);
+            color: rgba(255, 255, 255, .95);
+            background: var(--bsf-surface-2);
+
+            &:hover {
+                outline: 2px solid var(--bsf-border);
+                outline-offset: 1px;
+            }
+        }
+    }
+
+    // ป้ายแกน + คำอธิบายสี — ไม่มีสองอย่างนี้ ตัวเลขในช่องอ่านไม่ออกว่าหมายถึงอะไร
+    .o_bsf_heat_wrap {
+        display: flex;
+        align-items: stretch;
+        gap: 8px;
+
+        .h_ytitle {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            text-align: center;
+            font-size: var(--bsf-fs-xs);
+            color: var(--bsf-muted);
+            padding-bottom: 20px;   // เว้นแถวป้าย L1..L5 ด้านล่าง
+        }
+
+        .o_bsf_heatmap {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    .o_bsf_heat_foot {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        margin-top: 10px;
+        font-size: var(--bsf-fs-xs);
+        color: var(--bsf-muted);
+
+        .h_xtitle {
+            margin-inline-start: auto;
+        }
+
+        .h_legend {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+
+            i {
+                width: 12px;
+                height: 12px;
+                border-radius: 3px;
+                display: inline-block;
+            }
+        }
+    }
+
+    // ตอนกางเต็มจอ ช่องไม่ควรบานจนเกินครึ่งจอ — ให้เพดานเท่ากราฟแล้วจัดกลาง
+    .o_bsf_card.o_bsf_zoomed .o_bsf_heat_wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    // ================= Risk & Scenarios (แท็บ Risk) =================
+    // แถบหัวแท็บ: ชื่อจอซ้าย ตัวเลือกมุมมองขวา (scenario / เทียบกับ / ช่วงเวลา /
+    // หน่วยเงิน) — scenario ยิงเซิร์ฟเวอร์ใหม่ ที่เหลือสลับบนจอล้วน ๆ
+    .o_bsf_riskbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+
+        .r_title {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+
+            b {
+                font-size: var(--bsf-fs-xl);
+                font-weight: 800;
+                letter-spacing: -.3px;
+            }
+
+            span {
+                font-size: var(--bsf-fs-sm);
+                color: var(--bsf-muted);
+            }
+        }
+
+        .r_controls {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-inline-start: auto;
+
+            label {
+                margin: 0;
+                color: var(--bsf-muted);
+                font-size: var(--bsf-fs-sm);
+                font-weight: 600;
+            }
+        }
+    }
+
+    // การ์ดสมมติฐาน — ไอคอน + ชื่อ EN/TH ซ้าย, ตัวเลขที่ปรับขวา
+    .o_bsf_assump {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+
+        .a_tile {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border: 1px solid var(--bsf-border);
+            border-radius: var(--bsf-radius-sm);
+            background: var(--bsf-surface-2);
+
+            .a_icon {
+                font-size: 18px;
+                color: var(--bsf-primary);
+                width: 22px;
+                text-align: center;
+            }
+
+            .a_body {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                flex: 1;
+            }
+
+            // ชื่อยาว ("Project Installation Delay") ต้องขึ้นบรรทัดใหม่ได้
+            // การตัดด้วย ellipsis ทำให้อ่านไม่ออกว่าเป็นสมมติฐานตัวไหน
+            .a_label {
+                font-size: var(--bsf-fs-sm);
+                font-weight: 700;
+                line-height: 1.25;
+                color: var(--bsf-ink);
+            }
+
+            .a_sub {
+                font-size: var(--bsf-fs-xs);
+                color: var(--bsf-muted);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .a_value {
+                text-align: right;
+                white-space: nowrap;
+
+                b {
+                    font-size: 20px;
+                    font-weight: 800;
+                    letter-spacing: -.4px;
+                    color: var(--bsf-ink);
+                }
+
+                em {
+                    font-style: normal;
+                    font-size: var(--bsf-fs-xs);
+                    color: var(--bsf-muted);
+                    margin-left: 3px;
+                }
+
+                // ไม่มีการปรับ (เท่ากับตัวที่เอาไปเทียบ) — จางลงให้เห็นทันที
+                &.is-flat b { color: var(--bsf-faint); }
+            }
+
+            .a_note {
+                position: absolute;
+                right: 14px;
+                bottom: 3px;
+                font-size: var(--bsf-fs-xs);
+                color: var(--bsf-faint);
+            }
+        }
+    }
+
+    // การ์ดผลลัพธ์ 3 ใบ — ตัวเลขใหญ่ + ค่าอ้างอิงของ scenario ที่เอาไปเทียบ
+    .o_bsf_outcome {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+
+        .o_tile {
+            border: 1px solid var(--bsf-border);
+            border-radius: var(--bsf-radius);
+            background: var(--bsf-surface);
+            box-shadow: var(--bsf-shadow);
+            padding: 14px 16px 12px;
+
+            .o_head {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 8px;
+
+                i {
+                    font-size: 20px;
+                    color: var(--bsf-primary);
+                }
+
+                .o_label {
+                    display: block;
+                    font-size: var(--bsf-fs-sm);
+                    font-weight: 700;
+                    color: var(--bsf-ink);
+                }
+
+                .o_sub {
+                    display: block;
+                    font-size: var(--bsf-fs-xs);
+                    color: var(--bsf-muted);
+                }
+            }
+
+            .o_value {
+                font-size: var(--bsf-fs-kpi);
+                font-weight: 800;
+                letter-spacing: -.6px;
+                line-height: 1.1;
+                color: var(--bsf-ink);
+            }
+
+            .o_unit {
+                font-size: var(--bsf-fs-sm);
+                color: var(--bsf-muted);
+                margin-left: 6px;
+            }
+
+            .o_foot {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid var(--bsf-line);
+                font-size: var(--bsf-fs-sm);
+                color: var(--bsf-muted);
+
+                .o_ref { flex: 1; }
+
+                .o_delta {
+                    font-weight: 700;
+
+                    &.is-up { color: var(--bsf-good); }
+                    &.is-down { color: var(--bsf-risk); }
+                    &.is-flat { color: var(--bsf-muted); }
+                }
+            }
+
+            .o_note {
+                display: block;
+                margin-top: 4px;
+                font-size: var(--bsf-fs-xs);
+                color: var(--bsf-faint);
+            }
+        }
+    }
+
+    // ตอร์นาโด: แท่งสองข้างของเส้นศูนย์ — ซ้ายลบ (แดง) ขวาบวก (teal)
+    .o_bsf_tornado {
+        .grid_line.is-zero {
+            stroke: var(--bsf-muted);
+            stroke-dasharray: 4 3;
+        }
+
+        .t_label {
+            fill: var(--bsf-ink-soft);
+            font-size: var(--bsf-fs-sm);
+        }
+
+        .t_neg { fill: var(--bsf-risk); }
+        .t_pos { fill: var(--bsf-c3); }
+
+        .t_value {
+            font-size: var(--bsf-fs-xs);
+            font-weight: 700;
+
+            &.is-neg { fill: var(--bsf-risk); }
+            &.is-pos { fill: var(--bsf-c3); }
+        }
+    }
+
+    // แมทริกซ์ความเสี่ยง (โครงการ × BU หรือ × หมวด) — คะแนนอยู่ในวงกลมสี
+    .o_bsf_matrix {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 4px;
+        font-size: var(--bsf-fs-sm);
+
+        thead th {
+            font-size: var(--bsf-fs-xs);
+            font-weight: 700;
+            color: var(--bsf-muted);
+            text-align: center;
+            padding: 2px 4px;
+            white-space: nowrap;
+        }
+
+        tbody th {
+            font-weight: 600;
+            color: var(--bsf-ink-soft);
+            text-align: left;
+            padding: 4px 8px 4px 0;
+            max-width: 190px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        thead th:first-child,
+        tbody th:first-child {
+            text-align: left;
+        }
+
+        td {
+            background: var(--bsf-surface-2);
+            border-radius: var(--bsf-radius-sm);
+            text-align: center;
+            height: 34px;
+            cursor: pointer;
+
+            &:hover {
+                outline: 2px solid var(--bsf-border);
+            }
+        }
+
+        .m_dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-weight: 800;
+            font-size: var(--bsf-fs-xs);
+            color: #fff;
+        }
+    }
+
+    // ลำดับความสำคัญในตาราง Early-Warning + จุดสถานะ
+    .o_bsf_rank {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        font-size: var(--bsf-fs-xs);
+        font-weight: 800;
+        color: #fff;
+    }
+
+    // คอลัมน์ข้อความยาว (Early-Warning Indicator) — ปล่อยให้ตัดบรรทัดได้
+    // ไม่งั้นทั้งตารางยาวเกินการ์ดแล้วคอลัมน์สถานะหลุดออกนอกจอ
+    .o_bsf_table th.o_bsf_wrap,
+    .o_bsf_table td.o_bsf_wrap {
+        white-space: normal;
+        min-width: 220px;
+        max-width: 420px;
+    }
+
+    .o_bsf_table i.dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
+    // ================= budget utilization meter (แท็บ Controlling) =================
+    // หลอดตัดที่ 100% เสมอ ส่วนที่เกินสื่อด้วย "สี" กับตัวเลข ไม่ใช่ความยาว
+    // (หลอดยาวทะลุคอลัมน์อ่านยากกว่าเดิม)
+    .o_bsf_meter {
+        display: inline-block;
+        vertical-align: middle;
+        width: 84px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--bsf-surface-2);
+        overflow: hidden;
+
+        span {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+        }
+    }
+
+    .o_bsf_meter_label {
+        margin-left: 8px;
+        font-size: var(--bsf-fs-sm);
+        font-weight: 700;
+        vertical-align: middle;
+    }
+
+    // ================= aging bar =================
+    .o_bsf_stack {
+        display: flex;
+        height: 20px;
+        border-radius: 999px;
+        overflow: hidden;
+        margin: 8px 0;
+
+        span {
+            display: block;
+            height: 100%;
+        }
+    }
+
+    .o_bsf_legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: var(--bsf-fs-xs);
+        font-weight: 600;
+        color: var(--bsf-muted);
+
+        i.dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+    }
+
+    // ================= AI =================
+    .o_bsf_ai_card {
+        border-left: 4px solid var(--bsf-accent);
+        background: var(--bsf-grad-soft), var(--bsf-surface);
+        margin-bottom: 2px;
+
+        .ai_head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            b {
+                color: var(--bsf-accent);
+                font-size: var(--bsf-fs-lg);
+            }
+        }
+
+        .ai_hint {
+            font-size: var(--bsf-fs-sm);
+            color: var(--bsf-muted);
+        }
+
+        .ai_btn {
+            color: var(--bsf-accent);
+            border-color: var(--bsf-accent);
+
+            &:disabled {
+                opacity: .5;
+                cursor: default;
+            }
+        }
+
+        .ai_body {
+            margin-top: 8px;
+        }
+
+        .ai_summary {
+            color: var(--bsf-ink);
+            margin: 0 0 6px;
+        }
+
+        .ai_insights {
+            margin: 0 0 8px;
+            padding-left: 18px;
+            color: var(--bsf-ink-soft);
+
+            li {
+                margin-bottom: 2px;
+            }
+        }
+
+        .ai_actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+
+            .ai_action {
+                background: var(--bsf-accent);
+                cursor: help;
+            }
+        }
+    }
+
+    .o_bsf_chat {
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+
+        .chat_messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 6px 2px;
+            max-height: 480px;
+        }
+
+        .chat_bubble {
+            max-width: 85%;
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-size: var(--bsf-fs-md);
+            white-space: pre-wrap;
+
+            &.is-user {
+                align-self: flex-end;
+                background: var(--bsf-grad);
+                color: #fff;
+            }
+
+            &.is-assistant {
+                align-self: flex-start;
+                background: var(--bsf-surface-2);
+                border: 1px solid var(--bsf-border);
+                color: var(--bsf-ink);
+            }
+        }
+
+        .chat_suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 6px 0;
+
+            .ai_sugg {
+                background: var(--bsf-surface-2);
+                color: var(--bsf-primary);
+                border: 1px solid var(--bsf-border);
+                cursor: pointer;
+                font-weight: 400;
+            }
+        }
+
+        .chat_input {
+            display: flex;
+            gap: 6px;
+            padding-top: 8px;
+            border-top: 1px solid var(--bsf-border);
+
+            textarea {
+                flex: 1;
+                background: var(--bsf-surface-2);
+                color: var(--bsf-ink);
+                border: 1px solid var(--bsf-border);
+                border-radius: 8px;
+                padding: 8px 10px;
+                resize: none;
+
+                &:focus {
+                    outline: none;
+                    border-color: var(--bsf-primary);
+                }
+            }
+        }
+    }
+
+    .o_bsf_report_view {
+        max-height: 560px;
+        overflow-y: auto;
+        color: var(--bsf-ink-soft);
+        font-size: var(--bsf-fs-md);
+
+        .rv_h1 {
+            font-size: 19px;
+            font-weight: 800;
+            color: var(--bsf-accent);
+            margin: 14px 0 7px;
+        }
+
+        .rv_h2 {
+            font-size: var(--bsf-fs-lg);
+            font-weight: 700;
+            color: var(--bsf-ink);
+            margin: 11px 0 5px;
+        }
+
+        .rv_li {
+            padding-left: 14px;
+            margin-bottom: 2px;
+        }
+
+        .rv_p {
+            margin: 0 0 6px;
+        }
+    }
+
+    .o_bsf_table tr.is-active-row td {
+        background: var(--bsf-surface-2);
+        color: var(--bsf-accent);
+    }
+
+    .o_bsf_loading {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        color: var(--bsf-muted);
+        font-size: var(--bsf-fs-md);
+
+        i {
+            font-size: 30px;
+            color: var(--bsf-primary);
+        }
+    }
+
+    .o_bsf_empty_note {
+        color: var(--bsf-muted);
+        font-size: var(--bsf-fs-sm);
+        padding: 10px 0;
+
+        a {
+            color: var(--bsf-primary);
+            cursor: pointer;
+        }
+    }
+}
+
+// ================= forecast tab =================
+.o_bsf_page {
+    .o_bsf_fcbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .o_bsf_fcpills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .o_bsf_fcpill {
+        border: 1px solid var(--bsf-border);
+        background: transparent;
+        color: var(--bsf-ink-soft);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: var(--bsf-fs-sm);
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--bsf-primary);
+            color: var(--bsf-ink);
+        }
+
+        &.is-active {
+            background: var(--bsf-grad);
+            border-color: transparent;
+            color: #fff;
+        }
+    }
+
+    .o_bsf_fcmeta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--bsf-muted);
+        font-size: var(--bsf-fs-sm);
+
+        a {
+            color: var(--bsf-primary);
+            cursor: pointer;
+        }
+    }
+
+    .o_bsf_fcai {
+        border: 1px solid var(--bsf-primary);
+        background: transparent;
+        color: var(--bsf-primary);
+        border-radius: var(--bsf-radius-sm);
+        padding: 5px 12px;
+        font-size: var(--bsf-fs-sm);
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+            background: color-mix(in srgb, var(--bsf-primary) 12%, transparent);
+        }
+
+        &:disabled {
+            opacity: .6;
+            cursor: default;
+        }
+    }
+}

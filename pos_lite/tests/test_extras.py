@@ -2,6 +2,7 @@
 config, and name_search overrides."""
 
 import uuid
+from unittest.mock import patch
 
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError, ValidationError
@@ -713,6 +714,31 @@ class TestStockCheck(TestAdditionalBase):
         self.assertAlmostEqual(order.amount_total, 110.0, places=2)
         # Cleanup
         self.product_svc.taxes_id = [(5, 0, 0)]
+
+
+class TestStockShortfallGuard(TestAdditionalBase):
+    """A move that reserved fine at action_assign() time but ends up unable to
+    fully validate (Odoo pops a backorder wizard) must never be silently
+    accepted — see pos_order.py:_process_stock_picking."""
+
+    def test_backorder_shortfall_raises_and_rolls_back_invoice(self):
+        order = self._draft_order([(self.product_storable.id, 1, 200.0)])
+
+        def fake_button_validate(picking_self):
+            for move in picking_self.move_ids_without_package:
+                if move.product_id.type != 'service':
+                    move.quantity = 0.0
+            return {'res_model': 'stock.backorder.confirmation', 'context': {}}
+
+        with patch(
+            'odoo.addons.stock.models.stock_picking.Picking.button_validate',
+            fake_button_validate,
+        ):
+            with self.assertRaises(UserError):
+                order.action_process_order()
+
+        self.assertNotEqual(order.state, 'paid')
+        self.assertFalse(order.invoice_id)
 
 
 # ─── Quick Pay Edge Cases ───────────────────────────────────

@@ -11,10 +11,11 @@
             </div>
             <div t-elif="!props.state.cardData" class="o_sc_panel o_sc_empty">
                 <i aria-hidden="true" class="fa fa-cube fa-3x mb-3"/><h2>ดูความเคลื่อนไหวของสินค้า</h2>
-                <p>เลือกสินค้า ช่วงวันที่ และคลังสินค้า แล้วกดค้นหา</p>
+                <p>เลือกสินค้า หรือ คลังสินค้า/โลเคชั่น พร้อมช่วงวันที่ แล้วกดค้นหา</p>
             </div>
             <t t-else="">
-                <section class="o_product_header o_sc_panel">
+                <details t-if="props.state.product" class="o_product_header o_sc_panel">
+                    <summary>ข้อมูลสินค้า · <t t-esc="props.state.product.display_name"/> <span class="ms-2" t-esc="props.state.scopeLabel"/></summary>
                     <div class="d-flex justify-content-between align-items-start gap-3">
                         <div>
                             <div class="d-flex align-items-center gap-3 mb-1">
@@ -35,67 +36,110 @@
                         <span>หมวดสินค้า : <t t-esc="props.state.product.categ_id ? props.state.product.categ_id[1] : '—'"/></span>
                         <span class="o_sc_scope">สถานที่จัดเก็บ : <t t-esc="props.state.scopeLabel"/></span>
                     </div>
+                </details>
+                <section t-else="" class="o_product_header o_sc_panel">
+                    <h2>คลังสินค้า/โลเคชั่น : <t t-esc="props.state.scopeLabel"/></h2>
+                    <div class="o_sc_product_meta">
+                        <span>พบ <t t-esc="props.state.cardData.total_count"/> รายการเคลื่อนไหว (ทุกสินค้า)</span>
+                    </div>
                 </section>
-                <section class="o_sc_summary_grid" aria-label="สรุปจำนวนสินค้า">
+                <section t-if="props.state.product" class="o_sc_summary_grid" aria-label="สรุปจำนวนสินค้า">
                     <div t-foreach="summaryCards" t-as="card" t-key="card.key" class="o_summary_card" t-att-class="'o_card_' + card.key">
                         <div class="o_sc_card_icon"><i t-att-class="'fa ' + card.icon" aria-hidden="true"/></div>
-                        <div><div class="o_sc_card_label" t-esc="card.label"/><div class="o_sc_card_value" t-esc="fmt(card.value)"/><div class="o_sc_card_uom" t-esc="uom"/>
-                            <div t-if="card.valueBaht !== undefined" class="o_sc_card_value_baht" t-esc="fmt(card.valueBaht) + ' บาท'"/>
+                        <div><div class="o_sc_card_label" t-esc="card.label"/>
+                            <t t-if="card.key === 'opening' and card.valueBaht !== undefined">
+                                <div class="o_sc_card_value"><t t-esc="fmt(card.valueBaht)"/> <small>บาท</small></div>
+                                <div class="o_sc_card_value_baht"><t t-esc="fmt(card.value)"/> <t t-esc="uom"/></div>
+                            </t>
+                            <t t-else="">
+                                <div class="o_sc_card_value"><t t-esc="fmt(card.value)"/> <small t-esc="uom"/></div>
+                                <div t-if="card.valueBaht !== undefined" class="o_sc_card_value_baht" t-esc="fmt(card.valueBaht) + ' บาท'"/>
+                            </t>
                         </div>
                     </div>
                 </section>
                 <section class="o_sc_transactions o_sc_panel">
                     <div class="o_sc_transactions_header">
-                        <h2><i class="fa fa-file-text-o me-3" aria-hidden="true"/>รายการเคลื่อนไหว (Transactions)</h2>
-                        <label class="o_sc_page_size">แสดง
-                            <select class="form-select" t-on-change="onPageSizeChange" aria-label="จำนวนรายการต่อหน้า">
-                                <option t-foreach="[20, 50, 100]" t-as="size" t-key="size" t-att-value="size"
-                                        t-att-selected="props.state.pageSize === size"><t t-esc="size"/></option>
-                            </select>รายการ
-                        </label>
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="fa fa-file-text-o o_sc_transactions_icon" aria-hidden="true"/>
+                            <div><h2>รายการเคลื่อนไหว (Transactions)</h2>
+                                <p>พบ <t t-esc="props.state.cardData.total_count"/> รายการเคลื่อนไหว
+                                    <span t-if="!isMulti"> (เรียงจากวันที่เก่าสุด)</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="o_sc_view_switch" role="group" aria-label="รูปแบบรายการ">
+                            <button class="btn" t-att-class="local.view === 'table' ? 'btn-primary' : 'o_sc_outline'"
+                                t-att-aria-pressed="local.view === 'table' ? 'true' : 'false'" t-on-click="() => this.local.view = 'table'"><i class="fa fa-table me-2" aria-hidden="true"/>ตาราง</button>
+                            <button class="btn" t-att-class="local.view === 'graph' ? 'btn-primary' : 'o_sc_outline'"
+                                t-att-aria-pressed="local.view === 'graph' ? 'true' : 'false'" t-on-click="() => this.local.view = 'graph'"><i class="fa fa-bar-chart me-2" aria-hidden="true"/>กราฟ</button>
+                        </div>
                     </div>
                     <div t-if="!props.state.cardData.lines.length" class="o_sc_empty">
                         <i aria-hidden="true" class="fa fa-inbox fa-2x mb-3"/><h3>ไม่พบรายการเคลื่อนไหว</h3>
                         <p><t t-esc="props.state.dateFrom"/> – <t t-esc="props.state.dateTo"/></p>
                     </div>
+                    <div t-elif="local.view === 'graph'" class="o_sc_graph">
+                        <p class="o_sc_graph_legend">จำนวนรับเข้า / จ่ายออก · รายการในหน้าปัจจุบัน <t t-if="!isMulti">(<t t-esc="uom"/>)</t></p>
+                        <div t-foreach="graphRows" t-as="row" t-key="row.seq" class="o_sc_graph_row">
+                            <div class="o_sc_graph_label"><strong t-esc="row.doc_number or 'ยอดยกมา'"/><small t-esc="row.date"/><small t-if="isMulti" t-esc="row.product_name"/></div>
+                            <div class="o_sc_graph_tracks">
+                                <div class="o_sc_graph_track"><span class="is-in" t-att-style="'width:' + row.inWidth + '%'"/></div>
+                                <div class="o_sc_graph_track"><span class="is-out" t-att-style="'width:' + row.outWidth + '%'"/></div>
+                            </div>
+                            <div class="o_sc_graph_numbers"><span class="o_sc_qty_in">รับเข้า <t t-esc="fmt(row['in'])"/></span><span class="o_sc_qty_out">จ่ายออก <t t-esc="fmt(row['out'])"/></span></div>
+                        </div>
+                    </div>
                     <div t-else="" class="o_sc_table_scroll" tabindex="0" aria-label="รายการเคลื่อนไหวสินค้า">
                         <table class="table o_stock_card_table">
                             <thead><tr>
-                                <th scope="col">#</th><th scope="col">วันที่ / เวลา</th><th scope="col">เอกสาร</th><th scope="col">อ้างอิง</th>
-                                <th scope="col">ประเภท</th><th scope="col" class="text-end">รับ (เข้า)</th><th scope="col" class="text-end">จ่าย (ออก)</th>
+                                <th scope="col">#</th>
+                                <th t-if="isMulti" scope="col">รหัส/ชื่อสินค้า</th>
+                                <th scope="col">วันที่ / เวลา</th><th scope="col">เอกสาร</th><th scope="col">อ้างอิง</th>
+                                <th scope="col">ประเภท</th><th scope="col">รายละเอียด / สถานที่จัดเก็บ</th>
+                                <th t-if="isMulti" scope="col" class="text-end">ยอดยกมา</th>
+                                <th scope="col" class="text-end">รับ (เข้า)</th><th scope="col" class="text-end">จ่าย (ออก)</th>
                                 <th scope="col" class="text-end">ยอดคงเหลือ</th>
                                 <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่าสินค้า (บาท)</th>
                                 <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่ารับ (บาท)</th>
                                 <th t-if="props.state.cardData.can_see_value" scope="col" class="text-end">มูลค่าจ่าย (บาท)</th>
-                                <th scope="col">สถานที่จัดเก็บ</th>
+                                <th scope="col"><span class="visually-hidden">เปิดเอกสาร</span></th>
                             </tr></thead>
                             <tbody>
                                 <tr t-foreach="props.state.cardData.lines" t-as="line" t-key="line.seq">
-                                    <td t-esc="line.seq"/><td class="text-nowrap" t-esc="line.date"/>
+                                    <td t-esc="line.seq"/>
+                                    <td t-if="isMulti" t-esc="(line.product_default_code ? line.product_default_code + ' - ' : '') + (line.product_name or '')"/>
+                                    <td class="text-nowrap" t-esc="line.date"/>
                                     <td><button t-if="line.res_model and line.res_id" class="btn btn-link o_sc_doc_link" t-on-click="() => this.onDocClick(line)" t-esc="line.doc_number"/>
                                         <span t-else="" t-esc="line.doc_number or '—'"/></td>
-                                    <td t-esc="line.reference or '—'"/>
-                                    <td><span class="o_sc_movement_icon" t-att-class="line['out'] ? 'is-out' : 'is-in'"><i aria-hidden="true" t-att-class="line['out'] ? 'fa fa-sign-out' : 'fa fa-sign-in'"/></span><t t-esc="line.doc_type or (line['out'] ? 'จ่ายสินค้า' : 'รับสินค้า')"/></td>
+                                    <td t-esc="line.reference or line.note or '—'"/>
+                                    <td><span class="o_sc_movement_badge" t-att-class="'is-' + movement(line).kind"><i aria-hidden="true" t-att-class="'fa ' + movement(line).icon"/><t t-esc="movement(line).label"/></span></td>
+                                    <td class="o_sc_line_detail" t-att-title="lineLocation(line)" t-esc="lineLocation(line)"/>
+                                    <td t-if="isMulti" class="text-end" t-esc="fmt(line.opening)"/>
                                     <td class="text-end o_sc_qty_in" t-esc="line['in'] ? fmt(line['in']) : '—'"/>
                                     <td class="text-end o_sc_qty_out" t-esc="line['out'] ? fmt(line['out']) : '—'"/>
                                     <td class="text-end fw-bold" t-esc="fmt(line.balance)"/>
                                     <td t-if="props.state.cardData.can_see_value" class="text-end" t-esc="fmt(line.value)"/>
                                     <td t-if="props.state.cardData.can_see_value" class="text-end o_sc_qty_in" t-esc="line.value_in ? fmt(line.value_in) : '—'"/>
                                     <td t-if="props.state.cardData.can_see_value" class="text-end o_sc_qty_out" t-esc="line.value_out ? fmt(line.value_out) : '—'"/>
-                                    <td t-esc="line.location_name"/>
+                                    <td><button t-if="line.res_model and line.res_id" class="btn o_sc_row_action" t-on-click="() => this.onDocClick(line)" title="เปิดเอกสาร" aria-label="เปิดเอกสาร"><i class="fa fa-external-link" aria-hidden="true"/></button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <footer class="o_sc_pager">
                         <span>แสดง <t t-esc="pageStart"/> – <t t-esc="pageEnd"/> จาก <t t-esc="props.state.cardData.total_count"/> รายการ</span>
+                        <label class="o_sc_page_size">แสดง
+                            <select class="form-select" t-on-change="onPageSizeChange" aria-label="จำนวนรายการต่อหน้า">
+                                <option t-foreach="[20, 50, 100]" t-as="size" t-key="size" t-att-value="size"
+                                    t-att-selected="props.state.pageSize === size"><t t-esc="size"/></option>
+                            </select>รายการ/หน้า
+                        </label>
                         <nav class="d-flex gap-1" aria-label="หน้ารายการ">
-                            <button class="btn" aria-label="หน้าแรก" t-att-disabled="!props.state.cardData.has_prev" t-on-click="() => this.props.onChangePage(0)">«</button>
                             <button class="btn" aria-label="หน้าก่อนหน้า" t-att-disabled="!props.state.cardData.has_prev" t-on-click="() => this.props.onChangePage(props.state.page - 1)">‹</button>
                             <button t-foreach="pages" t-as="page" t-key="page" class="btn" t-att-class="page === props.state.page ? 'btn-primary' : ''"
                                 t-att-aria-current="page === props.state.page ? 'page' : false" t-on-click="() => this.props.onChangePage(page)"><t t-esc="page + 1"/></button>
                             <button class="btn" aria-label="หน้าถัดไป" t-att-disabled="!props.state.cardData.has_next" t-on-click="() => this.props.onChangePage(props.state.page + 1)">›</button>
-                            <button class="btn" aria-label="หน้าสุดท้าย" t-att-disabled="!props.state.cardData.has_next" t-on-click="() => this.props.onChangePage(lastPage)">»</button>
                         </nav>
                     </footer>
                 </section>

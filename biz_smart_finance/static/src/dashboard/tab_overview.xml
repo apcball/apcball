@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biz_smart_finance.TabOverview">
+    <div>
+        <!-- ================= KPI band ================= -->
+        <div class="o_bsf_kpis">
+            <div class="o_bsf_kpi is-click" t-on-click="openRevenue"
+                 title="คลิกดูใบแจ้งหนี้ที่ลงบัญชีปีนี้">
+                <span class="k_label">Revenue YTD <span t-esc="unitLabel"/></span>
+                <b class="k_value"><t t-esc="fmtMoney(ov.kpis.revenue_ytd)"/></b>
+                <span t-attf-class="k_sub {{ deltaClass(ov.kpis.revenue_yoy_pct) }}">
+                    <t t-esc="fmtDelta(ov.kpis.revenue_yoy_pct)"/> YoY
+                </span>
+            </div>
+            <div class="o_bsf_kpi is-click" t-on-click="openPnl"
+                 title="คลิกดูรายการบัญชีรายได้-ค่าใช้จ่ายปีนี้">
+                <span class="k_label">EBITDA YTD</span>
+                <b class="k_value"><t t-esc="fmtMoney(ov.kpis.ebitda_ytd)"/></b>
+                <span t-attf-class="k_sub {{ deltaClass(ov.kpis.ebitda_yoy_pct) }}">
+                    <t t-esc="fmtDelta(ov.kpis.ebitda_yoy_pct)"/> YoY ·
+                    margin <t t-esc="fmtPct(ov.kpis.ebitda_margin_pct)"/>
+                </span>
+            </div>
+            <div class="o_bsf_kpi is-click" t-on-click="openPnl"
+                 title="คลิกดูรายการบัญชีรายได้-ค่าใช้จ่ายปีนี้">
+                <span class="k_label">Net Profit YTD</span>
+                <b class="k_value"><t t-esc="fmtMoney(ov.kpis.net_profit_ytd)"/></b>
+                <span t-attf-class="k_sub {{ deltaClass(ov.kpis.net_profit_yoy_pct) }}">
+                    <t t-esc="fmtDelta(ov.kpis.net_profit_yoy_pct)"/> YoY
+                </span>
+            </div>
+            <div class="o_bsf_kpi is-click" t-on-click="openCash"
+                 title="คลิกดูรายการบัญชีเงินสด/ธนาคาร">
+                <span class="k_label">Cash Balance</span>
+                <b class="k_value"><t t-esc="fmtMoney(ov.kpis.cash_balance)"/></b>
+                <span class="k_sub">บัญชีธนาคาร + เงินสด</span>
+            </div>
+            <div class="o_bsf_kpi is-click" t-on-click="() => this.jump('cash')"
+                 title="ไปแท็บ Cash &amp; Liquidity">
+                <span class="k_label">13-Week Min Cash</span>
+                <b t-attf-class="k_value {{ ov.kpis.min_cash_breach ? 'is-alert' : '' }}">
+                    <t t-esc="fmtMoney(ov.kpis.min_13w)"/>
+                </b>
+                <span class="k_sub">
+                    <t t-esc="ov.kpis.min_13w_label || 'ต่ำสุดใน 13 สัปดาห์'"/>
+                </span>
+            </div>
+            <div class="o_bsf_kpi is-click" t-on-click="openConfig"
+                 title="คลิกดู/ตั้งค่า mapping บัญชีเงินกู้และเป้าหมาย">
+                <span class="k_label">Net Debt / Equity</span>
+                <b class="k_value">
+                    <t t-if="ov.kpis.nde_ratio !== null">
+                        <t t-esc="fmtNum(ov.kpis.nde_ratio, 2)"/><em>x</em>
+                    </t>
+                    <t t-else="">—</t>
+                </b>
+                <span t-attf-class="k_sub {{ ov.kpis.nde_ok ? 'is-up' : '' }}">
+                    <t t-if="ov.kpis.nde_target !== null">
+                        Target &lt; <t t-esc="fmtNum(ov.kpis.nde_target, 2)"/>x
+                    </t>
+                    <t t-elif="!ov.kpis.debt_configured">ยังไม่ map บัญชีเงินกู้</t>
+                </span>
+            </div>
+            <div class="o_bsf_kpi is-click" t-on-click="() => this.jump('statements')"
+                 title="ไปแท็บ งบการเงิน">
+                <span class="k_label">Working Capital <span t-esc="unitLabel"/></span>
+                <b class="k_value">
+                    <t t-if="ov.kpis.working_capital !== null">
+                        <t t-esc="fmtMoney(ov.kpis.working_capital)"/>
+                    </t>
+                    <t t-else="">—</t>
+                </b>
+                <span class="k_sub">สินทรัพย์หมุนเวียน − หนี้สินหมุนเวียน</span>
+            </div>
+            <div class="o_bsf_kpi is-click" t-on-click="() => this.jump('sales')"
+                 title="ไปแท็บ ยอดขาย → เงินสด">
+                <span class="k_label">Cash Conversion Cycle</span>
+                <b class="k_value">
+                    <t t-if="ov.kpis.ccc_days !== null">
+                        <t t-esc="fmtInt(ov.kpis.ccc_days)"/><em>วัน</em>
+                    </t>
+                    <t t-else="">—</t>
+                </b>
+                <span class="k_sub">DSO + DIO − DPO</span>
+            </div>
+        </div>
+
+        <div class="o_bsf_grid">
+            <BsfAiCard tab="'overview'" data="props.data"/>
+
+            <!-- ================= Dimension Control Board ================= -->
+            <section class="o_bsf_card">
+                <div class="c_head">
+                    <b>ภาพรวมทุกมิติ</b>
+                    <span>สถานะแต่ละด้าน — คลิกการ์ดเพื่อเปิดแท็บนั้น</span>
+                </div>
+                <div class="o_bsf_dimboard">
+                    <button class="o_bsf_dim" t-foreach="ov.dimensions" t-as="d" t-key="d.id"
+                            t-att-class="'is-' + d.status"
+                            t-on-click="() => this.jump(d.id)">
+                        <div class="o_bsf_dim_head">
+                            <i t-attf-class="fa {{ d.icon }}"/>
+                            <b t-esc="d.label"/>
+                            <span t-attf-class="o_bsf_dot is-{{ d.status }}"/>
+                        </div>
+                        <div class="o_bsf_dim_val" t-esc="dimValue(d)"/>
+                        <div class="o_bsf_dim_sub" t-if="d.sub" t-esc="d.sub"/>
+                        <div class="o_bsf_dim_note" t-if="d.note" t-esc="d.note"/>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ================= 13-week cash forecast ================= -->
+            <section class="o_bsf_card span8 o_bsf_cash_bi" t-att-class="zoomCls('overview_1')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('overview_1')"
+                        t-att-title="isZoomed('overview_1') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('overview_1') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('overview_1') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>13-Week Cash Forecast</b>
+                    <span>ประมาณการเงินสด 13 สัปดาห์ · <t t-esc="unitLabel"/></span>
+                </div>
+                <div class="o_bsf_cash_bi_metrics">
+                    <div><span>เงินสดตั้งต้น</span><b t-esc="fmtMoney(cashBi.opening)"/></div>
+                    <div><span>เงินสดต่ำสุด</span><b t-att-class="cashBi.alert ? 'is-alert' : ''"
+                         t-esc="fmtMoney(cashBi.minimum)"/></div>
+                    <div><span>ต่ำกว่าเกณฑ์ครั้งแรก</span><b t-esc="cashBi.firstBreach"/></div>
+                    <div t-if="cashBi.alert"><span>ช่องว่างเงินสด</span><b class="is-alert"
+                         t-esc="fmtMoney(cashBi.gap)"/></div>
+                </div>
+                <svg t-att-width="cashChart.width" t-att-height="cashChart.height"
+                     t-attf-viewBox="0 0 {{ cashChart.width }} {{ cashChart.height }}"
+                     preserveAspectRatio="xMidYMid meet" class="o_bsf_chart">
+                    <t t-foreach="cashChart.gridlines" t-as="grid" t-key="grid_index">
+                        <line class="grid_line" t-att-x1="cashChart.padX" t-att-y1="grid.y"
+                              t-att-x2="cashChart.width - 8" t-att-y2="grid.y"/>
+                        <text class="grid_text" t-att-x="cashChart.padX - 6" t-att-y="grid.y + 3"
+                              text-anchor="end"><t t-esc="fmtAxis(grid.v)"/></text>
+                    </t>
+                    <line t-if="cashChart.minY &gt;= 0" class="line_min"
+                          t-att-x1="cashChart.padX" t-att-y1="cashChart.minY"
+                          t-att-x2="cashChart.width - 8" t-att-y2="cashChart.minY"/>
+                    <polyline t-if="cashChart.actualPolyline" class="line_actual"
+                              t-att-points="cashChart.actualPolyline"/>
+                    <polyline t-if="cashChart.forecastPolyline" class="line_forecast"
+                              t-att-points="cashChart.forecastPolyline"/>
+                    <t t-foreach="cashChart.points" t-as="pt" t-key="pt.index">
+                        <circle t-attf-class="pt {{ pt.belowMin ? 'is-below' : '' }}"
+                                t-att-cx="pt.x" t-att-cy="pt.y" r="2.6"/>
+                        <text class="grid_text" t-att-x="pt.x" t-att-y="cashChart.labelY"
+                              t-att-text-anchor="pt.anchor"><t t-esc="pt.label"/></text>
+                        <text t-if="pt.sub" class="grid_sub" t-att-x="pt.x"
+                              t-att-y="cashChart.subY"
+                              t-att-text-anchor="pt.anchor"><t t-esc="pt.sub"/></text>
+                    </t>
+                </svg>
+                <div class="o_bsf_legend">
+                    <span><i class="dot" style="background: var(--bsf-primary);"/>Actual / Forecast</span>
+                    <span><i class="dot" style="background: var(--bsf-risk);"/>Min Cash Line</span>
+                </div>
+            </section>
+
+            <!-- ================= Top risks &amp; early warnings ================= -->
+            <section class="o_bsf_card span4" t-att-class="zoomCls('overview_2')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('overview_2')"
+                        t-att-title="isZoomed('overview_2') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('overview_2') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('overview_2') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Top Risks &amp; Early Warnings</b><span>ความเสี่ยงและสัญญาณเตือน</span>
+                </div>
+                <table class="o_bsf_table">
+                    <tbody>
+                        <tr t-foreach="ov.top_risks" t-as="risk" t-key="risk_index"
+                            class="o_bsf_row_click"
+                            t-on-click="() => this.openDimRisk(risk)">
+                            <td><t t-esc="risk.name"/></td>
+                            <td>
+                                <span class="o_bsf_chip"
+                                      t-attf-style="background: {{ levelColor(risk.level) }};">
+                                    <t t-esc="risk.level === 'high' ? 'High' : (risk.level === 'medium' ? 'Medium' : 'Low')"/>
+                                </span>
+                            </td>
+                        </tr>
+                        <tr t-if="!ov.top_risks.length">
+                            <td colspan="2">ยังไม่มีความเสี่ยง — เพิ่มได้ที่ Risk Register</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- ================= BU performance ================= -->
+            <section class="o_bsf_card" t-att-class="zoomCls('overview_3')">
+                <button class="o_bsf_zoombtn" t-on-click="() => this.toggleZoom('overview_3')"
+                        t-att-title="isZoomed('overview_3') ? 'ย่อกลับ (Esc)' : 'ขยายเต็มจอ'"
+                        t-att-aria-label="isZoomed('overview_3') ? 'ย่อกลับ' : 'ขยายเต็มจอ'">
+                    <i t-attf-class="fa {{ isZoomed('overview_3') ? 'fa-compress' : 'fa-expand' }}"/>
+                </button>
+                <div class="c_head">
+                    <b>Business Unit Performance</b>
+                    <span>ผลงานรายบริษัท/หน่วยธุรกิจ · <t t-esc="unitLabel"/></span>
+                </div>
+                <div class="o_bsf_scroll_x">
+                    <table class="o_bsf_table">
+                        <thead>
+                            <tr>
+                                <th>BU</th>
+                                <th>Revenue YTD</th>
+                                <th>EBITDA</th>
+                                <th>EBITDA Margin</th>
+                                <th>Backlog</th>
+                                <th>Cash</th>
+                                <th>AR</th>
+                                <th>AP</th>
+                                <th>CCC (Days)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="ov.bu_table" t-as="row" t-key="row.company_id"
+                                class="o_bsf_row_click" t-on-click="() => this.openBacklog(row)">
+                                <td><t t-esc="row.name"/></td>
+                                <td t-attf-class="{{ zero(row.revenue_ytd) }}"><t t-esc="fmtMoney(row.revenue_ytd)"/></td>
+                                <td t-attf-class="{{ zero(row.ebitda) }}"><t t-esc="fmtMoney(row.ebitda)"/></td>
+                                <td><t t-esc="fmtPct(row.ebitda_margin_pct)"/></td>
+                                <td t-attf-class="{{ zero(row.backlog) }}"><t t-esc="fmtMoney(row.backlog)"/></td>
+                                <td t-attf-class="{{ zero(row.cash) }}"><t t-esc="fmtMoney(row.cash)"/></td>
+                                <td t-attf-class="{{ zero(row.ar) }}"><t t-esc="fmtMoney(row.ar)"/></td>
+                                <td t-attf-class="{{ zero(row.ap) }}"><t t-esc="fmtMoney(row.ap)"/></td>
+                                <td><t t-esc="fmtInt(row.ccc_days)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+</t>
+
+</templates>

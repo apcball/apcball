@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_bsf_dashboard" model="ir.actions.client">
+        <field name="name">CFO Cockpit</field>
+        <field name="tag">biz_smart_finance.dashboard</field>
+    </record>
+
+    <!-- Monthly Close — เดิมเป็นแท็บใน CFO Cockpit ย้ายมาเป็นเมนูของตัวเอง -->
+    <record id="action_bsf_monthly_close" model="ir.actions.client">
+        <field name="name">Monthly Close</field>
+        <field name="tag">biz_smart_finance.monthly_close</field>
+    </record>
+
+    <!-- root menu — group ซ้ำกับ gate ใน engine (defence in depth) -->
+    <menuitem id="menu_bsf_root" name="Smart Finance"
+              web_icon="biz_smart_finance,static/description/icon.png"
+              sequence="14" groups="biz_smart_finance.group_bsf_user"/>
+
+    <menuitem id="menu_bsf_dashboard" name="CFO Cockpit"
+              parent="menu_bsf_root" action="action_bsf_dashboard"
+              sequence="10" groups="biz_smart_finance.group_bsf_user"/>
+
+    <menuitem id="menu_bsf_monthly_close" name="Monthly Close"
+              parent="menu_bsf_root" action="action_bsf_monthly_close"
+              sequence="20" groups="biz_smart_finance.group_bsf_user"/>
+
+    <menuitem id="menu_bsf_inputs" name="ข้อมูลนำเข้า"
+              parent="menu_bsf_root" sequence="50"
+              groups="biz_smart_finance.group_bsf_manager"/>
+    <menuitem id="menu_bsf_forecast_line" name="Cash Flow Lines"
+              parent="menu_bsf_inputs" action="action_bsf_forecast_line"
+              sequence="10"/>
+    <menuitem id="menu_bsf_deal" name="งานขาย (Pipeline)"
+              parent="menu_bsf_inputs" action="action_bsf_deal"
+              sequence="15"/>
+    <menuitem id="menu_bsf_billing_pattern" name="แบบแผนวางบิล"
+              parent="menu_bsf_inputs" action="action_bsf_billing_pattern"
+              sequence="16"/>
+    <menuitem id="menu_bsf_forecast_snapshot" name="ภาพนิ่งพยากรณ์"
+              parent="menu_bsf_inputs" action="action_bsf_forecast_snapshot"
+              sequence="17"/>
+    <menuitem id="menu_bsf_risk" name="Risk Register"
+              parent="menu_bsf_inputs" action="action_bsf_risk"
+              sequence="20"/>
+    <menuitem id="menu_bsf_vo" name="Variation Orders"
+              parent="menu_bsf_inputs" action="action_bsf_vo"
+              sequence="30"/>
+    <!-- เมนูธนาคาร/วงเงิน/แผนโอน อยู่ใน bsf_bank_views.xml เอง (โหลดหลังไฟล์
+         นี้) เพราะอ้าง action ที่นิยามในไฟล์นั้น — ดูคอมเมนต์ manifest -->
+
+    <menuitem id="menu_bsf_config_root" name="Configuration"
+              parent="menu_bsf_root" sequence="90"
+              groups="biz_smart_finance.group_bsf_manager"/>
+    <menuitem id="menu_bsf_config" name="Settings"
+              parent="menu_bsf_config_root" action="action_bsf_config"
+              sequence="10"/>
+</odoo>

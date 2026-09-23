@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bsf_report_tree" model="ir.ui.view">
+        <field name="name">biz.smart.finance.report.tree</field>
+        <field name="model">biz.smart.finance.report</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state == 'error'" create="false">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="period"/>
+                <field name="company_label"/>
+                <field name="user_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bsf_report_form" model="ir.ui.view">
+        <field name="name">biz.smart.finance.report.form</field>
+        <field name="model">biz.smart.finance.report</field>
+        <field name="arch" type="xml">
+            <form string="AI CFO Report" create="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="period"/>
+                            <field name="company_label"/>
+                        </group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <field name="error_message" invisible="state != 'error'"/>
+                    <notebook>
+                        <page string="เนื้อหา" name="content">
+                            <field name="content" widget="text"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bsf_report" model="ir.actions.act_window">
+        <field name="name">รายงาน AI (CFO Reports)</field>
+        <field name="res_model">biz.smart.finance.report</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีรายงาน AI</p>
+            <p>สร้างจากแท็บ AI Copilot ใน CFO Cockpit</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bsf_ai_reports" name="รายงาน AI"
+              parent="menu_bsf_root" action="action_bsf_report"
+              sequence="20" groups="biz_smart_finance.group_bsf_user"/>
+</odoo>
