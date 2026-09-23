@@ -1,0 +1,43 @@
+# Disposable, RAM-backed QA. No live database, published ports or internet route.
+services:
+  postgres:
+    image: postgres:16
+    pull_policy: never
+    read_only: true
+    mem_limit: 1g
+    shm_size: 128m
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: shopee-qa-only
+      POSTGRES_DB: postgres
+    tmpfs:
+      - /var/lib/postgresql/data:size=768m
+      - /var/run/postgresql:size=16m
+      - /tmp:size=16m
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U odoo -d postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [qa]
+  odoo:
+    image: ${SHOPEE_QA_IMAGE:-odoo_kyld:17}
+    pull_policy: never
+    read_only: true
+    mem_limit: 1200m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: [odoo]
+    environment:
+      PYTHONPATH: /mnt/qa-python
+    volumes:
+      - ${SHOPEE_QA_ADDONS:?Set the isolated addons directory}:/mnt/qa-addons:ro
+      - ${SHOPEE_QA_PYTHON:?Set the QA Python dependency directory}:/mnt/qa-python:ro
+    tmpfs:
+      - /var/lib/odoo:size=128m,uid=101,gid=101
+      - /tmp:size=128m,mode=1777
+    networks: [qa]
+networks:
+  qa:
+    internal: true

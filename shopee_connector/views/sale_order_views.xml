@@ -15,6 +15,17 @@
         </field>
     </record>
 
+    <record id="view_order_tree_shopee" model="ir.ui.view">
+        <field name="name">sale.order.tree.shopee</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='amount_total']" position="after">
+                <field name="tag_ids" widget="many2many_tags" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="action_shopee_orders" model="ir.actions.act_window">
         <field name="name">Shopee Orders</field>
         <field name="res_model">sale.order</field>

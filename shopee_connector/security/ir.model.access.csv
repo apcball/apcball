@@ -5,3 +5,8 @@ access_shopee_retry_queue,shopee.retry.queue,model_shopee_retry_queue,sales_team
 access_shopee_product_mapping,shopee.product.mapping,model_shopee_product_mapping,sales_team.group_sale_manager,1,1,1,1
 access_shopee_stock_import_wizard,shopee.stock.import.wizard,model_shopee_stock_import_wizard,base.group_user,1,1,1,1
 access_shopee_stock_export_wizard,shopee.stock.export.wizard,model_shopee_stock_export_wizard,base.group_user,1,1,1,1
+access_shopee_fulfillment_batch,shopee.fulfillment.batch,model_shopee_fulfillment_batch,sales_team.group_sale_manager,1,1,1,0
+access_shopee_fulfillment_job,shopee.fulfillment.job,model_shopee_fulfillment_job,sales_team.group_sale_manager,1,1,1,0
+access_shopee_fulfillment_option,shopee.fulfillment.option,model_shopee_fulfillment_option,sales_team.group_sale_manager,1,1,1,1
+access_shopee_buyer_address_import_wizard,shopee.buyer.address.import.wizard,model_shopee_buyer_address_import_wizard,sales_team.group_sale_manager,1,1,1,1
+access_shopee_order_sync_wizard,shopee.order.sync.wizard,model_shopee_order_sync_wizard,sales_team.group_sale_manager,1,1,1,1

@@ -1,10 +1,16 @@
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
+    shopee_linked = fields.Boolean(
+        string="Shopee Linked",
+        compute="_compute_shopee_linked",
+        search="_search_shopee_linked",
+        help="True if this variant is linked to a Shopee item/model.",
+    )
     shopee_item_id = fields.Char(
         string="Shopee Item ID", readonly=True, copy=False
     )
@@ -39,6 +45,22 @@ class ProductProduct(models.Model):
         string="Shopee Last Stock Push", readonly=True, copy=False
     )
 
+    @api.depends("shopee_item_id")
+    def _compute_shopee_linked(self):
+        for product in self:
+            product.shopee_linked = bool(product.shopee_item_id)
+
+    def _search_shopee_linked(self, operator, value):
+        if operator == "=" and value:
+            return [("shopee_item_id", "!=", False)]
+        if operator == "=" and not value:
+            return [("shopee_item_id", "=", False)]
+        if operator == "!=" and value:
+            return [("shopee_item_id", "=", False)]
+        if operator == "!=" and not value:
+            return [("shopee_item_id", "!=", False)]
+        return []
+
     def action_push_shopee_stock(self):
         """Push the selected variants' stock to every stock-push-enabled shop."""
         configs = self.env["shopee.config"].search(
@@ -70,16 +92,24 @@ class ProductProduct(models.Model):
             raise UserError("No active Shopee shop connection was found.")
 
         updated = 0
+        unmapped = 0
         for config in configs:
             updated += config.action_sync_stock()
+            unmapped += config.last_stock_sync_unmapped
+        message = f"{updated} product(s) updated from Shopee."
+        if unmapped:
+            message += (
+                f" {unmapped} Shopee listing(s) are not linked to an Odoo "
+                "product (see Shopee > Product Mappings)."
+            )
 
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": "Shopee stock sync",
-                "message": f"{updated} product(s) updated from Shopee.",
-                "type": "success",
+                "message": message,
+                "type": "warning" if unmapped else "success",
                 "sticky": False,
             },
         }

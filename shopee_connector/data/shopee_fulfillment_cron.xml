@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo noupdate="1">
+    <record id="cron_shopee_fulfillment" model="ir.cron">
+        <field name="name">Shopee: Shipping and Labels</field>
+        <field name="model_id" ref="model_shopee_fulfillment_job"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_process()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

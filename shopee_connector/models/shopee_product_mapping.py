@@ -1,12 +1,14 @@
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 class ShopeeProductMapping(models.Model):
     _name = "shopee.product.mapping"
     _description = "Shopee Product Mapping"
     _order = "shopee_config_id, shopee_sku"
+    _check_company_auto = True
 
     shopee_config_id = fields.Many2one(
-        "shopee.config", required=True, ondelete="cascade", index=True
+        "shopee.config", required=True, ondelete="cascade", index=True, check_company=True
     )
     company_id = fields.Many2one(
         "res.company", related="shopee_config_id.company_id", store=True,
@@ -26,11 +28,36 @@ class ShopeeProductMapping(models.Model):
     )
     active = fields.Boolean(default=True)
     shopee_stock = fields.Integer(
-        string="Shopee Available Stock", readonly=True,
-        help="Available seller stock returned by the most recent Shopee pull.",
+        string="Shopee Available Stock",
+        help="Available seller stock returned by the most recent Shopee pull. "
+        "Editable for reference only: it is not sent to Shopee and the next "
+        "Sync Stock overwrites it.",
     )
     last_stock_sync = fields.Datetime(
         string="Last Stock Pull", readonly=True,
+    )
+    shopee_location_id = fields.Char(
+        string="Shopee Stock Location", readonly=True,
+        help="Seller stock location (e.g. SGZ) reported by Shopee. Sent back "
+        "with every stock push.",
+    )
+    odoo_free_qty = fields.Integer(
+        string="Odoo Warehouse Stock", compute="_compute_odoo_available_stock",
+        help="Free-to-use quantity in the shop's stock location / warehouse.",
+    )
+    use_stock_override = fields.Boolean(string="Manual Stock", copy=False)
+    stock_override = fields.Integer(copy=False)
+    odoo_available_stock = fields.Integer(
+        string="Odoo Available Stock", compute="_compute_odoo_available_stock",
+        inverse="_inverse_odoo_available_stock", readonly=False,
+        help="Quantity pushed to Shopee: the Odoo warehouse stock, or the "
+        "number typed here (manual). Odoo inventory is not changed.",
+    )
+    refill_below = fields.Integer(
+        string="Refill When Shopee Stock Below", default=0,
+        help="0 = push whenever the quantity differs. E.g. 10 = automatic push "
+        "only once Shopee stock drops below 10; the Odoo available stock is "
+        "then sent to Shopee.",
     )
     last_pushed_stock = fields.Integer(readonly=True)
     last_stock_push = fields.Datetime(readonly=True)
@@ -47,6 +74,64 @@ class ShopeeProductMapping(models.Model):
             "A Shopee item/model can only be mapped once per shop.",
         ),
     ]
+
+    @api.depends("product_id", "shopee_config_id", "use_stock_override", "stock_override")
+    def _compute_odoo_available_stock(self):
+        for mapping in self:
+            qty = 0
+            if mapping.product_id and mapping.shopee_config_id:
+                try:
+                    context = mapping.shopee_config_id._shopee_stock_context()
+                except UserError:
+                    context = None
+                if context is not None:
+                    qty = int(max(mapping.product_id.with_context(**context).free_qty, 0))
+            mapping.odoo_free_qty = qty
+            mapping.odoo_available_stock = (
+                mapping.stock_override if mapping.use_stock_override else qty
+            )
+
+    def _inverse_odoo_available_stock(self):
+        for mapping in self:
+            # The form may send the computed warehouse qty back unchanged
+            # (e.g. on create); that is not a manual number.
+            if (
+                not mapping.use_stock_override
+                and mapping.odoo_available_stock == mapping.odoo_free_qty
+            ):
+                continue
+            mapping.write({
+                "use_stock_override": True,
+                "stock_override": max(mapping.odoo_available_stock, 0),
+            })
+
+    def action_reset_stock_override(self):
+        self.write({"use_stock_override": False, "stock_override": 0})
+
+    def _shopee_push_qty(self, free_qty):
+        """Quantity to send to Shopee: the manual number if set."""
+        self.ensure_one()
+        return max(self.stock_override, 0) if self.use_stock_override else free_qty
+
+    def action_push_odoo_stock(self):
+        pushed = 0
+        for config in self.mapped("shopee_config_id"):
+            products = self.filtered(
+                lambda m: m.shopee_config_id == config and m.product_id and m.active
+            ).mapped("product_id")
+            if products:
+                pushed += config._push_stock_for_products(products=products, force=True)
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Shopee stock push",
+                "message": f"{pushed} update(s) sent to Shopee.",
+                "type": "success",
+                "sticky": False,
+                "next": {"type": "ir.actions.client", "tag": "soft_reload"},
+            },
+        }
 
     @api.model
     def find_product_by_sku(self, sku):
@@ -97,17 +182,20 @@ class ShopeeProductMapping(models.Model):
     @api.model
     def upsert(self, config, sku=None, product=None, item_id=None, model_id=None,
                shopee_stock=None, stock_sync_at=None, item_name=None,
-               model_name=None):
+               model_name=None, location_id=None):
         """Create or refresh a shop listing, even before it is mapped in Odoo."""
         if not sku and not item_id:
             return self.env["shopee.product.mapping"]
+        mapping = self.env["shopee.product.mapping"]
         if item_id:
             mapping = self.search([
                 ("shopee_config_id", "=", config.id),
                 ("shopee_item_id", "=", str(item_id)),
                 ("shopee_model_id", "=", str(model_id) if model_id else False),
             ], limit=1)
-        else:
+        if not mapping and sku:
+            # Also reuse a mapping entered by hand with only the SKU, otherwise
+            # the create below violates config_sku_unique.
             mapping = self.search([
                 ("shopee_config_id", "=", config.id),
                 ("shopee_sku", "=", str(sku)),
@@ -123,6 +211,8 @@ class ShopeeProductMapping(models.Model):
             values["shopee_sku"] = str(sku)
         if product:
             values["product_id"] = product.id
+        if location_id:
+            values["shopee_location_id"] = str(location_id)
         if shopee_stock is not None:
             values.update({
                 "shopee_stock": int(shopee_stock),

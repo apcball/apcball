@@ -13,7 +13,9 @@ _logger = logging.getLogger(__name__)
 SANDBOX_HOST = "https://openplatform.sandbox.test-stable.shopee.sg"
 PRODUCTION_HOST = "https://partner.shopeemobile.com"
 
-_MASK_KEYS = ("partner_key", "access_token", "sign", "refresh_token", "code")
+_MASK_KEYS = ("partner_key", "access_token", "sign", "refresh_token", "code",
+              "webhook_secret", "authorization", "oauth_state", "temp_auth_code",
+              "temp_access_token", "temp_refresh_token")
 _MAX_LIST = 50
 
 
@@ -31,16 +33,13 @@ class ShopeeAPIError(Exception):
 
 
 def _mask(params):
-    return {
-        k: ("***" if k in _MASK_KEYS and v else v)
-        for k, v in (params or {}).items()
-    }
+    return _mask_value(params or {})
 
 
 def _mask_value(value):
     if isinstance(value, dict):
         return {
-            key: ("***" if key in _MASK_KEYS and item else _mask_value(item))
+            key: ("***" if str(key).lower() in _MASK_KEYS and item else _mask_value(item))
             for key, item in value.items()
         }
     if isinstance(value, list):
@@ -85,7 +84,7 @@ class ShopeeAPI:
     # Core request
     # ------------------------------------------------------------------
     def _request(self, method, path, access_token="", params=None, body=None,
-                 is_public=False):
+                 is_public=False, retries=3, binary=False):
         """Single entry point for every Shopee call.
 
         * Public (auth/token) calls: sign with partner_id+path+timestamp only,
@@ -120,7 +119,7 @@ class ShopeeAPI:
         started = time.monotonic()
         delay = 0.5
         last_exc = None
-        for attempt in range(3):
+        for attempt in range(retries):
             try:
                 resp = requests.request(
                     method, url, params=query, json=body if method == "POST" else None,
@@ -129,8 +128,9 @@ class ShopeeAPI:
             except (requests.ConnectionError, requests.Timeout) as exc:
                 last_exc = exc
                 _logger.warning("Shopee %s %s network error (try %s): %s",
-                                method, path, attempt + 1, exc)
-                time.sleep(delay)
+                                method, path, attempt + 1, type(exc).__name__)
+                if attempt + 1 < retries:
+                    time.sleep(delay)
                 delay *= 2
                 continue
 
@@ -138,9 +138,18 @@ class ShopeeAPI:
                 last_exc = requests.HTTPError(f"HTTP {resp.status_code}", response=resp)
                 _logger.warning("Shopee %s %s HTTP %s (try %s)",
                                 method, path, resp.status_code, attempt + 1)
-                time.sleep(delay)
+                if attempt + 1 < retries:
+                    time.sleep(delay)
                 delay *= 2
                 continue
+
+            if binary and resp.status_code < 400 and resp.content.startswith(b"%PDF-"):
+                self._write_log(
+                    method, path, query, body,
+                    {"format": "pdf", "bytes": len(resp.content)},
+                    "success", resp.status_code, started, None,
+                )
+                return resp.content
 
             try:
                 data = resp.json()
@@ -163,6 +172,8 @@ class ShopeeAPI:
                 )
                 raise exc
 
+            if not isinstance(data, dict):
+                raise ShopeeAPIError("invalid_response", "Expected a JSON object.")
             if data.get("error"):
                 exc = ShopeeAPIError(
                     data.get("error"),
@@ -174,6 +185,8 @@ class ShopeeAPI:
                     resp.status_code, started, exc,
                 )
                 raise exc
+            if binary:
+                raise ShopeeAPIError("document_not_pdf", "Shopee did not return a PDF. Try checking the document status again.")
             if data.get("warning"):
                 _logger.warning("Shopee %s warning: %s", path, data["warning"])
             self._write_log(
@@ -182,7 +195,7 @@ class ShopeeAPI:
             )
             return data
 
-        exc = ShopeeAPIError("network", f"{last_exc}")
+        exc = ShopeeAPIError("network", type(last_exc).__name__)
         self._write_log(
             method, path, query, body, None, "error", 0, started, exc,
         )
@@ -223,6 +236,12 @@ class ShopeeAPI:
         path = "/api/v2/shop/auth_partner"
         timestamp = int(time.time())
         signature = self._sign(path, timestamp)
+        if state:
+            parts = urllib.parse.urlsplit(redirect_url)
+            query = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+            query = [(key, value) for key, value in query if key != "state"]
+            query.append(("state", str(state)))
+            redirect_url = urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
         redirect = urllib.parse.quote(redirect_url, safe="")
         return (
             f"{self.host}{path}?partner_id={self.partner_id}"
@@ -272,21 +291,61 @@ class ShopeeAPI:
             "order_sn_list": ",".join(order_sn_list[:_MAX_LIST]),
             "response_optional_fields": (
                 "buyer_username,item_list,total_amount,recipient_address,"
-                "shipping_carrier,payment_method,order_status"
+                "shipping_carrier,payment_method,order_status,package_list,"
+                "pay_time"
             ),
         }
         return self._get(path, access_token, params)
+
+    def get_escrow_detail(self, access_token, order_sn):
+        """Income breakdown (shipping, vouchers, fees) of one order."""
+        return self._get("/api/v2/payment/get_escrow_detail", access_token,
+                         {"order_sn": order_sn})
 
     def get_order_status(self, access_token, order_sn_list):
         """Return current order details, including the status field."""
         return self.get_order_detail(access_token, order_sn_list)
 
-    def ship_order(self, access_token, order_sn, package_number=None):
+    def ship_order(self, access_token, order_sn, package_number=None,
+                   pickup=None, dropoff=None):
         path = "/api/v2/logistics/ship_order"
         body = {"order_sn": order_sn}
         if package_number:
             body["package_number"] = package_number
-        return self._post(path, access_token, body=body)
+        if (pickup is None) == (dropoff is None):
+            raise ShopeeAPIError("shipping_method", "Choose exactly one pickup or dropoff method.")
+        body["pickup" if pickup is not None else "dropoff"] = pickup if pickup is not None else dropoff
+        # A timeout/5xx may occur AFTER Shopee accepted the shipment.
+        # Never replay this side effect automatically.
+        return self._request("POST", path, access_token, body=body, retries=1)
+
+    def get_shipping_parameter(self, access_token, order_sn):
+        return self._get("/api/v2/logistics/get_shipping_parameter", access_token,
+                         {"order_sn": order_sn})
+
+    def get_tracking_number(self, access_token, order_sn, package_number=None):
+        params = {"order_sn": order_sn}
+        if package_number:
+            params["package_number"] = package_number
+        return self._get("/api/v2/logistics/get_tracking_number", access_token, params)
+
+    def get_shipping_document_parameter(self, access_token, order):
+        return self._post("/api/v2/logistics/get_shipping_document_parameter",
+                          access_token, {"order_list": [order]})
+
+    def create_shipping_document(self, access_token, order):
+        return self._request("POST", "/api/v2/logistics/create_shipping_document",
+                             access_token, body={"order_list": [order]}, retries=1)
+
+    def get_shipping_document_result(self, access_token, order):
+        return self._post("/api/v2/logistics/get_shipping_document_result",
+                          access_token, {"order_list": [order]})
+
+    def download_shipping_document(self, access_token, order, document_type):
+        return self._request("POST", "/api/v2/logistics/download_shipping_document",
+                             access_token, body={"shipping_document_type": document_type,
+                                                 "order_list": [order]},
+                             binary=True)
 
     def cancel_order(self, access_token, order_sn, cancel_reason="OTHER"):
         path = "/api/v2/order/cancel_order"
@@ -325,16 +384,22 @@ class ShopeeAPI:
         }
         return self._get(path, access_token, params)
 
-    def update_stock(self, access_token, item_id, model_id, quantity):
+    def update_stock(self, access_token, item_id, model_id, quantity,
+                     location_id=None):
         """Push seller stock for one item (optionally one model) to Shopee.
 
         Shopee v2 ``update_stock`` expects ``seller_stock`` under each entry of
         ``stock_list``. ``model_id`` 0 / omitted targets an item with no models.
+        ``location_id`` (e.g. "SGZ") is required by shops that keep stock per
+        warehouse location; pass the one reported by ``get_model_list``.
         """
         path = "/api/v2/product/update_stock"
         entry = {}
         if model_id:
             entry["model_id"] = int(model_id)
-        entry["seller_stock"] = [{"stock": int(max(quantity, 0))}]
+        seller_stock = {"stock": int(max(quantity, 0))}
+        if location_id:
+            seller_stock["location_id"] = str(location_id)
+        entry["seller_stock"] = [seller_stock]
         body = {"item_id": int(item_id), "stock_list": [entry]}
         return self._post(path, access_token, body=body)

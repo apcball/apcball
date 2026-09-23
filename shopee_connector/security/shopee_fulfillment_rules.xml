@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="rule_shopee_config_company" model="ir.rule">
+        <field name="name">Shopee connections: company</field>
+        <field name="model_id" ref="model_shopee_config"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_shopee_mapping_company" model="ir.rule">
+        <field name="name">Shopee mappings: company</field>
+        <field name="model_id" ref="model_shopee_product_mapping"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_shopee_log_company" model="ir.rule">
+        <field name="name">Shopee logs: company</field>
+        <field name="model_id" ref="model_shopee_api_log"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_shopee_retry_company" model="ir.rule">
+        <field name="name">Shopee retries: company</field>
+        <field name="model_id" ref="model_shopee_retry_queue"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_shopee_fulfillment_batch_company" model="ir.rule">
+        <field name="name">Shopee shipping batches: company</field>
+        <field name="model_id" ref="model_shopee_fulfillment_batch"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_shopee_fulfillment_job_company" model="ir.rule">
+        <field name="name">Shopee shipping jobs: company</field>
+        <field name="model_id" ref="model_shopee_fulfillment_job"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_shopee_fulfillment_option_company" model="ir.rule">
+        <field name="name">Shopee carrier options: company</field>
+        <field name="model_id" ref="model_shopee_fulfillment_option"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

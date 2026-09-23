@@ -5,18 +5,23 @@
         <field name="model">shopee.product.mapping</field>
         <field name="arch" type="xml">
             <tree>
+                <field name="company_id" column_invisible="1"/>
                 <field name="shopee_config_id"/>
                 <field name="shopee_sku"/>
-                <field name="shopee_item_id"/>
-                <field name="shopee_model_id"/>
-                <field name="shopee_item_name"/>
-                <field name="shopee_model_name"/>
+                <field name="shopee_item_id" readonly="1"/>
+                <field name="shopee_model_id" readonly="1"/>
+                <field name="shopee_item_name" readonly="1"/>
+                <field name="shopee_model_name" readonly="1"/>
                 <field name="product_id"/>
-                <field name="odoo_sku"/>
+                <field name="odoo_sku" readonly="1"/>
                 <field name="shopee_stock"/>
-                <field name="last_stock_sync"/>
-                <field name="last_pushed_stock"/>
-                <field name="last_stock_push"/>
+                <field name="odoo_available_stock"/>
+                <field name="use_stock_override" readonly="1" optional="show"/>
+                <field name="refill_below" optional="show"/>
+                <field name="shopee_location_id" optional="hide"/>
+                <field name="last_stock_sync" readonly="1"/>
+                <field name="last_pushed_stock" readonly="1"/>
+                <field name="last_stock_push" readonly="1"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -26,6 +31,15 @@
         <field name="model">shopee.product.mapping</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_push_odoo_stock" type="object"
+                            string="Push Odoo Stock to Shopee" class="btn-primary"
+                            invisible="not product_id"
+                            confirm="Shopee stock will be replaced by the Odoo available stock. Continue?"/>
+                    <button name="action_reset_stock_override" type="object"
+                            string="Use Odoo Warehouse Stock"
+                            invisible="not use_stock_override"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="shopee_config_id"/>
@@ -38,7 +52,13 @@
                         <field name="product_id"/>
                         <field name="odoo_sku" readonly="1"/>
                         <field name="active"/>
-                        <field name="shopee_stock" readonly="1"/>
+                        <field name="shopee_stock"/>
+                        <field name="odoo_available_stock"/>
+                        <field name="use_stock_override" readonly="1"
+                               invisible="not use_stock_override"/>
+                        <field name="odoo_free_qty"/>
+                        <field name="refill_below"/>
+                        <field name="shopee_location_id" readonly="1"/>
                         <field name="last_stock_sync" readonly="1"/>
                         <field name="last_pushed_stock" readonly="1"/>
                         <field name="last_stock_push" readonly="1"/>
@@ -51,6 +71,14 @@
         <field name="name">Product Mappings</field>
         <field name="res_model">shopee.product.mapping</field>
         <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_shopee_mapping_push_stock" model="ir.actions.server">
+        <field name="name">Push Odoo Stock to Shopee</field>
+        <field name="model_id" ref="model_shopee_product_mapping"/>
+        <field name="binding_model_id" ref="model_shopee_product_mapping"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_push_odoo_stock()</field>
     </record>
     <menuitem id="shopee_connector_product_mapping_menu" name="Product Mappings"
               parent="shopee_connector_config_menu"

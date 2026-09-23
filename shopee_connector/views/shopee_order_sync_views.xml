@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopee_order_sync_wizard_form" model="ir.ui.view">
+        <field name="name">shopee.order.sync.wizard.form</field>
+        <field name="model">shopee.order.sync.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Sync Shopee Orders">
+                <sheet>
+                    <field name="state" invisible="1"/>
+                    <group invisible="state == 'done'">
+                        <field name="config_id" options="{'no_create': True}"/>
+                        <field name="import_orders_from"/>
+                    </group>
+                    <p class="text-muted" invisible="state == 'done'">
+                        Import Orders fetches the orders created since the date
+                        above. Sync Order Status refreshes the status, the
+                        buyer address and the payment details of the orders
+                        already in Odoo, and ignores the date.
+                    </p>
+                    <field name="result_message" nolabel="1" readonly="1"
+                           invisible="state != 'done'"/>
+                </sheet>
+                <footer>
+                    <button name="action_import_orders" type="object"
+                            string="Import Orders" class="btn-primary"
+                            invisible="state == 'done'"/>
+                    <button name="action_sync_status" type="object"
+                            string="Sync Order Status" class="btn-secondary"
+                            invisible="state == 'done'"/>
+                    <button string="Close" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopee_order_sync" model="ir.actions.act_window">
+        <field name="name">Sync Orders</field>
+        <field name="res_model">shopee.order.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem id="shopee_connector_order_sync_menu" name="Sync Orders"
+              parent="shopee_connector_root_menu"
+              action="action_shopee_order_sync" sequence="31"
+              groups="sales_team.group_sale_manager"/>
+</odoo>
