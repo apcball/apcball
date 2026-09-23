@@ -117,12 +117,13 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 5%;">No.</th>
-                                        <th style="width: 15%;">Product Image</th>
-                                        <th style="width: 10%;">Item No.</th>
-                                        <th style="width: 34%;">Description</th>
-                                        <th style="width: 10%;" class="text-end">Quantity</th>
-                                        <th style="width: 13%;" class="text-end">Unit Price</th>
-                                        <th style="width: 13%;" class="text-end">Amount</th>
+                                        <th style="width: 13%;">Product Image</th>
+                                        <th style="width: 9%;">Item No.</th>
+                                        <th style="width: 27%;">Description</th>
+                                        <th style="width: 9%;" class="text-end">Quantity</th>
+                                        <th style="width: 11%;" class="text-end">Unit Price</th>
+                                        <th style="width: 9%;" class="text-end">Discount</th>
+                                        <th style="width: 12%;" class="text-end">Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -147,6 +148,9 @@
                                         </td>
                                         <td class="text-end">
                                             <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-if="line.discount" t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/><span t-if="line.discount">%</span>
                                         </td>
                                         <td class="text-end">
                                             <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
