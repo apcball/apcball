@@ -1,5 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- สิทธิ์เปิดดู/พิมพ์รายงานอายุสินค้าคงเหลือโดยเฉพาะ — ตั้งใจให้เป็นกลุ่มเดี่ยว ไม่ผูกกับ
+         Stock Manager หรือกลุ่มไหนทั้งสิ้น ผู้ดูแลระบบต้องไปเลือกผู้ใช้เข้ากลุ่มนี้เองทีละคนที่
+         Settings > Users (รวมถึง Stock Manager คนเดิมที่เคยใช้รายงานนี้อยู่แล้ว ถ้าไม่เพิ่มเข้ากลุ่ม
+         จะเห็นเมนูหายไป) — เหมือนกับ biz_st_stock_card.group_stock_card_user เป๊ะ ๆ
+         imply stock.group_stock_user ไว้ เพราะเมนูอยู่ใต้ stock.menu_stock_root ซึ่งต้อง
+         มีกลุ่มนี้ (หรือ manager) อยู่แล้วถึงจะเห็นแอป Inventory เลย ไม่งั้นเข้าเมนูไม่ถึง -->
+    <record id="group_stock_aging_user" model="res.groups">
+        <field name="name">ดูอายุสินค้าคงเหลือ (Stock Aging)</field>
+        <field name="category_id" ref="base.module_category_inventory_inventory"/>
+        <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+        <field name="comment">
+            สิทธิ์เปิดหน้าจอ/พิมพ์รายงานอายุสินค้าคงเหลือ (biz_st_aging) — ไม่ผูกกับ Stock
+            Manager โดยอัตโนมัติ ต้องเพิ่มผู้ใช้เข้ากลุ่มนี้เองทีละคน
+        </field>
+    </record>
+
     <record id="rule_stock_aging_config_company" model="ir.rule">
         <field name="name">Stock Aging Config: multi-company</field>
         <field name="model_id" ref="model_biz_stock_aging_config"/>

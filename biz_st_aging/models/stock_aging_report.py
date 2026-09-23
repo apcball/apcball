@@ -143,7 +143,7 @@ class StockAgingReport(models.AbstractModel):
         ``get_report_data`` ของจริง กันไม่ให้บริษัทที่ข้อมูลเยอะเปิดจอแล้วเจอ Invalid
         Operation (เกิน ``max_lines``) ทันทีโดยยังไม่ทันได้กรองอะไรเลย
         """
-        if not self.env.user.has_group("stock.group_stock_user"):
+        if not self.env.user.has_group("biz_st_aging.group_stock_aging_user"):
             raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานคลังสินค้า"))
         opt = self._normalize_options(options)
         maps = self._load_maps(opt)
@@ -165,7 +165,7 @@ class StockAgingReport(models.AbstractModel):
                        categories, levels, buckets, config, columns, lines, totals,
                        kpis, checks, labels}
         """
-        if not self.env.user.has_group("stock.group_stock_user"):
+        if not self.env.user.has_group("biz_st_aging.group_stock_aging_user"):
             raise AccessError(_("คุณไม่มีสิทธิ์ดูรายงานคลังสินค้า"))
 
         opt = self._normalize_options(options)

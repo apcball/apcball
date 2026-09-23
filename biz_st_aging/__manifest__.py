@@ -32,8 +32,8 @@
     ],
     "external_dependencies": {"python": ["xlsxwriter"]},
     "data": [
-        "security/ir.model.access.csv",
         "security/stock_aging_security.xml",
+        "security/ir.model.access.csv",
         "views/stock_aging_config_views.xml",
         "wizard/stock_aging_wizard_views.xml",
         "report/stock_aging_templates.xml",
