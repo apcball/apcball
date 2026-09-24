@@ -115,8 +115,14 @@
                                     <div class="mb-3">
                                         <strong>Order Reference:</strong> <span t-field="o.name"/><br/>
                                         <strong>Order Date:</strong> <span t-field="o.date_order"/><br/>
-                                        <strong>Payment Terms:</strong> <span t-field="o.payment_term_id.name"/>
-                                    </div>
+                                        <strong>Payment Terms:</strong> <span t-field="o.payment_term_id.name"/><br/>
+                                            <div t-if="o.project_name">
+                                                <strong>Project Name:</strong> <span t-field="o.project_name"/>
+                                            </div>
+                                            <div t-if="o.client_order_ref">
+                                                <strong>Customer Reference:</strong> <span t-field="o.client_order_ref"/>
+                                            </div>
+                                        </div>
                                 </div>
                             </div>
                             <!-- Order Lines: split into fixed-size page groups -->
