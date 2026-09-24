@@ -10,7 +10,7 @@
 
 {
     'name': 'Extra Bank Charges In Payments',
-    'version': '17.0.1.0',
+    'version': '17.0.1.0.1',
     'category': 'Accounting',
     "license": "OPL-1",
     'summary': 'Additional charges in Thai Baht (THB), extra transaction bank fee, credit card charge, extra fee on bank transfer, additional charges on bank money transfer, THB only bank charges regardless of bill currency',
