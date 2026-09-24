@@ -64,6 +64,14 @@
                                 font-size: 25px;
                                 font-weight: bold;
                             }
+                            .proforma-lines tbody tr {
+                                page-break-inside: avoid;
+                                break-inside: avoid;
+                            }
+                            .proforma-lines tbody td {
+                                page-break-inside: avoid;
+                                break-inside: avoid;
+                            }
                         </style>
                             <!-- Company Info Section -->
                             <div class="row mb-2">
@@ -111,53 +119,66 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- Order Lines: split into fixed-size page groups -->
+                            <t t-set="line_list" t-value="o.order_line"/>
+                            <t t-set="first_group" t-value="line_list[:10]"/>
+                            <t t-set="remaining_lines" t-value="line_list[10:]"/>
+                            <t t-set="remaining_groups" t-value="[remaining_lines[i:i+14] for i in range(0, len(remaining_lines), 14)]"/>
+                            <t t-set="line_groups" t-value="[first_group] + remaining_groups"/>
+                            <t t-set="page_number" t-value="0"/>
+                            <t t-set="line_offset" t-value="0"/>
 
-                            <!-- Order Lines -->
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 5%;">No.</th>
-                                        <th style="width: 13%;">Product Image</th>
-                                        <th style="width: 9%;">Item No.</th>
-                                        <th style="width: 27%;">Description</th>
-                                        <th style="width: 9%;" class="text-end">Quantity</th>
-                                        <th style="width: 11%;" class="text-end">Unit Price</th>
-                                        <th style="width: 9%;" class="text-end">Discount</th>
-                                        <th style="width: 12%;" class="text-end">Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="o.order_line" t-as="line">
-                                        <td class="text-center">
-                                            <span t-esc="line_index + 1"/>
-                                        </td>
-                                        <td>
-                                            <img t-if="line.product_id.image_128" 
-                                                t-att-src="image_data_uri(line.product_id.image_128)"
-                                                style="width: 64px; height: 64px; object-fit: contain;"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="line.product_id.default_code"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="line.product_id.name_eng"/>
-                                        </td>
-                                        <td class="text-end">
-                                            <span t-field="line.product_uom_qty"/>
-                                            <span t-field="line.product_uom"/>
-                                        </td>
-                                        <td class="text-end">
-                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                        </td>
-                                        <td class="text-end">
-                                            <span t-if="line.discount" t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/><span t-if="line.discount">%</span>
-                                        </td>
-                                        <td class="text-end">
-                                            <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <t t-foreach="line_groups" t-as="group">
+                                <div t-attf-style="#{page_number != 0 and 'page-break-before: always;' or ''}">
+                                    <table class="table table-sm proforma-lines">
+                                        <thead style="display: table-header-group;">
+                                            <tr>
+                                                <th style="width: 5%;">No.</th>
+                                                <th style="width: 13%;">Product Image</th>
+                                                <th style="width: 9%;">Item No.</th>
+                                                <th style="width: 27%;">Description</th>
+                                                <th style="width: 9%;" class="text-end">Quantity</th>
+                                                <th style="width: 11%;" class="text-end">Unit Price</th>
+                                                <th style="width: 9%;" class="text-end">Discount</th>
+                                                <th style="width: 12%;" class="text-end">Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="group" t-as="line" style="page-break-inside: avoid; break-inside: avoid;">
+                                                <td class="text-center">
+                                                    <span t-esc="line_offset + line_index + 1"/>
+                                                </td>
+                                                <td>
+                                                    <img t-if="line.product_id.image_128"
+                                                        t-att-src="image_data_uri(line.product_id.image_128)"
+                                                        style="width: 64px; height: 64px; object-fit: contain;"/>
+                                                </td>
+                                                <td>
+                                                    <span t-field="line.product_id.default_code"/>
+                                                </td>
+                                                <td>
+                                                    <span t-field="line.product_id.name_eng"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-field="line.product_uom_qty"/>
+                                                    <span t-field="line.product_uom"/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-if="line.discount" t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/><span t-if="line.discount">%</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <t t-set="page_number" t-value="page_number + 1"/>
+                                <t t-set="line_offset" t-value="line_offset + len(group)"/>
+                            </t>
 
                             <!-- Totals Section -->
                             <div class="row" style="margin-top: 20px;">
