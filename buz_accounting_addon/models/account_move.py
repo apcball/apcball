@@ -1,10 +1,88 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, api
+from odoo import models, api, fields, _
+from odoo.exceptions import UserError
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
+
+    customer_refund_pv_count = fields.Integer(
+        string="Refund PV Count",
+        compute="_compute_customer_refund_pv_count",
+    )
+    customer_refund_pv_ids = fields.One2many(
+        "buz.customer.refund.pv",
+        "credit_note_id",
+        string="Refund PVs",
+        readonly=True,
+    )
+
+    @api.depends("customer_refund_pv_ids")
+    def _compute_customer_refund_pv_count(self):
+        for move in self:
+            # Use search to avoid cache issues on newly created PVs
+            move.customer_refund_pv_count = self.env["buz.customer.refund.pv"].search_count([
+                ("credit_note_id", "=", move.id)
+            ])
+
+    def action_create_customer_refund_pv(self):
+        """Phase 1: Create Draft Customer Refund PV from Posted out_refund and open its form."""
+        self.ensure_one()
+        if self.move_type != "out_refund":
+            raise UserError(_("Only Customer Credit Note (out_refund) can create a Refund PV."))
+        if self.state != "posted":
+            raise UserError(_("Credit Note must be Posted to create a Refund PV."))
+        # Phase 1: do NOT create account.payment, do NOT reconcile, do NOT change credit note amounts/state
+        vals = {
+            "partner_id": self.partner_id.id,
+            "company_id": self.company_id.id,
+            "credit_note_id": self.id,
+            "date": fields.Date.context_today(self),
+        }
+        pv = self.env["buz.customer.refund.pv"].create(vals)
+        # Prefill one line from the credit note (optional but keeps totals visible)
+        try:
+            residual = abs(self.amount_residual_signed) if hasattr(self, "amount_residual_signed") else abs(self.amount_residual)
+        except Exception:
+            residual = abs(self.amount_total)
+        if residual:
+            untaxed = 0.0
+            try:
+                untaxed = abs(self.amount_untaxed_signed) if hasattr(self, "amount_untaxed_signed") else abs(self.amount_untaxed)
+            except Exception:
+                untaxed = residual
+            pv.write({
+                "line_ids": [fields.Command.create({
+                    "move_id": self.id,
+                    "amount_to_pay_gross": residual,
+                    "wht_base_amount": untaxed,
+                })]
+            })
+        # Phase 1: credit_note_id must be readonly in the form (enforced in view attrs)
+        return {
+            "name": _("Customer Refund PV"),
+            "type": "ir.actions.act_window",
+            "res_model": "buz.customer.refund.pv",
+            "view_mode": "form",
+            "res_id": pv.id,
+            "target": "current",
+        }
+
+    def action_view_customer_refund_pvs(self):
+        self.ensure_one()
+        pvs = self.env["buz.customer.refund.pv"].search([("credit_note_id", "=", self.id)])
+        action = {
+            "name": _("Customer Refund PVs"),
+            "type": "ir.actions.act_window",
+            "res_model": "buz.customer.refund.pv",
+            "view_mode": "tree,form",
+            "domain": [("id", "in", pvs.ids)],
+            "context": {"default_credit_note_id": self.id, "default_partner_id": self.partner_id.id, "default_company_id": self.company_id.id},
+        }
+        if len(pvs) == 1:
+            action.update({"view_mode": "form", "res_id": pvs.id})
+        return action
 
     def _auto_init(self):
         # Drop the conflicting constraint from employee_advance if it exists

@@ -162,7 +162,7 @@
                                     <span t-field="o.partner_id.name"/>
                                 </td>
                                 <td>
-                                    <span t-field="bt.destination_journal_id.name"/>
+                                    <span t-field="bt.journal_id.name"/>
                                 </td>
                                 <td class="text-end">
                                     <span t-field="bt.amount" t-options='{"widget": "float", "precision": 2}'/>

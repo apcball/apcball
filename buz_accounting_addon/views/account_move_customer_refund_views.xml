@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit Customer Credit Note form: Create Refund PV button + smart button (Phase 1) -->
+    <record id="view_move_form_inherit_buz_customer_refund_pv" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.buz.customer.refund.pv</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Header button: only for Posted Customer Credit Note -->
+            <xpath expr="//form/header" position="inside">
+                <button name="action_create_customer_refund_pv" type="object"
+                        string="Create Refund PV" class="oe_highlight"
+                        invisible="move_type != 'out_refund' or state != 'posted'"/>
+            </xpath>
+            <!-- Smart button: count of linked Customer Refund PVs -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_customer_refund_pvs" type="object" class="oe_stat_button" icon="fa-money"
+                        invisible="customer_refund_pv_count == 0">
+                    <field name="customer_refund_pv_count" widget="statinfo" string="Refund PVs"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

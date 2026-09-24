@@ -28,5 +28,6 @@
       <field name="prefix">TR%(y)s</field>
       <field name="padding">4</field>
     </record>
+
   </data>
 </odoo>

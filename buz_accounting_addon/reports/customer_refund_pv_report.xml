@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Paper Format for Customer Refund PV — same as Vendor PV -->
+    <record id="paperformat_customer_refund_pv" model="report.paperformat">
+        <field name="name">Customer Refund PV A4</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Customer Refund PV Report Action — separate from Vendor PV -->
+    <record id="action_report_customer_refund_pv" model="ir.actions.report">
+        <field name="name">Customer Refund Payment Voucher</field>
+        <field name="model">buz.customer.refund.pv</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_accounting_addon.report_customer_refund_pv</field>
+        <field name="report_file">buz_accounting_addon.report_customer_refund_pv</field>
+        <field name="print_report_name">'Customer Refund PV - %s' % (object.name)</field>
+        <field name="paperformat_id" ref="paperformat_customer_refund_pv"/>
+        <field name="binding_model_id" ref="model_buz_customer_refund_pv"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

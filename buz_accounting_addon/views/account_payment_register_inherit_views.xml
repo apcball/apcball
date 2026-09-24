@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Make amount readonly when Register from Refund PV (force_amount) -->
+    <record id="view_account_payment_register_form_inherit_refund_pv" model="ir.ui.view">
+        <field name="name">account.payment.register.form.inherit.refund.pv</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="account.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_method_line_id']" position="after">
+                <field name="buz_payment_channel" invisible="payment_type != 'inbound'" required="payment_type == 'inbound'"/>
+            </xpath>
+            <xpath expr="//field[@name='payment_date']" position="after">
+                <field name="received_date"
+                       invisible="partner_type != 'customer' or payment_type not in ('inbound', 'receive')"/>
+            </xpath>
+                        <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="readonly">context.get('buz_customer_refund_pv_id')</attribute>
+            </xpath>
+            <!-- Refund PV ต้องเลือกวิธีจัดการส่วนต่างเอง แม้ส่วนต่างปัจจุบันเป็นศูนย์ -->
+            <xpath expr="//field[@name='payment_difference_handling']" position="attributes">
+                <attribute name="invisible">not payment_difference and not context.get('buz_customer_refund_pv_id')</attribute>
+            </xpath>
+            <!-- ให้เลือกบัญชีที่ Active และอยู่บริษัทเดียวกัน; บังคับเฉพาะเมื่อเลือก Write-off -->
+            <xpath expr="//field[@name='writeoff_account_id']" position="attributes">
+                <attribute name="domain">[('deprecated', '=', False)]</attribute>
+                <attribute name="invisible">payment_difference_handling != 'reconcile' and not context.get('buz_customer_refund_pv_id')</attribute>
+                <attribute name="required">payment_difference_handling == 'reconcile'</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

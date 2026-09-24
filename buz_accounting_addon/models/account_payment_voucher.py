@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -55,10 +55,15 @@ class AccountPaymentVoucher(models.Model):
         currency_field="currency_id",
         help="Optional bank fee deducted by the bank."
     )
+    paid_discount_amount = fields.Monetary(string='Paid Discount Amount', currency_field='currency_id')
+    paid_discount_account_id = fields.Many2one('account.account', string='Paid Discount Account', domain="[('deprecated', '=', False), ('company_id', '=', company_id)]", check_company=True)
     other_income_dis = fields.Monetary(
         string="Other Income",
         currency_field="currency_id",
         help="Other income deducted from disbursement."
+    )
+    other_income_account_id = fields.Many2one(
+        'account.account', string='Other Income Account', domain="[('deprecated', '=', False), ('company_id', '=', company_id)]", check_company=True
     )
     check_number = fields.Char(string="Check Number", tracking=True)
     check_date = fields.Date(string="Check Date", tracking=True)
@@ -118,7 +123,22 @@ class AccountPaymentVoucher(models.Model):
             if any(line.partner_id != voucher.partner_id for line in voucher.line_ids):
                 raise UserError(_("All lines in a payment voucher must belong to the same vendor (%s).") % voucher.partner_id.name)
 
-    @api.model
+    @api.constrains('paid_discount_amount', 'paid_discount_account_id', 'other_income_dis', 'other_income_account_id', 'company_id')
+    def _check_preview_adjustments(self):
+        for voucher in self:
+            paid_discount = voucher.paid_discount_amount or 0.0
+            other_income = voucher.other_income_dis or 0.0
+            if paid_discount < 0 or other_income < 0:
+                raise ValidationError(_('Paid Discount and Other Income cannot be negative.'))
+            if paid_discount > 0 and other_income > 0:
+                raise ValidationError(_('Paid Discount and Other Income cannot both be greater than zero.'))
+            if paid_discount > 0 and not voucher.paid_discount_account_id:
+                raise ValidationError(_('Please select a Paid Discount Account.'))
+            if other_income > 0 and not voucher.other_income_account_id:
+                raise ValidationError(_('Please select an Other Income Account.'))
+            for label, account in (( _('Paid Discount'), voucher.paid_discount_account_id), (_('Other Income'), voucher.other_income_account_id)):
+                if account and (account.deprecated or account.company_id != voucher.company_id):
+                    raise ValidationError(_('%s Account must be active and belong to the voucher company.') % label)
     def create(self, vals):
         if vals.get('name', '/') == '/':
             vals['name'] = self.env['ir.sequence'].next_by_code('buz.account.payment.voucher') or '/'
@@ -591,11 +611,12 @@ class AccountPaymentVoucher(models.Model):
         # Calculate totals
         total_gross = sum(line.amount_to_pay_gross for line in self.line_ids)
         total_wht = sum(line.wht_amount for line in self.line_ids)
-        total_net = sum(line.amount_to_pay_net for line in self.line_ids)
+        total_net = total_gross - total_wht
         bank_fee = self.bank_free_dis or 0.0
+        paid_discount = self.paid_discount_amount or 0.0
         other_income = self.other_income_dis or 0.0
-        total_disbursement = total_net + bank_fee - other_income
-
+        displayed_transfer = total_net + paid_discount - other_income
+        total_disbursement = displayed_transfer + bank_fee
         # 1. Debit Line (Payable) - Aggregated
         if total_gross > 0:
             # Attempt to find the correct payable account from the first bill
@@ -640,7 +661,7 @@ class AccountPaymentVoucher(models.Model):
                 
             lines.append({
                 'code': wht_account.code if wht_account else '213102',
-                'name': wht_account.name if wht_account else 'ภาษีหัก ณ ที่จ่ายค้างจ่าย',
+                'name': wht_account.name if wht_account else 'เน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขย เน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌเธเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขย เน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธยเนยเธเธขย เน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธยเนยเธเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌเธเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขย',
                 'ref': voucher_name,
                 'date': date,
                 'debit': 0.0,
@@ -668,32 +689,15 @@ class AccountPaymentVoucher(models.Model):
                 'credit': 0.0,
             })
 
-        # 3.5 Credit Line (Other Income — reduces disbursement)
+        # 3.5 Debit Line (Paid Discount)
+        if paid_discount > 0:
+            account = self.paid_discount_account_id
+            lines.append({'code': account.code, 'name': account.name, 'ref': voucher_name, 'date': date, 'debit': paid_discount, 'credit': 0.0})
+
+        # 3.6 Credit Line (Other Income)
         if other_income > 0:
-            other_income_account = self.env['account.account'].search([
-                ('code', 'in', ['423000', '42300']),
-                ('company_id', '=', self.company_id.id)
-            ], limit=1)
-            if not other_income_account:
-                other_income_account = self.env['account.account'].search([
-                    ('name', 'ilike', 'รายได้อื่น'),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
-            if not other_income_account:
-                other_income_account = self.env['account.account'].search([
-                    ('account_type', '=', 'income'),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
-
-            lines.append({
-                'code': other_income_account.code if other_income_account else '423000',
-                'name': other_income_account.name if other_income_account else _('รายได้อื่น'),
-                'ref': voucher_name,
-                'date': date,
-                'debit': 0.0,
-                'credit': other_income,
-            })
-
+            account = self.other_income_account_id
+            lines.append({'code': account.code, 'name': account.name, 'ref': voucher_name, 'date': date, 'debit': 0.0, 'credit': other_income})
         # 4. Credit Line (Bank/Cash or Checks/Notes Payable)
         is_check = False
         if self.payment_type == 'check':
@@ -715,13 +719,13 @@ class AccountPaymentVoucher(models.Model):
             ], limit=1)
             if not check_payable_account:
                 check_payable_account = self.env['account.account'].search([
-                    ('name', 'ilike', 'ตั๋วเงินจ่าย'),
+                    ('name', 'ilike', 'เน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธยเนยเธเน€เธยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธยเธขยเน€เธยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขย'),
                     ('company_id', '=', self.company_id.id)
                 ], limit=1)
 
             lines.append({
                 'code': check_payable_account.code if check_payable_account else '211100',
-                'name': check_payable_account.name if check_payable_account else _('ตั๋วเงินจ่าย'),
+                'name': check_payable_account.name if check_payable_account else _('เน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธยเนยเธเน€เธยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธยเธขยเน€เธยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธเธเธขยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเนโฌยเน€เธโฌเน€เธยเนยเธเน€เธโฌเน€เธยเธขยเน€เธโฌเน€เธยเธขย'),
                 'ref': voucher_name,
                 'date': date,
                 'debit': 0.0,
@@ -794,7 +798,7 @@ class AccountPaymentVoucherLine(models.Model):
     currency_id = fields.Many2one(related="voucher_id.currency_id", store=True, readonly=True)
     company_id = fields.Many2one(related="voucher_id.company_id", store=True, readonly=True)
     
-    # Link to related payments (stored M2M — same pattern as the AR side).
+    # Link to related payments (stored M2M เน€เธโฌเน€เธยเธขยเน€เธยเธขยเน€เธยเน€เธยเนยเธเธขย same pattern as the AR side).
     # Must NOT be a non-stored compute: a compute here forces the ORM to
     # re-evaluate every voucher line whenever any payment changes state,
     # which caused 15k+ queries per Register Payment click.
