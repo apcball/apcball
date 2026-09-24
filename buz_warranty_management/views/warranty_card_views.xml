@@ -110,34 +110,7 @@
                                     <h5 class="mb-0"><span class="fa fa-check-circle text-primary me-2"/>Warranty Period</h5>
                                 </div>
                                 <div class="card-body">
-                                    <group>
-                                        <field name="start_date" string="Warranty Start"/>
-                                        <field name="end_date" string="Warranty End"/>
-                                    </group>
-                                    <div class="row mb-2">
-                                        <div class="col-md-8">
-                                            <label for="warranty_duration" string="Product Warranty Duration"/>
-                                            <div class="input-group">
-                                                <field name="warranty_duration" class="form-control" readonly="1"/>
-                                                <field name="warranty_period_unit" class="form-control" readonly="1"/>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="wc_days_remaining_box" invisible="is_expired">
-                                        <div class="wc_days_label">
-                                            <span class="fa fa-clock-o me-1"/>Days Remaining
-                                        </div>
-                                        <div class="text-center">
-                                            <field name="days_remaining" class="wc_days_value" nolabel="1"/>
-                                            <span class="wc_days_unit ms-1">days</span>
-                                            <div class="wc_days_subtext">
-                                                <field name="days_remaining_text" nolabel="1"/>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="wc_expired_box" invisible="not is_expired">
-                                        <span class="fa fa-exclamation-triangle me-2"/>Warranty Expired
-                                    </div>
+                                    <field name="warranty_bars_html" nolabel="1" widget="html"/>
                                     <field name="is_expired" invisible="1"/>
                                 </div>
                             </div>
@@ -152,19 +125,20 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-md-7">
-                                            <group>
-                                                <field name="product_id"/>
-                                                <field name="lot_id" string="Serial/Lot Number"/>
-                                                <field name="warranty_type"/>
-                                                <field name="product_description"/>
-                                            </group>
-                                        </div>
-                                        <div class="col-md-5 text-center">
-                                            <div class="wc_product_image_box">
-                                                <field name="product_image" widget="image"
-                                                       class="wc_product_image" options="{'size': [180, 180]}"/>
-                                            </div>
+                                        <div class="col-12">
+                                            <field name="line_ids" nolabel="1">
+                                                <tree editable="bottom">
+                                                    <field name="sequence" widget="handle"/>
+                                                    <field name="product_id"/>
+                                                    <field name="lot_id" string="Serial/Lot Number"/>
+                                                    <field name="product_description" optional="hide"/>
+                                                    <field name="warranty_type" optional="show"/>
+                                                    <field name="start_date"/>
+                                                    <field name="warranty_duration" optional="show"/>
+                                                    <field name="warranty_period_unit" optional="show"/>
+                                                    <field name="end_date"/>
+                                                </tree>
+                                            </field>
                                         </div>
                                     </div>
                                 </div>
@@ -234,8 +208,8 @@
             <search string="Warranty Cards">
                 <field name="name"/>
                 <field name="partner_id"/>
-                <field name="product_id"/>
-                <field name="lot_id"/>
+                <field name="product_id" string="Product" filter_domain="[('line_ids.product_id', 'ilike', self)]"/>
+                <field name="lot_id" string="Serial/Lot" filter_domain="[('line_ids.lot_id', 'ilike', self)]"/>
                 <filter string="Active" name="active" domain="[('state', '=', 'active')]"/>
                 <filter string="Expired" name="expired" domain="[('state', '=', 'expired')]"/>
                 <filter string="Near Expiry (30 days)" name="near_expiry" 

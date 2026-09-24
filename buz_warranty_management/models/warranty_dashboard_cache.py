@@ -154,8 +154,8 @@ class WarrantyDashboardCache(models.Model):
             # --- Top products / customers ---
             self._cr.execute("""
                 SELECT pt.name, COUNT(*) as count
-                FROM warranty_card wc
-                JOIN product_product pp ON wc.product_id = pp.id
+                FROM warranty_card_line wl
+                JOIN product_product pp ON wl.product_id = pp.id
                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 GROUP BY pt.name
                 ORDER BY count DESC LIMIT 10
@@ -287,9 +287,10 @@ class WarrantyDashboardCache(models.Model):
 
     def _build_top_products_chart(self, limit=10):
         self._cr.execute("""
-            SELECT pt.name, COUNT(wc.id), COUNT(wc2.id)
-            FROM warranty_card wc
-            JOIN product_product pp ON wc.product_id = pp.id
+            SELECT pt.name, COUNT(DISTINCT wc.id), COUNT(wc2.id)
+            FROM warranty_card_line wl
+            JOIN warranty_card wc ON wl.card_id = wc.id
+            JOIN product_product pp ON wl.product_id = pp.id
             JOIN product_template pt ON pp.product_tmpl_id = pt.id
             LEFT JOIN service_receipt wc2 ON wc.id = wc2.warranty_card_id
             GROUP BY pt.name ORDER BY 2 DESC LIMIT %s

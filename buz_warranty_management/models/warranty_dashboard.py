@@ -435,7 +435,7 @@ class WarrantyDashboard(models.Model):
         if filters.get('date_to'):
             domain.append(('create_date', '<=', filters['date_to'] + ' 23:59:59'))
         if filters.get('product_id'):
-            domain.append(('product_id', '=', int(filters['product_id'])))
+            domain.append(('line_ids.product_id', '=', int(filters['product_id'])))
         if filters.get('customer_id'):
             domain.append(('partner_id', '=', int(filters['customer_id'])))
         return domain
@@ -449,7 +449,7 @@ class WarrantyDashboard(models.Model):
         if filters.get('date_to'):
             domain.append(('request_date', '<=', filters['date_to']))
         if filters.get('product_id'):
-            domain.append(('warranty_card_id.product_id', '=', int(filters['product_id'])))
+            domain.append(('warranty_card_id.line_ids.product_id', '=', int(filters['product_id'])))
         if filters.get('customer_id'):
             domain.append(('warranty_card_id.partner_id', '=', int(filters['customer_id'])))
         return domain

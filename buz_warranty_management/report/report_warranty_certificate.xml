@@ -58,13 +58,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><span t-field="o.product_id"/></td>
-                                <td><span t-field="o.lot_id"/></td>
-                                <td><span t-field="o.warranty_type"/></td>
+                            <tr t-foreach="o.line_ids" t-as="line">
+                                <td><span t-field="line.product_id"/></td>
+                                <td><span t-field="line.lot_id"/></td>
+                                <td><span t-field="line.warranty_type"/></td>
                                 <td>
-                                    <span t-field="o.warranty_duration"/>
-                                    <span t-if="o.warranty_period_unit == 'year'"> Year(s)</span>
+                                    <span t-field="line.warranty_duration"/>
+                                    <span t-if="line.warranty_period_unit == 'year'"> Year(s)</span>
                                     <span t-else=""> Month(s)</span>
                                 </td>
                             </tr>
