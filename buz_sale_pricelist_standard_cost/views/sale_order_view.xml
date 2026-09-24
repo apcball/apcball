@@ -16,10 +16,11 @@
              </xpath>
              <!-- Highlight lines missing a Cost — must be set before Confirm -->
              <xpath expr="//field[@name='order_line']/tree" position="attributes">
-                <attribute name="decoration-danger">purchase_price &lt;= 0 and product_id and not is_downpayment</attribute>
+                <attribute name="decoration-danger">purchase_price &lt;= 0 and product_id and not is_downpayment and product_type != 'service'</attribute>
              </xpath>
              <xpath expr="//field[@name='order_line']/tree//field[@name='price_unit']" position="before">
                 <field name="is_downpayment" invisible="1"/>
+                <field name="product_type" column_invisible="1"/>
              </xpath>
         </field>
     </record>

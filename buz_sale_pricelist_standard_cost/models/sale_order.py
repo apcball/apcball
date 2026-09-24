@@ -20,7 +20,7 @@ class SaleOrder(models.Model):
 
     missing_cost_warning = fields.Text(compute='_compute_missing_cost_warning')
 
-    @api.depends('order_line.purchase_price', 'order_line.product_id', 'order_line.display_type', 'order_line.is_downpayment')
+    @api.depends('order_line.purchase_price', 'order_line.product_id', 'order_line.product_id.type', 'order_line.display_type', 'order_line.is_downpayment')
     def _compute_missing_cost_warning(self):
         for order in self:
             missing = order._get_missing_cost_products()
@@ -33,7 +33,7 @@ class SaleOrder(models.Model):
         return [
             line.product_id.display_name
             for line in self.order_line
-            if not line.display_type and not line.is_downpayment and line.product_id and line.purchase_price <= 0
+            if not line.display_type and not line.is_downpayment and line.product_id and line.product_id.type != 'service' and line.purchase_price <= 0
         ]
 
     def action_confirm(self):
