@@ -30,7 +30,7 @@ class EmployeeAdvanceBox(models.Model):
     journal_id = fields.Many2one(
         'account.journal',
         string='Journal',
-        domain=[('type', 'in', ['bank', 'cash'])],
+        domain=[('type', 'in', ['bank', 'cash', 'general'])],
         help='Journal for top-ups and refunds'
     )
     remember_base_amount = fields.Monetary(

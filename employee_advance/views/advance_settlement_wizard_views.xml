@@ -72,7 +72,7 @@
                             <group>
                                 <group string="Payment Information">
                                     <field name="journal_id" 
-                                           domain="[('type', 'in', ('bank', 'cash')), ('company_id', '=', company_id)]"
+                                           domain="[('type', 'in', ('bank', 'cash', 'general')), ('company_id', '=', company_id)]"
                                            required="scenario in ('pay_employee', 'employee_refund')"/>
                                     <field name="payment_account_id"
                                            domain="[('deprecated', '=', False), ('company_id', '=', company_id)]"
