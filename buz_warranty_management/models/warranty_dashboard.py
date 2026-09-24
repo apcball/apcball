@@ -416,6 +416,45 @@ class WarrantyDashboard(models.Model):
     # -------------------------------------------------------
 
     @api.model
+    def get_dashboard_details(self, filters=None):
+        """Live, access-rule-aware rows for the dashboard's detail panels."""
+        filters = filters or {}
+        cards = self.env['warranty.card'].search(
+            self._build_warranty_domain(filters), order='create_date desc, id desc', limit=5)
+        result = {'recent_warranties': [{
+            'id': card.id, 'name': card.name,
+            'partner_name': card.partner_id.display_name,
+            'product_name': ', '.join(card.line_ids.product_id.mapped('display_name')) or card.product_id.display_name or '',
+            'start_date': str(card.start_date) if card.start_date else '',
+            'end_date': str(card.end_date) if card.end_date else '',
+            'state': card.state, 'days_remaining': card.days_remaining,
+        } for card in cards], 'recent_claims': [], 'top_products': []}
+        if 'service.receipt' not in self.env:
+            return result
+        claims = self.env['service.receipt'].search(
+            self._build_claim_domain(filters) + [('service_case_type', '=', 'replacement')],
+            order='request_date desc, id desc')
+        labels = dict(claims._fields['state']._description_selection(self.env))
+        counts = {}
+        for claim in claims:
+            for product in claim.line_ids.product_id:
+                if filters.get('product_id') and product.id != int(filters['product_id']):
+                    continue
+                row = counts.setdefault(product.id, {
+                    'id': product.id, 'name': product.display_name, 'claims': 0})
+                row['claims'] += 1
+        result['top_products'] = sorted(
+            counts.values(), key=lambda row: (-row['claims'], row['name']))[:5]
+        result['recent_claims'] = [{
+            'id': claim.id, 'name': claim.claim_number or claim.name,
+            'date': str(claim.request_date) if claim.request_date else '',
+            'partner_name': claim.partner_id.display_name or '',
+            'product_name': ', '.join(claim.line_ids.product_id.mapped('display_name')),
+            'state': claim.state, 'state_label': labels.get(claim.state, claim.state),
+        } for claim in claims[:5]]
+        return result
+
+    @api.model
     def _ensure_cache_valid(self):
         """Ensure cache is valid, refresh if not."""
         cache = self.env['warranty.dashboard.cache']
@@ -544,7 +583,7 @@ class WarrantyDashboard(models.Model):
                 monthly[key]['under_warranty'] += 1
             else:
                 monthly[key]['out_of_warranty'] += 1
-        return sorted(monthly.values(), key=lambda x: x['period'])
+        return list(monthly.values())
 
     @api.model
     def _compute_filtered_monthly_comparison(self, filters, months=12):

@@ -36,6 +36,7 @@ export class WarrantyDashboard extends Component {
 
         this.state = useState({
             loading: true,
+            period: 'month',
             filters: {
                 date_from: this.formatDate(firstDay),
                 date_to: this.formatDate(today),
@@ -56,6 +57,7 @@ export class WarrantyDashboard extends Component {
                 claim_types: [],
                 warranty_expiry: [],
                 recent_warranties: [],
+                recent_claims: [],
             },
         });
 
@@ -96,10 +98,13 @@ export class WarrantyDashboard extends Component {
     }
 
     nearExpiryPercent() {
+        return this.formatPercent(this.nearExpiryValue());
+    }
+
+    nearExpiryValue() {
         const kpi = this.state.data.kpi || {};
         const total = kpi.total_warranties || 0;
-        if (!total) return "0.0%";
-        return this.formatPercent(((kpi.near_expiry_warranties || 0) / total) * 100);
+        return total ? ((kpi.near_expiry_warranties || 0) / total) * 100 : 0;
     }
 
     // --- Derived rows for template ---
@@ -108,10 +113,10 @@ export class WarrantyDashboard extends Component {
         const rows = this.state.data.warranty_status || [];
         const total = rows.reduce((s, r) => s + (r.value || 0), 0) || 1;
         const colorMap = {
-            active: "#3b82f6",
+            active: "#10c494",
             expired: "#ef4444",
             claimed: "#f59e0b",
-            "near expiry": "#06b6d4",
+            "near expiry": "#ffba24",
             draft: "#94a3b8",
             cancelled: "#64748b",
         };
@@ -137,7 +142,10 @@ export class WarrantyDashboard extends Component {
     }
 
     topProductRows() {
-        return this._rankRows(this.state.data.top_products);
+        const rows = (this.state.data.top_products || []).slice(0, 5);
+        const max = Math.max(...rows.map((r) => r.claims || 0), 1);
+        return rows.map((r, i) => ({...r, rank: i + 1, value: r.claims,
+            barPct: (r.claims || 0) / max * 100}));
     }
 
     topCustomerRows() {
@@ -164,6 +172,7 @@ export class WarrantyDashboard extends Component {
             const data = await this.rpc("/warranty/dashboard/data", {
                 filters: this.state.filters,
             });
+            Object.assign(data, await this.orm.call('warranty.dashboard', 'get_dashboard_details', [this.state.filters]));
             this.state.data = data;
         } catch (e) {
             console.error("Failed to load dashboard data:", e);
@@ -179,6 +188,9 @@ export class WarrantyDashboard extends Component {
         const today = new Date();
         let from;
         switch (period) {
+            case "today":
+                from = new Date(today);
+                break;
             case "week":
                 from = new Date(today);
                 from.setDate(today.getDate() - today.getDay());
@@ -198,19 +210,23 @@ export class WarrantyDashboard extends Component {
                 return;
         }
         this.state.filters.date_from = this.formatDate(from);
+        this.state.period = period;
         this.state.filters.date_to = this.formatDate(today);
         await this.loadData();
     }
 
     async onFilterChange() {
+        this.state.period = '';
         await this.loadData();
     }
 
     async onRefresh() {
+        this.state.loading = true;
         try {
             const data = await this.rpc("/warranty/dashboard/refresh", {
                 filters: this.state.filters,
             });
+            Object.assign(data, await this.orm.call('warranty.dashboard', 'get_dashboard_details', [this.state.filters]));
             this.state.data = data;
             this.notification.add("Dashboard refreshed", { type: "success" });
         } catch (e) {
@@ -218,7 +234,54 @@ export class WarrantyDashboard extends Component {
             this.notification.add("Failed to refresh dashboard data", {
                 type: "danger",
             });
+        } finally {
+            this.state.loading = false;
         }
+    }
+
+    progress(value) {
+        return Math.min(100, Math.max(0, Number(value) || 0));
+    }
+
+    displayDate(value) {
+        return value ? value.split('-').reverse().join('/') : '—';
+    }
+
+    warrantyStatus(row) {
+        if (row.state === 'active' && row.end_date && row.days_remaining >= 0 && row.days_remaining <= 30) {
+            return {key: 'near', label: 'Near Expiry'};
+        }
+        return {key: row.state, label: {active: 'Active', expired: 'Expired', draft: 'Draft', cancelled: 'Cancelled'}[row.state] || row.state};
+    }
+
+    async openClaim(id) {
+        await this.action.doAction({type: 'ir.actions.act_window', res_model: 'service.receipt',
+            res_id: id, views: [[false, 'form']]});
+    }
+
+    exportDashboard() {
+        const rows = [['Metric', 'Value'],
+            ['Total Warranties', this.state.data.kpi.total_warranties || 0],
+            ['Active Warranties', this.state.data.kpi.active_warranties || 0],
+            ['Expired Warranties', this.state.data.kpi.expired_warranties || 0],
+            ['Near Expiry (30 Days)', this.state.data.kpi.near_expiry_warranties || 0],
+            ['Claims This Month', this.state.data.kpi.claims_this_month || 0],
+            [], ['Date From', this.state.filters.date_from], ['Date To', this.state.filters.date_to],
+            [], ['Recent Warranty', 'Customer', 'Product', 'Start', 'End', 'Status'],
+            ...(this.state.data.recent_warranties || []).map((r) => [r.name, r.partner_name, r.product_name, r.start_date, r.end_date, this.warrantyStatus(r).label]),
+            [], ['Recent Claim', 'Date', 'Customer', 'Product', 'Status'],
+            ...(this.state.data.recent_claims || []).map((r) => [r.name, r.date, r.partner_name, r.product_name, r.state_label])];
+        const csv = rows.map((row) => row.map((value) => {
+            let text = String(value ?? '');
+            if (/^[=+@\-\t\r]/.test(text)) text = "'" + text;
+            return '"' + text.replace(/"/g, '""') + '"';
+        }).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob(['\ufeff', csv], {type: 'text/csv;charset=utf-8;'}));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `warranty-dashboard-${this.formatDate(new Date())}.csv`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     // --- Charts ---
@@ -275,8 +338,8 @@ export class WarrantyDashboard extends Component {
         if (!d.length) return;
         const ctx = el.getContext("2d");
         const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, "rgba(139, 92, 246, 0.35)");
-        gradient.addColorStop(1, "rgba(139, 92, 246, 0.02)");
+        gradient.addColorStop(0, "rgba(47, 123, 255, 0.30)");
+        gradient.addColorStop(1, "rgba(47, 123, 255, 0.02)");
         this.charts.claimsTrend = new window.Chart(el, {
             type: "line",
             data: {
@@ -287,9 +350,9 @@ export class WarrantyDashboard extends Component {
                         data: d.map(
                             (r) => (r.under_warranty || 0) + (r.out_of_warranty || 0)
                         ),
-                        borderColor: "#8b5cf6",
+                        borderColor: "#2f7bff",
                         backgroundColor: gradient,
-                        pointBackgroundColor: "#8b5cf6",
+                        pointBackgroundColor: "#2f7bff",
                         pointBorderColor: "#ffffff",
                         pointBorderWidth: 2,
                         pointRadius: 4,
