@@ -1,6 +1,6 @@
 {
     'name': 'Warranty Management',
-    'version': '17.0.1.6.0',
+    'version': '17.0.1.6.2',
     'category': 'Sales/Warranty',
     'summary': 'Warranty cards linked to Service Receipt claims',
     'description': """

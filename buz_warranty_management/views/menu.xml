@@ -5,6 +5,7 @@
     <menuitem id="menu_warranty_root"
               name="Warranty"
               sequence="60"
+              groups="group_warranty_user"
               web_icon="buz_warranty_management,static/description/icon.png"/>
 
     <!-- Warranty Dashboard Menu -->
@@ -12,6 +13,7 @@
               name="Dashboard"
               parent="menu_warranty_root"
               action="action_warranty_dashboard_client"
+              groups="group_warranty_user"
               sequence="5"/>
 
     <!-- Warranty Cards Menu -->

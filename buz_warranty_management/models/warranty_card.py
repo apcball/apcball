@@ -318,27 +318,34 @@ class WarrantyCard(models.Model):
             else:
                 record.days_since_expiry = 0
 
+    def _claim_count_by_card(self, card_ids=None):
+        """{card_id: replacement claim count} in one grouped query."""
+        domain = [('service_case_type', '=', 'replacement'),
+                  ('warranty_card_id', '!=', False)]
+        if card_ids is not None:
+            domain.append(('warranty_card_id', 'in', card_ids))
+        groups = self.env['service.receipt'].sudo()._read_group(
+            domain, ['warranty_card_id'], ['__count'])
+        return {card.id: count for card, count in groups}
+
     def _compute_claim_count(self):
         if 'service.receipt' not in self.env.registry.models:
             self.update({'claim_count': 0})
             return
-        receipt_model = self.env['service.receipt'].sudo()
+        counts = self._claim_count_by_card(self.ids)
         for record in self:
-            record.claim_count = receipt_model.search_count([
-                ('warranty_card_id', '=', record.id),
-                ('service_case_type', '=', 'replacement'),
-            ])
+            record.claim_count = counts.get(record.id, 0)
 
     def _compute_last_claim_date(self):
         if 'service.receipt' not in self.env.registry.models:
             self.update({'last_claim_date': False})
             return
-        receipt_model = self.env['service.receipt'].sudo()
+        groups = self.env['service.receipt'].sudo()._read_group(
+            [('warranty_card_id', 'in', self.ids)],
+            ['warranty_card_id'], ['request_date:max'])
+        dates = {card.id: last for card, last in groups}
         for record in self:
-            receipt = receipt_model.search([
-                ('warranty_card_id', '=', record.id),
-            ], order='request_date desc, id desc', limit=1)
-            record.last_claim_date = receipt.request_date if receipt else False
+            record.last_claim_date = dates.get(record.id) or False
 
     def action_activate(self):
         self.write({'state': 'active'})
@@ -376,12 +383,16 @@ class WarrantyCard(models.Model):
     def _search_claim_count(self, operator, value):
         if 'service.receipt' not in self.env.registry.models:
             return [('id', '=', 0)]
-        cards = self.search([]).filtered(
-            lambda card: card.claim_count > value if operator in ('>', '>=')
-            else card.claim_count < value if operator in ('<', '<=')
-            else card.claim_count == value
-        )
-        return [('id', 'in', cards.ids)]
+        compare = {
+            '>': lambda a: a > value, '>=': lambda a: a >= value,
+            '<': lambda a: a < value, '<=': lambda a: a <= value,
+            '!=': lambda a: a != value,
+        }.get(operator, lambda a: a == value)
+        counts = self._claim_count_by_card()
+        if compare(0):
+            # cards without claims match too: exclude only those that fail
+            return [('id', 'not in', [cid for cid, n in counts.items() if not compare(n)])]
+        return [('id', 'in', [cid for cid, n in counts.items() if compare(n)])]
 
     def _search_last_claim_date(self, operator, value):
         if 'service.receipt' not in self.env.registry.models:

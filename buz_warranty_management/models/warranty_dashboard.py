@@ -431,27 +431,26 @@ class WarrantyDashboard(models.Model):
         } for card in cards], 'recent_claims': [], 'top_products': []}
         if 'service.receipt' not in self.env:
             return result
-        claims = self.env['service.receipt'].search(
-            self._build_claim_domain(filters) + [('service_case_type', '=', 'replacement')],
-            order='request_date desc, id desc')
-        labels = dict(claims._fields['state']._description_selection(self.env))
-        counts = {}
-        for claim in claims:
-            for product in claim.line_ids.product_id:
-                if filters.get('product_id') and product.id != int(filters['product_id']):
-                    continue
-                row = counts.setdefault(product.id, {
-                    'id': product.id, 'name': product.display_name, 'claims': 0})
-                row['claims'] += 1
-        result['top_products'] = sorted(
-            counts.values(), key=lambda row: (-row['claims'], row['name']))[:5]
+        claim_model = self.env['service.receipt']
+        claim_domain = self._build_claim_domain(filters) + [('service_case_type', '=', 'replacement')]
+        claims = claim_model.search(claim_domain, order='request_date desc, id desc', limit=5)
+        labels = dict(claim_model._fields['state']._description_selection(self.env))
+
+        line_domain = [('receipt_id', 'any', claim_domain)]
+        if filters.get('product_id'):
+            line_domain.append(('product_id', '=', int(filters['product_id'])))
+        groups = self.env['service.receipt.line']._read_group(
+            line_domain, ['product_id'], ['receipt_id:count_distinct'])
+        top = sorted(((p, n) for p, n in groups if p), key=lambda g: (-g[1], g[0].display_name))[:5]
+        result['top_products'] = [
+            {'id': p.id, 'name': p.display_name, 'claims': n} for p, n in top]
         result['recent_claims'] = [{
             'id': claim.id, 'name': claim.claim_number or claim.name,
             'date': str(claim.request_date) if claim.request_date else '',
             'partner_name': claim.partner_id.display_name or '',
             'product_name': ', '.join(claim.line_ids.product_id.mapped('display_name')),
             'state': claim.state, 'state_label': labels.get(claim.state, claim.state),
-        } for claim in claims[:5]]
+        } for claim in claims]
         return result
 
     @api.model
@@ -510,16 +509,14 @@ class WarrantyDashboard(models.Model):
         card = self.env['warranty.card']
         claim = self.env['service.receipt']
 
-        all_ids = card.search(w_domain)
-        total = len(all_ids)
-        active = len(all_ids.filtered(lambda r: r.state == 'active'))
-        expired = len(all_ids.filtered(
-            lambda r: r.state == 'expired' or (r.end_date and r.end_date < today)
-        ))
-        near_exp = len(all_ids.filtered(
-            lambda r: r.state == 'active' and r.end_date and today <= r.end_date <= near_expiry
-        ))
-        claimed = len(all_ids.filtered(lambda r: r.claim_count > 0))
+        by_state = {state: n for state, n in card._read_group(w_domain, ['state'], ['__count'])}
+        total = sum(by_state.values())
+        active = by_state.get('active', 0)
+        expired = card.search_count(w_domain + [
+            '|', ('state', '=', 'expired'), ('end_date', '<', today)])
+        near_exp = card.search_count(w_domain + [
+            ('state', '=', 'active'), ('end_date', '>=', today), ('end_date', '<=', near_expiry)])
+        claimed = card.search_count(w_domain + [('claim_count', '>', 0)])
 
         active_pct = (active / total * 100) if total else 0
         expired_pct = (expired / total * 100) if total else 0
@@ -555,11 +552,7 @@ class WarrantyDashboard(models.Model):
         """Compute warranty status pie chart data with filters."""
         domain = self._build_warranty_domain(filters)
         card = self.env['warranty.card']
-        all_ids = card.search(domain)
-        states = {}
-        for r in all_ids:
-            st = r.state
-            states[st] = states.get(st, 0) + 1
+        states = {st: n for st, n in card._read_group(domain, ['state'], ['__count'])}
         color_map = {'draft': '#6b7280', 'active': '#10b981', 'expired': '#ef4444', 'cancelled': '#f59e0b'}
         return [{'label': k.title(), 'value': v, 'color': color_map.get(k, '#6366f1')}
                 for k, v in sorted(states.items(), key=lambda x: -x[1])]

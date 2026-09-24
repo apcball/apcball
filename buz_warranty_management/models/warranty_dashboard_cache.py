@@ -391,7 +391,11 @@ class WarrantyDashboardCache(models.Model):
 
     @api.model
     def _trigger_update(self, trigger_type, records=None):
-        """Handle cache update triggers — synchronous with debounce."""
+        """Handle cache update triggers — lazy invalidation.
+
+        Only marks the cache expired so saving a warranty card never pays for
+        a full rebuild. The cron or the next dashboard load rebuilds it.
+        """
         _logger.info("Cache update triggered: %s", trigger_type)
 
         cache = self.search([], limit=1)
@@ -402,13 +406,5 @@ class WarrantyDashboardCache(models.Model):
             'last_trigger_type': trigger_type,
             'last_trigger_time': fields.Datetime.now(),
             'trigger_count': cache.trigger_count + 1,
+            'cache_status': 'expired',
         })
-
-        # Debounce: skip if last update was within 2 minutes
-        if cache.last_update:
-            elapsed = (fields.Datetime.now() - cache.last_update).total_seconds()
-            if elapsed < 120:
-                _logger.debug("Skipping update — last update was %.0fs ago", elapsed)
-                return
-
-        cache._update_all_metrics()
