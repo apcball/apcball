@@ -47,6 +47,7 @@
     "website": "https://example.com",
     "depends": [
         "account",
+        "sr_extra_bank_charges",
         "mail",
         "sale",
         "l10n_th_account_tax",

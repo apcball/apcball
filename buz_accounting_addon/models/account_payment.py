@@ -5,6 +5,19 @@ from odoo.exceptions import UserError
 class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
+    # Odoo builds the paired internal-transfer payment with copy(); a copied fee
+    # would be booked a second time on the destination leg.
+    bank_charge_amount = fields.Monetary(copy=False)
+
+    def _synchronize_from_moves(self, changed_fields):
+        # The bank fee sits on the liquidity line, so the core sync would overwrite
+        # the payment amount with amount + fee (and the paired payment would copy it).
+        kept = {p.id: p.amount for p in self if p.is_internal_transfer and p.bank_charge_amount}
+        res = super()._synchronize_from_moves(changed_fields)
+        for payment in self.filtered(lambda p: p.id in kept and p.amount != kept[p.id]):
+            payment.with_context(skip_account_move_synchronization=True).write({'amount': kept[payment.id]})
+        return res
+
     buz_payment_channel = fields.Selection(
         [
             ('bank_transfer', '\u0e42\u0e2d\u0e19\u0e40\u0e07\u0e34\u0e19'),
