@@ -12,6 +12,7 @@ class BudgetTestMixin:
     @classmethod
     def _setup_budget_test_data(cls):
         """Create base test records: analytic plan, analytic accounts, partner, product, employee."""
+        cls.env = cls.env(context=dict(cls.env.context, skip_partner_required_fields=True))
         cls.analytic_plan = cls.env['account.analytic.plan'].create({
             'name': 'Test Plan',
         })

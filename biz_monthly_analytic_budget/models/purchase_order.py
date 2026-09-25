@@ -695,6 +695,19 @@ class PurchaseOrder(models.Model):
                 if stale_used:
                     stale_used.action_release()
 
+                # When the PO books under its source PR identity, the PO-own
+                # reservation made at RFQ stage would double-count the same amount.
+                if (document_model, document_id) != (self._name, self.id):
+                    own_reserved = self.env['budget.commitment'].sudo().search([
+                        ('document_model', '=', self._name),
+                        ('document_id', '=', self.id),
+                        ('analytic_account_id', '=', account_id),
+                        ('budget_source', '=', 'monthly'),
+                        ('state', '=', 'reserved'),
+                    ])
+                    if own_reserved:
+                        own_reserved.action_release()
+
             plan._refresh_budget_snapshot(refresh_report=True)
 
     def _get_source_requisition(self):

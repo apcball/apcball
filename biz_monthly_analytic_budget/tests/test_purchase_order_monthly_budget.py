@@ -64,3 +64,27 @@ class TestPurchaseOrderMonthlyBudget(TransactionCase, BudgetTestMixin):
             ('budget_source', '=', 'monthly'),
         ])
         self.assertFalse(commitment)
+
+    def test_confirm_with_source_pr_releases_po_own_reservation(self):
+        """PO booked under its source PR identity must not keep its RFQ reservation."""
+        from unittest.mock import patch
+        target = fields.Date.today() + timedelta(days=15)
+        self._create_confirmed_plan(target, budget_amount=100000)
+        po = self._create_po(target=target)
+        Commitment = self.env['budget.commitment'].sudo()
+        own_domain = [
+            ('document_model', '=', 'purchase.order'),
+            ('document_id', '=', po.id),
+            ('budget_source', '=', 'monthly'),
+            ('state', '=', 'reserved'),
+        ]
+        self.assertTrue(Commitment.search(own_domain))
+        pr_identity = ('employee.purchase.requisition', 987654)
+        with patch.object(type(po), '_get_budget_document_identity', return_value=pr_identity):
+            po._consume_monthly_analytic_budget()
+        self.assertFalse(Commitment.search(own_domain))
+        self.assertTrue(Commitment.search([
+            ('document_model', '=', pr_identity[0]),
+            ('document_id', '=', pr_identity[1]),
+            ('state', '=', 'reserved'),
+        ]))
