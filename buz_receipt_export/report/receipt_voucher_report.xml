@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_receipt_voucher_xlsx" model="ir.actions.report">
+        <field name="name">Receipt Voucher Report (XLSX)</field>
+        <field name="model">buz.receipt.export.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_receipt_export.receipt_voucher_xlsx</field>
+        <field name="report_file">buz_receipt_export.receipt_voucher_xlsx</field>
+        <field name="print_report_name">'Receipt Voucher Report - %s' % (object.date_to or time.strftime('%Y-%m-%d'))</field>
+    </record>
+</odoo>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_receipt_voucher_report"
+              name="Receipt Voucher Report"
+              parent="account.menu_finance_reports"
+              action="action_receipt_export_wizard"
+              sequence="60"
+              groups="account.group_account_user"/>
+</odoo>

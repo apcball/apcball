@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_receipt_export_wizard_form" model="ir.ui.view">
+        <field name="name">buz.receipt.export.wizard.form</field>
+        <field name="model">buz.receipt.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Receipt Voucher Report">
+                <sheet>
+                    <group>
+                        <group string="Date Range">
+                            <field name="date_type"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Report Options">
+                            <field name="status"/>
+                            <field name="amount_basis"/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                    <group string="Document Filters">
+                        <field name="partner_id" options="{'no_create': True}"/>
+                        <field name="voucher_name"/>
+                        <field name="receipt_name"/>
+                        <field name="invoice_name"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_export_xlsx" string="Export Excel"
+                            type="object" class="oe_highlight"/>
+                    <button string="Cancel" type="object" special="cancel" class="oe_link"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_receipt_export_wizard" model="ir.actions.act_window">
+        <field name="name">Receipt Voucher Report</field>
+        <field name="res_model">buz.receipt.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
