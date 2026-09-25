@@ -216,42 +216,52 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-set="bank_transfer_total" t-value="sum(o.bank_transfer_ids.mapped('amount')) or o.amount_total_net"/>
+                                                        <t t-set="bank_transfer_total" t-value="sum(o.bank_transfer_ids.mapped('amount')) or o.amount_total_net"/>
                             <t t-foreach="o.bank_transfer_ids" t-as="bt">
-                            <!-- Outstanding Payments (Credit) -->
+                            <t t-set="source_account" t-value="bt.journal_id.default_account_id"/>
+                            <t t-set="destination_payment" t-value="bt.paired_internal_transfer_payment_id"/>
+                            <t t-set="destination_account" t-value="bt.destination_journal_id.default_account_id"/>
+                            <t t-set="source_lines" t-value="bt.move_id.line_ids.filtered_domain([('account_id', '=', bt.payment_id.outstanding_account_id.id)])"/>
+                            <t t-set="destination_lines" t-value="destination_payment.move_id.line_ids.filtered_domain([('account_id', '=', destination_payment.outstanding_account_id.id)])"/>
+                            <t t-set="has_journal_lines" t-value="bt.state == 'posted' and source_lines and destination_lines"/>
+                            <t t-if="has_journal_lines">
+                            <t t-set="source_line" t-value="source_lines[0]"/>
+                            <t t-set="destination_line" t-value="destination_lines[0]"/>
                             <tr>
-                                <td>
-                                    <span t-esc="'211100'"/>
-                                </td>
-                                <td>
-                                    <span t-esc="'ตั๋วเงินจ่าย'"/>
-                                </td>
+                                <td><span t-field="source_account.code"/></td>
+                                <td><span t-field="source_account.name"/></td>
+                                <td><span t-field="source_line.move_id.name"/></td>
+                                <td><span t-field="source_line.move_id.date"/></td>
+                                <td class="text-end"><span t-field="source_line.debit" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                <td class="text-end"><span t-field="source_line.credit" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                            </tr>
+                            <tr>
+                                <td><span t-field="destination_account.code"/></td>
+                                <td><span t-field="destination_account.name"/></td>
+                                <td><span t-field="destination_line.move_id.name"/></td>
+                                <td><span t-field="destination_line.move_id.date"/></td>
+                                <td class="text-end"><span t-field="destination_line.debit" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                <td class="text-end"><span t-field="destination_line.credit" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                            </tr>
+                            </t>
+                            <t t-else="">
+                            <tr>
+                                <td><span t-field="source_account.code"/></td>
+                                <td><span t-field="source_account.name"/></td>
                                 <td><span t-field="bt.name"/></td>
                                 <td><span t-field="bt.date"/></td>
-                                <td class="text-end">
-                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
-                                </td>
-                                <td class="text-end">
-                                    <span t-esc="bt.amount or o.amount_total_net" t-options="{'widget': 'float', 'precision': 2}"/>
-                                </td>
+                                <td class="text-end"><span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                <td class="text-end"><span t-field="bt.amount" t-options="{'widget': 'float', 'precision': 2}"/></td>
                             </tr>
-                            <!-- Outstanding Receipts (Debit) -->
                             <tr>
-                                <td>
-                                    <span t-esc="'114100'"/>
-                                </td>
-                                <td>
-                                    <span t-esc="'ตั๋วเงินรับรอเรียกเก็บ'"/>
-                                </td>
+                                <td><span t-field="destination_account.code"/></td>
+                                <td><span t-field="destination_account.name"/></td>
                                 <td><span t-field="bt.name"/></td>
                                 <td><span t-field="bt.date"/></td>
-                                <td class="text-end">
-                                    <span t-esc="bt.amount or o.amount_total_net" t-options="{'widget': 'float', 'precision': 2}"/>
-                                </td>
-                                <td class="text-end">
-                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
-                                </td>
+                                <td class="text-end"><span t-field="bt.amount" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                <td class="text-end"><span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/></td>
                             </tr>
+                            </t>
                             </t>
                             <t t-if="not o.bank_transfer_ids">
                             <!-- Outstanding Payments (Credit) -->
