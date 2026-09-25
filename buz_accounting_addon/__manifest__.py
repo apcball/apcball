@@ -1,6 +1,6 @@
 {
     "name": "BUZ Accounting Addon",
-    "version": "17.0.2.1.0",
+    "version": "17.0.2.2.0",
     "category": "Accounting",
     "summary": "Production-ready grouped customer receipts with RV-ready architecture",
     "description": """
@@ -47,6 +47,7 @@
     "website": "https://example.com",
     "depends": [
         "account",
+        "sr_extra_bank_charges",
         "mail",
         "sale",
         "l10n_th_account_tax",
