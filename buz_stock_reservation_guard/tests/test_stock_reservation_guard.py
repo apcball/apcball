@@ -415,6 +415,42 @@ class TestMrpRawMaterialReservationGuard(TransactionCase):
         # step in this env); either state proves the guard didn't block it.
         self.assertIn(production.state, ("done", "to_close"))
 
+    def test_allow_mark_done_when_own_reservation_takes_all_stock(self):
+        location = self.env["stock.location"].create(
+            {
+                "name": "MRP Guard Exact",
+                "location_id": self.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        self.env["stock.quant"]._update_available_quantity(
+            self.raw_product, location, 3.0
+        )
+        production = self._create_production(location, qty=3.0)
+        self.assertEqual(
+            self.env["stock.quant"]._get_available_quantity(
+                self.raw_product, location, strict=True
+            ),
+            0.0,
+        )
+        production.button_mark_done()
+        self.assertIn(production.state, ("done", "to_close"))
+
+    def test_block_mark_done_when_own_reservation_below_demand(self):
+        location = self.env["stock.location"].create(
+            {
+                "name": "MRP Guard Short",
+                "location_id": self.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        self.env["stock.quant"]._update_available_quantity(
+            self.raw_product, location, 2.0
+        )
+        production = self._create_production(location, qty=3.0)
+        with self.assertRaises(UserError):
+            production.button_mark_done()
+
     def test_bypass_location_allows_mark_done_from_empty(self):
         self.env.company.write(
             {"bypass_reservation_guard_location_ids": [(4, self.source_empty.id)]}

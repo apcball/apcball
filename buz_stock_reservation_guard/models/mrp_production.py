@@ -41,19 +41,27 @@ class MrpProduction(models.Model):
             for move in moves:
                 key = (move.product_id.id, move.location_id.id)
                 demand_map.setdefault(
-                    key, {"product": move.product_id, "location": move.location_id, "quantity": 0.0}
+                    key, {"product": move.product_id, "location": move.location_id, "quantity": 0.0, "own_reserved": 0.0}
                 )
                 qty = move.product_uom._compute_quantity(
                     move.product_uom_qty, move.product_id.uom_id
                 )
                 demand_map[key]["quantity"] += qty
+                # free qty already excludes what this MO reserved for itself;
+                # add it back so an exact-fit reservation isn't seen as empty
+                demand_map[key]["own_reserved"] += sum(
+                    move.move_line_ids.filtered(
+                        lambda ml: ml.location_id == move.location_id
+                        and ml.state not in ("done", "cancel")
+                    ).mapped("quantity_product_uom")
+                )
 
             for values in demand_map.values():
                 available_qty = self.env["stock.quant"]._get_available_quantity(
                     values["product"],
                     values["location"],
                     strict=True,
-                )
+                ) + values["own_reserved"]
                 if float_compare(
                     available_qty,
                     values["quantity"],
