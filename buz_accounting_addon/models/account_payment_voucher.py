@@ -205,10 +205,33 @@ class AccountPaymentVoucher(models.Model):
         for voucher in self:
             voucher.amount_residual = voucher.amount_total_net - voucher.amount_paid
 
+    def _get_smart_button_payments(self):
+        """Return the payments belonging to this voucher.
+
+        ความสัมพันธ์ที่บันทึกไว้เป็นแหล่งข้อมูลหลัก ส่วนการค้นด้วย ref เป็น
+        fallback สำหรับ Payment รุ่นเก่าที่อาจยังไม่ได้ผูกกับ Voucher โดยตรง
+        การรวมเป็น recordset จะตัดรายการซ้ำให้เอง และไม่กรองตาม state เพื่อให้
+        รายการ cancelled ยังแสดงอยู่ใน Smart Button
+        """
+        self.ensure_one()
+
+        payments = self.payment_ids | self.line_ids.mapped('payment_ids')
+        legacy_domain = [
+            ('ref', '=', f'PV {self.name}'),
+            ('company_id', '=', self.company_id.id),
+            ('partner_id', '=', self.partner_id.id),
+            ('partner_type', '=', 'supplier'),
+            ('payment_type', '=', 'outbound'),
+            '|',
+            ('buz_payment_voucher_id', '=', False),
+            ('buz_payment_voucher_id', '=', self.id),
+        ]
+        return payments | self.env['account.payment'].search(legacy_domain)
+
     @api.depends('name')
     def _compute_payment_count(self):
         for rec in self:
-            rec.payment_count = self.env['account.payment'].search_count([('ref', '=', f"PV {rec.name}")])
+            rec.payment_count = len(rec._get_smart_button_payments())
 
     def action_open_related_payments(self):
         """
@@ -216,8 +239,7 @@ class AccountPaymentVoucher(models.Model):
         """
         self.ensure_one()
         
-        # Get payments linked to this voucher via reference
-        payments = self.env['account.payment'].search([('ref', '=', f"PV {self.name}")])
+        payments = self._get_smart_button_payments()
         
         action = {
             'name': _('Payments'),
@@ -501,9 +523,7 @@ class AccountPaymentVoucher(models.Model):
         """
         self.ensure_one()
         
-        # Find payments related to this voucher by looking at the reference
-        # Payments are created with ref = f"PV {voucher.name}"
-        payments = self.env['account.payment'].search([('ref', '=', f"PV {self.name}")])
+        payments = self._get_smart_button_payments()
         
         action = {
             'name': _('Payments'),
