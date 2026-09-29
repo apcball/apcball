@@ -124,6 +124,17 @@ class TestStockReservationGuard(TransactionCase):
         move.write({"quantity": qty})
         picking.write({"bypass_reservation_guard": False})
 
+    def test_allow_action_assign_when_own_reservation_takes_all_stock(self):
+        # at_confirm reservation consumes the whole quant before the guard runs
+        self.env["stock.quant"]._update_available_quantity(
+            self.product, self.source_empty, 1.0
+        )
+        picking, move = self._create_picking(self.source_empty)
+        move._action_assign()
+        self.assertEqual(move.state, "assigned")
+        picking.action_assign()
+        self.assertEqual(move.state, "assigned")
+
     def test_block_validate_from_empty_location(self):
         picking, move = self._create_picking(self.source_empty)
         self._create_move_line_at_empty_location(picking, move)

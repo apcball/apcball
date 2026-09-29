@@ -42,6 +42,14 @@ class StockPicking(models.Model):
                 and m.location_id.usage in ("internal", "transit")
                 and m.location_id.id not in bypass_loc_ids
                 and not m._should_bypass_reservation()
+                # already reserved by this picking (e.g. at_confirm): stock is
+                # provably there, and free qty is 0 only because of our own hold
+                and float_compare(
+                    self._get_move_reserved_qty(m),
+                    0.0,
+                    precision_rounding=m.product_uom.rounding,
+                )
+                <= 0
             ):
                 available_qty = self.env["stock.quant"]._get_available_quantity(
                     move.product_id,

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Buz Stock Reservation Guard",
-    "version": "17.0.1.2.0",
+    "version": "17.0.1.2.1",
     "category": "Inventory",
     "summary": "Block manual reservations from source locations without stock",
     "description": """
