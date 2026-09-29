@@ -67,16 +67,13 @@ class PurchaseOrder(models.Model):
     def _compute_is_budget_reserved(self):
         Commitment = self.env['budget.commitment'].sudo()
         for order in self:
-            has_commitment = False
-            
-            if order.state in ('purchase', 'done'):
-                has_commitment = bool(Commitment.search([
-                    ('document_model', '=', order._name),
-                    ('document_id', '=', order.id),
-                    ('state', 'in', ('reserved', 'used')),
-                    ('budget_source', '=', 'monthly')
-                ], limit=1))
-                
+            has_commitment = bool(Commitment.search([
+                ('document_model', '=', order._name),
+                ('document_id', '=', order.id),
+                ('state', 'in', ('reserved', 'used')),
+                ('budget_source', '=', 'monthly')
+            ], limit=1))
+
             if not has_commitment:
                 source_id = order._get_source_requisition_id()
                 if source_id and source_id != order.id:
