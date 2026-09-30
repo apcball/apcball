@@ -12,6 +12,7 @@
                     </group>
                     <group string="Filters">
                         <field name="do_status"/>
+                        <field name="only_with_dispatch_doc"/>
                     </group>
                 </group>
                 <footer>

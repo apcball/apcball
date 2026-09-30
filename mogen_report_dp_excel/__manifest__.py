@@ -11,6 +11,7 @@
         "stock",
         "report_xlsx",
         "buz_dispatch_document",
+        "pos_lite",
     ],
     "data": [
         "security/security.xml",

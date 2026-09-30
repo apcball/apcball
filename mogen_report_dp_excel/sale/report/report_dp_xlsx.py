@@ -37,12 +37,15 @@ class ReportDPExcel(models.AbstractModel):
     def _get_delivery_data(self, sale_order):
         data = self.env.context.get("xlsx_export_data") or {}
         do_status = data.get("do_status")
+        only_with_dispatch_doc = data.get("only_with_dispatch_doc")
         pickings = sale_order.picking_ids
         if do_status:
             if do_status == 'return':
                 pickings = pickings.filtered(lambda p: p.picking_type_code == 'incoming')
             else:
                 pickings = pickings.filtered(lambda p: p.state == do_status and p.picking_type_code == 'outgoing')
+        if only_with_dispatch_doc:
+            pickings = pickings.filtered(lambda p: p.buz_dispatch_document_ids)
         return {
             "do_no": ", ".join(filter(None, pickings.mapped("name"))),
             "scheduled_date": ", ".join(
@@ -59,6 +62,7 @@ class ReportDPExcel(models.AbstractModel):
         date_from = data.get("date_from")
         date_to = data.get("date_to")
         do_status = data.get("do_status")
+        only_with_dispatch_doc = data.get("only_with_dispatch_doc")
         
         pickings = sale_order.picking_ids
         if do_status:
@@ -66,6 +70,8 @@ class ReportDPExcel(models.AbstractModel):
                 pickings = pickings.filtered(lambda p: p.picking_type_code == 'incoming')
             else:
                 pickings = pickings.filtered(lambda p: p.state == do_status and p.picking_type_code == 'outgoing')
+        if only_with_dispatch_doc:
+            pickings = pickings.filtered(lambda p: p.buz_dispatch_document_ids)
 
         if not (date_from and date_to):
             return pickings
@@ -107,8 +113,10 @@ class ReportDPExcel(models.AbstractModel):
                     ) if move else 0.0
                     if move and move.bom_line_id:
                         unit_price = move.product_id.lst_price
+                        parent_bom_text = sale_line.name if sale_line else ""
                     else:
                         unit_price = sale_line.price_unit if sale_line else 0.0
+                        parent_bom_text = ""
                         
                     rows.append(
                         {
@@ -126,6 +134,7 @@ class ReportDPExcel(models.AbstractModel):
                             "shipping_address": self._safe_text(
                                 sale_order.partner_shipping_id.contact_address
                             ),
+                            "parent_bom": self._safe_text(parent_bom_text),
                             "product_code": self._safe_text(move.product_id.default_code) if move else "",
                             "description": self._safe_text(
                                 move.product_id.name
@@ -144,6 +153,12 @@ class ReportDPExcel(models.AbstractModel):
         sr_picking_ids = data.get("service_receipt_picking_ids", [])
         if sr_picking_ids:
             pickings = self.env["stock.picking"].browse(sr_picking_ids)
+            pos_lite_orders = self.env["pos.lite.order"].search(
+                [("name", "in", pickings.mapped("origin"))]
+            )
+            pos_lite_saleperson_by_origin = {
+                order.name: order.employee_id.name for order in pos_lite_orders
+            }
             date_from = data.get("date_from")
             date_to = data.get("date_to")
             do_status = data.get("do_status")
@@ -178,10 +193,13 @@ class ReportDPExcel(models.AbstractModel):
                         "invoice_no": "",
                         "do_no": self._safe_text(picking.name),
                         "customer": self._safe_text(picking.partner_id.name),
-                        "saleperson": "",
+                        "saleperson": self._safe_text(
+                            pos_lite_saleperson_by_origin.get(picking.origin)
+                        ),
                         "sale_team": "",
                         "so_ref": "",
                         "shipping_address": self._safe_text(picking.partner_id.contact_address),
+                        "parent_bom": "",
                         "product_code": self._safe_text(move.product_id.default_code),
                         "description": self._safe_text(move.product_id.name),
                         "quantity": quantity,
@@ -309,6 +327,7 @@ class ReportDPExcel(models.AbstractModel):
             ("Sale Team", 18),
             ("SO.ref No.", 18),
             ("Shipping Address", 30),
+            ("Parent BOM", 34),
             ("Product Code", 16),
             ("Description", 34),
             ("Quantity", 12),
@@ -349,13 +368,14 @@ class ReportDPExcel(models.AbstractModel):
             sheet.write(row_idx, 9, row["sale_team"], text_format)
             sheet.write(row_idx, 10, row["so_ref"], text_format)
             sheet.write(row_idx, 11, row["shipping_address"], text_format)
-            sheet.write(row_idx, 12, row["product_code"], text_format)
-            sheet.write(row_idx, 13, row["description"], text_format)
-            sheet.write_number(row_idx, 14, row["quantity"] or 0.0, number_format)
-            sheet.write(row_idx, 15, row["uom"], center_format)
-            sheet.write_number(row_idx, 16, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 17, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 18, row["note"], text_format)
+            sheet.write(row_idx, 12, row["parent_bom"], text_format)
+            sheet.write(row_idx, 13, row["product_code"], text_format)
+            sheet.write(row_idx, 14, row["description"], text_format)
+            sheet.write_number(row_idx, 15, row["quantity"] or 0.0, number_format)
+            sheet.write(row_idx, 16, row["uom"], center_format)
+            sheet.write_number(row_idx, 17, row["unit_price"] or 0.0, number_format)
+            sheet.write_number(row_idx, 18, row["sum_amount"] or 0.0, number_format)
+            sheet.write(row_idx, 19, row["note"], text_format)
             row_idx += 1
 
         if not rows:
