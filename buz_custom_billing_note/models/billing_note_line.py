@@ -9,8 +9,15 @@ class BillingNoteLine(models.Model):
     invoice_id = fields.Many2one('account.move', string='Invoice', required=True)
     date = fields.Date(related='invoice_id.invoice_date', string='Invoice Date', store=True)
     due_date = fields.Date(related='invoice_id.invoice_date_due', string='Due Date', store=True)
-    amount_total = fields.Monetary(related='invoice_id.amount_total', string='Total Amount', store=True)
-    amount_residual = fields.Monetary(related='invoice_id.amount_residual', string='Amount Due', store=True)
+    amount_total = fields.Monetary(compute='_compute_signed_amounts', string='Total Amount', store=True)
+    amount_residual = fields.Monetary(compute='_compute_signed_amounts', string='Amount Due', store=True)
     currency_id = fields.Many2one('res.currency', string='Currency',
         default=lambda self: self.env.company.currency_id)
     company_id = fields.Many2one(related='billing_note_id.company_id')
+
+    @api.depends('invoice_id.amount_total', 'invoice_id.amount_residual', 'invoice_id.move_type')
+    def _compute_signed_amounts(self):
+        for line in self:
+            sign = line.invoice_id._billing_note_sign() if line.invoice_id else 1
+            line.amount_total = sign * line.invoice_id.amount_total
+            line.amount_residual = sign * line.invoice_id.amount_residual

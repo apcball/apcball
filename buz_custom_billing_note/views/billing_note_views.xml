@@ -122,6 +122,7 @@
                                     <field name="name"/>
                                     <field name="invoice_date"/>
                                     <field name="invoice_date_due"/>
+                                    <field name="move_type" optional="show"/>
                                     <field name="amount_total"/>
                                     <field name="amount_residual"/>
                                     <field name="payment_state"/>

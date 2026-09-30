@@ -56,13 +56,18 @@ class AccountMove(models.Model):
             move.billing_note_state = first_note.state if first_note else False
             move.billing_note_payment_state = first_note.payment_state if first_note else False
 
+    def _billing_note_sign(self):
+        """-1 for credit notes (netted against invoices), else 1."""
+        self.ensure_one()
+        return -1 if self.move_type in ('out_refund', 'in_refund') else 1
+
     def action_create_billing_note(self):
         """Open wizard to create a billing note from this invoice."""
         self.ensure_one()
         if self.state != 'posted':
             raise UserError(_('You can only create billing notes for posted invoices.'))
-        if self.move_type not in ('out_invoice', 'in_invoice'):
-            raise UserError(_('You can only create billing notes for customer invoices or vendor bills.'))
+        if self.move_type not in ('out_invoice', 'in_invoice', 'out_refund', 'in_refund'):
+            raise UserError(_('You can only create billing notes for customer invoices, vendor bills or their credit notes.'))
 
         return {
             'name': _('Create Billing Note'),
@@ -72,6 +77,6 @@ class AccountMove(models.Model):
             'target': 'new',
             'context': {
                 'default_invoice_id': self.id,
-                'default_note_type': 'payable' if self.move_type == 'in_invoice' else 'receivable',
+                'default_note_type': 'payable' if self.move_type in ('in_invoice', 'in_refund') else 'receivable',
             },
         }
