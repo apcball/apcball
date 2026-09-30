@@ -25,7 +25,8 @@ class AccountPayment(models.Model):
             ])
 
             for note in billing_notes:
-                note_invoices = note.invoice_ids & reconciled_invoices
+                note_invoices = (note.invoice_ids & reconciled_invoices).filtered(
+                    lambda m: m._billing_note_sign() > 0)
                 note_total = sum(note_invoices.mapped('amount_total'))
                 if not note_total:
                     continue

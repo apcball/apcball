@@ -22,9 +22,9 @@ class AddBillsWizard(models.TransientModel):
         ]
 
         if self.note_type == 'receivable':
-            domain.append(('move_type', '=', 'out_invoice'))
+            domain.append(('move_type', 'in', ('out_invoice', 'out_refund')))
         else:
-            domain.append(('move_type', '=', 'in_invoice'))
+            domain.append(('move_type', 'in', ('in_invoice', 'in_refund')))
 
         return {'domain': {'invoice_ids': domain}}
 

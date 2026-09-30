@@ -231,9 +231,10 @@
                                         <td style="text-align: center;">
                                             <span t-field="inv.invoice_date_due" t-options='{"format": "dd/MM/yyyy"}'/>
                                         </td>
-                                        <td><span t-esc="'{:,.2f}'.format(inv.amount_untaxed)"/></td>
-                                        <td><span t-esc="'{:,.2f}'.format(inv.amount_tax)"/></td>
-                                        <td><span t-esc="'{:,.2f}'.format(inv.amount_total)"/></td>
+                                        <t t-set="sign" t-value="inv._billing_note_sign()"/>
+                                        <td><span t-esc="'{:,.2f}'.format(sign * inv.amount_untaxed)"/></td>
+                                        <td><span t-esc="'{:,.2f}'.format(sign * inv.amount_tax)"/></td>
+                                        <td><span t-esc="'{:,.2f}'.format(sign * inv.amount_total)"/></td>
                                     </tr>
 
                                     <!-- ช่องว่างให้ครบ 16 บรรทัดในแต่ละหน้า -->
@@ -258,9 +259,9 @@
                                             <span t-esc="'(' + doc.amount_total_words + ')' if doc.amount_total_words else ''"/>
                                         </td>
                                         <td>รวมทั้งสิ้น</td>
-                                        <td><span t-esc="'{:,.2f}'.format(sum((doc.invoice_ids or []).mapped('amount_untaxed') or [0]))"/></td>
-                                        <td><span t-esc="'{:,.2f}'.format(sum((doc.invoice_ids or []).mapped('amount_tax') or [0]))"/></td>
-                                        <td><span t-esc="'{:,.2f}'.format(sum((doc.invoice_ids or []).mapped('amount_total') or [0]))"/></td>
+                                        <td><span t-esc="'{:,.2f}'.format(sum(m._billing_note_sign() * m.amount_untaxed for m in doc.invoice_ids))"/></td>
+                                        <td><span t-esc="'{:,.2f}'.format(sum(m._billing_note_sign() * m.amount_tax for m in doc.invoice_ids))"/></td>
+                                        <td><span t-esc="'{:,.2f}'.format(sum(m._billing_note_sign() * m.amount_total for m in doc.invoice_ids))"/></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -272,38 +273,6 @@
     <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
     <t t-if="page_number &gt; total_pages">
         <!-- ลายเซ็นหรือหมายเหตุ -->
-
-                <!-- Tracking Information: เฉพาะสำเนาบัญชี ใช้เป็นกระดาษติดตามการรับ-ส่งใบวางบิล -->
-                <t t-if="doc_type == 'copy'">
-                    <div class="row mt-3" style="font-size: 18px;">
-                        <div class="col-6">
-                            <strong>MESSENGER</strong>
-                            <div>วันที่ส่งแมสเซนเจอร์:
-                                <span t-if="doc.messenger_sent_date" t-field="doc.messenger_sent_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                <span t-else="">____/____/____</span>
-                            </div>
-                            <div>วันที่รับจากแมสเซนเจอร์:
-                                <span t-if="doc.messenger_received_date" t-field="doc.messenger_received_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                <span t-else="">____/____/____</span>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <strong>AR/AP</strong>
-                            <div>วันที่ส่งบัญชีลูกหนี้:
-                                <span t-if="doc.ar_sent_date" t-field="doc.ar_sent_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                <span t-else="">____/____/____</span>
-                            </div>
-                            <div>วันที่บัญชีลูกหนี้รับ:
-                                <span t-if="doc.ar_received_date" t-field="doc.ar_received_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                <span t-else="">____/____/____</span>
-                            </div>
-                            <div>วันที่คาดว่าจะได้รับเงิน:
-                                <span t-if="doc.expected_payment_date" t-field="doc.expected_payment_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                <span t-else="">____/____/____</span>
-                            </div>
-                        </div>
-                    </div>
-                </t>
 
                 <!-- เพิ่มหมายเหตุ -->
                         <t t-if="doc.note">

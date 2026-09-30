@@ -23,7 +23,7 @@ class CreateBillingNoteWizard(models.TransientModel):
         if active_id:
             invoice = self.env['account.move'].browse(active_id)
             res['invoice_id'] = invoice.id
-            res['note_type'] = 'payable' if invoice.move_type == 'in_invoice' else 'receivable'
+            res['note_type'] = 'payable' if invoice.move_type in ('in_invoice', 'in_refund') else 'receivable'
         return res
 
     def action_create_billing_note(self):
@@ -46,7 +46,7 @@ class CreateBillingNoteWizard(models.TransientModel):
             raise UserError(
                 _('This invoice is already included in billing note %s') % existing_note.name)
 
-        note_type = 'payable' if invoice.move_type == 'in_invoice' else 'receivable'
+        note_type = 'payable' if invoice.move_type in ('in_invoice', 'in_refund') else 'receivable'
 
         billing_note = self.env['billing.note'].create({
             'partner_id': invoice.partner_id.id,

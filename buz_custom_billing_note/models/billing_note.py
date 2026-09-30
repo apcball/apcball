@@ -206,22 +206,18 @@ class BillingNote(models.Model):
                     domain.append(('id', 'not in', used_invoices.ids))
 
             if rec.note_type == 'receivable':
-                domain.extend([
-                    ('move_type', '=', 'out_invoice'),
-                ])
+                domain.append(('move_type', 'in', ('out_invoice', 'out_refund')))
             else:
-                domain.extend([
-                    ('move_type', '=', 'in_invoice'),
-                ])
+                domain.append(('move_type', 'in', ('in_invoice', 'in_refund')))
 
             rec.available_invoice_ids = self.env['account.move'].search(domain)
 
-    @api.depends('invoice_ids', 'invoice_ids.amount_total')
+    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.move_type')
     def _compute_amount_total(self):
         for rec in self:
-            rec.amount_total = sum(rec.invoice_ids.mapped('amount_total'))
+            rec.amount_total = sum(inv._billing_note_sign() * inv.amount_total for inv in rec.invoice_ids)
 
-    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'payment_line_ids', 'payment_line_ids.amount')
+    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'invoice_ids.move_type', 'amount_total', 'payment_line_ids', 'payment_line_ids.amount')
     def _compute_payment_state(self):
         precision = self.env['decimal.precision'].precision_get('Account')
         for rec in self:
@@ -230,7 +226,7 @@ class BillingNote(models.Model):
             elif float_is_zero(rec.amount_total, precision_digits=precision):
                 rec.payment_state = 'paid'
             else:
-                total_residual = sum(rec.invoice_ids.mapped('amount_residual'))
+                total_residual = sum(inv._billing_note_sign() * inv.amount_residual for inv in rec.invoice_ids)
 
                 if float_is_zero(total_residual, precision_digits=precision):
                     rec.payment_state = 'paid'
@@ -241,10 +237,10 @@ class BillingNote(models.Model):
                 else:
                     rec.payment_state = 'partial'
 
-    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'payment_line_ids', 'payment_line_ids.amount')
+    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.move_type', 'amount_total', 'payment_line_ids', 'payment_line_ids.amount')
     def _compute_amount_paid(self):
         for rec in self:
-            total_residual = sum(rec.invoice_ids.mapped('amount_residual'))
+            total_residual = sum(inv._billing_note_sign() * inv.amount_residual for inv in rec.invoice_ids)
             rec.amount_paid = rec.amount_total - total_residual
             rec.amount_residual = total_residual
 
@@ -276,6 +272,10 @@ class BillingNote(models.Model):
         for rec in self:
             if not rec.invoice_ids:
                 raise UserError(_('Please select at least one document.'))
+            if not rec.invoice_ids.filtered(lambda m: m._billing_note_sign() > 0):
+                raise UserError(_('Please select at least one invoice or bill (credit notes alone are not allowed).'))
+            if float_compare(rec.amount_total, 0.0, precision_rounding=rec.currency_id.rounding) < 0:
+                raise UserError(_('Credit notes exceed the invoices; net total must not be negative.'))
             rec.write({'state': 'confirm'})
 
     def action_done(self):
@@ -290,9 +290,34 @@ class BillingNote(models.Model):
         for rec in self:
             rec.write({'state': 'cancel'})
 
+    def action_apply_credit_notes(self):
+        """Reconcile the credit notes of each note against its open invoices,
+        so payment registration only deals with the net invoice residual."""
+        for rec in self:
+            docs = rec.invoice_ids.filtered(lambda m: m.state == 'posted' and m.amount_residual)
+            if not any(m._billing_note_sign() < 0 for m in docs) or not any(m._billing_note_sign() > 0 for m in docs):
+                continue
+            account_type = 'asset_receivable' if rec.note_type == 'receivable' else 'liability_payable'
+            lines = docs.line_ids.filtered(
+                lambda l: l.account_id.account_type == account_type and not l.reconciled)
+            for account in lines.account_id:
+                acc_lines = lines.filtered(lambda l: l.account_id == account)
+                if any(l.balance > 0 for l in acc_lines) and any(l.balance < 0 for l in acc_lines):
+                    acc_lines.reconcile()
+        return True
+
+    def _get_payable_invoices(self):
+        """Open invoices/bills (no credit notes) after netting credit notes."""
+        self.action_apply_credit_notes()
+        invoices = self.invoice_ids.filtered(
+            lambda m: m._billing_note_sign() > 0 and m.state == 'posted' and m.amount_residual > 0)
+        if not invoices:
+            raise UserError(_('Nothing left to pay after applying credit notes.'))
+        return invoices
+
     def action_register_payment(self):
         self.ensure_one()
-        invoices = self.invoice_ids
+        invoices = self._get_payable_invoices()
         ctx = {
             'active_model': 'account.move',
             'active_ids': invoices.ids,
@@ -320,7 +345,7 @@ class BillingNote(models.Model):
 
         invoices = self.env['account.move']
         for note in self:
-            invoices |= note.invoice_ids
+            invoices |= note._get_payable_invoices()
 
         ctx = {
             'active_model': 'account.move',
@@ -339,30 +364,37 @@ class BillingNote(models.Model):
             'type': 'ir.actions.act_window',
         }
 
+    def _main_invoice(self):
+        """First invoice/bill of the note (credit notes only as fallback)."""
+        self.ensure_one()
+        docs = self.invoice_ids
+        return (docs.filtered(lambda m: m._billing_note_sign() > 0) or docs)[:1]
+
     @api.depends('invoice_ids')
     def _compute_sale_order_number(self):
         for rec in self:
             sale_order = False
             for inv in rec.invoice_ids:
-                if hasattr(inv, 'invoice_origin') and inv.invoice_origin:
+                if inv._billing_note_sign() > 0 and inv.invoice_origin:
                     sale_order = inv.invoice_origin
                     break
             rec.sale_order_number = sale_order or ''
 
-    @api.depends('invoice_ids')
+    @api.depends('invoice_ids', 'invoice_ids.move_type')
     def _compute_salesperson(self):
         for rec in self:
-            rec.salesperson_id = rec.invoice_ids and rec.invoice_ids[0].user_id.id or False
+            main = rec._main_invoice()
+            rec.salesperson_id = main.user_id.id or False
 
     @api.depends('invoice_ids')
     def _compute_payment_term(self):
         for rec in self:
-            rec.payment_term_id = rec.invoice_ids and rec.invoice_ids[0].invoice_payment_term_id.id or False
+            rec.payment_term_id = rec._main_invoice().invoice_payment_term_id.id or False
 
     @api.depends('invoice_ids')
     def _compute_invoice_due_date(self):
         for rec in self:
-            rec.invoice_due_date = rec.invoice_ids and rec.invoice_ids[0].invoice_date_due or False
+            rec.invoice_due_date = rec._main_invoice().invoice_date_due or False
 
     @api.model
     def _cron_check_due_dates(self):
