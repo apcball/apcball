@@ -18,13 +18,50 @@ class SaleOrder(models.Model):
             order.margin = sum(order.order_line.mapped('margin'))
             order.margin_percent = order.amount_untaxed and order.margin / order.amount_untaxed
 
+    missing_cost_warning = fields.Text(compute='_compute_missing_cost_warning')
+
+    @api.depends('order_line.purchase_price', 'order_line.product_id', 'order_line.product_id.type', 'order_line.display_type', 'order_line.is_downpayment')
+    def _compute_missing_cost_warning(self):
+        for order in self:
+            missing = order._get_missing_cost_products()
+            order.missing_cost_warning = _(
+                "สินค้าต่อไปนี้ยังไม่มี Cost กรุณาแจ้งบัญชีต้นทุนให้ตั้งราคาต้นทุนใน Standard Cost Pricelist ก่อน Confirm:\n%s"
+            ) % "\n".join("- %s" % name for name in missing) if missing else False
+
+    def _get_missing_cost_products(self):
+        self.ensure_one()
+        return [
+            line.product_id.display_name
+            for line in self.order_line
+            if not line.display_type and not line.is_downpayment and line.product_id and line.product_id.type != 'service' and line.purchase_price <= 0
+        ]
+
     def action_confirm(self):
         # Validation checks
         get_param = self.env['ir.config_parameter'].sudo().get_param
         min_margin = float(get_param('sale_pricelist_standard_cost.minimum_margin_percent', default=0.0))
         block_negative = get_param('sale_pricelist_standard_cost.block_negative_margin') == 'True'
-        
+
         for order in self:
+            # Cost may have been added to the Standard Cost Pricelist after the
+            # line was created; the stored purchase_price does not depend on
+            # pricelist rules, so refresh zero-cost lines before checking.
+            # Only lines still at zero cost are refreshed here.
+            stale_lines = order.order_line.filtered(
+                lambda l: not l.display_type and not l.is_downpayment and l.product_id
+                and l.product_id.type != 'service' and l.purchase_price <= 0
+            )
+            if stale_lines:
+                stale_lines._compute_standard_cost_purchase_price()
+
+            # Check Missing Standard Cost (block confirm, product must have cost set first)
+            missing_cost_products = order._get_missing_cost_products()
+
+            if missing_cost_products:
+                raise ValidationError(_(
+                    "ไม่สามารถ Confirm ได้: สินค้าต่อไปนี้ยังไม่มี Standard Cost กรุณาแจ้งบัญชีต้นทุนให้ตั้งราคาต้นทุนใน Standard Cost Pricelist ก่อน:\n%s"
+                ) % "\n".join("- %s" % name for name in missing_cost_products))
+
             # Check Global Margin
             if min_margin > 0:
                 # Compare as percent (e.g. 10.0 for 10%)
