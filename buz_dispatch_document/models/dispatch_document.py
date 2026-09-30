@@ -355,7 +355,7 @@ class BuzDispatchDocument(models.Model):
             picking = record.stock_picking_id
             target_day = record.document_date
             if picking and picking.state == 'done':
-                local_dt = BANGKOK_TZ.localize(datetime.combine(target_day, time(17, 0)))
+                local_dt = BANGKOK_TZ.localize(datetime.combine(target_day, time(7, 0)))
                 date_dt = local_dt.astimezone(pytz.utc).replace(tzinfo=None)
                 wiz = self.env['stock.picking.backdate.wiz'].sudo().create({
                     'date': date_dt,
@@ -364,7 +364,7 @@ class BuzDispatchDocument(models.Model):
                 wiz.change_to_backdate()
             record.state = 'done'
             record.message_post(
-                body=_('Dispatch confirmed. Delivery backdated to %s (17:00 Bangkok).') % target_day
+                body=_('Dispatch confirmed. Delivery backdated to %s (07:00 Bangkok).') % target_day
             )
 
     def action_cancel(self):
