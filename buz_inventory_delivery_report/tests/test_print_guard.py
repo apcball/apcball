@@ -29,6 +29,15 @@ class TestPrintGuard(TransactionCase):
             self.env['ir.actions.report']._render_qweb_pdf(REPORT, picking.ids)
         self.assertIn(picking.name, str(ctx.exception))
 
+    def test_borrow_equipment_blocked_unless_done(self):
+        borrow = 'buz_inventory_delivery_report.borrow_equip_form_document'
+        picking = self._make_picking()
+        with self.assertRaises(UserError):
+            self.env['ir.actions.report']._render_qweb_pdf(borrow, picking.ids)
+        picking.state = 'done'
+        content, fmt = self.env['ir.actions.report']._render_qweb_pdf(borrow, picking.ids)
+        self.assertTrue(content)
+
     def test_done_allowed(self):
         picking = self._make_picking()
         picking.state = 'done'
