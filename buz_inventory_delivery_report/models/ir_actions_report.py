@@ -5,6 +5,7 @@ from odoo.exceptions import UserError
 DONE_ONLY_REPORTS = {
     'buz_inventory_delivery_report.delivery_report_tem_document',
     'buz_inventory_delivery_report.borrow_equip_form_document',
+    'buz_inventory_delivery_report.report_delivery_document',
 }
 
 

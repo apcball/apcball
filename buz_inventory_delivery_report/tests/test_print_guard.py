@@ -38,6 +38,15 @@ class TestPrintGuard(TransactionCase):
         content, fmt = self.env['ir.actions.report']._render_qweb_pdf(borrow, picking.ids)
         self.assertTrue(content)
 
+    def test_delivery_document_blocked_unless_done(self):
+        report = 'buz_inventory_delivery_report.report_delivery_document'
+        picking = self._make_picking()
+        with self.assertRaises(UserError):
+            self.env['ir.actions.report']._render_qweb_pdf(report, picking.ids)
+        picking.state = 'done'
+        content, fmt = self.env['ir.actions.report']._render_qweb_pdf(report, picking.ids)
+        self.assertTrue(content)
+
     def test_done_allowed(self):
         picking = self._make_picking()
         picking.state = 'done'
