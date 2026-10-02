@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_po_monthly_report" name="Purchase Order Monthly Report"
+              parent="purchase.purchase_report"
+              action="buz_po_monthly_report.action_po_monthly_report_wizard"
+              sequence="30"
+              groups="purchase.group_purchase_user,purchase.group_purchase_manager"/>
+</odoo>
