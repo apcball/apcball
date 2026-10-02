@@ -11,5 +11,18 @@ class HelpdeskLineComposer(models.TransientModel):
         ticket = self.env['buz.helpdesk.ticket'].browse(
             self.env.context.get('buz_helpdesk_ticket_id')
         ).exists()
-        ticket.action_send_line_message(self.body)
-        return {'type': 'ir.actions.act_window_close'}
+        ticket.action_send_line_message(
+            self.body,
+            attachment_ids=self.attachment_ids.ids,
+        )
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'LINE',
+                'message': 'ส่ง LINE สำเร็จ',
+                'type': 'success',
+                'sticky': False,
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }

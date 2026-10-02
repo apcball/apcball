@@ -142,7 +142,11 @@ export class HelpdeskAttachmentPreviewField extends Many2ManyBinaryField {
             if (parsedFileData.error) {
                 throw new Error(parsedFileData.error);
             }
-            await this.onFileUploaded(parsedFileData, files);
+            // Odoo expects an array so the inherited handler can save each attachment.
+            const uploadedFiles = Array.isArray(parsedFileData)
+                ? parsedFileData
+                : [parsedFileData];
+            await this.onFileUploaded(uploadedFiles);
         } catch (error) {
             this.notification.add(error.message || "Unable to upload clipboard files.", {
                 title: "Uploading error",

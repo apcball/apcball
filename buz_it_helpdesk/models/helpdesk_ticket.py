@@ -947,9 +947,14 @@ class HelpdeskTicket(models.Model):
                 'Only the assigned IT user or a Helpdesk Manager can contact '
                 'the requester while the ticket is In Progress.'
             ))
+        line_service = self.env['buz.helpdesk.line.service'].sudo()
+        if not line_service._parameter(
+            line_service._user_key(self.requester_id.id)
+        ):
+            raise UserError(_('The Requester has not connected a LINE account.'))
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Contact User via LINE'),
+            'name': _('ส่ง LINE ถึงผู้แจ้ง'),
             'res_model': 'mail.compose.message',
             'view_mode': 'form',
             'target': 'new',
@@ -973,7 +978,7 @@ class HelpdeskTicket(models.Model):
             'target': 'new',
         }
 
-    def action_send_line_message(self, body):
+    def action_send_line_message(self, body, attachment_ids=None):
         self.ensure_one()
         if not self.show_contact_line_button:
             raise UserError(_('This ticket cannot be contacted via LINE.'))
@@ -985,6 +990,9 @@ class HelpdeskTicket(models.Model):
         )
         if not line_user_id:
             raise UserError(_('The Requester has not connected a LINE account.'))
+        attachments = self.env['ir.attachment'].browse(
+            attachment_ids or []
+        ).exists()
         text = html2plaintext(body or '').strip()
         if not text:
             raise UserError(_('Please enter a message.'))
@@ -993,19 +1001,45 @@ class HelpdeskTicket(models.Model):
         ticket_url = '%s/web#id=%s&model=%s&view_type=form' % (
             base_url, self.id, self._name,
         )
+        attachment_lines = '\n'.join(
+            '%s: %s' % (
+                attachment.name,
+                '%s/web/content/%s?download=1' % (base_url, attachment.id),
+            )
+            for attachment in attachments
+        )
         message = _(
             'IT Helpdesk Ticket %(ticket)s\n'
             'Subject: %(subject)s\n\n'
-            '%(body)s\n\n'
+            '%(body)s%(attachments)s\n\n'
             'Open in Odoo: %(url)s'
         ) % {
             'ticket': self.display_name,
             'subject': self.subject,
             'body': text,
+            'attachments': (
+                '\n\nAttachments:\n%s' % attachment_lines
+                if attachment_lines else ''
+            ),
             'url': ticket_url,
         }
+        if len(message) > 5000:
+            raise UserError(_(
+                'The message and attachment links are too long for LINE.'
+            ))
+        if attachments:
+            self.write({
+                'attachment_ids': [
+                    fields.Command.link(attachment.id)
+                    for attachment in attachments
+                ],
+            })
         line_service._send_user_message(line_user_id, message)
-        self.message_post(body=body, subtype_xmlid='mail.mt_comment')
+        self.message_post(
+            body=body,
+            attachment_ids=attachments.ids,
+            subtype_xmlid='mail.mt_comment',
+        )
         self._write_workflow_fields({
             'stage_id': self.env.ref(
                 'buz_it_helpdesk.stage_pending_user'
@@ -1018,7 +1052,6 @@ class HelpdeskTicket(models.Model):
             note=_('Please reply to ticket %s in Odoo.') % self.display_name,
         )
         return True
-
     def action_close_ticket(self):
         self.ensure_one()
         if not self._is_support_agent():
@@ -1430,7 +1463,9 @@ class HelpdeskTicket(models.Model):
             ('date_done', '=', False),
         ])
         if activities:
-            activities.action_done()
+            activities.with_context(
+                buz_helpdesk_skip_reply_transition=True
+            ).action_done()
 
     def message_post(self, *args, **kwargs):
         messages = super().message_post(*args, **kwargs)
