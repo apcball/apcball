@@ -60,6 +60,24 @@ class HelpdeskTicket(models.Model):
         default=lambda self: self.env.user,
         index=True,
     )
+    requester_line_status = fields.Selection(
+        [('connected', 'เชื่อมต่อแล้ว'), ('not_connected', 'ยังไม่เชื่อมต่อ')],
+        string='สถานะ LINE',
+        compute='_compute_requester_line_status',
+    )
+
+    @api.depends('requester_id')
+    def _compute_requester_line_status(self):
+        # อ่านการผูกบัญชีเดียวกับการส่ง LINE โดยไม่เก็บสถานะซ้ำลงฐานข้อมูล
+        line_service = self.env['buz.helpdesk.line.service'].sudo()
+        for ticket in self:
+            connected = ticket.requester_id and line_service._parameter(
+                line_service._user_key(ticket.requester_id.id)
+            )
+            ticket.requester_line_status = (
+                'connected' if connected else 'not_connected'
+            )
+
     company_id = fields.Many2one(
         'res.company',
         string='Company',

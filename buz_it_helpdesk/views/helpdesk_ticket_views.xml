@@ -255,6 +255,10 @@
                                 <div class="o_buz_helpdesk_card_title">ข้อมูลผู้แจ้ง / Requester</div>
                                 <group>
                                     <field name="requester_id" string="ผู้แจ้ง / Requester" readonly="not is_editable"/>
+                                    <field name="requester_line_status" widget="badge"
+                                           decoration-success="requester_line_status == 'connected'"
+                                           decoration-danger="requester_line_status == 'not_connected'"
+                                           readonly="1"/>
                                     <field name="department_id" string="แผนก / Department" readonly="1"/>
                                 </group>
                             </div>
