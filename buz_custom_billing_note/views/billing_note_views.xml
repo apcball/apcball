@@ -12,6 +12,7 @@
                 <field name="due_date" widget="remaining_days" decoration-success="due_date &gt; context_today()"
                                      decoration-warning="due_date &gt;= context_today() and due_date &lt;= context_today() + relativedelta(days=7)"
                                      decoration-danger="due_date &lt; context_today()"/>
+                <field name="customer_received_date" optional="show"/>
                 <field name="expected_payment_date" optional="show"/>
                 <field name="amount_total" sum="Total"/>
                 <field name="amount_residual" sum="Due"/>
@@ -34,6 +35,7 @@
                 <field name="amount_total"/>
                 <field name="currency_id"/>
                 <field name="expected_payment_date"/>
+                <field name="customer_received_date"/>
                 <field name="is_payment_overdue"/>
                 <field name="payment_state"/>
                 <field name="tracking_status"/>
@@ -48,6 +50,9 @@
                             </div>
                             <div>
                                 <field name="amount_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            </div>
+                            <div t-if="record.customer_received_date.raw_value">
+                                ลูกค้ารับวางบิล: <field name="customer_received_date"/>
                             </div>
                             <div t-if="record.expected_payment_date.raw_value">
                                 คาดว่าจะได้รับเงิน: <field name="expected_payment_date"/>
@@ -148,6 +153,9 @@
                                 <group string="Messenger">
                                     <field name="messenger_sent_date"/>
                                     <field name="messenger_received_date"/>
+                                </group>
+                                <group string="ลูกค้า">
+                                    <field name="customer_received_date"/>
                                 </group>
                                 <group string="AR/AP">
                                     <field name="ar_sent_date"/>

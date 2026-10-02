@@ -220,6 +220,15 @@ class TestBillingNote(TransactionCase):
         bn._onchange_invoice_ids()
         self.assertEqual(bn.due_date, self.invoice.invoice_date_due)
 
+    # ── Tracking ──
+
+    def test_customer_received_date_stored_without_status_change(self):
+        bn = self._create_billing_note()
+        status = bn.tracking_status
+        bn.customer_received_date = date.today()
+        self.assertEqual(bn.customer_received_date, date.today())
+        self.assertEqual(bn.tracking_status, status)
+
     # ── Payment wizard ──
 
     def test_action_register_payment_returns_wizard(self):
