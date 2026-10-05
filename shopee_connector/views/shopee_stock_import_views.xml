@@ -74,6 +74,7 @@
         <field name="model">product.product</field>
         <field name="arch" type="xml">
             <tree string="Import Stock File" create="false">
+                <field name="shopee_linked" widget="boolean_favorite" optional="hide"/>
                 <field name="default_code"/>
                 <field name="name"/>
                 <field name="shopee_stock"/>
@@ -95,7 +96,8 @@
     </record>
     <menuitem id="shopee_connector_stock_import_menu" name="Import Stock File"
               parent="shopee_connector_root_menu"
-              action="action_shopee_stock_file" sequence="40"/>
+              action="action_shopee_stock_file" sequence="40"
+              active="False"/>
 
     <!-- Cog menu (gear) entries on product lists -->
     <record id="action_shopee_stock_import_server" model="ir.actions.server">

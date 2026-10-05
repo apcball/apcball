@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="shopee_connector.Many2OneSubtitleField">
+        <div class="d-flex flex-column">
+            <t t-call="web.Many2OneField"/>
+            <small t-if="subtitle" class="text-muted" t-esc="subtitle"/>
+        </div>
+    </t>
+</templates>

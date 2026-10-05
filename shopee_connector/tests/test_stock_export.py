@@ -12,14 +12,9 @@ except ImportError:
 class TestShopeeStockExport(TransactionCase):
     def setUp(self):
         super().setUp()
-        # Reuse an existing variant - creating product.product fails on
-        # MOG_DEV (orphaned columns). Mutations are rolled back with the
-        # transaction.
-        self.product = self.env["product.product"].search(
-            [("default_code", "!=", False)], limit=1
-        )
-        if not self.product:
-            self.skipTest("No product with an internal reference available")
+        self.product = self.env["product.product"].create({
+            "name": "Shopee QA Export", "default_code": "SHOPEE-QA-EXPORT", "type": "product",
+        })
         self.product.write({
             "shopee_item_id": "9001",
             "shopee_model_id": False,
