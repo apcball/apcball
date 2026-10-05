@@ -41,6 +41,16 @@
             <field name="numbercall">-1</field>
             <field name="active">False</field>
         </record>
+        <record id="cron_shopee_push_price" model="ir.cron">
+            <field name="name">Shopee: Push Price</field>
+            <field name="model_id" ref="model_shopee_config"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_push_price()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">False</field>
+        </record>
         <record id="cron_shopee_refresh_tokens" model="ir.cron">
             <field name="name">Shopee: Refresh Access Tokens</field>
             <field name="model_id" ref="model_shopee_config"/>

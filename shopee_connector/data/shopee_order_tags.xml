@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="tag_cancelled_after_confirm" model="crm.tag">
+            <field name="name">Shopee: ยกเลิกหลัง Confirm</field>
+            <field name="color">1</field>
+        </record>
+    </data>
+</odoo>

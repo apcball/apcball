@@ -1,10 +1,16 @@
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
+    shopee_linked = fields.Boolean(
+        string="Shopee Linked",
+        compute="_compute_shopee_linked",
+        search="_search_shopee_linked",
+        help="True if this variant is linked to a Shopee item/model.",
+    )
     shopee_item_id = fields.Char(
         string="Shopee Item ID", readonly=True, copy=False
     )
@@ -38,6 +44,43 @@ class ProductProduct(models.Model):
     shopee_stock_push_date = fields.Datetime(
         string="Shopee Last Stock Push", readonly=True, copy=False
     )
+    shopee_sync_price_out = fields.Boolean(
+        string="Push Price to Shopee",
+        default=False,
+        copy=False,
+        help="When enabled and the shop connection has price push turned on, "
+        "this variant's Odoo sales price is pushed to Shopee. Off by default "
+        "- price pushes are higher-risk than stock pushes.",
+    )
+    shopee_price = fields.Float(
+        string="Shopee Price",
+        readonly=True,
+        copy=False,
+        help="Price as last reported/pushed to Shopee. Reference only.",
+    )
+    shopee_pushed_price = fields.Float(
+        string="Shopee Last Pushed Price", readonly=True, copy=False,
+        help="Last price sent to Shopee. Used to skip unchanged pushes.",
+    )
+    shopee_price_push_date = fields.Datetime(
+        string="Shopee Last Price Push", readonly=True, copy=False
+    )
+
+    @api.depends("shopee_item_id")
+    def _compute_shopee_linked(self):
+        for product in self:
+            product.shopee_linked = bool(product.shopee_item_id)
+
+    def _search_shopee_linked(self, operator, value):
+        if operator == "=" and value:
+            return [("shopee_item_id", "!=", False)]
+        if operator == "=" and not value:
+            return [("shopee_item_id", "=", False)]
+        if operator == "!=" and value:
+            return [("shopee_item_id", "=", False)]
+        if operator == "!=" and not value:
+            return [("shopee_item_id", "!=", False)]
+        return []
 
     def action_push_shopee_stock(self):
         """Push the selected variants' stock to every stock-push-enabled shop."""
@@ -70,16 +113,24 @@ class ProductProduct(models.Model):
             raise UserError("No active Shopee shop connection was found.")
 
         updated = 0
+        unmapped = 0
         for config in configs:
             updated += config.action_sync_stock()
+            unmapped += config.last_stock_sync_unmapped
+        message = f"{updated} product(s) updated from Shopee."
+        if unmapped:
+            message += (
+                f" {unmapped} Shopee listing(s) are not linked to an Odoo "
+                "product (see Shopee > Product Mappings)."
+            )
 
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": "Shopee stock sync",
-                "message": f"{updated} product(s) updated from Shopee.",
-                "type": "success",
+                "message": message,
+                "type": "warning" if unmapped else "success",
                 "sticky": False,
             },
         }

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_shopee_fulfillment_job_tree" model="ir.ui.view">
+        <field name="name">shopee.fulfillment.job.tree</field>
+        <field name="model">shopee.fulfillment.job</field>
+        <field name="arch" type="xml">
+            <tree create="0" delete="0" decoration-danger="state in ('error','uncertain')" decoration-success="state == 'ready'">
+                <field name="order_id"/>
+                <field name="config_id"/>
+                <field name="state"/>
+                <field name="tracking_number"/>
+                <field name="option_id"/>
+                <field name="message"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_shopee_fulfillment_job_form" model="ir.ui.view">
+        <field name="name">shopee.fulfillment.job.form</field>
+        <field name="model">shopee.fulfillment.job</field>
+        <field name="arch" type="xml">
+            <form create="0" delete="0">
+                <header>
+                    <button name="action_queue" type="object" string="Queue shipment / สั่งจัดส่ง" class="oe_highlight" invisible="state != 'choice'"
+                            confirm="Arrange shipment on Shopee using the selected option? Odoo sales will be confirmed if enabled. This does not validate warehouse delivery."/>
+                    <button name="action_reload" type="object" string="Reload / Check result" invisible="state not in ('choice','error','uncertain')"/>
+                    <button name="action_retry_label" type="object" string="Regenerate label" invisible="state != 'error' or not arranged_at"
+                            confirm="Request a new shipping label for this already arranged shipment? This will not arrange shipment again."/>
+                    <field name="state" widget="statusbar" statusbar_visible="prepare,choice,queued,shipped,document,ready"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="order_id"/>
+                        <field name="config_id"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="user_id"/>
+                        <field name="option_id" domain="[('job_id','=',id)]" options="{'no_create': True, 'no_open': True}" readonly="state not in ('choice','error')"/>
+                        <field name="sender_name" readonly="state not in ('choice','error')"/>
+                        <field name="confirm_sale" readonly="state not in ('choice','error')"/>
+                        <field name="document_type" readonly="state not in ('choice','error') or document_requested_at"/>
+                        <field name="package_number"/>
+                        <field name="tracking_number"/>
+                        <field name="shipment_requested_at"/>
+                        <field name="arranged_at"/>
+                        <field name="document_requested_at"/>
+                        <field name="label_filename" invisible="1"/>
+                        <field name="label_data" filename="label_filename" invisible="not label_data"/>
+                    </group>
+                    <field name="message"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_shopee_fulfillment_batch_tree" model="ir.ui.view">
+        <field name="name">shopee.fulfillment.batch.tree</field>
+        <field name="model">shopee.fulfillment.batch</field>
+        <field name="arch" type="xml">
+            <tree create="0" delete="0">
+                <field name="name"/>
+                <field name="create_date"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="progress"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_shopee_fulfillment_batch_form" model="ir.ui.view">
+        <field name="name">shopee.fulfillment.batch.form</field>
+        <field name="model">shopee.fulfillment.batch</field>
+        <field name="arch" type="xml">
+            <form create="0" delete="0">
+                <header>
+                    <button name="action_select_dropoff" type="object" string="Select dropoff where unambiguous / เลือกนำส่งเอง"/>
+                    <button name="action_queue" type="object" string="Queue selected options / สั่งจัดส่งทั้งชุด" class="oe_highlight"
+                            confirm="Queue all orders that have shipping options ready? Check each pickup time, location and Odoo confirmation setting first."/>
+                    <button name="action_reload" type="object" string="Reload options / Check errors"/>
+                    <button name="action_download" type="object" string="Download ready labels (ZIP)"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info">Open each order to choose pickup or dropoff, save, then queue this batch. Refresh the page to see worker progress. The ZIP contains original PDF labels and a results.csv listing every order.</div>
+                    <group>
+                        <field name="name"/>
+                        <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                        <field name="progress"/>
+                        <field name="sender_name"/>
+                        <field name="download_note"/>
+                        <field name="file_name" invisible="1"/>
+                        <field name="file_data" filename="file_name" invisible="not file_data"/>
+                    </group>
+                    <field name="job_ids" context="{'form_view_ref':'shopee_connector.view_shopee_fulfillment_job_form'}">
+                        <tree create="0" delete="0" decoration-danger="state in ('error','uncertain')" decoration-success="state == 'ready'">
+                            <field name="order_id"/>
+                            <field name="config_id"/>
+                            <field name="state"/>
+                            <field name="option_id"/>
+                            <field name="tracking_number"/>
+                            <field name="message"/>
+                            <button name="action_open" type="object" string="Options / ตัวเลือก" icon="fa-external-link"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_shopee_fulfillment_batches" model="ir.actions.act_window">
+        <field name="name">Shipping Batches / จัดส่งเป็นชุด</field>
+        <field name="res_model">shopee.fulfillment.batch</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <menuitem id="menu_shopee_fulfillment_batches" name="Shipping Batches / จัดส่งเป็นชุด" parent="shopee_connector_root_menu" action="action_shopee_fulfillment_batches" sequence="35" groups="sales_team.group_sale_manager" active="False"/>
+    <record id="action_shopee_create_shipping_batch" model="ir.actions.server">
+        <field name="name">Shopee: Arrange shipment and labels / จัดส่งและใบปะหน้า</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" eval="False"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="groups_id" eval="[(4, ref('sales_team.group_sale_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_shopee_shipping_batch()</field>
+    </record>
+</odoo>
