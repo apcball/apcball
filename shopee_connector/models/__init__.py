@@ -7,3 +7,4 @@ from . import res_partner
 from . import shopee_log
 from . import shopee_product_mapping
 from . import shopee_fulfillment
+from . import shopee_dashboard

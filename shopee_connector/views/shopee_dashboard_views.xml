@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_shopee_fulfillment_jobs" model="ir.actions.act_window">
+        <field name="name">Shipments</field>
+        <field name="res_model">shopee.fulfillment.job</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_shopee_dashboard" model="ir.actions.client">
+        <field name="name">Shopee Dashboard</field>
+        <field name="tag">shopee_connector.dashboard</field>
+    </record>
+    <menuitem id="shopee_connector_dashboard_menu" name="Dashboard"
+              parent="shopee_connector_root_menu" action="action_shopee_dashboard"
+              sequence="1" groups="shopee_connector.group_shopee_user"/>
+</odoo>

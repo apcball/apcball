@@ -70,6 +70,7 @@ class BillingNote(models.Model):
 
     messenger_sent_date = fields.Date(string='วันที่ส่งแมสเซนเจอร์', tracking=True)
     messenger_received_date = fields.Date(string='วันที่รับจากแมสเซนเจอร์', tracking=True)
+    customer_received_date = fields.Date(string='วันที่ลูกค้ารับวางบิล', tracking=True)
     ar_sent_date = fields.Date(string='วันที่ส่งบัญชีลูกหนี้', tracking=True)
     ar_received_date = fields.Date(string='วันที่บัญชีลูกหนี้รับ', tracking=True)
     expected_payment_date = fields.Date(string='วันที่คาดว่าจะได้รับเงิน', tracking=True)
