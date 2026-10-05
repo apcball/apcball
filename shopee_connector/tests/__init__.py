@@ -7,3 +7,4 @@ from . import test_buyer_address_import
 
 from . import test_fulfillment
 from . import test_hardening
+from . import test_mapping_import

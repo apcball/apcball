@@ -22,6 +22,7 @@
         "views/shopee_log_views.xml",
         "views/shopee_product_mapping_views.xml",
         "views/shopee_stock_import_views.xml",
+        "views/shopee_mapping_import_views.xml",
         "views/shopee_buyer_address_import_views.xml",
         "views/shopee_order_sync_views.xml",
     ],
