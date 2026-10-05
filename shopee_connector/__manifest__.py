@@ -8,6 +8,7 @@
     "depends": ["sale_management", "stock", "website"],
     "external_dependencies": {"python": ["requests"]},
     "data": [
+        "security/shopee_security.xml",
         "security/ir.model.access.csv",
         "data/ir_cron_data.xml",
         "data/shopee_order_tags.xml",

@@ -32,7 +32,7 @@
 odoo-bin -c /path/to/odoo.conf -d TEST_DATABASE -u shopee_connector --stop-after-init
 ```
 
-5. ใช้บัญชีที่มีสิทธิ์ Sales Manager การเข้าถึงชุดจัดส่ง งานจัดส่ง ตัวเลือก และไฟล์ ใช้สิทธิ์ Odoo และกฎแยกบริษัท
+5. ใช้บัญชีที่อยู่ในกลุ่ม Shopee Manager การเข้าถึงชุดจัดส่ง งานจัดส่ง ตัวเลือก และไฟล์ ใช้สิทธิ์ Odoo และกฎแยกบริษัท
 6. ตรวจ Scheduled Actions ว่า `Shopee: Shipping and Labels` เปิดใช้งาน และมี cron worker ทำงาน
 7. เชื่อมร้าน Sandbox และตรวจสิทธิ์ Logistics/Shipping Documents ของแอปก่อนทดสอบ API ของร้าน
 

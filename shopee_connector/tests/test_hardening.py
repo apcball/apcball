@@ -292,7 +292,7 @@ class TestShopeeHardening(TransactionCase):
         retry = self.Queue.enqueue(other_config, "sync_order", {"order_sn": "OTHER"})
         manager = new_test_user(
             self.env(context=dict(self.env.context, skip_partner_required_fields=True)),
-            login="shopee_qa_manager", groups="sales_team.group_sale_manager",
+            login="shopee_qa_manager", groups="shopee_connector.group_shopee_manager",
             company_id=self.env.company.id, company_ids=[fields.Command.set(self.env.company.ids)],
         )
         for record in (other_config, mapping, log, retry):
@@ -308,7 +308,7 @@ class TestShopeeHardening(TransactionCase):
             self.skipTest("Optional partner required-fields addon is not installed")
         manager = new_test_user(
             self.env(context=dict(self.env.context, skip_partner_required_fields=True)),
-            login="shopee_qa_buyer_manager", groups="sales_team.group_sale_manager",
+            login="shopee_qa_buyer_manager", groups="shopee_connector.group_shopee_manager",
         )
         Partner = self.env["res.partner"].with_user(manager)
         with self.assertRaises(ValidationError):
