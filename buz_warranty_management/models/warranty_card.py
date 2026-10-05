@@ -1,3 +1,5 @@
+from markupsafe import Markup, escape
+
 from odoo import models, fields, api, _
 from dateutil.relativedelta import relativedelta
 from datetime import date, timedelta
@@ -22,15 +24,30 @@ class WarrantyCard(models.Model):
         required=True,
         tracking=True
     )
+    line_ids = fields.One2many(
+        'warranty.card.line',
+        'card_id',
+        string='Products',
+        copy=True,
+    )
+    # First-line mirrors kept for backward compatibility (web API, service
+    # receipt, dashboard). Writing them edits / creates the first line.
     product_id = fields.Many2one(
         'product.product',
         string='Product',
-        required=False,
+        compute='_compute_first_line_values',
+        inverse='_inverse_first_line_values',
+        store=True,
+        readonly=False,
         tracking=True
     )
     lot_id = fields.Many2one(
         'stock.lot',
         string='Serial/Lot Number',
+        compute='_compute_first_line_values',
+        inverse='_inverse_first_line_values',
+        store=True,
+        readonly=False,
         tracking=True
     )
     start_date = fields.Date(
@@ -72,11 +89,12 @@ class WarrantyCard(models.Model):
         related='product_id.product_tmpl_id.warranty_type',
         readonly=True
     )
-    warranty_duration = fields.Integer(string='Duration', readonly=True)
+    warranty_duration = fields.Integer(
+        string='Duration', compute='_compute_first_line_values', store=True)
     warranty_period_unit = fields.Selection([
         ('month', 'Month(s)'),
         ('year', 'Year(s)'),
-    ], string='Period Unit', readonly=True)
+    ], string='Period Unit', compute='_compute_first_line_values', store=True)
     is_expired = fields.Boolean(
         string='Is Expired',
         compute='_compute_is_expired',
@@ -105,6 +123,10 @@ class WarrantyCard(models.Model):
     product_description = fields.Char(
         string='Product Description',
         help='Additional product description for manually managed warranty cards',
+        compute='_compute_first_line_values',
+        inverse='_inverse_first_line_values',
+        store=True,
+        readonly=False,
     )
 
     dealer_name = fields.Char(string='Dealer / Shop')
@@ -132,41 +154,108 @@ class WarrantyCard(models.Model):
     partner_address = fields.Char(related='partner_id.contact_address', string='Address', readonly=True)
     product_image = fields.Image(related='product_id.image_1024', string='Product Image', readonly=True)
 
-    @api.depends('start_date', 'warranty_duration', 'warranty_period_unit')
-    def _compute_end_date(self):
-        for record in self:
-            if record.start_date:
-                if record.warranty_duration:
-                    duration = record.warranty_duration
-                    unit = record.warranty_period_unit or 'month'
-                    
-                    if unit == 'year':
-                        record.end_date = record.start_date + relativedelta(years=duration)
-                    else:  # month
-                        record.end_date = record.start_date + relativedelta(months=duration)
-                else:
-                    record.end_date = False
-            else:
-                record.end_date = False
-
     @api.onchange('product_id')
     def _onchange_product_id(self):
-        values = self._get_product_warranty_values(self.product_id)
-        self.update(values)
+        """Compat: preview the product warranty on a card without lines."""
+        product = self.product_id
+        self.update(product.product_tmpl_id._get_effective_warranty_period() if product
+                    else {'warranty_duration': False, 'warranty_period_unit': False})
 
-    def _get_product_warranty_values(self, product):
-        """Read the effective product warranty for a card snapshot."""
-        if not product:
-            return {'warranty_duration': False, 'warranty_period_unit': False}
-        return product.product_tmpl_id._get_effective_warranty_period()
+    warranty_bars_html = fields.Html(
+        string='Warranty Remaining',
+        compute='_compute_warranty_bars_html',
+        sanitize=False,
+    )
+
+    @api.depends('line_ids.product_id', 'line_ids.start_date', 'line_ids.end_date', 'line_ids.sequence')
+    def _compute_warranty_bars_html(self):
+        """Horizontal bar per product: filled part = share of warranty left."""
+        today = fields.Date.today()
+        for card in self:
+            rows = []
+            for line in card.line_ids.sorted(lambda l: (l.sequence, l.id)):
+                name = escape(line.product_id.display_name or '')
+                if not line.end_date or not line.start_date:
+                    pct, color, text = 0, 'bg-secondary', _('No warranty')
+                else:
+                    total = max((line.end_date - line.start_date).days, 1)
+                    left = max((line.end_date - today).days, 0)
+                    pct = min(round(left * 100 / total), 100)
+                    if left == 0:
+                        color, text = 'bg-danger', _('Expired %s') % line.end_date
+                    else:
+                        color = 'bg-warning' if left <= 30 else 'bg-success'
+                        text = _('%(left)s days left (until %(end)s)', left=left, end=line.end_date)
+                rows.append(Markup(
+                    '<div class="mb-3"><div class="d-flex justify-content-between small mb-1">'
+                    '<span class="fw-bold text-truncate me-2">%s</span><span class="text-muted">%s</span></div>'
+                    '<div class="progress" style="height: 18px;">'
+                    '<div class="progress-bar %s" role="progressbar" style="width: %s%%; min-width: 2px;" '
+                    'aria-valuenow="%s" aria-valuemin="0" aria-valuemax="100"></div></div></div>'
+                ) % (name, text, color, pct, pct))
+            card.warranty_bars_html = Markup('').join(rows) if rows else False
+
+    def _first_line(self):
+        self.ensure_one()
+        return self.line_ids.sorted(lambda l: (l.sequence, l.id))[:1]
+
+    @api.depends('line_ids.product_id', 'line_ids.lot_id', 'line_ids.sequence',
+                 'line_ids.product_description', 'line_ids.warranty_duration',
+                 'line_ids.warranty_period_unit')
+    def _compute_first_line_values(self):
+        for card in self:
+            line = card._first_line() if card.line_ids else False
+            if line:
+                card.product_id = line.product_id
+                card.lot_id = line.lot_id
+                card.product_description = line.product_description
+                card.warranty_duration = line.warranty_duration
+                card.warranty_period_unit = line.warranty_period_unit
+            else:
+                # No lines: keep whatever is already stored on the card.
+                card.product_id = card.product_id
+                card.lot_id = card.lot_id
+                card.product_description = card.product_description
+                card.warranty_duration = card.warranty_duration
+                card.warranty_period_unit = card.warranty_period_unit
+
+    def _inverse_first_line_values(self):
+        """Direct writes to product/lot/description edit or create line 1."""
+        for card in self:
+            line = card._first_line() if card.line_ids else False
+            if line:
+                vals = {}
+                if line.product_id != card.product_id and card.product_id:
+                    vals['product_id'] = card.product_id.id
+                if line.lot_id != card.lot_id:
+                    vals['lot_id'] = card.lot_id.id
+                if (line.product_description or False) != (card.product_description or False):
+                    vals['product_description'] = card.product_description
+                if vals:
+                    line.write(vals)
+            elif card.product_id:
+                self.env['warranty.card.line'].create({
+                    'card_id': card.id,
+                    'product_id': card.product_id.id,
+                    'lot_id': card.lot_id.id,
+                    'product_description': card.product_description,
+                })
+
+    @api.depends('line_ids.end_date')
+    def _compute_end_date(self):
+        """Card expires when its last line expires."""
+        for card in self:
+            end_dates = card.line_ids.filtered('end_date').mapped('end_date')
+            if end_dates:
+                card.end_date = max(end_dates)
+            elif card.line_ids:
+                card.end_date = False
+            else:
+                # No lines: keep the manually entered value.
+                card.end_date = card.end_date
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Snapshot effective product warranty values and update dashboard cache."""
-        for vals in vals_list:
-            product_id = vals.get('product_id')
-            product = self.env['product.product'].browse(product_id) if product_id else False
-            vals.update(self._get_product_warranty_values(product))
         records = super().create(vals_list)
         self.env['warranty.dashboard.cache']._trigger_update('warranty_card_created', records)
         return records
@@ -229,27 +318,34 @@ class WarrantyCard(models.Model):
             else:
                 record.days_since_expiry = 0
 
+    def _claim_count_by_card(self, card_ids=None):
+        """{card_id: replacement claim count} in one grouped query."""
+        domain = [('service_case_type', '=', 'replacement'),
+                  ('warranty_card_id', '!=', False)]
+        if card_ids is not None:
+            domain.append(('warranty_card_id', 'in', card_ids))
+        groups = self.env['service.receipt'].sudo()._read_group(
+            domain, ['warranty_card_id'], ['__count'])
+        return {card.id: count for card, count in groups}
+
     def _compute_claim_count(self):
         if 'service.receipt' not in self.env.registry.models:
             self.update({'claim_count': 0})
             return
-        receipt_model = self.env['service.receipt'].sudo()
+        counts = self._claim_count_by_card(self.ids)
         for record in self:
-            record.claim_count = receipt_model.search_count([
-                ('warranty_card_id', '=', record.id),
-                ('service_case_type', '=', 'replacement'),
-            ])
+            record.claim_count = counts.get(record.id, 0)
 
     def _compute_last_claim_date(self):
         if 'service.receipt' not in self.env.registry.models:
             self.update({'last_claim_date': False})
             return
-        receipt_model = self.env['service.receipt'].sudo()
+        groups = self.env['service.receipt'].sudo()._read_group(
+            [('warranty_card_id', 'in', self.ids)],
+            ['warranty_card_id'], ['request_date:max'])
+        dates = {card.id: last for card, last in groups}
         for record in self:
-            receipt = receipt_model.search([
-                ('warranty_card_id', '=', record.id),
-            ], order='request_date desc, id desc', limit=1)
-            record.last_claim_date = receipt.request_date if receipt else False
+            record.last_claim_date = dates.get(record.id) or False
 
     def action_activate(self):
         self.write({'state': 'active'})
@@ -266,12 +362,8 @@ class WarrantyCard(models.Model):
 
     def write(self, vals):
         """Trigger cache update on warranty card changes"""
-        if 'product_id' in vals:
-            product = self.env['product.product'].browse(vals['product_id']) if vals['product_id'] else False
-            vals = dict(vals, **self._get_product_warranty_values(product))
-
         # Check if critical fields changed
-        critical_fields = ['state', 'end_date', 'partner_id', 'product_id']
+        critical_fields = ['state', 'end_date', 'partner_id', 'product_id', 'line_ids']
         has_critical_change = any(field in vals for field in critical_fields)
         
         result = super().write(vals)
@@ -291,12 +383,16 @@ class WarrantyCard(models.Model):
     def _search_claim_count(self, operator, value):
         if 'service.receipt' not in self.env.registry.models:
             return [('id', '=', 0)]
-        cards = self.search([]).filtered(
-            lambda card: card.claim_count > value if operator in ('>', '>=')
-            else card.claim_count < value if operator in ('<', '<=')
-            else card.claim_count == value
-        )
-        return [('id', 'in', cards.ids)]
+        compare = {
+            '>': lambda a: a > value, '>=': lambda a: a >= value,
+            '<': lambda a: a < value, '<=': lambda a: a <= value,
+            '!=': lambda a: a != value,
+        }.get(operator, lambda a: a == value)
+        counts = self._claim_count_by_card()
+        if compare(0):
+            # cards without claims match too: exclude only those that fail
+            return [('id', 'not in', [cid for cid, n in counts.items() if not compare(n)])]
+        return [('id', 'in', [cid for cid, n in counts.items() if compare(n)])]
 
     def _search_last_claim_date(self, operator, value):
         if 'service.receipt' not in self.env.registry.models:

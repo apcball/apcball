@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, api, _
+from odoo import models, api, fields, _
+from odoo.exceptions import UserError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -8,92 +9,170 @@ _logger = logging.getLogger(__name__)
 
 class AccountPaymentRegister(models.TransientModel):
     _inherit = 'account.payment.register'
+    received_date = fields.Date(string='Received date', default=fields.Date.context_today, copy=False)
+    buz_payment_channel = fields.Selection([('bank_transfer', '\u0e42\u0e2d\u0e19\u0e40\u0e07\u0e34\u0e19'), ('cash', '\u0e40\u0e07\u0e34\u0e19\u0e2a\u0e14'), ('cheque', '\u0e40\u0e0a\u0e47\u0e04'), ('card', '\u0e1a\u0e31\u0e15\u0e23\u0e40\u0e04\u0e23\u0e14\u0e34\u0e15/\u0e40\u0e14\u0e1a\u0e34\u0e15'), ('other', '\u0e2d\u0e37\u0e48\u0e19 \u0e46')], string='\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e32\u0e07\u0e01\u0e32\u0e23\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e08\u0e23\u0e34\u0e07')
+
 
     @api.depends('source_amount', 'source_amount_currency', 'source_currency_id', 'currency_id', 'group_payment')
     def _compute_amount(self):
         super()._compute_amount()
         for wizard in self:
-            # Check if we have a forced amount from context (e.g. from Payment Voucher WHT)
-            if self._context.get('force_amount'):
-                wizard.amount = self._context.get('force_amount')
+            refund_pv_id = wizard.env.context.get('buz_customer_refund_pv_id')
+            refund_pv = wizard.env['buz.customer.refund.pv'].browse(refund_pv_id).exists()
+            if refund_pv:
+                # ใช้ยอดที่อนุมัติบน Refund PV เป็นแหล่งข้อมูลเดียวของยอดจ่าย
+                wizard.amount = refund_pv.refund_amount
+            elif wizard.env.context.get('force_amount'):
+                # คงพฤติกรรมเดิมของ Payment Voucher/WHT
+                wizard.amount = wizard.env.context.get('force_amount')
+
+    def make_payments(self):
+        """หลีกเลี่ยง batch entry point เฉพาะ Refund PV แล้วใช้ standard register flow."""
+        if not self.env.context.get('buz_customer_refund_pv_id'):
+            return super().make_payments()
+        return self.with_context(batch=False).action_create_payments()
+
+    def _add_refund_pv_link(self, vals):
+        refund_pv_id = self.env.context.get('buz_customer_refund_pv_id')
+        if refund_pv_id:
+            refund_pv = self.env['buz.customer.refund.pv'].browse(refund_pv_id).exists()
+            if refund_pv:
+                vals['buz_customer_refund_pv_id'] = refund_pv.id
+        return vals
+
+    def _create_payment_vals_from_wizard(self, batch_result):
+        vals = super()._create_payment_vals_from_wizard(batch_result)
+        vals = self._add_payment_channel(vals)
+        vals = self._add_received_date(vals)
+        return self._add_refund_pv_link(vals)
+
+    def _create_payment_vals_from_batch(self, batch_result):
+        vals = super()._create_payment_vals_from_batch(batch_result)
+        vals = self._add_payment_channel(vals)
+        vals = self._add_received_date(vals)
+        return self._add_refund_pv_link(vals)
+
+    def _add_received_date(self, vals):
+        """ส่งวันที่รับเงินจริงไปเก็บใน Payment โดยไม่เปลี่ยนวันที่ลงบัญชี"""
+        if (
+            self.payment_type == 'inbound'
+            and self.partner_type == 'customer'
+            and self.received_date
+        ):
+            vals['received_date'] = self.received_date
+        return vals
+
+    def _add_payment_channel(self, vals):
+        if self.payment_type == 'inbound' and self.partner_type == 'customer' and not self.buz_payment_channel:
+            raise UserError(_('\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e32\u0e07\u0e01\u0e32\u0e23\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e08\u0e23\u0e34\u0e07\u0e01\u0e48\u0e2d\u0e19 Register Payment'))
+        if self.buz_payment_channel:
+            vals['buz_payment_channel'] = self.buz_payment_channel
+        return vals
+
+    def _validate_refund_pv(self):
+        """ตรวจเงื่อนไข Refund PV ก่อนให้ Odoo สร้าง Post และ Reconcile payment."""
+        refund_pv_id = self._context.get('buz_customer_refund_pv_id')
+        if not refund_pv_id:
+            return False
+
+        refund_pv = self.env['buz.customer.refund.pv'].browse(refund_pv_id).exists()
+        if not refund_pv:
+            raise UserError(_("Customer Refund PV was not found."))
+        if refund_pv.state != 'posted':
+            raise UserError(_("Refund PV must be posted before Register Payment."))
+        if refund_pv.payment_ids.filtered(lambda payment: payment.state != 'cancel'):
+            raise UserError(_("Payment already registered for Refund PV %s.") % refund_pv.name)
+        if refund_pv.bank_free_dis:
+            raise UserError(_("Bank Fee cannot be posted until a Bank Fee Journal Entry is supported."))
+        if refund_pv.other_income_dis > 0 and not refund_pv.other_income_account_id:
+            raise UserError(_("Please select an Other Income Account when Other Income is greater than zero."))
+        if refund_pv.other_income_account_id and (
+            refund_pv.other_income_account_id.company_id != refund_pv.company_id
+            or refund_pv.other_income_account_id.deprecated
+        ):
+            raise UserError(_("Other Income Account must be active and belong to the same company."))
+
+        credit_note = refund_pv.credit_note_id
+        if not credit_note or credit_note.state != 'posted' or credit_note.move_type != 'out_refund':
+            raise UserError(_("A posted Customer Credit Note is required."))
+
+        residual = abs(credit_note.amount_residual)
+        expected_other_income = max(residual - refund_pv.refund_amount, 0.0)
+        if refund_pv.currency_id.compare_amounts(
+            refund_pv.other_income_dis, expected_other_income,
+        ) != 0:
+            raise UserError(_(
+                "Credit Note residual changed. Please cancel and recreate/confirm "
+                "the Refund PV before registering payment."
+            ))
+        for wizard in self:
+            if refund_pv.currency_id.compare_amounts(wizard.amount, 0.0) <= 0:
+                raise UserError(_("Payment amount must be greater than 0."))
+            if refund_pv.currency_id.compare_amounts(wizard.amount, refund_pv.refund_amount) != 0:
+                raise UserError(_("Payment amount (%.2f) must equal Refund Amount (%.2f).") % (wizard.amount, refund_pv.refund_amount))
+            if refund_pv.currency_id.compare_amounts(wizard.amount, residual) > 0:
+                raise UserError(_("Payment amount (%.2f) exceeds remaining balance of Credit Note %s (%.2f).") % (wizard.amount, credit_note.name, residual))
+
+        # ตรวจซ้ำก่อน Register เพราะสถานะ Invoice อาจเปลี่ยนหลัง Confirm
+        refund_pv._check_source_invoices_paid()
+        return refund_pv
 
     def _create_payments(self):
-        """Override to link created payments to voucher, voucher line and receipt if context provided"""
+        refund_pv = self._validate_refund_pv()
+        # Odoo standard สร้าง Payment ตาม sequence, Post และ Reconcile กับ Credit Note
         payments = super()._create_payments()
-        
-        # Link payments to payment voucher if context provided
+
         payment_voucher_id = self._context.get('buz_payment_voucher_id')
         if payment_voucher_id and payments:
             payment_voucher = self.env['account.payment.voucher'].browse(payment_voucher_id)
             if payment_voucher.exists():
                 payments.write({'buz_payment_voucher_id': payment_voucher_id})
-                # Link payments to the voucher lines whose bills they pay
-                # (grouped payments cover every line of the voucher)
                 paid_moves = payments.mapped('reconciled_bill_ids')
                 for line in payment_voucher.line_ids:
                     line_payments = payments.filtered(
-                        lambda p: not paid_moves or line.move_id in p.reconciled_bill_ids
+                        lambda payment: not paid_moves or line.move_id in payment.reconciled_bill_ids
                     ) or payments
-                    line.write({
-                        'payment_ids': [(4, payment.id) for payment in line_payments]
-                    })
+                    line.write({'payment_ids': [(4, payment.id) for payment in line_payments]})
                 payment_voucher.message_post(
                     body=_("Payment(s) %s created and linked to voucher") % ', '.join(payments.mapped('name'))
                 )
-                _logger.info("Linked %d payment(s) to payment voucher %s", len(payments), payment_voucher.name)
 
-        # Check if we have voucher line or receipt context
         voucher_line_id = self._context.get('buz_voucher_line_id')
         receipt_id = self._context.get('buz_receipt_id')
-        
         if voucher_line_id:
             voucher_line = self.env['account.receipt.voucher.line'].browse(voucher_line_id)
             if voucher_line.exists():
-                # Link payments to voucher line
-                voucher_line.write({
-                    'payment_ids': [(4, payment.id) for payment in payments]
-                })
-                _logger.info("Linked %d payment(s) to voucher line %s" % (len(payments), voucher_line.id))
-                
-                # Add message to voucher
+                voucher_line.write({'payment_ids': [(4, payment.id) for payment in payments]})
                 if voucher_line.voucher_id:
-                    payment_names = ', '.join(payments.mapped('name'))
                     voucher_line.voucher_id.message_post(
-                        body=_("Payment(s) %s created and linked from RV line") % payment_names
+                        body=_("Payment(s) %s created and linked from RV line") % ', '.join(payments.mapped('name'))
                     )
-        
         if receipt_id:
             receipt = self.env['account.receipt'].browse(receipt_id)
             if receipt.exists():
-                # Link payments to receipt via M2M
-                receipt.write({
-                    'payment_ids': [(4, payment.id) for payment in payments]
-                })
-                _logger.info("Linked %d payment(s) to receipt %s" % (len(payments), receipt.name))
-                
-                # Add message to receipt
-                payment_names = ', '.join(payments.mapped('name'))
+                receipt.write({'payment_ids': [(4, payment.id) for payment in payments]})
                 receipt.message_post(
-                    body=_("Payment(s) %s created from voucher") % payment_names
+                    body=_("Payment(s) %s created from voucher") % ', '.join(payments.mapped('name'))
                 )
-        
-        # Auto-reconcile if we have the context
+
         if voucher_line_id and payments:
             voucher_line = self.env['account.receipt.voucher.line'].browse(voucher_line_id)
-            if voucher_line.exists() and voucher_line.voucher_id:
-                # Get all invoices from the receipt
-                receipt = voucher_line.receipt_id
-                if receipt:
-                    invoices = receipt.line_ids.mapped('move_id').filtered(
-                        lambda m: m.state == 'posted' and m.move_type in ('out_invoice', 'out_refund')
-                    )
-                    
-                    # Try to reconcile each payment with invoices
-                    for payment in payments:
-                        try:
-                            voucher_line.voucher_id._reconcile_payment_with_invoices(payment, invoices)
-                            _logger.info("Auto-reconciled payment %s with invoices" % payment.name)
-                        except Exception as e:
-                            _logger.warning("Failed to auto-reconcile payment %s: %s" % (payment.name, str(e)))
-        
+            if voucher_line.exists() and voucher_line.voucher_id and voucher_line.receipt_id:
+                invoices = voucher_line.receipt_id.line_ids.mapped('move_id').filtered(
+                    lambda move: move.state == 'posted' and move.move_type in ('out_invoice', 'out_refund')
+                )
+                for payment in payments:
+                    try:
+                        voucher_line.voucher_id._reconcile_payment_with_invoices(payment, invoices)
+                    except Exception as error:
+                        _logger.warning("Failed to auto-reconcile payment %s: %s", payment.name, error)
+
+        if refund_pv and payments:
+            refund_pv.write({'payment_ids': [(4, payment.id) for payment in payments]})
+            payments.write({'buz_customer_refund_pv_id': refund_pv.id})
+            refund_pv.message_post(
+                body=_("Payment %s registered for refund amount %.2f") % (
+                    ', '.join(payments.mapped('name')), refund_pv.refund_amount
+                )
+            )
         return payments

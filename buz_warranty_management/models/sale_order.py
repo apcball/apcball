@@ -73,50 +73,62 @@ class SaleOrder(models.Model):
             }
     
     def _create_warranty_cards_from_pickings(self, pickings):
-        """Create warranty cards from delivered pickings"""
+        """Create one warranty card per picking, with one line per product/lot."""
         WarrantyCard = self.env['warranty.card']
+        CardLine = self.env['warranty.card.line']
         warranty_cards = WarrantyCard
-        
+
         for picking in pickings:
+            line_vals = []
+            seen = set()
             for move_line in picking.move_line_ids:
                 product = move_line.product_id
-                
+                lot = move_line.lot_id
+
                 # Check if product has warranty configuration
-                if (product.product_tmpl_id.warranty_duration <= 0):
+                if product.product_tmpl_id.warranty_duration <= 0:
                     continue
-                
-                # Check if warranty card already exists
-                existing = WarrantyCard.search([
-                    ('sale_order_id', '=', self.id),
+
+                key = (product.id, lot.id)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                # Check if a warranty line already exists for this SO/product/lot
+                if CardLine.search_count([
+                    ('card_id.sale_order_id', '=', self.id),
                     ('product_id', '=', product.id),
-                    ('lot_id', '=', move_line.lot_id.id if move_line.lot_id else False),
-                ], limit=1)
-                
-                if existing:
+                    ('lot_id', '=', lot.id or False),
+                ]):
                     continue
-                
-                # Create warranty card
-                warranty_vals = {
-                    'partner_id': self.partner_id.id,
+
+                line_vals.append(fields.Command.create({
                     'product_id': product.id,
-                    'lot_id': move_line.lot_id.id if move_line.lot_id else False,
-                    'start_date': picking.date_done.date() if picking.date_done else fields.Date.today(),
-                    'sale_order_id': self.id,
-                    'picking_id': picking.id,
-                    'state': 'draft',
-                }
-                
-                warranty_card = WarrantyCard.create(warranty_vals)
-                warranty_cards += warranty_card
-                
-                # Post message on picking
-                picking.message_post(
-                    body=f'Warranty card {warranty_card.name} created for product {product.display_name}',
-                    subject='Warranty Card Created'
-                )
-        
+                    'lot_id': lot.id or False,
+                }))
+
+            if not line_vals:
+                continue
+
+            start_date = picking.date_done.date() if picking.date_done else fields.Date.today()
+            warranty_card = WarrantyCard.create({
+                'partner_id': self.partner_id.id,
+                'start_date': start_date,
+                'sale_order_id': self.id,
+                'picking_id': picking.id,
+                'state': 'draft',
+                'line_ids': line_vals,
+            })
+            warranty_cards += warranty_card
+
+            picking.message_post(
+                body=f'Warranty card {warranty_card.name} created for products: '
+                     f'{", ".join(warranty_card.line_ids.mapped("product_id.display_name"))}',
+                subject='Warranty Card Created'
+            )
+
         return warranty_cards
-    
+
     def action_view_warranty_cards(self):
         """View warranty cards related to this sale order"""
         self.ensure_one()

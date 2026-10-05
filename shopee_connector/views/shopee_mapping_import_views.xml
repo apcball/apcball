@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopee_mapping_import_wizard_form" model="ir.ui.view">
+        <field name="name">shopee.product.mapping.import.wizard.form</field>
+        <field name="model">shopee.product.mapping.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Product Mappings">
+                <group>
+                    <field name="shopee_config_id"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="file_data" filename="file_name"/>
+                    <field name="dry_run"/>
+                </group>
+                <group invisible="not result">
+                    <field name="result" nolabel="1" colspan="2"/>
+                </group>
+                <footer>
+                    <button string="Import" name="action_import" type="object" class="btn-primary"/>
+                    <button string="Close" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopee_mapping_import" model="ir.actions.act_window">
+        <field name="name">Import Product Mappings</field>
+        <field name="res_model">shopee.product.mapping.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="shopee_connector_mapping_import_menu" name="Import Mappings"
+              parent="shopee_connector_config_menu"
+              action="action_shopee_mapping_import" sequence="25"
+              groups="shopee_connector.group_shopee_manager"/>
+</odoo>

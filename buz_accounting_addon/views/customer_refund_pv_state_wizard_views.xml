@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_customer_refund_pv_state_wizard_form" model="ir.ui.view">
+        <field name="name">buz.customer.refund.pv.state.wizard.form</field>
+        <field name="model">buz.customer.refund.pv.state.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Refund PV Workflow Reason">
+                <group>
+                    <field name="pv_id"/>
+                    <field name="operation"/>
+                    <field name="reason" placeholder="Explain why this action is required..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="Confirm" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

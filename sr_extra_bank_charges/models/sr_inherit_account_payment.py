@@ -91,6 +91,10 @@ class srAccountPayment(models.Model):
         liquidity_account_ids = set()
         if self.journal_id.default_account_id:
             liquidity_account_ids.add(self.journal_id.default_account_id.id)
+        # The payment's own liquidity line sits on the outstanding account, which may
+        # be neither the journal default nor asset_cash (e.g. company fallback account)
+        if self.outstanding_account_id:
+            liquidity_account_ids.add(self.outstanding_account_id.id)
         # Also add any other cash/bank-type accounts referenced in existing lines
         all_account_ids = [line.get('account_id') for line in line_vals_list if line.get('account_id')]
         if all_account_ids:
