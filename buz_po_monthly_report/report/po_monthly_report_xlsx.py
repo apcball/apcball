@@ -102,7 +102,9 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
             'text_wrap': True, 'align': 'center', 'valign': 'vcenter',
         })
         date_format = workbook.add_format({'num_format': 'dd/mm/yyyy'})
-        quantity_format = workbook.add_format({'num_format': '#,##0.####'})
+        price_format = workbook.add_format({'num_format': '#,##0.00'})
+        integer_format = workbook.add_format({'num_format': '#,##0'})
+        decimal_format = workbook.add_format({'num_format': '#,##0.########'})
         widths = [8, 18, 14, 18, 36, 20, 14, 14, 58, 14, 12, 16, 12, 14, 28, 12]
         for col, width in enumerate(widths):
             sheet.set_column(col, col, width)
@@ -121,21 +123,11 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
         sheet.set_row(3, 32)
         sheet.freeze_panes(4, 0)
 
-        money_formats = {}
         row = 4
         item_number = 0
         for order in orders:
             pr_name = order.pr_number or order.requisition_order or ''
             requisition = requisitions.get(pr_name)
-            currency = order.currency_id
-            if currency.id not in money_formats:
-                symbol = (currency.symbol or '').replace('"', '""')
-                money_formats[currency.id] = workbook.add_format({
-                    'num_format': '"%s"#,##0.00;[Red]("%s"#,##0.00)' % (
-                        symbol, symbol,
-                    ),
-                })
-            money_format = money_formats[currency.id]
             lines = order.order_line.filtered(
                 lambda line: not line.display_type
             ).sorted(key=lambda item: (item.sequence, item.id))
@@ -169,10 +161,10 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                 self._write_date(sheet, row, 6, values[6], date_format)
                 self._write_date(sheet, row, 7, values[7], date_format)
                 sheet.write(row, 8, values[8])
-                sheet.write_number(row, 9, values[9] or 0.0, money_format)
-                sheet.write_number(row, 10, values[10] or 0.0, quantity_format)
-                sheet.write_number(row, 11, values[11] or 0.0, money_format)
-                sheet.write_number(row, 12, values[12] or 0.0, quantity_format)
+                sheet.write_number(row, 9, values[9] or 0.0, price_format)
+                sheet.write_number(row, 10, values[10] or 0.0, integer_format if float(values[10] or 0.0).is_integer() else decimal_format)
+                sheet.write_number(row, 11, values[11] or 0.0, price_format)
+                sheet.write_number(row, 12, values[12] or 0.0, integer_format if float(values[12] or 0.0).is_integer() else decimal_format)
                 sheet.write_blank(row, 13, None)
                 sheet.write(row, 14, values[14])
                 sheet.write_blank(row, 15, None)
