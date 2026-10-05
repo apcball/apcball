@@ -24,7 +24,7 @@ class ShopeeProductMapping(models.Model):
         ondelete="restrict", check_company=True,
     )
     odoo_sku = fields.Char(
-        related="product_id.default_code", string="Odoo SKU", readonly=True,
+        related="product_id.default_code", string="Internal Reference", readonly=True,
     )
     active = fields.Boolean(default=True)
     shopee_stock = fields.Integer(

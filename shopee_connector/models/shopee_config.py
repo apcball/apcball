@@ -48,7 +48,7 @@ class ShopeeConfig(models.Model):
     )
     partner_id = fields.Char(string="Partner ID", required=True)
     partner_key = fields.Char(string="Partner Key", required=True, copy=False,
-                              groups="sales_team.group_sale_manager")
+                              groups="shopee_connector.group_shopee_manager")
     shop_id = fields.Char(string="Shop ID")
 
     customer_partner_id = fields.Many2one(
@@ -94,21 +94,21 @@ class ShopeeConfig(models.Model):
         help="Must match the Test/Live Redirect URL Domain configured on "
         "the Shopee Open Platform app.",
     )
-    oauth_state = fields.Char(readonly=True, copy=False, groups="sales_team.group_sale_manager")
+    oauth_state = fields.Char(readonly=True, copy=False, groups="shopee_connector.group_shopee_manager")
     oauth_state_expires_at = fields.Datetime(readonly=True, copy=False)
     webhook_secret = fields.Char(
-        string="Webhook Secret", copy=False, groups="sales_team.group_sale_manager",
+        string="Webhook Secret", copy=False, groups="shopee_connector.group_shopee_manager",
         help="Optional secret used to validate webhook signatures. If empty, "
         "the partner key is used.",
     )
 
-    access_token = fields.Char(readonly=True, copy=False, groups="sales_team.group_sale_manager")
-    refresh_token = fields.Char(readonly=True, copy=False, groups="sales_team.group_sale_manager")
+    access_token = fields.Char(readonly=True, copy=False, groups="shopee_connector.group_shopee_manager")
+    refresh_token = fields.Char(readonly=True, copy=False, groups="shopee_connector.group_shopee_manager")
     token_expires_at = fields.Datetime(readonly=True, copy=False)
 
     temp_auth_code = fields.Char(
         string="Authorization Code",
-        copy=False, groups="sales_team.group_sale_manager",
+        copy=False, groups="shopee_connector.group_shopee_manager",
         help="After authorizing the shop, paste either the 'code' value or "
         "the whole redirect URL (contains ?code=...&shop_id=...) here, then "
         "click 'Exchange Token'. Code expires after ~10 minutes.",
@@ -116,13 +116,13 @@ class ShopeeConfig(models.Model):
 
     temp_access_token = fields.Char(
         string="Manual Access Token",
-        groups="sales_team.group_sale_manager",
+        groups="shopee_connector.group_shopee_manager",
         copy=False,
         help="Optional: paste a token obtained elsewhere instead of using "
         "the OAuth flow.",
     )
     temp_refresh_token = fields.Char(
-        string="Manual Refresh Token", copy=False, groups="sales_team.group_sale_manager"
+        string="Manual Refresh Token", copy=False, groups="shopee_connector.group_shopee_manager"
     )
     temp_token_expires_at = fields.Datetime(
         string="Manual Token Expiry",

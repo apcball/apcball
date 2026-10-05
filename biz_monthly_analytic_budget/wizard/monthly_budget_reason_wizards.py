@@ -27,7 +27,9 @@ class MonthlyBudgetRequestReasonWizard(models.TransientModel):
 
     def action_submit_request(self):
         self.ensure_one()
-        ApprovalReq = self.env['buz.monthly.budget.approval.request']
+        # Any internal user may request; write access to requests is manager-only,
+        # so create/update through sudo (requester_id still uses env.uid).
+        ApprovalReq = self.env['buz.monthly.budget.approval.request'].sudo()
 
         ref_field_map = {
             'pr': 'ref_pr_id',

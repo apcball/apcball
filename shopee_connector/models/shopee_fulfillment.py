@@ -16,7 +16,7 @@ from .shopee_shipping_helpers import (
 )
 
 _logger = logging.getLogger(__name__)
-MANAGER = 'sales_team.group_sale_manager'
+MANAGER = 'shopee_connector.group_shopee_manager'
 
 
 class ShippingPending(Exception):
@@ -25,7 +25,7 @@ class ShippingPending(Exception):
 
 def require_manager(record):
     if not record.env.user.has_group(MANAGER):
-        raise AccessError('Only a Sales Manager can arrange Shopee shipments.')
+        raise AccessError('Only a Shopee Manager can arrange Shopee shipments.')
     record.check_access_rights('write')
     record.check_access_rule('write')
 

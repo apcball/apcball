@@ -852,19 +852,28 @@ class PurchaseOrder(models.Model):
         Note: used_amount is a live computed field reading from posted invoices,
         so we don't need to manually adjust it. We only release the audit trail
         (budget.commitment records) via the budget engine.
+
+        A reservation can have been filed under either identity depending on
+        whether the PO already had a source PR link *at reservation time*:
+        direct-RFQ reservations are filed under the PO's own id, while
+        PR-linked ones are filed under the PR's id. Since ``requisition_order``
+        can be attached to the PO after the reservation was made,
+        ``_get_budget_document_identity()`` (which reflects the *current*
+        link) can point at the wrong document and leave the real commitment
+        orphaned. Release both identities so the correct one always matches.
         """
         self.ensure_one()
         engine = self.env['budget.engine']
-        document_model, document_id = self._get_budget_document_identity()
 
-        # Mark related commitment records as released
-        engine.release_budget({
-            'budget_source': 'monthly',
-            'document_model': document_model,
-            'document_id': document_id,
-            'amount': 0,
-            'company_id': self.company_id.id,
-        })
+        identities = {(self._name, self.id), self._get_budget_document_identity()}
+        for document_model, document_id in identities:
+            engine.release_budget({
+                'budget_source': 'monthly',
+                'document_model': document_model,
+                'document_id': document_id,
+                'amount': 0,
+                'company_id': self.company_id.id,
+            })
 
         for plan in find_active_monthly_plans(self.env, self.payment_date, self.company_id.id):
             plan._refresh_budget_snapshot(refresh_report=True)

@@ -1,3 +1,4 @@
+from odoo import fields
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
@@ -11,7 +12,7 @@ class TestBillingNote(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
+        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True, skip_partner_required_fields=True))
 
         uid = uuid.uuid4().hex[:6].upper()
         cls.partner = cls.env['res.partner'].create({
@@ -321,7 +322,7 @@ class TestBillingNotePayment(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
+        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True, skip_partner_required_fields=True))
 
         uid = uuid.uuid4().hex[:6].upper()
         cls.partner = cls.env['res.partner'].create({
@@ -421,7 +422,7 @@ class TestBillingNoteCron(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
+        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True, skip_partner_required_fields=True))
 
         uid = uuid.uuid4().hex[:6].upper()
         cls.partner = cls.env['res.partner'].create({
@@ -436,3 +437,95 @@ class TestBillingNoteCron(TransactionCase):
     def test_cron_runs_without_error(self):
         result = self.env['billing.note']._cron_check_due_dates()
         self.assertTrue(result)
+
+
+@tagged('-at_install', 'post_install')
+class TestBillingNoteCreditNote(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True, skip_partner_required_fields=True))
+        uid = uuid.uuid4().hex[:6].upper()
+        cls.partner = cls.env['res.partner'].create({'name': f'CN Partner {uid}'})
+        cls.journal = cls.env['account.journal'].search([
+            ('type', '=', 'sale'), ('company_id', '=', cls.env.company.id)], limit=1)
+        cls.bank_journal = cls.env['account.journal'].search([
+            ('type', '=', 'bank'), ('company_id', '=', cls.env.company.id)], limit=1)
+        cls.revenue = cls.env['account.account'].search([
+            ('account_type', '=', 'income'), ('company_id', '=', cls.env.company.id)], limit=1)
+        cls.invoice = cls._make_move('out_invoice', 1000.0)
+        cls.credit_note = cls._make_move('out_refund', 200.0)
+
+    @classmethod
+    def _make_move(cls, move_type, price):
+        move = cls.env['account.move'].create({
+            'move_type': move_type,
+            'partner_id': cls.partner.id,
+            'journal_id': cls.journal.id,
+            'invoice_date': date.today(),
+            'invoice_date_due': date.today(),
+            'invoice_line_ids': [fields.Command.create({
+                'name': 'line', 'quantity': 1, 'price_unit': price,
+                'account_id': cls.revenue.id,
+            })],
+        })
+        move.action_post()
+        return move
+
+    def _note(self, moves):
+        return self.env['billing.note'].create({
+            'partner_id': self.partner.id,
+            'note_type': 'receivable',
+            'invoice_ids': [fields.Command.set(moves.ids)],
+        })
+
+    def test_net_total(self):
+        note = self._note(self.invoice | self.credit_note)
+        self.assertEqual(note.amount_total, 800.0)
+        self.assertEqual(note.amount_residual, 800.0)
+        self.assertEqual(note.payment_state, 'not_paid')
+
+    def test_available_includes_refund(self):
+        note = self._note(self.env['account.move'])
+        self.assertIn(self.credit_note, note.available_invoice_ids)
+
+    def test_confirm_credit_note_only_rejected(self):
+        note = self._note(self.credit_note)
+        with self.assertRaises(UserError):
+            note.action_confirm()
+
+    def test_confirm_negative_net_rejected(self):
+        big_cn = self._make_move('out_refund', 5000.0)
+        note = self._note(self.invoice | big_cn)
+        with self.assertRaises(UserError):
+            note.action_confirm()
+
+    def test_apply_credit_note_then_pay(self):
+        note = self._note(self.invoice | self.credit_note)
+        note.action_confirm()
+        invoices = note._get_payable_invoices()
+        self.assertEqual(invoices, self.invoice)
+        self.assertEqual(self.credit_note.payment_state, 'paid')
+        self.assertAlmostEqual(self.invoice.amount_residual, 800.0)
+        payment = self.env['account.payment'].create({
+            'payment_type': 'inbound',
+            'partner_type': 'customer',
+            'partner_id': self.partner.id,
+            'amount': 800.0,
+            'journal_id': self.bank_journal.id,
+        })
+        if 'buz_payment_channel' in payment._fields:
+            payment.buz_payment_channel = 'bank_transfer'
+        payment.action_post()
+        (payment.move_id.line_ids | self.invoice.line_ids).filtered(
+            lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled
+        ).reconcile()
+        self.assertEqual(note.payment_state, 'paid')
+
+    def test_report_renders_negative(self):
+        note = self._note(self.invoice | self.credit_note)
+        report = self.env.ref('buz_custom_billing_note.action_report_billing_note', raise_if_not_found=False)
+        if report:
+            html, _fmt = report._render_qweb_html(report.report_name, note.ids)
+            self.assertIn(b'-200.00', html)

@@ -168,11 +168,10 @@ export class WarrantyDashboard extends Component {
     async loadData() {
         this.state.loading = true;
         try {
-            const [data, details] = await Promise.all([
-                this.rpc("/warranty/dashboard/data", {filters: this.state.filters}),
-                this.orm.call('warranty.dashboard', 'get_dashboard_details', [this.state.filters]),
-            ]);
-            Object.assign(data, details);
+            const data = await this.rpc("/warranty/dashboard/data", {
+                filters: this.state.filters,
+            });
+            Object.assign(data, await this.orm.call('warranty.dashboard', 'get_dashboard_details', [this.state.filters]));
             this.state.data = data;
         } catch (e) {
             console.error("Failed to load dashboard data:", e);
@@ -223,11 +222,10 @@ export class WarrantyDashboard extends Component {
     async onRefresh() {
         this.state.loading = true;
         try {
-            const [data, details] = await Promise.all([
-                this.rpc("/warranty/dashboard/refresh", {filters: this.state.filters}),
-                this.orm.call('warranty.dashboard', 'get_dashboard_details', [this.state.filters]),
-            ]);
-            Object.assign(data, details);
+            const data = await this.rpc("/warranty/dashboard/refresh", {
+                filters: this.state.filters,
+            });
+            Object.assign(data, await this.orm.call('warranty.dashboard', 'get_dashboard_details', [this.state.filters]));
             this.state.data = data;
             this.notification.add("Dashboard refreshed", { type: "success" });
         } catch (e) {

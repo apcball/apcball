@@ -431,26 +431,27 @@ class WarrantyDashboard(models.Model):
         } for card in cards], 'recent_claims': [], 'top_products': []}
         if 'service.receipt' not in self.env:
             return result
-        claim_model = self.env['service.receipt']
-        claim_domain = self._build_claim_domain(filters) + [('service_case_type', '=', 'replacement')]
-        claims = claim_model.search(claim_domain, order='request_date desc, id desc', limit=5)
-        labels = dict(claim_model._fields['state']._description_selection(self.env))
-
-        line_domain = [('receipt_id', 'any', claim_domain)]
-        if filters.get('product_id'):
-            line_domain.append(('product_id', '=', int(filters['product_id'])))
-        groups = self.env['service.receipt.line']._read_group(
-            line_domain, ['product_id'], ['receipt_id:count_distinct'])
-        top = sorted(((p, n) for p, n in groups if p), key=lambda g: (-g[1], g[0].display_name))[:5]
-        result['top_products'] = [
-            {'id': p.id, 'name': p.display_name, 'claims': n} for p, n in top]
+        claims = self.env['service.receipt'].search(
+            self._build_claim_domain(filters) + [('service_case_type', '=', 'replacement')],
+            order='request_date desc, id desc')
+        labels = dict(claims._fields['state']._description_selection(self.env))
+        counts = {}
+        for claim in claims:
+            for product in claim.line_ids.product_id:
+                if filters.get('product_id') and product.id != int(filters['product_id']):
+                    continue
+                row = counts.setdefault(product.id, {
+                    'id': product.id, 'name': product.display_name, 'claims': 0})
+                row['claims'] += 1
+        result['top_products'] = sorted(
+            counts.values(), key=lambda row: (-row['claims'], row['name']))[:5]
         result['recent_claims'] = [{
             'id': claim.id, 'name': claim.claim_number or claim.name,
             'date': str(claim.request_date) if claim.request_date else '',
             'partner_name': claim.partner_id.display_name or '',
             'product_name': ', '.join(claim.line_ids.product_id.mapped('display_name')),
             'state': claim.state, 'state_label': labels.get(claim.state, claim.state),
-        } for claim in claims]
+        } for claim in claims[:5]]
         return result
 
     @api.model

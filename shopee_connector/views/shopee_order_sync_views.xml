@@ -44,5 +44,5 @@
     <menuitem id="shopee_connector_order_sync_menu" name="Sync Orders"
               parent="shopee_connector_root_menu"
               action="action_shopee_order_sync" sequence="31"
-              groups="sales_team.group_sale_manager"/>
+              groups="shopee_connector.group_shopee_manager"/>
 </odoo>

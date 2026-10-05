@@ -8,6 +8,7 @@
     "depends": ["sale_management", "stock", "website"],
     "external_dependencies": {"python": ["requests"]},
     "data": [
+        "security/shopee_security.xml",
         "security/ir.model.access.csv",
         "data/ir_cron_data.xml",
         "data/shopee_order_tags.xml",
@@ -24,6 +25,11 @@
         "views/shopee_buyer_address_import_views.xml",
         "views/shopee_order_sync_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "shopee_connector/static/src/**/*",
+        ],
+    },
     "installable": True,
     "application": True,
     "icon": "/shopee_connector/static/description/icon.png",

@@ -43,6 +43,17 @@ class SaleOrder(models.Model):
         block_negative = get_param('sale_pricelist_standard_cost.block_negative_margin') == 'True'
 
         for order in self:
+            # Cost may have been added to the Standard Cost Pricelist after the
+            # line was created; the stored purchase_price does not depend on
+            # pricelist rules, so refresh zero-cost lines before checking.
+            # Only lines still at zero cost are refreshed here.
+            stale_lines = order.order_line.filtered(
+                lambda l: not l.display_type and not l.is_downpayment and l.product_id
+                and l.product_id.type != 'service' and l.purchase_price <= 0
+            )
+            if stale_lines:
+                stale_lines._compute_standard_cost_purchase_price()
+
             # Check Missing Standard Cost (block confirm, product must have cost set first)
             missing_cost_products = order._get_missing_cost_products()
 

@@ -17,7 +17,7 @@ performed. All test writes target disposable QA databases.
 - Company rules protect configurations, mappings, logs and retries. Mapping,
   order and configured service-product relations check company consistency.
   Orders/new buyers use the shop's company; stock operations use its context.
-  Credentials have Sales Manager field restrictions and form masking. Logs
+  Credentials have Shopee Manager field restrictions and form masking. Logs
   redact nested/serialized credentials; network errors no longer print signed
   URLs. Failed log insertion cannot leave the business transaction aborted.
 - Retry workers use `FOR UPDATE SKIP LOCKED`, respect backoff/attempt limits,
