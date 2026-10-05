@@ -11,6 +11,19 @@
                             <field name="po_date_from" required="po_date_to"/>
                             <field name="po_date_to" required="po_date_from"/>
                         </group>
+                        <group string="สถานะ PR ปัจจุบัน (ไม่เลือกเพื่อแสดงทั้งหมด)">
+                            <group>
+                                <field name="pr_state_draft"/>
+                                <field name="pr_state_waiting_head_approval"/>
+                                <field name="pr_state_waiting_purchase_approval"/>
+                                <field name="pr_state_approved"/>
+                            </group>
+                            <group>
+                                <field name="pr_state_purchase_order_created"/>
+                                <field name="pr_state_received"/>
+                                <field name="pr_state_cancelled"/>
+                            </group>
+                        </group>
                     </group>
                 </sheet>
                 <footer>

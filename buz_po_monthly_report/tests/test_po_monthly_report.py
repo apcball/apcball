@@ -13,9 +13,25 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
         report = self.env['buz.po.monthly.report.xlsx.generator']
         self.assertEqual(report.HEADERS, [
             'ลำดับ', 'เลขที่เอกสาร', 'วันที่เปิดPO', 'รหัสผู้จำหน่าย',
-            'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ PR', 'ชื่อ', 'ราคา',
+            'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'ชื่อ', 'ราคา',
             'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง', 'CREDIT',
         ])
+
+    def test_selected_pr_states_returns_only_checked_states(self):
+        wizard = self.env['po.monthly.report.wizard'].new({
+            'pr_state_waiting_purchase_approval': True,
+            'pr_state_approved': True,
+        })
+        report = self.env['buz.po.monthly.report.xlsx.generator']
+        self.assertEqual(
+            report._selected_pr_states(wizard),
+            ['waiting_purchase_approval', 'approved'],
+        )
+
+    def test_no_selected_pr_state_disables_status_filter(self):
+        wizard = self.env['po.monthly.report.wizard'].new({})
+        report = self.env['buz.po.monthly.report.xlsx.generator']
+        self.assertEqual(report._selected_pr_states(wizard), [])
 
     def test_at_least_one_complete_date_range_is_required(self):
         wizard_model = self.env['po.monthly.report.wizard']

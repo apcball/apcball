@@ -10,6 +10,19 @@ class PurchaseOrderMonthlyReportWizard(models.TransientModel):
 
     po_date_from = fields.Date(string='วันที่เปิด PO ตั้งแต่')
     po_date_to = fields.Date(string='วันที่เปิด PO ถึง')
+    pr_state_draft = fields.Boolean(string='Draft')
+    pr_state_waiting_head_approval = fields.Boolean(
+        string='Waiting Head Approval',
+    )
+    pr_state_waiting_purchase_approval = fields.Boolean(
+        string='Waiting Purchase Approval',
+    )
+    pr_state_approved = fields.Boolean(string='Approved')
+    pr_state_purchase_order_created = fields.Boolean(
+        string='Purchase Order Created',
+    )
+    pr_state_received = fields.Boolean(string='Received')
+    pr_state_cancelled = fields.Boolean(string='Cancelled')
     file_data = fields.Binary(string='Excel File', readonly=True, attachment=False)
     file_name = fields.Char(string='File Name', readonly=True)
 

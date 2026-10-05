@@ -14,7 +14,7 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
 
     HEADERS = [
         'ลำดับ', 'เลขที่เอกสาร', 'วันที่เปิดPO', 'รหัสผู้จำหน่าย',
-        'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ PR', 'ชื่อ', 'ราคา',
+        'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'ชื่อ', 'ราคา',
         'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง', 'CREDIT',
     ]
 
@@ -38,7 +38,23 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
 
         return domain
 
-    def _get_requisitions_by_name(self, purchase_orders):
+    @staticmethod
+    def _selected_pr_states(wizard):
+        state_fields = {
+            'pr_state_draft': 'draft',
+            'pr_state_waiting_head_approval': 'waiting_head_approval',
+            'pr_state_waiting_purchase_approval': 'waiting_purchase_approval',
+            'pr_state_approved': 'approved',
+            'pr_state_purchase_order_created': 'purchase_order_created',
+            'pr_state_received': 'received',
+            'pr_state_cancelled': 'cancelled',
+        }
+        return [
+            state for field_name, state in state_fields.items()
+            if getattr(wizard, field_name, False)
+        ]
+
+    def _get_requisitions_by_name(self, purchase_orders, selected_states=None):
         pr_names = {
             order.pr_number or order.requisition_order
             for order in purchase_orders
@@ -47,12 +63,13 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
         if not pr_names:
             return {}
         try:
-            requisitions = self.env['employee.purchase.requisition'].search([
-                ('name', 'in', list(pr_names)),
-            ])
+            domain = [('name', 'in', list(pr_names))]
+            if selected_states:
+                domain.append(('state', 'in', selected_states))
+            requisitions = self.env['employee.purchase.requisition'].search(domain)
         except AccessError as error:
             raise UserError(_(
-                'You need access to Purchase Requisitions to include PR dates in this report.'
+                'You need access to Purchase Requisitions to include PR data in this report.'
             )) from error
         return {requisition.name: requisition for requisition in requisitions}
 
@@ -88,7 +105,15 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
             self._purchase_order_domain(wizard),
             order='date_order, id',
         )
-        requisitions = self._get_requisitions_by_name(orders)
+        selected_states = self._selected_pr_states(wizard)
+        requisitions = self._get_requisitions_by_name(orders, selected_states)
+        if selected_states:
+            matching_pr_names = set(requisitions)
+            orders = orders.filtered(
+                lambda order: (
+                    order.pr_number or order.requisition_order or ''
+                ) in matching_pr_names
+            )
 
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
@@ -141,7 +166,7 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                     order.partner_id.name or '',
                     pr_name,
                     line.date_planned,
-                    requisition.requisition_date if requisition else False,
+                    requisition.approval_date if requisition else False,
                     line.name or '',
                     line.price_unit,
                     line.product_qty,
