@@ -23,8 +23,8 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
             wizard_model.new({})._check_date_ranges()
 
         wizard = wizard_model.new({
-            'pr_date_from': date(2026, 5, 1),
-            'pr_date_to': date(2026, 5, 31),
+            'po_date_from': date(2026, 5, 1),
+            'po_date_to': date(2026, 5, 31),
         })
         wizard._check_date_ranges()
 
@@ -40,6 +40,12 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
         })
         with self.assertRaises(ValidationError):
             reversed_range._check_date_ranges()
+
+
+    def test_pr_date_fields_are_not_supported(self):
+        wizard = self.env['po.monthly.report.wizard']
+        self.assertNotIn('pr_date_from', wizard._fields)
+        self.assertNotIn('pr_date_to', wizard._fields)
 
     def test_export_creates_valid_xlsx_for_empty_result(self):
         wizard = self.env['po.monthly.report.wizard'].new({

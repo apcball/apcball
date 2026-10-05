@@ -7,10 +7,6 @@
             <form string="รายงานใบสั่งซื้อสินค้า">
                 <sheet>
                     <group>
-                        <group string="ช่วงวันที่ PR">
-                            <field name="pr_date_from" required="pr_date_to"/>
-                            <field name="pr_date_to" required="pr_date_from"/>
-                        </group>
                         <group string="ช่วงวันที่เปิด PO">
                             <field name="po_date_from" required="po_date_to"/>
                             <field name="po_date_to" required="po_date_from"/>

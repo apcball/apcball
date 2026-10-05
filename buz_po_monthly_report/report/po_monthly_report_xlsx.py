@@ -36,29 +36,6 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                 'date_order', '<', self._local_date_to_utc(next_day),
             ))
 
-        if wizard.pr_date_from:
-            pr_domain = [
-                ('requisition_date', '>=', wizard.pr_date_from),
-                ('requisition_date', '<=', wizard.pr_date_to),
-            ]
-            try:
-                requisitions = self.env['employee.purchase.requisition'].search(
-                    pr_domain
-                )
-            except AccessError as error:
-                raise UserError(_(
-                    'You need access to Purchase Requisitions to filter this report by PR date.'
-                )) from error
-
-            pr_names = requisitions.mapped('name')
-            if not pr_names:
-                return [('id', '=', 0)]
-            # PR และ PO ต้องตรงตามช่วงที่เลือกพร้อมกัน
-            domain.extend([
-                '|',
-                ('pr_number', 'in', pr_names),
-                ('requisition_order', 'in', pr_names),
-            ])
         return domain
 
     def _get_requisitions_by_name(self, purchase_orders):
@@ -78,16 +55,6 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                 'You need access to Purchase Requisitions to include PR dates in this report.'
             )) from error
         return {requisition.name: requisition for requisition in requisitions}
-
-    @staticmethod
-    def _credit_days(order):
-        payment_term = (
-            order.payment_term_id
-            or order.partner_id.property_supplier_payment_term_id
-        )
-        if not payment_term or not payment_term.line_ids:
-            return None
-        return max(payment_term.line_ids.mapped('nb_days'))
 
     def _date_value(self, value):
         if not value:
@@ -144,11 +111,10 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
             0, 0, 0, len(self.HEADERS) - 1,
             'รายงานใบสั่งซื้อสินค้า', title_format,
         )
-        pr_range = self._date_range_label(wizard.pr_date_from, wizard.pr_date_to)
         po_range = self._date_range_label(wizard.po_date_from, wizard.po_date_to)
         sheet.merge_range(
             1, 0, 1, len(self.HEADERS) - 1,
-            'วันที่ PR: %s    วันที่เปิด PO: %s' % (pr_range, po_range),
+            'วันที่เปิด PO: %s' % po_range,
             criteria_format,
         )
         sheet.write_row(3, 0, self.HEADERS, header_format)
@@ -157,6 +123,7 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
 
         money_formats = {}
         row = 4
+        item_number = 0
         for order in orders:
             pr_name = order.pr_number or order.requisition_order or ''
             requisition = requisitions.get(pr_name)
@@ -169,7 +136,6 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                     ),
                 })
             money_format = money_formats[currency.id]
-            item_number = 0
             lines = order.order_line.filtered(
                 lambda line: not line.display_type
             ).sorted(key=lambda item: (item.sequence, item.id))
@@ -189,10 +155,10 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                     line.product_qty,
                     line.price_subtotal,
                     line.qty_received,
-                    line.product_qty - line.qty_received,
+                    None,
                     order.destination_location_id.display_name
                     if order.destination_location_id else '',
-                    self._credit_days(order),
+                    None,
                 ]
                 sheet.write_number(row, 0, values[0])
                 sheet.write(row, 1, values[1])
@@ -207,12 +173,9 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                 sheet.write_number(row, 10, values[10] or 0.0, quantity_format)
                 sheet.write_number(row, 11, values[11] or 0.0, money_format)
                 sheet.write_number(row, 12, values[12] or 0.0, quantity_format)
-                sheet.write_number(row, 13, values[13] or 0.0, quantity_format)
+                sheet.write_blank(row, 13, None)
                 sheet.write(row, 14, values[14])
-                if values[15] is None:
-                    sheet.write_blank(row, 15, None)
-                else:
-                    sheet.write_number(row, 15, values[15])
+                sheet.write_blank(row, 15, None)
                 row += 1
 
         sheet.autofilter(3, 0, max(3, row - 1), len(self.HEADERS) - 1)
