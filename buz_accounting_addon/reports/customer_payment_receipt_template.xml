@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="customer_payment_receipt">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="receipts" t-value="receipt_rows.get(o.id, [])"/>
+                <t t-set="methods" t-value="payment_rows.get(o.id, [])"/>
+                <t t-set="journal_lines" t-value="journal_rows.get(o.id, [])"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 24px;
+                                padding: 0;
+                                width: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .table-bordered {
+                                border: 1px solid black;
+                                width: 100%;
+                                border-collapse: collapse;
+                                color: #000;
+                            }
+                            .table-bordered th, .table-bordered td {
+                                border: 1px solid black;
+                                padding: 4px;
+                                color: #000;
+                            }
+                            .table-header th {
+                                text-align: center;
+                                vertical-align: middle;
+                            }
+                            .no-border-bottom {
+                                border-bottom: none !important;
+                            }
+                            .journal-entry-table .journal-entry-total-row {
+                                height: 32px;
+                                line-height: 24px;
+                                vertical-align: middle;
+                            }
+                            .journal-entry-table .journal-entry-total-cell {
+                                height: 32px;
+                                line-height: 24px;
+                                vertical-align: middle;
+                                white-space: nowrap;
+                            }
+                            .journal-entry-table .journal-entry-amount {
+                                white-space: nowrap;
+                            }
+                        </style>
+
+                        <!-- Header Area -->
+                        <div class="row mb-2">
+                            <div class="col-4">
+                                <img src="/buz_accounting_addon/static/img/LOGO MOGEN.png"
+                                     style="max-height: 80px; max-width: 200px;" alt="Company Logo"/>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div style="font-size: 30px; font-weight: bold;">ใบสำคัญรับ</div>
+                                <div style="font-size: 27px; font-weight: bold;">RECEIPT VOUCHER</div>
+                            </div>
+                            <div class="col-4">
+                                <div style="border: 1px solid black; margin-left: auto; width: 220px;">
+                                    <div style="text-align: center; font-size: 14px; border-top: 1px solid black; border-bottom: 1px solid black; background-color: #f0f0f0;">
+                                        หน้า 1 / 1
+                                    </div>
+                                    <div style="text-align: center; font-weight: bold; border-bottom: 1px solid black; padding: 2px;">
+                                        VOUCHER NO.
+                                    </div>
+                                    <div style="padding: 5px;">
+                                        <div><strong>No.</strong> <span t-field="o.name"/></div>
+                                        <div><strong>Date.</strong> <span t-esc="format_thai_date(o.date)"/></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Receipt Information -->
+                        <table class="table-bordered" style="margin-top: 5px;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="width: 15%;">รหัสลูกหนี้</th>
+                                    <th style="width: 30%;">ชื่อลูกหนี้</th>
+                                    <th style="width: 15%;">เอกสาร</th>
+                                    <th style="width: 20%;">เลขที่เอกสาร</th>
+                                    <th style="width: 20%;">จำนวนเงิน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="receipts" t-as="receipt" style="vertical-align: top;">
+                                    <td><span t-esc="receipt['partner_code']"/></td>
+                                    <td><span t-esc="receipt['partner_name']"/></td>
+                                    <td><span t-esc="receipt['document']"/></td>
+                                    <td><span t-esc="receipt['document_number']"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(receipt['amount'], o.currency_id)"/></td>
+                                </tr>
+                                <tr t-if="not receipts" style="vertical-align: top;">
+                                    <td><span t-esc="o.partner_id.partner_code or '-'"/></td>
+                                    <td><span t-field="o.partner_id.name"/></td>
+                                    <td>ใบเสร็จรับเงิน</td>
+                                    <td><span t-field="o.name"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(o.amount, o.currency_id)"/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end" style="font-weight: bold;">จำนวนเงิน</td>
+                                    <td class="text-end" style="font-weight: bold;"><span t-esc="format_amount(o.amount, o.currency_id)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Payment Method Table -->
+                        <table class="table-bordered" style="margin-top: 15px;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="width: 15%;">ชำระเงิน</th>
+                                    <th style="width: 30%;">ชื่อ</th>
+                                    <th style="width: 15%;">เลขที่เช็ค</th>
+                                    <th style="width: 15%;">วันที่รับชำระ</th>
+                                    <th style="width: 25%;">จำนวนเงินจ่าย</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="methods" t-as="method" style="vertical-align: top;">
+                                    <td class="text-center"><span t-esc="method['method']"/></td>
+                                    <td><span t-esc="method['journal']"/></td>
+                                    <td class="text-center"><span t-esc="method['check_number']"/></td>
+                                    <td class="text-center"><span t-esc="method['date']"/></td>
+                                    <td class="text-end"><span t-esc="format_amount(method['amount'], o.currency_id)"/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end" style="font-weight: bold; padding-right: 10px;">จำนวนเงิน</td>
+                                    <td class="text-end" style="font-weight: bold;"><span t-esc="format_amount(o.amount, o.currency_id)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+
+                        <!-- Signatures -->
+                        <table style="width: 100%; text-align: center; margin-top: 40px; border: 1px solid #000; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%; border: 1px solid #000; padding: 5px;">Prepare By:</th>
+                                    <th style="width: 20%; border: 1px solid #000; padding: 5px;">Checked (1) By:</th>
+                                    <th style="width: 20%; border: 1px solid #000; padding: 5px;">Checked (2) By:</th>
+                                    <th style="width: 20%; border: 1px solid #000; padding: 5px;">Approved By:</th>
+                                    <th style="width: 20%; border: 1px solid #000; padding: 5px;">Received By:</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="margin-bottom: 5px;">
+                                            <span t-if="o.create_uid" t-field="o.create_uid.name"/>
+                                            <span t-else="">_________________</span>
+                                        </div>
+                                        <div style="font-size: 18px;">
+                                            Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
+                                        </div>
+                                    </td>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
+                                    </td>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
+                                    </td>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
+                                    </td>
+                                                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 20px;">Date ........./........./.........</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Journal Entry Preview Table -->
+                        <div class="text-end" style="margin-top: 5px; font-weight: bold; border-top: 1px solid transparent;">
+                            Amount
+                        </div>
+                        <table class="table-bordered journal-entry-table" style="margin-top: 0px; padding-top: 5px; table-layout: fixed;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="width: 12%;">เลขที่บัญชี</th>
+                                    <th style="width: 33%;">ชื่อบัญชี</th>
+                                    <th style="width: 20%;">เลขที่เอกสาร</th>
+                                    <th style="width: 15%;">วันที่</th>
+                                    <th style="width: 10%;">Dr.</th>
+                                    <th style="width: 10%;">Cr.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-if="not journal_lines">
+                                    <td colspan="6" class="text-center">ไม่มี Journal Entry</td>
+                                </tr>
+                                <tr t-foreach="journal_lines" t-as="line">
+                                    <td class="text-center"><span t-esc="line['code']"/></td>
+                                    <td><span t-esc="line['name']"/></td>
+                                    <td class="text-center"><span t-esc="line['ref']"/></td>
+                                    <td class="text-center"><span t-esc="line['date']"/></td>
+                                    <td class="text-end journal-entry-amount"><span t-esc="format_amount(line['debit'], o.currency_id)"/></td>
+                                    <td class="text-end journal-entry-amount"><span t-esc="format_amount(line['credit'], o.currency_id)"/></td>
+                                </tr>
+                                <tr class="journal-entry-total-row">
+                                    <td colspan="4" class="text-end journal-entry-total-cell" style="font-weight: bold; padding-right: 10px;">
+                                        Total
+                                    </td>
+                                    <td class="text-end journal-entry-total-cell journal-entry-amount" style="font-weight: bold;">
+                                        <span t-esc="format_amount(sum(line['debit'] for line in journal_lines), o.currency_id)"/>
+                                    </td>
+                                    <td class="text-end journal-entry-total-cell journal-entry-amount" style="font-weight: bold;">
+                                        <span t-esc="format_amount(sum(line['credit'] for line in journal_lines), o.currency_id)"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div style="margin-top: 18px; min-height: 45px;">
+                            <strong>หมายเหตุ:</strong> <span t-esc="o.ref or '-'"/>
+                        </div>
+
+                        <!-- Issued / Check / Approve Signatures -->
+                        <table style="width: 100%; text-align: center; margin-top: 40px; border: 1px solid #000; border-collapse: collapse;">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 33.33%; border: 1px solid #000; padding: 5px; text-align: left;">Issued By:</td>
+                                    <td style="width: 33.33%; border: 1px solid #000; padding: 5px; text-align: left;">Check By:</td>
+                                    <td style="width: 33.33%; border: 1px solid #000; padding: 5px; text-align: left;">Approve By:</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 5px; vertical-align: bottom; height: 45px; text-align: left;">
+                                        <div style="margin-bottom: 5px;">
+                                            <span t-if="o.create_uid" t-field="o.create_uid.name"/>
+                                            <span t-else="">_________________</span>
+                                        </div>
+                                        <div style="font-size: 18px;">
+                                            Date <span t-if="o.date" t-esc="format_thai_date(o.date)"/><span t-else="">.../.../...</span>
+                                        </div>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 5px; vertical-align: bottom; height: 45px; text-align: left;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 18px;">Date ........./........./.........</div>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 5px; vertical-align: bottom; height: 45px; text-align: left;">
+                                        <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                        <div style="font-size: 18px;">Date ........./........./.........</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

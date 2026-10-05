@@ -11,6 +11,7 @@
                 <field name="journal_id"/>
                 <field name="destination_journal_id"/>
                 <field name="amount"/>
+                <field name="bank_charge_amount" optional="show"/>
                 <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'posted'" decoration-muted="state == 'cancel'"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
@@ -43,6 +44,8 @@
                         <group>
                             <field name="journal_id" options="{'no_create': True}" readonly="state != 'draft'"/>
                             <field name="amount" readonly="state != 'draft'"/>
+                            <field name="bank_charge_currency_id" invisible="1"/>
+                            <field name="bank_charge_amount" readonly="state != 'draft'"/>
                             <field name="date" readonly="state != 'draft'"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
                         </group>

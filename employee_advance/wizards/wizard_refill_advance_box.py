@@ -36,7 +36,7 @@ class WizardRefillAdvanceBox(models.TransientModel):
         'account.journal',
         string='Journal',
         required=False,
-        domain=[('type', 'in', ['bank', 'cash'])],
+        domain=[('type', 'in', ['bank', 'cash', 'general'])],
         help='Journal for the transaction'
     )
     credit_account_id = fields.Many2one(

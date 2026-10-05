@@ -67,8 +67,7 @@ export class WarrantyDashboard extends Component {
             } catch (e) {
                 console.warn("Chart.js already loaded");
             }
-            await this.loadFilterOptions();
-            await this.loadData();
+            await Promise.all([this.loadFilterOptions(), this.loadData()]);
         });
         onMounted(() => this.renderAllCharts());
         onPatched(() => this.renderAllCharts());

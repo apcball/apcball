@@ -154,8 +154,8 @@ class WarrantyDashboardCache(models.Model):
             # --- Top products / customers ---
             self._cr.execute("""
                 SELECT pt.name, COUNT(*) as count
-                FROM warranty_card wc
-                JOIN product_product pp ON wc.product_id = pp.id
+                FROM warranty_card_line wl
+                JOIN product_product pp ON wl.product_id = pp.id
                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 GROUP BY pt.name
                 ORDER BY count DESC LIMIT 10
@@ -287,9 +287,10 @@ class WarrantyDashboardCache(models.Model):
 
     def _build_top_products_chart(self, limit=10):
         self._cr.execute("""
-            SELECT pt.name, COUNT(wc.id), COUNT(wc2.id)
-            FROM warranty_card wc
-            JOIN product_product pp ON wc.product_id = pp.id
+            SELECT pt.name, COUNT(DISTINCT wc.id), COUNT(wc2.id)
+            FROM warranty_card_line wl
+            JOIN warranty_card wc ON wl.card_id = wc.id
+            JOIN product_product pp ON wl.product_id = pp.id
             JOIN product_template pt ON pp.product_tmpl_id = pt.id
             LEFT JOIN service_receipt wc2 ON wc.id = wc2.warranty_card_id
             GROUP BY pt.name ORDER BY 2 DESC LIMIT %s
@@ -390,7 +391,11 @@ class WarrantyDashboardCache(models.Model):
 
     @api.model
     def _trigger_update(self, trigger_type, records=None):
-        """Handle cache update triggers — synchronous with debounce."""
+        """Handle cache update triggers — lazy invalidation.
+
+        Only marks the cache expired so saving a warranty card never pays for
+        a full rebuild. The cron or the next dashboard load rebuilds it.
+        """
         _logger.info("Cache update triggered: %s", trigger_type)
 
         cache = self.search([], limit=1)
@@ -401,13 +406,5 @@ class WarrantyDashboardCache(models.Model):
             'last_trigger_type': trigger_type,
             'last_trigger_time': fields.Datetime.now(),
             'trigger_count': cache.trigger_count + 1,
+            'cache_status': 'expired',
         })
-
-        # Debounce: skip if last update was within 2 minutes
-        if cache.last_update:
-            elapsed = (fields.Datetime.now() - cache.last_update).total_seconds()
-            if elapsed < 120:
-                _logger.debug("Skipping update — last update was %.0fs ago", elapsed)
-                return
-
-        cache._update_all_metrics()

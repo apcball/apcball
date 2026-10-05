@@ -474,7 +474,7 @@ class WarrantyDashboard(models.Model):
         if filters.get('date_to'):
             domain.append(('create_date', '<=', filters['date_to'] + ' 23:59:59'))
         if filters.get('product_id'):
-            domain.append(('product_id', '=', int(filters['product_id'])))
+            domain.append(('line_ids.product_id', '=', int(filters['product_id'])))
         if filters.get('customer_id'):
             domain.append(('partner_id', '=', int(filters['customer_id'])))
         return domain
@@ -488,7 +488,7 @@ class WarrantyDashboard(models.Model):
         if filters.get('date_to'):
             domain.append(('request_date', '<=', filters['date_to']))
         if filters.get('product_id'):
-            domain.append(('warranty_card_id.product_id', '=', int(filters['product_id'])))
+            domain.append(('warranty_card_id.line_ids.product_id', '=', int(filters['product_id'])))
         if filters.get('customer_id'):
             domain.append(('warranty_card_id.partner_id', '=', int(filters['customer_id'])))
         return domain
@@ -510,16 +510,14 @@ class WarrantyDashboard(models.Model):
         card = self.env['warranty.card']
         claim = self.env['service.receipt']
 
-        all_ids = card.search(w_domain)
-        total = len(all_ids)
-        active = len(all_ids.filtered(lambda r: r.state == 'active'))
-        expired = len(all_ids.filtered(
-            lambda r: r.state == 'expired' or (r.end_date and r.end_date < today)
-        ))
-        near_exp = len(all_ids.filtered(
-            lambda r: r.state == 'active' and r.end_date and today <= r.end_date <= near_expiry
-        ))
-        claimed = len(all_ids.filtered(lambda r: r.claim_count > 0))
+        by_state = {state: n for state, n in card._read_group(w_domain, ['state'], ['__count'])}
+        total = sum(by_state.values())
+        active = by_state.get('active', 0)
+        expired = card.search_count(w_domain + [
+            '|', ('state', '=', 'expired'), ('end_date', '<', today)])
+        near_exp = card.search_count(w_domain + [
+            ('state', '=', 'active'), ('end_date', '>=', today), ('end_date', '<=', near_expiry)])
+        claimed = card.search_count(w_domain + [('claim_count', '>', 0)])
 
         active_pct = (active / total * 100) if total else 0
         expired_pct = (expired / total * 100) if total else 0
@@ -555,11 +553,7 @@ class WarrantyDashboard(models.Model):
         """Compute warranty status pie chart data with filters."""
         domain = self._build_warranty_domain(filters)
         card = self.env['warranty.card']
-        all_ids = card.search(domain)
-        states = {}
-        for r in all_ids:
-            st = r.state
-            states[st] = states.get(st, 0) + 1
+        states = {st: n for st, n in card._read_group(domain, ['state'], ['__count'])}
         color_map = {'draft': '#6b7280', 'active': '#10b981', 'expired': '#ef4444', 'cancelled': '#f59e0b'}
         return [{'label': k.title(), 'value': v, 'color': color_map.get(k, '#6366f1')}
                 for k, v in sorted(states.items(), key=lambda x: -x[1])]

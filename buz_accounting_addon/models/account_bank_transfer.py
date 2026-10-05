@@ -20,6 +20,13 @@ class AccountBankTransfer(models.Model):
     
     amount = fields.Monetary(string='Amount', required=True, tracking=True)
     currency_id = fields.Many2one('res.currency', related='journal_id.currency_id', string='Currency', readonly=True)
+    bank_charge_currency_id = fields.Many2one(
+        'res.currency', string='Bank Charge Currency', readonly=True,
+        default=lambda self: self.env.ref('base.THB', raise_if_not_found=False))
+    bank_charge_amount = fields.Monetary(
+        string='Bank Fee (THB)', currency_field='bank_charge_currency_id', tracking=True,
+        help="Fee charged by the source bank. Booked to the source journal's bank charge account "
+             "and deducted from the source bank; the destination receives the full amount.")
     company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
 
     payment_id = fields.Many2one('account.payment', string='Payment', readonly=True, copy=False)
@@ -54,6 +61,12 @@ class AccountBankTransfer(models.Model):
              raise UserError(_("Amount must be strictly positive."))
         if self.journal_id == self.destination_journal_id:
              raise UserError(_("Source and Destination journals must be different."))
+        if self.bank_charge_amount < 0:
+            raise UserError(_("Bank fee cannot be negative."))
+        if self.bank_charge_amount and not self.journal_id.default_bank_charge_account_id:
+            raise UserError(_(
+                "Please configure the Bank Charge Account on journal %s before entering a bank fee.",
+                self.journal_id.display_name))
              
         # Create Internal Transfer
         payment_vals = {
@@ -62,6 +75,7 @@ class AccountBankTransfer(models.Model):
             'journal_id': self.journal_id.id,
             'destination_journal_id': self.destination_journal_id.id,
             'amount': self.amount,
+            'bank_charge_amount': self.bank_charge_amount,
             'date': self.date,
             'ref': self.name + (f" - {self.ref}" if self.ref else ""),
             'currency_id': self.currency_id.id or self.company_id.currency_id.id,

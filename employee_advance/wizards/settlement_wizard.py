@@ -130,7 +130,7 @@ class AdvanceSettlementWizard(models.TransientModel):
                     default_scenario = 'write_off'
                 
                 # Try to set a default journal based on the advance box if available
-                default_journal = box.journal_id if box.journal_id and box.journal_id.type in ('bank', 'cash') else None
+                default_journal = box.journal_id if box.journal_id and box.journal_id.type in ('bank', 'cash', 'general') else None
                 if not default_journal and default_scenario in ('pay_employee', 'employee_refund'):
                     # Find any bank or cash journal if none set on the box
                     default_journal = self.env['account.journal'].search([
@@ -319,8 +319,8 @@ class AdvanceSettlementWizard(models.TransientModel):
         
         # Validate journal based on scenario
         if self.scenario in ('pay_employee', 'employee_refund'):
-            if not self.journal_id or self.journal_id.type not in ('bank', 'cash'):
-                raise ValidationError(_("Please select a bank or cash journal for this scenario."))
+            if not self.journal_id or self.journal_id.type not in ('bank', 'cash', 'general'):
+                raise ValidationError(_("Please select a bank, cash or miscellaneous journal for this scenario."))
             # Check if payment account is selected
             if not self.payment_account_id:
                 raise ValidationError(_("Please select a payment account (Cash/Bank) for this scenario."))

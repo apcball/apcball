@@ -509,10 +509,16 @@ class StockAgingReport(models.AbstractModel):
 
     @api.model
     def _period_bounds(self, date_from, date_to, tz):
-        """ขอบช่วงเป็นเวลาท้องถิ่นของผู้ใช้ แปลงเป็น naive UTC — ``stock.move.line.date`` เก็บ UTC"""
+        """ขอบช่วงเป็นเวลาท้องถิ่นของผู้ใช้ แปลงเป็น naive UTC — upper bound เป็น exclusive
+        เที่ยงคืนของวันถัดไป (``[date_from, date_to+1)``) ให้ตรงกับ
+        ``stock_fifo_valuation_report``'s ``_bangkok_day_range_to_utc`` แทนที่จะปิดที่
+        23:59:59 inclusive แบบเดิม (ผลต่าง 1 วินาทีทำให้สอง report เห็นข้อมูลไม่ตรงกันที่
+        ขอบวัน) — ทุกจุดเรียกที่ใช้ ``datetime_to``/``dt_to``/``hi_dt`` เป็น upper bound
+        ต้องเทียบด้วย ``<`` ไม่ใช่ ``<=``
+        """
         zone = pytz.timezone(tz)
         start = zone.localize(datetime.combine(date_from, time.min))
-        end = zone.localize(datetime.combine(date_to, time(23, 59, 59)))
+        end = zone.localize(datetime.combine(date_to + timedelta(days=1), time.min))
         return (
             start.astimezone(pytz.UTC).replace(tzinfo=None),
             end.astimezone(pytz.UTC).replace(tzinfo=None),
@@ -646,37 +652,18 @@ class StockAgingReport(models.AbstractModel):
         return [("company_id", "in", opt["company_ids"])] + self._product_domain(opt, "product_id")
 
     @api.model
-    def _svl_move_ids_for_date(self, opt, operator, bound):
-        """id ของ ``stock.move`` ที่ผ่านเงื่อนไขวันที่ — resolve ล่วงหน้าแทน dotted path
-
-        เดิม ``stock_move_id.date`` ใน domain ของ SVL ทำให้ ORM คอมไพล์เป็น
-        ``stock_move_id IN (SELECT ... WHERE date ...)`` ที่ผูกอยู่ใน OR สอง branch —
-        Postgres วางแผนเป็น correlated/bitmap-OR scan ที่ใช้ index ไม่ได้ดี ``biz_st_stock_card``
-        เจอเคสจริง 2026-09-18: 2 query ค้าง 2+ นาที CPU 100% พร้อมกัน (รายงานไม่กรองสินค้า =
-        สแกนเกือบเต็ม stock_valuation_layer 268k แถว) — ``biz_st_aging`` เข้าเคสเดียวกันได้
-        (รายงานทั้งบริษัท ณ วันที่ย้อนหลัง ไม่กรองสินค้า)
-
-        resolve เป็น id list ก่อนด้วย search() ธรรมดา ใช้ดัชนีบน stock.move ได้ตรง ๆ แล้วส่ง
-        ``stock_move_id IN (id, id, ...)`` ให้ query หลัก ซึ่งใช้ index บน SVL.stock_move_id
-        ได้ปกติ
-        """
-        domain = [
-            ("company_id", "in", opt["company_ids"]),
-            ("date", operator, bound),
-        ] + self._product_domain(opt, "product_id")
-        return self._scoped("stock.move", opt).sudo().search(domain, order="id").ids
-
-    @api.model
     def _svl_date_domain(self, opt, operator, bound):
-        """SVL ไม่มีฟิลด์วันที่ — ใช้ ``stock_move_id.date`` ก่อน fallback ``create_date``
-        (ชั้นที่ไม่ผูก move เช่นปรับราคาต้นทุน/landed cost ต้องมีคู่ ``stock_move_id = False``)
-        id ของ move resolve ล่วงหน้าผ่าน ``_svl_move_ids_for_date`` (ดู docstring ที่นั่น)
+        """กรอง SVL ด้วย ``accounting_date`` (fallback ``create_date`` เมื่อไม่มี) —
+        field เดียวกับที่ ``stock_fifo_valuation_report`` ใช้
+        (``COALESCE(l.accounting_date, l.create_date)``) เพื่อให้สอง report ตัดรอบวันที่
+        ตรงกันสำหรับเอกสาร backdate ทั้งสอง field เป็นคอลัมน์ตรงบน SVL เอง ไม่ใช่
+        dotted path ข้าม model จึงไม่เข้าเคส correlated/bitmap-OR scan ที่เคยพบ
+        (ดู memory ``svl-accounting-date-field``)
         """
-        move_ids = self._svl_move_ids_for_date(opt, operator, bound)
         return [
             "|",
-            ("stock_move_id", "in", move_ids),
-            "&", ("stock_move_id", "=", False), ("create_date", operator, bound),
+            ("accounting_date", operator, bound),
+            "&", ("accounting_date", "=", False), ("create_date", operator, bound),
         ]
 
     # ==================================================================
@@ -843,7 +830,7 @@ class StockAgingReport(models.AbstractModel):
         else:
             domain = domain + [
                 ("date", ">=", opt["datetime_from"]),
-                ("date", "<=", opt["datetime_to"]),
+                ("date", "<", opt["datetime_to"]),
             ]
         if phase == "usage":
             # การปรับปรุงยอด/ของเสียไม่ใช่ "การใช้" — ระบุใน domain เพราะ groupby ผ่าน move_id ไม่ได้
@@ -1022,7 +1009,7 @@ class StockAgingReport(models.AbstractModel):
         products = sorted({key[K_PRODUCT] for key in remaining})
         model = self._scoped("stock.move.line", opt)
         domain = self._base_domain(opt) + [
-            ("date", "<=", opt["datetime_to"]),
+            ("date", "<", opt["datetime_to"]),
             ("product_id", "in", products),
         ]
         # ค่าที่ค้างใน ORM cache ต้องลง DB ก่อน (คิวรีนี้ไม่ผ่าน _read_group จึงไม่ flush ให้เอง)
@@ -1156,7 +1143,7 @@ class StockAgingReport(models.AbstractModel):
         for _index, lo_dt, hi_dt, granularity in self._bucket_windows(opt):
             if not remaining:
                 break
-            domain = base_domain + [("date", "<=", fields.Datetime.to_string(hi_dt))]
+            domain = base_domain + [("date", "<", fields.Datetime.to_string(hi_dt))]
             if lo_dt is not None:
                 domain.append(("date", ">=", fields.Datetime.to_string(lo_dt)))
             # กรองเฉพาะสินค้าที่ยังจัดชั้นไม่ครบเสมอ — หน้าต่างสุดท้าย (ไม่มีขอบล่าง) กวาดประวัติทั้งหมด
@@ -1239,7 +1226,7 @@ class StockAgingReport(models.AbstractModel):
         domain = self._svl_domain(opt)
         # "ณ วันนี้" ไม่ต้องกรองวันที่ — ไม่งั้น subquery กวาดทั้งตาราง stock_move เปล่า ๆ
         if fields.Datetime.to_datetime(opt["datetime_to"]) < datetime.utcnow():
-            domain += self._svl_date_domain(opt, "<=", opt["datetime_to"])
+            domain += self._svl_date_domain(opt, "<", opt["datetime_to"])
         closing = {}
         control = {}
         for company, product, value, qty in svl._read_group(
@@ -1803,7 +1790,7 @@ class StockAgingReport(models.AbstractModel):
 
     @api.model
     def _drill_moves(self, parts, opt, maps):
-        domain = self._base_domain(opt) + [("date", "<=", opt["datetime_to"])]
+        domain = self._base_domain(opt) + [("date", "<", opt["datetime_to"])]
         if parts.get("co"):
             domain.append(("company_id", "=", parts["co"]))
         if parts.get("prod"):
