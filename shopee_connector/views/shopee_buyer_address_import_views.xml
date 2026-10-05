@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopee_buyer_address_import_wizard_form" model="ir.ui.view">
+        <field name="name">shopee.buyer.address.import.wizard.form</field>
+        <field name="model">shopee.buyer.address.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Buyer Addresses">
+                <sheet>
+                    <p class="text-muted" invisible="state == 'done'">
+                        Upload the order export from Shopee Seller Center
+                        (e.g. Order.toship...xlsx). Buyer name, phone and
+                        shipping address are copied to the customer of each
+                        matching Shopee order. No orders are created.
+                    </p>
+                    <group invisible="state == 'done'">
+                        <field name="file_name" invisible="1"/>
+                        <field name="file_data" filename="file_name"
+                               widget="binary"/>
+                    </group>
+                    <field name="state" invisible="1"/>
+                    <field name="result_message" invisible="state != 'done'"
+                           nolabel="1"/>
+                </sheet>
+                <footer>
+                    <button name="action_import" string="Import"
+                            type="object" class="btn-primary"
+                            invisible="state == 'done'"/>
+                    <button string="Close" special="cancel"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopee_buyer_address_import" model="ir.actions.act_window">
+        <field name="name">Import Buyer Addresses</field>
+        <field name="res_model">shopee.buyer.address.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem id="shopee_connector_buyer_address_import_menu"
+              name="Import Buyer Addresses"
+              parent="shopee_connector_root_menu"
+              action="action_shopee_buyer_address_import" sequence="41"
+              groups="sales_team.group_sale_manager"/>
+</odoo>

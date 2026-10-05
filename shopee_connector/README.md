@@ -84,3 +84,8 @@ Odoo stock back to Shopee.
 - Products must exist in Odoo with `default_code` = Shopee item/model SKU for
   stock to match; unmapped order SKUs still create the order against the
   `SHOPEE_UNMAPPED` placeholder product.
+
+## Batch shipping and labels (17.0.2.2.0)
+
+Select imported orders and use **Action -> Shopee: Arrange shipment and labels**.
+Carrier options must be selected before queueing; labels are downloaded as original PDFs in a ZIP with a result manifest. See `SHIPPING_GUIDE_TH.md` for setup, limitations and test status. This release is a staging candidate: Odoo installation and live Shopee integration have not been verified.

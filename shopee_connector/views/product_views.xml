@@ -20,6 +20,10 @@
                     <button name="action_push_shopee_stock" type="object"
                             string="Push Stock to Shopee" class="btn-secondary"
                             invisible="not shopee_item_id"/>
+                    <field name="shopee_price" readonly="1"/>
+                    <field name="shopee_sync_price_out"/>
+                    <field name="shopee_pushed_price" readonly="1"/>
+                    <field name="shopee_price_push_date" readonly="1"/>
                 </group>
             </xpath>
         </field>
@@ -48,6 +52,10 @@
                 <field name="shopee_last_sync"/>
                 <field name="shopee_stock_push_date"/>
                 <field name="shopee_sync_stock_out"/>
+                <field name="shopee_price"/>
+                <field name="shopee_pushed_price"/>
+                <field name="shopee_price_push_date"/>
+                <field name="shopee_sync_price_out"/>
             </tree>
         </field>
     </record>
