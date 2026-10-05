@@ -1,0 +1,165 @@
+$shopee-green: #22a06b;
+$shopee-red: #ef4444;
+$shopee-blue: #2f6fed;
+
+.o_shopee_dashboard {
+    --shopee-card-bg: #fff;
+    --shopee-border: #e6e8ec;
+    padding: 12px 16px 24px;
+    background: #f5f6f8;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: 12px;
+    color: #1f2937;
+
+    .o_shopee_header {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .o_shopee_logo { width: 34px; height: 34px; border-radius: 8px; }
+    .o_shopee_title {
+        margin-right: auto;
+        h1 { font-size: 18px; font-weight: 700; margin: 0; }
+        p { margin: 1px 0 0; color: #6b7280; font-size: 11px; }
+    }
+    .o_shopee_filters { display: flex; gap: 12px; flex-wrap: wrap; }
+    .o_shopee_select {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 0 10px;
+        height: 30px;
+        background: #fff;
+        border: 1px solid var(--shopee-border);
+        border-radius: 8px;
+        select {
+            border: 0;
+            background: transparent;
+            min-width: 90px;
+            outline: none;
+            font-weight: 500;
+            font-size: 12px;
+        }
+    }
+    .o_shopee_refresh {
+        height: 30px;
+        padding: 0 14px;
+        font-size: 12px;
+        border: 0;
+        border-radius: 8px;
+        background: $shopee-blue;
+        color: #fff;
+        font-weight: 600;
+    }
+    .o_shopee_loading { padding: 40px; color: #6b7280; }
+
+    // ---- tiles ----
+    .o_shopee_tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .o_shopee_tile {
+        display: block;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--shopee-border);
+        color: inherit;
+        text-decoration: none;
+        transition: box-shadow .15s;
+        &:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, .1); color: inherit; }
+    }
+    .o_shopee_tile_head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .o_shopee_tile_icon {
+        width: 24px; height: 24px; font-size: 11px;
+        border-radius: 50%;
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        flex: none;
+    }
+    .o_shopee_tile_label { font-weight: 600; line-height: 1.15; font-size: 12px; }
+    .o_shopee_tile_body { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+    .o_shopee_tile_value { font-size: 22px; font-weight: 700; line-height: 1.05; }
+    .o_shopee_tile_sub { font-size: 10px; color: #6b7280; margin-top: 1px; }
+    .o_shopee_spark { width: 45%; height: 28px; flex: none; }
+    .o_shopee_delta { font-weight: 600; font-size: 11px; }
+    .o_shopee_delta_good { color: $shopee-green; }
+    .o_shopee_delta_bad { color: $shopee-red; }
+    .o_shopee_delta_flat { color: #6b7280; }
+
+    // ---- cards ----
+    .o_shopee_grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+        gap: 12px;
+        @media (max-width: 1100px) { grid-template-columns: minmax(0, 1fr); }
+    }
+    .o_shopee_card {
+        background: var(--shopee-card-bg);
+        border: 1px solid var(--shopee-border);
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+    .o_shopee_card_head {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 8px;
+        h2 { font-size: 14px; font-weight: 700; margin: 0; i { color: #6b7280; margin-right: 6px; } }
+    }
+    .o_shopee_link { color: $shopee-blue; font-size: 11px; text-decoration: none; }
+    .o_shopee_total {
+        text-align: right; color: inherit; text-decoration: none; display: flex; flex-direction: column;
+        small { color: #6b7280; }
+        strong { font-size: 16px; line-height: 1.1; }
+    }
+
+    .o_shopee_split { display: flex; gap: 14px; flex-wrap: wrap; }
+    .o_shopee_donut_wrap { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; }
+    .o_shopee_chart { flex: 1.3 1 280px; min-width: 0; h3 { font-size: 12px; font-weight: 600; margin-bottom: 4px; small { color: #6b7280; font-weight: 400; } } }
+    .o_shopee_donut { width: 100px; height: 100px; flex: none; }
+    .o_shopee_donut_num { font-size: 22px; font-weight: 700; fill: #1f2937; }
+    .o_shopee_donut_cap { font-size: 10px; fill: #6b7280; }
+    .o_shopee_axis { font-size: 10px; fill: #6b7280; }
+    .o_shopee_linechart, .o_shopee_barchart { width: 100%; height: auto; }
+
+    .o_shopee_legend {
+        list-style: none; margin: 0; padding: 0; flex: 1;
+        li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+        .o_shopee_legend_name { flex: 1; }
+        .o_shopee_legend_pct { color: #6b7280; width: 46px; text-align: right; }
+    }
+    .o_shopee_dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+    // ---- shop table ----
+    .o_shopee_table {
+        width: 100%;
+        th { background: #f5f6f8; font-weight: 600; font-size: 11px; color: #4b5563; padding: 5px 8px; }
+        td { padding: 6px 8px; border-top: 1px solid var(--shopee-border); }
+    }
+    .o_shopee_row_logo { width: 18px; height: 18px; border-radius: 4px; margin-right: 4px; }
+    .o_shopee_badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+        &_active { background: #e6f6ee; color: $shopee-green; .o_shopee_dot { background: $shopee-green; } }
+        &_expired { background: #fdecec; color: $shopee-red; .o_shopee_dot { background: $shopee-red; } }
+        &_no_token { background: #eef0f3; color: #6b7280; .o_shopee_dot { background: #9ca3af; } }
+    }
+
+    // ---- crons ----
+    .o_shopee_crons {
+        list-style: none; margin: 0; padding: 0;
+        li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--shopee-border); &:first-child { border-top: 0; } }
+        .o_shopee_cron_name { flex: 1; }
+        .o_shopee_cron_next { color: #4b5563; font-variant-numeric: tabular-nums; min-width: 130px; text-align: right; }
+    }
+    .o_shopee_pill {
+        padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 600;
+        &.on { background: #e6f6ee; color: $shopee-green; }
+        &.off { background: #eef0f3; color: #6b7280; }
+    }
+}
