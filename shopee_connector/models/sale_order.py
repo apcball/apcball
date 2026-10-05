@@ -164,8 +164,6 @@ class SaleOrder(models.Model):
             "client_order_ref": shopee_order["order_sn"],
             "note": self._shopee_address_note(shopee_order) or False,
         }
-        if config and config.shopee_salesperson_id:
-            values["user_id"] = config.shopee_salesperson_id.id
         values.update(self._shopee_trade_channel_values())
         commitment = self._shopee_commitment_date(shopee_order.get("pay_time"), config)
         if commitment:

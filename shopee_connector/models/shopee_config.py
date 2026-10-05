@@ -143,14 +143,6 @@ class ShopeeConfig(models.Model):
         help="Master switch. When on, this shop's linked products push their "
         "Odoo sales price back to Shopee (manual button or cron).",
     )
-    shopee_salesperson_id = fields.Many2one(
-        "res.users",
-        string="Salesperson",
-        domain="[('share', '=', False)]",
-        help="Salesperson set on newly imported Shopee orders. Leave empty to "
-        "keep the default (the user running the import, e.g. OdooBot). "
-        "Existing orders are not changed.",
-    )
     shopee_warehouse_id = fields.Many2one(
         "stock.warehouse",
         string="Stock Source Warehouse",
@@ -209,16 +201,6 @@ class ShopeeConfig(models.Model):
             and self.shopee_stock_location_id.warehouse_id != self.shopee_warehouse_id
         ):
             self.shopee_stock_location_id = False
-
-    @api.constrains("shopee_salesperson_id", "company_id")
-    def _check_shopee_salesperson(self):
-        for config in self.filtered("shopee_salesperson_id"):
-            user = config.shopee_salesperson_id
-            if config.company_id not in user.company_ids:
-                raise ValidationError(
-                    f"Salesperson '{user.display_name}' does not have access to "
-                    f"company '{config.company_id.display_name}'."
-                )
 
     @api.constrains("shopee_stock_location_id", "shopee_warehouse_id")
     def _check_shopee_stock_location(self):

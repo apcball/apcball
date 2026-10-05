@@ -30,7 +30,6 @@
                     </group>
                     <group string="Order Import">
                         <field name="customer_partner_id"/>
-                        <field name="shopee_salesperson_id" options="{'no_create': True}"/>
                         <field name="shopee_price_vat_rate"/>
                         <field name="shopee_ship_cutoff_hour" widget="float_time"/>
                         <field name="shopee_shipping_product_id" options="{'no_create': True}"/>
