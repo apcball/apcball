@@ -6,20 +6,83 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Landscape</field>
-        <field name="margin_top">3</field>
+        <field name="margin_top">0</field>
         <field name="margin_bottom">3</field>
-        <field name="margin_left">3</field>
-        <field name="margin_right">3</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">96</field>
     </record>
     
+    <template id="request_change_products_page_header">
+        <div class="report-page-header">
+                            <div class="report-page-number">
+                                หน้า <t t-esc="page_number"/>/<t t-esc="total_pages"/>
+                            </div>
+
+<!-- Company Info Section -->
+                         <div class="report-header-top">
+                            <div class="col-8">
+                                <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;margin-bottom: -10px;">
+                                    บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
+                                </div>
+                                <div class="company-info" style="font-size: 20px;margin-bottom: -10px;">
+                                    9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
+                                </div>
+                                <div class="company-info" style="font-size: 20px;margin-bottom: -10px;">
+                                    โทร 02 1509710 แฟกซ์ 02 1528803    E-mail: contact@mogen.co.th
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img src="/buz_inventory_delivery_report/static/img/LOGO%20MOGEN.png"
+                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+
+                         <!-- Document Title -->
+                            <div class="report-header-details">
+                               <div class="col-4 offset-4 text-center">
+                                   <div class="doc-title" style="padding: 14px; font-size: 26px;">
+                                    ใบคืนสินค้ายืมโชว์
+                                   </div>
+                               </div>
+                               <div class="col-4 text-end" style="">
+                                  <div style="font-size: 24px;">
+                                      <span style="font-size: inherit;">เลขที่: </span>
+                                      <span style="font-size: 24px; font-weight: bold;" t-esc="o.name"/>
+                                  </div>
+                                  <div style="width: 5cm; height: 1cm; border: 1px solid black; display: flex; flex-direction: column; float: right; margin-bottom: 15px;">
+                                      <!-- ช่องบน -->
+                                      <div style="flex: 1; border-bottom: 1px solid black; display: flex; justify-content: center; align-items: center; font-size: 18px;">
+                                          บัญชีตรวจสอบเอกสาร
+                                      </div>
+                                      <!-- ช่องล่าง -->
+                                      <div style="flex: 1;"></div>
+                                  </div>
+                               </div>
+                            </div>
+
+
+
+
+
+
+
+                                 </div>
+    </template>
+
     <template id="request_change_products_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-call="web.external_layout">
-                    <div class="page">
+                <t t-if="True">
+                    <!-- ir.actions.report._prepare_html() only reapplies the
+                         UTF-8/base-URL minimal layout to nodes marked article. -->
+                    <div class="article report-article"
+                         t-att-data-oe-model="o and o._name"
+                         t-att-data-oe-id="o and o.id"
+                         t-att-data-oe-lang="o and o.env.context.get('lang')">
+                      <div class="report-container">
 
                         <style>
                             @font-face {
@@ -27,16 +90,85 @@
                                 src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
                             }
                             
-                            @page {
-                                size: A4 landscape;
-                                margin: 3mm 3mm 3mm 3mm;
-                            }
-                            
-                            body, .page, .row {
+                            html,
+                            body,
+                            #wrapwrap,
+                            main,
+                            .o_report_layout_standard,
+                            .report-article,
+                            .report-container,
+                            .page,
+                            .row {
                                 margin: 0 !important;
                                 padding: 0 !important;
                             }
-                            
+
+                            .report-page-header {
+                                position: relative;
+                                width: 100%;
+                                height: 180px;
+                                box-sizing: border-box;
+                            }
+
+                            .report-page-number {
+                                display: flex;
+                                justify-content: flex-end;
+                                align-items: flex-end;
+                                width: 100%;
+                                height: 54px;
+                                box-sizing: border-box;
+                                font-size: 24px;
+                                font-weight: bold;
+                                line-height: 1.2;
+                                white-space: nowrap;
+                            }
+
+                            .report-header-top {
+                                display: flex;
+                                width: 100%;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                box-sizing: border-box;
+                            }
+
+                            .report-header-top > .col-8 {
+                                flex: 0 0 66.666667%;
+                                width: 66.666667%;
+                                max-width: 66.666667%;
+                            }
+
+                            .report-header-top > .col-4,
+                            .report-header-details > .col-4 {
+                                flex: 0 0 33.333333%;
+                                width: 33.333333%;
+                                max-width: 33.333333%;
+                            }
+
+                            .report-header-top > .col-4 {
+                                padding-right: 0;
+                                box-sizing: border-box;
+                            }
+
+                            .report-header-details > .offset-4 {
+                                margin-left: 33.333333%;
+                            }
+
+                            .report-header-top .company-header,
+                            .report-header-top .company-info {
+                                margin: 0 !important;
+                                line-height: 1.2;
+                            }
+
+                            .report-header-details {
+                                position: absolute;
+                                top: 112px;
+                                left: 0;
+                                right: 0;
+                                display: flex;
+                                width: 100%;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                            }
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
                                 font-family: 'Sarabun', sans-serif !important;
                                 font-size: 16px;
@@ -73,97 +205,62 @@
                                 border: none !important;
                             }
 
-                            .page {
-                                page-break-after: always;
+                            .page.report-page {
+                                box-sizing: border-box;
+                                padding-top: 5mm !important;
+                                page-break-after: auto !important;
                             }
-                            .page:last-child {
-                                page-break-after: auto;
-                            }
-
-                            .page-break {
-                                page-break-after: always;
-                              }
 
                             .vendor-info, .delivery-info {
                                 font-size: 14px;
+                            }
+                            .document-info,
+                            .document-info * {
+                                line-height: 1.5 !important;
+                            }
+
+                            .document-info > div,
+                            .document-info p {
+                                margin: 0 0 2px 0 !important;
+                                padding: 0 !important;
+                            }
+
+                            .document-info > div:last-child,
+                            .document-info p:last-child {
+                                margin-bottom: 0 !important;
+                            }
+                            .transfer-note,
+                            .transfer-note * {
+                                line-height: 1.5 !important;
+                            }
+
+                            .transfer-note p {
+                                margin: 0 !important;
+                                padding: 0 !important;
                             }
                         </style>
 
                         
                          <!-- Order Lines -->
                          <t t-set="move_list" t-value="o.move_ids"/>
-                         <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                         <t t-set="groups_of_6" t-value="[move_list[i:i+6] for i in range(0, len(move_list), 6)]"/>
                          <t t-set="page_number" t-value="1"/>
                          <t t-set="line_number" t-value="1"/>
-                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
-                         <t t-foreach="groups_of_7" t-as="group">
+                         <t t-set="total_pages" t-value="groups_of_6 and len(groups_of_6) or 0"/>
+                         <t t-foreach="groups_of_6" t-as="group">
                             
-                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                             <div class="page report-page"
+                                  t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
  
-                          <t t-if="groups_of_7">
+                          <t t-if="groups_of_6">
                               <div>
                              <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
-                                    <t t-if="total_pages &gt; 1">
-                                        <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
-                                            หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
-                                        </div>
-                                    </t>
-                     
-
-                         <!-- Company Info Section -->
-                         <div class="row mb-1">
-                            <div class="col-8">
-                                <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;margin-bottom: -10px;">
-                                    บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
-                                </div>
-                                <div class="company-info" style="font-size: 20px;margin-bottom: -10px;">
-                                    9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150 
-                                </div>
-                                <div class="company-info" style="font-size: 20px;margin-bottom: -10px;">
-                                    โทร 02 1509710 แฟกซ์ 02 1528803    E-mail: contact@mogen.co.th
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <img src="/buz_inventory_delivery_report/static/img/LOGO%20MOGEN.png"
-                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
-                            </div>
-                        </div>
-
-                         <!-- Document Title -->
-                            <div class="row mb-3" style="margin-top: -130px;">
-                               <div class="col-4 offset-4 text-center">
-                                   <div class="doc-title" style="padding: 14px; font-size: 26px;">
-                                    ใบคืนสินค้ายืมโชว์
-                                   </div>
-                               </div>
-                               <div class="col-4 text-end" style="">
-                                  <div style="font-size: 18px;">
-                                      <span>เลขที่: </span>
-                                      <span t-esc="o.name"/>
-                                  </div>
-                                  <div style="width: 5cm; height: 1cm; border: 1px solid black; display: flex; flex-direction: column; float: right; margin-bottom: 0;">
-                                      <!-- ช่องบน -->
-                                      <div style="flex: 1; border-bottom: 1px solid black; display: flex; justify-content: center; align-items: center; font-size: 18px;">
-                                          บัญชีตรวจสอบเอกสาร
-                                      </div>
-                                      <!-- ช่องล่าง -->
-                                      <div style="flex: 1;"></div>
-                                  </div>
-                               </div>
-                            </div>
-
-                         
-
-
-
-
-
-                         <div style="height: 38px;"></div>
-                         <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black;">
+                         <t t-call="buz_inventory_delivery_report.request_change_products_page_header"/>
+                         <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black; margin-top: 15px; align-items: stretch;">
                             <!-- กล่องที่ 1: 35% -->
                             <div style="width: 35%; border-right: 1px solid black; padding: 8px;">
                                 <div><strong>รายละเอียดลูกค้า</strong></div>
-                                <hr style="margin: 4px 0; border: 1px solid black;">
+                                <hr style="margin: 4px 0; border: 1px solid black;" />
                                 <div>ชื่อลูกค้า: <t t-esc="o.partner_id.name"/></div>
                                 <div style="margin: 0;">
                                     <strong>ที่อยู่:</strong>
@@ -172,20 +269,27 @@
                                     <span t-esc="(o.partner_id.city or '') + ' ' + (o.partner_id.state_id.name or '') + ' ' + (o.partner_id.zip or '')"/>
                                     <span t-esc="o.partner_id.country_id.name or ''"/>
                                 </div>
-                                </hr>
+                                <div style="margin: 2px 0 0 0; line-height: 1.15;">
+                                    <strong>คลังต้นทาง:</strong>
+                                    <span t-esc="o.location_id.complete_name or ''"/>
+                                </div>
+                                <div style="margin: 0; line-height: 1.15;">
+                                    <strong>คลังปลายทาง:</strong>
+                                    <span t-esc="o.location_dest_id.complete_name or ''"/>
+                                </div>
                             </div>
 
                             <!-- กล่องที่ 2: 30% -->
                             <div style="width: 30%; border-right: 1px solid black; padding: 8px; text-align: center;">
                             <div><strong>ประเภทลูกค้า</strong></div>
-                            <hr style="margin: 1px 0; border: 1px solid black;">
+                            <hr style="margin: 1px 0; border: 1px solid black;" />
 
                             <!-- Retail / Project -->
                             <div style="display: flex; margin-bottom: 1px;">
                                 <div style="width: 50%; border-right: 1px solid black; font-size: 15px;">Retail</div>
                                 <div style="width: 50%; font-size: 15px;">Project</div>
                             </div>
-                            <hr style="margin: 1px 0; border: 1px solid black;">
+                            <hr style="margin: 1px 0; border: 1px solid black;" />
 
                             <!-- Dealer / Project / Dealer / Project -->
                             <div style="display: flex; margin-bottom: 1px;">
@@ -194,7 +298,7 @@
                                 <div style="width: 25%; border-right: 1px solid black; font-size: 15px;">Dealer</div>
                                 <div style="width: 25%; font-size: 15px;">Project</div>
                             </div>
-                            <hr style="margin: 1px 0; border: 1px solid black;">
+                            <hr style="margin: 1px 0; border: 1px solid black;" />
 
                                 <!-- พื้นที่ว่าง 50% ล่าง พร้อมช่องแบ่ง -->
                                 <div style="margin-top: 10px; height: 55px; 
@@ -204,15 +308,12 @@
                                     <div style="width: 25%; border-right: 1px solid black;"></div>
                                     <div style="width: 25%;"></div>
                                 </div>
-                                </hr>
-                                </hr>
-                                </hr>
                             </div>
 
                             <!-- กล่องที่ 3: 35% ขวาสุด -->
-                            <div style="width: 35%; padding: 8px;">
+                            <div class="document-info" style="width: 35%; padding: 6px 8px;">
                                 <div>วันที่เอกสาร: <t t-esc="o.date"/></div>
-                                <div>วันที่ดำเนินการ: <t t-esc="o.date_done.strftime('%d/%m/%Y') if o.date_done else ''"/></div>
+                                <div>Effective Date: <t t-esc="o.date_done.strftime('%d/%m/%Y') if o.date_done else ''"/></div>
                                 <div>ผู้ติดต่อพนักงาน: <t t-esc="o.employee_contact_id.name or ''"/></div>
                                 <div>Sale ผู้ดูแล: <t t-esc="o.employee_contact_id.name or ''"/></div>
                                 <div>สถานที่รับกลับ: <t t-esc="o.note or ''"/></div>
@@ -255,7 +356,7 @@
                             </thead>
                         
                             <tbody>
-                                <t t-set="line_number" t-value="((page_number - 1) * 7) + 1"/>
+                                <t t-set="line_number" t-value="((page_number - 1) * 6) + 1"/>
                                 <t t-set="current_line_number" t-value="line_number"/>
                                 <t t-foreach="group" t-as="move">
                                 <tr style="padding-top:0px; padding-bottom:0px;">
@@ -287,9 +388,9 @@
                                 <t t-set="line_number" t-value="line_number + 1"/>
                                            </t>
 
-                                           <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
-                                           <t t-if="len(group) == 7">
-                                            <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                           <!-- เติมแถวเปล่าให้ครบ 3 แถวต่อหน้า -->
+                                           <t t-if="len(group) == 3">
+                                            <t t-set="empty_rows" t-value="3 - len(group)"/>
                                             <t t-foreach="range(empty_rows)" t-as="i">
                                                 <tr class="data-row" style="height: 50px;">
                                                     <td style="border: 1px solid black;"></td>
@@ -313,9 +414,9 @@
                                    </table>
 
                                      <!-- หมายเหตุ -->
-                                  <div style="padding: 15px; font-size: 20px;  margin-top: 10px; line-height: 1.6;">
+                                  <div style="padding: 4px 15px; font-size: 20px; margin-top: 2px; line-height: 1.5;">
                                     <strong>หมายเหตุ: </strong>
-                                    <div t-if="o.note" style="margin-top: 10px; margin-left: 10px;">
+                                    <div t-if="o.note" class="transfer-note" style="margin-top: 2px; margin-right: 0; margin-bottom: 15px; margin-left: 10px; line-height: 1.5;">
                                         <span t-field="o.note"/>
                                     </div>
                                 </div>
@@ -385,13 +486,12 @@
                                 
                                 </div>
 
-                                <div style="position: relative; min-height: 20mm; padding-bottom: 15mm;">
+                                <div style="margin-top: 5px;">
                                     <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
             
-                                    <!-- Footer fixed bottom -->
+                                    <!-- Footer -->
                                     <div style="
-                                      position: absolute;
-                                      bottom: 0; left: 0; width: 100%;
+                                      width: 100%;
                                       display: flex; justify-content: space-between;
                                       font-size: 10px;
                                       padding-left: 4mm; padding-right: 4mm;
@@ -413,11 +513,11 @@
 
                              </div>
                        </t>
-                    </div>
+                      </div>
                                <t t-set="page_number" t-value="page_number + 1"/></t>
 
                                    <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
-                                   <t t-if="page_number == len(groups_of_7)">
+                                   <t t-if="page_number == len(groups_of_6)">
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
 
@@ -427,6 +527,7 @@
 
                      
                     
+                      </div>
                     </div>
                               
              </t>     

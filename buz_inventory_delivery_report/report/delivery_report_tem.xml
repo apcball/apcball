@@ -166,6 +166,10 @@
                                            <strong style="width: 60%; display: inline-block; font-size: 20px;">วันที่ (Date):</strong>
                                            <span t-field="o.scheduled_date" t-options='{"widget": "date"}' style="font-size: 20px;"/>
                                        </div>
+                                       <div class="mb-2">
+                                           <strong style="width: 60%; display: inline-block; font-size: 20px;">Effective Date:</strong>
+                                           <span t-field="o.date_done" t-options='{"widget": "date"}' style="font-size: 20px;"/>
+                                       </div>
                                    </div>
                                </div>
                            </div>
