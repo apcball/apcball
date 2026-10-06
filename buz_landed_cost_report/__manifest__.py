@@ -1,14 +1,14 @@
 {
     'name': 'Landed Cost Report',
-    'version': '17.0.1.0.1',
+    'version': '17.0.1.1.0',
     'category': 'Inventory/Reporting',
     'summary': 'Landed Cost Report with Pivot and Excel Export',
     'description': """
         Landed Cost Report module with:
-        - Pivot view preview before export
-        - Excel (.xlsx) export
-        - Product-level landed cost breakdown
-        - Single data source (SQL VIEW) shared by Pivot and Excel
+        - Per product/move: base cost + allocated landed cost = final unit cost (company currency)
+        - Cost breakdown by cost line / type / account
+        - Audit: LC total vs allocation vs valuation layers
+        - Pivot preview and Excel (.xlsx) export from the same SQL views
     """,
     'author': 'APCBALL',
     'depends': ['stock', 'stock_landed_costs', 'product', 'base', 'report_xlsx'],

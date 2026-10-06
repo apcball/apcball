@@ -8,6 +8,13 @@ class LandedCostReportWizard(models.TransientModel):
     date_to = fields.Date(string='Date To')
     landed_cost_ids = fields.Many2many('stock.landed.cost', string='Landed Costs')
     product_categ_id = fields.Many2one('product.category', string='Product Category')
+    state = fields.Selection([
+        ('done', 'Posted'),
+        ('draft', 'Draft'),
+        ('all', 'All'),
+    ], string='Status', default='done', required=True)
+    partner_id = fields.Many2one('res.partner', string='Vendor')
+    warehouse_id = fields.Many2one('stock.warehouse', string='Warehouse')
 
     def _get_domain(self):
         domain = []
@@ -17,6 +24,12 @@ class LandedCostReportWizard(models.TransientModel):
             domain.append(('date', '<=', self.date_to))
         if self.landed_cost_ids:
             domain.append(('landed_cost_id', 'in', self.landed_cost_ids.ids))
+        if self.state != 'all':
+            domain.append(('state', '=', self.state))
+        if self.partner_id:
+            domain.append(('partner_id', '=', self.partner_id.id))
+        if self.warehouse_id:
+            domain.append(('warehouse_id', '=', self.warehouse_id.id))
         if self.product_categ_id:
             domain.append(('product_categ_id', 'child_of', self.product_categ_id.id))
         return domain
@@ -30,7 +43,6 @@ class LandedCostReportWizard(models.TransientModel):
             'res_model': 'buz.landed.cost.report',
             'view_mode': 'pivot,tree,form',
             'domain': domain,
-            # 'context': {'search_default_group_by_product': 1}, # Maybe not needed if Tree is default or Pivot is nice.
         }
 
     def action_export_excel(self):

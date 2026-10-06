@@ -9,9 +9,12 @@
                     <group>
                         <field name="date_from"/>
                         <field name="date_to"/>
+                        <field name="state"/>
                     </group>
                     <group>
                         <field name="product_categ_id"/>
+                        <field name="partner_id"/>
+                        <field name="warehouse_id"/>
                         <field name="landed_cost_ids" widget="many2many_tags"/>
                     </group>
                 </group>

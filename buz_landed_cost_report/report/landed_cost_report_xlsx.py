@@ -1,74 +1,92 @@
 from odoo import models
 
+
 class LandedCostXlsx(models.AbstractModel):
     _name = 'report.buz_landed_cost_report.xlsx'
     _inherit = 'report.report_xlsx.abstract'
 
     def generate_xlsx_report(self, workbook, data, wizards):
         domain = data.get('domain', [])
-        # Search on Summary Model
-        summaries = self.env['buz.landed.cost.report'].search(domain, order='doc_no, product_id, id')
+        lines = self.env['buz.landed.cost.report'].search(domain, order='doc_no, product_id, id')
 
-        # SHEET 1: SUMMARY
-        sheet_summary = workbook.add_worksheet("Summary")
         bold_bg = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
-        bold = workbook.add_format({'bold': True})
-        date_format = workbook.add_format({'num_format': 'dd/mm/yyyy'})
+        bold = workbook.add_format({'bold': True, 'num_format': '#,##0.00'})
+        date_fmt = workbook.add_format({'num_format': 'dd/mm/yyyy'})
         num_fmt = workbook.add_format({'num_format': '#,##0.00'})
-        
-        headers_summary = [
-            'DocNo', 'Date', 'RefNo', 'Product Code', 'Product Name',
-            'Qty', 'Price/Unit USD', 'Cost USD (Base)', 'Rate',
-            'Total Expense THB', 'Total Cost THB', 'Unit Cost THB', 'Inventory Name'
-        ]
-        
-        for col, h in enumerate(headers_summary):
-            sheet_summary.write(0, col, h, bold_bg)
 
-        row_s = 1
-        for line in summaries:
-            sheet_summary.write(row_s, 0, line.doc_no or '')
+        # SHEET 1: SUMMARY (per landed cost x product line)
+        sheet = workbook.add_worksheet("Summary")
+        headers = [
+            'Landed Cost', 'LC Date', 'Status', 'Source Doc', 'Transfer', 'Vendor',
+            'Product Code', 'Product Name', 'Qty', 'Base Unit Cost', 'Base Cost',
+            'Expense', 'Labor', 'Tax', 'Transit', 'Landed Cost',
+            'Total Cost', 'Final Unit Cost', 'SVL Landed', 'Not Capitalised', 'Base Source',
+        ]
+        for col, h in enumerate(headers):
+            sheet.write(0, col, h, bold_bg)
+        for row, line in enumerate(lines, start=1):
+            sheet.write(row, 0, line.doc_no or '')
             if line.date:
-                sheet_summary.write(row_s, 1, line.date, date_format)
-            else:
-                sheet_summary.write(row_s, 1, '')
-            sheet_summary.write(row_s, 2, line.ref_no or '')
-            sheet_summary.write(row_s, 3, line.product_id.default_code or '')
-            sheet_summary.write(row_s, 4, line.product_id.name or '')
-            
-            sheet_summary.write(row_s, 5, line.qty, num_fmt)
-            sheet_summary.write(row_s, 6, line.price_unit_usd, num_fmt)
-            sheet_summary.write(row_s, 7, line.cost_usd, num_fmt)
-            sheet_summary.write(row_s, 8, line.rate, num_fmt)
-            
-            sheet_summary.write(row_s, 9, line.total_expense_thb, num_fmt)
-            sheet_summary.write(row_s, 10, line.total_cost_thb, bold) # Bold Total
-            sheet_summary.write(row_s, 11, line.unit_cost_thb, bold) # Bold Unit
-            sheet_summary.write(row_s, 12, line.inventory_name or '')
-            row_s += 1
+                sheet.write(row, 1, line.date, date_fmt)
+            sheet.write(row, 2, line.state or '')
+            sheet.write(row, 3, line.ref_no or '')
+            sheet.write(row, 4, line.inventory_name or '')
+            sheet.write(row, 5, line.partner_id.name or '')
+            sheet.write(row, 6, line.product_id.default_code or '')
+            sheet.write(row, 7, line.product_id.name or '')
+            values = [
+                line.qty, line.base_unit_cost, line.base_cost,
+                line.expense_amount, line.labor_amount, line.tax_amount, line.transit_amount,
+                line.landed_cost,
+            ]
+            for i, val in enumerate(values, start=8):
+                sheet.write(row, i, val, num_fmt)
+            sheet.write(row, 16, line.total_cost, bold)
+            sheet.write(row, 17, line.unit_cost, bold)
+            sheet.write(row, 18, line.svl_landed_value, num_fmt)
+            sheet.write(row, 19, line.svl_landed_diff, num_fmt)
+            sheet.write(row, 20, line.base_source or '')
 
-        # SHEET 2: DETAIL
-        sheet_detail = workbook.add_worksheet("Cost Breakdown")
-        headers_detail = [
-            'DocNo', 'Product',
-            'Cost Line', 'Account Code', 'Account Name', 
-            'Amount THB', 'Inventory Name'
+        # SHEET 2: COST BREAKDOWN (cost line x product)
+        sheet_d = workbook.add_worksheet("Cost Breakdown")
+        headers_d = [
+            'Landed Cost', 'Transfer', 'Product', 'Cost Line', 'Type',
+            'Split Method', 'Account Code', 'Account Name', 'Allocated Amount',
         ]
-        for col, h in enumerate(headers_detail):
-            sheet_detail.write(0, col, h, bold_bg)
+        for col, h in enumerate(headers_d):
+            sheet_d.write(0, col, h, bold_bg)
+        row = 1
+        for line in lines:
+            for detail in line.detail_ids:
+                sheet_d.write(row, 0, line.doc_no or '')
+                sheet_d.write(row, 1, line.inventory_name or '')
+                sheet_d.write(row, 2, line.product_id.display_name or '')
+                sheet_d.write(row, 3, detail.cost_line_name or '')
+                sheet_d.write(row, 4, detail.cost_line_type or '')
+                sheet_d.write(row, 5, detail.split_method or '')
+                sheet_d.write(row, 6, detail.account_code or '')
+                sheet_d.write(row, 7, detail.account_name or '')
+                sheet_d.write(row, 8, detail.amount, num_fmt)
+                row += 1
 
-        row_d = 1
-        # To make Sheet 2 useful, we probably want to see *all* details corresponding to the filter.
-        # Iterating summaries and then their details ensures we match the filter.
-        for summary in summaries:
-            for detail in summary.detail_ids:
-                sheet_detail.write(row_d, 0, summary.doc_no or '')
-                sheet_detail.write(row_d, 1, summary.product_id.display_name or '')
-                
-                sheet_detail.write(row_d, 2, detail.cost_line_name or '')
-                sheet_detail.write(row_d, 3, detail.account_code or '')
-                sheet_detail.write(row_d, 4, detail.account_name or '')
-                
-                sheet_detail.write(row_d, 5, detail.amount_thb, num_fmt)
-                sheet_detail.write(row_d, 6, summary.inventory_name or '')
-                row_d += 1
+        # SHEET 3: AUDIT (per landed cost, same LC set as the filter)
+        sheet_a = workbook.add_worksheet("Audit")
+        headers_a = [
+            'Landed Cost', 'Date', 'Status', 'LC Total', 'Allocated', 'SVL Value',
+            'LC Total - Allocated', 'Not Capitalised', 'Moves', 'SVL Layers', 'Journal Entry',
+        ]
+        for col, h in enumerate(headers_a):
+            sheet_a.write(0, col, h, bold_bg)
+        audits = self.env['buz.landed.cost.audit'].search(
+            [('landed_cost_id', 'in', lines.mapped('landed_cost_id').ids)], order='name')
+        for row, a in enumerate(audits, start=1):
+            sheet_a.write(row, 0, a.name or '')
+            if a.date:
+                sheet_a.write(row, 1, a.date, date_fmt)
+            sheet_a.write(row, 2, a.state or '')
+            for i, val in enumerate(
+                    [a.amount_total, a.alloc_total, a.svl_total, a.alloc_diff, a.uncapitalised], start=3):
+                sheet_a.write(row, i, val, num_fmt)
+            sheet_a.write(row, 8, a.move_count)
+            sheet_a.write(row, 9, a.svl_count)
+            sheet_a.write(row, 10, 'Y' if a.has_account_move else 'N')
