@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="buz_stock_current_report.KanbanView" t-inherit="web.KanbanView" t-inherit-mode="primary">
+        <xpath expr="//div[@t-ref='root']" position="attributes">
+            <attribute name="t-att-class">className + (panelState.collapsed ? ' o_scp_panel_collapsed' : '')</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set-slot='control-panel-additional-actions']" position="after">
+            <t t-set-slot="control-panel-breadcrumb">
+                <div class="o_scp_title d-flex align-items-center gap-3">
+                    <button type="button" class="o_scp_panel_toggle btn btn-light"
+                            t-on-click="togglePanel"
+                            t-att-title="panelState.collapsed ? 'Show warehouse panel' : 'Hide warehouse panel'">
+                        <i t-attf-class="fa #{panelState.collapsed ? 'fa-angle-double-right' : 'fa-angle-double-left'}"/>
+                    </button>
+                    <span class="o_scp_title_icon"><i class="fa fa-cube"/></span>
+                    <div class="o_scp_title_text">
+                        <div class="o_scp_title_th">คลังสินค้าปัจจุบัน</div>
+                        <div class="o_scp_title_en">Current Stock View</div>
+                    </div>
+                    <button t-if="panelState.collapsed" type="button" class="o_scp_wh_chip"
+                            t-on-click="togglePanel" title="Show warehouse panel">
+                        <i class="fa fa-building"/>
+                        <span class="o_scp_wh_chip_name" t-esc="selectedWarehouse"/>
+                    </button>
+                </div>
+            </t>
+        </xpath>
+        <xpath expr="//t[@t-set-slot='control-panel-navigation-additional']" position="inside">
+            <label class="o_scp_sort d-flex align-items-center gap-2">
+                <span class="o_scp_sort_label">เรียงตาม</span>
+                <select class="o_scp_sort_select" t-on-change="onSortChange">
+                    <t t-foreach="sortOptions" t-as="option" t-key="option.value">
+                        <option t-att-value="option.value" t-att-selected="option.value === currentSort"
+                                t-esc="option.label"/>
+                    </t>
+                </select>
+            </label>
+        </xpath>
+    </t>
+
+    <!-- Warehouse panel counters: thousands separator for the stock view only -->
+    <t t-inherit="web.SearchPanel.Category" t-inherit-mode="extension">
+        <xpath expr="//small[hasclass('o_search_panel_counter')]" position="attributes">
+            <attribute name="t-esc">env.searchModel.resModel === 'stock.current.product' ? value.__count.toLocaleString() : value.__count</attribute>
+        </xpath>
+    </t>
+
+</templates>

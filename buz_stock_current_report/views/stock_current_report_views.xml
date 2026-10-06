@@ -8,7 +8,7 @@
                 <field name="warehouse_id" optional="show"/>
                 <field name="location_id"/>
                 <field name="location_type_name" string="Location Type" optional="show"/>
-                <field name="product_id"/>
+                <field name="product_template_id"/>
                 <field name="sku" string="SKU" optional="show"/>
                 <field name="default_code" string="Internal Ref." optional="show"/>
                 <field name="sales_qty_90d" string="Sold (90 Days)" sum="Total" optional="show"/>
@@ -37,7 +37,7 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name="product_id" readonly="1"/>
+                            <field name="product_template_id" readonly="1"/>
                             <field name="warehouse_id" readonly="1"/>
                             <field name="location_id" readonly="1"/>
                             <field name="location_type_name" readonly="1"/>

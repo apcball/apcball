@@ -10,6 +10,12 @@ class StockCurrentReport(models.Model):
     _order = 'sales_qty_90d desc, location_id, product_id'
 
     product_id = fields.Many2one('product.product', string='Product', readonly=True)
+    product_template_id = fields.Many2one(
+        'product.template',
+        string='Product',
+        related='product_id.product_tmpl_id',
+        readonly=True,
+    )
     location_id = fields.Many2one('stock.location', string='Location', readonly=True)
     warehouse_id = fields.Many2one('stock.warehouse', string='Warehouse', readonly=True)
     category_id = fields.Many2one('product.category', string='Category', readonly=True)
@@ -49,12 +55,12 @@ class StockCurrentReport(models.Model):
             rec.product_name = rec.product_id.name or ''
 
     def action_open_product(self):
-        """Open the product form from kanban card click"""
+        """Open the product template so its documents are available."""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'res_model': 'product.product',
-            'res_id': self.product_id.id,
+            'res_model': 'product.template',
+            'res_id': self.product_template_id.id,
             'view_mode': 'form',
             'target': 'current',
         }

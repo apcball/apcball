@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_stock_current_product_search" model="ir.ui.view">
+        <field name="name">stock.current.product.search</field>
+        <field name="model">stock.current.product</field>
+        <field name="arch" type="xml">
+            <search string="Current Stock">
+                <field name="product_id" string="Product"
+                       filter_domain="['|', '|', '|', ('product_id', 'ilike', self), ('default_code', 'ilike', self), ('name_eng', 'ilike', self), ('sku', 'ilike', self)]"/>
+                <field name="main_location_id"/>
+                <searchpanel>
+                    <field name="warehouse_id" string="Warehouse" icon="fa-building" enable_counters="1"/>
+                </searchpanel>
+                <filter string="Can be Sold" name="can_be_sold" domain="[('sale_ok', '=', True)]"/>
+                <filter string="In Stock" name="in_stock" domain="[('free_to_use', '&gt;', 0)]"/>
+                <filter string="Out of Stock" name="out_of_stock" domain="[('free_to_use', '&lt;=', 0)]"/>
+                <separator/>
+                <filter string="With Incoming" name="with_incoming" domain="[('incoming', '&gt;', 0)]"/>
+                <filter string="With Outgoing" name="with_outgoing" domain="[('outgoing', '&gt;', 0)]"/>
+                <filter string="Best Sellers" name="best_sellers" domain="[('sales_qty_90d', '&gt;', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Category" name="group_category" context="{'group_by': 'category_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state_badge'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_stock_current_product_kanban" model="ir.ui.view">
+        <field name="name">stock.current.product.kanban</field>
+        <field name="model">stock.current.product</field>
+        <field name="arch" type="xml">
+            <kanban class="stock_current_report_kanban stock_current_product_kanban"
+                    js_class="stock_current_product_kanban" create="0" edit="0" delete="0" default_order="default_code, id">
+                <field name="product_id"/>
+                <field name="product_name"/>
+                <field name="name_eng"/>
+                <field name="default_code"/>
+                <field name="product_tag_ids"/>
+                <field name="price_with_vat"/>
+                <field name="free_to_use"/>
+                <field name="incoming"/>
+                <field name="outgoing"/>
+                <field name="uom_id"/>
+                <field name="main_location_id"/>
+                <field name="state_badge"/>
+                <field name="has_image"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <a class="o_stock_card" type="object" name="action_open_product">
+                            <span t-attf-class="o_sc_status o_sc_status_#{record.state_badge.raw_value}">
+                                <t t-esc="record.state_badge.value"/>
+                            </span>
+                            <div class="o_sc_card_body">
+                                <div class="o_sc_photo">
+                                    <img t-if="record.has_image.raw_value"
+                                         t-attf-src="/web/image/product.product/#{record.product_id.raw_value}/image_128"
+                                         alt="" loading="lazy"/>
+                                    <img t-else="" class="o_sc_no_image"
+                                         src="/buz_stock_current_report/static/src/img/no_image.svg"
+                                         alt="No image" loading="lazy"/>
+                                </div>
+                                <div class="o_sc_info">
+                                    <div class="o_sc_name"><t t-esc="record.product_name.value"/></div>
+                                    <div class="o_sc_name_eng"><t t-esc="record.name_eng.value"/></div>
+                                    <div class="o_sc_default_code"><t t-esc="record.default_code.value"/></div>
+                                    <div class="o_sc_tags"><field name="product_tag_ids" widget="many2many_tags"/></div>
+                                </div>
+                            </div>
+                            <div class="o_sc_divider"/>
+                            <div class="o_sc_data_row">
+                                <div class="o_sc_price_block">
+                                    <span class="o_sc_price_value"><field name="price_with_vat" widget="float" digits="[16,2]"/></span>
+                                    <span class="o_sc_price_label">INCL. VAT</span>
+                                </div>
+                                <div class="o_sc_data_sep"/>
+                                <div class="o_sc_stock_block">
+                                    <span class="o_sc_stock_label">FREE TO USE</span>
+                                    <span>
+                                        <span class="o_sc_stock_value"><field name="free_to_use" widget="float" digits="[16,2]"/></span>
+                                        <span class="o_sc_stock_uom"><field name="uom_id"/></span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="o_sc_moves">
+                                <t t-if="record.incoming.raw_value &gt; 0">
+                                    <span class="o_sc_badge o_sc_badge_in">↑ +<field name="incoming" widget="float" digits="[16,2]"/> incoming</span>
+                                </t>
+                                <t t-if="record.outgoing.raw_value &gt; 0">
+                                    <span class="o_sc_badge o_sc_badge_out">↓ -<field name="outgoing" widget="float" digits="[16,2]"/> outgoing</span>
+                                </t>
+                            </div>
+                            <div class="o_sc_footer">
+                                <span class="o_sc_loc"><field name="main_location_id"/></span>
+                            </div>
+                        </a>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_stock_current_product_tree" model="ir.ui.view">
+        <field name="name">stock.current.product.tree</field>
+        <field name="model">stock.current.product</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0" default_order="default_code, id">
+                <field name="default_code"/>
+                <field name="product_id"/>
+                <field name="name_eng" optional="show"/>
+                <field name="main_location_id" optional="show"/>
+                <field name="quantity" sum="Total"/>
+                <field name="free_to_use" sum="Total"/>
+                <field name="incoming" sum="Total" optional="show"/>
+                <field name="outgoing" sum="Total" optional="show"/>
+                <field name="price_with_vat" optional="show"/>
+                <field name="sales_qty_90d" optional="hide"/>
+                <field name="uom_id" optional="hide"/>
+                <field name="state_badge" widget="badge"
+                       decoration-success="state_badge == 'in_stock'"
+                       decoration-info="state_badge == 'active'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_stock_current_product" model="ir.actions.act_window">
+        <field name="name">คลังสินค้าปัจจุบัน</field>
+        <field name="res_model">stock.current.product</field>
+        <field name="view_mode">kanban,tree</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_current_product_kanban')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_current_product_tree')}),
+        ]"/>
+        <field name="search_view_id" ref="view_stock_current_product_search"/>
+        <field name="context">{'search_default_can_be_sold': 1}</field>
+        <field name="limit">80</field>
+    </record>
+
+    <menuitem id="menu_stock_current_report_sidebar"
+              name="Current Stock View"
+              parent="menu_stock_current_report_root"
+              action="action_stock_current_product"
+              sequence="5"/>
+
+</odoo>
