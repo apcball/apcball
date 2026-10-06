@@ -3,3 +3,5 @@ access_buz_landed_cost_report_wizard,buz.landed.cost.report.wizard,model_buz_lan
 access_buz_landed_cost_report,buz.landed.cost.report,model_buz_landed_cost_report,stock.group_stock_user,1,0,0,0
 access_buz_landed_cost_report_detail,buz.landed.cost.report.detail,model_buz_landed_cost_report_detail,stock.group_stock_user,1,0,0,0
 access_buz_landed_cost_audit,buz.landed.cost.audit,model_buz_landed_cost_audit,stock.group_stock_user,1,0,0,0
+access_buz_landed_cost_type_user,buz.landed.cost.type user,model_buz_landed_cost_type,stock.group_stock_user,1,0,0,0
+access_buz_landed_cost_type_manager,buz.landed.cost.type manager,model_buz_landed_cost_type,stock.group_stock_manager,1,1,1,1

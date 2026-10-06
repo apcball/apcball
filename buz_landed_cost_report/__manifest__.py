@@ -1,6 +1,6 @@
 {
     'name': 'Landed Cost Report',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Inventory/Reporting',
     'summary': 'Landed Cost Report with Pivot and Excel Export',
     'description': """
@@ -14,9 +14,11 @@
     'depends': ['stock', 'stock_landed_costs', 'product', 'base', 'report_xlsx'],
     'data': [
         'security/ir.model.access.csv',
+        'data/landed_cost_type_data.xml',
         'views/landed_cost_report_views.xml',
         'wizard/landed_cost_report_wizard_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
     'license': 'LGPL-3',

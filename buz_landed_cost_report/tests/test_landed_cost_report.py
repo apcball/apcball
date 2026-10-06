@@ -46,7 +46,7 @@ class TestLandedCostReport(TransactionCase):
         cls.picking.move_ids.picked = True
         cls.picking._action_done()
 
-    def _make_lc(self, amounts):
+    def _make_lc(self, amounts, types=None):
         journal = self.env['account.journal'].search(
             [('type', '=', 'general'), ('company_id', '=', self.company.id)], limit=1)
         expense = self.env['account.account'].search(
@@ -54,13 +54,14 @@ class TestLandedCostReport(TransactionCase):
         lc = self.env['stock.landed.cost'].create({
             'account_journal_id': journal.id,
             'picking_ids': [(6, 0, self.picking.ids)],
-            'cost_lines': [(0, 0, {
+            'cost_lines': [(0, 0, dict({
                 'name': 'Cost %s' % i,
                 'product_id': self.service.id,
                 'price_unit': amt,
                 'split_method': 'by_quantity',
                 'account_id': expense.id,
-            }) for i, amt in enumerate(amounts)],
+            }, **({'cost_type_id': types[i % len(types)].id} if types else {})))
+                for i, amt in enumerate(amounts)],
         })
         lc.compute_landed_cost()
         self.env.flush_all()  # SQL views read tables directly
@@ -133,3 +134,29 @@ class TestLandedCostReport(TransactionCase):
         self.assertAlmostEqual(audit.uncapitalised, 40.0)
         self.assertFalse(audit.svl_over)
         self.assertFalse(audit.alloc_mismatch)
+
+    def test_cost_type_breakdown_and_custom_type(self):
+        freight = self.env['buz.landed.cost.type'].create({'name': 'Freight Test', 'code': 'frt'})
+        duty = self.env.ref('buz_landed_cost_report.cost_type_tax')
+        lc = self._make_lc([30.0, 20.0], types=freight | duty)
+        lc.button_validate()
+        self.env.flush_all()
+        det = self.env['buz.landed.cost.report.detail'].search([('landed_cost_id', '=', lc.id)])
+        by_type = {d.cost_type_id.name: d.amount for d in det}
+        self.assertAlmostEqual(by_type['Freight Test'], 30.0)
+        self.assertAlmostEqual(by_type['Tax'], 20.0)
+
+    def test_default_cost_type_is_expense(self):
+        lc = self._make_lc([10.0])
+        self.assertEqual(lc.cost_lines.cost_type_id,
+                         self.env.ref('buz_landed_cost_report.cost_type_expense'))
+
+    def test_cost_type_follows_product(self):
+        freight = self.env['buz.landed.cost.type'].create({'name': 'Freight P', 'code': 'frtp'})
+        self.service.product_tmpl_id.landed_cost_type_id = freight
+        lc = self._make_lc([10.0])
+        self.assertEqual(lc.cost_lines.cost_type_id, freight)
+        lc.button_validate()
+        self.env.flush_all()
+        det = self.env['buz.landed.cost.report.detail'].search([('landed_cost_id', '=', lc.id)])
+        self.assertEqual(det.cost_type_id, freight)

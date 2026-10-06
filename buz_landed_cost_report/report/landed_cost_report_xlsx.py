@@ -14,13 +14,17 @@ class LandedCostXlsx(models.AbstractModel):
         date_fmt = workbook.add_format({'num_format': 'dd/mm/yyyy'})
         num_fmt = workbook.add_format({'num_format': '#,##0.00'})
 
+        # one column per cost type (configurable); untyped lines go to 'Other'
+        types = self.env['buz.landed.cost.type'].search([])
+
         # SHEET 1: SUMMARY (per landed cost x product line)
         sheet = workbook.add_worksheet("Summary")
         headers = [
             'Landed Cost', 'LC Date', 'Status', 'Source Doc', 'Transfer', 'Vendor',
             'Product Code', 'Product Name', 'Qty', 'Base Unit Cost', 'Base Cost',
-            'Expense', 'Labor', 'Tax', 'Transit', 'Landed Cost',
-            'Total Cost', 'Final Unit Cost', 'SVL Landed', 'Not Capitalised', 'Base Source',
+        ] + types.mapped('name') + [
+            'Other Type', 'Landed Amount', 'Total Cost', 'Final Unit Cost',
+            'SVL Landed', 'Not Capitalised', 'Base Source',
         ]
         for col, h in enumerate(headers):
             sheet.write(0, col, h, bold_bg)
@@ -34,18 +38,22 @@ class LandedCostXlsx(models.AbstractModel):
             sheet.write(row, 5, line.partner_id.name or '')
             sheet.write(row, 6, line.product_id.default_code or '')
             sheet.write(row, 7, line.product_id.name or '')
-            values = [
-                line.qty, line.base_unit_cost, line.base_cost,
-                line.expense_amount, line.labor_amount, line.tax_amount, line.transit_amount,
-                line.landed_cost,
-            ]
-            for i, val in enumerate(values, start=8):
+            for i, val in enumerate([line.qty, line.base_unit_cost, line.base_cost], start=8):
                 sheet.write(row, i, val, num_fmt)
-            sheet.write(row, 16, line.total_cost, bold)
-            sheet.write(row, 17, line.unit_cost, bold)
-            sheet.write(row, 18, line.svl_landed_value, num_fmt)
-            sheet.write(row, 19, line.svl_landed_diff, num_fmt)
-            sheet.write(row, 20, line.base_source or '')
+            by_type = {}
+            for d in line.detail_ids:
+                by_type[d.cost_type_id.id] = by_type.get(d.cost_type_id.id, 0.0) + d.amount
+            col = 11
+            for t in types:
+                sheet.write(row, col, by_type.pop(t.id, 0.0), num_fmt)
+                col += 1
+            sheet.write(row, col, sum(by_type.values()), num_fmt)
+            sheet.write(row, col + 1, line.landed_cost, num_fmt)
+            sheet.write(row, col + 2, line.total_cost, bold)
+            sheet.write(row, col + 3, line.unit_cost, bold)
+            sheet.write(row, col + 4, line.svl_landed_value, num_fmt)
+            sheet.write(row, col + 5, line.svl_landed_diff, num_fmt)
+            sheet.write(row, col + 6, line.base_source or '')
 
         # SHEET 2: COST BREAKDOWN (cost line x product)
         sheet_d = workbook.add_worksheet("Cost Breakdown")
@@ -62,7 +70,7 @@ class LandedCostXlsx(models.AbstractModel):
                 sheet_d.write(row, 1, line.inventory_name or '')
                 sheet_d.write(row, 2, line.product_id.display_name or '')
                 sheet_d.write(row, 3, detail.cost_line_name or '')
-                sheet_d.write(row, 4, detail.cost_line_type or '')
+                sheet_d.write(row, 4, detail.cost_type_id.name or '')
                 sheet_d.write(row, 5, detail.split_method or '')
                 sheet_d.write(row, 6, detail.account_code or '')
                 sheet_d.write(row, 7, detail.account_name or '')

@@ -51,11 +51,6 @@ class BuzLandedCostReport(models.Model):
     total_cost = fields.Float(string='Total Cost', readonly=True)
     unit_cost = fields.Float(string='Final Unit Cost', readonly=True)
 
-    expense_amount = fields.Float(string='Expense', readonly=True)
-    labor_amount = fields.Float(string='Labor', readonly=True)
-    tax_amount = fields.Float(string='Tax', readonly=True)
-    transit_amount = fields.Float(string='Transit', readonly=True)
-
     lc_former_cost = fields.Float(string='LC former_cost (snapshot)', readonly=True)
     svl_base_value = fields.Float(string='SVL Base Value', readonly=True)
     svl_landed_value = fields.Float(string='SVL Landed Value', readonly=True)
@@ -129,15 +124,6 @@ class BuzLandedCostReport(models.Model):
                          + SUM(COALESCE(val.additional_landed_cost, 0))) / MAX(val.quantity)
                     ELSE 0 END AS unit_cost,
 
-                    COALESCE(SUM(val.additional_landed_cost)
-                        FILTER (WHERE COALESCE(lcl.cost_line_type, 'expense') = 'expense'), 0) AS expense_amount,
-                    COALESCE(SUM(val.additional_landed_cost)
-                        FILTER (WHERE lcl.cost_line_type = 'labor'), 0) AS labor_amount,
-                    COALESCE(SUM(val.additional_landed_cost)
-                        FILTER (WHERE lcl.cost_line_type = 'tax'), 0) AS tax_amount,
-                    COALESCE(SUM(val.additional_landed_cost)
-                        FILTER (WHERE lcl.cost_line_type = 'transit'), 0) AS transit_amount,
-
                     MAX(val.former_cost) AS lc_former_cost,
                     COALESCE(MAX(svb.value), 0) AS svl_base_value,
                     COALESCE(MAX(svl.value), 0) AS svl_landed_value,
@@ -153,8 +139,7 @@ class BuzLandedCostReport(models.Model):
                 LEFT JOIN purchase_order_line pol ON pol.id = sm.purchase_line_id
                 LEFT JOIN purchase_order po ON po.id = pol.order_id
                 JOIN res_company cc ON cc.id = lc.company_id
-                LEFT JOIN stock_landed_cost_lines lcl ON lcl.id = val.cost_line_id
-                LEFT JOIN (
+                            LEFT JOIN (
                     SELECT stock_move_id, SUM(value) AS value
                     FROM stock_valuation_layer
                     WHERE stock_landed_cost_id IS NULL
@@ -188,7 +173,9 @@ class BuzLandedCostReportDetail(models.Model):
     landed_cost_id = fields.Many2one('stock.landed.cost', readonly=True)
 
     cost_line_name = fields.Char(readonly=True)
-    cost_line_type = fields.Char(readonly=True)
+    cost_type_id = fields.Many2one('buz.landed.cost.type', string='Cost Type', readonly=True)
+    date = fields.Date(string='LC Date', readonly=True)
+    state = fields.Selection(LC_STATES, readonly=True)
     split_method = fields.Char(readonly=True)
     account_code = fields.Char(readonly=True)
     account_name = fields.Char(readonly=True)
@@ -207,7 +194,9 @@ class BuzLandedCostReportDetail(models.Model):
                     sm.product_id AS product_id,
                     val.cost_id AS landed_cost_id,
                     lcl.name AS cost_line_name,
-                    COALESCE(lcl.cost_line_type, 'expense') AS cost_line_type,
+                    lcl.cost_type_id AS cost_type_id,
+                    lc.date AS date,
+                    lc.state AS state,
                     lcl.split_method AS split_method,
                     aa.code AS account_code,
                     COALESCE(aa.name->>'th_TH', aa.name->>'en_US') AS account_name,
