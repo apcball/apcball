@@ -548,6 +548,9 @@ class ITAssetMaintenance(models.Model):
     repair_route = fields.Selection(related='ticket_id.repair_route', readonly=True, groups=IT_GROUPS)
     diagnosis = fields.Text(related='ticket_id.diagnosis', readonly=True, groups=IT_GROUPS)
     repair_result = fields.Text(related='ticket_id.repair_result', readonly=True)
+    # Snapshot ชื่อผลซ่อม ณ เวลาปิด Ticket เพื่อรองรับ Outcome ที่เพิ่มเอง
+    repair_outcome_snapshot = fields.Char(string='Outcome Snapshot', readonly=True)
+    repair_outcome = fields.Char(string='Outcome', compute='_compute_repair_outcome')
     repair_outcome_id = fields.Selection([
         ('repaired', 'Repaired'),
         ('parts_replaced', 'Parts Replaced'),
@@ -555,6 +558,16 @@ class ITAssetMaintenance(models.Model):
         ('retired', 'Retired'),
         ('no_repair', 'No Repair'),
     ], string='Outcome', readonly=True)
+
+    @api.depends('repair_outcome_snapshot', 'repair_outcome_id')
+    def _compute_repair_outcome(self):
+        selection = dict(self._fields['repair_outcome_id'].selection)
+        for record in self:
+            record.repair_outcome = (
+                record.repair_outcome_snapshot
+                or selection.get(record.repair_outcome_id)
+                or False
+            )
     recommendations = fields.Text(readonly=True)
     performed_by_id = fields.Many2one(
         'res.users', string='Performed By', readonly=True, groups=IT_GROUPS,
@@ -623,6 +636,8 @@ class ITAssetMaintenance(models.Model):
             ))
         operator = ticket.assigned_user_id or self.env.user
         employee = operator.employee_id
+        outcome_code = ticket.repair_outcome_id.code if ticket.repair_outcome_id else False
+        supported_outcomes = dict(self._fields['repair_outcome_id'].selection)
         vals = {
             'ticket_id': ticket.id,
             'asset_id': ticket.asset_id.id,
@@ -640,7 +655,10 @@ class ITAssetMaintenance(models.Model):
                 else False
             ),
             'performed_by_id': operator.id,
-            'repair_outcome_id': ticket.repair_outcome_id.code if ticket.repair_outcome_id else False,
+            'repair_outcome_snapshot': (
+                ticket.repair_outcome_id.name if ticket.repair_outcome_id else False
+            ),
+            'repair_outcome_id': outcome_code if outcome_code in supported_outcomes else False,
             'recommendations': ticket.repair_instructions,
             'replacement_asset_id': ticket.replacement_asset_id.id,
             'cost': ticket.external_cost or ticket.requester_cost,

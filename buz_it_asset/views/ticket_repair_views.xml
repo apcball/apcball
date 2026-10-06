@@ -24,7 +24,7 @@
                 <field name="repair_outcome_behavior" invisible="1"/>
             </xpath>
 
-            <xpath expr="//div[hasclass('o_buz_helpdesk_repair_section_anchor')]" position="after">
+            <xpath expr="//group[field[@name='ticket_rejection_reason_type']]" position="before">
                 <div class="o_buz_helpdesk_ticket_full_width" invisible="not show_repair_process">
                     <separator string="Repair Summary / สรุปการซ่อม" invisible="not show_repair_process"/>
                     <group invisible="not show_repair_process">
