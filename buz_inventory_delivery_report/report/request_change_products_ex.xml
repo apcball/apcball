@@ -135,6 +135,10 @@
                                    <div class="doc-title" style="padding: 14px; font-size: 26px;">
                                     ใบขออนุมัติเปลี่ยนสินค้าต่างรุ่น
                                    </div>
+                                   <div style="display: flex; justify-content: center; align-items: center; gap: 18px; white-space: nowrap; font-size: 20px; line-height: 1.2;">
+                                       <span>☐ ใบขออนุมัติเคลม EMTN</span>
+                                       <span>☐ ใบขออนุมัติเคลม EMCP</span>
+                                   </div>
                                </div>
                                <div class="col-4 text-end" style="">
                                   <div style="font-size: 18px;">
