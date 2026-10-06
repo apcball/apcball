@@ -439,7 +439,7 @@
   
   
       <record id="action_request_change_products_ex" model="ir.actions.report">
-          <field name="name">ใบขออนุมัติเปลี่ยนสินค้าต่างรุ่น</field>
+          <field name="name">ใบขออนุมัติเคลมสินค้า EMTN/EMCP</field>
           <field name="model">stock.picking</field>
           <field name="report_type">qweb-pdf</field>
           <field name="report_name">buz_inventory_delivery_report.request_change_products_ex_document</field>
