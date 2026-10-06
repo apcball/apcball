@@ -134,7 +134,7 @@
                       <t t-set="page_number" t-value="1"/>
                       <t t-set="total_pages" t-value="len(all_pages)"/>
                       <t t-foreach="all_pages" t-as="group">
-                          <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                          <div t-attf-style="#{page_number != 1 and 'page-break-before: always; padding-top: 5mm;' or ''}">
 
                        <t t-if="all_pages">
                            <div>
