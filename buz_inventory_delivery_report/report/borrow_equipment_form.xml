@@ -140,11 +140,15 @@
                            <div>
                           <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
                                  <t t-if="total_pages &gt; 1">
-                                     <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
-                                         หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
+                                     <div class="row">
+                                         <div class="col-8"></div>
+                                         <div class="col-4 text-end">
+                                             <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+                                                 หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
+                                             </div>
+                                         </div>
                                      </div>
-                                 </t>   
-
+                                 </t>
 
                          <!-- Company Info Section -->
                          <div class="row mb-1">
