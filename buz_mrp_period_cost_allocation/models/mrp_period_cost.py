@@ -1,7 +1,7 @@
 import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import float_is_zero, float_round
+from odoo.tools import float_compare, float_is_zero, float_round
 
 _logger = logging.getLogger(__name__)
 
@@ -319,7 +319,8 @@ class MrpPeriodCost(models.Model):
                 }
 
                 svl = self.env['stock.valuation.layer'].create(svl_vals)
-                self._add_remaining_value(base_layers, move_adjustment)
+                distribution = self._add_remaining_value(base_layers, move_adjustment)
+                self._record_allocations(svl, base_layers, distribution)
 
                 if is_automated and not self.inventory_only:
                      self._create_accounting_entry(move, move_adjustment, svl)
@@ -329,13 +330,86 @@ class MrpPeriodCost(models.Model):
 
     @api.model
     def _add_remaining_value(self, base_layers, value):
-        """Spread value over origin layers that still hold stock, by remaining_qty."""
+        """Spread value over origin layers that still hold stock, by remaining_qty.
+
+        Returns [(layer, amount, remaining_qty_at_post)] so a reversal can undo it.
+        """
         in_stock = base_layers.filtered(lambda l: l.remaining_qty > 0)
         total_qty = sum(in_stock.mapped('remaining_qty'))
         if not total_qty:
-            return
+            return []
+        distribution = []
         for layer in in_stock:
-            layer.remaining_value += value * layer.remaining_qty / total_qty
+            amount = value * layer.remaining_qty / total_qty
+            distribution.append((layer, amount, layer.remaining_qty))
+            layer.remaining_value += amount
+        return distribution
+
+    def _record_allocations(self, svl, base_layers, distribution):
+        Alloc = self.env['mrp.period.cost.alloc']
+        if not distribution:
+            Alloc.create({
+                'period_id': self.id, 'svl_id': svl.id,
+                'base_layer_id': base_layers[:1].id, 'amount_remaining': 0.0,
+            })
+            return
+        Alloc.create([{
+            'period_id': self.id, 'svl_id': svl.id, 'base_layer_id': layer.id,
+            'amount_remaining': amount, 'qty_at_post': qty,
+        } for layer, amount, qty in distribution])
+
+    def action_reverse_to_draft(self, reason):
+        """Undo a posted period cost and put it back to draft.
+
+        Blocked when any origin layer has been consumed since posting, because
+        the adjustment would already be part of cost of goods sold.
+        """
+        self.ensure_one()
+        if self.state != 'posted':
+            raise UserError(_("Only a posted period cost can be reversed."))
+        if not self.env.user.has_group('buz_mrp_period_cost_allocation.group_period_cost_reverse'):
+            raise UserError(_("You are not allowed to reverse a posted period cost "
+                              "(group 'Period Cost: Reverse Posted' required)."))
+        if not (reason or '').strip():
+            raise UserError(_("Please give a reason for the reversal."))
+
+        record = self.sudo()
+        allocs = self.env['mrp.period.cost.alloc'].sudo().search([
+            ('period_id', '=', self.id), ('reversed', '=', False)])
+        if not allocs and not self.env['mrp.period.cost.alloc'].sudo().search_count(
+                [('period_id', '=', self.id)]):
+            # Posted before allocations were recorded: layers cannot be traced.
+            legacy = self.env['stock.valuation.layer'].sudo().search([
+                ('description', 'like', 'Period Cost Allocation: %s - %%' % self.name)])
+            if legacy:
+                raise UserError(_(
+                    "%(name)s was posted before allocation tracking existed, so its %(n)s "
+                    "valuation layers cannot be reversed automatically. Ask accounting/IT to "
+                    "correct it manually.", name=self.name, n=len(legacy)))
+        consumed = allocs.filtered(lambda a: a._is_consumed())
+        if consumed:
+            raise UserError(_(
+                "Cannot reverse %(name)s: stock from these layers has already been sold or issued, "
+                "so the adjustment is part of cost of goods sold:\n%(layers)s",
+                name=self.name,
+                layers='\n'.join(sorted(set(
+                    _('- %s (qty at post %s, now %s)') % (
+                        a.base_layer_id.product_id.display_name,
+                        a.qty_at_post, a.base_layer_id.remaining_qty)
+                    for a in consumed)))))
+
+        for alloc in allocs:
+            alloc._reverse()
+        record.write({'state': 'draft'})
+        user = self.env.user
+        # A user without an email would make message_post raise and roll the whole reversal back.
+        self.message_post(
+            body=_("Reversed and reset to draft by %(user)s. Reason: %(reason)s",
+                   user=user.display_name, reason=reason),
+            author_id=user.partner_id.id,
+            email_from=user.email_formatted or self.env.company.email_formatted
+            or 'noreply@localhost')
+        return True
 
     def action_cancel(self):
         if any(rec.state == 'posted' for rec in self):
@@ -450,3 +524,52 @@ class MrpPeriodCostLine(models.Model):
     def _compute_qty_sold(self):
         for line in self:
             line.qty_sold = max(0, line.quantity_produced - line.qty_on_hand)
+
+
+class MrpPeriodCostAlloc(models.Model):
+    """Where a posted period cost put its value, so it can be reversed exactly."""
+    _name = 'mrp.period.cost.alloc'
+    _description = 'Manufacturing Period Cost Layer Allocation'
+
+    period_id = fields.Many2one('mrp.period.cost', required=True, ondelete='restrict', index=True)
+    svl_id = fields.Many2one('stock.valuation.layer', string='Adjustment Layer', required=True, ondelete='restrict')
+    base_layer_id = fields.Many2one('stock.valuation.layer', string='Origin Layer', ondelete='restrict')
+    amount_remaining = fields.Float(help="Value added to the origin layer's remaining_value.",
+                                    digits='Product Price')
+    qty_at_post = fields.Float(help="Origin layer remaining_qty when posted.", digits='Product Unit of Measure')
+    reversed = fields.Boolean(default=False)
+    reversal_svl_id = fields.Many2one('stock.valuation.layer', string='Reversal Layer', ondelete='restrict')
+
+    def _is_consumed(self):
+        self.ensure_one()
+        if not self.amount_remaining:
+            return False
+        rounding = self.base_layer_id.product_id.uom_id.rounding
+        return float_compare(self.base_layer_id.remaining_qty, self.qty_at_post,
+                             precision_rounding=rounding) < 0
+
+    def _reverse(self):
+        self.ensure_one()
+        svl = self.svl_id
+        vals = {
+            'company_id': svl.company_id.id,
+            'product_id': svl.product_id.id,
+            'stock_move_id': svl.stock_move_id.id,
+            'stock_valuation_layer_id': svl.stock_valuation_layer_id.id,
+            'quantity': 0,
+            'value': -svl.value,
+            'description': _('Reversal of: %s') % svl.description,
+        }
+        # Provided by the FIFO modules on prod; keep the reversal in the same
+        # accounting period as the layer it cancels.
+        if 'accounting_date' in svl._fields:
+            vals['accounting_date'] = svl.accounting_date
+        rev = self.env['stock.valuation.layer'].create(vals)
+        if self.amount_remaining:
+            self.base_layer_id.remaining_value -= self.amount_remaining
+        if svl.account_move_id:
+            reversal = svl.account_move_id._reverse_moves(
+                default_values_list=[{'ref': _('Reversal of %s') % svl.account_move_id.ref}],
+                cancel=True)
+            rev.account_move_id = reversal.id
+        self.write({'reversed': True, 'reversal_svl_id': rev.id})

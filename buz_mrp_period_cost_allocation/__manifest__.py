@@ -1,6 +1,6 @@
 {
     'name': 'Manufacturing Period Cost Allocation',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'summary': 'Allocate actual manufacturing costs to MOs on a period basis',
     'description': """
         Allocates actual manufacturing cost (DL, IDL, OH) to Manufacturing Orders (MO) 
@@ -16,10 +16,12 @@
     'author': 'APCBALL',
     'depends': ['mrp', 'stock_account', 'buz_mrp_workcenter_cost_breakdown', 'report_xlsx'],
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',
         'report/mrp_period_cost_report_actions.xml',
         'report/mrp_period_cost_template.xml',
+        'wizard/mrp_period_cost_reverse_wizard_views.xml',
         'views/mrp_period_cost_views.xml',
     ],
     'installable': True,

@@ -5,3 +5,10 @@ access_mrp_period_cost_user,mrp.period.cost user,model_mrp_period_cost,mrp.group
 access_mrp_period_cost_line_manager,mrp.period.cost.line manager,model_mrp_period_cost_line,mrp.group_mrp_manager,1,1,1,1
 access_mrp_period_cost_line_account_manager,mrp.period.cost.line account manager,model_mrp_period_cost_line,account.group_account_manager,1,1,1,1
 access_mrp_period_cost_line_user,mrp.period.cost.line user,model_mrp_period_cost_line,mrp.group_mrp_user,1,0,0,0
+access_mrp_period_cost_alloc_manager,mrp.period.cost.alloc manager,model_mrp_period_cost_alloc,mrp.group_mrp_manager,1,1,1,0
+access_mrp_period_cost_alloc_account_manager,mrp.period.cost.alloc account manager,model_mrp_period_cost_alloc,account.group_account_manager,1,1,1,0
+access_mrp_period_cost_alloc_user,mrp.period.cost.alloc user,model_mrp_period_cost_alloc,mrp.group_mrp_user,1,0,0,0
+access_mrp_period_cost_reverse_wizard,mrp.period.cost.reverse.wizard reverse,model_mrp_period_cost_reverse_wizard,group_period_cost_reverse,1,1,1,1
+access_mrp_period_cost_group,mrp.period.cost group,model_mrp_period_cost,group_period_cost_reverse,1,1,1,1
+access_mrp_period_cost_line_group,mrp.period.cost.line group,model_mrp_period_cost_line,group_period_cost_reverse,1,1,1,1
+access_mrp_period_cost_alloc_group,mrp.period.cost.alloc group,model_mrp_period_cost_alloc,group_period_cost_reverse,1,1,1,0

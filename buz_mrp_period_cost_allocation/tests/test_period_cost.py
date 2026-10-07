@@ -12,6 +12,8 @@ class TestMrpPeriodCost(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
+        cls.env.user.groups_id = [(4, cls.env.ref(
+            'buz_mrp_period_cost_allocation.group_period_cost_reverse').id)]
         cls.wc = cls.env['mrp.workcenter'].create({
             'name': 'WC Test',
             'dl_per_hour': 100.0,
@@ -265,3 +267,107 @@ class TestMrpPeriodCost(TransactionCase):
         self.assertAlmostEqual(
             sum(base.mapped('remaining_value')) - before, sum(svls.mapped('value')), 2)
         self.assertTrue(all(s.stock_valuation_layer_id for s in svls))
+
+    # ---- reverse & reset to draft ---------------------------------------
+    def _posted(self):
+        p = self._loaded()
+        p.action_preview_allocation()
+        p.action_post()
+        return p
+
+    def _base_layers(self, p):
+        return p.line_ids.mo_id.move_finished_ids.stock_valuation_layer_ids.filtered(
+            lambda l: l.quantity > 0)
+
+    def test_reverse_restores_valuation_and_draft(self):
+        p = self._loaded()
+        p.action_preview_allocation()
+        base = self._base_layers(p)
+        before = sum(base.mapped('remaining_value'))
+        p.action_post()
+        self.assertNotAlmostEqual(sum(base.mapped('remaining_value')), before, 2)
+        p.action_reverse_to_draft('wrong actual cost')
+        self.assertEqual(p.state, 'draft')
+        self.assertAlmostEqual(sum(base.mapped('remaining_value')), before, 2)
+        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), 0.0, 2)
+        self.assertTrue(p.message_ids.filtered(lambda m: 'wrong actual cost' in (m.body or '')))
+
+    def test_reverse_then_repost(self):
+        p = self._posted()
+        p.action_reverse_to_draft('fix numbers')
+        p.actual_dl = 2000.0
+        p.action_preview_allocation()
+        p.action_post()
+        self.assertEqual(p.state, 'posted')
+        expected = sum(p.line_ids.mapped('allocated_inventory_total'))
+        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), expected, 2)
+        # a second reversal only touches the new allocations
+        p.action_reverse_to_draft('again')
+        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), 0.0, 2)
+
+    def test_reverse_blocked_when_stock_sold(self):
+        p = self._posted()
+        base = self._base_layers(p)[:1]
+        base.remaining_qty = base.remaining_qty - 1.0   # simulate a sale
+        with self.assertRaises(UserError):
+            p.action_reverse_to_draft('too late')
+        self.assertEqual(p.state, 'posted')
+        self.assertTrue(self._svls(p))
+
+    def test_reverse_requires_reason_and_posted(self):
+        p = self._posted()
+        with self.assertRaises(UserError):
+            p.action_reverse_to_draft('   ')
+        with self.assertRaises(UserError):
+            self._period().action_reverse_to_draft('not posted')
+
+    def test_reverse_requires_reverse_group(self):
+        p = self._posted()
+        user = self.env['res.users'].create({
+            'name': 'MRP only', 'login': 'mrp_only_mpc',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id,
+                                  self.env.ref('mrp.group_mrp_manager').id])],
+        })
+        group = self.env.ref('buz_mrp_period_cost_allocation.group_period_cost_reverse')
+        self.assertFalse(user.has_group('buz_mrp_period_cost_allocation.group_period_cost_reverse'))
+        with self.assertRaises(UserError):
+            p.with_user(user).action_reverse_to_draft('no rights')
+        self.assertEqual(p.state, 'posted')
+        # with the group (and nothing on valuation layers) it works
+        user.groups_id = [(4, group.id)]
+        p.with_user(user).action_reverse_to_draft('allowed')
+        self.assertEqual(p.state, 'draft')
+        self.assertFalse(any(self._svls(p).mapped('value')) and
+                         sum(self._svls(p).mapped('value')))
+
+    def test_wizard_access_for_group(self):
+        group = self.env.ref('buz_mrp_period_cost_allocation.group_period_cost_reverse')
+        user = self.env['res.users'].create({
+            'name': 'Reverser', 'login': 'mpc_reverser',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id,
+                                  self.env.ref('mrp.group_mrp_manager').id, group.id])],
+        })
+        p = self._posted()
+        wiz = self.env['mrp.period.cost.reverse.wizard'].with_user(user).create(
+            {'period_id': p.id, 'reason': 'wizard access'})
+        wiz.action_confirm()
+        self.assertEqual(p.state, 'draft')
+
+    def test_reverse_wizard(self):
+        p = self._posted()
+        self.env['mrp.period.cost.reverse.wizard'].create(
+            {'period_id': p.id, 'reason': 'via wizard'}).action_confirm()
+        self.assertEqual(p.state, 'draft')
+
+    def test_reverse_blocked_for_untracked_legacy_post(self):
+        p = self._posted()
+        self.env['mrp.period.cost.alloc'].search([('period_id', '=', p.id)]).unlink()
+        with self.assertRaises(UserError):
+            p.action_reverse_to_draft('legacy')
+        self.assertEqual(p.state, 'posted')
+        self.assertTrue(self._svls(p))
+
+    def test_menu_visible_only_to_group(self):
+        group = self.env.ref('buz_mrp_period_cost_allocation.group_period_cost_reverse')
+        menu = self.env.ref('buz_mrp_period_cost_allocation.menu_mrp_period_cost')
+        self.assertEqual(menu.groups_id, group)
