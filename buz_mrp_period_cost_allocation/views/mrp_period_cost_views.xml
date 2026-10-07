@@ -129,5 +129,6 @@
               name="Period Cost Allocation"
               parent="mrp.menu_mrp_reporting"
               action="action_mrp_period_cost"
+              groups="group_period_cost_reverse"
               sequence="100"/>
 </odoo>

@@ -366,3 +366,8 @@ class TestMrpPeriodCost(TransactionCase):
             p.action_reverse_to_draft('legacy')
         self.assertEqual(p.state, 'posted')
         self.assertTrue(self._svls(p))
+
+    def test_menu_visible_only_to_group(self):
+        group = self.env.ref('buz_mrp_period_cost_allocation.group_period_cost_reverse')
+        menu = self.env.ref('buz_mrp_period_cost_allocation.menu_mrp_period_cost')
+        self.assertEqual(menu.groups_id, group)
