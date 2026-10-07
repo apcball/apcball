@@ -18,6 +18,12 @@
         'views/landed_cost_report_views.xml',
         'wizard/landed_cost_report_wizard_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'buz_landed_cost_report/static/src/js/lc_export_button.js',
+            'buz_landed_cost_report/static/src/xml/lc_export_button.xml',
+        ],
+    },
     'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,

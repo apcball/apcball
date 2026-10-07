@@ -99,9 +99,17 @@ class TestLandedCostReport(TransactionCase):
         self.assertFalse(audit.alloc_mismatch)
         self.assertFalse(audit.svl_over)
 
-    def test_wizard_default_excludes_draft(self):
-        wiz = self.env['buz.landed.cost.report.wizard'].create({})
-        self.assertIn(('state', '=', 'done'), wiz._get_domain())
+    def test_wizard_domain_from_view(self):
+        import json
+        wiz = self.env['buz.landed.cost.report.wizard'].create({
+            'domain_json': json.dumps([['state', '=', 'done']])})
+        self.assertEqual(wiz._get_domain(), [('state', '=', 'done')])
+
+    def test_wizard_invalid_domain(self):
+        from odoo.exceptions import UserError
+        wiz = self.env['buz.landed.cost.report.wizard'].create({'domain_json': '{bad'})
+        with self.assertRaises(UserError):
+            wiz._get_domain()
 
     def test_consumed_before_lc_is_not_a_defect(self):
         """Odoo capitalises LC only for stock on hand: 4 of 10 sold -> SVL = 60%."""
@@ -161,11 +169,12 @@ class TestLandedCostReport(TransactionCase):
         det = self.env['buz.landed.cost.report.detail'].search([('landed_cost_id', '=', lc.id)])
         self.assertEqual(det.cost_type_id, freight)
 
-    def _export_xlsx(self, wizard):
+    def _export_xlsx(self, wizard, sheets=None):
         report = self.env.ref('buz_landed_cost_report.action_report_landed_cost_xlsx')
         content, _fmt = report._render_xlsx(
             report.report_name, wizard.ids,
-            {'wizard_id': wizard.id, 'domain': wizard._get_domain()})
+            {'domain': wizard._get_domain(),
+             'sheets': sheets or ['summary', 'breakdown', 'audit']})
         return content
 
     def test_xlsx_export_styled(self):
@@ -174,7 +183,9 @@ class TestLandedCostReport(TransactionCase):
         lc = self._make_lc([50.0, 25.0])
         lc.button_validate()
         self.env.flush_all()
-        wiz = self.env['buz.landed.cost.report.wizard'].create({'landed_cost_ids': [(6, 0, lc.ids)]})
+        import json
+        wiz = self.env['buz.landed.cost.report.wizard'].create({
+            'domain_json': json.dumps([['landed_cost_id', 'in', lc.ids]])})
         wb = load_workbook(io.BytesIO(self._export_xlsx(wiz)))
         self.assertEqual(wb.sheetnames, ['Summary', 'Cost Breakdown', 'Audit'])
         ws = wb['Summary']
@@ -187,6 +198,14 @@ class TestLandedCostReport(TransactionCase):
         self.assertIn('SUBTOTAL', str(ws['I8'].value))
 
     def test_xlsx_export_empty(self):
+        import json
         wiz = self.env['buz.landed.cost.report.wizard'].create({
-            'date_from': '1990-01-01', 'date_to': '1990-01-02'})
+            'domain_json': json.dumps([['date', '<=', '1990-01-02']])})
         self.assertTrue(self._export_xlsx(wiz))
+
+    def test_xlsx_export_sheet_selection(self):
+        import io
+        from openpyxl import load_workbook
+        wiz = self.env['buz.landed.cost.report.wizard'].create({})
+        wb = load_workbook(io.BytesIO(self._export_xlsx(wiz, sheets=['audit'])))
+        self.assertEqual(wb.sheetnames, ['Audit'])

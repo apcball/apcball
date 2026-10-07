@@ -4,22 +4,20 @@
         <field name="name">buz.landed.cost.report.wizard.form</field>
         <field name="model">buz.landed.cost.report.wizard</field>
         <field name="arch" type="xml">
-            <form string="Landed Cost Report">
+            <form string="Export Landed Cost Report">
+                <field name="domain_json" invisible="1"/>
                 <group>
-                    <group>
-                        <field name="date_from"/>
-                        <field name="date_to"/>
-                        <field name="state"/>
+                    <group string="Sheets">
+                        <field name="include_summary"/>
+                        <field name="include_breakdown"/>
+                        <field name="include_audit"/>
                     </group>
-                    <group>
-                        <field name="product_categ_id"/>
-                        <field name="partner_id"/>
-                        <field name="warehouse_id"/>
-                        <field name="landed_cost_ids" widget="many2many_tags"/>
+                    <group string="Scope">
+                        <field name="record_count"/>
                     </group>
                 </group>
+                <div class="text-muted">The export uses the filters currently applied in the report view.</div>
                 <footer>
-                    <button name="action_open_pivot" type="object" string="Pivot Preview" class="btn-secondary"/>
                     <button name="action_export_excel" type="object" string="Export Excel" class="btn-primary"/>
                     <button string="Cancel" special="cancel"/>
                 </footer>
@@ -27,16 +25,10 @@
         </field>
     </record>
 
-    <record id="action_landed_cost_report_wizard" model="ir.actions.act_window">
-        <field name="name">Landed Cost Report</field>
+    <record id="action_lc_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export Landed Cost Report</field>
         <field name="res_model">buz.landed.cost.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-
-    <menuitem id="menu_landed_cost_report"
-              name="Landed Cost Report"
-              parent="stock.menu_warehouse_report"
-              action="action_landed_cost_report_wizard"
-              sequence="100"/>
 </odoo>

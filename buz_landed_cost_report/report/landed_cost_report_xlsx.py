@@ -40,23 +40,9 @@ class LandedCostXlsx(models.AbstractModel):
             return cache[key]
         return fmt
 
-    def _filter_text(self, wizard):
-        parts = []
-        if wizard:
-            if wizard.date_from or wizard.date_to:
-                parts.append('Date: %s - %s' % (
-                    fields.Date.to_string(wizard.date_from) if wizard.date_from else '...',
-                    fields.Date.to_string(wizard.date_to) if wizard.date_to else '...'))
-            parts.append('Status: %s' % {
-                'done': 'Posted', 'draft': 'Draft', 'all': 'All'}.get(wizard.state, wizard.state))
-            if wizard.partner_id:
-                parts.append('Vendor: %s' % wizard.partner_id.name)
-            if wizard.warehouse_id:
-                parts.append('Warehouse: %s' % wizard.warehouse_id.name)
-            if wizard.product_categ_id:
-                parts.append('Category: %s' % wizard.product_categ_id.display_name)
-            if wizard.landed_cost_ids:
-                parts.append('Landed Costs: %s' % ', '.join(wizard.landed_cost_ids.mapped('name')))
+    def _filter_text(self, domain):
+        parts = ['%s %s %s' % (leaf[0], leaf[1], leaf[2])
+                 for leaf in domain if isinstance(leaf, (list, tuple)) and len(leaf) == 3]
         return '  |  '.join(parts) or 'No filter'
 
     def _write_title(self, sheet, fmt, title, filter_text, ncols):
@@ -158,8 +144,8 @@ class LandedCostXlsx(models.AbstractModel):
     def generate_xlsx_report(self, workbook, data, wizards):
         domain = data.get('domain', [])
         lines = self.env['buz.landed.cost.report'].search(domain, order='doc_no, product_id, id')
-        wizard = wizards[:1] if wizards and wizards._name == 'buz.landed.cost.report.wizard' else None
-        filter_text = self._filter_text(wizard)
+        sheets = data.get('sheets') or ['summary', 'breakdown', 'audit']
+        filter_text = self._filter_text(domain)
         fmt = self._make_fmt_getter(workbook)
 
         # one column per cost type (configurable); untyped lines go to 'Other'
@@ -197,14 +183,15 @@ class LandedCostXlsx(models.AbstractModel):
         widths = [16, 12, 11, 16, 16, 24, 14, 34, 10, 14, 15] + [14] * n_types \
             + [15, 15, 15, 14, 15, 16]
         total_cols = {8, 10} | set(range(first_type, landed_col + 2)) | {landed_col + 3, landed_col + 4}
-        sheet = workbook.add_worksheet('Summary')
-        self._write_title(sheet, fmt, 'Landed Cost Report - Summary', filter_text, len(headers))
-        self._write_table(
-            sheet, fmt, headers, rows, col_types, widths,
-            total_cols=total_cols, highlight_cols={landed_col + 1, landed_col + 2},
-            warn_cols={landed_col + 4}, freeze_cols=2,
-            bands=[(8, 10, 'Base'), (first_type, landed_col - 1, 'Landed Cost by Type'),
-                   (landed_col, landed_col + 2, 'Result'), (landed_col + 3, landed_col + 4, 'Valuation')])
+        if 'summary' in sheets:
+            sheet = workbook.add_worksheet('Summary')
+            self._write_title(sheet, fmt, 'Landed Cost Report - Summary', filter_text, len(headers))
+            self._write_table(
+                sheet, fmt, headers, rows, col_types, widths,
+                total_cols=total_cols, highlight_cols={landed_col + 1, landed_col + 2},
+                warn_cols={landed_col + 4}, freeze_cols=2,
+                bands=[(8, 10, 'Base'), (first_type, landed_col - 1, 'Landed Cost by Type'),
+                       (landed_col, landed_col + 2, 'Result'), (landed_col + 3, landed_col + 4, 'Valuation')])
 
         # SHEET 2: COST BREAKDOWN (cost line x product)
         headers_d = [
@@ -216,12 +203,13 @@ class LandedCostXlsx(models.AbstractModel):
             d.cost_line_name, d.cost_type_id.name, d.split_method, d.account_code,
             d.account_name, d.amount,
         ] for line in lines for d in line.detail_ids]
-        sheet_d = workbook.add_worksheet('Cost Breakdown')
-        self._write_title(sheet_d, fmt, 'Landed Cost Report - Cost Breakdown', filter_text, len(headers_d))
-        self._write_table(
-            sheet_d, fmt, headers_d, rows_d,
-            ['text'] * 8 + ['num'], [16, 18, 36, 28, 16, 14, 14, 30, 16],
-            total_cols={8}, freeze_cols=1)
+        if 'breakdown' in sheets:
+            sheet_d = workbook.add_worksheet('Cost Breakdown')
+            self._write_title(sheet_d, fmt, 'Landed Cost Report - Cost Breakdown', filter_text, len(headers_d))
+            self._write_table(
+                sheet_d, fmt, headers_d, rows_d,
+                ['text'] * 8 + ['num'], [16, 18, 36, 28, 16, 14, 14, 30, 16],
+                total_cols={8}, freeze_cols=1)
 
         # SHEET 3: AUDIT (per landed cost, same LC set as the filter)
         headers_a = [
@@ -235,10 +223,11 @@ class LandedCostXlsx(models.AbstractModel):
             a.svl_total, a.alloc_diff, a.uncapitalised, a.move_count, a.svl_count,
             '✓' if a.has_account_move else '✗',
         ] for a in audits]
-        sheet_a = workbook.add_worksheet('Audit')
-        self._write_title(sheet_a, fmt, 'Landed Cost Report - Audit', filter_text, len(headers_a))
-        self._write_table(
-            sheet_a, fmt, headers_a, rows_a,
-            ['text', 'date', 'center', 'num', 'num', 'num', 'num', 'num', 'qty', 'qty', 'center'],
-            [16, 12, 11, 15, 15, 15, 18, 16, 9, 11, 14],
-            total_cols={3, 4, 5, 6, 7}, warn_cols={6}, freeze_cols=1)
+        if 'audit' in sheets:
+            sheet_a = workbook.add_worksheet('Audit')
+            self._write_title(sheet_a, fmt, 'Landed Cost Report - Audit', filter_text, len(headers_a))
+            self._write_table(
+                sheet_a, fmt, headers_a, rows_a,
+                ['text', 'date', 'center', 'num', 'num', 'num', 'num', 'num', 'qty', 'qty', 'center'],
+                [16, 12, 11, 15, 15, 15, 18, 16, 9, 11, 14],
+                total_cols={3, 4, 5, 6, 7}, warn_cols={6}, freeze_cols=1)

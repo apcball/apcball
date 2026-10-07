@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_landed_cost_report.ListView.Buttons" t-inherit="web.ListView.Buttons" t-inherit-mode="primary">
+        <xpath expr="//div[hasclass('o_list_buttons')]" position="inside">
+            <button type="button" class="btn btn-secondary o_lc_export_excel" t-on-click="onClickExportExcel">
+                Export Excel
+            </button>
+        </xpath>
+    </t>
+</templates>
