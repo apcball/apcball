@@ -291,6 +291,14 @@ class TestMrpPeriodCost(TransactionCase):
             if 'warehouse_id' in Layer._fields:
                 vals['warehouse_id'] = self.env['stock.warehouse'].search([], limit=1).id
             positions |= Layer.create(vals)
+            out_vals = {
+                'company_id': b.company_id.id, 'product_id': b.product_id.id,
+                'quantity': -b.remaining_qty, 'value': -b.remaining_value,
+                'description': 'test transfer out',
+            }
+            if 'warehouse_id' in Layer._fields:
+                out_vals['warehouse_id'] = b.warehouse_id.id
+            Layer.create(out_vals)
             b.write({'remaining_qty': 0.0, 'remaining_value': 0.0})
         return base, positions
 
@@ -308,6 +316,23 @@ class TestMrpPeriodCost(TransactionCase):
         self.assertAlmostEqual(sum(positions.mapped('remaining_value')) - before, total, 2)
         if 'origin_remaining_value' in base._fields:
             self.assertTrue(all(b.origin_remaining_value for b in base))
+
+    def test_fifo_replay_agrees_after_post(self):
+        """The recalculation wizard replays qty-0 layers per warehouse; it must not undo our uplift."""
+        p = self._loaded()
+        base, positions = self._simulate_transfer(p)
+        p.action_preview_allocation()
+        p.action_post()
+        Layer = self.env['stock.valuation.layer']
+        self.env.flush_all()
+        for adj in self._svls(p):
+            self.assertEqual(adj.warehouse_id, adj.stock_valuation_layer_id.warehouse_id)
+        for product in p.line_ids.product_id:
+            for wh in (base | positions).mapped('warehouse_id'):
+                result = Layer._fifo_replay_remaining(product.id, wh.id, self.company.id)
+                for layer in Layer.browse(list(result['expected'])):
+                    qty, value = result['expected'][layer.id]
+                    self.assertAlmostEqual(layer.remaining_value, value, 2, "layer %s" % layer.id)
 
     def test_reverse_after_transfer_restores_values(self):
         p = self._loaded()

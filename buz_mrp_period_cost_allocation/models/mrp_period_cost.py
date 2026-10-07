@@ -370,40 +370,40 @@ class MrpPeriodCost(models.Model):
         return origin_layers, position_layers | origin_layers | base_layers
 
     def _post_move_adjustment(self, line, move, value, origin_layers, target_layers):
-        """Capitalise `value` on the stock still held, one adjustment layer per warehouse."""
+        """Capitalise `value` on the stock still held, one adjustment layer per receiving layer.
+
+        Each qty-0 layer points (stock_valuation_layer_id) at the layer whose
+        remaining_value it topped up and carries that layer's warehouse. The FIFO
+        replay applies a qty-0 layer to its target inside the target's warehouse
+        pool, so a layer pointing at another warehouse's layer would be ignored
+        and the recalculation wizard would wipe the uplift.
+        """
         Layer = self.env['stock.valuation.layer']
         distribution = self._add_remaining_value(target_layers, value)
         if not distribution:
             return
-        base_layer = move.stock_valuation_layer_ids.filtered(lambda l: l.quantity > 0)[:1]
         origin_layer = origin_layers[:1]
-        has_wh = 'warehouse_id' in Layer._fields
-        groups = {}
-        for layer, amount, qty in distribution:
-            key = layer.warehouse_id.id if has_wh else False
-            groups.setdefault(key, []).append((layer, amount, qty))
-
         is_automated = move.product_id.valuation == 'real_time'
-        for warehouse_id, items in groups.items():
+        for layer, amount, qty in distribution:
             svl_vals = {
                 'company_id': self.company_id.id,
                 'product_id': line.product_id.id,
                 'stock_move_id': move.id,
-                'stock_valuation_layer_id': base_layer.id,
+                'stock_valuation_layer_id': layer.id,
                 'quantity': 0,
-                'value': sum(a for _l, a, _q in items),
+                'value': amount,
                 'description': _('Period Cost Allocation: %s - %s') % (self.name, line.mo_id.name),
             }
-            if has_wh and warehouse_id:
-                svl_vals['warehouse_id'] = warehouse_id
+            if 'warehouse_id' in Layer._fields and layer.warehouse_id:
+                svl_vals['warehouse_id'] = layer.warehouse_id.id
             if 'origin_valuation_layer_id' in Layer._fields and origin_layer:
                 svl_vals['origin_valuation_layer_id'] = origin_layer.id
             if 'accounting_date' in Layer._fields:
                 svl_vals['accounting_date'] = self._accounting_datetime()
             svl = Layer.create(svl_vals)
-            self._record_allocations(svl, items, origin_layer)
+            self._record_allocations(svl, [(layer, amount, qty)], origin_layer)
             if is_automated and not self.inventory_only:
-                self._create_accounting_entry(move, svl.value, svl)
+                self._create_accounting_entry(move, amount, svl)
 
     @api.model
     def _add_remaining_value(self, layers, value):
