@@ -367,17 +367,19 @@ class MrpPeriodCost(models.Model):
         self.ensure_one()
         if self.state != 'posted':
             raise UserError(_("Only a posted period cost can be reversed."))
-        if not self.env.user.has_group('account.group_account_manager'):
-            raise UserError(_("Only Accounting Managers can reverse a posted period cost."))
+        if not self.env.user.has_group('buz_mrp_period_cost_allocation.group_period_cost_reverse'):
+            raise UserError(_("You are not allowed to reverse a posted period cost "
+                              "(group 'Period Cost: Reverse Posted' required)."))
         if not (reason or '').strip():
             raise UserError(_("Please give a reason for the reversal."))
 
-        allocs = self.env['mrp.period.cost.alloc'].search([
+        record = self.sudo()
+        allocs = self.env['mrp.period.cost.alloc'].sudo().search([
             ('period_id', '=', self.id), ('reversed', '=', False)])
-        if not allocs and not self.env['mrp.period.cost.alloc'].search_count(
+        if not allocs and not self.env['mrp.period.cost.alloc'].sudo().search_count(
                 [('period_id', '=', self.id)]):
             # Posted before allocations were recorded: layers cannot be traced.
-            legacy = self.env['stock.valuation.layer'].search([
+            legacy = self.env['stock.valuation.layer'].sudo().search([
                 ('description', 'like', 'Period Cost Allocation: %s - %%' % self.name)])
             if legacy:
                 raise UserError(_(
@@ -398,9 +400,15 @@ class MrpPeriodCost(models.Model):
 
         for alloc in allocs:
             alloc._reverse()
-        self.write({'state': 'draft'})
-        self.message_post(body=_("Reversed and reset to draft by %(user)s. Reason: %(reason)s",
-                                 user=self.env.user.display_name, reason=reason))
+        record.write({'state': 'draft'})
+        user = self.env.user
+        # A user without an email would make message_post raise and roll the whole reversal back.
+        self.message_post(
+            body=_("Reversed and reset to draft by %(user)s. Reason: %(reason)s",
+                   user=user.display_name, reason=reason),
+            author_id=user.partner_id.id,
+            email_from=user.email_formatted or self.env.company.email_formatted
+            or 'noreply@localhost')
         return True
 
     def action_cancel(self):

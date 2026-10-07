@@ -12,6 +12,8 @@ class TestMrpPeriodCost(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
+        cls.env.user.groups_id = [(4, cls.env.ref(
+            'buz_mrp_period_cost_allocation.group_period_cost_reverse').id)]
         cls.wc = cls.env['mrp.workcenter'].create({
             'name': 'WC Test',
             'dl_per_hour': 100.0,
@@ -319,17 +321,37 @@ class TestMrpPeriodCost(TransactionCase):
         with self.assertRaises(UserError):
             self._period().action_reverse_to_draft('not posted')
 
-    def test_reverse_requires_accounting_manager(self):
+    def test_reverse_requires_reverse_group(self):
         p = self._posted()
         user = self.env['res.users'].create({
             'name': 'MRP only', 'login': 'mrp_only_mpc',
             'groups_id': [(6, 0, [self.env.ref('base.group_user').id,
                                   self.env.ref('mrp.group_mrp_manager').id])],
         })
-        self.assertFalse(user.has_group('account.group_account_manager'))
+        group = self.env.ref('buz_mrp_period_cost_allocation.group_period_cost_reverse')
+        self.assertFalse(user.has_group('buz_mrp_period_cost_allocation.group_period_cost_reverse'))
         with self.assertRaises(UserError):
             p.with_user(user).action_reverse_to_draft('no rights')
         self.assertEqual(p.state, 'posted')
+        # with the group (and nothing on valuation layers) it works
+        user.groups_id = [(4, group.id)]
+        p.with_user(user).action_reverse_to_draft('allowed')
+        self.assertEqual(p.state, 'draft')
+        self.assertFalse(any(self._svls(p).mapped('value')) and
+                         sum(self._svls(p).mapped('value')))
+
+    def test_wizard_access_for_group(self):
+        group = self.env.ref('buz_mrp_period_cost_allocation.group_period_cost_reverse')
+        user = self.env['res.users'].create({
+            'name': 'Reverser', 'login': 'mpc_reverser',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id,
+                                  self.env.ref('mrp.group_mrp_manager').id, group.id])],
+        })
+        p = self._posted()
+        wiz = self.env['mrp.period.cost.reverse.wizard'].with_user(user).create(
+            {'period_id': p.id, 'reason': 'wizard access'})
+        wiz.action_confirm()
+        self.assertEqual(p.state, 'draft')
 
     def test_reverse_wizard(self):
         p = self._posted()

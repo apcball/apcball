@@ -16,6 +16,7 @@
     'author': 'APCBALL',
     'depends': ['mrp', 'stock_account', 'buz_mrp_workcenter_cost_breakdown', 'report_xlsx'],
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',
         'report/mrp_period_cost_report_actions.xml',
