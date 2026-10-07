@@ -23,6 +23,8 @@ class LoanReturnExportXlsx(models.AbstractModel):
         'จำนวนยืม',
         'จำนวนเหลือ',
         'วันครบกำหนด',
+        'ที่ส่ง',
+        'Destination Location',
     ]
     _RETURN_HEADERS = [
         'ลำดับ',
@@ -36,7 +38,6 @@ class LoanReturnExportXlsx(models.AbstractModel):
         'อ้างอิง',
         'วันที่ อ้างอิง',
         'พนักงานขาย',
-        'เลขที่ใบรับคืนสินค้ายืม',
         'วันที่ใบรับคืน',
         'สถานะ',
         'วันที่ดำเนินการ',
@@ -77,7 +78,7 @@ class LoanReturnExportXlsx(models.AbstractModel):
             date_format,
             numeric_columns={0, 7, 8},
             date_columns={2, 9},
-            widths=[10, 22, 14, 18, 36, 20, 48, 14, 14, 16],
+            widths=[10, 22, 14, 18, 36, 20, 48, 14, 14, 16, 58, 40],
         )
         self._write_sheet(
             workbook,
@@ -89,8 +90,8 @@ class LoanReturnExportXlsx(models.AbstractModel):
             number_format,
             date_format,
             numeric_columns={0, 5},
-            date_columns={2, 9, 12, 14},
-            widths=[10, 22, 14, 20, 48, 12, 18, 36, 22, 16, 24, 26, 16, 14, 16, 24, 42],
+            date_columns={2, 9, 11, 13},
+            widths=[10, 22, 14, 20, 48, 12, 18, 36, 22, 16, 24, 16, 14, 16, 24, 42],
         )
 
     @staticmethod

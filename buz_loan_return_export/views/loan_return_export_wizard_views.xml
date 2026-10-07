@@ -5,14 +5,16 @@
         <field name="model">buz.loan.return.export.wizard</field>
         <field name="arch" type="xml">
             <form string="ส่งออกรายงานยืม/คืนสินค้า">
+                <field name="company_id" invisible="1"/>
                 <group>
                     <group>
                         <field name="date_from"/>
                         <field name="date_to"/>
+                        <field name="picking_type_id"
+                               domain="[('company_id', 'in', [company_id, False])]"
+                               options="{'no_create': True, 'no_open': True}"/>
                     </group>
                     <group>
-                        <field name="partner_id"
-                               options="{'no_create': True, 'no_open': True}"/>
                         <field name="product_id"
                                options="{'no_create': True, 'no_open': True}"/>
                     </group>
