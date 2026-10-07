@@ -45,6 +45,7 @@
                         <field name="period_id"/>
                         <field name="date_from"/>
                         <field name="date_to"/>
+                        <field name="adjustment_date" string="วันที่ปรับต้นทุน (ปิดงวด)"/>
                         <field name="allocation_base"/>
                         <field name="line_count" string="จำนวน MO"/>
                     </group>

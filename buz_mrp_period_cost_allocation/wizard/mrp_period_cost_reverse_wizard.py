@@ -21,6 +21,7 @@ class MrpPeriodCostPostWizard(models.TransientModel):
     period_id = fields.Many2one('mrp.period.cost', required=True, readonly=True)
     date_from = fields.Date(related='period_id.date_from')
     date_to = fields.Date(related='period_id.date_to')
+    adjustment_date = fields.Date(related='period_id.adjustment_date')
     allocation_base = fields.Selection(related='period_id.allocation_base')
     line_count = fields.Integer(compute='_compute_summary')
     total_variance = fields.Float(compute='_compute_summary', digits='Product Price')
@@ -42,10 +43,13 @@ class MrpPeriodCostPostWizard(models.TransientModel):
             wiz.sold_line_count = len(lines.filtered(
                 lambda l: l.qty_on_hand < l.quantity_produced))
             warnings = []
+            lock_warning = period._lock_date_warning()
+            if lock_warning:
+                warnings.append(lock_warning)
             if not wiz.total_inventory:
                 warnings.append(_("No variance will be added to inventory: all produced stock has been sold or issued, or the variance is zero."))
             if wiz.sold_line_count:
-                warnings.append(_("%s MO(s) have already been partly or fully sold. Only the stock still on hand receives the variance; the rest is not posted.", wiz.sold_line_count))
+                warnings.append(_("%s MO(s) have already been partly or fully sold. Only stock still held (including stock transferred between warehouses) receives the variance; the sold share is report-only and not posted.", wiz.sold_line_count))
             wiz.warning_text = '\n'.join('- %s' % w for w in warnings)
 
     def action_confirm(self):
