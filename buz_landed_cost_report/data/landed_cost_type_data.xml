@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="cost_type_expense" model="buz.landed.cost.type">
+        <field name="name">Expense</field>
+        <field name="code">expense</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="cost_type_labor" model="buz.landed.cost.type">
+        <field name="name">Labor</field>
+        <field name="code">labor</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="cost_type_tax" model="buz.landed.cost.type">
+        <field name="name">Tax</field>
+        <field name="code">tax</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="cost_type_transit" model="buz.landed.cost.type">
+        <field name="name">Transit</field>
+        <field name="code">transit</field>
+        <field name="sequence">40</field>
+    </record>
+</odoo>

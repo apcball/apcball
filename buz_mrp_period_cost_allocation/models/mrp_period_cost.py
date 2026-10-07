@@ -75,11 +75,18 @@ class MrpPeriodCost(models.Model):
     
     line_ids = fields.One2many('mrp.period.cost.line', 'period_id', string='Cost Lines')
 
-    @api.model
-    def create(self, vals):
-        if vals.get('name', _('New')) == _('New'):
-            vals['name'] = self.env['ir.sequence'].next_by_code('mrp.period.cost') or _('New')
-        return super(MrpPeriodCost, self).create(vals)
+    @api.constrains('date_from', 'date_to')
+    def _check_dates(self):
+        for rec in self:
+            if rec.date_from and rec.date_to and rec.date_from > rec.date_to:
+                raise ValidationError(_("From Date must not be after To Date."))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', _('New')) == _('New'):
+                vals['name'] = self.env['ir.sequence'].next_by_code('mrp.period.cost') or _('New')
+        return super().create(vals_list)
         
     @api.depends('inventory_only')
     def _compute_allow_accounting_entry(self):
@@ -276,16 +283,18 @@ class MrpPeriodCost(models.Model):
             if not self.valuation_adjustment_account_id:
                 raise UserError(_("Please select a Variance Account for accounting entries."))
              
-        # Create SVLs
+        # Create SVLs. Only the share of the variance that is still in stock
+        # (allocated_inventory_total) is capitalised; the share belonging to
+        # goods already sold/issued (allocated_period_expense) is reporting only.
         for line in self.line_ids:
-            adjustment_value = line.allocated_dl + line.allocated_idl + line.allocated_oh
+            adjustment_value = line.allocated_inventory_total
             if float_is_zero(adjustment_value, precision_digits=2):
                 continue
-                
+
             moves = line.mo_id.move_finished_ids.filtered(
                 lambda m: m.state == 'done' and m.product_id == line.product_id and m.product_uom_qty > 0
             )
-            
+
             total_qty_moved = sum(moves.mapped('product_uom_qty'))
             if total_qty_moved == 0:
                 continue
@@ -293,31 +302,54 @@ class MrpPeriodCost(models.Model):
             for move in moves:
                 move_ratio = move.product_uom_qty / total_qty_moved
                 move_adjustment = adjustment_value * move_ratio
-                
+
                 is_automated = move.product_id.valuation == 'real_time'
-                
+
+                # Like landed cost: link to the origin layer(s) and push the
+                # value into their remaining_value so FIFO unit cost follows.
+                base_layers = move.stock_valuation_layer_ids.filtered(lambda l: l.quantity > 0)
                 svl_vals = {
                     'company_id': self.company_id.id,
                     'product_id': line.product_id.id,
                     'stock_move_id': move.id,
+                    'stock_valuation_layer_id': base_layers[:1].id,
                     'quantity': 0,
                     'value': move_adjustment,
                     'description': _('Period Cost Allocation: %s - %s') % (self.name, line.mo_id.name),
                 }
-                
+
                 svl = self.env['stock.valuation.layer'].create(svl_vals)
-                
+                self._add_remaining_value(base_layers, move_adjustment)
+
                 if is_automated and not self.inventory_only:
                      self._create_accounting_entry(move, move_adjustment, svl)
-                
+
         self.state = 'posted'
         return True
 
+    @api.model
+    def _add_remaining_value(self, base_layers, value):
+        """Spread value over origin layers that still hold stock, by remaining_qty."""
+        in_stock = base_layers.filtered(lambda l: l.remaining_qty > 0)
+        total_qty = sum(in_stock.mapped('remaining_qty'))
+        if not total_qty:
+            return
+        for layer in in_stock:
+            layer.remaining_value += value * layer.remaining_qty / total_qty
+
     def action_cancel(self):
+        if any(rec.state == 'posted' for rec in self):
+            raise UserError(_("A posted period cost cannot be cancelled: its valuation adjustments are already booked."))
         self.write({'state': 'cancel'})
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_posted(self):
+        if any(rec.state == 'posted' for rec in self):
+            raise UserError(_("A posted period cost cannot be deleted: its valuation adjustments are already booked."))
 
     def action_draft(self):
         self.write({'state': 'draft'})
+        self.line_ids._check_mo_not_allocated()
 
     def _create_accounting_entry(self, move, value, svl):
         """Create a journal entry for the valuation adjustment."""
@@ -396,6 +428,23 @@ class MrpPeriodCostLine(models.Model):
     
     allocated_inventory_total = fields.Float(string='Inv Adjustment', readonly=True, digits='Product Price', help="Variance allocated to remaining inventory")
     allocated_period_expense = fields.Float(string='Period Expense', readonly=True, digits='Product Price', help="Variance allocated to Sold/Issued goods")
+
+    @api.constrains('mo_id', 'period_id')
+    def _check_mo_not_allocated(self):
+        """An MO can sit in only one non-cancelled period cost."""
+        for line in self:
+            if line.period_id.state == 'cancel':
+                continue
+            other = self.search([
+                ('mo_id', '=', line.mo_id.id),
+                ('id', '!=', line.id),
+                ('period_id', '!=', line.period_id.id),
+                ('period_id.state', '!=', 'cancel'),
+            ], limit=1)
+            if other:
+                raise ValidationError(_(
+                    "Manufacturing Order %(mo)s is already allocated in %(period)s.",
+                    mo=line.mo_id.display_name, period=other.period_id.display_name))
 
     @api.depends('quantity_produced', 'qty_on_hand')
     def _compute_qty_sold(self):
