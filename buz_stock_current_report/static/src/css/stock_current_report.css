@@ -244,6 +244,12 @@
     border: 1px solid #fecaca;
 }
 
+.o_kanban_view.stock_current_report_kanban .o_sc_badge_hot {
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+}
+
 /* ── Footer: Location ── */
 
 .o_kanban_view.stock_current_report_kanban .o_sc_footer {
@@ -336,3 +342,414 @@
 .o_form_view.o_stock_current_transfer_wizard .o_form_sheet { max-width: 900px; margin: 0 auto; }
 .o_form_view.o_stock_current_transfer_wizard .o_field_widget.o_list_editable { border: 1px solid #dee2e6; border-radius: 4px; }
 .o_form_view.o_stock_current_transfer_wizard .o_list_table tbody tr:hover { background-color: #f8f9fa; }
+/* ═══ Current Stock View (per product) — mockup styling ═══ */
+
+.o_kanban_view.stock_current_product_kanban .o_stock_card {
+    position: relative;
+    border-radius: 14px;
+    border-color: #eef2f7;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.o_kanban_view.stock_current_product_kanban .o_sc_status {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    z-index: 1;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 6px;
+}
+
+.o_kanban_view.stock_current_product_kanban .o_sc_status_in_stock { background: #10b981; }
+.o_kanban_view.stock_current_product_kanban .o_sc_status_active { background: #3b82f6; }
+
+.o_kanban_view.stock_current_product_kanban .o_sc_card_body {
+    padding-top: 36px;
+}
+
+.o_kanban_view.stock_current_product_kanban .o_sc_moves {
+    justify-content: flex-start;
+}
+
+.o_kanban_view.stock_current_product_kanban .o_sc_stock_label,
+.o_kanban_view.stock_current_product_kanban .o_sc_price_label {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Warehouse panel (native searchpanel) */
+.o_content:has(.stock_current_product_kanban) .o_search_panel,
+.o_content:has(.o_list_view .o_list_table) .o_search_panel {
+    background: #fff;
+}
+
+.o_search_panel .o_search_panel_category_value header.active {
+    background: #eaf1ff;
+    border-radius: 8px;
+}
+
+.o_search_panel .o_search_panel_category_value .o_search_panel_counter {
+    background: #eef2f7;
+    border-radius: 10px;
+    padding: 1px 8px;
+}
+
+/* ═══ Current Stock View — top area (search / title / sort / panel) ═══ */
+
+/* Search bar on its own full-width row, title + toolbar underneath.
+   Bootstrap's order-lg-* utilities are !important, so ours must be too. */
+.stock_current_product_kanban .o_control_panel_main {
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    align-content: flex-start;
+    row-gap: 14px;
+}
+
+.stock_current_product_kanban .o_control_panel_actions {
+    order: -1 !important;
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    justify-content: flex-start !important;
+}
+
+.stock_current_product_kanban .o_control_panel_breadcrumbs {
+    order: 0 !important;
+    height: auto !important;
+    flex: 1 1 auto;
+}
+
+.stock_current_product_kanban .o_control_panel_navigation {
+    order: 1 !important;
+    align-items: center;
+    flex: 0 1 auto !important;
+}
+
+/* Search box: one rounded pill (input + filter dropdown share the border) */
+.stock_current_product_kanban .o_cp_searchview {
+    max-width: 820px;
+    width: 100%;
+    flex-wrap: nowrap;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stock_current_product_kanban .o_cp_searchview:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.stock_current_product_kanban .o_searchview {
+    background: transparent;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    min-height: 46px;
+    padding-left: 14px;
+}
+
+.stock_current_product_kanban .o_searchview .o_searchview_icon {
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+
+.stock_current_product_kanban .o_searchview input.o_searchview_input {
+    font-size: 0.85rem;
+    color: #0f172a;
+}
+
+.stock_current_product_kanban .o_searchview input.o_searchview_input::placeholder {
+    color: #94a3b8;
+}
+
+/* Facet chip ("Can be Sold") */
+.stock_current_product_kanban .o_searchview .o_searchview_facet {
+    display: inline-flex;
+    align-items: stretch;
+    margin: 4px 6px 4px 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #eaf1ff;
+    border: 1px solid #cfe0ff;
+    color: #1d4ed8;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.stock_current_product_kanban .o_searchview .o_searchview_facet .o_searchview_facet_label {
+    background: #2563eb;
+    color: #fff;
+    padding: 0 9px;
+}
+
+.stock_current_product_kanban .o_searchview .o_searchview_facet .o_facet_values {
+    background: transparent;
+    color: inherit;
+    padding: 0 6px 0 8px;
+}
+
+.stock_current_product_kanban .o_searchview .o_searchview_facet .o_facet_remove {
+    background: transparent;
+    color: #64748b;
+    padding: 0 10px 0 2px;
+}
+
+.stock_current_product_kanban .o_searchview .o_searchview_facet .o_facet_remove:hover {
+    color: #dc2626;
+}
+
+/* Filter dropdown toggler, attached to the pill */
+.stock_current_product_kanban .o_cp_searchview .o_searchview_dropdown_toggler {
+    border: 0 !important;
+    border-left: 1px solid #eef2f7 !important;
+    border-radius: 0 !important;
+    background: transparent;
+    color: #64748b;
+    padding: 0 16px;
+    box-shadow: none !important;
+}
+
+.stock_current_product_kanban .o_cp_searchview .o_searchview_dropdown_toggler:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+/* Title block */
+.o_scp_title_icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #e8f0ff;
+    color: #2563eb;
+    font-size: 1.15rem;
+}
+
+.o_scp_title_th {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #0f172a;
+}
+
+.o_scp_title_en {
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+/* Sort dropdown (before the pager) */
+.o_scp_sort {
+    order: -1;
+    margin: 0;
+    padding: 6px 14px;
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.o_scp_sort_label {
+    font-size: 0.7rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.o_scp_sort_select {
+    border: 0;
+    background: transparent;
+    font-weight: 600;
+    color: #0f172a;
+    cursor: pointer;
+    outline: none;
+    padding-right: 4px;
+}
+
+/* Warehouse panel: header + "All" row */
+.o_content:has(.stock_current_product_kanban) .o_search_panel,
+.o_search_panel:has(+ .stock_current_product_kanban) {
+    background: #fff;
+}
+
+.o_search_panel .o_search_panel_section_header {
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+}
+
+.o_search_panel .o_search_panel_section_icon.fa-building {
+    font-size: 1.15rem;
+}
+
+.o_search_panel .o_search_panel_category_value header {
+    border-radius: 10px !important;
+    padding: 8px 10px !important;
+}
+
+.o_search_panel .o_search_panel_category_value header.active .o_search_panel_counter {
+    background: #2563eb;
+    color: #fff !important;
+}
+
+/* No-image placeholder */
+.o_kanban_view.stock_current_product_kanban .o_sc_photo img.o_sc_no_image {
+    object-fit: contain;
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+/* Smaller type for the per-product cards, sort box and warehouse list */
+.o_kanban_view.stock_current_product_kanban .o_sc_name { font-size: 0.75rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_name_eng { font-size: 0.63rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_default_code { font-size: 0.6rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_tags .badge { font-size: 0.53rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_price_value { font-size: 1rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_stock_value { font-size: 0.92rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_stock_uom { font-size: 0.6rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_price_label,
+.o_kanban_view.stock_current_product_kanban .o_sc_stock_label { font-size: 0.53rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_badge { font-size: 0.56rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_loc { font-size: 0.58rem; }
+.o_kanban_view.stock_current_product_kanban .o_sc_status { font-size: 0.58rem; }
+.o_scp_sort_select { font-size: 0.78rem; }
+.o_search_panel .o_search_panel_category_value .o_search_panel_label_title { font-size: 0.8rem; }
+.o_search_panel .o_search_panel_category_value .o_search_panel_counter { font-size: 0.68rem; }
+
+/* ═══ Compact top bar (search + title + sort / pager / view switch) ═══ */
+.stock_current_product_kanban .o_control_panel {
+    padding-top: 6px !important;
+    padding-bottom: 8px !important;
+    gap: 0 !important;
+}
+
+.stock_current_product_kanban .o_control_panel_main {
+    row-gap: 8px;
+}
+
+.stock_current_product_kanban .o_cp_searchview {
+    max-width: 640px;
+    border-radius: 10px;
+}
+
+.stock_current_product_kanban .o_searchview {
+    min-height: 34px;
+    padding-left: 10px;
+}
+
+.stock_current_product_kanban .o_searchview input.o_searchview_input {
+    font-size: 0.78rem;
+}
+
+.stock_current_product_kanban .o_searchview .o_searchview_facet {
+    margin: 2px 4px 2px 6px;
+    font-size: 0.7rem;
+}
+
+.stock_current_product_kanban .o_cp_searchview .o_searchview_dropdown_toggler {
+    padding: 0 12px;
+}
+
+.o_scp_title { gap: 10px !important; }
+
+.o_scp_title_icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    font-size: 0.95rem;
+}
+
+.o_scp_title_th { font-size: 0.95rem; }
+.o_scp_title_en { font-size: 0.65rem; }
+
+.o_scp_sort {
+    padding: 2px 10px;
+    border-radius: 9px;
+}
+
+.o_scp_sort_label { font-size: 0.65rem; }
+.o_scp_sort_select { font-size: 0.72rem; padding-top: 2px; padding-bottom: 2px; }
+
+.stock_current_product_kanban .o_cp_pager,
+.stock_current_product_kanban .o_pager_value,
+.stock_current_product_kanban .o_pager_limit {
+    font-size: 0.75rem;
+}
+
+.stock_current_product_kanban .o_control_panel_navigation .btn {
+    padding: 2px 8px;
+    font-size: 0.78rem;
+}
+
+/* ═══ Collapsible warehouse panel + 4-column card grid ═══ */
+.o_scp_panel_toggle {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    line-height: 1;
+}
+
+.o_scp_panel_toggle:hover {
+    background: #eaf1ff;
+    color: #2563eb;
+}
+
+.stock_current_product_kanban.o_scp_panel_collapsed .o_search_panel {
+    display: none !important;
+}
+
+/* Cards fill the width: at most 4 per row, fewer when too narrow */
+.o_kanban_view.stock_current_product_kanban .o_kanban_renderer.o_kanban_ungrouped {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(max(255px, calc((100% - 42px) / 4)), 1fr));
+    gap: 14px;
+    padding: 12px 16px !important;
+    align-content: start;
+}
+
+.o_kanban_view.stock_current_product_kanban .o_kanban_renderer .o_kanban_record {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+}
+
+.o_kanban_view.stock_current_product_kanban .o_kanban_renderer .o_kanban_ghost {
+    display: none !important;
+}
+
+/* Selected warehouse chip (visible while the panel is collapsed) */
+.o_scp_wh_chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 260px;
+    padding: 3px 12px;
+    border: 1px solid #cfe0ff;
+    border-radius: 999px;
+    background: #eaf1ff;
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.o_scp_wh_chip:hover {
+    background: #dbe8ff;
+}
+
+.o_scp_wh_chip_name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

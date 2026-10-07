@@ -97,8 +97,9 @@ class TestStockCurrentReport(TransactionCase):
     def test_export_wizard(self):
         """Test export wizard functionality"""
         try:
+            self.assertIn('stock.current.export.wizard', self.env,
+                          "Export wizard model should be registered")
             wizard_model = self.env['stock.current.export.wizard']
-            self.assertTrue(wizard_model, "Export wizard model should exist")
             
             # Create wizard instance
             wizard = wizard_model.create({
@@ -121,6 +122,19 @@ class TestStockCurrentReport(TransactionCase):
         except Exception as e:
             _logger.error(f"✗ Export action test failed: {e}")
             self.fail(f"Export action test failed: {e}")
+
+    def test_open_product_action_uses_product_template(self):
+        """Current Stock opens the template form, where Documents are shown."""
+        product = self.env['product.product'].create({
+            'name': 'Current Stock Action Test Product',
+        })
+        report = self.stock_report_model.new({'product_id': product.id})
+
+        action = report.action_open_product()
+
+        self.assertEqual(action['res_model'], 'product.template')
+        self.assertEqual(action['res_id'], product.product_tmpl_id.id)
+        self.assertEqual(action['view_mode'], 'form')
 
     def test_access_rights(self):
         """Test that access rights are properly configured"""
@@ -187,3 +201,12 @@ class TestStockCurrentReportIntegration(TransactionCase):
         except Exception as e:
             _logger.error(f"✗ Actions test failed: {e}")
             self.fail(f"Actions test failed: {e}")
+
+    def test_sidebar_tree_opens_product_template(self):
+        """The sidebar list must link to the product template Documents form."""
+        view = self.env.ref(
+            'buz_stock_current_report.view_stock_current_report_tree_with_sidebar'
+        )
+
+        self.assertIn('name="product_template_id"', view.arch_db)
+        self.assertNotIn('name="product_id"', view.arch_db)

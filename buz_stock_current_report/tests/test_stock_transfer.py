@@ -6,13 +6,16 @@ class TestStockCurrentTransfer(common.TransactionCase):
     
     def setUp(self):
         super().setUp()
-        
-        # Create test data
-        self.warehouse = self.env['stock.warehouse'].create({
-            'name': 'Test Warehouse',
-            'code': 'TW',
-            'manufacture_steps': 'mrp_one_step',
-        })
+
+        # Reuse an existing warehouse: creating one fails on databases where a
+        # previously installed mrp left a NOT NULL manufacture_steps column
+        # that is no longer in the registry.
+        self.warehouse = self.env['stock.warehouse'].search([], limit=1)
+        if not self.warehouse:
+            self.warehouse = self.env['stock.warehouse'].create({
+                'name': 'Test Warehouse',
+                'code': 'TW',
+            })
         
         self.location_src = self.warehouse.lot_stock_id
         self.location_dest = self.env['stock.location'].create({
@@ -21,12 +24,14 @@ class TestStockCurrentTransfer(common.TransactionCase):
             'location_id': self.warehouse.view_location_id.id
         })
         
-        self.product = self.env['product.product'].create({
-            'name': 'Test Product',
-            'type': 'product',
-            'uom_id': self.env.ref('uom.product_uom_unit').id,
-            'uom_po_id': self.env.ref('uom.product_uom_unit').id
-        })
+        # Reuse an existing storable product for the same reason as the
+        # warehouse: orphaned NOT NULL columns from uninstalled modules make
+        # ORM creates fail on this database.  Pick one without existing quants
+        # so the quantities asserted below are exact.
+        self.product = self.env['product.product'].search(
+            [('type', '=', 'product'), ('stock_quant_ids', '=', False)], limit=1)
+        if not self.product:
+            self.skipTest('No quant-free storable product available for transfer tests')
         
         # Create stock quant
         self.env['stock.quant']._update_available_quantity(
@@ -46,8 +51,8 @@ class TestStockCurrentTransfer(common.TransactionCase):
         
         wizard = self.env['stock.current.transfer.wizard'].with_context(
             default_selected_products=product_data
-        ).create({})
-        
+        ).create({'destination_location_id': self.location_dest.id})
+
         self.assertEqual(len(wizard.line_ids), 1)
         self.assertEqual(wizard.line_ids[0].product_id, self.product)
         self.assertEqual(wizard.line_ids[0].quantity_to_transfer, 50)
@@ -66,8 +71,8 @@ class TestStockCurrentTransfer(common.TransactionCase):
         
         wizard = self.env['stock.current.transfer.wizard'].with_context(
             default_selected_products=product_data
-        ).create({})
-        
+        ).create({'destination_location_id': self.location_dest.id})
+
         # Bypass the auto-capped default_get: write a quantity exceeding available stock
         line = wizard.line_ids[0]
         # Writing quantity_to_transfer > available_quantity triggers _check_quantity constraint
