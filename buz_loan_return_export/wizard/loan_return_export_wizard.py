@@ -23,7 +23,6 @@ class LoanReturnExportWizard(models.TransientModel):
         required=True,
         default=fields.Date.context_today,
     )
-    product_id = fields.Many2one('product.product', string='สินค้า')
     company_id = fields.Many2one(
         'res.company',
         required=True,
@@ -71,8 +70,6 @@ class LoanReturnExportWizard(models.TransientModel):
             ('date_done', '<', date_end),
             (document_field, '=like', prefix + '%'),
         ]
-        if self.product_id:
-            domain.append(('move_ids.product_id', '=', self.product_id.id))
         return domain
 
     def _get_report_data(self):
@@ -81,7 +78,6 @@ class LoanReturnExportWizard(models.TransientModel):
         picking_model = self.env['stock.picking']
 
         # ชีตยืมแสดง BG ทั้งหมดตามช่วงวันที่และ Operation Type ที่เลือก
-        # ตัวกรองลูกค้า/สินค้าใช้กับชีตคืนเท่านั้น
         loan_domain = [
             ('company_id', '=', self.company_id.id),
             ('state', '=', 'done'),
@@ -134,8 +130,6 @@ class LoanReturnExportWizard(models.TransientModel):
         for picking in loan_pickings:
             for move in picking.move_ids:
                 if move.state != 'done' or not move.product_id:
-                    continue
-                if self.product_id and move.product_id != self.product_id:
                     continue
                 key = (picking.name, move.product_id.id)
                 issued_quantity = move.product_uom._compute_quantity(
@@ -199,8 +193,6 @@ class LoanReturnExportWizard(models.TransientModel):
             for move in picking.move_ids.sorted(lambda item: (item.sequence, item.id)):
                 if move.state != 'done' or not move.product_id:
                     continue
-                if self.product_id and move.product_id != self.product_id:
-                    continue
                 product = move.product_id
                 if product.id not in product_rows:
                     product_rows[product.id] = {
@@ -240,8 +232,6 @@ class LoanReturnExportWizard(models.TransientModel):
             product_rows = {}
             for move in picking.move_ids.sorted(lambda item: (item.sequence, item.id)):
                 if move.state != 'done' or not move.product_id:
-                    continue
-                if self.product_id and move.product_id != self.product_id:
                     continue
                 product = move.product_id
                 if product.id not in product_rows:
