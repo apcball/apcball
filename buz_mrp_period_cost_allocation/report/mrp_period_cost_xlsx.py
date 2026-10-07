@@ -23,6 +23,8 @@ class MrpPeriodCostXlsx(models.AbstractModel):
             sheet.write(2, 1, str(o.date_from))
             sheet.write(2, 2, 'Date To', bold)
             sheet.write(2, 3, str(o.date_to))
+            sheet.write(2, 4, 'Adjustment Date', bold)
+            sheet.write(2, 5, str(o.adjustment_date))
             sheet.write(3, 0, 'Base', bold)
             sheet.write(3, 1, o.allocation_base)
             sheet.write(3, 2, 'Status', bold)

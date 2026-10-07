@@ -274,6 +274,34 @@ class TestMrpPeriodCost(TransactionCase):
             self.skipTest("accounting_date not installed")
         self.assertTrue(all(s.accounting_date.date() == p.date_to for s in svls))
 
+    def test_adjustment_date_defaults_to_date_to(self):
+        p = self._period()
+        self.assertEqual(p.adjustment_date, p.date_to)
+
+    def test_adjustment_date_not_before_date_from(self):
+        with self.assertRaises(ValidationError):
+            self._period(adjustment_date='2026-02-28')
+
+    def test_post_uses_adjustment_date(self):
+        p = self._loaded(adjustment_date='2026-04-15')
+        p.action_preview_allocation()
+        p.action_post()
+        svls = self._svls(p)
+        self.assertTrue(svls)
+        if 'accounting_date' in svls._fields:
+            self.assertTrue(all(s.accounting_date.date().isoformat() == '2026-04-15' for s in svls))
+
+    def test_lock_date_warning_only_warns(self):
+        p = self._loaded(adjustment_date='2026-03-31')
+        self.assertFalse(p._lock_date_warning())
+        self.company.sudo().tax_lock_date = '2026-03-31'
+        self.assertIn('2026-03-31', p._lock_date_warning())
+        wizard = self.env['mrp.period.cost.post.wizard'].create({'period_id': p.id})
+        self.assertIn('locked', wizard.warning_text)
+        wizard.confirm_checked = True
+        wizard.action_confirm()   # warn only: inventory-only post still goes through
+        self.assertEqual(p.state, 'posted')
+
     def _simulate_transfer(self, p):
         """Base layers' stock moves to a position layer (like an inter-warehouse transfer)."""
         Layer = self.env['stock.valuation.layer']

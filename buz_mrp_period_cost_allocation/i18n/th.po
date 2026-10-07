@@ -139,3 +139,25 @@ msgstr "มี %s MO ที่ขายหรือเบิกไปแล้�
 msgid "Please tick the confirmation box before posting."
 msgstr "กรุณาติ๊กช่องยืนยันว่าตรวจสอบตัวเลขแล้วก่อน Post"
 
+
+#. module: buz_mrp_period_cost_allocation
+#: model:ir.model.fields,field_description:buz_mrp_period_cost_allocation.field_mrp_period_cost__adjustment_date
+msgid "Adjustment Date"
+msgstr "วันที่ปรับต้นทุน (ปิดงวด)"
+
+#. module: buz_mrp_period_cost_allocation
+#: model:ir.model.fields,help:buz_mrp_period_cost_allocation.field_mrp_period_cost__adjustment_date
+msgid "Period close date. The cost adjustment layers (accounting date) and the journal entries are dated here. Defaults to To Date."
+msgstr "วันปิดงวด รายการปรับต้นทุน (วันที่ทางบัญชี) และ Journal Entry จะลงวันที่นี้ ค่าเริ่มต้นคือ To Date"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Adjustment Date must not be before From Date."
+msgstr "วันที่ปรับต้นทุนต้องไม่ก่อน From Date"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Adjustment Date %(date)s is in a locked accounting period (locked until %(lock)s). Valuation layers will still be posted, but a journal entry dated there will be refused."
+msgstr "วันที่ปรับต้นทุน %(date)s อยู่ในงวดบัญชีที่ล็อกแล้ว (ล็อกถึง %(lock)s) ระบบยังบันทึก Valuation Layer ได้ แต่ Journal Entry ที่ลงวันที่นี้จะถูกปฏิเสธ"

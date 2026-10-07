@@ -16,6 +16,7 @@
                         <div class="row mb-3">
                             <div class="col-3"><strong>Date From:</strong> <span t-field="o.date_from"/></div>
                             <div class="col-3"><strong>Date To:</strong> <span t-field="o.date_to"/></div>
+                            <div class="col-3"><strong>Adjustment Date:</strong> <span t-field="o.adjustment_date"/></div>
                             <div class="col-3"><strong>Base:</strong> <span t-field="o.allocation_base"/></div>
                             <div class="col-3"><strong>Status:</strong> <span t-field="o.state"/></div>
                         </div>

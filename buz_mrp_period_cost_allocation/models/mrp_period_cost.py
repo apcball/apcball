@@ -21,6 +21,11 @@ class MrpPeriodCost(models.Model):
     )
     date_from = fields.Date(string='From Date', required=True)
     date_to = fields.Date(string='To Date', required=True)
+    adjustment_date = fields.Date(
+        string='Adjustment Date', compute='_compute_adjustment_date', store=True,
+        readonly=False, precompute=True, required=True, copy=False,
+        help="Period close date. The cost adjustment layers (accounting date) and the "
+             "journal entries are dated here. Defaults to To Date.")
     company_id = fields.Many2one(
         'res.company', string='Company', required=True,
         default=lambda self: self.env.company
@@ -76,11 +81,31 @@ class MrpPeriodCost(models.Model):
     
     line_ids = fields.One2many('mrp.period.cost.line', 'period_id', string='Cost Lines')
 
-    @api.constrains('date_from', 'date_to')
+    @api.depends('date_to')
+    def _compute_adjustment_date(self):
+        for rec in self:
+            rec.adjustment_date = rec.date_to
+
+    @api.constrains('date_from', 'date_to', 'adjustment_date')
     def _check_dates(self):
         for rec in self:
             if rec.date_from and rec.date_to and rec.date_from > rec.date_to:
                 raise ValidationError(_("From Date must not be after To Date."))
+            if rec.date_from and rec.adjustment_date and rec.adjustment_date < rec.date_from:
+                raise ValidationError(_("Adjustment Date must not be before From Date."))
+
+    def _lock_date_warning(self):
+        """Text when adjustment_date falls in a locked accounting period, else ''."""
+        self.ensure_one()
+        company = self.company_id
+        getter = getattr(company, '_get_user_fiscal_lock_date', None)
+        lock = getter() if getter else company.fiscalyear_lock_date
+        lock = max([d for d in (lock, company.tax_lock_date) if d] or [False])
+        if lock and self.adjustment_date and self.adjustment_date <= lock:
+            return _("Adjustment Date %(date)s is in a locked accounting period (locked until %(lock)s). "
+                     "Valuation layers will still be posted, but a journal entry dated there will be refused.",
+                     date=self.adjustment_date, lock=lock)
+        return ''
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -342,8 +367,8 @@ class MrpPeriodCost(models.Model):
         return True
 
     def _accounting_datetime(self):
-        """End of the period, so the adjustment falls in the month it belongs to."""
-        return datetime.combine(self.date_to, time(23, 59, 59))
+        """End of the adjustment (period close) date, so the layer falls in the month it belongs to."""
+        return datetime.combine(self.adjustment_date, time(23, 59, 59))
 
     @api.model
     def _get_target_layers(self, move):
@@ -528,7 +553,7 @@ class MrpPeriodCost(models.Model):
 
         move_vals = {
             'journal_id': journal_id.id,
-            'date': self.date_to,
+            'date': self.adjustment_date,
             'ref': self.name,
             'move_type': 'entry',
             'stock_valuation_layer_ids': [(4, svl.id)], # Link SVL to AM

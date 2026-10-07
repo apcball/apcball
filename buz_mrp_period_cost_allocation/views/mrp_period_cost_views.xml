@@ -44,6 +44,7 @@
                         <group>
                             <field name="date_from" readonly="state == 'posted'"/>
                             <field name="date_to" readonly="state == 'posted'"/>
+                            <field name="adjustment_date" readonly="state == 'posted'"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state == 'posted'"/>
                         </group>
                         <group>
