@@ -28,4 +28,51 @@
         <field name="target">new</field>
         <field name="context">{'default_period_id': active_id}</field>
     </record>
+
+    <record id="view_mrp_period_cost_post_wizard" model="ir.ui.view">
+        <field name="name">mrp.period.cost.post.wizard.form</field>
+        <field name="model">mrp.period.cost.post.wizard</field>
+        <field name="arch" type="xml">
+            <form string="ยืนยันการ Post ต้นทุนงวด">
+                <div class="alert alert-warning" role="alert">
+                    <strong>โปรดตรวจสอบก่อน Post</strong> การ Post จะปรับมูลค่าสินค้าคงคลัง (Valuation Layer)
+                    หากสินค้าจากรายการนี้ถูกขายหรือเบิกไปแล้ว <strong>จะย้อนรายการไม่ได้</strong>
+                    และต้องให้ฝ่ายบัญชีปรับแก้ด้วยตนเอง
+                </div>
+                <field name="warning_text" invisible="not warning_text" readonly="1" class="text-danger"/>
+                <group>
+                    <group string="สรุปรายการ">
+                        <field name="period_id"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="allocation_base"/>
+                        <field name="line_count" string="จำนวน MO"/>
+                    </group>
+                    <group string="ยอดที่จะบันทึก">
+                        <field name="total_variance" string="ผลต่างต้นทุนรวม (จริง - มาตรฐาน)"/>
+                        <field name="total_inventory" string="ลงมูลค่าสินค้าคงคลัง (จะถูก Post)"/>
+                        <field name="total_expense" string="ส่วนที่ขาย/เบิกไปแล้ว (ไม่ถูก Post)"/>
+                        <field name="sold_line_count" string="MO ที่ขาย/เบิกไปบางส่วนหรือทั้งหมด"/>
+                    </group>
+                </group>
+                <p class="text-muted">
+                    ตัวเลขถูกคำนวณ (Preview) ใหม่ล่าสุดให้อัตโนมัติแล้ว ตรวจสอบรายการต่อไปนี้ก่อนยืนยัน:
+                </p>
+                <ul>
+                    <li>ต้นทุนจริง (DL / IDL / OH) ของงวดนี้ถูกต้องและปิดงวดแล้ว</li>
+                    <li>ช่วงวันที่ และฐานการจัดสรรถูกต้อง</li>
+                    <li>MO ในรายการครบ และไม่มี MO ที่จัดสรรซ้ำในงวดอื่น</li>
+                </ul>
+                <group>
+                    <field name="confirm_checked"
+                           string="ฉันตรวจสอบตัวเลขแล้ว และเข้าใจว่าหากสินค้าถูกขายไปแล้วจะย้อนรายการไม่ได้"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="ยืนยัน Post" type="object" class="btn-primary"
+                            invisible="not confirm_checked"/>
+                    <button string="ยกเลิก" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
 </odoo>

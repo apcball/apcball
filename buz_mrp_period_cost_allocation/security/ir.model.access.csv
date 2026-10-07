@@ -12,3 +12,6 @@ access_mrp_period_cost_reverse_wizard,mrp.period.cost.reverse.wizard reverse,mod
 access_mrp_period_cost_group,mrp.period.cost group,model_mrp_period_cost,group_period_cost_reverse,1,1,1,1
 access_mrp_period_cost_line_group,mrp.period.cost.line group,model_mrp_period_cost_line,group_period_cost_reverse,1,1,1,1
 access_mrp_period_cost_alloc_group,mrp.period.cost.alloc group,model_mrp_period_cost_alloc,group_period_cost_reverse,1,1,1,0
+access_mrp_period_cost_post_wizard_mrp,mrp.period.cost.post.wizard mrp,model_mrp_period_cost_post_wizard,mrp.group_mrp_manager,1,1,1,1
+access_mrp_period_cost_post_wizard_acct,mrp.period.cost.post.wizard account,model_mrp_period_cost_post_wizard,account.group_account_manager,1,1,1,1
+access_mrp_period_cost_post_wizard_group,mrp.period.cost.post.wizard group,model_mrp_period_cost_post_wizard,group_period_cost_reverse,1,1,1,1
