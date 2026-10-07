@@ -160,3 +160,33 @@ class TestLandedCostReport(TransactionCase):
         self.env.flush_all()
         det = self.env['buz.landed.cost.report.detail'].search([('landed_cost_id', '=', lc.id)])
         self.assertEqual(det.cost_type_id, freight)
+
+    def _export_xlsx(self, wizard):
+        report = self.env.ref('buz_landed_cost_report.action_report_landed_cost_xlsx')
+        content, _fmt = report._render_xlsx(
+            report.report_name, wizard.ids,
+            {'wizard_id': wizard.id, 'domain': wizard._get_domain()})
+        return content
+
+    def test_xlsx_export_styled(self):
+        import io
+        from openpyxl import load_workbook
+        lc = self._make_lc([50.0, 25.0])
+        lc.button_validate()
+        self.env.flush_all()
+        wiz = self.env['buz.landed.cost.report.wizard'].create({'landed_cost_ids': [(6, 0, lc.ids)]})
+        wb = load_workbook(io.BytesIO(self._export_xlsx(wiz)))
+        self.assertEqual(wb.sheetnames, ['Summary', 'Cost Breakdown', 'Audit'])
+        ws = wb['Summary']
+        self.assertEqual(ws['A6'].value, 'Landed Cost')  # header row
+        self.assertEqual(ws['A6'].fill.fgColor.rgb[-6:], '1F4E78')
+        self.assertEqual(ws.freeze_panes, 'C7')
+        self.assertEqual(ws['A7'].value, lc.name)
+        self.assertEqual(ws['C7'].value, 'Posted')
+        self.assertEqual(ws['A8'].value, 'TOTAL')
+        self.assertIn('SUBTOTAL', str(ws['I8'].value))
+
+    def test_xlsx_export_empty(self):
+        wiz = self.env['buz.landed.cost.report.wizard'].create({
+            'date_from': '1990-01-01', 'date_to': '1990-01-02'})
+        self.assertTrue(self._export_xlsx(wiz))
