@@ -283,16 +283,18 @@ class MrpPeriodCost(models.Model):
             if not self.valuation_adjustment_account_id:
                 raise UserError(_("Please select a Variance Account for accounting entries."))
              
-        # Create SVLs
+        # Create SVLs. Only the share of the variance that is still in stock
+        # (allocated_inventory_total) is capitalised; the share belonging to
+        # goods already sold/issued (allocated_period_expense) is reporting only.
         for line in self.line_ids:
-            adjustment_value = line.allocated_dl + line.allocated_idl + line.allocated_oh
+            adjustment_value = line.allocated_inventory_total
             if float_is_zero(adjustment_value, precision_digits=2):
                 continue
-                
+
             moves = line.mo_id.move_finished_ids.filtered(
                 lambda m: m.state == 'done' and m.product_id == line.product_id and m.product_uom_qty > 0
             )
-            
+
             total_qty_moved = sum(moves.mapped('product_uom_qty'))
             if total_qty_moved == 0:
                 continue
@@ -300,25 +302,40 @@ class MrpPeriodCost(models.Model):
             for move in moves:
                 move_ratio = move.product_uom_qty / total_qty_moved
                 move_adjustment = adjustment_value * move_ratio
-                
+
                 is_automated = move.product_id.valuation == 'real_time'
-                
+
+                # Like landed cost: link to the origin layer(s) and push the
+                # value into their remaining_value so FIFO unit cost follows.
+                base_layers = move.stock_valuation_layer_ids.filtered(lambda l: l.quantity > 0)
                 svl_vals = {
                     'company_id': self.company_id.id,
                     'product_id': line.product_id.id,
                     'stock_move_id': move.id,
+                    'stock_valuation_layer_id': base_layers[:1].id,
                     'quantity': 0,
                     'value': move_adjustment,
                     'description': _('Period Cost Allocation: %s - %s') % (self.name, line.mo_id.name),
                 }
-                
+
                 svl = self.env['stock.valuation.layer'].create(svl_vals)
-                
+                self._add_remaining_value(base_layers, move_adjustment)
+
                 if is_automated and not self.inventory_only:
                      self._create_accounting_entry(move, move_adjustment, svl)
-                
+
         self.state = 'posted'
         return True
+
+    @api.model
+    def _add_remaining_value(self, base_layers, value):
+        """Spread value over origin layers that still hold stock, by remaining_qty."""
+        in_stock = base_layers.filtered(lambda l: l.remaining_qty > 0)
+        total_qty = sum(in_stock.mapped('remaining_qty'))
+        if not total_qty:
+            return
+        for layer in in_stock:
+            layer.remaining_value += value * layer.remaining_qty / total_qty
 
     def action_cancel(self):
         if any(rec.state == 'posted' for rec in self):

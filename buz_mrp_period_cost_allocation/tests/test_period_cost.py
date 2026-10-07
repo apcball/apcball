@@ -183,7 +183,7 @@ class TestMrpPeriodCost(TransactionCase):
         svls = self._svls(p)
         self.assertTrue(svls)
         self.assertTrue(all(s.quantity == 0 for s in svls))
-        total = sum(l.allocated_dl + l.allocated_idl + l.allocated_oh for l in p.line_ids)
+        total = sum(p.line_ids.mapped('allocated_inventory_total'))
         self.assertAlmostEqual(sum(svls.mapped('value')), total, 2)
 
     def test_post_twice_blocked(self):
@@ -244,31 +244,24 @@ class TestMrpPeriodCost(TransactionCase):
         p = self._loaded(date_from='2026-03-10', date_to='2026-03-10')
         self.assertIn(self.mo1, p.line_ids.mo_id)
 
-
-@tagged('post_install', '-at_install', 'mrp_period_cost_defects')
-class TestMrpPeriodCostKnownDefects(TestMrpPeriodCost):
-    """Assert DESIRED behaviour; currently FAIL (QA findings #5,#6).
-
-    Run explicitly: --test-tags /buz_mrp_period_cost_allocation:TestMrpPeriodCostKnownDefects
-    """
-
-
-
-
-
-    def test_defect_post_respects_inventory_split(self):
-        """#5 only the inventory share should be capitalised into SVL."""
+    def test_post_only_capitalises_inventory_share(self):
         p = self._loaded()
         p.action_preview_allocation()
-        # simulate fully sold goods: nothing left in inventory
-        p.line_ids.write({'allocated_inventory_total': 0.0,
-                          'allocated_period_expense': 1.0})
+        # simulate goods already sold: nothing left in inventory
+        p.line_ids.write({'allocated_inventory_total': 0.0, 'allocated_period_expense': 1.0})
         p.action_post()
-        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), 0.0, 2)
+        self.assertFalse(self._svls(p))
 
-    def test_defect_svl_remaining_value(self):
-        """#6 adjustment SVL must carry remaining_value for FIFO/avg."""
+    def test_post_updates_origin_remaining_value(self):
         p = self._loaded()
         p.action_preview_allocation()
+        base = p.line_ids.mo_id.move_finished_ids.stock_valuation_layer_ids.filtered(
+            lambda l: l.quantity > 0)
+        before = sum(base.mapped('remaining_value'))
         p.action_post()
-        self.assertTrue(all(s.remaining_value for s in self._svls(p)))
+        base.invalidate_recordset()
+        svls = self._svls(p)
+        self.assertTrue(svls)
+        self.assertAlmostEqual(
+            sum(base.mapped('remaining_value')) - before, sum(svls.mapped('value')), 2)
+        self.assertTrue(all(s.stock_valuation_layer_id for s in svls))
