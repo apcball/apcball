@@ -25,7 +25,7 @@
                 <header>
                     <button name="action_load_mos" string="Load MOs" type="object" class="btn-primary" invisible="state != 'draft'"/>
                     <button name="action_preview_allocation" string="Preview Allocation" type="object" class="btn-secondary" invisible="state != 'draft'"/>
-                    <button name="action_post" string="Post Adjustment" type="object" class="btn-success" invisible="state != 'draft'" confirm="Are you sure you want to post this cost adjustment? This will update inventory valuation layers."/>
+                    <button name="action_post_wizard" string="Post Adjustment" type="object" class="btn-success" invisible="state != 'draft'"/>
                     <button name="action_cancel" string="Cancel" type="object" invisible="state != 'draft'"/>
                     <button name="%(action_mrp_period_cost_reverse_wizard)d" string="Reverse &amp; Reset to Draft" type="action"
                             invisible="state != 'posted'" groups="buz_mrp_period_cost_allocation.group_period_cost_reverse"/>

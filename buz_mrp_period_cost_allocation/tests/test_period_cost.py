@@ -371,3 +371,40 @@ class TestMrpPeriodCost(TransactionCase):
         group = self.env.ref('buz_mrp_period_cost_allocation.group_period_cost_reverse')
         menu = self.env.ref('buz_mrp_period_cost_allocation.menu_mrp_period_cost')
         self.assertEqual(menu.groups_id, group)
+
+    # ---- post confirmation wizard ----------------------------------------
+    def _post_wizard(self, p):
+        action = p.action_post_wizard()
+        self.assertEqual(action['res_model'], 'mrp.period.cost.post.wizard')
+        return self.env['mrp.period.cost.post.wizard'].browse(action['res_id'])
+
+    def test_post_wizard_refreshes_preview_and_summarises(self):
+        p = self._loaded()          # not previewed yet
+        wiz = self._post_wizard(p)
+        self.assertEqual(wiz.line_count, len(p.line_ids))
+        self.assertAlmostEqual(wiz.total_inventory,
+                               sum(p.line_ids.mapped('allocated_inventory_total')), 2)
+        self.assertAlmostEqual(wiz.total_variance, p.diff_dl + p.diff_idl + p.diff_oh, 2)
+        self.assertEqual(p.state, 'draft')
+
+    def test_post_wizard_requires_tick(self):
+        p = self._loaded()
+        wiz = self._post_wizard(p)
+        with self.assertRaises(UserError):
+            wiz.action_confirm()
+        self.assertEqual(p.state, 'draft')
+        wiz.confirm_checked = True
+        wiz.action_confirm()
+        self.assertEqual(p.state, 'posted')
+
+    def test_post_wizard_warns_when_nothing_in_stock(self):
+        p = self._loaded()
+        wiz = self._post_wizard(p)
+        wiz.period_id.line_ids.write({'allocated_inventory_total': 0.0})
+        wiz.invalidate_recordset()
+        self.assertTrue(wiz.warning_text)
+
+    def test_post_wizard_only_for_draft(self):
+        p = self._posted()
+        with self.assertRaises(UserError):
+            p.action_post_wizard()

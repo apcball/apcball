@@ -109,3 +109,33 @@ msgstr "ไม่สามารถลบเอกสารที่ Post แล
 msgid "Manufacturing Order %(mo)s is already allocated in %(period)s."
 msgstr "ใบสั่งผลิต %(mo)s ถูกจัดสรรไว้ใน %(period)s แล้ว"
 
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Only a draft period cost can be posted."
+msgstr "Post ได้เฉพาะเอกสารที่เป็นฉบับร่างเท่านั้น"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Confirm Post"
+msgstr "ยืนยันการ Post"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "No variance will be added to inventory: all produced stock has been sold or issued, or the variance is zero."
+msgstr "จะไม่มียอดผลต่างลงมูลค่าสินค้าคงคลัง: สินค้าที่ผลิตถูกขาย/เบิกไปหมดแล้ว หรือผลต่างเป็นศูนย์"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "%s MO(s) have already been partly or fully sold. Only the stock still on hand receives the variance; the rest is not posted."
+msgstr "มี %s MO ที่ขายหรือเบิกไปแล้วบางส่วนหรือทั้งหมด ผลต่างจะลงเฉพาะสินค้าที่ยังคงเหลือ ส่วนที่เหลือจะไม่ถูก Post"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Please tick the confirmation box before posting."
+msgstr "กรุณาติ๊กช่องยืนยันว่าตรวจสอบตัวเลขแล้วก่อน Post"
+

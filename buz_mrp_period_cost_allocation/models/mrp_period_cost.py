@@ -268,6 +268,22 @@ class MrpPeriodCost(models.Model):
                 'allocated_period_expense': allocated_period_expense,
             })
             
+    def action_post_wizard(self):
+        """Refresh the preview, then ask the user to confirm in a Thai checklist wizard."""
+        self.ensure_one()
+        if self.state != 'draft':
+            raise UserError(_("Only a draft period cost can be posted."))
+        self.action_preview_allocation()
+        wizard = self.env['mrp.period.cost.post.wizard'].create({'period_id': self.id})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Confirm Post'),
+            'res_model': 'mrp.period.cost.post.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
     def action_post(self):
         self.ensure_one()
         if self.state == 'posted':
