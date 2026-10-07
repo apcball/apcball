@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_loan_return_export_wizard_form" model="ir.ui.view">
+        <field name="name">buz.loan.return.export.wizard.form</field>
+        <field name="model">buz.loan.return.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="ส่งออกรายงานยืม/คืนสินค้า">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group>
+                        <field name="partner_id"
+                               options="{'no_create': True, 'no_open': True}"/>
+                        <field name="product_id"
+                               options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx" type="object"
+                            string="Export Excel" class="oe_highlight"/>
+                    <button string="ยกเลิก" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
+

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_loan_return_export_xlsx" model="ir.actions.report">
+        <field name="name">Loan and Return Export</field>
+        <field name="model">buz.loan.return.export.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_loan_return_export.loan_return_xlsx</field>
+        <field name="report_file">buz_loan_return_export.loan_return_xlsx</field>
+        <field name="print_report_name">'Loan and Return Export'</field>
+    </record>
+</odoo>
+

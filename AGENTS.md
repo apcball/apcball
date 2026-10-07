@@ -168,3 +168,10 @@ Connect to live Odoo DB via MCP. Available tools:
 | ------ | ---- | ----------- | ------ | ------- |
 | DEV | `root@217.216.32.33` | `(Docker)/srv/docker/odoo/custom-addons/` | `%DOCKER_ROOT%/config/odoo.conf` | Docker (`odoo:17.0`) |
 | PROD | `mogenit@160.187.249.148` | `/opt/instance1/odoo17/custom-addons/` | `/etc/instance1.conf` | systemd (`instance1.service`, user `odoo`, venv `/opt/instance1/odoo17-venv`) |
+
+### PROD Addons Read-only Inspection
+
+- The additional addons path `/srv/docker/odoo_mogen/custom-addon` is on PROD and is accessible through the SSH alias `PROD-Server` (`mogenit@160.187.249.148`), as configured in the local SSH config.
+- Access this path for inspection only. Read-only examples include listing files (`ls`, `find`), searching text (`grep`), and displaying file contents (`cat`, `sed`).
+- Never create, edit, delete, rename, move, upload, or copy files in this path. Do not run module installs or upgrades, database changes, service commands, or scripts from this path. Do not use `scp`, `rsync`, editors, or any other write-capable command against it.
+- Do not add credentials or private key contents to this file. Use the configured SSH alias.

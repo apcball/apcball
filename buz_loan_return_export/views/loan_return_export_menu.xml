@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_loan_return_export_wizard" model="ir.actions.act_window">
+        <field name="name">รายงานยืม/คืนสินค้า</field>
+        <field name="res_model">buz.loan.return.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_loan_return_export"
+              name="รายงานยืม/คืนสินค้า"
+              parent="stock.menu_warehouse_report"
+              action="action_loan_return_export_wizard"
+              sequence="90"
+              groups="stock.group_stock_user"/>
+</odoo>
+
