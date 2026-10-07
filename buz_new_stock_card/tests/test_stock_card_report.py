@@ -13,6 +13,9 @@ class TestStockCardReport(TransactionCase):
         super().setUpClass()
         # Fixture timestamps are UTC, independent of the database user's zone.
         cls.env.user.tz = "UTC"
+        cls.env.user.groups_id = [Command.link(
+            cls.env.ref("buz_new_stock_card.group_stock_card_see_value").id
+        )]
         cls.engine = cls.env["buz.stock.card.report"]
 
         cls.loc_supplier = cls.env.ref("stock.stock_location_suppliers")
@@ -80,6 +83,11 @@ class TestStockCardReport(TransactionCase):
             move.with_context(**ctx).write({"state": state})
         move.move_line_ids.with_context(**ctx).write({"date": date_val})
         return move
+
+    def _set_done(self, move):
+        ctx = dict(bypass_done_move_line_guard=True)
+        move.with_context(**ctx).write({"state": "done"})
+        move.move_line_ids.with_context(**ctx).write({"date": move.date})
 
     def _dt(self, s):
         return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
@@ -515,11 +523,16 @@ class TestStockCardReport(TransactionCase):
 
     def _mk_valuation_layer(
         self, product, location, qty, unit_cost, move_date,
-        remaining_qty=None, lot=None, picking=None,
+        remaining_qty=None, lot=None, picking=None, dest=None,
     ):
         src = self.loc_supplier if qty >= 0 else location
-        dest = location if qty >= 0 else self.loc_customer
-        move = self.env["stock.move"].create({
+        dest = dest or (location if qty >= 0 else self.loc_customer)
+        if qty < 0:
+            # Reservation guard: an internal source needs real on-hand qty.
+            self.env["stock.quant"].with_context(
+                bypass_done_move_line_guard=True,
+            )._update_available_quantity(product, location, abs(qty))
+        move = self.env["stock.move"].with_context(bypass_done_move_line_guard=True).create({
             "name": "svl test move",
             "product_id": product.id,
             "product_uom_qty": abs(qty),
@@ -530,7 +543,7 @@ class TestStockCardReport(TransactionCase):
             "date": move_date,
             "picking_id": picking.id if picking else False,
         })
-        self.env["stock.move.line"].create({
+        self.env["stock.move.line"].with_context(bypass_done_move_line_guard=True).create({
             "move_id": move.id,
             "product_id": product.id,
             "product_uom_id": product.uom_id.id,
@@ -540,6 +553,7 @@ class TestStockCardReport(TransactionCase):
             "lot_id": lot.id if lot else False,
             "date": move_date,
         })
+        self._set_done(move)
         remaining_qty = qty if remaining_qty is None else remaining_qty
         return self.env["stock.valuation.layer"].create({
             "product_id": product.id,
@@ -567,15 +581,74 @@ class TestStockCardReport(TransactionCase):
         self.assertEqual(rows[0]["cost_in"], 1000.0)
         self.assertEqual(rows[0]["qty_out"], 0.0)
 
-    def test_valuation_opening_excludes_fully_consumed_layer(self):
+    def test_valuation_opening_is_as_of_start_date_not_current_remaining(self):
+        # Layer fully consumed *after* the period start must still be in the
+        # opening balance (as-of), exactly like the plain stock card.
         self._mk_valuation_layer(
             self.product, self.loc_a, 10.0, 100.0, self._dt("2024-05-01 08:00:00"),
             remaining_qty=0.0,
         )
+        self._mk_valuation_layer(
+            self.product, self.loc_a, -10.0, 100.0, self._dt("2024-07-05 08:00:00"),
+        )
         rows = self.engine.get_stock_card_valuation_lines(
             self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
         )
-        self.assertEqual(rows, [])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["remark"], "ยอดยกมา")
+        self.assertEqual(rows[0]["qty_in"], 10.0)
+        self.assertEqual(rows[0]["cost_in"], 1000.0)
+
+    def test_valuation_move_without_layer_is_still_listed(self):
+        # e.g. transit receipts carry no valuation layer.
+        self.product.standard_price = 7.0
+        self._mk_move(self.loc_supplier, self.loc_a, 12.0, self._dt("2024-06-10 08:00:00"))
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["qty_in"], 12.0)
+        self.assertAlmostEqual(rows[0]["unitcost_in"], 7.0)
+
+    def test_valuation_transit_receipt_uses_outbound_leg_cost(self):
+        # Transit receipt has no layer; it must take the cost of the matching
+        # outbound leg (loc_a -> transit), not the product standard price.
+        self.product.standard_price = 7.0
+        transit = self.env["stock.location"].create({
+            "name": "Test Transit", "usage": "transit",
+        })
+        self._mk_valuation_layer(
+            self.product, self.loc_a, -12.0, 9.5, self._dt("2024-06-05 08:00:00"),
+            dest=transit,
+        )
+        self._mk_move(transit, self.loc_b, 12.0, self._dt("2024-06-10 08:00:00"))
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_b.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["qty_in"], 12.0)
+        self.assertAlmostEqual(rows[0]["unitcost_in"], 9.5)
+
+    def test_valuation_internal_move_inside_scope_is_excluded(self):
+        self._mk_move(self.loc_a, self.loc_b, 5.0, self._dt("2024-06-10 08:00:00"))
+        rows = self.engine.get_scoped_stock_card_valuation_lines(
+            [self.loc_a.id, self.loc_b.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual([r for r in rows if r["product_name"] == self.product.name], [])
+
+    def test_valuation_qty_matches_plain_export(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 30.0, self._dt("2024-05-10 08:00:00"))
+        self._mk_move(self.loc_supplier, self.loc_a, 20.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 8.0, self._dt("2024-06-11 08:00:00"))
+        val = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        plain = self.engine.get_stock_card_data(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30", page_size=20, page=0,
+        )
+        self.assertAlmostEqual(val[-1]["balance_qty"], plain["lines"][-1]["balance"])
+        self.assertAlmostEqual(sum(r["qty_in"] for r in val), 30.0 + 20.0)
+        self.assertAlmostEqual(sum(r["qty_out"] for r in val), 8.0)
 
     def test_valuation_period_receipt_and_issue(self):
         self._mk_valuation_layer(
@@ -620,7 +693,7 @@ class TestStockCardReport(TransactionCase):
             "state": "draft",
             "date": self._dt("2024-06-10 08:00:00"),
         })
-        self.env["stock.move.line"].create([
+        self.env["stock.move.line"].with_context(bypass_done_move_line_guard=True).create([
             {
                 "move_id": move.id, "product_id": self.product.id,
                 "product_uom_id": self.product.uom_id.id, "quantity": 10.0,
@@ -634,6 +707,7 @@ class TestStockCardReport(TransactionCase):
                 "lot_id": lot2.id,
             },
         ])
+        self._set_done(move)
         self.env["stock.valuation.layer"].create({
             "product_id": self.product.id,
             "company_id": self.env.company.id,
@@ -767,6 +841,6 @@ class TestStockCardReport(TransactionCase):
         self.assertIn(self.product.name, by_product)
         self.assertIn(product2.name, by_product)
         self.assertAlmostEqual(by_product[self.product.name]["qty_in"], 10.0)
-        self.assertAlmostEqual(by_product[self.product.name]["cost_in"], 100.0)
+        self.assertAlmostEqual(by_product[self.product.name]["cost_in"], 1000.0)
         self.assertAlmostEqual(by_product[product2.name]["qty_in"], 5.0)
-        self.assertAlmostEqual(by_product[product2.name]["cost_in"], 40.0)
+        self.assertAlmostEqual(by_product[product2.name]["cost_in"], 200.0)
