@@ -75,11 +75,18 @@ class MrpPeriodCost(models.Model):
     
     line_ids = fields.One2many('mrp.period.cost.line', 'period_id', string='Cost Lines')
 
-    @api.model
-    def create(self, vals):
-        if vals.get('name', _('New')) == _('New'):
-            vals['name'] = self.env['ir.sequence'].next_by_code('mrp.period.cost') or _('New')
-        return super(MrpPeriodCost, self).create(vals)
+    @api.constrains('date_from', 'date_to')
+    def _check_dates(self):
+        for rec in self:
+            if rec.date_from and rec.date_to and rec.date_from > rec.date_to:
+                raise ValidationError(_("From Date must not be after To Date."))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', _('New')) == _('New'):
+                vals['name'] = self.env['ir.sequence'].next_by_code('mrp.period.cost') or _('New')
+        return super().create(vals_list)
         
     @api.depends('inventory_only')
     def _compute_allow_accounting_entry(self):
@@ -314,10 +321,18 @@ class MrpPeriodCost(models.Model):
         return True
 
     def action_cancel(self):
+        if any(rec.state == 'posted' for rec in self):
+            raise UserError(_("A posted period cost cannot be cancelled: its valuation adjustments are already booked."))
         self.write({'state': 'cancel'})
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_posted(self):
+        if any(rec.state == 'posted' for rec in self):
+            raise UserError(_("A posted period cost cannot be deleted: its valuation adjustments are already booked."))
 
     def action_draft(self):
         self.write({'state': 'draft'})
+        self.line_ids._check_mo_not_allocated()
 
     def _create_accounting_entry(self, move, value, svl):
         """Create a journal entry for the valuation adjustment."""
@@ -396,6 +411,23 @@ class MrpPeriodCostLine(models.Model):
     
     allocated_inventory_total = fields.Float(string='Inv Adjustment', readonly=True, digits='Product Price', help="Variance allocated to remaining inventory")
     allocated_period_expense = fields.Float(string='Period Expense', readonly=True, digits='Product Price', help="Variance allocated to Sold/Issued goods")
+
+    @api.constrains('mo_id', 'period_id')
+    def _check_mo_not_allocated(self):
+        """An MO can sit in only one non-cancelled period cost."""
+        for line in self:
+            if line.period_id.state == 'cancel':
+                continue
+            other = self.search([
+                ('mo_id', '=', line.mo_id.id),
+                ('id', '!=', line.id),
+                ('period_id', '!=', line.period_id.id),
+                ('period_id.state', '!=', 'cancel'),
+            ], limit=1)
+            if other:
+                raise ValidationError(_(
+                    "Manufacturing Order %(mo)s is already allocated in %(period)s.",
+                    mo=line.mo_id.display_name, period=other.period_id.display_name))
 
     @api.depends('quantity_produced', 'qty_on_hand')
     def _compute_qty_sold(self):

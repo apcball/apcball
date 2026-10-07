@@ -2,6 +2,7 @@ from odoo import models
 
 class MrpPeriodCostXlsx(models.AbstractModel):
     _name = 'report.buz_mrp_period_cost_allocation.report_xlsx'
+    _description = 'Manufacturing Period Cost XLSX Report'
     _inherit = 'report.report_xlsx.abstract'
 
     def generate_xlsx_report(self, workbook, data, docs):
