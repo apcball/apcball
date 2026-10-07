@@ -1,0 +1,111 @@
+# Thai translation for buz_mrp_period_cost_allocation
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "From Date must not be after To Date."
+msgstr "วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Please define the period first."
+msgstr "กรุณากำหนดช่วงวันที่ก่อน"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "No lines to allocate. Load MOs first."
+msgstr "ไม่มีรายการให้จัดสรร กรุณาโหลด MO ก่อน"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Already posted."
+msgstr "รายการนี้ถูกบันทึกบัญชี (Post) แล้ว"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "No lines to post."
+msgstr "ไม่มีรายการให้ Post"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Please select a Journal for accounting entries."
+msgstr "กรุณาเลือกสมุดรายวัน (Journal) สำหรับรายการบัญชี"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Please select a Variance Account for accounting entries."
+msgstr "กรุณาเลือกบัญชีผลต่าง (Variance Account) สำหรับรายการบัญชี"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Only a posted period cost can be reversed."
+msgstr "ย้อนรายการได้เฉพาะเอกสารที่ Post แล้วเท่านั้น"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "You are not allowed to reverse a posted period cost (group 'Period Cost: Reverse Posted' required)."
+msgstr "คุณไม่มีสิทธิ์ย้อนรายการต้นทุนงวดที่ Post แล้ว (ต้องอยู่ในกลุ่ม 'Period Cost: Reverse Posted')"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Please give a reason for the reversal."
+msgstr "กรุณาระบุเหตุผลในการย้อนรายการ"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "%(name)s was posted before allocation tracking existed, so its %(n)s valuation layers cannot be reversed automatically. Ask accounting/IT to correct it manually."
+msgstr "%(name)s ถูก Post ก่อนที่ระบบจะเริ่มบันทึกการจัดสรร จึงไม่สามารถย้อน valuation layer จำนวน %(n)s รายการโดยอัตโนมัติได้ กรุณาแจ้งฝ่ายบัญชี/IT เพื่อแก้ไขด้วยตนเอง"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Cannot reverse %(name)s: stock from these layers has already been sold or issued, so the adjustment is part of cost of goods sold:\n%(layers)s"
+msgstr "ไม่สามารถย้อน %(name)s ได้: สินค้าจาก layer เหล่านี้ถูกขายหรือเบิกไปแล้ว ยอดปรับปรุงจึงรวมอยู่ในต้นทุนขายแล้ว:\n%(layers)s"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "- %s (qty at post %s, now %s)"
+msgstr "- %s (จำนวนตอน Post %s, ปัจจุบัน %s)"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Reversed and reset to draft by %(user)s. Reason: %(reason)s"
+msgstr "ย้อนรายการและตั้งกลับเป็นฉบับร่างโดย %(user)s เหตุผล: %(reason)s"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "A posted period cost cannot be cancelled: its valuation adjustments are already booked."
+msgstr "ไม่สามารถยกเลิกเอกสารที่ Post แล้ว: ยอดปรับปรุงมูลค่าสินค้าถูกบันทึกไปแล้ว (ใช้ปุ่ม 'Reverse & Reset to Draft' แทน)"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "A posted period cost cannot be deleted: its valuation adjustments are already booked."
+msgstr "ไม่สามารถลบเอกสารที่ Post แล้ว: ยอดปรับปรุงมูลค่าสินค้าถูกบันทึกไปแล้ว"
+
+#. module: buz_mrp_period_cost_allocation
+#: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
+#, python-format
+msgid "Manufacturing Order %(mo)s is already allocated in %(period)s."
+msgstr "ใบสั่งผลิต %(mo)s ถูกจัดสรรไว้ใน %(period)s แล้ว"
+

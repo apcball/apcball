@@ -393,7 +393,7 @@ class MrpPeriodCost(models.Model):
                 "so the adjustment is part of cost of goods sold:\n%(layers)s",
                 name=self.name,
                 layers='\n'.join(sorted(set(
-                    '- %s (qty at post %s, now %s)' % (
+                    _('- %s (qty at post %s, now %s)') % (
                         a.base_layer_id.product_id.display_name,
                         a.qty_at_post, a.base_layer_id.remaining_qty)
                     for a in consumed)))))
