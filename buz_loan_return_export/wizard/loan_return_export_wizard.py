@@ -7,6 +7,7 @@ import pytz
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.osv import expression
 
 
 class LoanReturnExportWizard(models.TransientModel):
@@ -72,6 +73,14 @@ class LoanReturnExportWizard(models.TransientModel):
         ]
         return domain
 
+    @staticmethod
+    def _get_source_bg_name(origin):
+        """Extract the BG document number from Source Document."""
+        if not origin:
+            return ''
+        source_name = origin.split('/', 1)[0].strip()
+        return source_name if source_name.startswith('BG-') else ''
+
     def _get_report_data(self):
         self.ensure_one()
         date_start, date_end = self._get_utc_date_bounds()
@@ -98,8 +107,11 @@ class LoanReturnExportWizard(models.TransientModel):
             order='date_done, name, id',
         )
         return_origins = {
-            picking.origin for picking in return_pickings if picking.origin
+            self._get_source_bg_name(picking.origin)
+            for picking in return_pickings
+            if picking.origin
         }
+        return_origins.discard('')
         if return_origins:
             linked_loan_pickings = picking_model.search([
                 ('company_id', '=', self.company_id.id),
@@ -110,7 +122,9 @@ class LoanReturnExportWizard(models.TransientModel):
             ])
             linked_loan_names = set(linked_loan_pickings.mapped('name'))
             return_pickings = return_pickings.filtered(
-                lambda picking: picking.origin in linked_loan_names
+                lambda picking: (
+                    self._get_source_bg_name(picking.origin) in linked_loan_names
+                )
             )
         else:
             return_pickings = picking_model.browse()
@@ -144,14 +158,20 @@ class LoanReturnExportWizard(models.TransientModel):
         if not loan_names:
             return {}
 
+        origin_domain = expression.OR([
+            [
+                '|',
+                ('origin', '=', loan_name),
+                ('origin', '=like', loan_name + '/%'),
+            ]
+            for loan_name in loan_names
+        ])
         return_domain = [
             ('company_id', '=', self.company_id.id),
             ('state', '=', 'done'),
             ('date_done', '<', date_end),
             ('return_doc_no', '=like', 'RBG-%'),
-            ('origin', 'in', loan_names),
-        ]
-
+        ] + origin_domain
         return_pickings = self.env['stock.picking'].search(
             return_domain,
             order='date_done, name, id',
@@ -162,7 +182,8 @@ class LoanReturnExportWizard(models.TransientModel):
             for move in picking.move_ids:
                 if move.state != 'done' or not move.product_id:
                     continue
-                key = (picking.origin or '', move.product_id.id)
+                source_bg_name = self._get_source_bg_name(picking.origin)
+                key = (source_bg_name, move.product_id.id)
                 if move.product_id.id not in loan_products_by_source.get(key[0], set()):
                     continue
                 returned_quantity = move.product_uom._compute_quantity(
