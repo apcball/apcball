@@ -20,6 +20,7 @@
         'data/ir_sequence_data.xml',
         'report/mrp_period_cost_report_actions.xml',
         'report/mrp_period_cost_template.xml',
+        'wizard/mrp_period_cost_reverse_wizard_views.xml',
         'views/mrp_period_cost_views.xml',
     ],
     'installable': True,

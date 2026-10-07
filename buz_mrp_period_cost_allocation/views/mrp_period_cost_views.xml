@@ -27,6 +27,8 @@
                     <button name="action_preview_allocation" string="Preview Allocation" type="object" class="btn-secondary" invisible="state != 'draft'"/>
                     <button name="action_post" string="Post Adjustment" type="object" class="btn-success" invisible="state != 'draft'" confirm="Are you sure you want to post this cost adjustment? This will update inventory valuation layers."/>
                     <button name="action_cancel" string="Cancel" type="object" invisible="state != 'draft'"/>
+                    <button name="%(action_mrp_period_cost_reverse_wizard)d" string="Reverse &amp; Reset to Draft" type="action"
+                            invisible="state != 'posted'" groups="account.group_account_manager"/>
                     <button name="action_draft" string="Set to Draft" type="object" invisible="state != 'cancel'"/>
                     <button name="%(action_report_mrp_period_cost_pdf)d" string="Print PDF" type="action" class="btn-secondary"/>
                     <button name="%(action_report_mrp_period_cost_xlsx)d" string="Print Excel" type="action" class="btn-secondary"/>

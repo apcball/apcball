@@ -265,3 +265,82 @@ class TestMrpPeriodCost(TransactionCase):
         self.assertAlmostEqual(
             sum(base.mapped('remaining_value')) - before, sum(svls.mapped('value')), 2)
         self.assertTrue(all(s.stock_valuation_layer_id for s in svls))
+
+    # ---- reverse & reset to draft ---------------------------------------
+    def _posted(self):
+        p = self._loaded()
+        p.action_preview_allocation()
+        p.action_post()
+        return p
+
+    def _base_layers(self, p):
+        return p.line_ids.mo_id.move_finished_ids.stock_valuation_layer_ids.filtered(
+            lambda l: l.quantity > 0)
+
+    def test_reverse_restores_valuation_and_draft(self):
+        p = self._loaded()
+        p.action_preview_allocation()
+        base = self._base_layers(p)
+        before = sum(base.mapped('remaining_value'))
+        p.action_post()
+        self.assertNotAlmostEqual(sum(base.mapped('remaining_value')), before, 2)
+        p.action_reverse_to_draft('wrong actual cost')
+        self.assertEqual(p.state, 'draft')
+        self.assertAlmostEqual(sum(base.mapped('remaining_value')), before, 2)
+        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), 0.0, 2)
+        self.assertTrue(p.message_ids.filtered(lambda m: 'wrong actual cost' in (m.body or '')))
+
+    def test_reverse_then_repost(self):
+        p = self._posted()
+        p.action_reverse_to_draft('fix numbers')
+        p.actual_dl = 2000.0
+        p.action_preview_allocation()
+        p.action_post()
+        self.assertEqual(p.state, 'posted')
+        expected = sum(p.line_ids.mapped('allocated_inventory_total'))
+        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), expected, 2)
+        # a second reversal only touches the new allocations
+        p.action_reverse_to_draft('again')
+        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), 0.0, 2)
+
+    def test_reverse_blocked_when_stock_sold(self):
+        p = self._posted()
+        base = self._base_layers(p)[:1]
+        base.remaining_qty = base.remaining_qty - 1.0   # simulate a sale
+        with self.assertRaises(UserError):
+            p.action_reverse_to_draft('too late')
+        self.assertEqual(p.state, 'posted')
+        self.assertTrue(self._svls(p))
+
+    def test_reverse_requires_reason_and_posted(self):
+        p = self._posted()
+        with self.assertRaises(UserError):
+            p.action_reverse_to_draft('   ')
+        with self.assertRaises(UserError):
+            self._period().action_reverse_to_draft('not posted')
+
+    def test_reverse_requires_accounting_manager(self):
+        p = self._posted()
+        user = self.env['res.users'].create({
+            'name': 'MRP only', 'login': 'mrp_only_mpc',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id,
+                                  self.env.ref('mrp.group_mrp_manager').id])],
+        })
+        self.assertFalse(user.has_group('account.group_account_manager'))
+        with self.assertRaises(UserError):
+            p.with_user(user).action_reverse_to_draft('no rights')
+        self.assertEqual(p.state, 'posted')
+
+    def test_reverse_wizard(self):
+        p = self._posted()
+        self.env['mrp.period.cost.reverse.wizard'].create(
+            {'period_id': p.id, 'reason': 'via wizard'}).action_confirm()
+        self.assertEqual(p.state, 'draft')
+
+    def test_reverse_blocked_for_untracked_legacy_post(self):
+        p = self._posted()
+        self.env['mrp.period.cost.alloc'].search([('period_id', '=', p.id)]).unlink()
+        with self.assertRaises(UserError):
+            p.action_reverse_to_draft('legacy')
+        self.assertEqual(p.state, 'posted')
+        self.assertTrue(self._svls(p))
