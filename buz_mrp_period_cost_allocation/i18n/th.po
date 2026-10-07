@@ -130,8 +130,8 @@ msgstr "จะไม่มียอดผลต่างลงมูลค่า
 #. module: buz_mrp_period_cost_allocation
 #: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0
 #, python-format
-msgid "%s MO(s) have already been partly or fully sold. Only the stock still on hand receives the variance; the rest is not posted."
-msgstr "มี %s MO ที่ขายหรือเบิกไปแล้วบางส่วนหรือทั้งหมด ผลต่างจะลงเฉพาะสินค้าที่ยังคงเหลือ ส่วนที่เหลือจะไม่ถูก Post"
+msgid "%s MO(s) have already been partly or fully sold. Only stock still held (including stock transferred between warehouses) receives the variance; the sold share is report-only and not posted."
+msgstr "มี %s MO ที่ขายหรือเบิกไปแล้วบางส่วนหรือทั้งหมด ผลต่างจะลงเฉพาะสินค้าที่ยังคงเหลือ (รวมสินค้าที่โอนข้ามคลัง) ส่วนของที่ขายแล้วแสดงในรายงานเท่านั้น ไม่ถูก Post"
 
 #. module: buz_mrp_period_cost_allocation
 #: code:addons/buz_mrp_period_cost_allocation/models/mrp_period_cost.py:0

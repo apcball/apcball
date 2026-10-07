@@ -45,7 +45,7 @@ class MrpPeriodCostPostWizard(models.TransientModel):
             if not wiz.total_inventory:
                 warnings.append(_("No variance will be added to inventory: all produced stock has been sold or issued, or the variance is zero."))
             if wiz.sold_line_count:
-                warnings.append(_("%s MO(s) have already been partly or fully sold. Only the stock still on hand receives the variance; the rest is not posted.", wiz.sold_line_count))
+                warnings.append(_("%s MO(s) have already been partly or fully sold. Only stock still held (including stock transferred between warehouses) receives the variance; the sold share is report-only and not posted.", wiz.sold_line_count))
             wiz.warning_text = '\n'.join('- %s' % w for w in warnings)
 
     def action_confirm(self):

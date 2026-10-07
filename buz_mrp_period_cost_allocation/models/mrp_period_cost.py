@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, time
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_is_zero, float_round
@@ -227,9 +228,18 @@ class MrpPeriodCost(models.Model):
             allocated_oh = self.diff_oh * weight
             
             # Inventory Logic: Determine how much of the produced quantity is still in stock
-            qty_on_hand = 0.0
-            if line.mo_id.lot_producing_id:
-                # If tracked by lot, check current quantity of that specific lot in internal locations
+            # Stock still held (any warehouse) by the MO's finished layers and
+            # their transfer chain. Transfers are not consumption.
+            moves = line.mo_id.move_finished_ids.filtered(
+                lambda m: m.state == 'done' and m.product_id == line.product_id
+            )
+            target_layers = self.env['stock.valuation.layer']
+            for move in moves:
+                target_layers |= self._get_target_layers(move)[1]
+            if target_layers:
+                qty_on_hand = sum(target_layers.mapped('remaining_qty'))
+            elif line.mo_id.lot_producing_id:
+                # No valuation layers to follow: fall back to the lot's internal quants
                 quants = self.env['stock.quant'].search([
                     ('lot_id', '=', line.mo_id.lot_producing_id.id),
                     ('location_id.usage', '=', 'internal'),
@@ -237,13 +247,8 @@ class MrpPeriodCost(models.Model):
                 ])
                 qty_on_hand = sum(quants.mapped('quantity'))
             else:
-                # If NOT tracked by lot, check remaining quantity in the Stock Valuation Layers of the MO finished moves
-                moves = line.mo_id.move_finished_ids.filtered(
-                    lambda m: m.state == 'done' and m.product_id == line.product_id
-                )
-                # In Odoo 17, SVLs track 'remaining_qty' which is the quantity not yet consumed/sold
-                qty_on_hand = sum(moves.mapped('stock_valuation_layer_ids.remaining_qty'))
-            
+                qty_on_hand = 0.0
+
             # Ensure we don't exceed produced qty (in case of weird stock moves)
             qty_on_hand = min(qty_on_hand, line.quantity_produced)
             qty_on_hand = max(0.0, qty_on_hand)
@@ -310,69 +315,135 @@ class MrpPeriodCost(models.Model):
             moves = line.mo_id.move_finished_ids.filtered(
                 lambda m: m.state == 'done' and m.product_id == line.product_id and m.product_uom_qty > 0
             )
-
-            total_qty_moved = sum(moves.mapped('product_uom_qty'))
-            if total_qty_moved == 0:
+            # Split by stock still held per move (incl. transferred stock), so
+            # nothing is lost when a move's own base layer is already exhausted.
+            targets = {move: self._get_target_layers(move) for move in moves}
+            held = {move: sum(t[1].mapped('remaining_qty')) for move, t in targets.items()}
+            total_held = sum(held.values())
+            if total_held <= 0:
+                _logger.warning("Period cost %s: no stock held for MO %s, variance not capitalised.",
+                                self.name, line.mo_id.name)
                 continue
 
+            remaining_value = adjustment_value
+            last_move = [m for m in moves if held[m] > 0][-1]
             for move in moves:
-                move_ratio = move.product_uom_qty / total_qty_moved
-                move_adjustment = adjustment_value * move_ratio
-
-                is_automated = move.product_id.valuation == 'real_time'
-
-                # Like landed cost: link to the origin layer(s) and push the
-                # value into their remaining_value so FIFO unit cost follows.
-                base_layers = move.stock_valuation_layer_ids.filtered(lambda l: l.quantity > 0)
-                svl_vals = {
-                    'company_id': self.company_id.id,
-                    'product_id': line.product_id.id,
-                    'stock_move_id': move.id,
-                    'stock_valuation_layer_id': base_layers[:1].id,
-                    'quantity': 0,
-                    'value': move_adjustment,
-                    'description': _('Period Cost Allocation: %s - %s') % (self.name, line.mo_id.name),
-                }
-
-                svl = self.env['stock.valuation.layer'].create(svl_vals)
-                distribution = self._add_remaining_value(base_layers, move_adjustment)
-                self._record_allocations(svl, base_layers, distribution)
-
-                if is_automated and not self.inventory_only:
-                     self._create_accounting_entry(move, move_adjustment, svl)
+                if held[move] <= 0:
+                    continue
+                if move == last_move:
+                    move_adjustment = remaining_value
+                else:
+                    move_adjustment = float_round(adjustment_value * held[move] / total_held, precision_digits=2)
+                    remaining_value -= move_adjustment
+                origin_layers, target_layers = targets[move]
+                self._post_move_adjustment(line, move, move_adjustment, origin_layers, target_layers)
 
         self.state = 'posted'
         return True
 
+    def _accounting_datetime(self):
+        """End of the period, so the adjustment falls in the month it belongs to."""
+        return datetime.combine(self.date_to, time(23, 59, 59))
+
     @api.model
-    def _add_remaining_value(self, base_layers, value):
-        """Spread value over origin layers that still hold stock, by remaining_qty.
+    def _get_target_layers(self, move):
+        """Return (origin_layers, layers that may still hold the move's stock).
+
+        With stock_fifo_by_location, an inter-warehouse transfer consumes the
+        origin layer's remaining_qty but the goods live on in position layers
+        linked through origin_valuation_layer_id; follow that chain (same idea
+        as stock_landed_cost._get_landed_cost_targets). Without it, only the
+        move's own layers.
+        """
+        Layer = self.env['stock.valuation.layer']
+        base_layers = move.stock_valuation_layer_ids.filtered(lambda l: l.quantity > 0)
+        if 'origin_valuation_layer_id' not in Layer._fields:
+            return base_layers, base_layers
+        origin_layers = base_layers.mapped('origin_valuation_layer_id') | base_layers.filtered(
+            lambda l: not l.origin_valuation_layer_id)
+        chain_ids = set(origin_layers.ids)
+        chain_ids.update(Layer.search([('origin_valuation_layer_id', 'in', list(chain_ids))]).ids)
+        position_layers = Layer.search([
+            ('origin_valuation_layer_id', 'in', list(chain_ids)),
+            ('quantity', '>', 0),
+        ])
+        return origin_layers, position_layers | origin_layers | base_layers
+
+    def _post_move_adjustment(self, line, move, value, origin_layers, target_layers):
+        """Capitalise `value` on the stock still held, one adjustment layer per warehouse."""
+        Layer = self.env['stock.valuation.layer']
+        distribution = self._add_remaining_value(target_layers, value)
+        if not distribution:
+            return
+        base_layer = move.stock_valuation_layer_ids.filtered(lambda l: l.quantity > 0)[:1]
+        origin_layer = origin_layers[:1]
+        has_wh = 'warehouse_id' in Layer._fields
+        groups = {}
+        for layer, amount, qty in distribution:
+            key = layer.warehouse_id.id if has_wh else False
+            groups.setdefault(key, []).append((layer, amount, qty))
+
+        is_automated = move.product_id.valuation == 'real_time'
+        for warehouse_id, items in groups.items():
+            svl_vals = {
+                'company_id': self.company_id.id,
+                'product_id': line.product_id.id,
+                'stock_move_id': move.id,
+                'stock_valuation_layer_id': base_layer.id,
+                'quantity': 0,
+                'value': sum(a for _l, a, _q in items),
+                'description': _('Period Cost Allocation: %s - %s') % (self.name, line.mo_id.name),
+            }
+            if has_wh and warehouse_id:
+                svl_vals['warehouse_id'] = warehouse_id
+            if 'origin_valuation_layer_id' in Layer._fields and origin_layer:
+                svl_vals['origin_valuation_layer_id'] = origin_layer.id
+            if 'accounting_date' in Layer._fields:
+                svl_vals['accounting_date'] = self._accounting_datetime()
+            svl = Layer.create(svl_vals)
+            self._record_allocations(svl, items, origin_layer)
+            if is_automated and not self.inventory_only:
+                self._create_accounting_entry(move, svl.value, svl)
+
+    @api.model
+    def _add_remaining_value(self, layers, value):
+        """Spread value over layers that still hold stock, by remaining_qty.
 
         Returns [(layer, amount, remaining_qty_at_post)] so a reversal can undo it.
+        The amounts add up exactly to `value`.
         """
-        in_stock = base_layers.filtered(lambda l: l.remaining_qty > 0)
+        in_stock = layers.filtered(lambda l: l.remaining_qty > 0)
         total_qty = sum(in_stock.mapped('remaining_qty'))
         if not total_qty:
             return []
         distribution = []
-        for layer in in_stock:
-            amount = value * layer.remaining_qty / total_qty
+        left = value
+        for i, layer in enumerate(in_stock):
+            if i == len(in_stock) - 1:
+                amount = left
+            else:
+                amount = float_round(value * layer.remaining_qty / total_qty, precision_digits=2)
+                left -= amount
             distribution.append((layer, amount, layer.remaining_qty))
             layer.remaining_value += amount
         return distribution
 
-    def _record_allocations(self, svl, base_layers, distribution):
+    def _record_allocations(self, svl, items, origin_layer=None):
+        """Record where `items` [(layer, amount, qty)] went; the cost origin gets the total once."""
         Alloc = self.env['mrp.period.cost.alloc']
-        if not distribution:
-            Alloc.create({
-                'period_id': self.id, 'svl_id': svl.id,
-                'base_layer_id': base_layers[:1].id, 'amount_remaining': 0.0,
+        total = sum(a for _l, a, _q in items)
+        track_origin = origin_layer and 'origin_remaining_value' in origin_layer._fields
+        if track_origin:
+            origin_layer.origin_remaining_value += total
+        vals = []
+        for i, (layer, amount, qty) in enumerate(items):
+            vals.append({
+                'period_id': self.id, 'svl_id': svl.id, 'base_layer_id': layer.id,
+                'amount_remaining': amount, 'qty_at_post': qty,
+                'origin_layer_id': origin_layer.id if track_origin and i == 0 else False,
+                'origin_amount': total if track_origin and i == 0 else 0.0,
             })
-            return
-        Alloc.create([{
-            'period_id': self.id, 'svl_id': svl.id, 'base_layer_id': layer.id,
-            'amount_remaining': amount, 'qty_at_post': qty,
-        } for layer, amount, qty in distribution])
+        Alloc.create(vals)
 
     def action_reverse_to_draft(self, reason):
         """Undo a posted period cost and put it back to draft.
@@ -457,7 +528,7 @@ class MrpPeriodCost(models.Model):
 
         move_vals = {
             'journal_id': journal_id.id,
-            'date': fields.Date.today(),
+            'date': self.date_to,
             'ref': self.name,
             'move_type': 'entry',
             'stock_valuation_layer_ids': [(4, svl.id)], # Link SVL to AM
@@ -553,6 +624,9 @@ class MrpPeriodCostAlloc(models.Model):
     amount_remaining = fields.Float(help="Value added to the origin layer's remaining_value.",
                                     digits='Product Price')
     qty_at_post = fields.Float(help="Origin layer remaining_qty when posted.", digits='Product Unit of Measure')
+    origin_layer_id = fields.Many2one('stock.valuation.layer', string='Cost Origin Layer', ondelete='restrict',
+                                      help="Layer whose origin_remaining_value received origin_amount.")
+    origin_amount = fields.Float(digits='Product Price')
     reversed = fields.Boolean(default=False)
     reversal_svl_id = fields.Many2one('stock.valuation.layer', string='Reversal Layer', ondelete='restrict')
 
@@ -580,7 +654,12 @@ class MrpPeriodCostAlloc(models.Model):
         # accounting period as the layer it cancels.
         if 'accounting_date' in svl._fields:
             vals['accounting_date'] = svl.accounting_date
+        for fname in ('warehouse_id', 'origin_valuation_layer_id'):
+            if fname in svl._fields and svl[fname]:
+                vals[fname] = svl[fname].id
         rev = self.env['stock.valuation.layer'].create(vals)
+        if self.origin_amount and self.origin_layer_id:
+            self.origin_layer_id.origin_remaining_value -= self.origin_amount
         if self.amount_remaining:
             self.base_layer_id.remaining_value -= self.amount_remaining
         if svl.account_move_id:

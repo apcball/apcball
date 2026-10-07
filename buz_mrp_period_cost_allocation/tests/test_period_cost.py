@@ -45,12 +45,11 @@ class TestMrpPeriodCost(TransactionCase):
             'operation_ids': [(0, 0, {'name': 'Op', 'workcenter_id': cls.wc.id,
                                       'time_cycle_manual': 10})],
         })
-        stock = env['stock.location'].search(
-            [('usage', '=', 'internal'), ('company_id', '=', cls.company.id)], limit=1)
-        env['stock.quant']._update_available_quantity(cls.comp, stock, qty * 2)
         mo = env['mrp.production'].create({
             'product_id': product.id, 'product_qty': qty, 'bom_id': bom.id,
         })
+        stock = mo.location_src_id
+        env['stock.quant']._update_available_quantity(cls.comp, stock, qty * 2)
         mo.action_confirm()
         mo.action_assign()
         wo = mo.workorder_ids[0]
@@ -267,6 +266,60 @@ class TestMrpPeriodCost(TransactionCase):
         self.assertAlmostEqual(
             sum(base.mapped('remaining_value')) - before, sum(svls.mapped('value')), 2)
         self.assertTrue(all(s.stock_valuation_layer_id for s in svls))
+
+    def test_post_dates_use_period_end(self):
+        p = self._posted()
+        svls = self._svls(p)
+        if 'accounting_date' not in svls._fields:
+            self.skipTest("accounting_date not installed")
+        self.assertTrue(all(s.accounting_date.date() == p.date_to for s in svls))
+
+    def _simulate_transfer(self, p):
+        """Base layers' stock moves to a position layer (like an inter-warehouse transfer)."""
+        Layer = self.env['stock.valuation.layer']
+        if 'origin_valuation_layer_id' not in Layer._fields:
+            self.skipTest("stock_fifo_by_location not installed")
+        base = self._base_layers(p)
+        positions = Layer
+        for b in base:
+            vals = {
+                'company_id': b.company_id.id, 'product_id': b.product_id.id,
+                'quantity': b.remaining_qty, 'value': b.remaining_value,
+                'remaining_qty': b.remaining_qty, 'remaining_value': b.remaining_value,
+                'origin_valuation_layer_id': b.id, 'description': 'test transfer',
+            }
+            if 'warehouse_id' in Layer._fields:
+                vals['warehouse_id'] = self.env['stock.warehouse'].search([], limit=1).id
+            positions |= Layer.create(vals)
+            b.write({'remaining_qty': 0.0, 'remaining_value': 0.0})
+        return base, positions
+
+    def test_transferred_stock_still_gets_variance(self):
+        p = self._loaded()
+        base, positions = self._simulate_transfer(p)
+        p.action_preview_allocation()
+        for line in p.line_ids:
+            self.assertAlmostEqual(line.qty_on_hand, line.quantity_produced, 2)
+            self.assertAlmostEqual(line.allocated_period_expense, 0.0, 2)
+        before = sum(positions.mapped('remaining_value'))
+        p.action_post()
+        total = sum(p.line_ids.mapped('allocated_inventory_total'))
+        self.assertAlmostEqual(sum(self._svls(p).mapped('value')), total, 2)
+        self.assertAlmostEqual(sum(positions.mapped('remaining_value')) - before, total, 2)
+        if 'origin_remaining_value' in base._fields:
+            self.assertTrue(all(b.origin_remaining_value for b in base))
+
+    def test_reverse_after_transfer_restores_values(self):
+        p = self._loaded()
+        base, positions = self._simulate_transfer(p)
+        p.action_preview_allocation()
+        before = sum(positions.mapped('remaining_value'))
+        origin_before = sum(base.mapped('origin_remaining_value')) if 'origin_remaining_value' in base._fields else 0
+        p.action_post()
+        p.action_reverse_to_draft('undo')
+        self.assertAlmostEqual(sum(positions.mapped('remaining_value')), before, 2)
+        if 'origin_remaining_value' in base._fields:
+            self.assertAlmostEqual(sum(base.mapped('origin_remaining_value')), origin_before, 2)
 
     # ---- reverse & reset to draft ---------------------------------------
     def _posted(self):

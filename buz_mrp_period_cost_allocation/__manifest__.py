@@ -1,6 +1,6 @@
 {
     'name': 'Manufacturing Period Cost Allocation',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'summary': 'Allocate actual manufacturing costs to MOs on a period basis',
     'description': """
         Allocates actual manufacturing cost (DL, IDL, OH) to Manufacturing Orders (MO) 
