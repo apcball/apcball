@@ -629,6 +629,56 @@ class TestStockCardReport(TransactionCase):
         self.assertEqual(rows[0]["qty_in"], 12.0)
         self.assertAlmostEqual(rows[0]["unitcost_in"], 9.5)
 
+    def test_product_all_locations_rows_carry_warehouse_and_group_by_it(self):
+        from odoo.addons.buz_new_stock_card.controllers.stock_card_controller import StockCardController
+        self._mk_move(self.loc_supplier, self.loc_a, 10.0, self._dt("2024-06-10 08:00:00"))
+        rows = self.engine.get_product_all_locations_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        self.assertTrue(rows)
+        self.assertTrue(all("warehouse_name" in r for r in rows))
+        grouped = StockCardController._group_rows_by_warehouse([
+            {"warehouse_name": "WH2", "seq": 9},
+            {"warehouse_name": "WH1", "seq": 5},
+            {"warehouse_name": "", "seq": 7},
+            {"warehouse_name": "WH1", "seq": 6},
+        ])
+        self.assertEqual([name for name, _rows in grouped], ["WH1", "WH2", "ไม่มีคลังสินค้า"])
+        # seq runs continuously across the single sheet
+        self.assertEqual(
+            [r["seq"] for _name, group_rows in grouped for r in group_rows], [1, 2, 3, 4],
+        )
+
+    def test_warehouse_grouped_sheets_write_header_and_subtotal(self):
+        import io
+        import xlsxwriter
+        from odoo.addons.buz_new_stock_card.controllers.stock_card_controller import StockCardController
+        self._mk_move(self.loc_supplier, self.loc_a, 10.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 4.0, self._dt("2024-06-12 08:00:00"))
+        ctrl = StockCardController()
+        workbook = xlsxwriter.Workbook(io.BytesIO(), {"in_memory": True})
+        fmts = {k: workbook.add_format() for k in ("header", "num", "date", "text")}
+        ctrl._add_group_formats(workbook, fmts)
+        plain = self.engine.get_product_all_locations_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        ctrl._write_all_stock_card_sheet(workbook, fmts, plain, group_by_warehouse=True)
+        val = self.engine.get_product_all_locations_valuation_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        ctrl._write_valuation_sheet(workbook, fmts, val, sheet_name="Val", group_by_warehouse=True)
+        workbook.close()
+        opening, (closing,) = StockCardController._closing_by_key(
+            [
+                {"k": "a", "opening": 1.0, "balance": 5.0},
+                {"k": "a", "opening": 5.0, "balance": 7.0},
+                {"k": "b", "opening": 2.0, "balance": 3.0},
+            ],
+            ("k",), "opening", ("balance",),
+        )
+        self.assertEqual(opening, 3.0)
+        self.assertEqual(closing, 10.0)
+
     def test_valuation_internal_move_inside_scope_is_excluded(self):
         self._mk_move(self.loc_a, self.loc_b, 5.0, self._dt("2024-06-10 08:00:00"))
         rows = self.engine.get_scoped_stock_card_valuation_lines(

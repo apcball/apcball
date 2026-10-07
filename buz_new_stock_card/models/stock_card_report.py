@@ -784,9 +784,8 @@ class StockCardReport(models.AbstractModel):
         product = self.env["product.product"].browse(product_id)
         default_code, product_name = product.default_code or "", product.name
         Location = self.env["stock.location"]
-        location_names = {
-            loc.id: loc.display_name for loc in Location.browse(list(location_ids))
-        }
+        locations = {loc.id: loc for loc in Location.browse(list(location_ids))}
+        location_names = {loc_id: loc.display_name for loc_id, loc in locations.items()}
 
         rows = []
         for location_id in location_ids:
@@ -805,7 +804,10 @@ class StockCardReport(models.AbstractModel):
                 internal_location_ids, location_label, default_code, product_name,
                 include_value=can_see_value, opening_value=opening_value,
             )
+            warehouse_name = locations[location_id].warehouse_id.name or ""
             if product_rows:
+                for product_row in product_rows:
+                    product_row["warehouse_name"] = warehouse_name
                 rows.extend(product_rows)
             elif not show_movements_only:
                 marker_row = {
@@ -822,6 +824,7 @@ class StockCardReport(models.AbstractModel):
                     "from_location": "",
                     "to_location": "",
                     "note": "",
+                    "warehouse_name": warehouse_name,
                     "_sort_key": (location_label, default_code or "", product_name or "", "", 0),
                 }
                 if can_see_value:
