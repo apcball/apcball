@@ -36,11 +36,6 @@ export class MainPanel extends Component {
 
     get isMulti() { return this.props.state.cardData?.mode === "multi"; }
 
-    lineLocation(line) {
-        if (!this.isMulti) { return line.location_name; }
-        return line.to_location || line.from_location || line.location_label || "—";
-    }
-
     get productType() {
         return { product: "สินค้าจัดเก็บสต๊อก", consu: "สินค้าอุปโภคบริโภค", service: "บริการ" }[this.props.state.product?.type] || "—";
     }

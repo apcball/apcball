@@ -498,6 +498,8 @@ class StockCardReport(models.AbstractModel):
                 "out": out_qty,
                 "balance": running_balance,
                 "location_name": line["location_dest_id"][1] if in_qty else line["location_id"][1],
+                "source_location": line["location_id"][1],
+                "dest_location": line["location_dest_id"][1],
             }
             if can_see_value:
                 delta = self._line_value_delta(line, scope_location_ids, value_context)
@@ -577,16 +579,6 @@ class StockCardReport(models.AbstractModel):
         lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
         self._prefetch_documents(lines)
 
-        # Batch the counterpart-location names (one browse, not one per row).
-        counterpart_ids = set()
-        for line in lines:
-            counterpart_ids.add(line["location_id"][0])
-            counterpart_ids.add(line["location_dest_id"][0])
-        loc_names = {
-            loc.id: loc.display_name
-            for loc in Location.browse(list(counterpart_ids))
-        }
-
         value_context = None
         running_value = opening_value
         if include_value:
@@ -610,10 +602,8 @@ class StockCardReport(models.AbstractModel):
             running_balance += in_qty - out_qty
             doc_type, doc_number, _res_model, _res_id, source_document = self._resolve_document(line)
 
-            src_id = line["location_id"][0]
-            dest_id = line["location_dest_id"][0]
-            from_location = loc_names.get(src_id, "") if in_qty and src_id in internal_location_ids else ""
-            to_location = loc_names.get(dest_id, "") if out_qty and dest_id in internal_location_ids else ""
+            from_location = line["location_id"][1]
+            to_location = line["location_dest_id"][1]
 
             row = {
                 "location_label": location_label,
@@ -628,6 +618,8 @@ class StockCardReport(models.AbstractModel):
                 "balance": running_balance,
                 "from_location": from_location,
                 "to_location": to_location,
+                "source_location": from_location,
+                "dest_location": to_location,
                 "note": source_document,
                 "_sort_key": (location_label, default_code or "", product_name or "", str(line["date"]), line["id"]),
             }
@@ -691,9 +683,9 @@ class StockCardReport(models.AbstractModel):
             pairs_by_location.setdefault(location_id, set()).add(product_id)
 
         all_product_ids = {product_id for _loc, product_id in pairs}
-        location_names = {
-            loc.id: loc.display_name for loc in Location.browse(list(pairs_by_location.keys()))
-        }
+        all_locations = Location.browse(list(pairs_by_location.keys()))
+        location_names = {loc.id: loc.display_name for loc in all_locations}
+        warehouse_names = {loc.id: loc.warehouse_id.name or "" for loc in all_locations}
         product_info = {
             p.id: (p.default_code or "", p.name) for p in Product.browse(list(all_product_ids))
         }
@@ -718,6 +710,8 @@ class StockCardReport(models.AbstractModel):
                     include_value=can_see_value,
                     opening_value=opening_value_by_product.get(product_id, 0.0),
                 )
+                for product_row in product_rows:
+                    product_row["warehouse_name"] = warehouse_names[location_id]
                 rows.extend(product_rows)
 
         rows.sort(key=lambda r: r["_sort_key"])
@@ -940,6 +934,17 @@ class StockCardReport(models.AbstractModel):
             row["seq"] = idx + 1
             del row["_sort_key"]
         return rows
+
+    @api.model
+    def split_scope_by_warehouse(self, scope_location_ids):
+        """[(warehouse_name, location_ids)] - scope locations grouped by their
+        warehouse (no-warehouse group has name ""), sorted by name with the
+        no-warehouse group last. Each group is a scope of its own, so balances
+        computed per group stay per warehouse."""
+        groups = {}
+        for loc in self.env["stock.location"].browse(list(scope_location_ids)):
+            groups.setdefault(loc.warehouse_id.name or "", []).append(loc.id)
+        return sorted(groups.items(), key=lambda kv: (kv[0] == "", kv[0]))
 
     @api.model
     def get_location_tree(self, parent_id=None, company_ids=None):
@@ -1305,7 +1310,8 @@ class StockCardReport(models.AbstractModel):
         for picking in self.env["stock.picking"].browse(list(picking_ids)):
             picking_notes[picking.id] = html2plaintext(picking.note).strip() if picking.note else ""
 
-        def make_row(product, location, lot_name, doc_type, doc_number, date_str, sort_dt, remark):
+        def make_row(product, location, lot_name, doc_type, doc_number, date_str, sort_dt, remark,
+                     source_location="", dest_location=""):
             return {
                 "product_default_code": product.default_code or "",
                 "product_name": product.name,
@@ -1318,6 +1324,8 @@ class StockCardReport(models.AbstractModel):
                 "qty_in": 0.0, "unitcost_in": 0.0, "cost_in": 0.0,
                 "qty_out": 0.0, "unitcost_out": 0.0, "cost_out": 0.0,
                 "remark": remark,
+                "source_location": source_location,
+                "dest_location": dest_location,
                 "_sort_dt": sort_dt,
             }
 
@@ -1384,6 +1392,7 @@ class StockCardReport(models.AbstractModel):
             row = make_row(
                 product, locations[location_id], lot_names.get(lot_id, ""),
                 doc_type, doc_number, self._to_user_tz_str(line["date"]), line["date"], remark,
+                line["location_id"][1], line["location_dest_id"][1],
             )
             set_amount(row, qty, unit_cost)
             rows.append(row)

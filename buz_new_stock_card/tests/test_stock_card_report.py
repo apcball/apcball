@@ -134,6 +134,19 @@ class TestStockCardReport(TransactionCase):
         self.assertEqual(pages[1]["lines"][0]["balance"], 15)
         self.assertEqual(pages[0]["lines"][0]["location_name"], self.loc_b.display_name)
 
+    def test_lines_expose_source_and_destination_location(self):
+        self._mk_move(self.loc_supplier, self.loc_a, 10, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 4, self._dt("2024-06-11 08:00:00"))
+        data = self.engine.get_stock_card_data(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+            company_ids=[self.env.company.id],
+        )
+        recv, deliv = data["lines"]
+        self.assertEqual(recv["source_location"], self.loc_supplier.display_name)
+        self.assertEqual(recv["dest_location"], self.loc_a.display_name)
+        self.assertEqual(deliv["source_location"], self.loc_a.display_name)
+        self.assertEqual(deliv["dest_location"], self.loc_customer.display_name)
+
     def test_opening_balance_obeys_company_filter(self):
         self._mk_move(self.loc_supplier, self.loc_a, 20, self._dt("2024-05-10 08:00:00"))
         data = self.engine.get_stock_card_data(

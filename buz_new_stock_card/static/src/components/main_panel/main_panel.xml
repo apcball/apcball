@@ -96,7 +96,7 @@
                                 <th scope="col">#</th>
                                 <th t-if="isMulti" scope="col">รหัส/ชื่อสินค้า</th>
                                 <th scope="col">วันที่ / เวลา</th><th scope="col">เอกสาร</th><th scope="col">อ้างอิง</th>
-                                <th scope="col">ประเภท</th><th scope="col">รายละเอียด / สถานที่จัดเก็บ</th>
+                                <th scope="col">ประเภท</th><th scope="col">ต้นทาง (Source)</th><th scope="col">ปลายทาง (Destination)</th>
                                 <th t-if="isMulti" scope="col" class="text-end">ยอดยกมา</th>
                                 <th scope="col" class="text-end">รับ (เข้า)</th><th scope="col" class="text-end">จ่าย (ออก)</th>
                                 <th scope="col" class="text-end">ยอดคงเหลือ</th>
@@ -114,7 +114,8 @@
                                         <span t-else="" t-esc="line.doc_number or '—'"/></td>
                                     <td t-esc="line.reference or line.note or '—'"/>
                                     <td><span class="o_sc_movement_badge" t-att-class="'is-' + movement(line).kind"><i aria-hidden="true" t-att-class="'fa ' + movement(line).icon"/><t t-esc="movement(line).label"/></span></td>
-                                    <td class="o_sc_line_detail" t-att-title="lineLocation(line)" t-esc="lineLocation(line)"/>
+                                    <td class="o_sc_line_detail" t-att-title="line.source_location" t-esc="line.source_location or '—'"/>
+                                    <td class="o_sc_line_detail" t-att-title="line.dest_location" t-esc="line.dest_location or '—'"/>
                                     <td t-if="isMulti" class="text-end" t-esc="fmt(line.opening)"/>
                                     <td class="text-end o_sc_qty_in" t-esc="line['in'] ? fmt(line['in']) : '—'"/>
                                     <td class="text-end o_sc_qty_out" t-esc="line['out'] ? fmt(line['out']) : '—'"/>
