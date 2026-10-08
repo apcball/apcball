@@ -10,9 +10,12 @@ Odoo stock back to Lazada. Module layout and workflows mirror
   tokens, callback state, and seller routing. The callback never stores a
   code on an arbitrary first shop.
 
-- **Stock pull (reference only)**: remaining stock per SKU from Lazada ->
+- **Stock pull (reference only)**: available stock per SKU from Lazada ->
   shown on the product variant form (`Lazada Available Stock`). Product
-  SKUs (`SellerSku`) are matched against `product.product.default_code`.
+  SKUs (`SellerSku`) are matched against `product.product.default_code`
+  (case-insensitive when the match is unique). SKUs without an Odoo match
+  are kept under **Product Mappings** with item name, variant and stock so
+  they can be linked by hand.
 - **Order pull**: new orders from Lazada (incremental window, with a two-day
   initial lookback) -> **draft** Sale Orders in Odoo, tagged
   `is_lazada_order`. Lines matched by `SellerSku` -> stored
@@ -85,11 +88,91 @@ Odoo stock back to Lazada. Module layout and workflows mirror
 - Access tokens last ~7 days; auto-refreshed from the stored
   `refresh_token` (90 days) on every sync and by the
   "Lazada: Refresh Access Tokens" cron (every 3h).
-- `product/price_quantity/update` sends a `payload` JSON list; if Lazada
-  rejects the payload, adjust `LazadaAPI.update_stock` in
-  `models/lazada_api.py`.
+- `product/price_quantity/update` sends an XML `payload`
+  (`Request/Product/Skus/Sku` with `ItemId`, `SkuId`, `SellerSku`,
+  `Quantity`); if Lazada rejects the payload, adjust
+  `LazadaAPI.update_stock` in `models/lazada_api.py`.
+- Order import sends `created_after`/`created_before` in ISO 8601 (UTC) and
+  continues each run from the end of the previous window.
 - Products must exist in Odoo with `default_code` = Lazada `SellerSku` for
   stock to match; unmapped order SKUs still create the order against the
   `LAZADA_UNMAPPED` placeholder product.
 - Lazada API hosts are region specific (api.lazada.co.th for Thailand);
   pick the region matching the seller's site.
+
+## Batch shipping and labels
+
+Select imported orders and use **Action -> Lazada: Arrange shipment and
+labels**. The background worker packs each order (`/order/fulfill/pack`),
+sets it ready to ship (`/order/package/rts`) and downloads the AWB PDF
+(`/order/package/document/get`); labels are downloaded as original PDFs in a
+ZIP with a result manifest. Pickup vs drop-off is not chosen per order: it
+follows the warehouse setting in Lazada Seller Center. See
+`SHIPPING_GUIDE_TH.md` for setup, limitations and test status. Odoo
+installation and live Lazada calls have not been verified yet.
+
+## 17.0.2.0.0 — parity with shopee_connector 17.0.2.20.0
+
+- **Menus** as in the Shopee app: Dashboard, Orders, Sync Orders, Logs &
+  Queue, Configurations (Seller Connections, Product Mappings, Import
+  Mappings). Import Stock File, Stock and Shipping Batches are hidden
+  (the code stays); the "Arrange shipment" action is unbound like Shopee.
+- **Lazada Ops Dashboard** (`lazada.dashboard`, OWL client action
+  `lazada_connector.dashboard`): API errors, failed retries, stock sync
+  failures, unmapped listings, stale stock pushes, shipments needing
+  attention, order status/trend, sync success rate, seller health and the
+  Lazada scheduled actions; filter by seller and 1/7/30 days.
+- **Access groups** *Lazada User* (menu, dashboard, stock wizards) and
+  *Lazada Manager* (connections, credentials, order sync, mappings,
+  shipping). Admin/root are managers by default; give other users a group.
+  Company rules isolate connections, mappings, logs, retries and shipping.
+- **Sync Orders** wizard: import orders created in a date range (one-off
+  backfill, fetched in 15-day windows) or refresh order statuses.
+- **Product Mappings**: Odoo warehouse stock, manual "Odoo Available Stock",
+  "Refill When Lazada Stock Below", Push Odoo Stock button/action,
+  Internal Reference subtitle (widget `lazada_many2one_subtitle`, distinct
+  from Shopee's widget so both apps can be installed together).
+  **Import Mappings** reads CSV/XLSX with `SellerSku`, `Internal Reference`
+  and optional `Lazada Item ID`, `Lazada SKU ID`, `Refill...`, `Active`;
+  dry run by default.
+- **Stock / price push**: optional Stock Source Location; variants of one
+  Lazada item go out in one `price_quantity/update` call; push again when
+  Lazada's stock drifts; **Push Price to Lazada** (seller switch + per
+  variant flag, cron "Lazada: Push Price" disabled by default).
+- **Hardening**: OAuth state expires after 10 minutes and is consumed once
+  (a callback without `state` is only accepted for a single pending
+  authorization); webhooks reject non-object payloads, inconsistent seller
+  ids and invalid order ids, process in a savepoint and answer 503 when the
+  retry cannot be queued; retry worker uses `FOR UPDATE SKIP LOCKED`,
+  validates payloads, respects backoff and inactive sellers; logs redact
+  secrets (nested and serialized) and can never abort the business
+  transaction; credentials are Lazada Manager fields; ambiguous SKUs are
+  rejected; order import is scoped to the seller's company.
+
+### Phase 2 — Thai orders and Lazada fees
+
+- **Buyers**: the shipping address maps to Odoo as street = `address1`
+  (repeated sub-district/district/province/zip removed), street2 =
+  `address5` (ตำบล/แขวง), city = `address4` (อำเภอ/เขต), state = `address3`,
+  zip = `post_code`; phones `66XXXXXXXXX` become `0XXXXXXXXX`. Masked values
+  (`****`) are never written and company data is never copied onto buyers;
+  masked buyers are not merged into one contact. Orders with `tax_code`
+  (+ `branch_number`, `address_billing`) put the tax identity on the buyer
+  and the recipient on a delivery contact. Buyers skip
+  `buz_partner_required_fields` checks.
+- **Orders**: Lazada's per-unit items become one line per product/price
+  (cancelled units left out), unit prices exclude VAT (seller setting,
+  default 7%), Customer Reference = Lazada order number, Trade Channel =
+  Lazada when `marketplace_settlement` offers it, Delivery Date from the
+  payment time and the seller's cut-off (default 14:00), cancelled orders
+  cancel quotations or tag confirmed orders "Lazada: ยกเลิกหลัง Confirm".
+  Status sync also fills the recipient once Lazada unmasks it.
+- **Payment details**: shipping (Service04) and seller voucher lines from
+  the order data; for shipped/delivered quotations the Finance API
+  (`/finance/transaction/details/get`) adds commission/payment fees and the
+  net income (`Lazada Order Income`) to the order note, like Shopee's
+  escrow summary. Only quotations are changed; re-applying replaces lines.
+
+Field names follow Lazada's documentation; verify them against real orders
+(`Lazada Payload` on the order) before relying on them. "Import Buyer
+Addresses" waits for a Lazada Seller Center export sample.

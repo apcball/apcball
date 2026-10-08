@@ -13,11 +13,9 @@ except ImportError:
 class TestLazadaStockImport(TransactionCase):
     def setUp(self):
         super().setUp()
-        self.product = self.env["product.product"].search(
-            [("default_code", "!=", False)], limit=1
-        )
-        if not self.product:
-            self.skipTest("No product with an internal reference available")
+        self.product = self.env["product.product"].create({
+            "name": "Lazada QA Import", "default_code": "LAZADA-QA-IMPORT", "type": "product",
+        })
         self.product.write({"lazada_stock": 4})
 
     def _import(self, content, filename="lazada_stock.csv"):
@@ -72,3 +70,17 @@ class TestLazadaStockImport(TransactionCase):
         self.product.invalidate_recordset()
 
         self.assertEqual(self.product.lazada_stock, 23)
+
+    def test_ambiguous_product_sku_is_rejected(self):
+        self.env["product.product"].create({
+            "name": "Duplicate QA SKU", "default_code": self.product.default_code,
+        })
+        with self.assertRaises(UserError):
+            self._import(("SKU,Stock\n%s,99\n" % self.product.default_code).encode())
+        self.assertEqual(self.product.lazada_stock, 4)
+
+    def test_invalid_numbers_leave_stock_unchanged(self):
+        for value in ("-1", "1.5", "NaN", "Infinity"):
+            with self.subTest(value=value), self.assertRaises(UserError):
+                self._import(("SKU,Stock\n%s,%s\n" % (self.product.default_code, value)).encode())
+        self.assertEqual(self.product.lazada_stock, 4)

@@ -1,6 +1,8 @@
 import hashlib
 import hmac
+from datetime import datetime
 from types import SimpleNamespace
+from xml.etree import ElementTree
 from unittest.mock import Mock, patch
 
 from odoo.tests import TransactionCase
@@ -128,3 +130,41 @@ class TestLazadaSignature(TransactionCase):
         self.assertEqual(values["endpoint"], "/seller/get")
         self.assertNotIn("method", values)
         self.assertNotIn("path", values)
+
+    @patch("odoo.addons.lazada_connector.models.lazada_api.requests.request")
+    def test_post_sends_business_params_in_signed_body(self, request_mock):
+        response = Mock(status_code=200)
+        response.json.return_value = {"code": "0", "access_token": "renewed"}
+        request_mock.return_value = response
+
+        self.api.refresh_access_token("old-refresh")
+
+        query = request_mock.call_args.kwargs["params"]
+        body = request_mock.call_args.kwargs["data"]
+        self.assertEqual(request_mock.call_args.args[0], "POST")
+        self.assertEqual(body, {"refresh_token": "old-refresh"})
+        self.assertNotIn("refresh_token", query)
+        signed = {k: v for k, v in query.items() if k != "sign"}
+        self.assertEqual(
+            query["sign"],
+            _lazada_sign("testkey", "/auth/token/refresh", dict(signed, **body)),
+        )
+
+    def test_get_orders_sends_iso8601_dates(self):
+        with patch.object(LazadaAPI, "_get", return_value={}) as call:
+            self.api.get_orders(
+                "tok", datetime(2026, 1, 2, 3, 4, 5), created_before=1767323045,
+            )
+        params = call.call_args.args[2]
+        self.assertEqual(params["created_after"], "2026-01-02T03:04:05+00:00")
+        self.assertEqual(params["created_before"], "2026-01-02T03:04:05+00:00")
+
+    def test_update_stock_sends_xml_payload(self):
+        with patch.object(LazadaAPI, "_post", return_value={}) as call:
+            self.api.update_stock("tok", "SKU-<1>", "900", 7.0, item_id="55")
+        payload = call.call_args.kwargs["params"]["payload"]
+        sku = ElementTree.fromstring(payload).find("./Product/Skus/Sku")
+        self.assertEqual(sku.findtext("ItemId"), "55")
+        self.assertEqual(sku.findtext("SkuId"), "900")
+        self.assertEqual(sku.findtext("SellerSku"), "SKU-<1>")
+        self.assertEqual(sku.findtext("Quantity"), "7")

@@ -5,3 +5,6 @@ from . import lazada_product_mapping
 from . import product_template
 from . import res_partner
 from . import sale_order
+from . import sale_order_line
+from . import lazada_fulfillment
+from . import lazada_dashboard

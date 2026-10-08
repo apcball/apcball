@@ -1,10 +1,16 @@
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
+    lazada_linked = fields.Boolean(
+        string="Lazada Linked",
+        compute="_compute_lazada_linked",
+        search="_search_lazada_linked",
+        help="True if this variant is linked to a Lazada item/SKU.",
+    )
     lazada_item_id = fields.Char(
         string="Lazada Item ID", readonly=True, copy=False
     )
@@ -38,6 +44,43 @@ class ProductProduct(models.Model):
     lazada_stock_push_date = fields.Datetime(
         string="Lazada Last Stock Push", readonly=True, copy=False
     )
+    lazada_sync_price_out = fields.Boolean(
+        string="Push Price to Lazada",
+        default=False,
+        copy=False,
+        help="When enabled and the seller connection has price push turned "
+        "on, this variant's Odoo sales price is pushed to Lazada. Off by "
+        "default - price pushes are higher-risk than stock pushes.",
+    )
+    lazada_price = fields.Float(
+        string="Lazada Price",
+        readonly=True,
+        copy=False,
+        help="Price as last reported/pushed to Lazada. Reference only.",
+    )
+    lazada_pushed_price = fields.Float(
+        string="Lazada Last Pushed Price", readonly=True, copy=False,
+        help="Last price sent to Lazada. Used to skip unchanged pushes.",
+    )
+    lazada_price_push_date = fields.Datetime(
+        string="Lazada Last Price Push", readonly=True, copy=False
+    )
+
+    @api.depends("lazada_item_id")
+    def _compute_lazada_linked(self):
+        for product in self:
+            product.lazada_linked = bool(product.lazada_item_id)
+
+    def _search_lazada_linked(self, operator, value):
+        if operator == "=" and value:
+            return [("lazada_item_id", "!=", False)]
+        if operator == "=" and not value:
+            return [("lazada_item_id", "=", False)]
+        if operator == "!=" and value:
+            return [("lazada_item_id", "=", False)]
+        if operator == "!=" and not value:
+            return [("lazada_item_id", "!=", False)]
+        return []
 
     def action_push_lazada_stock(self):
         """Push the selected variants' stock to every stock-push-enabled seller."""
@@ -70,16 +113,24 @@ class ProductProduct(models.Model):
             raise UserError("No active Lazada seller connection was found.")
 
         updated = 0
+        unmapped = 0
         for config in configs:
             updated += config.action_sync_stock()
+            unmapped += config.last_stock_sync_unmapped
+        message = f"{updated} product(s) updated from Lazada."
+        if unmapped:
+            message += (
+                f" {unmapped} Lazada listing(s) are not linked to an Odoo "
+                "product (see Lazada > Product Mappings)."
+            )
 
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": "Lazada stock sync",
-                "message": f"{updated} product(s) updated from Lazada.",
-                "type": "success",
+                "message": message,
+                "type": "warning" if unmapped else "success",
                 "sticky": False,
             },
         }
