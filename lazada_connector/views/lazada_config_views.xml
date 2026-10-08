@@ -9,10 +9,9 @@
                     <button name="action_get_authorization_url" type="object" string="1. Get Authorization Link" class="btn-primary"/>
                     <button name="action_test_connection" type="object" string="Test Connection" class="btn-secondary"/>
                     <button name="action_save_manual_tokens" type="object" string="Save Manual Tokens" class="btn-secondary"/>
-                    <button name="action_sync_stock" type="object" string="Sync Stock Now" class="btn-secondary"/>
-                    <button name="action_sync_orders" type="object" string="Import Orders Now" class="btn-secondary"/>
-                    <button name="action_sync_order_status" type="object" string="Sync Order Status" class="btn-secondary"/>
+                    <button name="action_sync_stock_button" type="object" string="Sync Stock Now" class="btn-secondary"/>
                     <button name="action_push_stock" type="object" string="Push Stock Now" class="btn-secondary" invisible="not lazada_push_stock"/>
+                    <button name="action_push_price" type="object" string="Push Price Now" class="btn-secondary" invisible="not lazada_push_price"/>
                 </header>
                 <sheet>
                     <group>
@@ -31,6 +30,11 @@
                     </group>
                     <group string="Order Import">
                         <field name="customer_partner_id"/>
+                        <field name="lazada_price_vat_rate"/>
+                        <field name="lazada_ship_cutoff_hour" widget="float_time"/>
+                        <field name="lazada_shipping_product_id" options="{'no_create': True}"/>
+                        <field name="lazada_voucher_product_id" options="{'no_create': True}"/>
+                        <field name="lazada_voucher_prefix"/>
                     </group>
                     <group string="Authorization">
                         <div class="o_form_label">After Lazada approval, the callback exchanges the token automatically. If it fails, create a new authorization link; Lazada codes are single-use.</div>
@@ -43,15 +47,21 @@
                     <group string="Stock Push (Odoo -&gt; Lazada)">
                         <field name="lazada_push_stock"/>
                         <field name="lazada_warehouse_id" invisible="not lazada_push_stock" required="lazada_push_stock"/>
+                        <field name="lazada_stock_location_id" invisible="not lazada_push_stock" options="{'no_create': True}"/>
                         <field name="last_stock_push" readonly="1"/>
                     </group>
+                    <group string="Price Push (Odoo -&gt; Lazada)">
+                        <field name="lazada_push_price"/>
+                        <field name="last_price_push" readonly="1"/>
+                    </group>
                     <group string="Token Status">
-                        <field name="access_token" readonly="1"/>
+                        <field name="access_token" readonly="1" password="True"/>
                         <field name="token_expires_at" readonly="1"/>
-                        <field name="oauth_state" readonly="1"/>
+                        <field name="oauth_state" readonly="1" password="True"/>
                     </group>
                     <group string="Sync Status">
                         <field name="last_stock_sync" readonly="1"/>
+                        <field name="last_stock_sync_unmapped" readonly="1"/>
                         <field name="last_order_sync" readonly="1"/>
                         <field name="last_order_status_sync" readonly="1"/>
                     </group>
@@ -72,6 +82,7 @@
                 <field name="last_order_sync"/>
                 <field name="last_order_status_sync"/>
                 <field name="last_stock_push"/>
+                <field name="last_price_push"/>
             </tree>
         </field>
     </record>

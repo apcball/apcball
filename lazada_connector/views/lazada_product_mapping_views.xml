@@ -5,11 +5,25 @@
         <field name="model">lazada.product.mapping</field>
         <field name="arch" type="xml">
             <tree>
+                <field name="company_id" column_invisible="1"/>
                 <field name="lazada_config_id"/>
                 <field name="seller_sku"/>
-                <field name="lazada_item_id"/>
-                <field name="lazada_sku_id"/>
-                <field name="product_id"/>
+                <field name="lazada_item_id" readonly="1"/>
+                <field name="lazada_sku_id" readonly="1"/>
+                <field name="lazada_item_name" readonly="1"/>
+                <field name="lazada_sku_name" readonly="1"/>
+                <field name="product_id" widget="lazada_many2one_subtitle"
+                       options="{'subtitle_field': 'odoo_sku', 'no_open': True}"
+                       context="{'display_default_code': False}"/>
+                <field name="lazada_stock"/>
+                <field name="odoo_available_stock"/>
+                <field name="use_stock_override" readonly="1" optional="show"/>
+                <field name="refill_below" optional="show"/>
+                <field name="last_stock_sync" readonly="1"/>
+                <field name="last_pushed_stock" readonly="1"/>
+                <field name="last_stock_push" readonly="1"/>
+                <field name="last_pushed_price" readonly="1" optional="hide"/>
+                <field name="last_price_push" readonly="1" optional="hide"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -19,16 +33,38 @@
         <field name="model">lazada.product.mapping</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_push_odoo_stock" type="object"
+                            string="Push Odoo Stock to Lazada" class="btn-primary"
+                            invisible="not product_id"
+                            confirm="Lazada stock will be replaced by the Odoo available stock. Continue?"/>
+                    <button name="action_reset_stock_override" type="object"
+                            string="Use Odoo Warehouse Stock"
+                            invisible="not use_stock_override"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="lazada_config_id"/>
+                        <field name="company_id" invisible="1"/>
                         <field name="seller_sku"/>
                         <field name="lazada_item_id"/>
                         <field name="lazada_sku_id"/>
+                        <field name="lazada_item_name" readonly="1"/>
+                        <field name="lazada_sku_name" readonly="1"/>
                         <field name="product_id"/>
+                        <field name="odoo_sku" readonly="1"/>
                         <field name="active"/>
+                        <field name="lazada_stock"/>
+                        <field name="odoo_available_stock"/>
+                        <field name="use_stock_override" readonly="1"
+                               invisible="not use_stock_override"/>
+                        <field name="odoo_free_qty"/>
+                        <field name="refill_below"/>
+                        <field name="last_stock_sync" readonly="1"/>
                         <field name="last_pushed_stock" readonly="1"/>
                         <field name="last_stock_push" readonly="1"/>
+                        <field name="last_pushed_price" readonly="1"/>
+                        <field name="last_price_push" readonly="1"/>
                     </group>
                 </sheet>
             </form>
@@ -38,6 +74,14 @@
         <field name="name">Product Mappings</field>
         <field name="res_model">lazada.product.mapping</field>
         <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_lazada_mapping_push_stock" model="ir.actions.server">
+        <field name="name">Push Odoo Stock to Lazada</field>
+        <field name="model_id" ref="model_lazada_product_mapping"/>
+        <field name="binding_model_id" ref="model_lazada_product_mapping"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_push_odoo_stock()</field>
     </record>
     <menuitem id="lazada_connector_product_mapping_menu" name="Product Mappings"
               parent="lazada_connector_config_menu"

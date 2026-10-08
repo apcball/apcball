@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="lazada_connector.Dashboard">
+        <div class="o_lazada_dashboard">
+            <t t-set="data" t-value="state.data"/>
+            <header class="o_lazada_header">
+                <img class="o_lazada_logo" t-att-src="logo" alt="Lazada"/>
+                <div class="o_lazada_title">
+                    <h1>Lazada Ops Dashboard</h1>
+                    <p>Monitor your Lazada integration health and operations</p>
+                </div>
+                <div class="o_lazada_filters">
+                    <label class="o_lazada_select">
+                        <i class="fa fa-shopping-bag"/>
+                        <select t-on-change="onShopChange">
+                            <option value="">All Shops</option>
+                            <t t-foreach="data ? data.shops : []" t-as="shop" t-key="shop.id">
+                                <option t-att-value="shop.id" t-att-selected="state.shopId === shop.id"><t t-esc="shop.name"/></option>
+                            </t>
+                        </select>
+                    </label>
+                    <label class="o_lazada_select">
+                        <i class="fa fa-calendar"/>
+                        <select t-on-change="onPeriodChange">
+                            <t t-foreach="data ? data.periods : [7]" t-as="d" t-key="d">
+                                <option t-att-value="d" t-att-selected="state.days === d"><t t-esc="d"/> day<t t-if="d > 1">s</t></option>
+                            </t>
+                        </select>
+                    </label>
+                    <button class="o_lazada_refresh" t-on-click="load">
+                        <i t-attf-class="fa fa-refresh {{state.loading ? 'fa-spin' : ''}}"/> Refresh
+                    </button>
+                </div>
+            </header>
+
+            <div t-if="!data" class="o_lazada_loading">Loading…</div>
+            <t t-else="">
+                <!-- KPI tiles -->
+                <section class="o_lazada_tiles">
+                    <t t-foreach="tiles" t-as="tile" t-key="tile.key">
+                        <a href="#" class="o_lazada_tile" t-att-style="'background:' + tile.meta.bg"
+                           t-on-click.prevent="() => this.openTile(tile)">
+                            <div class="o_lazada_tile_head">
+                                <span class="o_lazada_tile_icon" t-att-style="'background:' + tile.meta.color">
+                                    <i t-attf-class="fa {{tile.meta.icon}}"/>
+                                </span>
+                                <span class="o_lazada_tile_label"><t t-esc="tile.label"/></span>
+                            </div>
+                            <div class="o_lazada_tile_body">
+                                <div>
+                                    <div class="o_lazada_tile_value"><t t-esc="tile.value"/></div>
+                                    <div t-if="tile.deltaText" t-attf-class="o_lazada_delta {{tile.deltaClass}}"><t t-esc="tile.deltaText"/></div>
+                                    <div class="o_lazada_tile_sub">
+                                        <t t-if="tile.key === 'api_errors'">req <t t-esc="tile.request"/> · hook <t t-esc="tile.webhook"/> · <t t-esc="tile.avg_ms"/> ms</t>
+                                        <t t-elif="tile.key === 'retry_failed'">pending <t t-esc="tile.pending"/></t>
+                                        <t t-elif="tile.delta">vs previous <t t-esc="data.days"/> days</t>
+                                    </div>
+                                </div>
+                                <svg t-if="tile.line" class="o_lazada_spark" viewBox="0 0 100 36" preserveAspectRatio="none">
+                                    <path t-att-d="tile.area" t-att-fill="tile.meta.color" fill-opacity="0.15"/>
+                                    <path t-att-d="tile.line" fill="none" t-att-stroke="tile.meta.color" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+                                </svg>
+                            </div>
+                        </a>
+                    </t>
+                </section>
+
+                <div class="o_lazada_grid">
+                    <!-- Orders overview -->
+                    <section class="o_lazada_card">
+                        <div class="o_lazada_card_head">
+                            <h2><i class="fa fa-shopping-cart"/> Orders Overview</h2>
+                            <a href="#" class="o_lazada_total" t-on-click.prevent="openOrders">
+                                <small>Total Orders (<t t-esc="data.days"/> days)</small>
+                                <strong><t t-esc="data.orders.total"/></strong>
+                                <span t-if="orderDeltaText" t-attf-class="o_lazada_delta {{orderDeltaClass}}"><t t-esc="orderDeltaText"/></span>
+                            </a>
+                        </div>
+                        <div class="o_lazada_split">
+                            <div class="o_lazada_donut_wrap">
+                                <svg class="o_lazada_donut" viewBox="0 0 140 140">
+                                    <circle cx="70" cy="70" r="54" fill="none" stroke="#eef0f3" stroke-width="18"/>
+                                    <g transform="rotate(-90 70 70)">
+                                        <circle t-foreach="orderDonut" t-as="seg" t-key="seg_index" cx="70" cy="70" r="54" fill="none"
+                                                t-att-stroke="seg.color" stroke-width="18"
+                                                t-att-stroke-dasharray="seg.dash" t-att-stroke-dashoffset="seg.offset"/>
+                                    </g>
+                                    <text x="70" y="68" text-anchor="middle" class="o_lazada_donut_num"><t t-esc="data.orders.total"/></text>
+                                    <text x="70" y="86" text-anchor="middle" class="o_lazada_donut_cap">Total Orders</text>
+                                </svg>
+                                <ul class="o_lazada_legend">
+                                    <li t-foreach="orderStatuses" t-as="s" t-key="s.status">
+                                        <i class="o_lazada_dot" t-att-style="'background:' + s.color"/>
+                                        <span class="o_lazada_legend_name"><t t-esc="s.label"/></span>
+                                        <b><t t-esc="s.count"/></b>
+                                        <span class="o_lazada_legend_pct"><t t-esc="s.pct"/>%</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="o_lazada_chart">
+                                <h3>Orders Trend</h3>
+                                <t t-set="tr" t-value="orderTrend"/>
+                                <svg viewBox="-34 -8 480 186" class="o_lazada_linechart">
+                                    <g t-foreach="tr.grid" t-as="g" t-key="g_index">
+                                        <line x1="0" t-att-x2="tr.W" t-att-y1="g.y" t-att-y2="g.y" stroke="#e5e7eb" stroke-width="1"/>
+                                        <text x="-8" t-att-y="g.y + 4" text-anchor="end" class="o_lazada_axis"><t t-esc="g.label"/></text>
+                                    </g>
+                                    <path t-att-d="tr.area" fill="#3b82f6" fill-opacity="0.12"/>
+                                    <path t-att-d="tr.line" fill="none" stroke="#3b82f6" stroke-width="2"/>
+                                    <circle t-foreach="tr.pts" t-as="p" t-key="p_index" t-att-cx="p[0]" t-att-cy="p[1]" r="3" fill="#3b82f6"/>
+                                    <text t-foreach="tr.labels" t-as="l" t-key="l_index" t-att-x="l.x" y="172" text-anchor="middle" class="o_lazada_axis"><t t-esc="l.text"/></text>
+                                </svg>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Shop health -->
+                    <section class="o_lazada_card">
+                        <div class="o_lazada_card_head">
+                            <h2><i class="fa fa-shopping-bag"/> Shop Health</h2>
+                        </div>
+                        <table class="o_lazada_table">
+                            <thead>
+                                <tr><th>Shop</th><th>Last stock sync</th><th class="text-end">Unmapped listings</th><th>Sync status</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data.shop_rows" t-as="row" t-key="row.id">
+                                    <td><img class="o_lazada_row_logo" t-att-src="logo" alt=""/> <t t-esc="row.name"/></td>
+                                    <td><t t-esc="row.last_stock_sync or '—'"/></td>
+                                    <td class="text-end"><t t-esc="row.unmapped_at_sync"/></td>
+                                    <td>
+                                        <span t-attf-class="o_lazada_badge o_lazada_badge_{{row.status}}">
+                                            <i class="o_lazada_dot"/> <t t-esc="statusLabel(row.status)"/>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr t-if="!data.shop_rows.length"><td colspan="4" class="text-muted">No shops configured.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <!-- Sync health -->
+                    <section class="o_lazada_card">
+                        <div class="o_lazada_card_head">
+                            <h2><i class="fa fa-refresh"/> Sync Health</h2>
+                            <a href="#" class="o_lazada_link" t-on-click.prevent="openSync">View details →</a>
+                        </div>
+                        <div class="o_lazada_split">
+                            <div class="o_lazada_donut_wrap">
+                                <svg class="o_lazada_donut" viewBox="0 0 140 140">
+                                    <circle cx="70" cy="70" r="54" fill="none" stroke="#eef0f3" stroke-width="14"/>
+                                    <g transform="rotate(-90 70 70)">
+                                        <circle t-foreach="syncDonut" t-as="seg" t-key="seg_index" cx="70" cy="70" r="54" fill="none"
+                                                t-att-stroke="seg.color" stroke-width="14"
+                                                t-att-stroke-dasharray="seg.dash" t-att-stroke-dashoffset="seg.offset"/>
+                                    </g>
+                                    <text x="70" y="68" text-anchor="middle" class="o_lazada_donut_num">
+                                        <t t-if="data.sync.rate === null">—</t><t t-else=""><t t-esc="data.sync.rate"/>%</t>
+                                    </text>
+                                    <text x="70" y="86" text-anchor="middle" class="o_lazada_donut_cap">Success Rate</text>
+                                </svg>
+                                <ul class="o_lazada_legend">
+                                    <li><i class="o_lazada_dot" style="background:#22a06b"/><span class="o_lazada_legend_name">Successful Syncs</span><b><t t-esc="data.sync.ok"/></b></li>
+                                    <li><i class="o_lazada_dot" style="background:#ef4444"/><span class="o_lazada_legend_name">Failed Syncs</span><b><t t-esc="data.sync.failed"/></b></li>
+                                </ul>
+                            </div>
+                            <div class="o_lazada_chart">
+                                <h3>Sync Result <small>(Last <t t-esc="data.dates.length"/> Days)</small></h3>
+                                <t t-set="bars" t-value="syncBars"/>
+                                <svg viewBox="0 0 440 170" class="o_lazada_barchart">
+                                    <t t-foreach="bars.bars" t-as="b" t-key="b_index">
+                                        <rect t-att-x="b.x" t-att-y="b.okY" t-att-width="b.bw" t-att-height="b.okH" fill="#22a06b" rx="1"/>
+                                        <rect t-att-x="b.x" t-att-y="b.failY" t-att-width="b.bw" t-att-height="b.failH" fill="#ef4444" rx="1"/>
+                                    </t>
+                                    <text t-foreach="bars.labels" t-as="l" t-key="l_index" t-att-x="l.x" y="160" text-anchor="middle" class="o_lazada_axis"><t t-esc="l.text"/></text>
+                                </svg>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Scheduled actions -->
+                    <section class="o_lazada_card">
+                        <div class="o_lazada_card_head">
+                            <h2><i class="fa fa-clock-o"/> Scheduled Actions</h2>
+                            <a href="#" class="o_lazada_link" t-on-click.prevent="openCrons">View all →</a>
+                        </div>
+                        <ul class="o_lazada_crons">
+                            <li t-foreach="data.crons" t-as="cron" t-key="cron_index">
+                                <span class="o_lazada_cron_name"><t t-esc="cron.name"/></span>
+                                <span t-attf-class="o_lazada_pill {{cron.active ? 'on' : 'off'}}"><t t-esc="cron.active ? 'active' : 'off'"/></span>
+                                <span class="o_lazada_cron_next"><t t-esc="cron.active ? (cron.nextcall or '') : ''"/></span>
+                            </li>
+                        </ul>
+                    </section>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

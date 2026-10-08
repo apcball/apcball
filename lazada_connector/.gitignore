@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.log
+.venv/
+.env
+uploads/
+*.tar.gz
+-e 
+.thclaws/
+.codewhale/
+.deepseek/
+.DS_Store
