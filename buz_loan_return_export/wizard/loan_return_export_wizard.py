@@ -63,16 +63,6 @@ class LoanReturnExportWizard(models.TransientModel):
             local_end.astimezone(utc).replace(tzinfo=None),
         )
 
-    def _get_picking_domain(self, date_start, date_end, document_field, prefix):
-        domain = [
-            ('company_id', '=', self.company_id.id),
-            ('state', '=', 'done'),
-            ('date_done', '>=', date_start),
-            ('date_done', '<', date_end),
-            (document_field, '=like', prefix + '%'),
-        ]
-        return domain
-
     @staticmethod
     def _get_source_bg_name(origin):
         """Extract the BG document number from Source Document."""
@@ -86,13 +76,6 @@ class LoanReturnExportWizard(models.TransientModel):
         date_start, date_end = self._get_utc_date_bounds()
         picking_model = self.env['stock.picking']
 
-        # แยกชุดค้นหาไว้คงผลชีตยืมเดิม และกรอง Operation Type เฉพาะชีตคืน
-        loan_source_pickings = picking_model.search(
-            self._get_picking_domain(
-                date_start, date_end, 'name', 'RBG-'
-            ),
-            order='date_done, name, id',
-        )
         return_domain = [
             ('company_id', '=', self.company_id.id),
             ('state', '=', 'done'),
@@ -110,7 +93,7 @@ class LoanReturnExportWizard(models.TransientModel):
 
         source_bg_names = {
             self._get_source_bg_name(picking.origin)
-            for picking in loan_source_pickings
+            for picking in return_pickings
         }
         source_bg_names.discard('')
 
@@ -121,10 +104,9 @@ class LoanReturnExportWizard(models.TransientModel):
                 ('state', '=', 'done'),
                 ('name', '=like', 'BG-%'),
                 ('name', 'in', list(source_bg_names)),
-                ('picking_type_id', '=', self.picking_type_id.id),
             ], order='date_done, name, id')
 
-            # ไม่ผูกกับ BG หากเลขชื่อซ้ำใน Operation Type ที่เลือก
+            # แสดง BG เฉพาะเลขที่พบเอกสารต้นทางเพียงรายการเดียว
             candidate_counts = defaultdict(int)
             for picking in source_bg_candidates:
                 candidate_counts[picking.name] += 1
@@ -134,104 +116,25 @@ class LoanReturnExportWizard(models.TransientModel):
             loan_pickings = source_bg_candidates.filtered(
                 lambda picking: picking.name in unique_source_names
             )
-        balances = self._get_loan_balances(loan_pickings)
+
         return {
-            'loans': self._get_loan_rows(loan_pickings, balances),
+            'loans': self._get_loan_rows(loan_pickings),
             'returns': self._get_return_rows(return_pickings),
         }
-
-    def _get_loan_balances(self, loan_pickings):
-        """ยอดคงเหลือปัจจุบัน โดยอ้าง Source Document และสินค้า"""
-        issued_by_source_product = defaultdict(float)
-        loan_keys_by_picking = defaultdict(set)
-        loan_products_by_source = defaultdict(set)
-
-        for picking in loan_pickings:
-            for move in picking.move_ids:
-                if move.state != 'done' or not move.product_id:
-                    continue
-                key = (picking.name, move.product_id.id)
-                issued_quantity = move.product_uom._compute_quantity(
-                    move.quantity,
-                    move.product_id.uom_id,
-                )
-                issued_by_source_product[key] += issued_quantity
-                loan_keys_by_picking[picking.id].add(key)
-                loan_products_by_source[picking.name].add(move.product_id.id)
-
-        loan_names = list(loan_products_by_source)
-        if not loan_names:
-            return {}
-
-        origin_domain = expression.OR([
-            [
-                '|',
-                ('origin', '=', loan_name),
-                ('origin', '=like', loan_name + '/%'),
-            ]
-            for loan_name in loan_names
-        ])
-        return_domain = [
-            ('company_id', '=', self.company_id.id),
-            ('state', '=', 'done'),
-            ('name', '=like', 'RBG-%'),
-        ] + origin_domain
-        return_pickings = self.env['stock.picking'].search(
-            return_domain,
-            order='date_done, name, id',
-        )
-
-        returned_by_source_product = defaultdict(float)
-        for picking in return_pickings:
-            for move in picking.move_ids:
-                if move.state != 'done' or not move.product_id:
-                    continue
-                source_bg_name = self._get_source_bg_name(picking.origin)
-                key = (source_bg_name, move.product_id.id)
-                if move.product_id.id not in loan_products_by_source.get(key[0], set()):
-                    continue
-                returned_quantity = move.product_uom._compute_quantity(
-                    move.quantity,
-                    move.product_id.uom_id,
-                )
-                returned_by_source_product[key] += returned_quantity
-
-        balances = {}
-        for picking in loan_pickings:
-            for key in loan_keys_by_picking.get(picking.id, set()):
-                remaining = (
-                    issued_by_source_product[key]
-                    - returned_by_source_product.get(key, 0.0)
-                )
-                balances[(picking.id, key[1])] = remaining
-        return balances
 
     def _as_user_date(self, value):
         if not value:
             return False
         return fields.Datetime.context_timestamp(self, value).date()
 
-    def _get_loan_rows(self, pickings, balances):
+    def _get_loan_rows(self, pickings):
         rows = []
         for picking in pickings:
-            product_rows = {}
+            partner = picking.partner_id
             for move in picking.move_ids.sorted(lambda item: (item.sequence, item.id)):
                 if move.state != 'done' or not move.product_id:
                     continue
                 product = move.product_id
-                if product.id not in product_rows:
-                    product_rows[product.id] = {
-                        'product': product,
-                        'quantity': 0.0,
-                    }
-                product_rows[product.id]['quantity'] += move.product_uom._compute_quantity(
-                    move.quantity,
-                    product.uom_id,
-                )
-
-            partner = picking.partner_id
-            for product_id, item in product_rows.items():
-                product = item['product']
                 rows.append([
                     len(rows) + 1,
                     picking.name or '',
@@ -240,8 +143,8 @@ class LoanReturnExportWizard(models.TransientModel):
                     (partner.name or '') if partner else '',
                     product.default_code or '',
                     product.name or '',
-                    item['quantity'],
-                    balances.get((picking.id, product_id), item['quantity']),
+                    move.quantity,
+                    None,
                     self._as_user_date(picking.scheduled_date),
                     partner._display_address(without_company=True) if partner else '',
                     picking.location_dest_id.complete_name or '',
