@@ -86,57 +86,62 @@ class LoanReturnExportWizard(models.TransientModel):
         date_start, date_end = self._get_utc_date_bounds()
         picking_model = self.env['stock.picking']
 
-        # ชีตยืมแสดง BG ทั้งหมดตามช่วงวันที่และ Operation Type ที่เลือก
-        loan_domain = [
+        # แยกชุดค้นหาไว้คงผลชีตยืมเดิม และกรอง Operation Type เฉพาะชีตคืน
+        loan_source_pickings = picking_model.search(
+            self._get_picking_domain(
+                date_start, date_end, 'name', 'RBG-'
+            ),
+            order='date_done, name, id',
+        )
+        return_domain = [
             ('company_id', '=', self.company_id.id),
             ('state', '=', 'done'),
             ('date_done', '>=', date_start),
             ('date_done', '<', date_end),
-            ('name', '=like', 'BG-%'),
-            ('picking_type_id', '=', self.picking_type_id.id),
-        ]
-        loan_pickings = picking_model.search(
-            loan_domain,
+        ] + expression.OR([
+            [('name', '=like', 'RBG/%')],
+            [('name', '=like', 'RBG-%')],
+        ])
+        return_domain.append(('picking_type_id', '=', self.picking_type_id.id))
+        return_pickings = picking_model.search(
+            return_domain,
             order='date_done, name, id',
         )
 
-        return_pickings = picking_model.search(
-            self._get_picking_domain(
-                date_start, date_end, 'return_doc_no', 'RBG-'
-            ),
-            order='date_done, name, id',
-        )
-        return_origins = {
+        source_bg_names = {
             self._get_source_bg_name(picking.origin)
-            for picking in return_pickings
-            if picking.origin
+            for picking in loan_source_pickings
         }
-        return_origins.discard('')
-        if return_origins:
-            linked_loan_pickings = picking_model.search([
+        source_bg_names.discard('')
+
+        loan_pickings = picking_model.browse()
+        if source_bg_names:
+            source_bg_candidates = picking_model.search([
                 ('company_id', '=', self.company_id.id),
                 ('state', '=', 'done'),
                 ('name', '=like', 'BG-%'),
-                ('name', 'in', return_origins),
+                ('name', 'in', list(source_bg_names)),
                 ('picking_type_id', '=', self.picking_type_id.id),
-            ])
-            linked_loan_names = set(linked_loan_pickings.mapped('name'))
-            return_pickings = return_pickings.filtered(
-                lambda picking: (
-                    self._get_source_bg_name(picking.origin) in linked_loan_names
-                )
-            )
-        else:
-            return_pickings = picking_model.browse()
+            ], order='date_done, name, id')
 
-        balances = self._get_loan_balances(loan_pickings, date_end)
+            # ไม่ผูกกับ BG หากเลขชื่อซ้ำใน Operation Type ที่เลือก
+            candidate_counts = defaultdict(int)
+            for picking in source_bg_candidates:
+                candidate_counts[picking.name] += 1
+            unique_source_names = {
+                name for name, count in candidate_counts.items() if count == 1
+            }
+            loan_pickings = source_bg_candidates.filtered(
+                lambda picking: picking.name in unique_source_names
+            )
+        balances = self._get_loan_balances(loan_pickings)
         return {
             'loans': self._get_loan_rows(loan_pickings, balances),
             'returns': self._get_return_rows(return_pickings),
         }
 
-    def _get_loan_balances(self, loan_pickings, date_end):
-        """ยอดคงเหลือ ณ วันสิ้นสุด โดยอ้าง Source Document และสินค้า"""
+    def _get_loan_balances(self, loan_pickings):
+        """ยอดคงเหลือปัจจุบัน โดยอ้าง Source Document และสินค้า"""
         issued_by_source_product = defaultdict(float)
         loan_keys_by_picking = defaultdict(set)
         loan_products_by_source = defaultdict(set)
@@ -169,8 +174,7 @@ class LoanReturnExportWizard(models.TransientModel):
         return_domain = [
             ('company_id', '=', self.company_id.id),
             ('state', '=', 'done'),
-            ('date_done', '<', date_end),
-            ('return_doc_no', '=like', 'RBG-%'),
+            ('name', '=like', 'RBG-%'),
         ] + origin_domain
         return_pickings = self.env['stock.picking'].search(
             return_domain,
@@ -250,41 +254,26 @@ class LoanReturnExportWizard(models.TransientModel):
             self.env['stock.picking']._fields['state']._description_selection(self.env)
         )
         for picking in pickings:
-            product_rows = {}
+            partner = picking.partner_id
             for move in picking.move_ids.sorted(lambda item: (item.sequence, item.id)):
                 if move.state != 'done' or not move.product_id:
                     continue
                 product = move.product_id
-                if product.id not in product_rows:
-                    product_rows[product.id] = {
-                        'product': product,
-                        'quantity': 0.0,
-                    }
-                product_rows[product.id]['quantity'] += move.product_uom._compute_quantity(
-                    move.quantity,
-                    product.uom_id,
-                )
-
-            partner = picking.partner_id
-            for item in product_rows.values():
-                product = item['product']
                 rows.append([
                     len(rows) + 1,
-                    picking.return_doc_no or '',
-                    self._as_user_date(picking.date_done),
+                    picking.name or '',
+                    self._as_user_date(picking.date_confirmed),
                     product.default_code or '',
                     product.name or '',
-                    item['quantity'],
+                    move.quantity,
                     (partner.ref or '') if partner else '',
                     (partner.name or '') if partner else '',
                     picking.origin or '',
                     self._as_user_date(picking.scheduled_date),
                     picking.user_id.name or '' if picking.user_id else '',
-                    self._as_user_date(picking.date_confirmed),
                     state_selection.get(picking.state, picking.state),
                     self._as_user_date(picking.date_done),
                     picking.department_install or '',
                     picking.notes or '',
                 ])
         return rows
-

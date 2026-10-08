@@ -28,8 +28,8 @@ class LoanReturnExportXlsx(models.AbstractModel):
     ]
     _RETURN_HEADERS = [
         'ลำดับ',
-        'เลขที่',
-        'วันที่',
+        'เลขที่ใบรับคืนสินค้ายืม',
+        'วันที่ใบรับคืน',
         'รหัสสินค้า',
         'ชื่อสินค้า',
         'จำนวน',
@@ -38,7 +38,6 @@ class LoanReturnExportXlsx(models.AbstractModel):
         'อ้างอิง',
         'วันที่ อ้างอิง',
         'พนักงานขาย',
-        'วันที่ใบรับคืน',
         'สถานะ',
         'วันที่ดำเนินการ',
         'แผนกที่ไปรับสินค้า',
@@ -90,8 +89,8 @@ class LoanReturnExportXlsx(models.AbstractModel):
             number_format,
             date_format,
             numeric_columns={0, 5},
-            date_columns={2, 9, 11, 13},
-            widths=[10, 22, 14, 20, 48, 12, 18, 36, 22, 16, 24, 16, 14, 16, 24, 42],
+            date_columns={2, 9, 12},
+            widths=[10, 30, 16, 20, 48, 12, 18, 36, 28, 16, 24, 14, 16, 24, 42],
         )
 
     @staticmethod
