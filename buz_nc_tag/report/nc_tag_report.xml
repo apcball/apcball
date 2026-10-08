@@ -63,7 +63,7 @@
                                         </table>
                                         <table style="width:100%;border-top:2px solid #000;table-layout:fixed;">
                                             <tr>
-                                                <td style="width:10%;">รหัสรุ่น</td><td class="nc-line" style="width:40%;"><span t-out="model"/></td>
+                                                <td style="width:10%;">รหัสรุ่น</td><td class="nc-line" style="width:40%;white-space:nowrap;overflow:hidden;"><span t-out="model[:38] + ('…' if len(model) &gt; 38 else '')"/></td>
                                                 <td style="width:14%;">หมายเลข (Lot)</td><td class="nc-line" style="width:20%;"><span t-out="picking.name"/></td>
                                                 <td style="width:8%;">จำนวน</td><td class="nc-line" style="width:8%;">1</td>
                                             </tr>
