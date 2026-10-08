@@ -5,8 +5,8 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">8</field>
-        <field name="margin_bottom">5</field>
+        <field name="margin_top">5</field>
+        <field name="margin_bottom">3</field>
         <field name="margin_left">5</field>
         <field name="margin_right">5</field>
         <field name="header_line" eval="False"/>
@@ -29,18 +29,18 @@
             <style>
                 @font-face { font-family:'Sarabun'; src:url('/buz_nc_tag/static/fonts/Sarabun-Regular.ttf'); font-weight:normal; }
                 @font-face { font-family:'Sarabun'; src:url('/buz_nc_tag/static/fonts/Sarabun-Bold.ttf'); font-weight:bold; }
-                html, body, table, td, div, span { font-family:'Sarabun' !important; font-size:11px; }
+                html, body, table, td, div, span { font-family:'Sarabun' !important; font-size:18px; }
                 .nc-page { page-break-after:always; }
                 .nc-page:last-child { page-break-after:auto; }
-                .nc-box { border:2px solid #000; height:84mm; position:relative; overflow:hidden; }
+                .nc-box { border:2px solid #000; height:116mm; position:relative; overflow:hidden; }
                 .nc-foot { position:absolute; left:0; right:0; bottom:0; border-top:2px solid #000; }
-                .nc-tag { margin-bottom:4mm; }
-                .nc-title { font-size:26px; font-weight:bold; text-align:center; }
+                .nc-tag { margin-bottom:3mm; }
+                .nc-title { font-size:40px; font-weight:bold; text-align:center; }
                 .nc-band { background:#c9d3de; font-weight:bold; }
                 .nc-line { border-bottom:1px dotted #000; }
                 .nc-opt { display:inline-block; margin-right:12px; }
-                .nc-dot { display:inline-block; width:11px; height:11px; border:1px solid #000; border-radius:50%; vertical-align:middle; margin-right:4px; }
-                .nc-sq { display:inline-block; width:11px; height:11px; border:1px solid #000; vertical-align:middle; margin-right:4px; }
+                .nc-dot { display:inline-block; width:18px; height:18px; border:1px solid #000; border-radius:50%; vertical-align:middle; margin-right:4px; }
+                .nc-sq { display:inline-block; width:18px; height:18px; border:1px solid #000; vertical-align:middle; margin-right:4px; }
             </style>
             <t t-foreach="docs" t-as="picking">
                 <t t-set="units" t-value="picking._nc_tag_units()"/>
@@ -57,8 +57,8 @@
                                     <div class="nc-box">
                                         <table style="width:100%;">
                                             <tr>
-                                                <td style="width:30%;font-size:22px;font-weight:bold;padding:4px 8px;">MOGEN</td>
-                                                <td class="nc-title">NC TAG<div style="font-size:9px;font-weight:normal;">ส่วนที่ 1</div></td>
+                                                <td style="width:30%;font-size:34px;font-weight:bold;padding:4px 8px;">MOGEN</td>
+                                                <td class="nc-title">NC TAG<div style="font-size:14px;font-weight:normal;">ส่วนที่ 1</div></td>
                                                 <td style="width:30%;padding:4px;">เลขที่ <span t-out="picking.name"/><br/>วันที่ <span t-out="date" t-options="{'widget':'date'}"/></td>
                                             </tr>
                                         </table>
@@ -80,7 +80,7 @@
                                             <span class="nc-opt"><span class="nc-dot"/>เปลี่ยนคืนจากลูกค้า</span>
                                             <span class="nc-opt"><span class="nc-dot"/>ไม่ได้ตามมาตรฐาน</span>
                                         </div>
-                                        <div style="padding:3px 6px;">ปัญหาที่พบ <div class="nc-line" style="height:16px;"/><div class="nc-line" style="height:16px;"/><div class="nc-line" style="height:16px;"/></div>
+                                        <div style="padding:3px 6px;">ปัญหาที่พบ <div class="nc-line" style="height:26px;"/><div class="nc-line" style="height:26px;"/></div>
                                         <table style="width:100%;">
                                             <tr>
                                                 <td style="width:12%;">ชื่อผู้แจ้ง</td><td class="nc-line" style="width:40%;"><span t-out="picking.create_uid.name"/></td>
@@ -102,7 +102,7 @@
                                                 <td colspan="2"><span class="nc-dot"/>อื่นๆ ........................</td>
                                             </tr>
                                         </table>
-                                        <table class="nc-foot" style="width:100%;font-size:10px;">
+                                        <table class="nc-foot" style="width:100%;font-size:14px;">
                                             <tr><td style="padding:2px 6px;">อนุมัติใช้วันที่ 16/02/2560</td><td style="text-align:right;padding-right:6px;">FM-QAM-25 Rev.03</td></tr>
                                         </table>
                                     </div>
@@ -110,7 +110,7 @@
                                 <!-- Part 2 -->
                                 <td style="width:28%;vertical-align:top;">
                                     <div class="nc-box">
-                                        <div class="nc-title" style="border-bottom:2px solid #000;padding:4px;">NC TAG<div style="font-size:9px;font-weight:normal;">ส่วนที่ 2</div></div>
+                                        <div class="nc-title" style="border-bottom:2px solid #000;padding:4px;">NC TAG<div style="font-size:14px;font-weight:normal;">ส่วนที่ 2</div></div>
                                         <div style="padding:4px 8px;">
                                             <div>เลขที่ <b t-out="picking.name"/></div>
                                             <div style="margin-top:6px;">รหัสรุ่น <b t-out="model"/></div>
@@ -122,7 +122,7 @@
                                             <div style="margin-top:8px;">ชื่อผู้แจ้ง <span t-out="picking.create_uid.name"/></div>
                                             <div>วันที่ <span t-out="date" t-options="{'widget':'date'}"/></div>
                                         </div>
-                                        <div class="nc-foot" style="text-align:center;font-size:10px;padding:2px 0;">อนุมัติใช้วันที่ 16/02/2560<br/>FM-QAM-25 Rev.03</div>
+                                        <div class="nc-foot" style="text-align:center;font-size:14px;padding:2px 0;">อนุมัติใช้วันที่ 16/02/2560<br/>FM-QAM-25 Rev.03</div>
                                     </div>
                                 </td>
                             </tr>
