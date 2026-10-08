@@ -644,11 +644,7 @@ class StockCardReport(models.AbstractModel):
 
         start_utc, end_utc = self._date_range_utc(date_from, date_to)
 
-        location_domain = [
-            ("usage", "=", "internal"),
-            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
-        ]
-        internal_location_ids = set(self.env["stock.location"].search(location_domain).ids)
+        internal_location_ids = self._internal_location_ids(company_ids)
 
         range_domain = [
             ("state", "=", "done"),
@@ -736,10 +732,7 @@ class StockCardReport(models.AbstractModel):
 
         start_utc, end_utc = self._date_range_utc(date_from, date_to)
 
-        internal_location_ids = set(self.env["stock.location"].search([
-            ("usage", "=", "internal"),
-            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
-        ]).ids)
+        internal_location_ids = self._internal_location_ids(company_ids)
 
         MoveLine = self.env["stock.move.line"]
         range_domain = [
@@ -1423,8 +1416,14 @@ class StockCardReport(models.AbstractModel):
         return rows
 
     def _internal_location_ids(self, company_ids):
+        """Locations the all-locations exports cover: internal ones plus the
+        warehouses' own transit locations. Vendor receipts are booked into
+        <WH>/Transit and internal moves out of it create no valuation layer,
+        so without the transit leg the per-warehouse value total drops that
+        value and looks negative once QC/Stock consume stock."""
         return set(self.env["stock.location"].search([
-            ("usage", "=", "internal"),
+            "|", ("usage", "=", "internal"),
+            "&", ("usage", "=", "transit"), ("warehouse_id", "!=", False),
             "|", ("company_id", "in", company_ids), ("company_id", "=", False),
         ]).ids)
 

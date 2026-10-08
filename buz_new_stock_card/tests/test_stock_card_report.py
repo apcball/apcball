@@ -465,6 +465,28 @@ class TestStockCardReport(TransactionCase):
     # Product across all locations (product, no warehouse/location)
     # ------------------------------------------------------------------
 
+    def test_product_all_locations_includes_warehouse_transit(self):
+        warehouse = self.env["stock.warehouse"].search(
+            [("company_id", "=", self.env.company.id)], limit=1,
+        )
+        transit = self.env["stock.location"].create({
+            "name": "Test WH Transit",
+            "usage": "transit",
+            "location_id": warehouse.view_location_id.id,
+        })
+        self.assertEqual(transit.warehouse_id, warehouse)
+        self._mk_move(self.loc_supplier, transit, 10.0, self._dt("2024-06-05 08:00:00"))
+        self._mk_move(transit, self.loc_a, 4.0, self._dt("2024-06-10 08:00:00"))
+
+        rows = self.engine.get_product_all_locations_lines(
+            self.product.id, "2024-06-01", "2024-06-30",
+        )
+        transit_rows = [r for r in rows if r["location_label"] == transit.display_name]
+        self.assertEqual([r["in"] for r in transit_rows], [10.0, 0.0])
+        self.assertEqual(transit_rows[-1]["out"], 4.0)
+        self.assertEqual(transit_rows[-1]["balance"], 6.0)
+        self.assertTrue(all(r["warehouse_name"] == warehouse.name for r in transit_rows))
+
     def test_product_all_locations_splits_by_location(self):
         self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
         self._mk_move(self.loc_a, self.loc_b, 40.0, self._dt("2024-06-10 08:00:00"))
