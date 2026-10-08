@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_type_form_nc_tag" model="ir.ui.view">
+        <field name="name">stock.picking.type.form.nc.tag</field>
+        <field name="model">stock.picking.type</field>
+        <field name="inherit_id" ref="stock.view_picking_type_form"/>
+        <field name="arch" type="xml">
+            <field name="code" position="after">
+                <field name="is_nc_tag"/>
+            </field>
+        </field>
+    </record>
+</odoo>
