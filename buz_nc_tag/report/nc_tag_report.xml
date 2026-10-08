@@ -48,8 +48,7 @@
                     <div class="nc-page">
                     <t t-foreach="units[start:start + 3]" t-as="ml">
                     <t t-set="date" t-value="picking.date_done or picking.scheduled_date"/>
-                    <t t-set="lot" t-value="ml.lot_id.name or ''"/>
-                    <t t-set="model" t-value="ml.product_id.default_code or ml.product_id.name"/>
+                    <t t-set="model" t-value="ml.product_id.name"/>
                         <table class="nc-tag" style="width:100%;border-collapse:separate;border-spacing:0;">
                             <tr>
                                 <!-- Part 1 -->
@@ -59,14 +58,14 @@
                                             <tr>
                                                 <td style="width:30%;font-size:34px;font-weight:bold;padding:4px 8px;">MOGEN</td>
                                                 <td class="nc-title">NC TAG<div style="font-size:14px;font-weight:normal;">ส่วนที่ 1</div></td>
-                                                <td style="width:30%;padding:4px;">เลขที่ <span t-out="picking.name"/><br/>วันที่ <span t-out="date" t-options="{'widget':'date'}"/></td>
+                                                <td style="width:30%;padding:4px;">เลขที่ ......................<br/>วันที่ <span t-out="date" t-options="{'widget':'date'}"/></td>
                                             </tr>
                                         </table>
-                                        <table style="width:100%;border-top:2px solid #000;">
+                                        <table style="width:100%;border-top:2px solid #000;table-layout:fixed;">
                                             <tr>
-                                                <td style="width:12%;">รหัสรุ่น</td><td class="nc-line" style="width:38%;"><span t-out="model"/></td>
-                                                <td style="width:15%;">หมายเลข (Lot)</td><td class="nc-line" style="width:20%;"><span t-out="lot"/></td>
-                                                <td style="width:8%;">จำนวน</td><td class="nc-line">1</td>
+                                                <td style="width:10%;">รหัสรุ่น</td><td class="nc-line" style="width:40%;"><span t-out="model"/></td>
+                                                <td style="width:14%;">หมายเลข (Lot)</td><td class="nc-line" style="width:20%;"><span t-out="picking.name"/></td>
+                                                <td style="width:8%;">จำนวน</td><td class="nc-line" style="width:8%;">1</td>
                                             </tr>
                                             <tr>
                                                 <td>Po</td><td class="nc-line"><span t-out="picking.origin"/></td>
@@ -80,7 +79,15 @@
                                             <span class="nc-opt"><span class="nc-dot"/>เปลี่ยนคืนจากลูกค้า</span>
                                             <span class="nc-opt"><span class="nc-dot"/>ไม่ได้ตามมาตรฐาน</span>
                                         </div>
-                                        <div style="padding:3px 6px;">ปัญหาที่พบ <div class="nc-line" style="height:26px;"/><div class="nc-line" style="height:26px;"/></div>
+                                        <t t-set="problem" t-value="picking._nc_tag_problem_text()"/>
+                                        <div style="padding:3px 6px;">ปัญหาที่พบ
+                                            <t t-if="problem">
+                                                <div class="nc-line" style="height:52px;line-height:26px;white-space:pre-line;overflow:hidden;" t-out="problem"/>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="nc-line" style="height:26px;"/><div class="nc-line" style="height:26px;"/>
+                                            </t>
+                                        </div>
                                         <table style="width:100%;">
                                             <tr>
                                                 <td style="width:12%;">ชื่อผู้แจ้ง</td><td class="nc-line" style="width:40%;"><span t-out="picking.create_uid.name"/></td>
@@ -114,7 +121,6 @@
                                         <div style="padding:4px 8px;">
                                             <div>เลขที่ <b t-out="picking.name"/></div>
                                             <div style="margin-top:6px;">รหัสรุ่น <b t-out="model"/></div>
-                                            <div>Lot <b t-out="lot"/> &#160; จำนวน 1</div>
                                             <div style="margin-top:8px;"><span class="nc-dot"/>สินค้าโชว์</div>
                                             <div><span class="nc-dot"/>จากกระบวนการภายใน</div>
                                             <div><span class="nc-dot"/>เปลี่ยนคืนจากลูกค้า</div>
