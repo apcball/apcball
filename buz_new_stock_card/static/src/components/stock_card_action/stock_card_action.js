@@ -201,7 +201,7 @@ export class StockCardAction extends Component {
                 default_warehouse_ids: this.state.warehouseId ? [this.state.warehouseId] : [],
                 default_location_ids: this.state.selectedLocationId ? [this.state.selectedLocationId] : [],
                 default_include_children: this.state.includeChildren,
-                default_report_scope: true, default_include_cost_lot: false,
+                default_report_scope: false, default_include_cost_lot: false,
                 default_show_movements_only: this.state.showMovementsOnly,
             },
         });

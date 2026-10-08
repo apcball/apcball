@@ -98,7 +98,7 @@ class StockCardReport(models.AbstractModel):
         fields_ = [
             "quantity", "product_uom_id", "product_id",
             "location_id", "location_dest_id", "date",
-            "picking_id", "reference", "move_id",
+            "picking_id", "reference", "move_id", "lot_id",
         ]
         if "production_id" in self.env["stock.move.line"]._fields:
             fields_.append("production_id")
@@ -498,6 +498,8 @@ class StockCardReport(models.AbstractModel):
                 "out": out_qty,
                 "balance": running_balance,
                 "location_name": line["location_dest_id"][1] if in_qty else line["location_id"][1],
+                "source_location": line["location_id"][1],
+                "dest_location": line["location_dest_id"][1],
             }
             if can_see_value:
                 delta = self._line_value_delta(line, scope_location_ids, value_context)
@@ -577,16 +579,6 @@ class StockCardReport(models.AbstractModel):
         lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
         self._prefetch_documents(lines)
 
-        # Batch the counterpart-location names (one browse, not one per row).
-        counterpart_ids = set()
-        for line in lines:
-            counterpart_ids.add(line["location_id"][0])
-            counterpart_ids.add(line["location_dest_id"][0])
-        loc_names = {
-            loc.id: loc.display_name
-            for loc in Location.browse(list(counterpart_ids))
-        }
-
         value_context = None
         running_value = opening_value
         if include_value:
@@ -610,10 +602,8 @@ class StockCardReport(models.AbstractModel):
             running_balance += in_qty - out_qty
             doc_type, doc_number, _res_model, _res_id, source_document = self._resolve_document(line)
 
-            src_id = line["location_id"][0]
-            dest_id = line["location_dest_id"][0]
-            from_location = loc_names.get(src_id, "") if in_qty and src_id in internal_location_ids else ""
-            to_location = loc_names.get(dest_id, "") if out_qty and dest_id in internal_location_ids else ""
+            from_location = line["location_id"][1]
+            to_location = line["location_dest_id"][1]
 
             row = {
                 "location_label": location_label,
@@ -628,6 +618,8 @@ class StockCardReport(models.AbstractModel):
                 "balance": running_balance,
                 "from_location": from_location,
                 "to_location": to_location,
+                "source_location": from_location,
+                "dest_location": to_location,
                 "note": source_document,
                 "_sort_key": (location_label, default_code or "", product_name or "", str(line["date"]), line["id"]),
             }
@@ -652,11 +644,7 @@ class StockCardReport(models.AbstractModel):
 
         start_utc, end_utc = self._date_range_utc(date_from, date_to)
 
-        location_domain = [
-            ("usage", "=", "internal"),
-            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
-        ]
-        internal_location_ids = set(self.env["stock.location"].search(location_domain).ids)
+        internal_location_ids = self._internal_location_ids(company_ids)
 
         range_domain = [
             ("state", "=", "done"),
@@ -691,9 +679,9 @@ class StockCardReport(models.AbstractModel):
             pairs_by_location.setdefault(location_id, set()).add(product_id)
 
         all_product_ids = {product_id for _loc, product_id in pairs}
-        location_names = {
-            loc.id: loc.display_name for loc in Location.browse(list(pairs_by_location.keys()))
-        }
+        all_locations = Location.browse(list(pairs_by_location.keys()))
+        location_names = {loc.id: loc.display_name for loc in all_locations}
+        warehouse_names = {loc.id: loc.warehouse_id.name or "" for loc in all_locations}
         product_info = {
             p.id: (p.default_code or "", p.name) for p in Product.browse(list(all_product_ids))
         }
@@ -718,6 +706,8 @@ class StockCardReport(models.AbstractModel):
                     include_value=can_see_value,
                     opening_value=opening_value_by_product.get(product_id, 0.0),
                 )
+                for product_row in product_rows:
+                    product_row["warehouse_name"] = warehouse_names[location_id]
                 rows.extend(product_rows)
 
         rows.sort(key=lambda r: r["_sort_key"])
@@ -742,10 +732,7 @@ class StockCardReport(models.AbstractModel):
 
         start_utc, end_utc = self._date_range_utc(date_from, date_to)
 
-        internal_location_ids = set(self.env["stock.location"].search([
-            ("usage", "=", "internal"),
-            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
-        ]).ids)
+        internal_location_ids = self._internal_location_ids(company_ids)
 
         MoveLine = self.env["stock.move.line"]
         range_domain = [
@@ -784,9 +771,8 @@ class StockCardReport(models.AbstractModel):
         product = self.env["product.product"].browse(product_id)
         default_code, product_name = product.default_code or "", product.name
         Location = self.env["stock.location"]
-        location_names = {
-            loc.id: loc.display_name for loc in Location.browse(list(location_ids))
-        }
+        locations = {loc.id: loc for loc in Location.browse(list(location_ids))}
+        location_names = {loc_id: loc.display_name for loc_id, loc in locations.items()}
 
         rows = []
         for location_id in location_ids:
@@ -805,7 +791,10 @@ class StockCardReport(models.AbstractModel):
                 internal_location_ids, location_label, default_code, product_name,
                 include_value=can_see_value, opening_value=opening_value,
             )
+            warehouse_name = locations[location_id].warehouse_id.name or ""
             if product_rows:
+                for product_row in product_rows:
+                    product_row["warehouse_name"] = warehouse_name
                 rows.extend(product_rows)
             elif not show_movements_only:
                 marker_row = {
@@ -822,6 +811,7 @@ class StockCardReport(models.AbstractModel):
                     "from_location": "",
                     "to_location": "",
                     "note": "",
+                    "warehouse_name": warehouse_name,
                     "_sort_key": (location_label, default_code or "", product_name or "", "", 0),
                 }
                 if can_see_value:
@@ -937,6 +927,17 @@ class StockCardReport(models.AbstractModel):
             row["seq"] = idx + 1
             del row["_sort_key"]
         return rows
+
+    @api.model
+    def split_scope_by_warehouse(self, scope_location_ids):
+        """[(warehouse_name, location_ids)] - scope locations grouped by their
+        warehouse (no-warehouse group has name ""), sorted by name with the
+        no-warehouse group last. Each group is a scope of its own, so balances
+        computed per group stay per warehouse."""
+        groups = {}
+        for loc in self.env["stock.location"].browse(list(scope_location_ids)):
+            groups.setdefault(loc.warehouse_id.name or "", []).append(loc.id)
+        return sorted(groups.items(), key=lambda kv: (kv[0] == "", kv[0]))
 
     @api.model
     def get_location_tree(self, parent_id=None, company_ids=None):
@@ -1140,201 +1141,255 @@ class StockCardReport(models.AbstractModel):
     # ------------------------------------------------------------------
     # Valuation (cost + lot) ledger
     #
-    # Reads stock.valuation.layer directly instead of stock.move.line: the
-    # stock_by_locations module already splits every move into a
-    # location-scoped IN/OUT layer carrying real unit_cost/value, which is a
-    # much better cost source than re-deriving cost from move lines. Opening
-    # balance is decomposed into still-outstanding FIFO layers (one row per
-    # layer), matching the pattern in buz_stock_card_report's
-    # _get_open_document_rows. remaining_qty reflects the layer's *current*
-    # remaining quantity, not a snapshot as-of date_from - same known
-    # simplification buz_stock_card_report already accepts.
+    # Quantities come from stock.move.line - exactly the source and the
+    # in/out-of-scope rule the plain stock card uses (_scope_domain /
+    # _direction_qty) - so the cost+lot export always agrees with the plain
+    # export on qty. stock.valuation.layer only supplies the cost: a move's
+    # in-scope layer value is pro-rated across its lines by qty (same as the
+    # plain card's value columns). Moves with no layer in scope (e.g. transit
+    # receipts, which are not valued) fall back to the unit cost of any layer
+    # on the same move, then to the product's standard price.
+    #
+    # Opening balance is as-of date_from: net move-line qty per lot before
+    # the cutoff, priced at the average cost of the scope's layers booked
+    # before the cutoff (accounting_date, same cutoff as the plain card).
     # ------------------------------------------------------------------
 
-    def _resolve_layer_lot_splits(self, layer, layer_qty):
-        """Split layer_qty across the lots on its move, proportional to each
-        move line's share of quantity. Returns [(lot_name, qty), ...]."""
-        move = layer.stock_move_id
-        if not move:
-            return [("", layer_qty)]
-        lines = move.move_line_ids.filtered(
-            lambda l: l.product_id.id == layer.product_id.id
+    def _opening_lot_balances(self, scope_location_ids, product_ids, start_utc, company_ids):
+        """{(product_id, location_id, lot_id): base-uom net qty} before
+        start_utc for moves crossing the scope boundary. location_id is the
+        in-scope end of the move. Aggregated in SQL (read_group) so history
+        size does not matter."""
+        domain = [
+            ("state", "=", "done"),
+            ("company_id", "in", company_ids),
+            ("date", "<", start_utc),
+        ] + self._scope_domain(scope_location_ids)
+        if product_ids:
+            domain.append(("product_id", "in", list(product_ids)))
+        groups = self.env["stock.move.line"].read_group(
+            domain, ["quantity:sum"],
+            ["product_id", "location_id", "location_dest_id", "lot_id", "product_uom_id"],
+            lazy=False,
         )
-        if not lines:
-            return [("", layer_qty)]
-        if len(lines) == 1:
-            return [(lines.lot_id.name or "", layer_qty)]
-        total_qty = sum(lines.mapped("quantity"))
-        if not total_qty:
-            return [("", layer_qty)]
-        return [
-            (line.lot_id.name or "", layer_qty * (line.quantity / total_qty))
-            for line in lines
-        ]
+        scope = set(scope_location_ids)
+        products = self.env["product.product"].browse(
+            [g["product_id"][0] for g in groups if g["product_id"]]
+        )
+        product_uom = {p.id: p.uom_id for p in products}
+        uoms = {}
+        balances = {}
+        for group in groups:
+            if not group["product_id"]:
+                continue
+            product_id = group["product_id"][0]
+            qty = group["quantity"] or 0.0
+            if group["product_uom_id"]:
+                uom_id = group["product_uom_id"][0]
+                src_uom = uoms.setdefault(uom_id, self.env["uom.uom"].browse(uom_id))
+                qty = src_uom._compute_quantity(qty, product_uom[product_id])
+            src_id = group["location_id"][0]
+            dest_id = group["location_dest_id"][0]
+            lot_id = group["lot_id"][0] if group["lot_id"] else False
+            if dest_id in scope:
+                key, signed = (product_id, dest_id, lot_id), qty
+            else:
+                key, signed = (product_id, src_id, lot_id), -qty
+            balances[key] = balances.get(key, 0.0) + signed
+        return balances
 
-    def _valuation_rows_for_layer(self, layer, layer_qty, fallback_remark):
-        move = layer.stock_move_id
-        unit_cost = layer.unit_cost
-        line_vals = {
-            "picking_id": (move.picking_id.id, "") if move and move.picking_id else False,
-            "move_id": (move.id, "") if move else False,
-            "reference": (move.reference if move else "") or layer.description or "",
+    def _opening_layer_values(self, scope_location_ids, product_ids, start_utc, company_ids):
+        """{(location_id, product_id): layer value} booked before start_utc."""
+        domain = [
+            ("location_id", "in", list(scope_location_ids)),
+            ("company_id", "in", company_ids),
+        ] + self._accounting_date_before_domain(start_utc)
+        if product_ids:
+            domain.append(("product_id", "in", list(product_ids)))
+        groups = self.env["stock.valuation.layer"].read_group(
+            domain, ["value:sum"], ["location_id", "product_id"], lazy=False,
+        )
+        return {
+            (g["location_id"][0], g["product_id"][0]): g["value"]
+            for g in groups if g["location_id"] and g["product_id"]
         }
-        doc_type, doc_number, _res_model, _res_id, _source = self._resolve_document(line_vals)
-        sort_dt = move.date if move and move.date else datetime(1970, 1, 1)
-        date_str = self._to_user_tz_str(move.date) if move and move.date else ""
-        product = layer.product_id
-        # หมายเหตุ: the picking's own note, when there is one - falls back to
-        # the opening/receipt/issue label when there's no picking or no note.
-        picking_note = (
-            html2plaintext(move.picking_id.note).strip()
-            if move and move.picking_id and move.picking_id.note else ""
-        )
-        remark = picking_note or fallback_remark
 
-        rows = []
-        for lot_name, qty in self._resolve_layer_lot_splits(layer, layer_qty):
-            row = {
+    def _fallback_move_unit_costs(self, move_ids):
+        """{move_id: unit_cost} for moves with no valuation layer in scope.
+
+        1. Any valuation layer on the move itself, regardless of location.
+        2. Moves leaving a transit location carry no layer of their own (transit
+           is not valued): use the unit cost of the matching outbound leg, i.e.
+           the latest earlier move of the same product into that transit
+           location that has a layer (preferring the one with the same qty).
+        Moves not resolved here are priced at the product's standard price by
+        the caller."""
+        if not move_ids:
+            return {}
+        Layer = self.env["stock.valuation.layer"]
+        costs = {}
+        for layer in Layer.search_read(
+            [("stock_move_id", "in", list(move_ids)), ("quantity", "!=", 0)],
+            ["stock_move_id", "unit_cost"], order="id",
+        ):
+            costs.setdefault(layer["stock_move_id"][0], layer["unit_cost"])
+
+        Move = self.env["stock.move"]
+        for move in Move.browse([m for m in move_ids if m not in costs]):
+            if move.location_id.usage != "transit":
+                continue
+            legs = Move.search([
+                ("state", "=", "done"),
+                ("product_id", "=", move.product_id.id),
+                ("location_dest_id", "=", move.location_id.id),
+                ("date", "<=", move.date),
+                ("id", "!=", move.id),
+            ], order="date desc, id desc", limit=10)
+            fallback = None
+            for leg in legs:
+                layer = Layer.search(
+                    [("stock_move_id", "=", leg.id), ("quantity", "!=", 0)],
+                    order="quantity, id", limit=1,
+                )
+                if not layer:
+                    continue
+                if abs(leg.product_qty - move.product_qty) < 1e-6:
+                    fallback = layer.unit_cost
+                    break
+                if fallback is None:
+                    fallback = layer.unit_cost
+            if fallback is not None:
+                costs[move.id] = fallback
+        return costs
+
+    def _valuation_rows_for_scope(self, scope_location_ids, product_ids, date_from, date_to, company_ids):
+        """Unsorted cost+lot rows (opening + in-period) for one scope. product_ids
+        None/empty = every product with a balance or movement in scope."""
+        scope_location_ids = list(scope_location_ids)
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        Location = self.env["stock.location"]
+        Product = self.env["product.product"]
+        Lot = self.env["stock.lot"]
+
+        opening = self._opening_lot_balances(scope_location_ids, product_ids, start_utc, company_ids)
+        opening = {k: q for k, q in opening.items() if abs(q) > 1e-9}
+        layer_values = self._opening_layer_values(scope_location_ids, product_ids, start_utc, company_ids)
+
+        detail_domain = [
+            ("state", "=", "done"),
+            ("company_id", "in", company_ids),
+            ("date", ">=", start_utc),
+            ("date", "<", end_utc),
+            ("quantity", "!=", 0),
+        ] + self._scope_domain(scope_location_ids)
+        if product_ids:
+            detail_domain.append(("product_id", "in", list(product_ids)))
+        lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
+        self._prefetch_documents(lines)
+
+        # Batch every name lookup.
+        lot_ids = {k[2] for k in opening if k[2]}
+        lot_ids |= {l["lot_id"][0] for l in lines if l.get("lot_id")}
+        lot_names = {lot.id: lot.name for lot in Lot.browse(list(lot_ids))}
+        location_ids = {k[1] for k in opening}
+        for line in lines:
+            location_ids.add(line["location_id"][0])
+            location_ids.add(line["location_dest_id"][0])
+        locations = {loc.id: loc for loc in Location.browse(list(location_ids))}
+        all_product_ids = {k[0] for k in opening} | {l["product_id"][0] for l in lines}
+        products = {p.id: p for p in Product.browse(list(all_product_ids))}
+        picking_notes = {}
+        picking_ids = {l["picking_id"][0] for l in lines if l.get("picking_id")}
+        for picking in self.env["stock.picking"].browse(list(picking_ids)):
+            picking_notes[picking.id] = html2plaintext(picking.note).strip() if picking.note else ""
+
+        def make_row(product, location, lot_name, doc_type, doc_number, date_str, sort_dt, remark,
+                     source_location="", dest_location=""):
+            return {
                 "product_default_code": product.default_code or "",
                 "product_name": product.name,
                 "lot_name": lot_name,
-                "warehouse_name": layer.location_id.warehouse_id.name or "",
-                "location_label": layer.location_id.display_name,
+                "warehouse_name": location.warehouse_id.name or "",
+                "location_label": location.display_name,
                 "doc_type": doc_type,
                 "doc_number": doc_number,
                 "date": date_str,
                 "qty_in": 0.0, "unitcost_in": 0.0, "cost_in": 0.0,
                 "qty_out": 0.0, "unitcost_out": 0.0, "cost_out": 0.0,
                 "remark": remark,
+                "source_location": source_location,
+                "dest_location": dest_location,
                 "_sort_dt": sort_dt,
             }
+
+        def set_amount(row, qty, unit_cost):
             if qty >= 0:
-                row["qty_in"] = qty
-                row["unitcost_in"] = unit_cost
-                row["cost_in"] = qty * unit_cost
+                row["qty_in"], row["unitcost_in"], row["cost_in"] = qty, unit_cost, qty * unit_cost
             else:
-                row["qty_out"] = -qty
-                row["unitcost_out"] = unit_cost
-                row["cost_out"] = -qty * unit_cost
+                row["qty_out"], row["unitcost_out"], row["cost_out"] = -qty, unit_cost, -qty * unit_cost
+
+        rows = []
+
+        # Opening: one row per (product, location, lot) at the key's average cost.
+        qty_by_key = {}
+        for (product_id, location_id, _lot_id), qty in opening.items():
+            qty_by_key[(location_id, product_id)] = qty_by_key.get((location_id, product_id), 0.0) + qty
+        for (product_id, location_id, lot_id), qty in opening.items():
+            product = products[product_id]
+            key = (location_id, product_id)
+            total_qty = qty_by_key[key]
+            if key in layer_values and abs(total_qty) > 1e-9:
+                unit_cost = layer_values[key] / total_qty
+            else:
+                unit_cost = product.standard_price
+            row = make_row(
+                product, locations[location_id], lot_names.get(lot_id, ""),
+                "", "", "", datetime(1970, 1, 1), "ยอดยกมา",
+            )
+            set_amount(row, qty, unit_cost)
+            rows.append(row)
+
+        # In-period: one row per boundary-crossing move line.
+        move_ids = {l["move_id"][0] for l in lines if l.get("move_id")}
+        value_in_by_move, value_out_by_move = self._get_value_deltas_by_move(
+            move_ids, scope_location_ids, company_ids,
+        )
+        move_in_qty, move_out_qty = self._get_move_qty_totals(lines, scope_location_ids)
+        value_context = {
+            "value_in_by_move": value_in_by_move, "value_out_by_move": value_out_by_move,
+            "move_in_qty": move_in_qty, "move_out_qty": move_out_qty,
+        }
+        unvalued = {
+            l["move_id"][0] for l in lines
+            if l.get("move_id") and l["move_id"][0] not in value_in_by_move
+            and l["move_id"][0] not in value_out_by_move
+        }
+        fallback_costs = self._fallback_move_unit_costs(unvalued)
+
+        for line in lines:
+            in_qty, out_qty = self._direction_qty(line, scope_location_ids)
+            qty = in_qty - out_qty
+            if not qty:
+                continue
+            product = products[line["product_id"][0]]
+            move_id = line["move_id"][0] if line.get("move_id") else None
+            if move_id in unvalued or move_id is None:
+                unit_cost = fallback_costs.get(move_id, product.standard_price)
+            else:
+                unit_cost = abs(self._line_value_delta(line, scope_location_ids, value_context)) / abs(qty)
+            location_id = line["location_dest_id"][0] if in_qty else line["location_id"][0]
+            doc_type, doc_number, _res_model, _res_id, _source = self._resolve_document(line)
+            picking_id = line["picking_id"][0] if line.get("picking_id") else None
+            remark = picking_notes.get(picking_id) or ("เอกสารรับในปี" if in_qty else "เอกสารจ่ายในปี")
+            lot_id = line["lot_id"][0] if line.get("lot_id") else False
+            row = make_row(
+                product, locations[location_id], lot_names.get(lot_id, ""),
+                doc_type, doc_number, self._to_user_tz_str(line["date"]), line["date"], remark,
+                line["location_id"][1], line["location_dest_id"][1],
+            )
+            set_amount(row, qty, unit_cost)
             rows.append(row)
         return rows
-
-    def _get_opening_valuation_rows(self, product_id, scope_location_ids, date_from, company_ids):
-        Layer = self.env["stock.valuation.layer"]
-        if isinstance(date_from, str):
-            date_from = fields.Date.from_string(date_from)
-        domain = [
-            ("product_id", "=", product_id),
-            ("location_id", "in", list(scope_location_ids)),
-            ("company_id", "in", company_ids),
-            ("remaining_qty", ">", 0),
-            ("stock_move_id.date", "<", date_from),
-        ]
-        layers = Layer.search(domain, order="create_date, id")
-        rows = []
-        for layer in layers:
-            rows.extend(self._valuation_rows_for_layer(layer, layer.remaining_qty, "ยอดยกมา"))
-        return rows
-
-    def _get_period_valuation_rows(self, product_id, scope_location_ids, date_from, date_to, company_ids):
-        Layer = self.env["stock.valuation.layer"]
-        start_utc, end_utc = self._date_range_utc(date_from, date_to)
-        domain = [
-            ("product_id", "=", product_id),
-            ("location_id", "in", list(scope_location_ids)),
-            ("company_id", "in", company_ids),
-            ("stock_move_id.date", ">=", start_utc),
-            ("stock_move_id.date", "<", end_utc),
-        ]
-        layers = Layer.search(domain)
-        rows = []
-        for layer in layers:
-            if layer.quantity > 0:
-                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารรับในปี"))
-            elif layer.quantity < 0:
-                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารจ่ายในปี"))
-        return rows
-
-    def _product_scope_valuation_rows(self, product_id, scope_location_ids, date_from, date_to, company_ids):
-        opening_rows = self._get_opening_valuation_rows(product_id, scope_location_ids, date_from, company_ids)
-        period_rows = self._get_period_valuation_rows(product_id, scope_location_ids, date_from, date_to, company_ids)
-        return opening_rows + period_rows
-
-    def _get_valuation_layers_bulk(self, product_ids, location_ids, date_from, date_to, company_ids):
-        """Opening (still-outstanding) and in-period layers for the full
-        product_ids x location_ids id sets, in 2 queries total - grouped by
-        (location_id, product_id) in Python - instead of one opening query +
-        one period query per product or per location in a loop. Mirrors the
-        domains of _get_opening_valuation_rows / _get_period_valuation_rows."""
-        Layer = self.env["stock.valuation.layer"]
-        if isinstance(date_from, str):
-            date_from = fields.Date.from_string(date_from)
-        start_utc, end_utc = self._date_range_utc(date_from, date_to)
-        product_ids = list(product_ids)
-        location_ids = list(location_ids)
-
-        opening_layers = Layer.search([
-            ("product_id", "in", product_ids),
-            ("location_id", "in", location_ids),
-            ("company_id", "in", company_ids),
-            ("remaining_qty", ">", 0),
-            ("stock_move_id.date", "<", date_from),
-        ], order="create_date, id")
-        period_layers = Layer.search([
-            ("product_id", "in", product_ids),
-            ("location_id", "in", location_ids),
-            ("company_id", "in", company_ids),
-            ("stock_move_id.date", ">=", start_utc),
-            ("stock_move_id.date", "<", end_utc),
-        ])
-
-        opening_by_key = {}
-        for layer in opening_layers:
-            opening_by_key.setdefault((layer.location_id.id, layer.product_id.id), []).append(layer)
-        period_by_key = {}
-        for layer in period_layers:
-            period_by_key.setdefault((layer.location_id.id, layer.product_id.id), []).append(layer)
-        return opening_by_key, period_by_key
-
-    def _valuation_rows_for_key(self, location_id, product_id, opening_by_key, period_by_key):
-        """Row list for one (location_id, product_id) key from the bulk-fetched
-        layer dicts, in the same opening-then-period order/fallback labels as
-        _product_scope_valuation_rows."""
-        rows = []
-        for layer in opening_by_key.get((location_id, product_id), []):
-            rows.extend(self._valuation_rows_for_layer(layer, layer.remaining_qty, "ยอดยกมา"))
-        for layer in period_by_key.get((location_id, product_id), []):
-            if layer.quantity > 0:
-                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารรับในปี"))
-            elif layer.quantity < 0:
-                rows.extend(self._valuation_rows_for_layer(layer, layer.quantity, "เอกสารจ่ายในปี"))
-        return rows
-
-    def _discover_valuation_pairs(self, domain_extra, date_from, date_to, company_ids):
-        """(location_id, product_id) pairs with a layer touching the period,
-        or with a still-outstanding opening layer, matching domain_extra."""
-        Layer = self.env["stock.valuation.layer"]
-        start_utc, end_utc = self._date_range_utc(date_from, date_to)
-        domain_period = domain_extra + [
-            ("company_id", "in", company_ids),
-            ("stock_move_id.date", ">=", start_utc),
-            ("stock_move_id.date", "<", end_utc),
-        ]
-        domain_open = domain_extra + [
-            ("company_id", "in", company_ids),
-            ("remaining_qty", ">", 0),
-        ]
-        pairs = set()
-        for domain in (domain_period, domain_open):
-            groups = Layer.read_group(
-                domain, ["location_id", "product_id"], ["location_id", "product_id"], lazy=False,
-            )
-            for group in groups:
-                location = group.get("location_id")
-                product = group.get("product_id")
-                if location and product:
-                    pairs.add((location[0], product[0]))
-        return pairs
 
     @staticmethod
     def _finalize_valuation_rows(rows, sort_key):
@@ -1360,49 +1415,66 @@ class StockCardReport(models.AbstractModel):
             del row["_sort_dt"]
         return rows
 
+    def _internal_location_ids(self, company_ids):
+        """Locations the all-locations exports cover: internal ones plus the
+        warehouses' own transit locations. Vendor receipts are booked into
+        <WH>/Transit and internal moves out of it create no valuation layer,
+        so without the transit leg the per-warehouse value total drops that
+        value and looks negative once QC/Stock consume stock."""
+        return set(self.env["stock.location"].search([
+            "|", ("usage", "=", "internal"),
+            "&", ("usage", "=", "transit"), ("warehouse_id", "!=", False),
+            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
+        ]).ids)
+
     @api.model
     def get_stock_card_valuation_lines(self, product_id, scope_location_ids, date_from, date_to, company_ids=None):
-        """Flat cost+lot ledger for one product in one scope: opening layers
-        (ยอดยกมา) followed by in-period receipts (เอกสารรับในปี) and issues
-        (เอกสารจ่ายในปี), one row per layer (split further per lot)."""
+        """Flat cost+lot ledger for one product in one scope: as-of opening
+        balance per lot (ยอดยกมา), then one row per in-period move line."""
         if not self._can_see_value():
             raise AccessError("คุณไม่มีสิทธิ์ดูข้อมูลมูลค่าสินค้า")
         if not company_ids:
             company_ids = self.env.companies.ids
-        scope_location_ids = list(scope_location_ids)
-        rows = self._product_scope_valuation_rows(
-            product_id, scope_location_ids, date_from, date_to, company_ids,
+        rows = self._valuation_rows_for_scope(
+            scope_location_ids, [product_id], date_from, date_to, company_ids,
         )
         return self._finalize_valuation_rows(rows, sort_key=lambda r: r["_sort_dt"])
 
     @api.model
     def get_product_all_locations_valuation_lines(self, product_id, date_from, date_to, company_ids=None):
-        """Cost+lot ledger for one product across every location where it has
-        a layer touching the period or a still-outstanding opening layer."""
+        """Cost+lot ledger for one product across every internal location where
+        it has a move before the end of the period or holds stock."""
         if not self._can_see_value():
             raise AccessError("คุณไม่มีสิทธิ์ดูข้อมูลมูลค่าสินค้า")
         if not company_ids:
             company_ids = self.env.companies.ids
-        pairs = self._discover_valuation_pairs(
-            [("product_id", "=", product_id)], date_from, date_to, company_ids,
-        )
-        location_ids = {loc_id for loc_id, _prod_id in pairs}
-        if not location_ids:
-            return []
-        opening_by_key, period_by_key = self._get_valuation_layers_bulk(
-            [product_id], location_ids, date_from, date_to, company_ids,
-        )
+        _start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        internal = self._internal_location_ids(company_ids)
+        location_ids = set()
+        for field_name in ("location_id", "location_dest_id"):
+            for group in self.env["stock.move.line"].read_group(
+                [
+                    ("state", "=", "done"), ("product_id", "=", product_id),
+                    ("company_id", "in", company_ids), ("date", "<", end_utc),
+                    (field_name, "in", list(internal)),
+                ],
+                [field_name], [field_name],
+            ):
+                if group[field_name]:
+                    location_ids.add(group[field_name][0])
         rows = []
         for location_id in location_ids:
-            rows.extend(self._valuation_rows_for_key(location_id, product_id, opening_by_key, period_by_key))
+            rows.extend(self._valuation_rows_for_scope(
+                [location_id], [product_id], date_from, date_to, company_ids,
+            ))
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["_sort_dt"]),
         )
 
     @api.model
     def get_scoped_stock_card_valuation_lines(self, scope_location_ids, date_from, date_to, company_ids=None):
-        """Cost+lot ledger for every product with a layer in scope_location_ids
-        touching the period, or a still-outstanding opening layer there."""
+        """Cost+lot ledger for every product with a balance or movement in
+        scope_location_ids."""
         if not self._can_see_value():
             raise AccessError("คุณไม่มีสิทธิ์ดูข้อมูลมูลค่าสินค้า")
         if not company_ids:
@@ -1410,43 +1482,46 @@ class StockCardReport(models.AbstractModel):
         scope_location_ids = list(scope_location_ids)
         if not scope_location_ids:
             return []
-        pairs = self._discover_valuation_pairs(
-            [("location_id", "in", scope_location_ids)], date_from, date_to, company_ids,
+        rows = self._valuation_rows_for_scope(
+            scope_location_ids, None, date_from, date_to, company_ids,
         )
-        product_ids = {prod_id for _loc_id, prod_id in pairs}
-        if not product_ids:
-            return []
-        opening_by_key, period_by_key = self._get_valuation_layers_bulk(
-            product_ids, scope_location_ids, date_from, date_to, company_ids,
-        )
-        rows = []
-        for product_id in product_ids:
-            for location_id in scope_location_ids:
-                rows.extend(self._valuation_rows_for_key(location_id, product_id, opening_by_key, period_by_key))
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
         )
 
     @api.model
     def get_all_stock_card_valuation_lines(self, date_from, date_to, company_ids=None):
-        """Cost+lot ledger for every (location, product) pair with a layer
-        touching the period, or a still-outstanding opening layer."""
+        """Cost+lot ledger for every internal location that moved in the
+        period or currently holds stock, one scope per location."""
         if not self._can_see_value():
             raise AccessError("คุณไม่มีสิทธิ์ดูข้อมูลมูลค่าสินค้า")
         if not company_ids:
             company_ids = self.env.companies.ids
-        pairs = self._discover_valuation_pairs([], date_from, date_to, company_ids)
-        pairs_by_location = {}
-        for location_id, product_id in pairs:
-            pairs_by_location.setdefault(location_id, set()).add(product_id)
-
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        internal = list(self._internal_location_ids(company_ids))
+        location_ids = set()
+        for field_name in ("location_id", "location_dest_id"):
+            for group in self.env["stock.move.line"].read_group(
+                [
+                    ("state", "=", "done"), ("company_id", "in", company_ids),
+                    ("date", ">=", start_utc), ("date", "<", end_utc),
+                    (field_name, "in", internal),
+                ],
+                [field_name], [field_name],
+            ):
+                if group[field_name]:
+                    location_ids.add(group[field_name][0])
+        for group in self.env["stock.quant"].read_group(
+            [("quantity", "!=", 0), ("location_id", "in", internal), ("company_id", "in", company_ids)],
+            ["location_id"], ["location_id"],
+        ):
+            if group["location_id"]:
+                location_ids.add(group["location_id"][0])
         rows = []
-        for location_id, product_ids in pairs_by_location.items():
-            opening_by_key, period_by_key = self._get_valuation_layers_bulk(
-                product_ids, [location_id], date_from, date_to, company_ids,
-            )
-            for product_id in product_ids:
-                rows.extend(self._valuation_rows_for_key(location_id, product_id, opening_by_key, period_by_key))
+        for location_id in location_ids:
+            rows.extend(self._valuation_rows_for_scope(
+                [location_id], None, date_from, date_to, company_ids,
+            ))
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
         )

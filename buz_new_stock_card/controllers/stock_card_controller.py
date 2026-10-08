@@ -54,14 +54,14 @@ class StockCardController(http.Controller):
                         date_from, date_to, company_ids=company_ids,
                     )
                     filename = "Stock_Card_Valuation_All_%s_%s.xlsx" % (date_from, date_to)
-                    return self._flat_valuation_response(rows, filename)
+                    return self._flat_valuation_response(rows, filename, by_warehouse=True)
                 rows = engine.get_all_stock_card_lines(
                     date_from, date_to,
                     company_ids=company_ids,
                     show_movements_only=show_movements_only,
                 )
                 filename = "Stock_Card_All_%s_%s.xlsx" % (date_from, date_to)
-                return self._flat_sheet_response(rows, filename)
+                return self._flat_sheet_response(rows, filename, by_warehouse=True)
 
             loc_ids = [int(x) for x in location_ids_param.split(",") if x] if location_ids_param else []
             wh_ids = [int(x) for x in warehouse_ids_param.split(",") if x] if warehouse_ids_param else []
@@ -75,7 +75,7 @@ class StockCardController(http.Controller):
                     filename = "Stock_Card_Valuation_%s_AllLoc_%s_%s.xlsx" % (
                         product.default_code or product.id, date_from, date_to,
                     )
-                    return self._flat_valuation_response(rows, filename)
+                    return self._flat_valuation_response(rows, filename, by_warehouse=True)
                 rows = engine.get_product_all_locations_lines(
                     int(product_id_param), date_from, date_to,
                     company_ids=company_ids,
@@ -84,7 +84,7 @@ class StockCardController(http.Controller):
                 filename = "Stock_Card_%s_AllLoc_%s_%s.xlsx" % (
                     product.default_code or product.id, date_from, date_to,
                 )
-                return self._flat_sheet_response(rows, filename)
+                return self._flat_sheet_response(rows, filename, by_warehouse=True)
 
             sheets = []  # list of (label, scope_ids)
             if report_scope:
@@ -123,24 +123,29 @@ class StockCardController(http.Controller):
                         product_id, scope_ids, date_from, date_to, company_ids=company_ids,
                     )
                     sheet_name = _safe_sheet_name(location_label, used_names)
-                    self._write_valuation_sheet(workbook, fmts, rows, sheet_name=sheet_name)
+                    self._write_valuation_sheet(workbook, fmts, rows, sheet_name=sheet_name, group_by_warehouse=True)
                 filename = "Stock_Card_Valuation_%s_%s_%s.xlsx" % (
                     product.default_code or product.id, date_from, date_to,
                 )
             elif product_id_param:
                 product_id = int(product_id_param)
                 product = request.env["product.product"].browse(product_id)
-                for location_label, scope_ids in sheets:
-                    data = engine.get_stock_card_data(
-                        product_id, scope_ids, date_from, date_to,
-                        page_size=0, page=0,
-                        show_movements_only=show_movements_only,
-                        company_ids=company_ids,
-                    )
-                    sheet_name = _safe_sheet_name(location_label, used_names)
-                    self._write_stock_card_sheet(
-                        workbook, fmts, sheet_name, product, location_label, data, date_from, date_to,
-                    )
+                for scope_label, scope_ids in sheets:
+                    groups = engine.split_scope_by_warehouse(scope_ids)
+                    for warehouse_name, group_ids in groups:
+                        location_label = scope_label if len(groups) == 1 else "%s - %s" % (
+                            scope_label, warehouse_name or "ไม่มีคลังสินค้า",
+                        )
+                        data = engine.get_stock_card_data(
+                            product_id, group_ids, date_from, date_to,
+                            page_size=0, page=0,
+                            show_movements_only=show_movements_only,
+                            company_ids=company_ids,
+                        )
+                        sheet_name = _safe_sheet_name(location_label, used_names)
+                        self._write_stock_card_sheet(
+                            workbook, fmts, sheet_name, product, location_label, data, date_from, date_to,
+                        )
                 filename = "Stock_Card_%s_%s_%s.xlsx" % (
                     product.default_code or product.id, date_from, date_to,
                 )
@@ -150,17 +155,24 @@ class StockCardController(http.Controller):
                         scope_ids, date_from, date_to, company_ids=company_ids,
                     )
                     sheet_name = _safe_sheet_name(location_label, used_names)
-                    self._write_valuation_sheet(workbook, fmts, rows, sheet_name=sheet_name)
+                    self._write_valuation_sheet(workbook, fmts, rows, sheet_name=sheet_name, group_by_warehouse=True)
                 filename = "Stock_Card_Valuation_ByScope_%s_%s.xlsx" % (date_from, date_to)
             else:
                 for location_label, scope_ids in sheets:
-                    rows = engine.get_scoped_stock_card_lines(
-                        scope_ids, date_from, date_to, scope_label=location_label,
-                        company_ids=company_ids,
-                        show_movements_only=show_movements_only,
-                    )
+                    rows = []
+                    for warehouse_name, group_ids in engine.split_scope_by_warehouse(scope_ids):
+                        group_rows = engine.get_scoped_stock_card_lines(
+                            group_ids, date_from, date_to, scope_label=location_label,
+                            company_ids=company_ids,
+                            show_movements_only=show_movements_only,
+                        )
+                        for row in group_rows:
+                            row["warehouse_name"] = warehouse_name
+                        rows.extend(group_rows)
                     sheet_name = _safe_sheet_name(location_label, used_names)
-                    self._write_all_stock_card_sheet(workbook, fmts, rows, sheet_name=sheet_name)
+                    self._write_all_stock_card_sheet(
+                        workbook, fmts, rows, sheet_name=sheet_name, group_by_warehouse=True,
+                    )
                 filename = "Stock_Card_ByScope_%s_%s.xlsx" % (date_from, date_to)
 
             workbook.close()
@@ -180,8 +192,48 @@ class StockCardController(http.Controller):
                 json.dumps(error), headers=[("Content-Type", "application/json")], status=400
             )
 
-    def _flat_valuation_response(self, rows, filename):
-        """Single-sheet xlsx (cost+lot layout) from a flat valuation rows list."""
+    @staticmethod
+    def _group_rows_by_warehouse(rows):
+        """[(warehouse_name, rows)] sorted by warehouse (rows without one go
+        last); seq renumbered continuously across the whole sheet."""
+        groups = {}
+        for row in rows:
+            groups.setdefault(row.get("warehouse_name") or "", []).append(row)
+        ordered = sorted(groups.items(), key=lambda kv: (kv[0] == "", kv[0]))
+        seq = 0
+        result = []
+        for name, group_rows in ordered:
+            for row in group_rows:
+                seq += 1
+                row["seq"] = seq
+            result.append((name or "ไม่มีคลังสินค้า", group_rows))
+        return result
+
+    @staticmethod
+    def _closing_by_key(group_rows, key_fields, opening_field, balance_fields):
+        """Sum, over each (location, product) key in the group, of the first
+        row's opening and the last row's closing - rows are already ordered
+        so the first/last row per key are its start and end."""
+        first, last = {}, {}
+        for row in group_rows:
+            key = tuple(row[f] for f in key_fields)
+            first.setdefault(key, row)
+            last[key] = row
+        opening = sum(r[opening_field] for r in first.values()) if opening_field else None
+        closing = [sum(r[f] for r in last.values()) for f in balance_fields]
+        return opening, closing
+
+    @staticmethod
+    def _add_group_formats(workbook, fmts):
+        fmts["group"] = workbook.add_format({"bold": True, "bg_color": "#DDEBF7", "border": 1})
+        fmts["subtotal"] = workbook.add_format({"bold": True, "bg_color": "#F2F2F2", "border": 1})
+        fmts["subtotal_num"] = workbook.add_format(
+            {"bold": True, "bg_color": "#F2F2F2", "border": 1, "num_format": "#,##0.00"}
+        )
+
+    def _flat_valuation_response(self, rows, filename, by_warehouse=False):
+        """xlsx (cost+lot layout) from a flat valuation rows list; one sheet,
+        or one sheet per warehouse when by_warehouse."""
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {"in_memory": True})
         fmts = {
@@ -190,7 +242,8 @@ class StockCardController(http.Controller):
             "date": workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1}),
             "text": workbook.add_format({"border": 1}),
         }
-        self._write_valuation_sheet(workbook, fmts, rows)
+        self._add_group_formats(workbook, fmts)
+        self._write_valuation_sheet(workbook, fmts, rows, group_by_warehouse=by_warehouse)
         workbook.close()
         output.seek(0)
         return request.make_response(
@@ -201,7 +254,7 @@ class StockCardController(http.Controller):
             ],
         )
 
-    def _write_valuation_sheet(self, workbook, fmts, rows, sheet_name="Stock Card"):
+    def _write_valuation_sheet(self, workbook, fmts, rows, sheet_name="Stock Card", group_by_warehouse=False):
         sheet = workbook.add_worksheet(sheet_name)
 
         sheet.set_column("A:A", 8)
@@ -216,19 +269,19 @@ class StockCardController(http.Controller):
         sheet.set_column("K:M", 14)
         sheet.set_column("N:P", 14)
         sheet.set_column("Q:R", 16)
-        sheet.set_column("S:S", 18)
+        sheet.set_column("S:T", 26)
+        sheet.set_column("U:U", 18)
 
         headers = ["ลำดับ", "รหัสสินค้า", "ชื่อสินค้า", "Lot", "คลังสินค้า", "โลเคชั่น",
                    "ประเภทเอกสาร", "เลขที่เอกสาร", "วันที่",
                    "ยอดยกมา",
                    "จำนวนรับ", "ราคาต่อหน่วย(รับ)", "มูลค่ารับ",
                    "จำนวนจ่าย", "ราคาต่อหน่วย(จ่าย)", "มูลค่าจ่าย",
-                   "ยอดคงเหลือ", "มูลค่าสินค้าคงเหลือ", "หมายเหตุ"]
+                   "ยอดคงเหลือ", "มูลค่าสินค้าคงเหลือ", "ต้นทาง", "ปลายทาง", "หมายเหตุ"]
         for col, label in enumerate(headers):
             sheet.write(0, col, label, fmts["header"])
 
-        row = 1
-        for line in rows:
+        def write_line(row, line):
             sheet.write(row, 0, line["seq"], fmts["text"])
             sheet.write(row, 1, line["product_default_code"], fmts["text"])
             sheet.write(row, 2, line["product_name"], fmts["text"])
@@ -251,11 +304,43 @@ class StockCardController(http.Controller):
             sheet.write(row, 15, line["cost_out"], fmts["num"])
             sheet.write(row, 16, line["balance_qty"], fmts["num"])
             sheet.write(row, 17, line["balance_value"], fmts["num"])
-            sheet.write(row, 18, line["remark"] or "", fmts["text"])
+            sheet.write(row, 18, line["source_location"] or "", fmts["text"])
+            sheet.write(row, 19, line["dest_location"] or "", fmts["text"])
+            sheet.write(row, 20, line["remark"] or "", fmts["text"])
+
+        row = 1
+        if not group_by_warehouse or not rows:
+            for line in rows:
+                write_line(row, line)
+                row += 1
+            return
+        key_fields = ("location_label", "product_default_code", "product_name")
+        for name, group_rows in self._group_rows_by_warehouse(rows):
+            sheet.merge_range(row, 0, row, 20, "คลังสินค้า: %s" % name, fmts["group"])
+            row += 1
+            for line in group_rows:
+                write_line(row, line)
+                row += 1
+            _opening, (closing_qty, closing_value) = self._closing_by_key(
+                group_rows, key_fields, None, ("balance_qty", "balance_value"),
+            )
+            sheet.merge_range(row, 0, row, 8, "รวม %s" % name, fmts["subtotal"])
+            sheet.write(row, 9, "", fmts["subtotal"])
+            sheet.write(row, 10, sum(r["qty_in"] for r in group_rows), fmts["subtotal_num"])
+            sheet.write(row, 11, "", fmts["subtotal"])
+            sheet.write(row, 12, sum(r["cost_in"] for r in group_rows), fmts["subtotal_num"])
+            sheet.write(row, 13, sum(r["qty_out"] for r in group_rows), fmts["subtotal_num"])
+            sheet.write(row, 14, "", fmts["subtotal"])
+            sheet.write(row, 15, sum(r["cost_out"] for r in group_rows), fmts["subtotal_num"])
+            sheet.write(row, 16, closing_qty, fmts["subtotal_num"])
+            sheet.write(row, 17, closing_value, fmts["subtotal_num"])
+            for blank_col in (18, 19, 20):
+                sheet.write(row, blank_col, "", fmts["subtotal"])
             row += 1
 
-    def _flat_sheet_response(self, rows, filename):
-        """Single-sheet xlsx (14-column 'All' layout) from a flat rows list."""
+    def _flat_sheet_response(self, rows, filename, by_warehouse=False):
+        """xlsx (14-column 'All' layout) from a flat rows list; one sheet; with
+        by_warehouse, rows get a header and a subtotal row per warehouse."""
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {"in_memory": True})
         fmts = {
@@ -264,7 +349,8 @@ class StockCardController(http.Controller):
             "date": workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1}),
             "text": workbook.add_format({"border": 1}),
         }
-        self._write_all_stock_card_sheet(workbook, fmts, rows)
+        self._add_group_formats(workbook, fmts)
+        self._write_all_stock_card_sheet(workbook, fmts, rows, group_by_warehouse=by_warehouse)
         workbook.close()
         output.seek(0)
         return request.make_response(
@@ -275,7 +361,7 @@ class StockCardController(http.Controller):
             ],
         )
 
-    def _write_all_stock_card_sheet(self, workbook, fmts, rows, sheet_name="Stock Card"):
+    def _write_all_stock_card_sheet(self, workbook, fmts, rows, sheet_name="Stock Card", group_by_warehouse=False):
         sheet = workbook.add_worksheet(sheet_name)
         show_value = bool(rows) and "value" in rows[0]
 
@@ -286,20 +372,19 @@ class StockCardController(http.Controller):
         sheet.set_column("E:E", 16)
         sheet.set_column("F:G", 16)
         sheet.set_column("H:K", 12)
-        sheet.set_column("L:M", 18)
+        sheet.set_column("L:M", 26)
         sheet.set_column("N:N", 24)
         if show_value:
             sheet.set_column("O:O", 16)
 
         headers = ["ลำดับ", "คลังสินค้า", "รหัสสินค้า", "ชื่อสินค้า", "วันที่", "เอกสาร", "เลขที่",
-                   "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ", "จากคลัง", "ไปยัง", "หมายเหตุ"]
+                   "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ", "ต้นทาง", "ปลายทาง", "หมายเหตุ"]
         if show_value:
             headers.append("มูลค่าสินค้า (บาท)")
         for col, label in enumerate(headers):
             sheet.write(0, col, label, fmts["header"])
 
-        row = 1
-        for line in rows:
+        def write_line(row, line):
             sheet.write(row, 0, line["seq"], fmts["text"])
             sheet.write(row, 1, line["location_label"], fmts["text"])
             sheet.write(row, 2, line["product_default_code"], fmts["text"])
@@ -320,6 +405,33 @@ class StockCardController(http.Controller):
             sheet.write(row, 13, line["note"] or "", fmts["text"])
             if show_value:
                 sheet.write(row, 14, line.get("value", 0.0), fmts["num"])
+
+        row = 1
+        if not group_by_warehouse or not rows:
+            for line in rows:
+                write_line(row, line)
+                row += 1
+            return
+        last_col = len(headers) - 1
+        key_fields = ("location_label", "product_default_code", "product_name")
+        for name, group_rows in self._group_rows_by_warehouse(rows):
+            sheet.merge_range(row, 0, row, last_col, "คลังสินค้า: %s" % name, fmts["group"])
+            row += 1
+            for line in group_rows:
+                write_line(row, line)
+                row += 1
+            opening, (closing, closing_value) = self._closing_by_key(
+                group_rows, key_fields, "opening", ("balance", "value" if show_value else "balance"),
+            )
+            sheet.merge_range(row, 0, row, 6, "รวม %s" % name, fmts["subtotal"])
+            sheet.write(row, 7, opening, fmts["subtotal_num"])
+            sheet.write(row, 8, sum(r["in"] for r in group_rows), fmts["subtotal_num"])
+            sheet.write(row, 9, sum(r["out"] for r in group_rows), fmts["subtotal_num"])
+            sheet.write(row, 10, closing, fmts["subtotal_num"])
+            for col in (11, 12, 13):
+                sheet.write(row, col, "", fmts["subtotal"])
+            if show_value:
+                sheet.write(row, 14, closing_value, fmts["subtotal_num"])
             row += 1
 
     def _write_stock_card_sheet(self, workbook, fmts, sheet_name, product, location_label, data, date_from, date_to):
@@ -331,9 +443,10 @@ class StockCardController(http.Controller):
         sheet.set_column("C:C", 22)
         sheet.set_column("D:D", 16)
         sheet.set_column("E:E", 20)
-        sheet.set_column("F:I", 12)
+        sheet.set_column("F:G", 24)
+        sheet.set_column("H:K", 12)
         if show_value:
-            sheet.set_column("J:L", 16)
+            sheet.set_column("L:N", 16)
 
         row = 0
         sheet.write(row, 0, "Stock Card", fmts["title"])
@@ -356,7 +469,7 @@ class StockCardController(http.Controller):
             sheet.write(row, 6, f"Closing Value: {data['closing_value']:.2f}")
         row += 2
 
-        headers = ["ลำดับ", "วันที่", "เอกสาร", "เลขที่", "อ้างอิง",
+        headers = ["ลำดับ", "วันที่", "เอกสาร", "เลขที่", "อ้างอิง", "ต้นทาง", "ปลายทาง",
                    "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ"]
         if show_value:
             headers.append("มูลค่าสินค้า (บาท)")
@@ -367,14 +480,14 @@ class StockCardController(http.Controller):
         row += 1
 
         sheet.write(row, 0, 1, fmts["text"])
-        sheet.write(row, 5, data["opening_balance"], fmts["num"])
-        sheet.write(row, 6, 0.0, fmts["num"])
-        sheet.write(row, 7, 0.0, fmts["num"])
-        sheet.write(row, 8, data["opening_balance"], fmts["num"])
+        sheet.write(row, 7, data["opening_balance"], fmts["num"])
+        sheet.write(row, 8, 0.0, fmts["num"])
+        sheet.write(row, 9, 0.0, fmts["num"])
+        sheet.write(row, 10, data["opening_balance"], fmts["num"])
         if show_value:
-            sheet.write(row, 9, data["opening_value"], fmts["num"])
-            sheet.write(row, 10, 0.0, fmts["num"])
-            sheet.write(row, 11, 0.0, fmts["num"])
+            sheet.write(row, 11, data["opening_value"], fmts["num"])
+            sheet.write(row, 12, 0.0, fmts["num"])
+            sheet.write(row, 13, 0.0, fmts["num"])
         row += 1
 
         for line in data["lines"]:
@@ -387,12 +500,14 @@ class StockCardController(http.Controller):
             sheet.write(row, 2, line["doc_type"] or "", fmts["text"])
             sheet.write(row, 3, line["doc_number"] or "", fmts["text"])
             sheet.write(row, 4, line["reference"] or "", fmts["text"])
-            sheet.write(row, 5, line["opening"], fmts["num"])
-            sheet.write(row, 6, line["in"], fmts["num"])
-            sheet.write(row, 7, line["out"], fmts["num"])
-            sheet.write(row, 8, line["balance"], fmts["num"])
+            sheet.write(row, 5, line["source_location"] or "", fmts["text"])
+            sheet.write(row, 6, line["dest_location"] or "", fmts["text"])
+            sheet.write(row, 7, line["opening"], fmts["num"])
+            sheet.write(row, 8, line["in"], fmts["num"])
+            sheet.write(row, 9, line["out"], fmts["num"])
+            sheet.write(row, 10, line["balance"], fmts["num"])
             if show_value:
-                sheet.write(row, 9, line.get("value", 0.0), fmts["num"])
-                sheet.write(row, 10, line.get("value_in", 0.0), fmts["num"])
-                sheet.write(row, 11, line.get("value_out", 0.0), fmts["num"])
+                sheet.write(row, 11, line.get("value", 0.0), fmts["num"])
+                sheet.write(row, 12, line.get("value_in", 0.0), fmts["num"])
+                sheet.write(row, 13, line.get("value_out", 0.0), fmts["num"])
             row += 1
