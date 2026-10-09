@@ -21,7 +21,7 @@ class LoanReturnExportXlsx(models.AbstractModel):
         'รหัสสินค้า',
         'ชื่อสินค้า',
         'จำนวนยืม',
-        'จำนวนเหลือ ณ วันสิ้นสุดช่วง',
+        'จำนวนเหลือ\n(ณ วันสิ้นสุดช่วง)',
         'วันครบกำหนด',
         'ที่ส่ง',
         'Destination Location',
@@ -39,7 +39,7 @@ class LoanReturnExportXlsx(models.AbstractModel):
         'วันที่ อ้างอิง',
         'พนักงานขาย',
         'สถานะ',
-        'วันที่ดำเนินการ',
+        'Effective Date',
         'แผนกที่ไปรับสินค้า',
         'หมายเหตุ',
     ]
@@ -59,7 +59,7 @@ class LoanReturnExportXlsx(models.AbstractModel):
         text_format = workbook.add_format({'valign': 'top'})
         number_format = workbook.add_format({
             'valign': 'top',
-            'num_format': '#,##0.##',
+            'num_format': '#,##0',
         })
         date_format = workbook.add_format({
             'valign': 'top',
@@ -69,7 +69,7 @@ class LoanReturnExportXlsx(models.AbstractModel):
             'valign': 'top',
             'bg_color': '#FFF2CC',
             'font_color': '#9C6500',
-            'num_format': '#,##0.##',
+            'num_format': '#,##0',
         })
 
         self._write_sheet(

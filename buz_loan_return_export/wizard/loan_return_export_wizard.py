@@ -299,7 +299,7 @@ class LoanReturnExportWizard(models.TransientModel):
                 rows.append([
                     len(rows) + 1,
                     picking.name or '',
-                    self._as_user_date(picking.date_confirmed),
+                    self._as_user_date(picking.create_date),
                     product.default_code or '',
                     product.name or '',
                     move.quantity,
