@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_picking_form_loan_return" model="ir.ui.view">
+        <field name="name">stock.picking.form.loan.return.primary</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="loan_return_document_kind" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="loan_return_source_picking_id"
+                       string="Source BG"
+                       readonly="1"
+                       invisible="loan_return_document_kind != 'return'"/>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="before">
+                <div class="alert alert-warning" role="alert"
+                     invisible="loan_return_document_kind != 'loan' or state not in ['confirmed', 'waiting', 'partially_available']">
+                    BG ยังจองสินค้าไม่ครบ ให้กด Check Availability และตรวจสถานะก่อนดำเนินการ
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

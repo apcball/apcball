@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_loan_return_document_stock_user,buz.loan.return.document stock user,model_buz_loan_return_document,stock.group_stock_user,1,0,0,0
+access_buz_loan_return_operation_type_stock_user,buz.loan.return.operation.type stock user,model_buz_loan_return_operation_type,stock.group_stock_user,1,0,0,0
+access_buz_loan_return_operation_type_stock_manager,buz.loan.return.operation.type stock manager,model_buz_loan_return_operation_type,stock.group_stock_manager,1,1,1,1
+access_buz_loan_return_create_wizard_stock_user,buz.loan.return.create.wizard stock user,model_buz_loan_return_create_wizard,stock.group_stock_user,1,1,1,1

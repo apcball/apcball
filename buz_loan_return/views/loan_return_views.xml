@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_loan_return_document_tree" model="ir.ui.view">
+        <field name="name">buz.loan.return.document.tree</field>
+        <field name="model">buz.loan.return.document</field>
+        <field name="arch" type="xml">
+            <tree string="BG/RBG Documents" create="false" delete="false">
+                <field name="name"/>
+                <field name="document_kind"/>
+                <field name="source_document_id" optional="show"/>
+                <field name="picking_id"/>
+                <field name="partner_id" optional="show"/>
+                <field name="operation_type_id"/>
+                <field name="scheduled_date" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'cancel'"/>
+                <button name="action_open_picking" type="object" string="Open Transfer"
+                        icon="fa-external-link"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_loan_return_document_form" model="ir.ui.view">
+        <field name="name">buz.loan.return.document.form</field>
+        <field name="model">buz.loan.return.document</field>
+        <field name="arch" type="xml">
+            <form string="BG/RBG Document" create="false" delete="false">
+                <header>
+                    <button name="action_open_picking" type="object"
+                            string="Open Stock Transfer" class="oe_highlight"/>
+                    <button name="action_create_rbg" type="object"
+                            string="Create RBG" class="btn-primary"
+                            invisible="document_kind != 'loan' or state == 'cancel'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,assigned,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="document_kind"/>
+                            <field name="picking_id"/>
+                            <field name="operation_type_id"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="scheduled_date"/>
+                            <field name="source_document_id"
+                                   invisible="document_kind != 'return'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Return Documents"
+                              invisible="document_kind != 'loan'">
+                            <field name="return_document_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="picking_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="state"/>
+                                    <button name="action_open_picking" type="object"
+                                            string="Open" icon="fa-external-link"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_buz_loan_return_operation_type_tree" model="ir.ui.view">
+        <field name="name">buz.loan.return.operation.type.tree</field>
+        <field name="model">buz.loan.return.operation.type</field>
+        <field name="arch" type="xml">
+            <tree string="Allowed Operation Types">
+                <field name="company_id"/>
+                <field name="document_kind"/>
+                <field name="picking_type_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_loan_return_operation_type_form" model="ir.ui.view">
+        <field name="name">buz.loan.return.operation.type.form</field>
+        <field name="model">buz.loan.return.operation.type</field>
+        <field name="arch" type="xml">
+            <form string="Allowed Operation Type">
+                <sheet>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="document_kind"/>
+                        <field name="picking_type_id"
+                               domain="[('code', '=', 'internal')]"/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        BG Operation Types must already be configured for Manual reservation.
+                        This module does not modify Operation Type settings.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_loan_return_bg" model="ir.actions.act_window">
+        <field name="name">BG Documents</field>
+        <field name="res_model">buz.loan.return.document</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('document_kind', '=', 'loan')]</field>
+        
+    </record>
+
+    <record id="action_buz_loan_return_rbg" model="ir.actions.act_window">
+        <field name="name">RBG Documents</field>
+        <field name="res_model">buz.loan.return.document</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('document_kind', '=', 'return')]</field>
+    </record>
+
+    <record id="action_buz_loan_return_operation_type" model="ir.actions.act_window">
+        <field name="name">Allowed Operation Types</field>
+        <field name="res_model">buz.loan.return.operation.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

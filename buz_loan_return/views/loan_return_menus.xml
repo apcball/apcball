@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_buz_loan_return_root"
+              name="Loan / Return"
+              parent="stock.menu_stock_root"
+              sequence="55"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_buz_loan_return_create_bg"
+              name="Create BG"
+              parent="menu_buz_loan_return_root"
+              action="action_buz_loan_return_create_bg"
+              sequence="5"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_buz_loan_return_bg"
+              name="BG Documents"
+              parent="menu_buz_loan_return_root"
+              action="action_buz_loan_return_bg"
+              sequence="10"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_buz_loan_return_rbg"
+              name="RBG Documents"
+              parent="menu_buz_loan_return_root"
+              action="action_buz_loan_return_rbg"
+              sequence="20"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_buz_loan_return_operation_type"
+              name="Allowed Operation Types"
+              parent="menu_buz_loan_return_root"
+              action="action_buz_loan_return_operation_type"
+              sequence="90"
+              groups="stock.group_stock_manager"/>
+</odoo>
