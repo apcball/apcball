@@ -2,7 +2,7 @@
 <odoo>
     <menuitem id="menu_buz_loan_return_root"
               name="Loan / Return"
-              parent="buz_dispatch_document.menu_buz_dispatch_document_root"
+              parent="stock.menu_stock_warehouse_mgmt"
               sequence="55"
               groups="stock.group_stock_user"/>
 

@@ -7,7 +7,7 @@
     'description': 'Dedicated workflow for BG loan and RBG return transfers.',
     'author': 'Mogen Co.',
     'license': 'LGPL-3',
-    'depends': ['stock', 'buz_dispatch_document'],
+    'depends': ['stock'],
     'data': [
         'security/ir.model.access.csv',
         'security/security.xml',
