@@ -21,7 +21,7 @@ class LoanReturnExportXlsx(models.AbstractModel):
         'รหัสสินค้า',
         'ชื่อสินค้า',
         'จำนวนยืม',
-        'จำนวนเหลือ',
+        'จำนวนเหลือ ณ วันสิ้นสุดช่วง',
         'วันครบกำหนด',
         'ที่ส่ง',
         'Destination Location',
@@ -65,6 +65,12 @@ class LoanReturnExportXlsx(models.AbstractModel):
             'valign': 'top',
             'num_format': 'dd/mm/yyyy',
         })
+        warning_format = workbook.add_format({
+            'valign': 'top',
+            'bg_color': '#FFF2CC',
+            'font_color': '#9C6500',
+            'num_format': '#,##0.##',
+        })
 
         self._write_sheet(
             workbook,
@@ -78,6 +84,8 @@ class LoanReturnExportXlsx(models.AbstractModel):
             numeric_columns={0, 7, 8},
             date_columns={2, 9},
             widths=[10, 22, 14, 18, 36, 20, 48, 14, 14, 16, 58, 40],
+            warning_cells=report_data['loan_warnings'],
+            warning_format=warning_format,
         )
         self._write_sheet(
             workbook,
@@ -91,6 +99,8 @@ class LoanReturnExportXlsx(models.AbstractModel):
             numeric_columns={0, 5},
             date_columns={2, 9, 12},
             widths=[10, 30, 16, 20, 48, 12, 18, 36, 28, 16, 24, 14, 16, 24, 42],
+            warning_cells=report_data['return_warnings'],
+            warning_format=warning_format,
         )
 
     @staticmethod
@@ -106,6 +116,8 @@ class LoanReturnExportXlsx(models.AbstractModel):
         numeric_columns,
         date_columns,
         widths,
+        warning_cells=None,
+        warning_format=None,
     ):
         sheet = workbook.add_worksheet(sheet_name)
         sheet.freeze_panes(1, 0)
@@ -116,21 +128,51 @@ class LoanReturnExportXlsx(models.AbstractModel):
         for column, header in enumerate(headers):
             sheet.write(0, column, header, header_format)
 
-        for row_index, values in enumerate(rows, start=1):
+        for data_index, values in enumerate(rows):
+            row_index = data_index + 1
+            cell_warnings = (
+                warning_cells[data_index]
+                if warning_cells and data_index < len(warning_cells)
+                else {}
+            )
             for column, value in enumerate(values):
+                warning = cell_warnings.get(column)
+                cell_format = warning_format if warning else None
                 if value is None or value is False:
-                    sheet.write_blank(row_index, column, None, text_format)
+                    sheet.write_blank(
+                        row_index,
+                        column,
+                        None,
+                        cell_format or text_format,
+                    )
                 elif column in date_columns and value:
                     sheet.write_datetime(
                         row_index,
                         column,
                         datetime.combine(value, time.min),
-                        date_format,
+                        cell_format or date_format,
                     )
                 elif column in numeric_columns and isinstance(value, (int, float)):
-                    sheet.write_number(row_index, column, value, number_format)
+                    sheet.write_number(
+                        row_index,
+                        column,
+                        value,
+                        cell_format or number_format,
+                    )
                 else:
-                    sheet.write(row_index, column, str(value), text_format)
+                    sheet.write(
+                        row_index,
+                        column,
+                        str(value),
+                        cell_format or text_format,
+                    )
+                if warning:
+                    sheet.write_comment(
+                        row_index,
+                        column,
+                        warning,
+                        {'author': 'Odoo'},
+                    )
 
         sheet.autofilter(0, 0, len(rows), len(headers) - 1)
 
