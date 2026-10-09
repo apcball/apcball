@@ -2,7 +2,7 @@
 <odoo>
     <menuitem id="menu_buz_loan_return_root"
               name="Loan / Return"
-              parent="stock.menu_stock_root"
+              parent="buz_dispatch_document.menu_buz_dispatch_document_root"
               sequence="55"
               groups="stock.group_stock_user"/>
 
@@ -14,18 +14,13 @@
               groups="stock.group_stock_user"/>
 
     <menuitem id="menu_buz_loan_return_bg"
-              name="BG Documents"
+              name="BG/RBG Documents"
               parent="menu_buz_loan_return_root"
               action="action_buz_loan_return_bg"
               sequence="10"
               groups="stock.group_stock_user"/>
 
-    <menuitem id="menu_buz_loan_return_rbg"
-              name="RBG Documents"
-              parent="menu_buz_loan_return_root"
-              action="action_buz_loan_return_rbg"
-              sequence="20"
-              groups="stock.group_stock_user"/>
+    <delete model="ir.ui.menu" id="menu_buz_loan_return_rbg"/>
     <!-- ลบเมนูและหน้าจอ allowlist รุ่นเดิมออกเมื่ออัปเกรดโมดูล โดยเก็บข้อมูล config ไว้ -->
     <delete model="ir.ui.menu"
             search="[('name', '=', 'Allowed Operation Types'), ('parent_id', '=', ref('menu_buz_loan_return_root'))]"/>
