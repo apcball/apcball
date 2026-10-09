@@ -9,6 +9,21 @@
             <xpath expr="//sheet" position="inside">
                 <field name="loan_return_document_kind" invisible="1"/>
             </xpath>
+            <xpath expr="//field[@name='picking_type_id']" position="attributes">
+                <attribute name="readonly">loan_return_document_kind == 'loan' or (state != 'draft' and id)</attribute>
+            </xpath>
+            <xpath expr="//field[@name='location_id'][@groups='!stock.group_stock_multi_locations']" position="attributes">
+                <attribute name="readonly">loan_return_document_kind == 'loan' or state == 'done'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='location_id'][@groups='stock.group_stock_multi_locations']" position="attributes">
+                <attribute name="readonly">loan_return_document_kind == 'loan' or state == 'done'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='location_dest_id'][@groups='!stock.group_stock_multi_locations']" position="attributes">
+                <attribute name="readonly">(loan_return_document_kind == 'loan' and state != 'draft') or state == 'done'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='location_dest_id'][@groups='stock.group_stock_multi_locations']" position="attributes">
+                <attribute name="readonly">(loan_return_document_kind == 'loan' and state != 'draft') or state == 'done'</attribute>
+            </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="loan_return_source_picking_id"
                        string="Source BG"
@@ -17,8 +32,8 @@
             </xpath>
             <xpath expr="//sheet/notebook" position="before">
                 <div class="alert alert-warning" role="alert"
-                     invisible="loan_return_document_kind != 'loan' or state not in ['confirmed', 'waiting', 'partially_available']">
-                    BG ยังจองสินค้าไม่ครบ ให้กด Check Availability และตรวจสถานะก่อนดำเนินการ
+                     invisible="loan_return_document_kind != 'loan' or not show_check_availability">
+                    Odoo reserves available stock at confirmation. If Check Availability is still offered, review the unreserved quantities before validating.
                 </div>
             </xpath>
         </field>

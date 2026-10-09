@@ -74,39 +74,6 @@
         </field>
     </record>
 
-    <record id="view_buz_loan_return_operation_type_tree" model="ir.ui.view">
-        <field name="name">buz.loan.return.operation.type.tree</field>
-        <field name="model">buz.loan.return.operation.type</field>
-        <field name="arch" type="xml">
-            <tree string="Allowed Operation Types">
-                <field name="company_id"/>
-                <field name="document_kind"/>
-                <field name="picking_type_id"/>
-            </tree>
-        </field>
-    </record>
-
-    <record id="view_buz_loan_return_operation_type_form" model="ir.ui.view">
-        <field name="name">buz.loan.return.operation.type.form</field>
-        <field name="model">buz.loan.return.operation.type</field>
-        <field name="arch" type="xml">
-            <form string="Allowed Operation Type">
-                <sheet>
-                    <group>
-                        <field name="company_id"/>
-                        <field name="document_kind"/>
-                        <field name="picking_type_id"
-                               domain="[('code', '=', 'internal')]"/>
-                    </group>
-                    <div class="alert alert-info" role="alert">
-                        BG Operation Types must already be configured for Manual reservation.
-                        This module does not modify Operation Type settings.
-                    </div>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
     <record id="action_buz_loan_return_bg" model="ir.actions.act_window">
         <field name="name">BG Documents</field>
         <field name="res_model">buz.loan.return.document</field>
@@ -120,11 +87,5 @@
         <field name="res_model">buz.loan.return.document</field>
         <field name="view_mode">tree,form</field>
         <field name="domain">[('document_kind', '=', 'return')]</field>
-    </record>
-
-    <record id="action_buz_loan_return_operation_type" model="ir.actions.act_window">
-        <field name="name">Allowed Operation Types</field>
-        <field name="res_model">buz.loan.return.operation.type</field>
-        <field name="view_mode">tree,form</field>
     </record>
 </odoo>

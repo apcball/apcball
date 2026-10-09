@@ -26,11 +26,11 @@
               action="action_buz_loan_return_rbg"
               sequence="20"
               groups="stock.group_stock_user"/>
-
-    <menuitem id="menu_buz_loan_return_operation_type"
-              name="Allowed Operation Types"
-              parent="menu_buz_loan_return_root"
-              action="action_buz_loan_return_operation_type"
-              sequence="90"
-              groups="stock.group_stock_manager"/>
+    <!-- ลบเมนูและหน้าจอ allowlist รุ่นเดิมออกเมื่ออัปเกรดโมดูล โดยเก็บข้อมูล config ไว้ -->
+    <delete model="ir.ui.menu"
+            search="[('name', '=', 'Allowed Operation Types'), ('parent_id', '=', ref('menu_buz_loan_return_root'))]"/>
+    <delete model="ir.actions.act_window"
+            search="[('name', '=', 'Allowed Operation Types'), ('res_model', '=', 'buz.loan.return.operation.type')]"/>
+    <delete model="ir.ui.view"
+            search="[('model', '=', 'buz.loan.return.operation.type'), ('name', 'in', ['buz.loan.return.operation.type.tree', 'buz.loan.return.operation.type.form'])]"/>
 </odoo>

@@ -85,7 +85,6 @@ class LoanReturnDocument(models.Model):
 
     @api.constrains('document_kind', 'picking_id', 'source_document_id')
     def _check_document_links(self):
-        config_model = self.env['buz.loan.return.operation.type'].sudo()
         for document in self:
             picking = document.picking_id
             if not picking.partner_id:
@@ -100,16 +99,9 @@ class LoanReturnDocument(models.Model):
                     'Add at least one product line with a quantity greater than zero.'
                 ))
 
-            expected_kind = 'loan' if document.document_kind == 'loan' else 'return'
-            config = config_model.search([
-                ('company_id', '=', document.picking_id.company_id.id),
-                ('document_kind', '=', expected_kind),
-                ('picking_type_id', '=', document.picking_id.picking_type_id.id),
-            ], limit=1)
-            if not config:
-                raise ValidationError(_(
-                    'The picking Operation Type is not configured for this BG/RBG workflow.'
-                ))
+            picking.picking_type_id._check_loan_return_operation_type(
+                picking.company_id, document.document_kind
+            )
 
             if document.document_kind == 'loan' and document.source_document_id:
                 raise ValidationError(_('A BG cannot have a source BG.'))

@@ -40,16 +40,30 @@ class CreateLoanReturnWizard(models.TransientModel):
 
     @api.depends('document_kind', 'company_id')
     def _compute_allowed_operation_types(self):
-        config_model = self.env['buz.loan.return.operation.type']
         for wizard in self:
-            configs = config_model.search([
+            if not wizard.company_id:
+                wizard.allowed_operation_type_ids = False
+                continue
+
+            # รวมประเภทที่ใช้ร่วมกัน (ไม่มีบริษัทกำกับ) และประเภทของบริษัทที่เลือก
+            domain = [
+                ('code', '=', 'internal'),
+                '|',
+                ('company_id', '=', False),
                 ('company_id', '=', wizard.company_id.id),
-                ('document_kind', '=', wizard.document_kind),
-            ]) if wizard.company_id and wizard.document_kind else config_model
-            wizard.allowed_operation_type_ids = configs.mapped('picking_type_id')
+            ]
+            if wizard.document_kind == 'loan':
+                domain += [
+                    ('reservation_method', '=', 'at_confirm'),
+                    ('default_location_src_id', '!=', False),
+                ]
+
+            wizard.allowed_operation_type_ids = self.env['stock.picking.type'].search(domain)
 
     @api.onchange('document_kind', 'company_id')
     def _onchange_operation_type_domain(self):
+        if self.operation_type_id not in self.allowed_operation_type_ids:
+            self.operation_type_id = False
         return {
             'domain': {
                 'operation_type_id': [
@@ -60,21 +74,28 @@ class CreateLoanReturnWizard(models.TransientModel):
 
     def action_open_picking(self):
         self.ensure_one()
-        config = self.env['buz.loan.return.operation.type'].search([
-            ('company_id', '=', self.company_id.id),
-            ('document_kind', '=', self.document_kind),
-            ('picking_type_id', '=', self.operation_type_id.id),
-        ], limit=1)
-        if not config:
+        if self.operation_type_id not in self.allowed_operation_type_ids:
             raise ValidationError(_(
-                'The selected Operation Type is not configured for this document type.'
+                'Select an Internal Transfer Operation Type available for this company and document type.'
             ))
+        self.operation_type_id._check_loan_return_operation_type(
+            self.company_id, self.document_kind
+        )
 
+        destination = (
+            self._get_default_loan_destination(self.company_id)
+            if self.document_kind == 'loan' else False
+        )
         context = {
             'default_picking_type_id': self.operation_type_id.id,
             'default_company_id': self.company_id.id,
             'default_location_id': self.operation_type_id.default_location_src_id.id,
-            'default_location_dest_id': self.operation_type_id.default_location_dest_id.id,
+            'default_location_dest_id': (
+                destination.id if self.document_kind == 'loan' and destination
+                else self.operation_type_id.default_location_dest_id.id
+                if self.document_kind == 'return'
+                else False
+            ),
             'loan_return_document_kind': self.document_kind,
         }
         if self.document_kind == 'return':
@@ -111,3 +132,16 @@ class CreateLoanReturnWizard(models.TransientModel):
             'target': 'current',
             'context': context,
         }
+
+    def _get_default_loan_destination(self, company):
+        """Find the default destination, preferring the current company."""
+        location_model = self.env['stock.location']
+        location_name = 'FG30/DS-OLT-\u0e25\u0e33\u0e25\u0e39\u0e01\u0e01\u0e32'
+        for company_id in (company.id, False):
+            locations = location_model.search([
+                ('complete_name', '=', location_name),
+                ('company_id', '=', company_id),
+            ], limit=2)
+            if locations:
+                return locations[0] if len(locations) == 1 else location_model
+        return location_model
