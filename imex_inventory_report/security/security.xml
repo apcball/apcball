@@ -1,0 +1,12 @@
+<odoo>
+    <record id="module_category_imex_inventory_report" model="ir.module.category">
+        <field name="name">Import Export Inventory Report</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="group_imex_inventory_price" model="res.groups">
+        <field name="name">Imex See Amount</field>
+        <field name="category_id" ref="module_category_imex_inventory_report"/>
+        <field name="comment">Users in this group can see price/amount columns on the Imex Inventory Report (list and printed reports). Users outside this group see quantities only.</field>
+    </record>
+</odoo>
