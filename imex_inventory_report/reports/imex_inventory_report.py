@@ -29,6 +29,21 @@ class ImexInventoryReport(models.Model):
     balance = fields.Float(readonly=True)
     amount = fields.Float(readonly=True)
 
+    def export_data(self, fields_to_export):
+        """ส่งออกชื่อสินค้าแทน display name เฉพาะคอลัมน์ Product ของรายงานนี้"""
+        result = super().export_data(fields_to_export)
+        product_index = next(
+            (index for index, field_path in enumerate(fields_to_export)
+             if field_path == "product_id"),
+            None,
+        )
+        if product_index is None:
+            return result
+
+        for record, row in zip(self, result.get("datas", [])):
+            row[product_index] = record.product_id.name or ""
+        return result
+
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
         self.env.cr.execute("""CREATE or REPLACE VIEW %s as (

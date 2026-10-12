@@ -159,6 +159,27 @@ class TestImexInventoryReport(TransactionCase):
         self.assertTrue(report_line, "Expected report line for stock location")
         self.assertEqual(report_line.initial, 3.0)
 
+    def test_export_data_uses_product_name_without_internal_reference(self):
+        self._create_done_move(
+            self.location_stock,
+            self.location_production,
+            1.0,
+            "2026-05-01 08:00:00",
+            "IMEX/EXPORT/OUT",
+        )
+        wizard = self._create_wizard(is_groupby_location=True)
+        self.env["imex.inventory.report"].init_results(wizard)
+        report_line = self.env["imex.inventory.report"].search(
+            [("product_id", "=", self.product.id)],
+            limit=1,
+        )
+
+        self.assertTrue(report_line, "Expected report line for test product")
+        exported = report_line.export_data(["default_code", "product_id"])
+
+        self.assertEqual(exported["datas"][0][0], self.product.default_code)
+        self.assertEqual(exported["datas"][0][1], self.product.name)
+
     def test_summary_report_uses_done_quantity(self):
         self._create_partial_done_move()
         wizard = self._create_wizard(is_groupby_location=False)
