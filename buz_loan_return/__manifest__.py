@@ -11,6 +11,8 @@
     'assets': {
         'web.assets_backend': [
             'buz_loan_return/static/src/js/bg_document_list_controller.js',
+            'buz_loan_return/static/src/js/bg_forecast.js',
+            'buz_loan_return/static/src/xml/bg_forecast.xml',
             'buz_loan_return/static/src/xml/bg_document_list_buttons.xml',
         ],
     },

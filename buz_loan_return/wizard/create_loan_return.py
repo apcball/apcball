@@ -44,6 +44,52 @@ class CreateLoanReturnWizard(models.TransientModel):
     )
 
     @api.model
+    def action_bg_forecast(self, product_id, location_id=False,
+                           operation_type_id=False, company_id=False):
+        """เปิด Forecast จากค่าบนฟอร์มได้โดยไม่ต้องบันทึก wizard ก่อน"""
+        self.check_access_rights('read')
+        company = self.env['res.company'].browse(company_id).exists()
+        if not company or company not in self.env.companies:
+            raise ValidationError(_('Select an accessible company before opening Forecast.'))
+        scoped = self.with_context(allowed_company_ids=company.ids)
+        product = scoped.env['product.product'].browse(product_id).exists()
+        if not product:
+            raise ValidationError(_('Select a product before opening Forecast.'))
+        product.check_access_rights('read')
+        product.check_access_rule('read')
+        if product.type != 'product':
+            raise ValidationError(_('Forecast is available only for storable products.'))
+
+        location = scoped.env['stock.location'].browse(location_id).exists()
+        operation = scoped.env['stock.picking.type'].browse(operation_type_id).exists()
+        for record in (location, operation):
+            if record:
+                record.check_access_rights('read')
+                record.check_access_rule('read')
+                if record.company_id and record.company_id != company:
+                    raise ValidationError(_('The source location and operation type must belong to the BG company.'))
+        warehouse = location.warehouse_id or operation.warehouse_id
+        if not warehouse:
+            raise ValidationError(_('No warehouse was found. Select a source location or operation type with a warehouse.'))
+        warehouse.check_access_rights('read')
+        warehouse.check_access_rule('read')
+        if warehouse.company_id != company:
+            raise ValidationError(_('The warehouse must belong to the BG company.'))
+
+        action = product.action_product_forecast_report()
+        # ไม่ส่ง default_* หรือ active_id ของ wizard ไปปะปนกับรายงานสินค้า
+        action['context'] = {
+            'lang': self.env.lang,
+            'tz': self.env.user.tz,
+            'allowed_company_ids': company.ids,
+            'active_model': 'product.product',
+            'active_id': product.id,
+            'active_ids': product.ids,
+            'warehouse': warehouse.id,
+        }
+        return action
+
+    @api.model
     def default_get(self, fields_list):
         values = super().default_get(fields_list)
         if values.get('document_kind') != 'return' or not values.get('source_document_id'):
@@ -272,6 +318,7 @@ class CreateLoanReturnWizardLine(models.TransientModel):
     wizard_id = fields.Many2one('buz.loan.return.create.wizard', required=True, ondelete='cascade')
     source_move_id = fields.Many2one('stock.move', string='BG Item', readonly=True)
     product_id = fields.Many2one('product.product', required=True)
+    product_type = fields.Selection(related='product_id.type', readonly=True)
     product_uom_category_id = fields.Many2one(
         related='product_id.uom_id.category_id', string='Category',
     )
