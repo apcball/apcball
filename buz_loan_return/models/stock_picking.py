@@ -24,7 +24,10 @@ class StockPickingType(models.Model):
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
-
+    loan_return_source_document_id = fields.Many2one(
+        'buz.loan.return.document', string='Source BG/RBG Document',
+        index=True, copy=False, ondelete='restrict',
+    )
     loan_return_document_kind = fields.Selection(
         [
             ('loan', 'BG / Loan'),
@@ -51,7 +54,7 @@ class StockPicking(models.Model):
         by_picking = {item.picking_id.id: item for item in registrations}
         context_kind = self.env.context.get('loan_return_document_kind')
         for picking in self:
-            document = by_picking.get(picking.id)
+            document = by_picking.get(picking.id) or picking.loan_return_source_document_id
             is_new = not picking._origin or not picking._origin.id
             picking.loan_return_document_kind = (
                 document.document_kind if document
@@ -148,6 +151,7 @@ class StockPicking(models.Model):
         documents = self.env['buz.loan.return.document'].sudo().search([
             ('picking_id', 'in', self.ids),
         ])
+        documents |= self.sudo().mapped('loan_return_source_document_id')
         for document in documents:
             document._check_document_links()
 
@@ -168,13 +172,60 @@ class StockPicking(models.Model):
             active_moves = picking.move_ids.filtered(lambda move: move.state != 'cancel')
             if any(move.location_dest_id != picking.location_dest_id for move in active_moves):
                 raise ValidationError(_('All BG product lines must use the selected Destination Location.'))
+    def _loan_return_pickings(self):
+        """Find only pickings registered as BG/RBG documents."""
+        if not self.ids:
+            return self.browse()
+        documents = self.env['buz.loan.return.document'].sudo().search_read(
+            [('picking_id', 'in', self.ids)], ['picking_id']
+        )
+        registered_ids = {row['picking_id'][0] for row in documents}
+        return self.filtered(lambda picking: picking.id in registered_ids or picking.loan_return_source_document_id)
 
+    def _create_backorder(self):
+        documents = self.env['buz.loan.return.document'].sudo().search([
+            ('picking_id', 'in', self.ids),
+        ])
+        documents_by_picking = {item.picking_id.id: item for item in documents}
+        backorders = super()._create_backorder()
+        for backorder in backorders:
+            source_document = documents_by_picking.get(backorder.backorder_id.id)
+            if source_document:
+                backorder.loan_return_source_document_id = source_document.id
+        return backorders
     def action_confirm(self):
-        self._check_loan_return_documents()
-        self._check_loan_return_locations()
+        registered = self._loan_return_pickings()
+        if registered:
+            registered._check_loan_return_documents()
+            registered._check_loan_return_locations()
         return super().action_confirm()
 
+    def _check_loan_return_quantities(self):
+        documents = self.env['buz.loan.return.document'].sudo().search([
+            '|', ('picking_id', 'in', self.ids), ('backorder_picking_ids', 'in', self.ids),
+            ('document_kind', '=', 'return'),
+        ])
+        documents |= self.sudo().mapped('loan_return_source_document_id')
+        documents = documents.filtered(lambda item: item.document_kind == 'return')
+        documents._check_loan_return_quantities()
     def button_validate(self):
-        self._check_loan_return_documents()
-        self._check_loan_return_locations()
+        registered = self._loan_return_pickings()
+        if registered:
+            registered._check_loan_return_documents()
+            registered._check_loan_return_locations()
+            registered.filtered(
+                lambda picking: picking.loan_return_document_kind == 'return'
+            )._check_loan_return_quantities()
         return super().button_validate()
+
+
+class StockMove(models.Model):
+    _inherit = 'stock.move'
+
+    loan_return_source_move_id = fields.Many2one(
+        'stock.move', string='Source BG Item', index=True, copy=True,
+        ondelete='restrict',
+    )
+    loan_return_return_move_ids = fields.One2many(
+        'stock.move', 'loan_return_source_move_id', string='RBG Items',
+    )

@@ -12,6 +12,7 @@
                 <field name="partner_id" optional="show"/>
                 <field name="operation_type_id"/>
                 <field name="scheduled_date" optional="hide"/>
+                <field name="loan_status" optional="show" invisible="document_kind != 'loan'"/>
                 <field name="state" widget="badge"
                        decoration-muted="state == 'draft'"
                        decoration-success="state == 'done'"
@@ -46,6 +47,7 @@
                             <field name="picking_id"/>
                             <field name="operation_type_id"/>
                             <field name="partner_id"/>
+                            <field name="loan_status" widget="badge" invisible="document_kind != 'loan'"/>
                         </group>
                         <group>
                             <field name="company_id"/>
@@ -55,6 +57,15 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Backorder Transfers">
+                            <field name="backorder_picking_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="state"/>
+                                    <field name="scheduled_date"/>
+                                </tree>
+                            </field>
+                        </page>
                         <page string="Return Documents"
                               invisible="document_kind != 'loan'">
                             <field name="return_document_ids" readonly="1">
@@ -119,5 +130,36 @@
         <field name="res_model">buz.loan.return.document</field>
         <field name="view_mode">tree,form</field>
         <field name="domain">[('document_kind', '=', 'return')]</field>
+    </record>
+    <record id="view_buz_loan_return_operation_type_tree" model="ir.ui.view">
+        <field name="name">buz.loan.return.operation.type.tree</field>
+        <field name="model">buz.loan.return.operation.type</field>
+        <field name="arch" type="xml">
+            <tree string="BG/RBG Operation Types">
+                <field name="company_id"/>
+                <field name="document_kind"/>
+                <field name="picking_type_id"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_buz_loan_return_operation_type_form" model="ir.ui.view">
+        <field name="name">buz.loan.return.operation.type.form</field>
+        <field name="model">buz.loan.return.operation.type</field>
+        <field name="arch" type="xml">
+            <form string="BG/RBG Operation Type">
+                <sheet>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="document_kind"/>
+                        <field name="picking_type_id" domain="[('code', '=', 'internal'), '|', ('company_id', '=', False), ('company_id', '=', company_id)]" options="{'no_create': True}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_buz_loan_return_operation_type" model="ir.actions.act_window">
+        <field name="name">BG/RBG Operation Types</field>
+        <field name="res_model">buz.loan.return.operation.type</field>
+        <field name="view_mode">tree,form</field>
     </record>
 </odoo>

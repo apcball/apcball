@@ -56,9 +56,9 @@ class LoanReturnOperationType(models.Model):
                 ))
             if (
                 config.document_kind == 'loan'
-                and picking_type.reservation_method != 'manual'
+                and picking_type.reservation_method != 'at_confirm'
             ):
                 raise ValidationError(_(
-                    'The BG Operation Type must already use Manual reservation. '
+                    'The BG Operation Type must use At Confirmation reservation. '
                     'This module does not change the Operation Type settings.'
                 ))
