@@ -213,30 +213,107 @@ class MrpJobReportWizard(models.TransientModel):
                     rows.append(r)
         return rows
 
+    # (title, first col, last col, header colour, row-tint colour)
+    _SECTIONS = [
+        ("ข้อมูล JOB", 0, 5, "#1F4E78", "#DDEBF7"),
+        ("สินค้าที่ผลิต", 6, 9, "#2E75B6", "#EAF1FB"),
+        ("การเบิกวัตถุดิบ", 10, 17, "#C55A11", "#FCE4D6"),
+        ("การปิด JOB / ผลผลิต", 18, 25, "#548235", "#E2EFDA"),
+        ("คืนวัตถุดิบ", 26, 30, "#7030A0", "#EADCF4"),
+        ("พนักงาน", 31, 33, "#595959", "#EDEDED"),
+    ]
+    _WIDTHS = [
+        16, 12, 14, 12, 18, 16, 18, 42, 9, 8, 16, 12, 16, 22, 20, 42, 10, 8,
+        16, 12, 16, 22, 18, 42, 9, 8, 22, 18, 42, 9, 8, 22, 10, 10,
+    ]
+    _DATE_COLS = {1, 2, 3, 11, 19}
+    _QTY_COLS = {8, 16, 24, 29, 32, 33}
+
+    @staticmethod
+    def _row_section(row):
+        """Which section a ledger row belongs to (for tinting)."""
+        if row[1] != "" or row[4] != "":
+            return 0
+        if row[6] != "":
+            return 1
+        if row[10] != "" or row[12] != "":
+            return 2
+        if row[22] != "":
+            return 3
+        if row[26] != "" or row[27] != "":
+            return 4
+        return 5
+
+    def _write_sheet(self, wb, rows):
+        font = {"font_name": "Sarabun", "font_size": 10, "valign": "vcenter"}
+        fmt = lambda **kw: wb.add_format(dict(font, **kw))  # noqa: E731
+        title = fmt(bold=True, font_size=16, font_color="#1F4E78")
+        sub = fmt(font_color="#595959", italic=True)
+        ws = wb.add_worksheet("ใบปิด JOB")
+        ws.hide_gridlines(2)
+        ws.set_zoom(90)
+        for c, w in enumerate(self._WIDTHS):
+            ws.set_column(c, c, w)
+        ws.set_row(0, 26)
+        ws.write(0, 0, "รายงานใบปิด JOB (Manufacturing Job Close Report)", title)
+        ws.write(1, 0, "ช่วงวันที่ %s ถึง %s  |  บริษัท %s  |  %d แถว" % (
+            self.date_from.strftime("%d/%m/%Y"), self.date_to.strftime("%d/%m/%Y"),
+            self.company_id.name, len(rows)), sub)
+        band_row, head_row, first = 3, 4, 5
+        ws.set_row(band_row, 20)
+        ws.set_row(head_row, 32)
+        for name, c0, c1, color, _tint in self._SECTIONS:
+            band = fmt(bold=True, font_color="#FFFFFF", bg_color=color, align="center", border=1, border_color="#FFFFFF")
+            head = fmt(bold=True, font_color="#FFFFFF", bg_color=color, align="center", text_wrap=True,
+                       border=1, border_color="#FFFFFF")
+            if c1 > c0:
+                ws.merge_range(band_row, c0, band_row, c1, name, band)
+            else:
+                ws.write(band_row, c0, name, band)
+            for c in range(c0, c1 + 1):
+                ws.write(head_row, c, HEADERS[c], head)
+        cache = {}
+
+        def cell_fmt(sec, col):
+            key = (sec, col)
+            if key not in cache:
+                props = {"bg_color": self._SECTIONS[sec][4], "bottom": 1, "bottom_color": "#D9D9D9"}
+                if col in self._DATE_COLS:
+                    props.update(num_format="dd/mm/yyyy", align="center")
+                elif col in self._QTY_COLS:
+                    props.update(num_format="#,##0.00", align="right")
+                elif col == 0:
+                    props.update(bold=True)
+                cache[key] = fmt(**props)
+            return cache[key]
+
+        for i, row in enumerate(rows, start=first):
+            sec = self._row_section(row)
+            for c, v in enumerate(row):
+                f = cell_fmt(sec, c)
+                if v == "":
+                    ws.write_blank(i, c, None, f)
+                elif isinstance(v, datetime.date):
+                    ws.write_datetime(i, c, datetime.datetime.combine(v, datetime.time()), f)
+                else:
+                    ws.write(i, c, v, f)
+        last = first + len(rows) - 1
+        ws.autofilter(head_row, 0, last, NCOLS - 1)
+        ws.freeze_panes(first, 1)
+        ws.set_landscape()
+        ws.set_paper(9)
+        ws.fit_to_pages(1, 0)
+        ws.repeat_rows(band_row, head_row)
+        ws.set_footer("&L&8%s&R&8หน้า &P / &N" % self.company_id.name)
+
     def action_export_xlsx(self):
         self.ensure_one()
         rows = self._get_rows()
         if not rows:
             raise UserError(_("No manufacturing orders found for the selected filters."))
         buf = io.BytesIO()
-        wb = xlsxwriter.Workbook(buf, {"in_memory": True, "default_date_format": "dd/mm/yyyy"})
-        ws = wb.add_worksheet("Sheet1")
-        bold = wb.add_format({"bold": True, "bg_color": "#D9E1F2", "border": 1})
-        datef = wb.add_format({"num_format": "dd/mm/yyyy"})
-        for c, h in enumerate(HEADERS):
-            ws.write(0, c, h, bold)
-        for i, row in enumerate(rows, start=1):
-            for c, v in enumerate(row):
-                if v == "":
-                    continue
-                if hasattr(v, "year"):
-                    ws.write_datetime(i, c, datetime.datetime.combine(v, datetime.time()), datef)
-                else:
-                    ws.write(i, c, v)
-        ws.freeze_panes(1, 1)
-        ws.set_column(0, 0, 18)
-        ws.set_column(7, 7, 40)
-        ws.set_column(15, 15, 40)
+        wb = xlsxwriter.Workbook(buf, {"in_memory": True})
+        self._write_sheet(wb, rows)
         wb.close()
         att = self.env["ir.attachment"].create({
             "name": "ใบปิด JOB %s-%s.xlsx" % (self.date_from, self.date_to),
