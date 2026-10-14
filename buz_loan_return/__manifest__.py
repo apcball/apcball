@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'BG/RBG Loan and Return',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Inventory/Operations',
     'summary': 'Create linked loan and return stock transfers',
     'description': 'Dedicated workflow for BG loan and RBG return transfers.',

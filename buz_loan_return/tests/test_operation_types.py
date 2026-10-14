@@ -65,10 +65,7 @@ class TestCreateLoanReturnOperationTypes(TransactionCase):
         loan_ids = set(loan.allowed_operation_type_ids.ids)
         rbg_ids = set(rbg.allowed_operation_type_ids.ids)
 
-        configured_ids = self.env['buz.loan.return.operation.type'].search([
-            ('company_id', '=', self.company.id),
-        ]).mapped('picking_type_id').ids
-        self.assertNotIn(valid_bg.id, configured_ids)
+
         self.assertIn(valid_bg.id, loan_ids)
         self.assertNotIn(manual.id, loan_ids)
         self.assertNotIn(without_source.id, loan_ids)

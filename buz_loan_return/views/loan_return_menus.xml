@@ -19,10 +19,4 @@
               action="action_buz_loan_return_bg"
               sequence="10"
               groups="stock.group_stock_user"/>
-    <menuitem id="menu_buz_loan_return_operation_type"
-              name="BG/RBG Operation Types"
-              parent="menu_buz_loan_return_root"
-              action="action_buz_loan_return_operation_type"
-              sequence="90"
-              groups="base.group_no_one"/>
 </odoo>
