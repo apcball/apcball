@@ -33,7 +33,7 @@ class TestMrpJobReport(TransactionCase):
         self.assertEqual(rows[0][0], mo.name)
         self.assertEqual(rows[1][8], 2.0)
         self.assertTrue(any(r[16] == 4.0 for r in rows), "issue row")
-        self.assertTrue(any(r[24] == 2.0 for r in rows), "close row")
+        self.assertTrue(any(r[25] == 2.0 for r in rows), "close row")
         self.assertTrue(wiz.action_export_xlsx()["url"].startswith("/web/content/"))
 
     def test_issue_rows_from_stock_request(self):
@@ -56,6 +56,7 @@ class TestMrpJobReport(TransactionCase):
         issues = [r for r in wiz._get_rows() if r[16] == 3.0]
         self.assertEqual(len(issues), 1)
         self.assertEqual(issues[0][15], comp.display_name)
+        self.assertEqual(issues[0][18], req.name)
 
     def test_pooled_request_not_duplicated_per_mo(self):
         prod = self.env["product.product"].create({"name": "FG3", "type": "product"})
@@ -79,7 +80,7 @@ class TestMrpJobReport(TransactionCase):
         rows = wiz._get_rows()
         # request is pooled: whole-request qty (10) must NOT be repeated on each MO
         self.assertFalse([r for r in rows if r[16] == 10.0])
-        self.assertFalse([r for r in rows if r[29] == 10.0])
+        self.assertFalse([r for r in rows if r[30] == 10.0])
 
     def test_zero_issue_lines_hidden(self):
         prod = self.env["product.product"].create({"name": "FG4", "type": "product"})

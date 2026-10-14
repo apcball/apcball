@@ -12,7 +12,7 @@ HEADERS = [
     "เลขที่ JOB", "วันที่ JOB", "วันที่ต้องการของ", "วันเริ่มผลิต", "ประเภท JOB", "แผนกที่เปิด JOB",
     "รหัสสินค้า", "ชื่อสินค้า", "จำนวน", "หน่วย",
     "แผนกที่เบิก", "วันที่เบิก", "เลขที่ใบเบิก", "คลังสินค้า",
-    "รหัสสินค้าเบิก", "ชื่อสินค้าเบิก", "จำนวนเบิก", "หน่วยเบิก",
+    "รหัสสินค้าเบิก", "ชื่อสินค้าเบิก", "จำนวนเบิก", "หน่วยเบิก", "เลขที่ Stock Request",
     "แผนกที่ปิด JOB", "วันที่ปิด JOB", "เลขที่ใบปิด JOB", "คลังสินค้าที่ผลิตได้",
     "รหัสสินค้า", "ชื่อสินค้า", "จำนวน", "หน่วย",
     "คลังสินค้าที่คืน", "รหัสสินค้า", "ชื่อสินค้า", "จำนวน", "หน่วย",
@@ -78,6 +78,7 @@ class MrpJobReportWizard(models.TransientModel):
             loc = req.location_id
             common = {
                 "doc": doc,
+                "srq": req.name,
                 "date": req.request_date,
                 "warehouse": loc.warehouse_id.name or loc.complete_name or "",
                 "dept": req.requested_by.employee_id.department_id.name or "",
@@ -115,6 +116,7 @@ class MrpJobReportWizard(models.TransientModel):
             has_dept = "department_id" in mv.picking_id._fields
             out.append({
                 "doc": mv.picking_id.name or "",
+                "srq": "",
                 "date": mv.date,
                 "warehouse": mv.location_id.warehouse_id.name or mv.location_id.complete_name or "",
                 "dept": mv.picking_id.department_id.name if has_dept else "",
@@ -203,26 +205,27 @@ class MrpJobReportWizard(models.TransientModel):
                 r[13] = iss["warehouse"]
                 r[14], r[15] = iss["product"].default_code or "", iss["product"].display_name
                 r[16], r[17] = iss["qty"], iss["uom"].name
+                r[18] = iss["srq"]
                 rows.append(r)
             for mv in fin_by_mo.get(mo.id, []):
                 r = blank()
-                r[0], r[18], r[19], r[20] = job, dept, d(mo.date_finished or mv.date), close
-                r[21] = mv.location_dest_id.warehouse_id.name or mv.location_dest_id.complete_name
-                r[22], r[23] = mv.product_id.default_code or "", mv.product_id.display_name
-                r[24], r[25] = mv.quantity, mv.product_uom.name
+                r[0], r[19], r[20], r[21] = job, dept, d(mo.date_finished or mv.date), close
+                r[22] = mv.location_dest_id.warehouse_id.name or mv.location_dest_id.complete_name
+                r[23], r[24] = mv.product_id.default_code or "", mv.product_id.display_name
+                r[25], r[26] = mv.quantity, mv.product_uom.name
                 rows.append(r)
             if mo.state == "done":
                 for ret in self._return_lines(mo, raw_by_mo.get(mo.id, [])):
                     r = blank()
-                    r[0], r[19], r[20] = job, d(mo.date_finished), close
-                    r[26] = ret["warehouse"]
-                    r[27], r[28] = ret["product"].default_code or "", ret["product"].display_name
-                    r[29], r[30] = ret["qty"], ret["uom"].name
+                    r[0], r[20], r[21] = job, d(mo.date_finished), close
+                    r[27] = ret["warehouse"]
+                    r[28], r[29] = ret["product"].default_code or "", ret["product"].display_name
+                    r[30], r[31] = ret["qty"], ret["uom"].name
                     rows.append(r)
             for (mo_id, user), minutes in time_by_mo.items():
                 if mo_id == mo.id:
                     r = blank()
-                    r[0], r[31], r[32], r[33] = job, user, minutes, ""
+                    r[0], r[32], r[33], r[34] = job, user, minutes, ""
                     rows.append(r)
         return rows
 
@@ -230,17 +233,17 @@ class MrpJobReportWizard(models.TransientModel):
     _SECTIONS = [
         ("ข้อมูล JOB", 0, 5, "#1F4E78", "#DDEBF7"),
         ("สินค้าที่ผลิต", 6, 9, "#2E75B6", "#EAF1FB"),
-        ("การเบิกวัตถุดิบ", 10, 17, "#C55A11", "#FCE4D6"),
-        ("การปิด JOB / ผลผลิต", 18, 25, "#548235", "#E2EFDA"),
-        ("คืนวัตถุดิบ", 26, 30, "#7030A0", "#EADCF4"),
-        ("พนักงาน", 31, 33, "#595959", "#EDEDED"),
+        ("การเบิกวัตถุดิบ", 10, 18, "#C55A11", "#FCE4D6"),
+        ("การปิด JOB / ผลผลิต", 19, 26, "#548235", "#E2EFDA"),
+        ("คืนวัตถุดิบ", 27, 31, "#7030A0", "#EADCF4"),
+        ("พนักงาน", 32, 34, "#595959", "#EDEDED"),
     ]
     _WIDTHS = [
-        16, 12, 14, 12, 18, 16, 18, 42, 9, 8, 16, 12, 16, 22, 20, 42, 10, 8,
+        16, 12, 14, 12, 18, 16, 18, 42, 9, 8, 16, 12, 16, 22, 20, 42, 10, 8, 20,
         16, 12, 16, 22, 18, 42, 9, 8, 22, 18, 42, 9, 8, 22, 10, 10,
     ]
-    _DATE_COLS = {1, 2, 3, 11, 19}
-    _QTY_COLS = {8, 16, 24, 29, 32, 33}
+    _DATE_COLS = {1, 2, 3, 11, 20}
+    _QTY_COLS = {8, 16, 25, 30, 33, 34}
 
     @staticmethod
     def _row_section(row):
@@ -251,9 +254,9 @@ class MrpJobReportWizard(models.TransientModel):
             return 1
         if row[10] != "" or row[12] != "":
             return 2
-        if row[22] != "":
+        if row[23] != "":
             return 3
-        if row[26] != "" or row[27] != "":
+        if row[27] != "" or row[28] != "":
             return 4
         return 5
 
