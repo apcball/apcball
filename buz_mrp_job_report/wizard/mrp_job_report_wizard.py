@@ -72,6 +72,7 @@ class MrpJobReportWizard(models.TransientModel):
     def _issue_lines(self, mo, raw_moves):
         """Issued materials (ใบเบิก) from buz_mrp_stock_request; raw moves as fallback."""
         out = []
+        pooled_done = False
         for req in mo.stock_request_ids.filtered(lambda q: q.state != "cancel"):
             doc = ", ".join(req.picking_ids.mapped("name")) or req.name
             loc = req.location_id
@@ -86,6 +87,16 @@ class MrpJobReportWizard(models.TransientModel):
             if len(req.mo_ids) > 1 and allocs:
                 for al in allocs:
                     out.append(dict(common, product=al.product_id, qty=al.qty_consumed, uom=al.uom_id))
+            elif len(req.mo_ids) > 1:
+                # pooled request shared by several MOs and no per-MO allocation:
+                # this MO's own share is what it consumed, never the whole request
+                if pooled_done:
+                    continue
+                pooled_done = True
+                for mv in raw_moves:
+                    out.append(dict(
+                        common, product=mv.product_id, qty=mv.quantity, uom=mv.product_uom,
+                    ))
             else:
                 for line in req.line_ids:
                     pickings = line.move_ids.filtered(lambda m: m.state != "cancel").mapped("picking_id")
@@ -114,7 +125,7 @@ class MrpJobReportWizard(models.TransientModel):
     def _return_lines(self, mo, raw_moves):
         """Leftover raw material: issued by the stock request but not consumed by the MO."""
         issued, uoms, loc = {}, {}, {}
-        for req in mo.stock_request_ids.filtered(lambda q: q.state != "cancel"):
+        for req in mo.stock_request_ids.filtered(lambda q: q.state != "cancel" and len(q.mo_ids) == 1):
             for line in req.line_ids:
                 issued[line.product_id] = issued.get(line.product_id, 0.0) + line.qty_issued
                 uoms[line.product_id] = line.uom_id

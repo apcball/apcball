@@ -56,3 +56,27 @@ class TestMrpJobReport(TransactionCase):
         issues = [r for r in wiz._get_rows() if r[16] == 3.0]
         self.assertEqual(len(issues), 1)
         self.assertEqual(issues[0][15], comp.display_name)
+
+    def test_pooled_request_not_duplicated_per_mo(self):
+        prod = self.env["product.product"].create({"name": "FG3", "type": "product"})
+        comp = self.env["product.product"].create({"name": "RM3", "type": "product"})
+        mos = self.env["mrp.production"].create([
+            {"product_id": prod.id, "product_qty": 1.0} for _i in range(2)
+        ])
+        ptype = self.env.ref("stock.picking_type_internal")
+        req = self.env["mrp.stock.request"].create({
+            "picking_type_id": ptype.id,
+            "location_id": ptype.default_location_src_id.id,
+            "location_dest_id": ptype.default_location_dest_id.id,
+            "mo_ids": [(6, 0, mos.ids)],
+            "line_ids": [(0, 0, {"product_id": comp.id, "uom_id": comp.uom_id.id, "qty_requested": 10.0})],
+        })
+        req.line_ids.qty_issued = 10.0
+        wiz = self.env["buz.mrp.job.report.wizard"].create({
+            "date_from": "2000-01-01", "date_to": "2999-12-31", "state_filter": "all",
+            "product_ids": [(6, 0, prod.ids)],
+        })
+        rows = wiz._get_rows()
+        # request is pooled: whole-request qty (10) must NOT be repeated on each MO
+        self.assertFalse([r for r in rows if r[16] == 10.0])
+        self.assertFalse([r for r in rows if r[29] == 10.0])
