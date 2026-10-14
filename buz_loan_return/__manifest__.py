@@ -8,6 +8,12 @@
     'author': 'Mogen Co.',
     'license': 'LGPL-3',
     'depends': ['stock'],
+    'assets': {
+        'web.assets_backend': [
+            'buz_loan_return/static/src/js/bg_document_list_controller.js',
+            'buz_loan_return/static/src/xml/bg_document_list_buttons.xml',
+        ],
+    },
     'data': [
         'security/ir.model.access.csv',
         'security/security.xml',

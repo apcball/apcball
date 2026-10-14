@@ -4,7 +4,7 @@
         <field name="name">buz.loan.return.document.tree</field>
         <field name="model">buz.loan.return.document</field>
         <field name="arch" type="xml">
-            <tree string="BG/RBG Documents" create="false" delete="false">
+            <tree string="BG/RBG Documents" create="false" delete="false" js_class="buz_loan_return_document_list">
                 <field name="name"/>
                 <field name="document_kind"/>
                 <field name="source_document_id" optional="show"/>

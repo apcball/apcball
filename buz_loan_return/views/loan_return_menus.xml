@@ -11,7 +11,8 @@
               parent="menu_buz_loan_return_root"
               action="action_buz_loan_return_create_bg"
               sequence="5"
-              groups="stock.group_stock_user"/>
+              groups="stock.group_stock_user"
+              active="False"/>
 
     <menuitem id="menu_buz_loan_return_bg"
               name="BG/RBG Documents"
