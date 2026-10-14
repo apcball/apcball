@@ -16,7 +16,6 @@
         'report/loan_return_export_report.xml',
         'views/loan_return_export_wizard_views.xml',
         'views/loan_return_export_menu.xml',
-        'views/loan_return_linked_export_views.xml',
     ],
     'installable': True,
     'application': False,
