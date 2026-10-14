@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<templates xml:space="preserve">
-    <t t-name="buz_loan_return.BGForecastWidget">
-        <button t-if="props.record.data.product_id &amp;&amp; props.record.data.product_type === 'product'"
-                type="button" class="btn btn-link p-0 fa fa-area-chart"
-                title="Forecast" aria-label="Forecast"
-                t-att-disabled="state.loading" t-on-click.stop="openForecast"/>
-    </t>
-</templates>
