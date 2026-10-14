@@ -38,6 +38,10 @@ class CreateLoanReturnWizard(models.TransientModel):
     allowed_operation_type_ids = fields.Many2many(
         'stock.picking.type', compute='_compute_allowed_operation_types',
     )
+    operation_type_message = fields.Char(
+        string='Operation Type Availability',
+        compute='_compute_allowed_operation_types',
+    )
 
     @api.model
     def default_get(self, fields_list):
@@ -69,22 +73,40 @@ class CreateLoanReturnWizard(models.TransientModel):
         return values
     @api.depends('document_kind', 'company_id')
     def _compute_allowed_operation_types(self):
-        PickingType = self.env['stock.picking.type']
         for wizard in self:
-            domain = [
-                ('code', '=', 'internal'),
-                '|', ('company_id', '=', False), ('company_id', '=', wizard.company_id.id),
+            operation_types = wizard._get_eligible_operation_types()
+            wizard.allowed_operation_type_ids = operation_types
+            if operation_types or not wizard.company_id:
+                wizard.operation_type_message = False
+            elif wizard.document_kind == 'loan':
+                wizard.operation_type_message = _(
+                    'No eligible Internal Transfer Operation Type is available. '
+                    'BG requires an active type with At Confirmation reservation '
+                    'and a default Source Location for this company.'
+                )
+            else:
+                wizard.operation_type_message = _(
+                    'No active Internal Transfer Operation Type is available '
+                    'for this company.'
+                )
+
+    def _get_eligible_operation_types(self):
+        """Return operation types that this BG/RBG wizard may use."""
+        self.ensure_one()
+        if not self.company_id or self.document_kind not in ('loan', 'return'):
+            return self.env['stock.picking.type']
+
+        domain = [
+            ('active', '=', True),
+            ('code', '=', 'internal'),
+            '|', ('company_id', '=', False), ('company_id', '=', self.company_id.id),
+        ]
+        if self.document_kind == 'loan':
+            domain += [
+                ('reservation_method', '=', 'at_confirm'),
+                ('default_location_src_id', '!=', False),
             ]
-            if wizard.document_kind == 'loan':
-                domain += [
-                    ('reservation_method', '=', 'at_confirm'),
-                    ('default_location_src_id', '!=', False),
-                ]
-            configurations = self.env['buz.loan.return.operation.type'].search([
-                ('company_id', '=', wizard.company_id.id),
-                ('document_kind', '=', wizard.document_kind),
-            ]) if wizard.company_id else self.env['buz.loan.return.operation.type']
-            wizard.allowed_operation_type_ids = configurations.mapped('picking_type_id').filtered_domain(domain)
+        return self.env['stock.picking.type'].search(domain)
 
     @api.onchange('document_kind', 'company_id')
     def _onchange_operation_type_domain(self):
@@ -146,7 +168,7 @@ class CreateLoanReturnWizard(models.TransientModel):
         self.invalidate_recordset(['created_document_id'])
         if self.created_document_id:
             return self._action_open_document(self.created_document_id)
-        if self.operation_type_id not in self.allowed_operation_type_ids:
+        if self.operation_type_id not in self._get_eligible_operation_types():
             raise ValidationError(_('Select an eligible Internal Transfer Operation Type.'))
         self.operation_type_id._check_loan_return_operation_type(self.company_id, self.document_kind)
         if not self.partner_id or not self.line_ids:
@@ -250,7 +272,9 @@ class CreateLoanReturnWizardLine(models.TransientModel):
     wizard_id = fields.Many2one('buz.loan.return.create.wizard', required=True, ondelete='cascade')
     source_move_id = fields.Many2one('stock.move', string='BG Item', readonly=True)
     product_id = fields.Many2one('product.product', required=True)
-    product_uom_category_id = fields.Many2one(related='product_id.uom_id.category_id')
+    product_uom_category_id = fields.Many2one(
+        related='product_id.uom_id.category_id', string='Category',
+    )
     product_uom_id = fields.Many2one('uom.uom', string='Unit', required=True)
 
     @api.onchange('product_id')

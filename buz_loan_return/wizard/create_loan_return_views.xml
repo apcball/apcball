@@ -7,26 +7,39 @@
             <form string="Create BG/RBG">
                 <group>
                     <field name="document_kind" invisible="1"/>
-                    <field name="company_id" groups="base.group_multi_company"/>
-                    <field name="source_document_id" invisible="document_kind != 'return'" readonly="1"/>
                     <field name="allowed_operation_type_ids" invisible="1"/>
-                    <field name="operation_type_id" domain="[('id', 'in', allowed_operation_type_ids)]"/>
-                    <field name="partner_id"/>
-                    <field name="scheduled_date"/>
-                    <field name="location_id" groups="stock.group_stock_multi_locations"/>
-                    <field name="location_dest_id" groups="stock.group_stock_multi_locations"/>
                 </group>
-                <group string="Products">
-                    <field name="line_ids">
-                        <tree editable="bottom">
-                            <field name="source_move_id" invisible="1"/>
-                            <field name="product_id"/>
-                            <field name="quantity"/>
-                            <field name="product_uom_category_id" invisible="1"/>
-                            <field name="product_uom_id" domain="[( 'category_id', '=', product_uom_category_id)]"/>
-                        </tree>
-                    </field>
+                <field name="operation_type_message" readonly="1" nolabel="1"
+                       invisible="not operation_type_message"/>
+                <group>
+                    <group>
+                        <field name="partner_id"/>
+                        <field name="operation_type_id"
+                               domain="[('id', 'in', allowed_operation_type_ids)]"/>
+                        <field name="source_document_id"
+                               invisible="document_kind != 'return'" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="scheduled_date"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="location_id" groups="stock.group_stock_multi_locations"/>
+                        <field name="location_dest_id" groups="stock.group_stock_multi_locations"/>
+                    </group>
                 </group>
+                <notebook>
+                    <page string="Operations">
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="quantity"/>
+                                <field name="product_uom_id"
+                                       domain="[('category_id', '=', product_uom_category_id)]"/>
+                                <field name="source_move_id" string="BG Item" readonly="1"/>
+                                <field name="product_uom_category_id" string="Category" readonly="1"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
                 <footer>
                     <button name="action_create_document" type="object" string="Create Document" class="oe_highlight"/>
                     <button string="Cancel" special="cancel" class="btn-secondary"/>

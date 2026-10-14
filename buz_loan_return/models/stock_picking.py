@@ -13,6 +13,8 @@ class StockPickingType(models.Model):
             raise ValidationError(_('Invalid BG/RBG document type.'))
         if self.code != 'internal':
             raise ValidationError(_('BG/RBG requires an Internal Transfer Operation Type.'))
+        if not self.active:
+            raise ValidationError(_('The Operation Type must be active.'))
         if self.company_id and self.company_id != company:
             raise ValidationError(_('The Operation Type must belong to the selected company.'))
         if document_kind == 'loan':
