@@ -193,6 +193,8 @@ class MrpJobReportWizard(models.TransientModel):
             r[8], r[9] = mo.product_qty, mo.product_uom_id.name
             rows.append(r)
             for iss in self._issue_lines(mo, raw_by_mo.get(mo.id, [])):
+                if abs(iss["qty"]) < 1e-9:
+                    continue  # requested but never issued
                 r = blank()
                 r[0] = job
                 r[10] = iss["dept"] or dept

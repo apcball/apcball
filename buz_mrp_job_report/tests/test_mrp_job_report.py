@@ -80,3 +80,21 @@ class TestMrpJobReport(TransactionCase):
         # request is pooled: whole-request qty (10) must NOT be repeated on each MO
         self.assertFalse([r for r in rows if r[16] == 10.0])
         self.assertFalse([r for r in rows if r[29] == 10.0])
+
+    def test_zero_issue_lines_hidden(self):
+        prod = self.env["product.product"].create({"name": "FG4", "type": "product"})
+        comp = self.env["product.product"].create({"name": "RM4", "type": "product"})
+        mo = self.env["mrp.production"].create({"product_id": prod.id, "product_qty": 1.0})
+        ptype = self.env.ref("stock.picking_type_internal")
+        self.env["mrp.stock.request"].create({
+            "picking_type_id": ptype.id,
+            "location_id": ptype.default_location_src_id.id,
+            "location_dest_id": ptype.default_location_dest_id.id,
+            "mo_ids": [(6, 0, mo.ids)],
+            "line_ids": [(0, 0, {"product_id": comp.id, "uom_id": comp.uom_id.id, "qty_requested": 5.0})],
+        })
+        wiz = self.env["buz.mrp.job.report.wizard"].create({
+            "date_from": "2000-01-01", "date_to": "2999-12-31", "state_filter": "all",
+            "product_ids": [(6, 0, prod.ids)],
+        })
+        self.assertFalse([r for r in wiz._get_rows() if r[15] == comp.display_name])
