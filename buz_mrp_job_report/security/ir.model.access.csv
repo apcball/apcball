@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_mrp_job_report_wizard_user,buz.mrp.job.report.wizard user,model_buz_mrp_job_report_wizard,mrp.group_mrp_user,1,1,1,1
