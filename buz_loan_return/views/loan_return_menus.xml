@@ -9,12 +9,15 @@
 
     <!-- Deactivate legacy child menus during module upgrade. -->
     <record id="menu_buz_loan_return_create_loan" model="ir.ui.menu">
+        <field name="name">Create Show Loan</field>
         <field name="active" eval="False"/>
     </record>
     <record id="menu_buz_loan_return_loans" model="ir.ui.menu">
+        <field name="name">Show Loan Documents (BG)</field>
         <field name="active" eval="False"/>
     </record>
     <record id="menu_buz_loan_return_returns" model="ir.ui.menu">
+        <field name="name">Show Return Documents (RBG)</field>
         <field name="active" eval="False"/>
     </record>
 </odoo>

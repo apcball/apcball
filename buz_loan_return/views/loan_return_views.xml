@@ -75,9 +75,6 @@
                 <field name="loan_return_source_id"
                        readonly="1"
                        invisible="loan_return_role != 'return'"/>
-                <field name="tag_ids"
-                       widget="many2many_tags"
-                       invisible="loan_return_role != 'loan'"/>
                 <field name="loan_return_type"
                        invisible="loan_return_role == 'loan'"/>
             </xpath>
