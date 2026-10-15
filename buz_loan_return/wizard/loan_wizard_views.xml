@@ -37,6 +37,6 @@
         <field name="res_model">buz.loan.return.loan.wizard</field>
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_buz_loan_return_loan_wizard_form"/>
-        <field name="target">new</field>
+        <field name="target">current</field>
     </record>
 </odoo>

@@ -206,6 +206,7 @@ class StockPicking(models.Model):
             'name': _('Create Show Return'),
             'res_model': 'buz.loan.return.return.wizard',
             'view_mode': 'form',
-            'target': 'new',
+            'view_id': self.env.ref('buz_loan_return.view_buz_loan_return_return_wizard_form').id,
+            'target': 'current',
             'context': {'default_source_picking_id': root.id},
         }

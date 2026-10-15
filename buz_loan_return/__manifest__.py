@@ -11,6 +11,11 @@
         'views/loan_return_views.xml',
         'views/loan_return_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'buz_loan_return/static/src/js/loan_return_list_view.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'license': 'LGPL-3',

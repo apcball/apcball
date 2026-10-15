@@ -136,6 +136,7 @@ class ReturnWizard(models.TransientModel):
         ]
         picking = self.env['stock.picking'].create({
             'loan_return_role': 'return',
+            'loan_return_type': source.loan_return_type,
             'loan_return_source_id': source.id,
             'picking_type_id': operation_type.id,
             'partner_id': source.partner_id.id,

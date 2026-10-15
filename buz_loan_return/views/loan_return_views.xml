@@ -4,8 +4,9 @@
         <field name="name">buz.loan.return.picking.tree</field>
         <field name="model">stock.picking</field>
         <field name="arch" type="xml">
-            <tree create="false">
+            <tree create="true" js_class="buz_loan_return_list">
                 <field name="name"/>
+                <field name="loan_return_role" string="Document Type" optional="show"/>
                 <field name="loan_return_type" optional="show"/>
                 <field name="picking_type_id"/>
                 <field name="partner_id"/>
@@ -19,22 +20,36 @@
         </field>
     </record>
 
-    <record id="action_buz_loan_return_loans" model="ir.actions.act_window">
-        <field name="name">Show Loan Documents (BG)</field>
-        <field name="res_model">stock.picking</field>
-        <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_buz_loan_return_picking_tree"/>
-        <field name="domain">[('loan_return_role', '=', 'loan'), ('loan_return_root_id', '=', False)]</field>
-        <field name="context">{'create': False}</field>
+    <record id="view_buz_loan_return_picking_search" model="ir.ui.view">
+        <field name="name">buz.loan.return.picking.search</field>
+        <field name="model">stock.picking</field>
+        <field name="arch" type="xml">
+            <search string="Loan / Return">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="loan_return_type"/>
+                <filter name="show_loan" string="BG" domain="[('loan_return_role', '=', 'loan')]"/>
+                <filter name="show_return" string="RBG" domain="[('loan_return_role', '=', 'return')]"/>
+                <separator/>
+                <filter name="loan_rt" string="RT" domain="[('loan_return_type', '=', 'rt')]"/>
+                <filter name="loan_pj" string="PJ" domain="[('loan_return_type', '=', 'pj')]"/>
+                <filter name="loan_ol" string="OL" domain="[('loan_return_type', '=', 'ol')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_document_type" string="Document Type" context="{'group_by': 'loan_return_role'}"/>
+                    <filter name="group_loan_type" string="Loan Type" context="{'group_by': 'loan_return_type'}"/>
+                </group>
+            </search>
+        </field>
     </record>
 
-    <record id="action_buz_loan_return_returns" model="ir.actions.act_window">
-        <field name="name">Show Return Documents (RBG)</field>
+    <record id="action_buz_loan_return_documents" model="ir.actions.act_window">
+        <field name="name">Loan / Return</field>
         <field name="res_model">stock.picking</field>
         <field name="view_mode">tree,form</field>
         <field name="view_id" ref="view_buz_loan_return_picking_tree"/>
-        <field name="domain">[('loan_return_role', '=', 'return')]</field>
-        <field name="context">{'create': False}</field>
+        <field name="search_view_id" ref="view_buz_loan_return_picking_search"/>
+        <field name="domain">[('loan_return_role', 'in', ['loan', 'return'])]</field>
+        <field name="target">current</field>
     </record>
 
     <record id="view_buz_loan_return_stock_picking_form" model="ir.ui.view">
