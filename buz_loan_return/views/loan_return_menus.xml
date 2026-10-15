@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_buz_loan_return_root"
+              name="Loan / Return"
+              parent="stock.menu_stock_warehouse_mgmt"
+              sequence="56"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_buz_loan_return_create_loan"
+              name="Create Show Loan"
+              parent="menu_buz_loan_return_root"
+              action="action_buz_loan_return_create_loan"
+              sequence="5"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_buz_loan_return_loans"
+              name="Show Loan Documents (BG)"
+              parent="menu_buz_loan_return_root"
+              action="action_buz_loan_return_loans"
+              sequence="10"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_buz_loan_return_returns"
+              name="Show Return Documents (RBG)"
+              parent="menu_buz_loan_return_root"
+              action="action_buz_loan_return_returns"
+              sequence="15"
+              groups="stock.group_stock_user"/>
+</odoo>

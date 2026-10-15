@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_loan_wizard_user,loan.wizard.user,model_buz_loan_return_loan_wizard,stock.group_stock_user,1,1,1,1
+access_loan_wizard_line_user,loan.wizard.line.user,model_buz_loan_return_loan_wizard_line,stock.group_stock_user,1,1,1,1
+access_return_wizard_user,return.wizard.user,model_buz_loan_return_return_wizard,stock.group_stock_user,1,1,1,1
+access_return_wizard_line_user,return.wizard.line.user,model_buz_loan_return_return_wizard_line,stock.group_stock_user,1,1,1,1

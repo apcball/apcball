@@ -1,0 +1,17 @@
+{
+    'name': 'Show Loan and Return',
+    'version': '17.0.1.0.0',
+    'category': 'Inventory/Inventory',
+    'summary': 'Track show-loan transfers and linked returns',
+    'depends': ['stock', 'buz_inventory_delivery_report'],
+    'data': [
+        'security/ir.model.access.csv',
+        'wizard/loan_wizard_views.xml',
+        'wizard/return_wizard_views.xml',
+        'views/loan_return_views.xml',
+        'views/loan_return_menus.xml',
+    ],
+    'installable': True,
+    'application': False,
+    'license': 'LGPL-3',
+}

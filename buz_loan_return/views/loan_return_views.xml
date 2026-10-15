@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_loan_return_picking_tree" model="ir.ui.view">
+        <field name="name">buz.loan.return.picking.tree</field>
+        <field name="model">stock.picking</field>
+        <field name="arch" type="xml">
+            <tree create="false">
+                <field name="name"/>
+                <field name="loan_return_type" optional="show"/>
+                <field name="picking_type_id"/>
+                <field name="partner_id"/>
+                <field name="loan_return_source_id" optional="show"/>
+                <field name="origin" optional="hide"/>
+                <field name="scheduled_date"/>
+                <field name="state"/>
+                <field name="date_done" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_buz_loan_return_loans" model="ir.actions.act_window">
+        <field name="name">Show Loan Documents (BG)</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_buz_loan_return_picking_tree"/>
+        <field name="domain">[('loan_return_role', '=', 'loan'), ('loan_return_root_id', '=', False)]</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <record id="action_buz_loan_return_returns" model="ir.actions.act_window">
+        <field name="name">Show Return Documents (RBG)</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_buz_loan_return_picking_tree"/>
+        <field name="domain">[('loan_return_role', '=', 'return')]</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <record id="view_buz_loan_return_stock_picking_form" model="ir.ui.view">
+        <field name="name">stock.picking.form.show.loan.return</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_return_wizard"
+                        string="Create Return"
+                        type="object"
+                        class="btn-primary"
+                        groups="stock.group_stock_user"
+                        invisible="loan_return_role != 'loan' or state != 'done'"/>
+            </xpath>
+            <xpath expr="//field[@name='origin']" position="attributes">
+                <attribute name="readonly">state != 'draft' or loan_return_role == 'return'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="loan_return_role" invisible="1"/>
+                <field name="loan_return_root_id" invisible="1"/>
+                <field name="loan_return_type" invisible="loan_return_role != 'loan'"/>
+                <field name="loan_return_source_id"
+                       readonly="1"
+                       invisible="loan_return_role != 'return'"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Loan / Return Links"
+                      name="loan_return_links"
+                      invisible="loan_return_role not in ('loan', 'return')">
+                    <group invisible="loan_return_role != 'loan'">
+                        <field name="loan_return_ids" readonly="1">
+                            <tree create="false" delete="false">
+                                <field name="name"/>
+                                <field name="picking_type_id"/>
+                                <field name="scheduled_date"/>
+                                <field name="state"/>
+                                <field name="date_done"/>
+                            </tree>
+                        </field>
+                        <field name="loan_return_backorder_ids" readonly="1">
+                            <tree create="false" delete="false">
+                                <field name="name"/>
+                                <field name="scheduled_date"/>
+                                <field name="state"/>
+                                <field name="date_done"/>
+                            </tree>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
