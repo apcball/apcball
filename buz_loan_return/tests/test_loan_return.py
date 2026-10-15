@@ -30,6 +30,18 @@ class TestShowLoanReturn(TransactionCase):
         cls.loan_type = cls._create_picking_type(
             'BG-RT', 'Test Show Loan RT', cls.source_location, cls.show_location,
         )
+        cls.loan_type_pj = cls._create_picking_type(
+            'BG-PJ', 'Test Show Loan PJ', cls.source_location, cls.show_location,
+        )
+        cls.loan_type_ol = cls._create_picking_type(
+            'BG-OL', 'Test Show Loan OL', cls.source_location, cls.show_location,
+        )
+        cls.loan_type_ambiguous = cls._create_picking_type(
+            'BG-RT-BG-PJ', 'Test Ambiguous Show Loan', cls.source_location, cls.show_location,
+        )
+        cls.loan_type_missing = cls._create_picking_type(
+            'LOAN', 'Test Unmarked Loan', cls.source_location, cls.show_location,
+        )
         cls.return_type = cls._create_picking_type(
             'RBG', 'Test Show Return', cls.show_location, cls.return_location,
         )
@@ -59,7 +71,6 @@ class TestShowLoanReturn(TransactionCase):
     def _create_completed_loan(self, quantity=5.0):
         wizard = self.env['buz.loan.return.loan.wizard'].create({
             'company_id': self.company.id,
-            'loan_type': 'rt',
             'operation_type_id': self.loan_type.id,
             'partner_id': self.partner.id,
             'location_id': self.source_location.id,
@@ -95,6 +106,37 @@ class TestShowLoanReturn(TransactionCase):
         })
         action = wizard.action_create_return()
         return self.env['stock.picking'].browse(action['res_id'])
+
+    def test_operation_type_determines_rt_pj_ol_and_rejects_missing_or_ambiguous_markers(self):
+        wizard_model = self.env['buz.loan.return.loan.wizard']
+        self.assertEqual(wizard_model._loan_type_from_operation_type(self.loan_type), 'rt')
+        self.assertEqual(wizard_model._loan_type_from_operation_type(self.loan_type_pj), 'pj')
+        self.assertEqual(wizard_model._loan_type_from_operation_type(self.loan_type_ol), 'ol')
+        with self.assertRaises(ValidationError):
+            wizard_model._loan_type_from_operation_type(self.loan_type_missing)
+        with self.assertRaises(ValidationError):
+            wizard_model._loan_type_from_operation_type(self.loan_type_ambiguous)
+
+    def test_wizard_copies_source_document_and_tags_to_loan(self):
+        tag = self.env['buz.picking.tag'].create({'name': 'Loan wizard test tag'})
+        wizard = self.env['buz.loan.return.loan.wizard'].create({
+            'company_id': self.company.id,
+            'operation_type_id': self.loan_type.id,
+            'partner_id': self.partner.id,
+            'location_id': self.source_location.id,
+            'location_dest_id': self.show_location.id,
+            'origin': 'External reference 123',
+            'tag_ids': [Command.set(tag.ids)],
+            'line_ids': [Command.create({
+                'product_id': self.product.id,
+                'quantity': 1.0,
+            })],
+        })
+        action = wizard.action_create_loan()
+        picking = self.env['stock.picking'].browse(action['res_id'])
+        self.assertEqual(picking.loan_return_type, 'rt')
+        self.assertEqual(picking.origin, 'External reference 123')
+        self.assertEqual(picking.tag_ids, tag)
 
     def test_single_loan_can_have_multiple_returns_and_cancel_releases_balance(self):
         loan = self._create_completed_loan(5.0)

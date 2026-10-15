@@ -68,9 +68,6 @@
             <xpath expr="//field[@name='origin']" position="attributes">
                 <attribute name="readonly">state != 'draft' or loan_return_role == 'return'</attribute>
             </xpath>
-            <xpath expr="//field[@name='picking_type_id']" position="after">
-                <field name="loan_return_type" invisible="loan_return_role != 'loan'"/>
-            </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="loan_return_role" invisible="1"/>
                 <field name="loan_return_root_id" invisible="1"/>
