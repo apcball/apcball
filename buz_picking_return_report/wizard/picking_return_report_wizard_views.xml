@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_buz_picking_return_report_wizard_form" model="ir.ui.view">
+        <field name="name">buz.picking.return.report.wizard.form</field>
+        <field name="model">buz.picking.return.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Picking Return Report">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="partner_id"/>
+                    </group>
+                    <group>
+                        <field name="picking_type_ids" widget="many2many_tags"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx" type="object" string="Export Excel" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_picking_return_report_wizard" model="ir.actions.act_window">
+        <field name="name">Picking Return Report</field>
+        <field name="res_model">buz.picking.return.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_buz_picking_return_report"
+              name="Picking Return Report (Excel)"
+              parent="stock.menu_warehouse_report"
+              action="action_buz_picking_return_report_wizard"
+              sequence="70"/>
+</odoo>
