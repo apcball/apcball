@@ -3,7 +3,11 @@
     'version': '17.0.1.0.0',
     'category': 'Inventory/Inventory',
     'summary': 'Track show-loan transfers and linked returns',
-    'depends': ['stock', 'buz_inventory_delivery_report', 'buz_tag_inventory'],
+    'depends': [
+        'stock', 'buz_inventory_delivery_report', 'buz_tag_inventory',
+        'stock_analytic_connector', 'biz_receipt_transfer_cost',
+        'employee_purchase_requisition',
+    ],
     'data': [
         'security/ir.model.access.csv',
         'wizard/loan_wizard_views.xml',

@@ -35,9 +35,10 @@
 
     <record id="action_buz_loan_return_create_loan" model="ir.actions.act_window">
         <field name="name">Create Show Loan</field>
-        <field name="res_model">buz.loan.return.loan.wizard</field>
+        <field name="res_model">stock.picking</field>
         <field name="view_mode">form</field>
-        <field name="view_id" ref="view_buz_loan_return_loan_wizard_form"/>
+        <field name="view_id" ref="stock.view_picking_form"/>
+        <field name="context">{'default_loan_return_role': 'loan'}</field>
         <field name="target">current</field>
     </record>
 </odoo>

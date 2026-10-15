@@ -117,6 +117,69 @@ class TestShowLoanReturn(TransactionCase):
         with self.assertRaises(ValidationError):
             wizard_model._loan_type_from_operation_type(self.loan_type_ambiguous)
 
+    def test_direct_stock_picking_create_infers_bg_type_and_keeps_draft_data(self):
+        tag = self.env['buz.picking.tag'].create({'name': 'Direct picking test tag'})
+        picking = self.env['stock.picking'].with_context(
+            default_loan_return_role='loan',
+            default_picking_type_id=self.loan_type.id,
+        ).create({
+            'company_id': self.company.id,
+            'partner_id': self.partner.id,
+            'location_id': self.source_location.id,
+            'location_dest_id': self.show_location.id,
+            'origin': 'Direct form source',
+            'tag_ids': [Command.set(tag.ids)],
+            'move_ids': [Command.create({
+                'name': self.product.display_name,
+                'product_id': self.product.id,
+                'product_uom': self.product.uom_id.id,
+                'product_uom_qty': 2.0,
+                'location_id': self.source_location.id,
+                'location_dest_id': self.show_location.id,
+            })],
+        })
+
+        self.assertEqual(picking.loan_return_role, 'loan')
+        self.assertEqual(picking.loan_return_type, 'rt')
+        self.assertEqual(picking.company_id, self.company)
+        self.assertEqual(picking.origin, 'Direct form source')
+        self.assertEqual(picking.tag_ids, tag)
+        self.assertEqual(picking.move_ids.product_uom_qty, 2.0)
+        self.assertEqual(picking.state, 'draft')
+
+    def test_direct_stock_picking_create_infers_pj_and_ol_types(self):
+        for operation_type, expected_type in (
+            (self.loan_type_pj, 'pj'),
+            (self.loan_type_ol, 'ol'),
+        ):
+            with self.subTest(operation_type=operation_type.sequence_code):
+                picking = self.env['stock.picking'].with_context(
+                    default_loan_return_role='loan',
+                    default_picking_type_id=operation_type.id,
+                ).create({
+                    'company_id': self.company.id,
+                    'partner_id': self.partner.id,
+                    'location_id': self.source_location.id,
+                    'location_dest_id': self.show_location.id,
+                })
+                self.assertEqual(picking.loan_return_type, expected_type)
+                self.assertEqual(picking.state, 'draft')
+
+    def test_direct_stock_picking_create_rejects_missing_and_ambiguous_markers(self):
+        base_values = {
+            'company_id': self.company.id,
+            'partner_id': self.partner.id,
+            'location_id': self.source_location.id,
+            'location_dest_id': self.show_location.id,
+        }
+        for operation_type in (self.loan_type_missing, self.loan_type_ambiguous):
+            with self.subTest(operation_type=operation_type.sequence_code):
+                with self.assertRaises(ValidationError):
+                    self.env['stock.picking'].with_context(
+                        default_loan_return_role='loan',
+                        default_picking_type_id=operation_type.id,
+                    ).create(base_values)
+
     def test_wizard_copies_source_document_and_tags_to_loan(self):
         tag = self.env['buz.picking.tag'].create({'name': 'Loan wizard test tag'})
         wizard = self.env['buz.loan.return.loan.wizard'].create({

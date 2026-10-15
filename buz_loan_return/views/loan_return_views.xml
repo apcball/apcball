@@ -55,6 +55,7 @@
     <record id="view_buz_loan_return_stock_picking_form" model="ir.ui.view">
         <field name="name">stock.picking.form.show.loan.return</field>
         <field name="model">stock.picking</field>
+        <field name="priority" eval="99"/>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
@@ -74,6 +75,27 @@
                 <field name="loan_return_source_id"
                        readonly="1"
                        invisible="loan_return_role != 'return'"/>
+                <field name="tag_ids"
+                       widget="many2many_tags"
+                       invisible="loan_return_role != 'loan'"/>
+                <field name="loan_return_type"
+                       invisible="loan_return_role == 'loan'"/>
+            </xpath>
+            <xpath expr="//page[@name='extra']//field[@name='company_id']" position="attributes">
+                <attribute name="invisible">loan_return_role == 'loan'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='requisition_order']" position="attributes">
+                <attribute name="invisible">loan_return_role == 'loan'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_ids_without_package']/tree/field[@name='product_id']" position="after">
+                <field name="analytic_distribution"
+                       widget="analytic_distribution"
+                       groups="analytic.group_analytic_accounting"
+                       optional="show"
+                       column_invisible="parent.loan_return_role != 'loan'"/>
+            </xpath>
+            <xpath expr="//field[@name='move_ids_without_package']/tree/field[@name='quantity']" position="attributes">
+                <attribute name="column_invisible">parent.loan_return_role != 'loan'</attribute>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Loan / Return Links"

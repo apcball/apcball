@@ -33,6 +33,15 @@ class StockPicking(models.Model):
         'stock.picking', 'loan_return_root_id', string='Loan Backorders',
     )
 
+    @staticmethod
+    def _loan_type_from_operation_type(picking_type):
+        """อ่าน marker เพื่อระบุประเภท RT, PJ หรือ OL จาก Operation Type"""
+        markers = ' '.join((picking_type.sequence_code or '', picking_type.sequence_id.prefix or '')).upper()
+        matches = [loan_type for loan_type in ('rt', 'pj', 'ol') if 'BG-' + loan_type.upper() in markers]
+        if len(matches) != 1:
+            raise ValidationError(_('The Operation Type sequence must identify exactly one loan type: RT, PJ, or OL.'))
+        return matches[0]
+
     @api.model_create_multi
     def create(self, vals_list):
         source_ids = [
@@ -44,13 +53,14 @@ class StockPicking(models.Model):
         self._lock_loan_sources(self.browse(source_ids).exists())
 
         for vals in vals_list:
-            role = vals.get('loan_return_role')
+            role = vals.get('loan_return_role') or self.env.context.get('default_loan_return_role')
             if not role:
                 continue
+            vals['loan_return_role'] = role
             picking_type = self.env['stock.picking.type'].browse(
                 vals.get('picking_type_id') or self.env.context.get('default_picking_type_id')
             ).exists()
-            if not picking_type or picking_type.code != 'internal':
+            if not picking_type or not picking_type.active or picking_type.code != 'internal':
                 raise ValidationError(_('Show loan and return documents require an Internal Transfer type.'))
 
             markers = ' '.join((
@@ -58,10 +68,15 @@ class StockPicking(models.Model):
                 picking_type.sequence_id.prefix or '',
             )).upper()
             if role == 'loan':
-                loan_type = vals.get('loan_return_type')
-                expected_marker = 'BG-' + (loan_type or '').upper()
-                if loan_type not in ('rt', 'pj', 'ol') or expected_marker not in markers:
-                    raise ValidationError(_('Select the matching RT, PJ, or OL Operation Type.'))
+                company_id = (
+                    vals.get('company_id')
+                    or self.env.context.get('default_company_id')
+                    or self.env.company.id
+                )
+                vals['company_id'] = company_id
+                if picking_type.company_id and picking_type.company_id.id != company_id:
+                    raise ValidationError(_('Select an Operation Type for the current company.'))
+                vals['loan_return_type'] = self._loan_type_from_operation_type(picking_type)
             elif role == 'return':
                 source = self.browse(vals.get('loan_return_source_id')).exists()
                 if not source or source.loan_return_role != 'loan':
