@@ -68,6 +68,25 @@ class TestPickingReturnReport(TransactionCase):
         res = wiz.action_export_xlsx()
         self.assertEqual(res["type"], "ir.actions.act_url")
 
+    def test_return_date_uses_move_effect_date(self):
+        from datetime import timedelta
+        from io import BytesIO
+        import base64
+        import openpyxl
+        picking = self._done_out_picking()
+        ret = self._return(picking)
+        ret.move_ids.date = picking.date_done + timedelta(days=3)
+        wiz = self.env["buz.picking.return.report.wizard"].create({})
+        res = wiz.action_export_xlsx()
+        att_id = int(res["url"].split("/")[3].split("?")[0])
+        att = self.env["ir.attachment"].browse(att_id)
+        ws = openpyxl.load_workbook(BytesIO(base64.b64decode(att.datas))).active
+        hdr = [c.value for c in ws[4]]
+        row = [c.value for c in ws[5]]
+        self.assertIn("Return Effect Date", hdr)
+        self.assertEqual(row[hdr.index("Day Gap (Return - Source)")], 3)
+        self.assertEqual(row[hdr.index("Same Day?")], "+3 day(s)")
+
     def test_day_gap_columns(self):
         picking = self._done_out_picking()
         self._return(picking)

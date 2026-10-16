@@ -95,7 +95,7 @@ class PickingReturnReportWizard(models.TransientModel):
         )
         headers = [
             "Source Document", "Source Done Date", "Partner", "Source Operation",
-            "Return Document", "Return State", "Return Date",
+            "Return Document", "Return State", "Return Effect Date",
             "Day Gap (Return - Source)", "Same Day?",
             "Product Code", "Product", "Source Qty", "Return Demand", "Return Done",
             "UoM", "Lot/Serial",
@@ -112,7 +112,7 @@ class PickingReturnReportWizard(models.TransientModel):
             src = orig.picking_id
             lots = ", ".join(mv.move_line_ids.lot_id.mapped("name"))
             src_dt = fields.Datetime.context_timestamp(self, src.date_done)
-            rdate = ret.date_done or ret.scheduled_date
+            rdate = mv.date or ret.date_done or ret.scheduled_date
             ret_dt = fields.Datetime.context_timestamp(self, rdate) if rdate else None
             c = iter(range(len(headers)))
             ws.write(row, next(c), src.name, cell)
