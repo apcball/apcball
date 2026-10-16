@@ -78,7 +78,7 @@
                        readonly="1"
                        invisible="loan_return_role != 'return'"/>
                 <field name="loan_return_type"
-                       invisible="loan_return_role == 'loan'"/>
+                       invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='picking_type_id']" position="attributes">
                 <attribute name="domain">loan_return_role == 'loan' and [('id', 'in', loan_return_operation_type_ids)] or (context.get('restricted_picking_type_code') and [('code', '=', context.get('restricted_picking_type_code'))] or [(1, '=', 1)])</attribute>
