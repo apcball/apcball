@@ -56,40 +56,16 @@ class SaleOrder(models.Model):
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
-    grouped_partner_ids = fields.Many2many(
-        'res.partner',
-        string='Grouped Partner Addresses',
-        compute='_compute_grouped_partner_ids',
-    )
-
     parent_partner_id = fields.Many2one(
         'res.partner',
-        string='Parent Partner',
+        string='Commercial Partner',
         compute='_compute_parent_partner_id',
     )
 
     @api.depends('partner_id')
     def _compute_parent_partner_id(self):
         for picking in self:
-            if picking.partner_id:
-                picking.parent_partner_id = picking.partner_id.parent_id or picking.partner_id
-            else:
-                picking.parent_partner_id = False
-
-    @api.depends('partner_id')
-    def _compute_grouped_partner_ids(self):
-        for picking in self:
-            if picking.partner_id:
-                partner = picking.partner_id
-                # If partner has a parent (child address), use parent for grouping
-                parent = partner.parent_id or partner
-                picking.grouped_partner_ids = self.env['res.partner'].search([
-                    '|',
-                    ('id', '=', parent.id),
-                    ('parent_id', '=', parent.id),
-                ])
-            else:
-                # No partner selected yet — show all contacts so user can pick any
-                picking.grouped_partner_ids = self.env['res.partner'].search([
-                    ('type', 'in', ['delivery', 'contact', 'invoice', 'other']),
-                ])
+            picking.parent_partner_id = (
+                picking.partner_id.commercial_partner_id
+                if picking.partner_id else False
+            )
