@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="stock_picking_backdate_assign_group" model="res.groups">
-        <field name="name">Stock Picking Backdate</field>
+    <!-- Group 2: may only backdate to today or a future date. -->
+    <record id="stock_picking_backdate_future_group" model="res.groups">
+        <field name="name">Backdate: Future Only</field>
         <field name="category_id" ref="base.module_category_hidden" />
+    </record>
+
+    <!-- Group 1: past and future. Keeps the original xmlid so existing users
+         keep their current (unrestricted) behaviour on upgrade. -->
+    <record id="stock_picking_backdate_assign_group" model="res.groups">
+        <field name="name">Backdate: Past &amp; Future</field>
+        <field name="category_id" ref="base.module_category_hidden" />
+        <field name="implied_ids" eval="[(4, ref('stock_picking_backdate_future_group'))]" />
     </record>
 </odoo>

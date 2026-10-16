@@ -1,6 +1,6 @@
 {
     'name': 'buz Stock Picking Backdate',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'category': 'Extra Tools',
     'author': "10 Orbits",
     'website': "https://www.10orbits.com",
