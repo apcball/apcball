@@ -64,7 +64,11 @@ class StockLandedCost(models.Model):
 
             for line in cost.valuation_adjustment_lines.filtered(lambda line: line.move_id):
                 origin_layer, linked_layers, remaining_qty, move_qty = cost._get_landed_cost_targets(line.move_id)
-                cost_to_add = (remaining_qty / move_qty) * line.additional_landed_cost if move_qty else 0.0
+                # remaining_qty sums every position layer in the origin chain; it can
+                # exceed this move's qty (e.g. a transfer attributed to one origin), so
+                # cap the share at 1: a move never absorbs more than its own allocation.
+                ratio = min(max(remaining_qty / move_qty, 0.0), 1.0) if move_qty else 0.0
+                cost_to_add = ratio * line.additional_landed_cost
                 product = line.move_id.product_id
 
                 if not cost.company_id.currency_id.is_zero(cost_to_add):
