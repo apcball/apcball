@@ -5,6 +5,8 @@ Product Model Extension for FIFO by Warehouse
 Overrides _get_fifo_candidates to filter by warehouse.
 """
 
+import json
+
 from odoo import models
 import logging
 
@@ -79,3 +81,33 @@ class ProductProduct(models.Model):
                 )
         
         return candidates
+
+    def _prepare_internal_out_svl_vals(self, quantity, company, move=False):
+        """Record which cost origins an inter-warehouse transfer really consumes.
+
+        stock_by_locations builds the transfer-out layer through _run_fifo, which
+        updates the candidate layers without linking the consumption to the layer
+        being created. Diff the candidates' remaining_qty around super() and store
+        the result on the out layer, so the destination position layers can be split
+        per origin (see stock.move._ensure_inter_warehouse_valuation_layers).
+        """
+        self.ensure_one()
+        snapshot = {}
+        if self.cost_method == 'fifo':
+            snapshot = {
+                cand.id: cand.remaining_qty
+                for cand in self._get_fifo_candidates(company)
+            }
+        vals = super()._prepare_internal_out_svl_vals(quantity, company, move=move)
+        if snapshot:
+            consumed = {}
+            for cand in self.env['stock.valuation.layer'].browse(list(snapshot)):
+                taken = snapshot[cand.id] - cand.remaining_qty
+                if taken > 0:
+                    origin_id = (cand.origin_valuation_layer_id or cand).id
+                    consumed[origin_id] = consumed.get(origin_id, 0.0) + taken
+            if consumed:
+                vals['consumed_origin_splits'] = json.dumps(
+                    [[oid, qty] for oid, qty in consumed.items()]
+                )
+        return vals

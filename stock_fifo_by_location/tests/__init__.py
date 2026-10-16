@@ -13,3 +13,4 @@ from . import test_multi_cost_lines_landed_cost
 from . import test_empty_queue_fallback
 from . import test_fifo_consume_rows
 from . import test_landed_cost_ratio_cap
+from . import test_transfer_origin_split
