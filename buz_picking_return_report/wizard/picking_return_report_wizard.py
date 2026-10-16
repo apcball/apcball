@@ -83,6 +83,9 @@ class PickingReturnReportWizard(models.TransientModel):
         cell = wb.add_format({"border": 1})
         num = wb.add_format({"border": 1, "num_format": "#,##0.00"})
         dt = wb.add_format({"border": 1, "num_format": "yyyy-mm-dd hh:mm"})
+        intc = wb.add_format({"border": 1, "num_format": "0"})
+        okf = wb.add_format({"border": 1, "bg_color": "#C6EFCE"})
+        warnf = wb.add_format({"border": 1, "bg_color": "#FFEB9C"})
         ws.write(0, 0, "Picking Return Report", title)
         ws.write(
             1,
@@ -93,6 +96,7 @@ class PickingReturnReportWizard(models.TransientModel):
         headers = [
             "Source Document", "Source Done Date", "Partner", "Source Operation",
             "Return Document", "Return State", "Return Date",
+            "Day Gap (Return - Source)", "Same Day?",
             "Product Code", "Product", "Source Qty", "Return Demand", "Return Done",
             "UoM", "Lot/Serial",
             "Return Source Location", "Return Destination Location",
@@ -107,32 +111,41 @@ class PickingReturnReportWizard(models.TransientModel):
             ret = mv.picking_id
             src = orig.picking_id
             lots = ", ".join(mv.move_line_ids.lot_id.mapped("name"))
-            ws.write(row, 0, src.name, cell)
-            ws.write_datetime(row, 1, fields.Datetime.context_timestamp(
-                self, src.date_done).replace(tzinfo=None), dt)
-            ws.write(row, 2, src.partner_id.display_name or "", cell)
-            ws.write(row, 3, src.picking_type_id.display_name or "", cell)
-            ws.write(row, 4, ret.name, cell)
-            ws.write(row, 5, state_label.get(ret.state, ret.state), cell)
+            src_dt = fields.Datetime.context_timestamp(self, src.date_done)
             rdate = ret.date_done or ret.scheduled_date
-            if rdate:
-                ws.write_datetime(row, 6, fields.Datetime.context_timestamp(
-                    self, rdate).replace(tzinfo=None), dt)
+            ret_dt = fields.Datetime.context_timestamp(self, rdate) if rdate else None
+            c = iter(range(len(headers)))
+            ws.write(row, next(c), src.name, cell)
+            ws.write_datetime(row, next(c), src_dt.replace(tzinfo=None), dt)
+            ws.write(row, next(c), src.partner_id.display_name or "", cell)
+            ws.write(row, next(c), src.picking_type_id.display_name or "", cell)
+            ws.write(row, next(c), ret.name, cell)
+            ws.write(row, next(c), state_label.get(ret.state, ret.state), cell)
+            if ret_dt:
+                ws.write_datetime(row, next(c), ret_dt.replace(tzinfo=None), dt)
+                gap = (ret_dt.date() - src_dt.date()).days
+                ws.write_number(row, next(c), gap, intc)
+                if gap == 0:
+                    label, fmt = "Same day", okf
+                else:
+                    label, fmt = "%+d day(s)" % gap, warnf
+                ws.write(row, next(c), label, fmt)
             else:
-                ws.write(row, 6, "", cell)
-            ws.write(row, 7, mv.product_id.default_code or "", cell)
-            ws.write(row, 8, mv.product_id.name, cell)
-            ws.write_number(row, 9, orig.quantity, num)
-            ws.write_number(row, 10, mv.product_uom_qty, num)
-            ws.write_number(row, 11, mv.quantity if ret.state == "done" else 0.0, num)
-            ws.write(row, 12, mv.product_uom.name or "", cell)
-            ws.write(row, 13, lots, cell)
-            ws.write(row, 14, mv.location_id.complete_name or "", cell)
-            ws.write(row, 15, mv.location_dest_id.complete_name or "", cell)
-            ws.write(row, 16, orig.location_id.complete_name or "", cell)
-            ws.write(row, 17, orig.location_dest_id.complete_name or "", cell)
+                for _i in range(3):
+                    ws.write(row, next(c), "", cell)
+            ws.write(row, next(c), mv.product_id.default_code or "", cell)
+            ws.write(row, next(c), mv.product_id.name, cell)
+            ws.write_number(row, next(c), orig.quantity, num)
+            ws.write_number(row, next(c), mv.product_uom_qty, num)
+            ws.write_number(row, next(c), mv.quantity if ret.state == "done" else 0.0, num)
+            ws.write(row, next(c), mv.product_uom.name or "", cell)
+            ws.write(row, next(c), lots, cell)
+            ws.write(row, next(c), mv.location_id.complete_name or "", cell)
+            ws.write(row, next(c), mv.location_dest_id.complete_name or "", cell)
+            ws.write(row, next(c), orig.location_id.complete_name or "", cell)
+            ws.write(row, next(c), orig.location_dest_id.complete_name or "", cell)
             row += 1
-        widths = [18, 18, 28, 22, 18, 12, 18, 16, 36, 12, 12, 12, 8, 18, 30, 30, 30, 30]
+        widths = [18, 18, 28, 22, 18, 12, 18, 14, 14, 16, 36, 12, 12, 12, 8, 18, 30, 30, 30, 30]
         for col, w in enumerate(widths):
             ws.set_column(col, col, w)
         ws.freeze_panes(4, 0)

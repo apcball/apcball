@@ -67,3 +67,20 @@ class TestPickingReturnReport(TransactionCase):
         wiz = self.env["buz.picking.return.report.wizard"].create({})
         res = wiz.action_export_xlsx()
         self.assertEqual(res["type"], "ir.actions.act_url")
+
+    def test_day_gap_columns(self):
+        picking = self._done_out_picking()
+        self._return(picking)
+        wiz = self.env["buz.picking.return.report.wizard"].create({})
+        res = wiz.action_export_xlsx()
+        att_id = int(res["url"].split("/")[3].split("?")[0])
+        from io import BytesIO
+        import base64
+        import openpyxl
+        att = self.env["ir.attachment"].browse(att_id)
+        ws = openpyxl.load_workbook(BytesIO(base64.b64decode(att.datas))).active
+        hdr = [c.value for c in ws[4]]
+        self.assertIn("Day Gap (Return - Source)", hdr)
+        row = [c.value for c in ws[5]]
+        self.assertEqual(row[hdr.index("Day Gap (Return - Source)")], 0)
+        self.assertEqual(row[hdr.index("Same Day?")], "Same day")
