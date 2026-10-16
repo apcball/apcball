@@ -71,12 +71,23 @@
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="loan_return_role" invisible="1"/>
+                <field name="loan_return_operation_type_ids" invisible="1"/>
+                <field name="loan_return_no_operation_type" invisible="1"/>
                 <field name="loan_return_root_id" invisible="1"/>
                 <field name="loan_return_source_id"
                        readonly="1"
                        invisible="loan_return_role != 'return'"/>
                 <field name="loan_return_type"
                        invisible="loan_return_role == 'loan'"/>
+            </xpath>
+            <xpath expr="//field[@name='picking_type_id']" position="attributes">
+                <attribute name="domain">loan_return_role == 'loan' and [('id', 'in', loan_return_operation_type_ids)] or (context.get('restricted_picking_type_code') and [('code', '=', context.get('restricted_picking_type_code'))] or [(1, '=', 1)])</attribute>
+            </xpath>
+            <xpath expr="//field[@name='picking_type_id']" position="after">
+                <div class="alert alert-warning" role="alert"
+                     invisible="loan_return_role != 'loan' or not loan_return_no_operation_type">
+                    No active BG Operation Type (BG-RT, BG-PJ, or BG-OL) is configured for this company. Contact Inventory Administration.
+                </div>
             </xpath>
             <xpath expr="//page[@name='extra']//field[@name='company_id']" position="attributes">
                 <attribute name="invisible">loan_return_role == 'loan'</attribute>

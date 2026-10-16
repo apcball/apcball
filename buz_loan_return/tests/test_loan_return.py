@@ -117,6 +117,91 @@ class TestShowLoanReturn(TransactionCase):
         with self.assertRaises(ValidationError):
             wizard_model._loan_type_from_operation_type(self.loan_type_ambiguous)
 
+    def test_new_loan_filters_operation_types_and_defaults_only_when_unambiguous(self):
+        picking_model = self.env['stock.picking']
+        candidates = picking_model._get_loan_operation_types(self.company.id)
+        self.assertIn(self.loan_type, candidates)
+        self.assertIn(self.loan_type_pj, candidates)
+        self.assertIn(self.loan_type_ol, candidates)
+        self.assertNotIn(self.loan_type_ambiguous, candidates)
+        self.assertNotIn(self.loan_type_missing, candidates)
+        self.assertNotIn(self.return_type, candidates)
+
+        inactive_type = self._create_picking_type(
+            'BG-RT-INACTIVE', 'Inactive BG Loan', self.source_location, self.show_location,
+        )
+        inactive_type.write({'active': False})
+        non_internal_type = self.env['stock.picking.type'].create({
+            'name': 'Incoming BG Marker',
+            'code': 'incoming',
+            'sequence_code': 'BG-RT-INCOMING',
+            'company_id': self.company.id,
+        })
+        other_company = self.env['res.company'].create({'name': 'Other Loan Test Company'})
+        other_company_type = self.env['stock.picking.type'].create({
+            'name': 'Other Company BG Loan',
+            'code': 'internal',
+            'sequence_code': 'BG-RT-OTHER',
+            'company_id': other_company.id,
+        })
+        candidates = picking_model._get_loan_operation_types(self.company.id)
+        self.assertNotIn(inactive_type, candidates)
+        self.assertNotIn(non_internal_type, candidates)
+        self.assertNotIn(other_company_type, candidates)
+
+        context = {
+            'default_loan_return_role': 'loan',
+            'default_company_id': self.company.id,
+        }
+        fields_list = [
+            'loan_return_role', 'company_id', 'picking_type_id',
+            'location_id', 'location_dest_id',
+        ]
+        values = picking_model.with_context(**context).default_get(fields_list)
+        self.assertFalse(values.get('picking_type_id'))
+        self.assertFalse(values.get('location_id'))
+        self.assertFalse(values.get('location_dest_id'))
+
+        selected = picking_model.new({
+            'loan_return_role': 'loan',
+            'company_id': self.company.id,
+            'picking_type_id': self.loan_type_pj.id,
+        })
+        self.assertEqual(selected.location_id, self.source_location)
+        self.assertEqual(selected.location_dest_id, self.show_location)
+
+        (candidates - self.loan_type).write({'active': False})
+        values = picking_model.with_context(**context).default_get(fields_list)
+        self.assertEqual(values.get('picking_type_id'), self.loan_type.id)
+        self.assertEqual(values.get('location_id'), self.source_location.id)
+        self.assertEqual(values.get('location_dest_id'), self.show_location.id)
+
+        view_arch = self.env.ref('buz_loan_return.view_buz_loan_return_stock_picking_form').arch_db
+        self.assertIn("('id', 'in', loan_return_operation_type_ids)", view_arch)
+        self.assertIn("context.get('restricted_picking_type_code')", view_arch)
+
+    def test_new_loan_warns_and_rejects_when_no_operation_type_is_available(self):
+        picking_model = self.env['stock.picking']
+        candidates = picking_model._get_loan_operation_types(self.company.id)
+        candidates.write({'active': False})
+
+        picking = picking_model.new({
+            'loan_return_role': 'loan',
+            'company_id': self.company.id,
+        })
+        self.assertTrue(picking.loan_return_no_operation_type)
+
+        with self.assertRaisesRegex(ValidationError, 'No active BG Operation Type'):
+            picking_model.with_context(
+                default_loan_return_role='loan',
+                default_company_id=self.company.id,
+            ).create({
+                'company_id': self.company.id,
+                'partner_id': self.partner.id,
+                'location_id': self.source_location.id,
+                'location_dest_id': self.show_location.id,
+            })
+
     def test_direct_stock_picking_create_infers_bg_type_and_keeps_draft_data(self):
         tag = self.env['buz.picking.tag'].create({'name': 'Direct picking test tag'})
         picking = self.env['stock.picking'].with_context(
