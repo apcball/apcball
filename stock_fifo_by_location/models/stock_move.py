@@ -375,8 +375,11 @@ class StockMove(models.Model):
         ):
             return False
         layer_model = self.env['stock.valuation.layer']
+        # Divide what this layer was booked with (stock_by_locations / standard flow);
+        # do not recompute it from a FIFO estimate taken after the queue was consumed.
+        booked_value = base.value
         first_origin, first_qty = origin_splits[0]
-        first_vals = pos_vals(first_qty, first_origin)
+        first_vals = pos_vals(first_qty, first_origin, total=booked_value)
         base.sudo().write({
             'quantity': first_vals['quantity'],
             'value': first_vals['value'],
@@ -390,9 +393,9 @@ class StockMove(models.Model):
             'transfer_move_id': move.id,
         })
         for split_origin, split_qty in origin_splits[1:]:
-            layer_model.sudo().create(pos_vals(split_qty, split_origin))
+            layer_model.sudo().create(pos_vals(split_qty, split_origin, total=booked_value))
         if not float_is_zero(remainder_qty, precision_rounding=rounding):
-            layer_model.sudo().create(pos_vals(remainder_qty, None))
+            layer_model.sudo().create(pos_vals(remainder_qty, None, total=booked_value))
         return True
 
     def _ensure_inter_warehouse_valuation_layers(self):
@@ -555,16 +558,16 @@ class StockMove(models.Model):
                 for l in positive_layers
             )
             
-            def _pos_vals(qty, origin):
-                """Position layer at dest for ``qty`` units; value spread by qty so the
-                total equals the negative layer at source."""
-                value = total_cost * qty / valued_qty
+            def _pos_vals(qty, origin, total=None):
+                """Position layer at dest for ``qty`` units; ``total`` (default: the cost
+                this method computed) is spread by qty."""
+                value = (total_cost if total is None else total) * qty / valued_qty
                 vals = {
                     'stock_move_id': move.id,
                     'product_id': product.id,
                     'warehouse_id': dest_wh.id,
                     'quantity': qty,
-                    'unit_cost': unit_cost,
+                    'unit_cost': unit_cost if total is None else (value / qty if qty else 0.0),
                     'value': value,
                     'remaining_qty': qty,
                     'remaining_value': value,

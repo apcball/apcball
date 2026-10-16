@@ -9,6 +9,8 @@ share of the transfer (landed cost under-booked) and the chosen origin was credi
 with stock it never had (landed cost over-booked).
 """
 
+from unittest import mock
+
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -48,30 +50,32 @@ class TestTransferOriginSplit(TransactionCase):
             ml.quantity = ml.move_id.product_uom_qty
         picking.button_validate()
 
-    def _receipt(self, qty):
+    def _receipt(self, qty, price=10.0, product=None):
+        product = product or self.product
         picking = self.env['stock.picking'].create({
             'picking_type_id': self.wh1.in_type_id.id,
             'location_id': self.supplier.id,
             'location_dest_id': self.wh1.lot_stock_id.id,
         })
         self.env['stock.move'].create({
-            'name': 'receipt', 'product_id': self.product.id,
-            'product_uom_qty': qty, 'product_uom': self.product.uom_id.id,
+            'name': 'receipt', 'product_id': product.id,
+            'product_uom_qty': qty, 'product_uom': product.uom_id.id,
             'picking_id': picking.id, 'location_id': self.supplier.id,
-            'location_dest_id': self.wh1.lot_stock_id.id, 'price_unit': 10.0,
+            'location_dest_id': self.wh1.lot_stock_id.id, 'price_unit': price,
         })
         self._validate(picking)
         return picking
 
-    def _transfer(self, qty):
+    def _transfer(self, qty, product=None):
+        product = product or self.product
         picking = self.env['stock.picking'].create({
             'picking_type_id': self.wh1.int_type_id.id,
             'location_id': self.wh1.lot_stock_id.id,
             'location_dest_id': self.wh2.lot_stock_id.id,
         })
         self.env['stock.move'].create({
-            'name': 'transfer', 'product_id': self.product.id,
-            'product_uom_qty': qty, 'product_uom': self.product.uom_id.id,
+            'name': 'transfer', 'product_id': product.id,
+            'product_uom_qty': qty, 'product_uom': product.uom_id.id,
             'picking_id': picking.id, 'location_id': self.wh1.lot_stock_id.id,
             'location_dest_id': self.wh2.lot_stock_id.id,
         })
@@ -129,3 +133,59 @@ class TestTransferOriginSplit(TransactionCase):
         self.assertAlmostEqual(self._lc_booked(r2), 100.0, places=2)
         # all 10 units of r1 are still in stock (all moved to WH2) -> full 100
         self.assertAlmostEqual(self._lc_booked(r1), 100.0, places=2)
+
+    def _new_product(self, name):
+        return self.env['product.product'].create({
+            'name': name, 'type': 'product',
+            'categ_id': self.product.categ_id.id, 'standard_price': 100.0,
+        })
+
+    def _dest_value(self, product):
+        pos = self.layer_model.search([
+            ('product_id', '=', product.id),
+            ('warehouse_id', '=', self.wh2.id),
+            ('quantity', '>', 0),
+        ])
+        return sum(pos.mapped('value')), sum(pos.mapped('remaining_value'))
+
+    def _transfer_net_value(self, picking):
+        layers = self.layer_model.search([('stock_move_id', 'in', picking.move_ids.ids)])
+        return sum(layers.mapped('value'))
+
+    def test_split_does_not_change_the_transfer_net_value(self):
+        """Splitting by origin must only re-attribute the destination layer: the value
+        the transfer was booked with (in minus out) stays what the unsplit flow gives,
+        even when a FIFO estimate taken after the queue was consumed is different."""
+        layer_cls = type(self.layer_model)
+        # A: split disabled -> legacy flow, the reference net value of the transfer.
+        prod_a = self._new_product('Origin Split Value A')
+        self._receipt(10.0, 10.0, prod_a)
+        self._receipt(10.0, 30.0, prod_a)
+        self._receipt(20.0, 50.0, prod_a)  # stays in stock: skews a post-transfer estimate
+        with mock.patch.object(layer_cls, '_get_consumed_origin_splits', lambda recs: []):
+            picking_a = self._transfer(15.0, prod_a)
+        net_a = self._transfer_net_value(picking_a)
+
+        # B: same scenario, split enabled. Production-like: the FIFO estimate taken after
+        # the queue was consumed is not the value the position layer was booked with.
+        prod_b = self._new_product('Origin Split Value B')
+        self._receipt(10.0, 10.0, prod_b)
+        self._receipt(10.0, 30.0, prod_b)
+        self._receipt(20.0, 50.0, prod_b)
+        fifo_cls = type(self.env['fifo.service'])
+        estimate = {'unit_cost': 650.0 / 15.0, 'cost': 650.0, 'layers': []}
+        with mock.patch.object(
+            fifo_cls, 'calculate_fifo_cost_with_landed_cost',
+            lambda *args, **kwargs: dict(estimate),
+        ):
+            picking_b = self._transfer(15.0, prod_b)
+        net_b = self._transfer_net_value(picking_b)
+
+        pos_b = self.layer_model.search([
+            ('product_id', '=', prod_b.id), ('warehouse_id', '=', self.wh2.id),
+            ('quantity', '>', 0)])
+        self.assertEqual(len(pos_b), 2, "transfer spans two receipts -> two layers")
+        self.assertAlmostEqual(net_b, net_a, places=2)
+        # value follows quantity (10 : 5)
+        by_qty = sorted(pos_b, key=lambda l: -l.quantity)
+        self.assertAlmostEqual(by_qty[0].value / 10.0, by_qty[1].value / 5.0, places=2)
