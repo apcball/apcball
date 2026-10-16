@@ -59,8 +59,8 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <button name="action_open_return_wizard"
-                        string="Create Return"
+                <button name="action_create_return"
+                        string="Create RBG"
                         type="object"
                         class="btn-primary"
                         groups="stock.group_stock_user"

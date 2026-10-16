@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 
-from odoo import api, fields, models, _
+from odoo import api, fields, models, _, Command
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare
 
@@ -289,22 +289,73 @@ class StockPicking(models.Model):
             })
         return backorder
 
-    def action_open_return_wizard(self):
+    def action_create_return(self):
         self.ensure_one()
         root = self.loan_return_root_id or self
         if root.loan_return_role != 'loan':
             raise UserError(_('Only a tracked show-loan document can start a return.'))
         if root.state != 'done':
-            raise UserError(_('The loan transfer must be completed before it can be returned.'))
-        balances = root._get_loan_return_balances()
-        if not any(value['remaining'] > 0 for value in balances.values()):
+            raise UserError(_('The loan transfer must be completed before a return can be created.'))
+
+        return_lines = []
+        for product_id, balance in root._get_loan_return_balances().items():
+            product = self.env['product.product'].browse(product_id)
+            remaining = balance['remaining']
+            if float_compare(
+                remaining, 0.0, precision_rounding=product.uom_id.rounding,
+            ) > 0:
+                return_lines.append((product, remaining))
+        if not return_lines:
             raise UserError(_('There are no remaining delivered quantities to return.'))
+
+        operation_types = self.env['stock.picking.type'].search([
+            ('code', '=', 'internal'),
+            ('active', '=', True),
+            '|', ('company_id', '=', False), ('company_id', '=', root.company_id.id),
+        ])
+        operation_types = operation_types.filtered(lambda operation_type: (
+            'RBG' in ' '.join((
+                operation_type.sequence_code or '',
+                operation_type.sequence_id.prefix or '',
+            )).upper()
+        ))
+        if not operation_types:
+            raise UserError(_('No active RBG Internal Transfer Operation Type is configured.'))
+        if len(operation_types) != 1:
+            raise UserError(_('More than one active RBG Operation Type is configured for this company.'))
+
+        operation_type = operation_types
+        location = root.location_dest_id
+        location_dest = operation_type.default_location_dest_id
+        if not location or not location_dest:
+            raise UserError(_('The RBG Operation Type must have a default destination location.'))
+
+        moves = [Command.create({
+            'name': product.display_name,
+            'product_id': product.id,
+            'product_uom': product.uom_id.id,
+            'product_uom_qty': quantity,
+            'location_id': location.id,
+            'location_dest_id': location_dest.id,
+        }) for product, quantity in return_lines]
+        picking = self.env['stock.picking'].create({
+            'loan_return_role': 'return',
+            'loan_return_type': root.loan_return_type,
+            'loan_return_source_id': root.id,
+            'picking_type_id': operation_type.id,
+            'partner_id': root.partner_id.id,
+            'origin': root.name,
+            'scheduled_date': fields.Datetime.now(),
+            'location_id': location.id,
+            'location_dest_id': location_dest.id,
+            'move_ids': moves,
+        })
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Create Show Return'),
-            'res_model': 'buz.loan.return.return.wizard',
+            'name': picking.display_name,
+            'res_model': 'stock.picking',
             'view_mode': 'form',
-            'view_id': self.env.ref('buz_loan_return.view_buz_loan_return_return_wizard_form').id,
+            'views': [(self.env.ref('stock.view_picking_form').id, 'form')],
+            'res_id': picking.id,
             'target': 'current',
-            'context': {'default_source_picking_id': root.id},
         }

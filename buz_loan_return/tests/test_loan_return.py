@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import Command
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -89,24 +89,116 @@ class TestShowLoanReturn(TransactionCase):
         self.assertEqual(picking.state, 'done')
         return picking
 
-    def _create_return(self, loan, quantity):
-        wizard = self.env['buz.loan.return.return.wizard'].create({
-            'source_picking_id': loan.id,
-            'operation_type_id': self.return_type.id,
-            'scheduled_date': loan.scheduled_date,
-            'location_id': loan.location_dest_id.id,
-            'location_dest_id': self.return_location.id,
-            'line_ids': [Command.create({
-                'product_id': self.product.id,
-                'delivered_qty': 5.0,
-                'reserved_qty': 0.0,
-                'remaining_qty': quantity,
-                'quantity': quantity,
-            })],
-        })
-        action = wizard.action_create_return()
+    def _create_return(self, loan):
+        action = loan.action_create_return()
         return self.env['stock.picking'].browse(action['res_id'])
 
+    def test_create_return_opens_standard_picking_and_moves_stock_only_when_validated(self):
+        loan = self._create_completed_loan(quantity=5.0)
+
+        available_before = self.env['stock.quant']._get_available_quantity(
+            self.product, self.show_location,
+        )
+        destination_before = self.env['stock.quant']._get_available_quantity(
+            self.product, self.return_location,
+        )
+        action = loan.action_create_return()
+        picking = self.env['stock.picking'].browse(action['res_id'])
+
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'stock.picking')
+        self.assertEqual(action['view_mode'], 'form')
+        self.assertEqual(
+            action['views'],
+            [(self.env.ref('stock.view_picking_form').id, 'form')],
+        )
+        self.assertEqual(action['target'], 'current')
+        self.assertEqual(picking.state, 'draft')
+        self.assertEqual(picking.loan_return_role, 'return')
+        self.assertEqual(picking.loan_return_source_id, loan)
+        self.assertEqual(picking.picking_type_id, self.return_type)
+        self.assertEqual(picking.location_id, self.show_location)
+        self.assertEqual(picking.location_dest_id, self.return_location)
+        self.assertEqual(len(picking.move_ids), 1)
+        self.assertEqual(picking.move_ids.product_id, self.product)
+        self.assertEqual(picking.move_ids.product_uom_qty, 5.0)
+        self.assertEqual(loan.state, 'done')
+        # Draft quantity remains editable; inventory changes only on Validate.
+        picking.move_ids.write({'product_uom_qty': 2.0})
+        self.assertEqual(
+            self.env['stock.quant']._get_available_quantity(self.product, self.show_location),
+            available_before,
+        )
+        self.assertEqual(
+            self.env['stock.quant']._get_available_quantity(self.product, self.return_location),
+            destination_before,
+        )
+
+        picking.action_confirm()
+        picking.action_assign()
+        picking.move_ids.write({'quantity': 2.0})
+        picking.button_validate()
+
+        self.assertEqual(picking.state, 'done')
+        self.assertEqual(loan.state, 'done')
+        self.assertAlmostEqual(
+            self.env['stock.quant']._get_available_quantity(self.product, self.show_location),
+            available_before - 2.0,
+        )
+        self.assertAlmostEqual(
+            self.env['stock.quant']._get_available_quantity(self.product, self.return_location),
+            destination_before + 2.0,
+        )
+
+    def test_create_return_rejects_when_remaining_quantity_is_already_in_draft_return(self):
+        loan = self._create_completed_loan(quantity=5.0)
+        picking = self._create_return(loan)
+
+        with self.assertRaises(UserError):
+            loan.action_create_return()
+
+        self.assertEqual(picking.state, 'draft')
+        self.assertEqual(loan.state, 'done')
+        returns = self.env['stock.picking'].search([
+            ('loan_return_role', '=', 'return'),
+            ('loan_return_source_id', '=', loan.id),
+        ])
+        self.assertEqual(len(returns), 1)
+
+    def test_create_return_rejects_missing_or_ambiguous_rbg_operation_type(self):
+        loan = self._create_completed_loan(quantity=5.0)
+        self.return_type.active = False
+        with self.assertRaises(UserError):
+            loan.action_create_return()
+        self.assertFalse(self.env['stock.picking'].search([
+            ('loan_return_role', '=', 'return'),
+            ('loan_return_source_id', '=', loan.id),
+        ]))
+
+        self.return_type.active = True
+        self._create_picking_type(
+            'RBG-SECOND', 'Second Show Return', self.show_location, self.return_location,
+        )
+        with self.assertRaises(UserError):
+            loan.action_create_return()
+        self.assertFalse(self.env['stock.picking'].search([
+            ('loan_return_role', '=', 'return'),
+            ('loan_return_source_id', '=', loan.id),
+        ]))
+
+    def test_create_return_rejects_overreturn_when_validating_draft(self):
+        loan = self._create_completed_loan(quantity=5.0)
+        picking = self._create_return(loan)
+        picking.move_ids.write({'product_uom_qty': 6.0})
+        picking.action_confirm()
+        picking.action_assign()
+        picking.move_ids.write({'quantity': 6.0})
+
+        with self.assertRaises(ValidationError):
+            picking.button_validate()
+
+        self.assertEqual(loan.state, 'done')
+        self.assertNotEqual(picking.state, 'done')
     def test_operation_type_determines_rt_pj_ol_and_rejects_missing_or_ambiguous_markers(self):
         wizard_model = self.env['buz.loan.return.loan.wizard']
         self.assertEqual(wizard_model._loan_type_from_operation_type(self.loan_type), 'rt')

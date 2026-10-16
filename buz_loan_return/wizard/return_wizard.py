@@ -151,6 +151,7 @@ class ReturnWizard(models.TransientModel):
             'name': picking.display_name,
             'res_model': 'stock.picking',
             'view_mode': 'form',
+            'views': [(self.env.ref('stock.view_picking_form').id, 'form')],
             'res_id': picking.id,
             'target': 'current',
         }
