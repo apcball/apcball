@@ -954,9 +954,9 @@ class StockValuationLayer(models.Model):
             
             if is_internal_transfer and qty_taken_on_candidate > 0:
                 origin_key = (candidate.origin_valuation_layer_id or candidate).id
-                consumed_by_origin[origin_key] = (
-                    consumed_by_origin.get(origin_key, 0.0) + qty_taken_on_candidate
-                )
+                entry = consumed_by_origin.setdefault(origin_key, [0.0, 0.0])
+                entry[0] += qty_taken_on_candidate
+                entry[1] += value_taken_on_candidate
 
             tmp_value += value_taken_on_candidate
             qty_to_take_on_candidates -= qty_taken_on_candidate
@@ -983,21 +983,30 @@ class StockValuationLayer(models.Model):
         })
         if consumed_by_origin:
             self.sudo().consumed_origin_splits = json.dumps(
-                [[oid, qty] for oid, qty in consumed_by_origin.items()]
+                [[oid, qty, value] for oid, (qty, value) in consumed_by_origin.items()]
             )
 
     def _get_consumed_origin_splits(self):
-        """[(origin_layer, qty)] consumed by these transfer-out layers, FIFO order."""
-        qty_by_origin = {}
+        """[(origin_layer, qty, value)] consumed by these transfer-out layers, FIFO order.
+
+        ``value`` is the cost taken from that origin, or None when it was not recorded
+        (older layers / out layers that already carry their origin).
+        """
+        acc = {}  # origin id -> [qty, value or None]
         for layer in self.sorted('id'):
             if layer.consumed_origin_splits:
-                pairs = json.loads(layer.consumed_origin_splits)
+                triples = [
+                    (item[0], item[1], item[2] if len(item) > 2 else None)
+                    for item in json.loads(layer.consumed_origin_splits)
+                ]
             elif layer.origin_valuation_layer_id and layer.quantity < 0:
                 # per-source-layer out layers already carry their origin
-                pairs = [[layer.origin_valuation_layer_id.id, -layer.quantity]]
+                triples = [(layer.origin_valuation_layer_id.id, -layer.quantity, -layer.value)]
             else:
                 continue
-            for origin_id, qty in pairs:
-                qty_by_origin[origin_id] = qty_by_origin.get(origin_id, 0.0) + qty
-        origins = self.env['stock.valuation.layer'].browse(list(qty_by_origin))
-        return [(origin, qty_by_origin[origin.id]) for origin in origins]
+            for origin_id, qty, value in triples:
+                entry = acc.setdefault(origin_id, [0.0, 0.0])
+                entry[0] += qty
+                entry[1] = None if (entry[1] is None or value is None) else entry[1] + value
+        origins = self.env['stock.valuation.layer'].browse(list(acc))
+        return [(origin, acc[origin.id][0], acc[origin.id][1]) for origin in origins]

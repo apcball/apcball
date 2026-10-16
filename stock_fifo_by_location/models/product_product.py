@@ -88,26 +88,29 @@ class ProductProduct(models.Model):
         stock_by_locations builds the transfer-out layer through _run_fifo, which
         updates the candidate layers without linking the consumption to the layer
         being created. Diff the candidates' remaining_qty around super() and store
-        the result on the out layer, so the destination position layers can be split
-        per origin (see stock.move._ensure_inter_warehouse_valuation_layers).
+        the result (origin, qty, value) on the out layer, so the destination position
+        layers can be split per origin and carry the cost actually consumed (see stock.move._ensure_inter_warehouse_valuation_layers).
         """
         self.ensure_one()
         snapshot = {}
         if self.cost_method == 'fifo':
             snapshot = {
-                cand.id: cand.remaining_qty
+                cand.id: (cand.remaining_qty, cand.remaining_value)
                 for cand in self._get_fifo_candidates(company)
             }
         vals = super()._prepare_internal_out_svl_vals(quantity, company, move=move)
         if snapshot:
-            consumed = {}
+            consumed = {}  # origin layer id -> [qty, value]
             for cand in self.env['stock.valuation.layer'].browse(list(snapshot)):
-                taken = snapshot[cand.id] - cand.remaining_qty
+                before_qty, before_value = snapshot[cand.id]
+                taken = before_qty - cand.remaining_qty
                 if taken > 0:
                     origin_id = (cand.origin_valuation_layer_id or cand).id
-                    consumed[origin_id] = consumed.get(origin_id, 0.0) + taken
+                    entry = consumed.setdefault(origin_id, [0.0, 0.0])
+                    entry[0] += taken
+                    entry[1] += before_value - cand.remaining_value
             if consumed:
                 vals['consumed_origin_splits'] = json.dumps(
-                    [[oid, qty] for oid, qty in consumed.items()]
+                    [[oid, qty, value] for oid, (qty, value) in consumed.items()]
                 )
         return vals

@@ -9,7 +9,7 @@ share of the transfer (landed cost under-booked) and the chosen origin was credi
 with stock it never had (landed cost over-booked).
 """
 
-from unittest import mock
+import json
 
 from odoo.tests.common import TransactionCase, tagged
 
@@ -152,40 +152,60 @@ class TestTransferOriginSplit(TransactionCase):
         layers = self.layer_model.search([('stock_move_id', 'in', picking.move_ids.ids)])
         return sum(layers.mapped('value'))
 
-    def test_split_does_not_change_the_transfer_net_value(self):
-        """Splitting by origin must only re-attribute the destination layer: the value
-        the transfer was booked with (in minus out) stays what the unsplit flow gives,
-        even when a FIFO estimate taken after the queue was consumed is different."""
-        layer_cls = type(self.layer_model)
-        # A: split disabled -> legacy flow, the reference net value of the transfer.
-        prod_a = self._new_product('Origin Split Value A')
-        self._receipt(10.0, 10.0, prod_a)
-        self._receipt(10.0, 30.0, prod_a)
-        self._receipt(20.0, 50.0, prod_a)  # stays in stock: skews a post-transfer estimate
-        with mock.patch.object(layer_cls, '_get_consumed_origin_splits', lambda recs: []):
-            picking_a = self._transfer(15.0, prod_a)
-        net_a = self._transfer_net_value(picking_a)
+    def test_transfer_is_value_neutral_and_layers_carry_consumed_cost(self):
+        """in == out for the transfer, and each destination layer carries the FIFO cost
+        actually taken from its origin, not the standard / location-history price that
+        stock_by_locations books the standard position layer with."""
+        product = self._new_product('Origin Split Cost')
+        r1 = self._receipt(10.0, 10.0, product)
+        r2 = self._receipt(10.0, 30.0, product)
+        self._receipt(20.0, 50.0, product)  # stays in stock
+        # make the FIFO cost of each receipt explicit: r1 @10, r2 @30
+        for receipt, unit in ((r1, 10.0), (r2, 30.0)):
+            layer = self._base_layer(receipt)
+            layer.write({'value': 10.0 * unit, 'remaining_value': 10.0 * unit})
+        product.standard_price = 7.0  # price the standard in-layer would be booked at
+        picking = self._transfer(15.0, product)  # FIFO: 10 @10 from r1 + 5 @30 from r2
 
-        # B: same scenario, split enabled. Production-like: the FIFO estimate taken after
-        # the queue was consumed is not the value the position layer was booked with.
-        prod_b = self._new_product('Origin Split Value B')
-        self._receipt(10.0, 10.0, prod_b)
-        self._receipt(10.0, 30.0, prod_b)
-        self._receipt(20.0, 50.0, prod_b)
-        fifo_cls = type(self.env['fifo.service'])
-        estimate = {'unit_cost': 650.0 / 15.0, 'cost': 650.0, 'layers': []}
-        with mock.patch.object(
-            fifo_cls, 'calculate_fifo_cost_with_landed_cost',
-            lambda *args, **kwargs: dict(estimate),
-        ):
-            picking_b = self._transfer(15.0, prod_b)
-        net_b = self._transfer_net_value(picking_b)
-
-        pos_b = self.layer_model.search([
-            ('product_id', '=', prod_b.id), ('warehouse_id', '=', self.wh2.id),
+        out_layers = self.layer_model.search([
+            ('stock_move_id', 'in', picking.move_ids.ids), ('quantity', '<', 0)])
+        consumed = {}  # origin layer id -> cost taken from it, as recorded on the out layer
+        for item in json.loads(out_layers.consumed_origin_splits):
+            consumed[item[0]] = item[2]
+        self.assertEqual(
+            set(consumed), {self._base_layer(r1).id, self._base_layer(r2).id})
+        pos = self.layer_model.search([
+            ('product_id', '=', product.id), ('warehouse_id', '=', self.wh2.id),
             ('quantity', '>', 0)])
-        self.assertEqual(len(pos_b), 2, "transfer spans two receipts -> two layers")
-        self.assertAlmostEqual(net_b, net_a, places=2)
-        # value follows quantity (10 : 5)
-        by_qty = sorted(pos_b, key=lambda l: -l.quantity)
-        self.assertAlmostEqual(by_qty[0].value / 10.0, by_qty[1].value / 5.0, places=2)
+        self.assertEqual(len(pos), 2)
+        # value-neutral, and the cost ratio between origins is the consumed one
+        self.assertAlmostEqual(self._transfer_net_value(picking), 0.0, places=2)
+        pos_total = sum(pos.mapped('value'))
+        consumed_total = sum(consumed.values())
+        for layer in pos:
+            self.assertAlmostEqual(
+                layer.value / pos_total,
+                consumed[layer.origin_valuation_layer_id.id] / consumed_total, places=4)
+            self.assertAlmostEqual(layer.remaining_value, layer.value, places=2)
+
+    def test_allocate_split_values(self):
+        move = self.env['stock.move']
+        rounding = self.product.uom_id.rounding
+        origin = self.layer_model  # only the tuple shape matters
+        # known costs: used as is, remainder takes what is left of the out value
+        values, rest = move._allocate_split_values(
+            [(origin, 10.0, 100.0), (origin, 5.0, 150.0)], 2.0, 17.0, 300.0, 999.0, rounding)
+        self.assertEqual(values, [100.0, 150.0])
+        self.assertAlmostEqual(rest, 50.0)
+        # known costs, no remainder, out differs: scaled to keep the ratio, in == out
+        values, rest = move._allocate_split_values(
+            [(origin, 10.0, 100.0), (origin, 5.0, 150.0)], 0.0, 15.0, 500.0, 999.0, rounding)
+        self.assertAlmostEqual(sum(values), 500.0)
+        self.assertAlmostEqual(values[0] / values[1], 100.0 / 150.0)
+        self.assertEqual(rest, 0.0)
+        # unknown cost for one origin: fall back to spreading the fallback total by qty
+        values, rest = move._allocate_split_values(
+            [(origin, 10.0, None), (origin, 5.0, 150.0)], 0.0, 15.0, 250.0, 150.0, rounding)
+        self.assertAlmostEqual(values[0], 100.0)
+        self.assertAlmostEqual(values[1], 50.0)
+        self.assertEqual(rest, 0.0)
