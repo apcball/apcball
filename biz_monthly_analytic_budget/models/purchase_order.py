@@ -211,7 +211,7 @@ class PurchaseOrder(models.Model):
                 ('move_type', 'in', ('in_invoice', 'in_refund')),
                 ('company_id', '=', order.company_id.id),
                 '|',
-                ('purchase_id', '=', order.id),
+                ('invoice_line_ids.purchase_line_id.order_id', '=', order.id),
                 ('invoice_origin', '=', order.name),
             ])
             if not bills and hasattr(order, 'requisition_order') and order.requisition_order:
