@@ -986,6 +986,7 @@ class StockMove(models.Model):
                     ('product_id', '=', move.product_id.id),
                     ('warehouse_id', '=', warehouse.id),
                     ('quantity', '>', 0),
+                    ('remaining_qty', '>', 0),
                     ('company_id', '=', move.company_id.id),
                 ], order='create_date, id')
                 
