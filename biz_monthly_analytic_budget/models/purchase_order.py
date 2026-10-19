@@ -414,8 +414,9 @@ class PurchaseOrder(models.Model):
 
         # Document Amount = actual PO total untaxed
         po_amount = self.amount_untaxed
-        # Analytic Amount = sum of allocated amounts across budget plans
-        analytic_amount = sum(analytic_totals.values())
+        # Analytic Amount = allocated amounts of the accounts covered by a budget plan
+        # (a line may carry other analytic accounts, e.g. BU/project, that have no budget line)
+        analytic_amount = sum(sum(totals.values()) for _plan, totals in grouped_totals)
         
         limit_amt = 0.0
         used = 0.0

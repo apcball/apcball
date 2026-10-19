@@ -378,7 +378,7 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
         if not grouped_totals:
             return False, set()
 
-        analytic_amount = sum(analytic_totals.values())
+        analytic_amount = sum(sum(totals.values()) for _plan, totals in grouped_totals)
         limit_amt = 0.0
         used = 0.0
         reserved = 0.0
