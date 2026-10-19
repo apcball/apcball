@@ -58,6 +58,14 @@
         <field name="priority" eval="99"/>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_source_loan"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-external-link"
+                        string="Source Loan"
+                        invisible="loan_return_role != 'return' or not loan_return_source_id"/>
+            </xpath>
             <xpath expr="//header" position="inside">
                 <button name="action_create_return"
                         string="Create RBG"
@@ -76,7 +84,7 @@
                 <field name="loan_return_root_id" invisible="1"/>
                 <field name="loan_return_source_id"
                        readonly="1"
-                       invisible="loan_return_role != 'return'"/>
+                       invisible="1"/>
                 <field name="loan_return_type"
                        invisible="1"/>
             </xpath>

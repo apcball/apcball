@@ -289,6 +289,22 @@ class StockPicking(models.Model):
             })
         return backorder
 
+    def action_open_source_loan(self):
+        """เปิดเอกสาร BG ต้นทางจากเอกสาร RBG ที่เชื่อมโยงกัน"""
+        self.ensure_one()
+        if self.loan_return_role != 'return' or not self.loan_return_source_id:
+            raise UserError(_('This return has no linked source loan document.'))
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.loan_return_source_id.display_name,
+            'res_model': 'stock.picking',
+            'view_mode': 'form',
+            'views': [(self.env.ref('stock.view_picking_form').id, 'form')],
+            'res_id': self.loan_return_source_id.id,
+            'target': 'current',
+        }
+
     def action_create_return(self):
         self.ensure_one()
         root = self.loan_return_root_id or self
