@@ -407,6 +407,17 @@ class TestApDashboard(TransactionCase):
         filtered = self._data(partner_id=self.v1.id)
         self.assertAlmostEqual(filtered['kpi_budget']['approved'], budget['approved'], places=2)
 
+    def test_budget_kpi_includes_closed_plan(self):
+        plan = self.plans[-1]  # month 5
+        f = dict(self.F, month=5)
+        confirmed = self.engine.get_dashboard_data(f)['kpi_budget']
+        self.assertGreaterEqual(confirmed['approved'], 100000000.0 - 0.01)
+        plan.action_close()
+        self.assertEqual(plan.state, 'closed')
+        closed = self.engine.get_dashboard_data(f, refresh=True)['kpi_budget']
+        self.assertAlmostEqual(closed['approved'], confirmed['approved'], places=2)
+        self.assertEqual(closed['plan_count'], confirmed['plan_count'])
+
     def test_budget_line_project_and_category(self):
         if not self.p1:
             self.skipTest('no project available on this DB')

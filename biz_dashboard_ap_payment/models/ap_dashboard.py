@@ -722,9 +722,10 @@ class ApDashboard(models.AbstractModel):
         }
 
     def _budget_lines(self, f):
-        """Budget lines of confirmed monthly plans of the month (project filter applied)."""
+        """Budget lines of confirmed or closed monthly plans of the month (project
+        filter applied). Closed plans stay in: past months keep their budget figures."""
         domain = [
-            ('plan_id.state', '=', 'confirmed'),
+            ('plan_id.state', 'in', ('confirmed', 'closed')),
             ('plan_id.date_from', '>=', f['date_from']),
             ('plan_id.date_from', '<=', f['date_to']),
             ('company_id', 'in', f['cids']),
