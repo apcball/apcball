@@ -101,7 +101,7 @@
                 <attribute name="invisible">loan_return_role == 'loan'</attribute>
             </xpath>
             <xpath expr="//field[@name='move_ids_without_package']/tree/field[@name='quantity']" position="attributes">
-                <attribute name="column_invisible">parent.loan_return_role != 'loan'</attribute>
+                <attribute name="column_invisible">parent.state == 'draft' or parent.loan_return_role == 'return'</attribute>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Loan / Return Links"
