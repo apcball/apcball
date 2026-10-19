@@ -1,0 +1,410 @@
+$apd-blue: #2f80ed;
+$apd-green: #10b981;
+$apd-orange: #f59e0b;
+$apd-red: #f0385a;
+$apd-purple: #7c4dff;
+$apd-ink: #1b2a49;
+
+.o_ap_dashboard {
+    background: #f4f7fb;
+    color: $apd-ink;
+
+    // ---- header --------------------------------------------------------
+    .o_apd_title_icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: $apd-blue;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex: 0 0 auto;
+    }
+    .o_apd_title {
+        font-weight: 700;
+        font-size: 1.35rem;
+        color: $apd-ink;
+    }
+    .o_apd_header_right {
+        gap: 4px;
+    }
+    .o_apd_export_menu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        min-width: 260px;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        padding: 6px 0;
+        z-index: 20;
+        a {
+            display: block;
+            padding: 8px 14px;
+            color: $apd-ink;
+            text-decoration: none;
+            &:hover {
+                background: #eef4ff;
+            }
+        }
+    }
+
+    // ---- filters -------------------------------------------------------
+    .o_apd_filters {
+        gap: 10px 14px;
+        background: #fff;
+        border-radius: 12px;
+        padding: 10px 14px;
+        box-shadow: 0 1px 4px rgba(30, 50, 90, 0.06);
+    }
+    .o_apd_filter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 180px;
+        label {
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin: 0;
+            white-space: nowrap;
+        }
+        select {
+            min-width: 120px;
+        }
+        &.o_apd_filter_sm {
+            min-width: 130px;
+        }
+        &.o_apd_filter_lg {
+            min-width: 240px;
+            flex: 1 1 240px;
+        }
+    }
+    .o_apd_apply {
+        margin-left: auto;
+        background: #7c4dff;
+        border-color: #7c4dff;
+        &:hover {
+            background: darken(#7c4dff, 8%);
+            border-color: darken(#7c4dff, 8%);
+        }
+    }
+
+    // ---- KPI cards -----------------------------------------------------
+    .o_apd_kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        @media (max-width: 1400px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        @media (max-width: 768px) {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+    .o_apd_card {
+        --c: #{$apd-blue};
+        --bg: #eef4ff;
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-top: 4px solid var(--c);
+        padding: 14px 16px;
+        box-shadow: 0 2px 8px rgba(30, 50, 90, 0.06);
+        container-type: inline-size;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        &--blue { --c: #{$apd-blue}; --bg: #eef4ff; }
+        &--green { --c: #{$apd-green}; --bg: #e9f9f1; }
+        &--orange { --c: #{$apd-orange}; --bg: #fff6e6; }
+        &--purple { --c: #{$apd-purple}; --bg: #f3eefe; }
+    }
+    .o_apd_card_head {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .o_apd_card_icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--c);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex: 0 0 auto;
+    }
+    .o_apd_card_title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--c);
+        line-height: 1.25;
+    }
+    .o_apd_card_sub {
+        font-size: 0.78rem;
+        color: #6b7280;
+    }
+    .o_apd_card_value {
+        font-size: clamp(1.3rem, 8cqw, 2rem);
+        font-weight: 800;
+        color: var(--c);
+        white-space: nowrap;
+        line-height: 1.1;
+    }
+    .o_apd_tiles {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+    .o_apd_tile {
+        --t: #{$apd-blue};
+        --tbg: #eef4ff;
+        background: var(--tbg);
+        border-radius: 10px;
+        padding: 8px 10px;
+        min-width: 0;
+        &--green { --t: #{$apd-green}; --tbg: #e9f9f1; }
+        &--blue { --t: #{$apd-blue}; --tbg: #eef4ff; }
+        &--purple { --t: #{$apd-purple}; --tbg: #f3eefe; }
+        &--orange { --t: #{$apd-red}; --tbg: #fff6e6; }
+    }
+    .o_apd_tile_label {
+        font-size: 0.72rem;
+        color: #4a5878;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .o_apd_tile_value {
+        font-weight: 700;
+        font-size: clamp(0.85rem, 4.2cqw, 1.05rem);
+        color: var(--t);
+        white-space: nowrap;
+    }
+    .o_apd_tile_pct {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--t);
+    }
+    .o_apd_bar {
+        height: 10px;
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.07);
+        overflow: hidden;
+    }
+    .o_apd_bar_fill {
+        height: 100%;
+        background: var(--c);
+        border-radius: 5px;
+        transition: width 0.3s;
+    }
+    .o_apd_rows {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.85rem;
+        &--box {
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 10px;
+            padding: 8px 10px;
+            gap: 6px;
+        }
+    }
+    .o_apd_row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 2px 0;
+        span {
+            color: #4a5878;
+        }
+        b {
+            white-space: nowrap;
+        }
+        &--hl {
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 4px 6px;
+            margin: 2px -6px 0;
+            b {
+                color: var(--c);
+            }
+        }
+    }
+    .o_apd_dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        vertical-align: middle;
+        &--orange { background: $apd-orange; }
+        &--green { background: $apd-green; }
+        &--red { background: $apd-red; }
+    }
+    .o_apd_note {
+        font-size: 0.72rem;
+        color: #8a94a6;
+    }
+
+    // ---- charts --------------------------------------------------------
+    .o_apd_charts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        @media (max-width: 1200px) {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+    .o_apd_panel {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 8px rgba(30, 50, 90, 0.06);
+        padding: 14px 16px;
+        min-width: 0;
+    }
+    .o_apd_panel_title {
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .o_apd_chart {
+        position: relative;
+        height: 260px;
+        &--donut {
+            height: 220px;
+        }
+    }
+    .o_apd_donut_wrap {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        @media (max-width: 500px) {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+    .o_apd_legend {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 0.82rem;
+    }
+    .o_apd_legend_row {
+        display: grid;
+        grid-template-columns: 12px minmax(0, 1fr) auto auto;
+        gap: 8px;
+        align-items: center;
+    }
+    .o_apd_legend_dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    .o_apd_legend_name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .o_apd_legend_amt {
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .o_apd_legend_pct {
+        color: #6b7280;
+        min-width: 44px;
+        text-align: right;
+    }
+
+    // ---- table ---------------------------------------------------------
+    .o_apd_tabs {
+        gap: 4px;
+        .btn {
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            background: #fff;
+            color: $apd-ink;
+            &.active {
+                background: $apd-blue;
+                border-color: $apd-blue;
+                color: #fff;
+            }
+        }
+    }
+    .o_apd_table_wrap {
+        overflow-x: auto;
+        max-height: 70vh;
+    }
+    .o_apd_table {
+        font-size: 0.82rem;
+        thead th {
+            position: sticky;
+            background: #f4f7fb;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            font-weight: 700;
+            z-index: 2;
+        }
+        .o_apd_th_group th {
+            top: 0;
+        }
+        .o_apd_th_cols th {
+            top: 34px;
+            font-size: 0.78rem;
+        }
+        th.o_apd_th--pay { background: #e3edfb; }
+        th.o_apd_th--budget { background: #ddf3e8; }
+        th.o_apd_th--req { background: #fde9d6; }
+        th.o_apd_th--next { background: #ece3fb; }
+        .o_apd_th_seq {
+            width: 48px;
+        }
+        .o_apd_th_name {
+            min-width: 180px;
+            text-align: left;
+        }
+        td {
+            vertical-align: middle;
+        }
+        .o_apd_td_name {
+            white-space: nowrap;
+        }
+        .o_apd_num {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        tfoot td {
+            font-weight: 700;
+            background: #eef4ff;
+            border-top: 2px solid rgba(0, 0, 0, 0.15);
+        }
+    }
+    .o_apd_pct_cell {
+        white-space: nowrap;
+    }
+    .o_apd_minibar {
+        display: inline-block;
+        width: 52px;
+        height: 7px;
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: 4px;
+        margin-right: 6px;
+        vertical-align: middle;
+        overflow: hidden;
+        > span {
+            display: block;
+            height: 100%;
+            background: $apd-green;
+            border-radius: 4px;
+        }
+        &--over > span {
+            background: $apd-red;
+        }
+    }
+}
