@@ -600,7 +600,7 @@ class ApDashboard(models.AbstractModel):
             if f['partner_id'] and po.partner_id.commercial_partner_id.id != f['partner_id']:
                 continue
             amount = self._convert(
-                req.amount_overage, req.company_id.currency_id or currency, req.company_id,
+                req.amount_requested, req.company_id.currency_id or currency, req.company_id,
                 fields.Date.to_date(req.create_date), currency)
             kpi_request[req.state]['amount'] += amount
             kpi_request[req.state]['count'] += 1

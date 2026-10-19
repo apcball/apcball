@@ -433,7 +433,7 @@ class TestApDashboard(TransactionCase):
         for overage in (100.0, 200.0, 300.0):
             reqs |= Request.create({
                 'document_type': 'po', 'ref_po_id': po.id,
-                'amount_requested': overage + 1000.0, 'amount_overage': overage,
+                'amount_requested': overage, 'amount_overage': overage + 1000.0,  # cumulative line overrun, not summed
                 'company_id': self.company.id,
             })
         reqs[1].write({'state': 'approved'})
