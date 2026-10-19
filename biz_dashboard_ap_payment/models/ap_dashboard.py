@@ -345,6 +345,23 @@ class ApDashboard(models.AbstractModel):
             return NO_VENDOR
         return ('p:%d' % partner.id, partner.name or partner.display_name, partner.id)
 
+    def _project_domain(self, f, model):
+        """Project filter on bills / POs. ``project_id`` on them comes from the
+        optional job_costing_management; without it no document carries a project,
+        so a project filter leaves only the budget lines."""
+        if not f['project_id']:
+            return []
+        if 'project_id' not in self.env[model]._fields:
+            return [('id', '=', 0)]
+        return [('project_id', '=', f['project_id'])]
+
+    @staticmethod
+    def _project_of(record):
+        """Project of a bill / PO, or an empty recordset when the field is absent."""
+        if 'project_id' in record._fields:
+            return record.project_id
+        return record.env['project.project']
+
     @staticmethod
     def _project_bucket(project):
         if not project:
@@ -373,8 +390,7 @@ class ApDashboard(models.AbstractModel):
             '&', '&', ('invoice_date_due', '=', False),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ]
-        if f['project_id']:
-            domain.append(('project_id', '=', f['project_id']))
+        domain += self._project_domain(f, 'account.move')
         if f['partner_id']:
             domain.append(('commercial_partner_id', '=', f['partner_id']))
         if unpaid_only:
@@ -384,11 +400,12 @@ class ApDashboard(models.AbstractModel):
     def _search_bills(self, domain):
         """One query for the needed columns instead of loading every stored
         field of account.move, then warm the line / product caches in batch."""
-        bills = self.env['account.move'].search_fetch(domain, [
+        Move = self.env['account.move']
+        bills = Move.search_fetch(domain, [
             'move_type', 'company_id', 'invoice_date', 'invoice_date_due',
             'amount_total_signed', 'amount_residual_signed', 'invoice_payment_term_id',
-            'partner_id', 'commercial_partner_id', 'project_id',
-        ])
+            'partner_id', 'commercial_partner_id',
+        ] + (['project_id'] if 'project_id' in Move._fields else []))
         lines = self.env['account.move.line'].search_fetch(
             [('move_id', 'in', bills.ids), ('display_type', '=', 'product')],
             ['move_id', 'balance', 'product_id', 'account_id'])
@@ -405,8 +422,7 @@ class ApDashboard(models.AbstractModel):
             ('payment_date', '>=', date_from),
             ('payment_date', '<=', date_to),
         ]
-        if f['project_id']:
-            domain.append(('project_id', '=', f['project_id']))
+        domain += self._project_domain(f, 'purchase.order')
         if f['partner_id']:
             domain.append(('partner_id.commercial_partner_id', '=', f['partner_id']))
         return domain
@@ -440,7 +456,7 @@ class ApDashboard(models.AbstractModel):
             'residual': residual,
             'paid': total - residual,
             'vendor': self._vendor_bucket(bill.commercial_partner_id or bill.partner_id),
-            'project': self._project_bucket(bill.project_id),
+            'project': self._project_bucket(self._project_of(bill)),
         }
 
     def _bill_line_shares(self, bill, vals, f, lines=None):
@@ -494,7 +510,7 @@ class ApDashboard(models.AbstractModel):
             'used': conv(approved - remaining),
             'remaining': conv(remaining),
             'vendor': self._vendor_bucket(po.partner_id),
-            'project': self._project_bucket(po.project_id),
+            'project': self._project_bucket(self._project_of(po)),
         }
 
     def _po_line_shares(self, po):
@@ -579,7 +595,7 @@ class ApDashboard(models.AbstractModel):
             po = req.ref_po_id
             if (f['project_id'] or f['partner_id']) and not po:
                 continue
-            if f['project_id'] and po.project_id.id != f['project_id']:
+            if f['project_id'] and self._project_of(po).id != f['project_id']:
                 continue
             if f['partner_id'] and po.partner_id.commercial_partner_id.id != f['partner_id']:
                 continue
@@ -591,7 +607,7 @@ class ApDashboard(models.AbstractModel):
             field = 'req_%s' % req.state
             buckets = {
                 'vendor': self._vendor_bucket(po.partner_id) if po else NO_VENDOR,
-                'project': self._project_bucket(po.project_id) if po else NO_PROJECT,
+                'project': self._project_bucket(self._project_of(po)) if po else NO_PROJECT,
             }
             add(buckets, **{field: amount})
             if po and po.id not in request_shares:
