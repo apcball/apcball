@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 from datetime import date, datetime
 import logging
 _logger = logging.getLogger(__name__)
@@ -36,8 +37,23 @@ class PickingBackDate(models.TransientModel):
                 'type': 'ir.actions.act_window'
             }
     
+    def _check_backdate_allowed(self):
+        """Future-only users cannot move a picking to a day before today."""
+        self.ensure_one()
+        if self.env.user.has_group(
+                'stock_picking_backdate_all.stock_picking_backdate_assign_group'):
+            return
+        if not self.date:
+            raise UserError(_("Please select a date."))
+        target_day = fields.Datetime.context_timestamp(self, self.date).date()
+        if target_day < fields.Date.context_today(self):
+            raise UserError(_(
+                "You can only backdate to today or a future date. "
+                "Backdating to the past requires the 'Backdate: Past & Future' group."))
+
     def change_to_backdate(self):
-            
+        self._check_backdate_allowed()
+
         for picking in self.picking_ids:
             
             moveObj = self.env['stock.move'].search([('picking_id','=',picking.id)])

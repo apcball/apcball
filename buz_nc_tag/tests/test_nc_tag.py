@@ -36,3 +36,10 @@ class TestNcTag(TransactionCase):
         body = html.decode()
         self.assertEqual(body.count('class="nc-tag"'), 4)
         self.assertEqual(body.count('class="nc-page"'), 2)  # 3 tags + 1 tag
+
+        self.assertEqual(picking._nc_tag_problem_text(), '')
+        picking.note = '<p>ชำรุด</p>'
+        self.assertEqual(picking._nc_tag_problem_text(), 'ชำรุด')
+        html, _ = self.env['ir.actions.report']._render_qweb_html(
+            'buz_nc_tag.report_nc_tag', picking.ids)
+        self.assertIn('ชำรุด', html.decode())

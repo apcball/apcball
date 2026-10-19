@@ -355,6 +355,78 @@ class StockMove(models.Model):
         
         return result
     
+    @api.model
+    def _allocate_split_values(self, origin_splits, remainder_qty, valued_qty, out_value,
+                               fallback_total, rounding):
+        """Value of each destination position layer of a split transfer.
+
+        When the cost taken from every origin is known, each layer carries that cost
+        (scaled if it does not add up to the out layer), so the transfer is value-neutral
+        (in == out). Otherwise ``fallback_total`` is spread by quantity.
+        Returns ([value per split], remainder_value).
+        """
+        has_remainder = not float_is_zero(remainder_qty, precision_rounding=rounding)
+        if out_value and all(value is not None for _o, _q, value in origin_splits):
+            values = [value for _o, _q, value in origin_splits]
+            split_total = sum(values)
+            if has_remainder:
+                return values, out_value - split_total
+            # Keep the cost ratio between origins, scaled so in == out exactly.
+            if split_total:
+                values = [value * out_value / split_total for value in values]
+            else:
+                values = [out_value * qty / valued_qty for _o, qty, _v in origin_splits]
+            values[-1] += out_value - sum(values)  # absorb float rounding
+            return values, 0.0
+        values = [fallback_total * qty / valued_qty for _o, qty, _v in origin_splits]
+        return values, fallback_total * remainder_qty / valued_qty if has_remainder else 0.0
+
+    @api.model
+    def _split_standard_position_layer(self, positive_layers, dest_wh, valued_qty, rounding,
+                                       origin_splits, remainder_qty, pos_vals, source_wh, move,
+                                       out_value):
+        """Split the single position layer Odoo created for a transfer by cost origin.
+
+        Returns True when split. Leaves the layer alone (False) when it is not the
+        untouched full-qty layer this transfer created, so the legacy link is used.
+        """
+        dest_layers = positive_layers.filtered(
+            lambda l: l.warehouse_id.id == dest_wh.id and not l.origin_valuation_layer_id
+        )
+        if len(dest_layers) != 1:
+            return False
+        base = dest_layers
+        if (
+            float_compare(base.quantity, valued_qty, precision_rounding=rounding) != 0
+            or float_compare(base.remaining_qty, base.quantity, precision_rounding=rounding) != 0
+        ):
+            return False
+        layer_model = self.env['stock.valuation.layer']
+        # Carry the cost actually consumed from each origin (fallback: divide the value
+        # this layer was booked with) so the transfer stays value-neutral.
+        values, remainder_value = self._allocate_split_values(
+            origin_splits, remainder_qty, valued_qty, out_value, base.value, rounding)
+        first_origin, first_qty, _first_value = origin_splits[0]
+        first_vals = pos_vals(first_qty, first_origin, value=values[0])
+        base.sudo().write({
+            'quantity': first_vals['quantity'],
+            'value': first_vals['value'],
+            'unit_cost': first_vals['unit_cost'],
+            'remaining_qty': first_vals['remaining_qty'],
+            'remaining_value': first_vals['remaining_value'],
+            'origin_valuation_layer_id': first_origin.id,
+            'origin_remaining_qty': 0.0,
+            'origin_remaining_value': 0.0,
+            'is_position_layer': True,
+            'source_warehouse_id': source_wh.id,
+            'transfer_move_id': move.id,
+        })
+        for (split_origin, split_qty, _v), split_value in zip(origin_splits[1:], values[1:]):
+            layer_model.sudo().create(pos_vals(split_qty, split_origin, value=split_value))
+        if not float_is_zero(remainder_qty, precision_rounding=rounding):
+            layer_model.sudo().create(pos_vals(remainder_qty, None, value=remainder_value))
+        return True
+
     def _ensure_inter_warehouse_valuation_layers(self):
         """
         Transfer ≠ Consumption: Create position layers for internal transfers.
@@ -483,8 +555,13 @@ class StockMove(models.Model):
                     if neg_layer.warehouse_id and neg_layer.warehouse_id.id != source_wh.id:
                         neg_layer.warehouse_id = source_wh.id
             
+            # Real cost origins consumed by this transfer (recorded by _run_fifo).
+            origin_splits = []
+            if not is_return_move and not origin_layer:
+                origin_splits = negative_layers._get_consumed_origin_splits()
+
             # ── Resolve origin cost layer from the consumed candidates ──
-            if not origin_layer:
+            if not origin_layer and not origin_splits:
                 # Find which layer was consumed at source — get its origin
                 if negative_layers:
                     if is_return_move:
@@ -510,7 +587,53 @@ class StockMove(models.Model):
                 for l in positive_layers
             )
             
-            if not has_positive_dest:
+            def _pos_vals(qty, origin, value=None):
+                """Position layer at dest for ``qty`` units valued at ``value`` (default:
+                the cost this method computed, spread by qty)."""
+                explicit_value = value is not None
+                if not explicit_value:
+                    value = total_cost * qty / valued_qty
+                vals = {
+                    'stock_move_id': move.id,
+                    'product_id': product.id,
+                    'warehouse_id': dest_wh.id,
+                    'quantity': qty,
+                    'unit_cost': (value / qty if qty else 0.0) if explicit_value else unit_cost,
+                    'value': value,
+                    'remaining_qty': qty,
+                    'remaining_value': value,
+                    'company_id': company.id,
+                    'description': f'{move_type} IN: {source_wh.name} → {dest_wh.name}',
+                    'source_warehouse_id': source_wh.id,
+                    'transfer_move_id': move.id,
+                    'is_position_layer': True,
+                }
+                if origin:
+                    vals['origin_valuation_layer_id'] = origin.id
+                return vals
+
+            rounding = product.uom_id.rounding
+            consumed_qty = sum(q for _o, q, _v in origin_splits)
+            remainder_qty = valued_qty - consumed_qty
+
+            out_value = abs(sum(negative_layers.mapped('value')))
+
+            if not has_positive_dest and origin_splits:
+                # One position layer per consumed origin, carrying the cost consumed.
+                values, remainder_value = move._allocate_split_values(
+                    origin_splits, remainder_qty, valued_qty, out_value, total_cost, rounding)
+                for (split_origin, split_qty, _v), split_value in zip(origin_splits, values):
+                    valuation_layer_model.sudo().create(
+                        _pos_vals(split_qty, split_origin, value=split_value))
+                if not float_is_zero(remainder_qty, precision_rounding=rounding):
+                    # Stock not backed by a FIFO layer at source (shortage fallback).
+                    valuation_layer_model.sudo().create(
+                        _pos_vals(remainder_qty, None, value=remainder_value))
+                _logger.info(
+                    f"✅ Created {len(origin_splits)} POSITION layer(s) at {dest_wh.name} "
+                    f"split by origin"
+                )
+            elif not has_positive_dest:
                 # Create position layer at dest linked to cost origin
                 pos_vals = {
                     'stock_move_id': move.id,
@@ -534,6 +657,14 @@ class StockMove(models.Model):
                 _logger.info(
                     f"✅ Created POSITION layer at {dest_wh.name} "
                     f"(origin: {origin_layer.id if origin_layer else 'N/A'})"
+                )
+            elif origin_splits and self._split_standard_position_layer(
+                positive_layers, dest_wh, valued_qty, rounding, origin_splits,
+                remainder_qty, _pos_vals, source_wh, move, out_value,
+            ):
+                _logger.info(
+                    f"✅ Split POSITION layer at {dest_wh.name} into "
+                    f"{len(origin_splits)} origin(s)"
                 )
             else:
                 # Ensure existing positive layer has correct warehouse and origin link

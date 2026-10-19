@@ -5,6 +5,8 @@ Stock Valuation Layer Model Extension
 This module extends stock.valuation.layer to include location_id for per-location FIFO tracking.
 """
 
+import json
+
 from odoo import models, fields, api
 from odoo.tools import float_compare, float_round
 import logging
@@ -105,6 +107,12 @@ class StockValuationLayer(models.Model):
         help='Technical flag: true for layers created to represent warehouse position only.',
     )
 
+    consumed_origin_splits = fields.Text(
+        string='Consumed Origin Splits',
+        help='Technical: JSON [[origin_layer_id, qty], ...] recorded by _run_fifo on a '
+             'transfer-out layer, i.e. which cost origins the transfer really consumed.',
+    )
+
     origin_remaining_qty = fields.Float(
         string='Origin Remaining Qty',
         digits='Product Unit of Measure',
@@ -190,6 +198,7 @@ class StockValuationLayer(models.Model):
         🔴 CRITICAL v17.0.1.2.4: Ensure warehouse_id is set BEFORE calling super().create()
         because Odoo's create() will call _run_fifo() which needs warehouse_id to be set.
         """
+
         import logging
         _create_logger = logging.getLogger(__name__)
         
@@ -889,6 +898,7 @@ class StockValuationLayer(models.Model):
         tmp_value = 0
         
         updates_to_write = []
+        consumed_by_origin = {}
         
         for candidate in candidates:
             qty_taken_on_candidate = min(qty_to_take_on_candidates, candidate.remaining_qty)
@@ -942,6 +952,12 @@ class StockValuationLayer(models.Model):
                     }
                 })
             
+            if is_internal_transfer and qty_taken_on_candidate > 0:
+                origin_key = (candidate.origin_valuation_layer_id or candidate).id
+                entry = consumed_by_origin.setdefault(origin_key, [0.0, 0.0])
+                entry[0] += qty_taken_on_candidate
+                entry[1] += value_taken_on_candidate
+
             tmp_value += value_taken_on_candidate
             qty_to_take_on_candidates -= qty_taken_on_candidate
             
@@ -965,3 +981,32 @@ class StockValuationLayer(models.Model):
             'remaining_qty': 0.0,
             'remaining_value': 0.0,
         })
+        if consumed_by_origin:
+            self.sudo().consumed_origin_splits = json.dumps(
+                [[oid, qty, value] for oid, (qty, value) in consumed_by_origin.items()]
+            )
+
+    def _get_consumed_origin_splits(self):
+        """[(origin_layer, qty, value)] consumed by these transfer-out layers, FIFO order.
+
+        ``value`` is the cost taken from that origin, or None when it was not recorded
+        (older layers / out layers that already carry their origin).
+        """
+        acc = {}  # origin id -> [qty, value or None]
+        for layer in self.sorted('id'):
+            if layer.consumed_origin_splits:
+                triples = [
+                    (item[0], item[1], item[2] if len(item) > 2 else None)
+                    for item in json.loads(layer.consumed_origin_splits)
+                ]
+            elif layer.origin_valuation_layer_id and layer.quantity < 0:
+                # per-source-layer out layers already carry their origin
+                triples = [(layer.origin_valuation_layer_id.id, -layer.quantity, -layer.value)]
+            else:
+                continue
+            for origin_id, qty, value in triples:
+                entry = acc.setdefault(origin_id, [0.0, 0.0])
+                entry[0] += qty
+                entry[1] = None if (entry[1] is None or value is None) else entry[1] + value
+        origins = self.env['stock.valuation.layer'].browse(list(acc))
+        return [(origin, acc[origin.id][0], acc[origin.id][1]) for origin in origins]

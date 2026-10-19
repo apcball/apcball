@@ -112,6 +112,7 @@ class StockCardController(http.Controller):
                 "date": workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss", "border": 1}),
                 "text": workbook.add_format({"border": 1}),
             }
+            self._add_group_formats(workbook, fmts)
 
             used_names = set()
 
