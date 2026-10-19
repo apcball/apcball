@@ -28,9 +28,27 @@
                             <style>
                                 @font-face {
                                     font-family: 'Sarabun';
-                                    src: url('/buz_custom_po/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                    src: url('/employee_purchase_requisition/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                    font-weight: normal;
+                                    font-style: normal;
+                                }
+                                @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/employee_purchase_requisition/static/fonts/Sarabun-Bold.ttf') format('truetype');
                                     font-weight: bold;
                                     font-style: normal;
+                                }
+                                @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/employee_purchase_requisition/static/fonts/Sarabun-Italic.ttf') format('truetype');
+                                    font-weight: normal;
+                                    font-style: italic;
+                                }
+                                @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/employee_purchase_requisition/static/fonts/Sarabun-BoldItalic.ttf') format('truetype');
+                                    font-weight: bold;
+                                    font-style: italic;
                                 }
                                 @page {
                                     margin-top: 0mm;
@@ -164,6 +182,18 @@
                     </div>
                 </div>
 
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 4px; font-size: 14px;">
+                    <div style="width: 33%; text-align: left;">
+                        <strong>ผู้ขอ:</strong>
+                        <t t-esc="o.employee_id.name or ''"/>
+                    </div>
+                    <div style="width: 33%; text-align: center;">
+                        <strong>แผนก:</strong>
+                        <t t-esc="o.dept_id.name or ''"/>
+                    </div>
+                    <div style="width: 33%;"></div>
+                </div>
+
                       <!-- Order Lines -->
                       <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #000;">
                         <tr style="background-color: #f0f0f0;">
@@ -199,8 +229,8 @@
                                 <t t-esc="'{:,.2f}'.format((line.quantity or 0.0) * (line.unit_price or 0.0))"/>
                             </td>
                             <td style="border: 1px solid #000; text-align: center;">
-                              <t t-if="line.need_date">
-                                  <t t-esc="line.need_date.strftime('%d/%m/%Y')"/>
+                              <t t-if="o.requisition_deadline">
+                                  <t t-esc="o.requisition_deadline.strftime('%d/%m/%Y')"/>
                               </t>
                             </td>
                             <td style="border: 1px solid #000; text-align: center;">
@@ -209,8 +239,8 @@
                               </t>
                             </td>
                              <td style="border: 1px solid #000; text-align: center;">
-                              <t t-if="line.delivery_location_id">
-                                  <t t-esc="line.delivery_location_id.display_name"/>
+                              <t t-if="line.picking_type_id">
+                                  <t t-esc="line.picking_type_id.display_name"/>
                               </t>
                             </td>
                             <td style="border: 1px solid #000;">
