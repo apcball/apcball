@@ -427,6 +427,14 @@ class ApDashboard(models.AbstractModel):
             domain.append(('partner_id.commercial_partner_id', '=', f['partner_id']))
         return domain
 
+    @staticmethod
+    def _request_currency(req):
+        """Currency of ``amount_requested``: the PO / bill currency (kept in the
+        document currency), company currency for PRs."""
+        doc = req.ref_po_id if req.document_type == 'po' else (
+            req.ref_bill_id if req.document_type == 'bill' else False)
+        return (doc and doc.currency_id) or req.company_id.currency_id
+
     def _request_domain(self, f):
         start = datetime.combine(f['date_from'], datetime.min.time())
         end = datetime.combine(f['date_to'] + timedelta(days=1), datetime.min.time())
@@ -600,7 +608,7 @@ class ApDashboard(models.AbstractModel):
             if f['partner_id'] and po.partner_id.commercial_partner_id.id != f['partner_id']:
                 continue
             amount = self._convert(
-                req.amount_requested, req.company_id.currency_id or currency, req.company_id,
+                req.amount_requested, self._request_currency(req), req.company_id,
                 fields.Date.to_date(req.create_date), currency)
             kpi_request[req.state]['amount'] += amount
             kpi_request[req.state]['count'] += 1

@@ -462,6 +462,30 @@ class TestApDashboard(TransactionCase):
         other = self.engine.get_dashboard_data(dict(f_now, partner_id=self.v2.id))
         self.assertAlmostEqual(other['kpi_request']['total'], 0.0, places=2)
 
+    def test_approval_request_po_currency_converted(self):
+        # amount_requested of a PO request is in the PO currency, not company currency
+        usd = self.env.ref('base.USD')
+        foreign = usd if usd != self.currency else self.env.ref('base.EUR')
+        rate = self.env['res.currency.rate'].create({
+            'currency_id': foreign.id, 'company_id': self.company.id,
+            'name': fields.Date.today(), 'rate': 0.5,  # 1 company currency = 0.5 foreign
+        })
+        self.assertTrue(rate)
+        today = fields.Date.today()
+        f_now = {'month': today.month, 'year': today.year, 'company_id': self.company.id}
+        before = self.engine.get_dashboard_data(f_now)
+        po = self._po(self.v1, D(3, 15), 100.0, project=self.p1, confirm=False)
+        po.currency_id = foreign
+        self.env['buz.monthly.budget.approval.request'].create({
+            'document_type': 'po', 'ref_po_id': po.id,
+            'amount_requested': 100.0, 'company_id': self.company.id,
+        })
+        after = self.engine.get_dashboard_data(f_now)
+        # 100 foreign units at 0.5 foreign per company unit = 200 company currency
+        self.assertAlmostEqual(
+            after['kpi_request']['pending']['amount'] - before['kpi_request']['pending']['amount'],
+            200.0, places=2)
+
     def test_payload_shape_and_serializable(self):
         payload = self._data()
         json.dumps(payload)
