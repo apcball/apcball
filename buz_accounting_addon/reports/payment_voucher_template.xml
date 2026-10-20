@@ -201,7 +201,13 @@
                                         หัก ณ.ที่จ่าย
                                     </td>
                                     <td>
-                                        ค่าบริการ <!-- Or try to fetch name from first tax: o.line_ids[:1].wht_tax_id.name -->
+                                        <t t-set="wht_tax_name" t-value="(o.line_ids.filtered('buz_wht_tax_id')[:1].buz_wht_tax_id.name or '').lower()"/>
+                                        <t t-if="'transportation' in wht_tax_name">ค่าขนส่ง</t>
+                                        <t t-elif="'advertising' in wht_tax_name">ค่าโฆษณา</t>
+                                        <t t-elif="'service' in wht_tax_name">ค่าบริการ</t>
+                                        <t t-elif="'rental' in wht_tax_name">ค่าเช่า</t>
+                                        <t t-elif="'promotion' in wht_tax_name">ค่าส่งเสริมการขาย</t>
+                                        <t t-else="">ค่าบริการ</t>
                                     </td>
                                     <td></td>
                                     <td class="text-center">
