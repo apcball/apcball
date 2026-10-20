@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_ap_payment_dashboard" model="ir.actions.client">
+        <field name="name">Budget &amp; Payment Control</field>
+        <field name="tag">biz_dashboard_ap_payment.dashboard</field>
+    </record>
+
+    <!-- Monthly Budget root menu -->
+    <menuitem id="menu_ap_payment_dashboard_budget"
+              name="Budget &amp; Payment Control"
+              parent="biz_monthly_analytic_budget.menu_monthly_budget_root"
+              action="action_ap_payment_dashboard"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user,account.group_account_invoice"
+              sequence="6"/>
+
+    <!-- Accounting > Reporting -->
+    <menuitem id="menu_ap_payment_dashboard_account"
+              name="Budget &amp; Payment Control"
+              parent="account.menu_finance_reports"
+              action="action_ap_payment_dashboard"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user,account.group_account_invoice"
+              sequence="5"/>
+</odoo>
