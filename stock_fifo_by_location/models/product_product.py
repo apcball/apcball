@@ -92,6 +92,10 @@ class ProductProduct(models.Model):
         layers can be split per origin and carry the cost actually consumed (see stock.move._ensure_inter_warehouse_valuation_layers).
         """
         self.ensure_one()
+        # Scope the FIFO queue to the warehouse the goods leave: without the key
+        # _get_fifo_candidates falls back to every warehouse.
+        if move and move.location_id.warehouse_id:
+            self = self.with_context(fifo_warehouse_id=move.location_id.warehouse_id.id)
         snapshot = {}
         if self.cost_method == 'fifo':
             snapshot = {
