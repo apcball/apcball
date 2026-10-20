@@ -27,6 +27,7 @@ OWL dashboard for accounts-payable control:
     'external_dependencies': {'python': ['xlsxwriter']},
     'data': [
         'views/ap_dashboard_views.xml',
+        'views/res_config_settings_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

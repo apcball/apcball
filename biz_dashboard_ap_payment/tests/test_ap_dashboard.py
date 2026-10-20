@@ -289,6 +289,61 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(self._delta_row(payload, 'vendor', key, 'month_paid'), 2000.0, places=2)
         self.assertAlmostEqual(self._delta_row(payload, 'vendor', key, 'month_residual'), 300.0, places=2)
 
+    def test_paid_actual_by_payment_date(self):
+        journal = self.env['account.journal'].search(
+            [('type', 'in', ('bank', 'cash')), ('company_id', '=', self.company.id)], limit=1)
+        if not journal:
+            self.skipTest('No bank/cash journal in the test company')
+        # due in February, paid in March: not in the March bill set, but cash out in March
+        bill = self._bill(self.v1, D(2, 5), 1500.0, term=self.term_now)
+        self.env['account.payment.register'].with_context(
+            active_model='account.move', active_ids=bill.ids).create({
+                'journal_id': journal.id, 'payment_date': D(3, 9),
+                'cheque_amount': 0.0,
+            }).action_create_payments()
+        payload = self._data()
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'paid_actual'), 1500.0, places=2)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'paid'), 0.0, places=2)
+
+    def test_other_expense_from_journal_entries(self):
+        Account = self.env['account.account']
+        salary = Account.create({
+            'code': 'APDSAL', 'name': 'APD Salary', 'account_type': 'expense',
+            'company_id': self.company.id})
+        offset = Account.create({
+            'code': 'APDOFF', 'name': 'APD Offset', 'account_type': 'asset_current',
+            'company_id': self.company.id})
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general'), ('company_id', '=', self.company.id)], limit=1)
+        if not journal:
+            self.skipTest('No general journal in the test company')
+
+        def entry(day, account, amount):
+            move = self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id, 'date': day,
+                'line_ids': [
+                    (0, 0, {'account_id': account.id, 'debit': amount, 'credit': 0.0}),
+                    (0, 0, {'account_id': offset.id, 'debit': 0.0, 'credit': amount}),
+                ]})
+            move.action_post()
+
+        entry(D(3, 25), salary, 4000.0)
+        entry(D(4, 2), salary, 999.0)           # next month: not counted
+        # accounts not configured yet: nothing counted
+        payload = self._data()
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'total'), 0.0, places=2)
+        self.company.apd_other_expense_account_ids = salary
+        payload = self._data()
+        for key in ('total', 'cash', 'paid', 'other'):
+            self.assertAlmostEqual(self._delta(payload, 'kpi_payment', key), 4000.0, places=2)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'residual'), 0.0, places=2)
+        other = payload['kpi_other']
+        self.assertAlmostEqual(other['total'], 4000.0, places=2)
+        self.assertEqual([i['name'] for i in other['items']], ['APDSAL APD Salary'])
+        self.assertAlmostEqual(other['items'][0]['pct'], 100.0, places=1)
+        self.assertAlmostEqual(
+            self._delta_row(payload, 'category', 'acc:%d' % salary.id, 'month_total'), 4000.0, places=2)
+
     def test_vendor_rows_and_donut(self):
         self._bill(self.v1, D(3, 3), 1500.0, term=self.term_now)
         self._bill(self.v2, D(3, 4), 900.0, term=self.term_now)

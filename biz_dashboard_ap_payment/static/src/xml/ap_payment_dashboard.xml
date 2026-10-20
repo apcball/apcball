@@ -100,6 +100,7 @@
                             </div>
                         </div>
                         <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_payment.total)"/>
+                        <div class="o_apd_tile_note" t-if="data.kpi_payment.other">รวมรายจ่ายนอกบิล (สมุดรายวัน) <t t-esc="fmtBaht(data.kpi_payment.other)"/></div>
                         <div class="o_apd_tiles">
                             <div class="o_apd_tile o_apd_tile--green">
                                 <div class="o_apd_tile_label">เงินสด (ชำระทันที)</div>
@@ -115,6 +116,7 @@
                                 <div class="o_apd_tile_label">ชำระแล้ว</div>
                                 <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.paid)"/>
                                 <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.paid_pct)"/>
+                                <div class="o_apd_tile_note">จ่ายจริงในเดือน <t t-esc="fmtBaht(data.kpi_payment.paid_actual)"/></div>
                             </div>
                             <div class="o_apd_tile o_apd_tile--orange">
                                 <div class="o_apd_tile_label">ค้างชำระ (ยังไม่ชำระ)</div>
@@ -192,6 +194,26 @@
                         <div class="o_apd_note">
                             บิลค้างชำระ <t t-esc="fmtNum(data.kpi_forecast.from_bills)"/> · PO ยังไม่ตั้งบิล <t t-esc="fmtNum(data.kpi_forecast.from_po)"/>
                         </div>
+                    </div>
+                    <!-- 5 -->
+                    <div class="o_apd_card o_apd_card--blue" t-if="data.kpi_other.items.length">
+                        <div class="o_apd_card_head">
+                            <span class="o_apd_card_icon"><i class="fa fa-book"/></span>
+                            <div>
+                                <div class="o_apd_card_title">5. รายจ่ายนอกบิล (สมุดรายวัน)</div>
+                                <div class="o_apd_card_sub">เช่น เงินเดือน ดอกเบี้ย · นับเป็นเงินสด/ชำระแล้ว</div>
+                            </div>
+                        </div>
+                        <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_other.total)"/>
+                        <div class="o_apd_rows o_apd_rows--box">
+                            <t t-foreach="data.kpi_other.items" t-as="item" t-key="item.name">
+                                <div class="o_apd_row">
+                                    <span t-esc="item.name"/>
+                                    <b><t t-esc="fmtNum(item.amount)"/> <small class="text-muted">(<t t-esc="fmtPct(item.pct)"/>)</small></b>
+                                </div>
+                            </t>
+                        </div>
+                        <div class="o_apd_note">รวมอยู่ในยอดจ่ายประจำเดือนของ card 1 แล้ว · <t t-esc="data.kpi_other.count"/> รายการ</div>
                     </div>
                 </div>
 

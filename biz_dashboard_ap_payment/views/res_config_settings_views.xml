@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_apd" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.apd</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Payment Dashboard" name="biz_dashboard_ap_payment"
+                     groups="account.group_account_manager">
+                    <block title="ยอดจ่ายประจำเดือน">
+                        <setting string="บัญชีรายจ่ายนอกบิล"
+                                 help="รายการสมุดรายวัน (ไม่ใช่บิลเจ้าหนี้) ที่ลงบัญชีเหล่านี้ในเดือนนั้นจะถูกนับรวมในยอดจ่ายประจำเดือน เช่น เงินเดือน ดอกเบี้ย — นับเป็นเงินสดและชำระแล้ว">
+                            <field name="apd_other_expense_account_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
