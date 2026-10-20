@@ -6,6 +6,7 @@ import xlsxwriter
 
 from odoo import _, fields, models
 from odoo.exceptions import AccessError, UserError
+from odoo.tools import html2plaintext
 
 
 class PurchaseOrderMonthlyXlsx(models.AbstractModel):
@@ -14,8 +15,9 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
 
     HEADERS = [
         'ลำดับ', 'เลขที่เอกสาร', 'วันที่เปิดPO', 'รหัสผู้จำหน่าย',
-        'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'ชื่อ', 'ราคา',
-        'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง', 'CREDIT',
+        'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'หมายเหตุ',
+        'ชื่อ', 'ราคา', 'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง',
+        'CREDIT',
     ]
 
     def _local_date_to_utc(self, value):
@@ -130,7 +132,8 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
         price_format = workbook.add_format({'num_format': '#,##0.00'})
         integer_format = workbook.add_format({'num_format': '#,##0'})
         decimal_format = workbook.add_format({'num_format': '#,##0.########'})
-        widths = [8, 18, 14, 18, 36, 20, 14, 14, 58, 14, 12, 16, 12, 14, 28, 12]
+        notes_format = workbook.add_format({'text_wrap': True, 'valign': 'top'})
+        widths = [8, 18, 14, 18, 36, 20, 14, 14, 40, 58, 14, 12, 16, 12, 14, 28, 12]
         for col, width in enumerate(widths):
             sheet.set_column(col, col, width)
 
@@ -167,6 +170,7 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                     pr_name,
                     line.date_planned,
                     requisition.approval_date if requisition else False,
+                    html2plaintext(order.notes or ''),
                     line.name or '',
                     line.price_unit,
                     line.product_qty,
@@ -185,14 +189,15 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                 sheet.write(row, 5, values[5])
                 self._write_date(sheet, row, 6, values[6], date_format)
                 self._write_date(sheet, row, 7, values[7], date_format)
-                sheet.write(row, 8, values[8])
-                sheet.write_number(row, 9, values[9] or 0.0, price_format)
-                sheet.write_number(row, 10, values[10] or 0.0, integer_format if float(values[10] or 0.0).is_integer() else decimal_format)
-                sheet.write_number(row, 11, values[11] or 0.0, price_format)
-                sheet.write_number(row, 12, values[12] or 0.0, integer_format if float(values[12] or 0.0).is_integer() else decimal_format)
-                sheet.write_blank(row, 13, None)
-                sheet.write(row, 14, values[14])
-                sheet.write_blank(row, 15, None)
+                sheet.write(row, 8, values[8], notes_format)
+                sheet.write(row, 9, values[9])
+                sheet.write_number(row, 10, values[10] or 0.0, price_format)
+                sheet.write_number(row, 11, values[11] or 0.0, integer_format if float(values[11] or 0.0).is_integer() else decimal_format)
+                sheet.write_number(row, 12, values[12] or 0.0, price_format)
+                sheet.write_number(row, 13, values[13] or 0.0, integer_format if float(values[13] or 0.0).is_integer() else decimal_format)
+                sheet.write_blank(row, 14, None)
+                sheet.write(row, 15, values[15])
+                sheet.write_blank(row, 16, None)
                 row += 1
 
         sheet.autofilter(3, 0, max(3, row - 1), len(self.HEADERS) - 1)

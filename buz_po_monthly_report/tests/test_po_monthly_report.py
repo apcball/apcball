@@ -13,8 +13,9 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
         report = self.env['buz.po.monthly.report.xlsx.generator']
         self.assertEqual(report.HEADERS, [
             'ลำดับ', 'เลขที่เอกสาร', 'วันที่เปิดPO', 'รหัสผู้จำหน่าย',
-            'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'ชื่อ', 'ราคา',
-            'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง', 'CREDIT',
+            'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'หมายเหตุ',
+            'ชื่อ', 'ราคา', 'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง',
+            'CREDIT',
         ])
 
     def test_selected_pr_states_returns_only_checked_states(self):
