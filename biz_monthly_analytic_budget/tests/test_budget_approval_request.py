@@ -156,3 +156,57 @@ class TestBudgetApprovalRequestAmounts(TransactionCase, BudgetTestMixin):
         request.invalidate_recordset(['name'])
         self.assertNotEqual(request.name, 'New')
         self.assertTrue(request.name.startswith('AR/'))
+
+
+class TestApprovalRequestMultiAccountDistribution(TransactionCase, BudgetTestMixin):
+    """A line spread over several analytic accounts (e.g. BU + Section) must not
+    multiply the document amount by the number of accounts."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._setup_budget_test_data()
+
+    def _distribution(self):
+        # analytic_account_2 has no budget line in the plan
+        return {'%d,%d' % (self.analytic_account.id, self.analytic_account_2.id): 100}
+
+    def _submit(self, doc):
+        ctx = doc.action_request_monthly_budget_approval()['context']
+        self.assertAlmostEqual(ctx['default_amount_analytic'], 1000.0, places=2)
+        wizard = self.env['monthly.budget.request.reason.wizard'].with_context(**ctx).create({
+            'reason': 'multi-account distribution',
+        })
+        wizard.action_submit_request()
+
+    def test_pr_analytic_amount_counts_only_budgeted_accounts(self):
+        target = fields.Date.today() + timedelta(days=15)
+        self._create_confirmed_plan(target, budget_amount=100)
+        pr = self._create_pr(lines=[(0, 0, {
+            'product_id': self.product.id,
+            'quantity': 10,
+            'unit_price': 100,
+            'analytic_distribution': self._distribution(),
+        })], target=target)
+        self._submit(pr)
+        request = self.env['buz.monthly.budget.approval.request'].search([
+            ('document_type', '=', 'pr'), ('ref_pr_id', '=', pr.id)], limit=1)
+        self.assertTrue(request)
+        self.assertAlmostEqual(request.amount_requested, 1000.0, places=2)
+        self.assertAlmostEqual(request.amount_analytic, 1000.0, places=2)
+        self.assertAlmostEqual(request.amount_overage, 900.0, places=2)
+
+    def test_po_analytic_amount_counts_only_budgeted_accounts(self):
+        target = fields.Date.today() + timedelta(days=15)
+        self._create_confirmed_plan(target, budget_amount=100)
+        po = self._create_po(lines=[(0, 0, {
+            'product_id': self.product.id,
+            'product_qty': 10,
+            'price_unit': 100,
+            'analytic_distribution': self._distribution(),
+        })], target=target)
+        self._submit(po)
+        request = self.env['buz.monthly.budget.approval.request'].search([
+            ('document_type', '=', 'po'), ('ref_po_id', '=', po.id)], limit=1)
+        self.assertTrue(request)
+        self.assertAlmostEqual(request.amount_analytic, 1000.0, places=2)

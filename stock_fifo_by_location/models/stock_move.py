@@ -986,9 +986,10 @@ class StockMove(models.Model):
                     ('product_id', '=', move.product_id.id),
                     ('warehouse_id', '=', warehouse.id),
                     ('quantity', '>', 0),
+                    ('remaining_qty', '>', 0),
                     ('company_id', '=', move.company_id.id),
                 ], order='create_date, id')
-                
+
                 # For each candidate, reduce its origin's origin_remaining_qty
                 # proportional to how much was consumed
                 # Since _run_fifo already reduced remaining_qty, we can infer
@@ -1322,33 +1323,3 @@ class StockMove(models.Model):
             'landed_cost_value': lc_amount,
             'quantity': dest_layer.quantity,
         })
-
-    def _create_account_move_line(self, debit_line_vals, credit_line_vals, writeoff_line_vals=None):
-        """
-        Override to ensure valuation layers get warehouse_id during accounting posting.
-        
-        For inter-warehouse transfers, we may need to ensure layers are created if not already.
-        """
-        # Call parent to create accounting entries
-        result = super()._create_account_move_line(
-            debit_line_vals, credit_line_vals, writeoff_line_vals
-        )
-        
-        # For inter-warehouse transfers, ensure warehouse_id is set on created layers
-        for move in self:
-            source_wh = move.location_id.warehouse_id if move.location_id else None
-            dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
-            
-            if source_wh and dest_wh and source_wh.id != dest_wh.id:
-                # This is an inter-warehouse transfer
-                ctx = move._get_valuation_layers_context()
-                warehouse_id = ctx.get('fifo_warehouse_id') if ctx else None
-                
-                if warehouse_id:
-                    layers = self.env['stock.valuation.layer'].search([
-                        ('stock_move_id', '=', move.id),
-                    ])
-                    if layers:
-                        layers.write({'warehouse_id': warehouse_id})
-        
-        return result

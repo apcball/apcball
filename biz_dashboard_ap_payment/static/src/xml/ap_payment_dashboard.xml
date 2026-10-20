@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="biz_dashboard_ap_payment.ApPaymentDashboard" owl="1">
+        <div class="o_ap_dashboard p-3 h-100 overflow-auto" t-on-click="closeExport">
+            <!-- Header -->
+            <div class="o_apd_header d-flex flex-wrap align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center">
+                    <span class="o_apd_title_icon"><i class="fa fa-bar-chart"/></span>
+                    <h2 class="o_apd_title mb-0 ms-3">Dashboard ควบคุมงบประมาณและยอดจ่าย (Budget &amp; Payment Control)</h2>
+                </div>
+                <div class="d-flex align-items-center o_apd_header_right">
+                    <span class="text-muted me-2" t-if="data">ข้อมูล ณ วันที่ <t t-esc="thaiDate(data.as_of)"/> <t t-esc="updatedTime(data.updated_at)"/> น.</span>
+                    <button type="button" class="btn btn-outline-secondary bg-white me-2" t-on-click="onRefresh"
+                            t-att-disabled="state.loading" title="โหลดข้อมูลล่าสุด (ไม่ใช้ cache)">
+                        <i t-attf-class="fa fa-refresh #{state.loading ? 'fa-spin' : ''}"/>
+                    </button>
+                    <div class="o_apd_export position-relative" t-on-click.stop="noop">
+                        <button type="button" class="btn btn-outline-secondary bg-white" t-on-click="toggleExport"
+                                t-att-disabled="state.exporting or !data">
+                            <i t-attf-class="fa #{state.exporting ? 'fa-spinner fa-spin' : 'fa-file-excel-o'} text-success"/>
+                            Export <i class="fa fa-caret-down ms-1"/>
+                        </button>
+                        <div class="o_apd_export_menu shadow" t-if="state.exportOpen">
+                            <a href="#" t-on-click.prevent="() => this.exportExcel(state.tab)">
+                                <i class="fa fa-table me-2"/>Excel – ตารางปัจจุบัน (<t t-esc="tabMeta.title"/>)
+                            </a>
+                            <a href="#" t-on-click.prevent="() => this.exportExcel('all')">
+                                <i class="fa fa-files-o me-2"/>Excel – ทุกชีต
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="o_apd_filters d-flex flex-wrap align-items-center mb-3">
+                <div class="o_apd_filter">
+                    <label>เดือน</label>
+                    <select class="form-select" t-on-change="(ev) => this.onDraftChange('month', ev)">
+                        <t t-foreach="months" t-as="m" t-key="m.id">
+                            <option t-att-value="m.id" t-esc="m.name" t-att-selected="isSelected('month', m.id)"/>
+                        </t>
+                    </select>
+                </div>
+                <div class="o_apd_filter o_apd_filter_sm">
+                    <label>ปี</label>
+                    <select class="form-select" t-on-change="(ev) => this.onDraftChange('year', ev)">
+                        <t t-foreach="years" t-as="y" t-key="y">
+                            <option t-att-value="y" t-esc="y" t-att-selected="isSelected('year', y)"/>
+                        </t>
+                    </select>
+                </div>
+                <div class="o_apd_filter o_apd_filter_lg">
+                    <label>บริษัท</label>
+                    <select class="form-select" t-on-change="(ev) => this.onDraftChange('company_id', ev)">
+                        <option value="all" t-att-selected="isSelected('company_id', 'all')">ทั้งหมด</option>
+                        <t t-foreach="options.companies" t-as="c" t-key="c.id">
+                            <option t-att-value="c.id" t-esc="c.name" t-att-selected="isSelected('company_id', c.id)"/>
+                        </t>
+                    </select>
+                </div>
+                <div class="o_apd_filter o_apd_filter_lg">
+                    <label>โครงการ</label>
+                    <select class="form-select" t-on-change="(ev) => this.onDraftChange('project_id', ev)">
+                        <option value="all" t-att-selected="isSelected('project_id', 'all')">ทั้งหมด</option>
+                        <t t-foreach="options.projects" t-as="p" t-key="p.id">
+                            <option t-att-value="p.id" t-esc="p.name" t-att-selected="isSelected('project_id', p.id)"/>
+                        </t>
+                    </select>
+                </div>
+                <div class="o_apd_filter o_apd_filter_lg">
+                    <label>ร้านค้า / ผู้ขาย</label>
+                    <select class="form-select" t-on-change="(ev) => this.onDraftChange('partner_id', ev)">
+                        <option value="all" t-att-selected="isSelected('partner_id', 'all')">ทั้งหมด</option>
+                        <t t-foreach="options.vendors" t-as="v" t-key="v.id">
+                            <option t-att-value="v.id" t-esc="v.name" t-att-selected="isSelected('partner_id', v.id)"/>
+                        </t>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-primary o_apd_apply" t-on-click="onApply" t-att-disabled="state.loading">
+                    <i t-attf-class="fa #{state.loading ? 'fa-spinner fa-spin' : 'fa-filter'} me-1"/> กรองข้อมูล
+                </button>
+            </div>
+
+            <div t-if="!data" class="text-center text-muted py-5">
+                <i class="fa fa-spinner fa-spin fa-2x" t-if="state.loading"/>
+                <div t-else="" t-esc="state.error || 'ไม่มีข้อมูล'"/>
+            </div>
+
+            <t t-if="data">
+                <!-- KPI cards -->
+                <div class="o_apd_kpis mb-3">
+                    <!-- 1 -->
+                    <div class="o_apd_card o_apd_card--blue">
+                        <div class="o_apd_card_head">
+                            <span class="o_apd_card_icon"><i class="fa fa-money"/></span>
+                            <div>
+                                <div class="o_apd_card_title">1. ยอดจ่ายประจำเดือน (<t t-esc="data.filters.month_label"/>)</div>
+                                <div class="o_apd_card_sub">ยอดเงินที่ต้องชำระจริงในเดือนปัจจุบัน</div>
+                            </div>
+                        </div>
+                        <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_payment.total)"/>
+                        <div class="o_apd_tiles">
+                            <div class="o_apd_tile o_apd_tile--green">
+                                <div class="o_apd_tile_label">เงินสด (ชำระทันที)</div>
+                                <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.cash)"/>
+                                <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.cash_pct)"/>
+                            </div>
+                            <div class="o_apd_tile o_apd_tile--blue">
+                                <div class="o_apd_tile_label">เครดิต (ครบกำหนดเดือนนี้)</div>
+                                <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.credit)"/>
+                                <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.credit_pct)"/>
+                            </div>
+                            <div class="o_apd_tile o_apd_tile--purple">
+                                <div class="o_apd_tile_label">ชำระแล้ว</div>
+                                <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.paid)"/>
+                                <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.paid_pct)"/>
+                            </div>
+                            <div class="o_apd_tile o_apd_tile--orange">
+                                <div class="o_apd_tile_label">ค้างชำระ (ยังไม่ชำระ)</div>
+                                <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.residual)"/>
+                                <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.residual_pct)"/>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 2 -->
+                    <div class="o_apd_card o_apd_card--green">
+                        <div class="o_apd_card_head">
+                            <span class="o_apd_card_icon"><i class="fa fa-bar-chart"/></span>
+                            <div>
+                                <div class="o_apd_card_title">2. ยอดการใช้งบประมาณ</div>
+                                <div class="o_apd_card_sub">สรุปยอดงบประมาณที่ใช้ไปแล้ว</div>
+                            </div>
+                        </div>
+                        <div class="o_apd_card_value" t-esc="fmtPct(data.kpi_budget.pct)"/>
+                        <div class="o_apd_bar"><div class="o_apd_bar_fill" t-attf-style="width: #{barPct(data.kpi_budget.pct)}%"/></div>
+                        <div class="o_apd_rows">
+                            <div class="o_apd_row"><span>งบประมาณที่ได้รับอนุมัติ</span><b t-esc="fmtNum(data.kpi_budget.approved)"/></div>
+                            <div class="o_apd_row"><span>งบผูกพันจาก PO</span><b t-esc="fmtNum(data.kpi_budget.reserved)"/></div>
+                            <div class="o_apd_row"><span>งบใช้จริง (รับสินค้า/บริการแล้ว)</span><b t-esc="fmtNum(data.kpi_budget.used)"/></div>
+                            <div class="o_apd_row o_apd_row--hl"><span>งบคงเหลือ</span><b t-esc="fmtNum(data.kpi_budget.remaining)"/></div>
+                        </div>
+                        <div class="o_apd_note" t-esc="data.kpi_budget.scope_note"/>
+                    </div>
+                    <!-- 3 -->
+                    <div class="o_apd_card o_apd_card--orange">
+                        <div class="o_apd_card_head">
+                            <span class="o_apd_card_icon"><i class="fa fa-file-text-o"/></span>
+                            <div>
+                                <div class="o_apd_card_title">3. ยอดขออนุมัติงบประมาณเพิ่มเติม</div>
+                                <div class="o_apd_card_sub">สรุปยอดงบประมาณที่มีการขอเพิ่มเติมในเดือนปัจจุบัน</div>
+                            </div>
+                        </div>
+                        <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_request.total)"/>
+                        <div class="o_apd_rows o_apd_rows--box">
+                            <div class="o_apd_row">
+                                <span><i class="o_apd_dot o_apd_dot--orange"/>รออนุมัติ <small class="text-muted">(<t t-esc="data.kpi_request.pending.count"/>)</small></span>
+                                <b t-esc="fmtNum(data.kpi_request.pending.amount)"/>
+                            </div>
+                            <div class="o_apd_row">
+                                <span><i class="o_apd_dot o_apd_dot--green"/>อนุมัติแล้ว <small class="text-muted">(<t t-esc="data.kpi_request.approved.count"/>)</small></span>
+                                <b t-esc="fmtNum(data.kpi_request.approved.amount)"/>
+                            </div>
+                            <div class="o_apd_row">
+                                <span><i class="o_apd_dot o_apd_dot--red"/>ไม่อนุมัติ <small class="text-muted">(<t t-esc="data.kpi_request.rejected.count"/>)</small></span>
+                                <b t-esc="fmtNum(data.kpi_request.rejected.amount)"/>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 4 -->
+                    <div class="o_apd_card o_apd_card--purple">
+                        <div class="o_apd_card_head">
+                            <span class="o_apd_card_icon"><i class="fa fa-calendar"/></span>
+                            <div>
+                                <div class="o_apd_card_title">4. ประมาณการยอดจ่ายเดือนถัดไป (<t t-esc="data.filters.next_month_label"/>)</div>
+                                <div class="o_apd_card_sub">ยอดเงินที่คาดว่าจะต้องชำระในเดือนถัดไป</div>
+                            </div>
+                        </div>
+                        <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_forecast.total)"/>
+                        <div class="o_apd_tiles">
+                            <div class="o_apd_tile o_apd_tile--green">
+                                <div class="o_apd_tile_label">เงินสด (ชำระทันที)</div>
+                                <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_forecast.cash)"/>
+                                <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_forecast.cash_pct)"/>
+                            </div>
+                            <div class="o_apd_tile o_apd_tile--blue">
+                                <div class="o_apd_tile_label">เครดิต (ครบกำหนดเดือนหน้า)</div>
+                                <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_forecast.credit)"/>
+                                <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_forecast.credit_pct)"/>
+                            </div>
+                        </div>
+                        <div class="o_apd_note">
+                            บิลค้างชำระ <t t-esc="fmtNum(data.kpi_forecast.from_bills)"/> · PO ยังไม่ตั้งบิล <t t-esc="fmtNum(data.kpi_forecast.from_po)"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="o_apd_charts mb-3">
+                    <div class="o_apd_panel">
+                        <div class="o_apd_panel_title">ยอดจ่ายรายสัปดาห์ (<t t-esc="data.filters.month_label"/>) แยกเงินสด / เครดิต</div>
+                        <div class="o_apd_chart"><canvas t-ref="weeklyChart"/></div>
+                    </div>
+                    <div class="o_apd_panel">
+                        <div class="o_apd_panel_title">สัดส่วนยอดจ่ายประจำเดือนตามร้านค้า</div>
+                        <div class="o_apd_donut_wrap">
+                            <div class="o_apd_chart o_apd_chart--donut"><canvas t-ref="donutChart"/></div>
+                            <div class="o_apd_legend">
+                                <t t-foreach="data.vendor_share.items" t-as="item" t-key="item_index">
+                                    <div class="o_apd_legend_row">
+                                        <span class="o_apd_legend_dot" t-attf-style="background: #{donutColor(item_index)}"/>
+                                        <span class="o_apd_legend_name" t-esc="item.name"/>
+                                        <span class="o_apd_legend_amt" t-esc="fmtNum(item.amount)"/>
+                                        <span class="o_apd_legend_pct" t-esc="fmtPct(item.pct)"/>
+                                    </div>
+                                </t>
+                                <div t-if="!data.vendor_share.items.length" class="text-muted small">ไม่มีข้อมูล</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="o_apd_panel">
+                        <div class="o_apd_panel_title">ประมาณการยอดจ่ายเดือนถัดไป (<t t-esc="data.filters.next_month_label"/>) แยกเงินสด / เครดิต</div>
+                        <div class="o_apd_chart"><canvas t-ref="forecastChart"/></div>
+                    </div>
+                </div>
+
+                <!-- Detail table -->
+                <div class="o_apd_panel">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
+                        <div class="o_apd_panel_title mb-0">
+                            <i class="fa fa-table me-2 text-primary"/>รายละเอียดยอดจ่าย แยกตาม<t t-esc="tabMeta.title.replace('สรุปตาม', '')"/> (เดือน<t t-esc="data.filters.month_label"/>)
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center o_apd_tabs">
+                            <t t-foreach="data.tabs" t-as="tab" t-key="tab.id">
+                                <button type="button" t-attf-class="btn btn-sm #{state.tab === tab.id ? 'active' : ''}"
+                                        t-on-click="() => this.setTab(tab.id)" t-esc="tab.title"/>
+                            </t>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" t-on-click="() => this.exportExcel(state.tab)"
+                                    t-att-disabled="state.exporting">
+                                <i class="fa fa-download me-1"/>ดาวน์โหลดรายละเอียด
+                            </button>
+                        </div>
+                    </div>
+                    <div class="o_apd_table_wrap">
+                        <table class="table table-sm table-hover o_apd_table mb-0">
+                            <thead>
+                                <tr class="o_apd_th_group">
+                                    <th rowspan="2" class="o_apd_th_seq">ลำดับ</th>
+                                    <th rowspan="2" class="o_apd_th_name" t-esc="tabMeta.column"/>
+                                    <th colspan="5" class="o_apd_th--pay">ยอดจ่ายประจำเดือน (<t t-esc="data.filters.month_label"/>)</th>
+                                    <th colspan="4" class="o_apd_th--budget">การใช้งบประมาณ</th>
+                                    <th colspan="3" class="o_apd_th--req">ขออนุมัติเพิ่มเติม (เดือนนี้)</th>
+                                    <th colspan="3" class="o_apd_th--next">ประมาณการยอดจ่ายเดือนถัดไป (<t t-esc="data.filters.next_month_label"/>)</th>
+                                </tr>
+                                <tr class="o_apd_th_cols">
+                                    <th class="o_apd_th--pay">รวม (บาท)</th>
+                                    <th class="o_apd_th--pay text-success">เงินสด</th>
+                                    <th class="o_apd_th--pay text-primary">เครดิต</th>
+                                    <th class="o_apd_th--pay">ชำระแล้ว</th>
+                                    <th class="o_apd_th--pay text-danger">ค้างชำระ</th>
+                                    <th class="o_apd_th--budget">งบอนุมัติ</th>
+                                    <th class="o_apd_th--budget">ใช้แล้ว</th>
+                                    <th class="o_apd_th--budget">% ใช้แล้ว</th>
+                                    <th class="o_apd_th--budget">คงเหลือ</th>
+                                    <th class="o_apd_th--req text-warning">รออนุมัติ</th>
+                                    <th class="o_apd_th--req text-success">อนุมัติแล้ว</th>
+                                    <th class="o_apd_th--req text-danger">ไม่อนุมัติ</th>
+                                    <th class="o_apd_th--next">รวม (บาท)</th>
+                                    <th class="o_apd_th--next text-success">เงินสด</th>
+                                    <th class="o_apd_th--next text-primary">เครดิต</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="table.rows" t-as="row" t-key="row.key">
+                                    <tr>
+                                        <td class="text-center" t-esc="row.seq"/>
+                                        <td class="o_apd_td_name" t-esc="row.name"/>
+                                        <td class="o_apd_num fw-bold" t-esc="fmtNum(row.month_total)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.month_cash)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.month_credit)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.month_paid)"/>
+                                        <td class="o_apd_num text-danger" t-esc="fmtNum(row.month_residual)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.budget_approved)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.budget_used)"/>
+                                        <td class="o_apd_num o_apd_pct_cell">
+                                            <span t-attf-class="o_apd_minibar #{row.budget_pct > 100 ? 'o_apd_minibar--over' : ''}">
+                                                <span t-attf-style="width: #{barPct(row.budget_pct)}%"/>
+                                            </span>
+                                            <span t-esc="fmtPct(row.budget_pct)"/>
+                                        </td>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.budget_remaining)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.req_pending)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.req_approved)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.req_rejected)"/>
+                                        <td class="o_apd_num fw-bold" t-esc="fmtNum(row.next_total)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.next_cash)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.next_credit)"/>
+                                    </tr>
+                                </t>
+                                <tr t-if="!table.rows.length">
+                                    <td colspan="17" class="text-center text-muted py-4">ไม่มีข้อมูลในช่วงที่เลือก</td>
+                                </tr>
+                            </tbody>
+                            <tfoot t-if="table.footer">
+                                <tr>
+                                    <td/>
+                                    <td t-esc="table.footer.name"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.month_total)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.month_cash)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.month_credit)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.month_paid)"/>
+                                    <td class="o_apd_num text-danger" t-esc="fmtNum(table.footer.month_residual)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.budget_approved)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.budget_used)"/>
+                                    <td class="o_apd_num o_apd_pct_cell">
+                                        <span t-attf-class="o_apd_minibar #{table.footer.budget_pct > 100 ? 'o_apd_minibar--over' : ''}">
+                                            <span t-attf-style="width: #{barPct(table.footer.budget_pct)}%"/>
+                                        </span>
+                                        <span t-esc="fmtPct(table.footer.budget_pct)"/>
+                                    </td>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.budget_remaining)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.req_pending)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.req_approved)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.req_rejected)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.next_total)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.next_cash)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.next_credit)"/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

@@ -310,8 +310,9 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
 
         # Document Amount = actual PR total (sum of all line subtotals)
         pr_amount = sum(self.requisition_order_ids.mapped('price_subtotal'))
-        # Analytic Amount = sum of allocated amounts across budget plans
-        analytic_amount = sum(analytic_totals.values())
+        # Analytic Amount = allocated amounts of the accounts covered by a budget plan
+        # (a line may carry other analytic accounts, e.g. BU/project, that have no budget line)
+        analytic_amount = sum(sum(totals.values()) for _plan, totals in grouped_totals)
         
         limit_amt = 0.0
         used = 0.0

@@ -673,13 +673,17 @@ class StockValuationLayer(models.Model):
                 # falsely blocks issuing the last unit in a warehouse.
                 # `id != layer.id` (not `id <`) so sibling negative layers from a
                 # multi-line POS order / multi-move picking are still counted.
-                domain = [
-                    ('product_id', '=', layer.product_id.id),
-                    ('warehouse_id', '=', layer.warehouse_id.id),
-                    ('id', '!=', layer.id),
-                ]
-                other_layers = self.search(domain)
-                net_warehouse_balance = sum(other_layers.mapped('quantity'))
+                # One SUM in SQL instead of loading the whole ledger into the ORM.
+                self.flush_model(['product_id', 'warehouse_id', 'quantity'])
+                self.env.cr.execute(
+                    """
+                    SELECT COALESCE(SUM(quantity), 0)
+                      FROM stock_valuation_layer
+                     WHERE product_id = %s AND warehouse_id = %s AND id != %s
+                    """,
+                    (layer.product_id.id, layer.warehouse_id.id, layer.id),
+                )
+                net_warehouse_balance = self.env.cr.fetchone()[0]
 
                 # Check if consumption would make warehouse negative
                 precision_qty = self.env['decimal.precision'].precision_get('Product Unit of Measure')
