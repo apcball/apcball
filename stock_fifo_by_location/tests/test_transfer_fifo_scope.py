@@ -92,3 +92,18 @@ class TestTransferFifoScope(TransactionCase):
         layer_wh1.invalidate_recordset(['remaining_qty'])
         self.assertEqual(layer_wh2.remaining_qty, 10.0, "wh2 stock was not touched")
         self.assertEqual(layer_wh1.remaining_qty, 5.0, "the 5 units left wh1's queue")
+
+    def test_transferring_the_last_units_does_not_report_an_empty_queue(self):
+        # the transfer drains wh1's queue; costing it again afterwards must not find
+        # "nothing to cost against" and fall back to the standard price
+        layer = self._receipt(self.wh1, 4.0)
+        layer.write({'value': 480.0, 'remaining_value': 480.0})  # 120/unit, std price is 100
+        with self.assertNoLogs('odoo.addons.stock_fifo_by_location.models.fifo_service', 'ERROR'):
+            picking = self._transfer(self.wh1, self.wh2, 4.0)
+
+        layers = self.layer_model.search([('stock_move_id', '=', picking.move_ids.id)])
+        out_layer = layers.filtered(lambda l: l.quantity < 0)
+        in_layers = layers.filtered(lambda l: l.quantity > 0)
+        self.assertAlmostEqual(out_layer.value, -480.0, places=2)
+        self.assertAlmostEqual(sum(in_layers.mapped('value')), 480.0, places=2,
+                               msg="destination carries the cost the source layer was booked at")
