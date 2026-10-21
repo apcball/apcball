@@ -125,9 +125,10 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                         date_ref=p_date,
                         currency=self.company_id.currency_id,
                         company=self.company_id,
-                        taxes_and_subtotals=[{'name': '', 'tax_amount': 0.0, 'base_amount': 1.0}],
+                        tax_amount=0.0,
+                        tax_amount_currency=0.0,
                         untaxed_amount=1.0,
-                        empty_taxes=True,
+                        untaxed_amount_currency=1.0,
                         sign=1
                     )
                     if res and getattr(res, 'get', None) and res.get('line_ids'):
