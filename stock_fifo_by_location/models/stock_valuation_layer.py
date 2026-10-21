@@ -779,24 +779,19 @@ class StockValuationLayer(models.Model):
         # Handle both recordset and id
         wh_id = warehouse_id.id if hasattr(warehouse_id, 'id') else warehouse_id
         
-        layers = self.search([
-            ('product_id', '=', product_id.id),
-            ('warehouse_id', '=', wh_id),
-            ('company_id', '=', company_id),
-            ('quantity', '>', 0),
-        ])
-        
+        # One grouped query over the landed cost rows instead of one search per layer.
         landed_cost_model = self.env['stock.valuation.layer.landed.cost']
-        total_landed_cost = 0.0
-        
-        for layer in layers:
-            # Get landed costs for this layer at this warehouse
-            lc_records = landed_cost_model.search([
-                ('valuation_layer_id', '=', layer.id),
+        total_landed_cost = landed_cost_model._read_group(
+            [
+                ('valuation_layer_id.product_id', '=', product_id.id),
+                ('valuation_layer_id.warehouse_id', '=', wh_id),
+                ('valuation_layer_id.company_id', '=', company_id),
+                ('valuation_layer_id.quantity', '>', 0),
                 ('warehouse_id', '=', wh_id),
-            ])
-            total_landed_cost += sum(lc_records.mapped('landed_cost_value'))
-        
+            ],
+            aggregates=['landed_cost_value:sum'],
+        )[0][0] or 0.0
+
         precision = self.env['decimal.precision'].precision_get('Product Price')
         return float_round(total_landed_cost, precision_digits=precision)
 

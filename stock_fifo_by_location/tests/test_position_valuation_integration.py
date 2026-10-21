@@ -198,7 +198,8 @@ class TestPositionValuationIntegration(TransactionCase):
             ('valuation_layer_id', 'in', dest_layers.ids),
         ])
 
-        self.assertAlmostEqual(receipt_layer.origin_remaining_value, 1200.0, places=2)
+        # receipt 10 x 6000 = 60000, plus the 200 landed cost resolved back to it
+        self.assertAlmostEqual(receipt_layer.origin_remaining_value, 60200.0, places=2)
         self.assertAlmostEqual(sum(lc_records.mapped('landed_cost_value')), 200.0, places=2)
 
     def test_receipt_then_full_transfer_then_landed_cost_on_original_receipt(self):
