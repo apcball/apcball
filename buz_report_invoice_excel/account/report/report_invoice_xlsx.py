@@ -28,11 +28,26 @@ class ReportInvoiceExcel(models.AbstractModel):
         moves = sale_line.move_ids.filtered(lambda m: m.state != "cancel")
         return moves.picking_id.filtered(lambda p: p.state != "cancel")
 
+    def _get_reconciled_payment_names(self, invoice):
+        receivable_lines = invoice.line_ids.filtered(
+            lambda line: line.account_type == "asset_receivable"
+        )
+        partials = (
+            receivable_lines.mapped("matched_debit_ids")
+            | receivable_lines.mapped("matched_credit_ids")
+        )
+        counterpart_lines = (
+            partials.mapped("debit_move_id") | partials.mapped("credit_move_id")
+        )
+        payments = counterpart_lines.mapped("move_id.payment_id")
+        return ", ".join(sorted(filter(None, payments.mapped("name"))))
+
     def _prepare_rows(self, invoices):
         rows = []
         sequence = 1
 
         for invoice in invoices:
+            payment_names = self._get_reconciled_payment_names(invoice)
             for line in invoice.invoice_line_ids.filtered(
                 lambda l: l.display_type not in ("line_section", "line_note")
             ):
@@ -154,6 +169,7 @@ class ReportInvoiceExcel(models.AbstractModel):
                     "trade_channel": self._safe_text(
                         getattr(invoice, "trade_channel", "") or ""
                     ),
+                    "customer_payment": payment_names,
                 })
                 sequence += 1
 
@@ -301,6 +317,7 @@ class ReportInvoiceExcel(models.AbstractModel):
             ("SUM", 14, "sum_amount", number_format, True),
             ("Note", 24, "note", text_format, False),
             ("Trade Channel", 16, "trade_channel", text_format, False),
+            ("Customer Payment", 20, "customer_payment", text_format, False),
         ]
 
         sheet = workbook.add_worksheet("Invoice Report")
