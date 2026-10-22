@@ -55,7 +55,7 @@ class ReceiptVoucherXlsx(models.AbstractModel):
         row += 2
 
         metadata = [
-            ('Company', wizard.company_id.display_name),
+            ('Company Scope', wizard.company_scope),
             ('Date Type', wizard.date_type_label),
             ('Date From', wizard.date_from),
             ('Date To', wizard.date_to),

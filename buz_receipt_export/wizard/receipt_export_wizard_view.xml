@@ -15,7 +15,7 @@
                         <group string="Report Options">
                             <field name="status"/>
                             <field name="amount_basis"/>
-                            <field name="company_id"/>
+                            <field name="company_scope" readonly="1"/>
                         </group>
                     </group>
                     <group string="Document Filters">

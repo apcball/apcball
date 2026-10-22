@@ -27,9 +27,8 @@ class ReceiptExportWizard(models.TransientModel):
         ('paid_to_date', 'Paid to Date'),
         ('residual', 'Residual Amount'),
     ], string='Amount Basis', required=True)
-    company_id = fields.Many2one(
-        'res.company', string='Company', required=True, readonly=True,
-        default=lambda self: self.env.company,
+    company_scope = fields.Char(
+        string='Company Scope', compute='_compute_company_scope',
     )
     partner_id = fields.Many2one('res.partner', string='Customer')
     voucher_name = fields.Char(string='Receipt Voucher Number')
@@ -50,11 +49,12 @@ class ReceiptExportWizard(models.TransientModel):
         'residual': 'Residual Amount',
     }
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            vals['company_id'] = self.env.company.id
-        return super().create(vals_list)
+    @api.depends_context('uid')
+    def _compute_company_scope(self):
+        """Show all companies the current user is authorized to access."""
+        scope = ', '.join(self.env.user.company_ids.mapped('display_name'))
+        for wizard in self:
+            wizard.company_scope = scope
 
     @property
     def date_type_label(self):
@@ -91,7 +91,6 @@ class ReceiptExportWizard(models.TransientModel):
 
     def _get_voucher_lines(self):
         domain = [
-            ('voucher_id.company_id', '=', self.company_id.id),
             ('receipt_id.state', 'in', self._selected_statuses),
         ]
         if self.partner_id:
@@ -100,7 +99,12 @@ class ReceiptExportWizard(models.TransientModel):
             domain.append(('voucher_id.name', 'ilike', self.voucher_name))
         if self.receipt_name:
             domain.append(('receipt_id.name', 'ilike', self.receipt_name))
-        return self.env['account.receipt.voucher.line'].search(domain)
+        # ค้นทุกบริษัทที่ผู้ใช้มีสิทธิ์ โดยยังให้ company record rules ของ Odoo ทำงาน
+        allowed_company_ids = self.env.user.company_ids.ids
+        voucher_lines = self.env['account.receipt.voucher.line'].with_context(
+            allowed_company_ids=allowed_company_ids,
+        )
+        return voucher_lines.search(domain)
 
     def _get_report_rows(self):
         """Return one export row per invoice line linked to a receipt."""

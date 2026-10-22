@@ -16,7 +16,6 @@ class TestReceiptExportWizard(TransactionCase):
             'date_to': date(2026, 12, 31),
             'status': 'posted',
             'amount_basis': 'amount_to_collect',
-            'company_id': self.env.company.id,
         }
         defaults.update(values)
         return self.env['buz.receipt.export.wizard'].create(defaults)
