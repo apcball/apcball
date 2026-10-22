@@ -66,6 +66,8 @@ class TestServiceReceiptClaim(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # buz_partner_required_fields rejects bare test partners.
+        cls.env = cls.env(context=dict(cls.env.context, skip_partner_required_fields=True))
 
         # Create partner for testing
         cls.partner = cls.env['res.partner'].create({
@@ -463,3 +465,73 @@ class TestServiceReceiptPickingTypeConfig(TransactionCase):
             self.env.company.service_receipt_replacement_picking_type_id,
             self.custom_replacement_type,
         )
+
+
+@tagged('-at_install', 'post_install')
+class TestServiceClaimXlsxBalance(TestServiceReceiptClaim):
+    """Remaining / stock write-off status in the Claims XLSX report."""
+
+    def _report(self):
+        return self.env['report.buz_service_receipt.report_service_claim_xlsx']
+
+    def _done(self, picking):
+        for move in picking.move_ids:
+            move._set_quantity_done(move.product_uom_qty)
+        picking.button_validate()
+        self.assertEqual(picking.state, 'done')
+
+    def _claim(self, replace=True, lines=1):
+        receipt = self._create_receipt('replacement')
+        receipt.action_confirm()
+        receipt.action_waiting_replacement()
+        if replace and lines > 1:
+            for _i in range(lines - 1):
+                originals = self.env['product.product'].create({
+                    'name': 'Test Original Extra - Claim', 'type': 'product',
+                })
+                receipt.write({'line_ids': [(0, 0, {
+                    'product_id': originals.id,
+                    'quantity': 1.0,
+                    'resolution_type': 'replace',
+                    'replacement_product_id': self.product_replacement.id,
+                    'replacement_qty': 1.0,
+                })]})
+        receipt.action_create_return_picking()
+        # buz_stock_reservation_guard needs stock at the exact source location.
+        src = receipt._get_claim_picking_locations('outgoing')[0]
+        for product in receipt.line_ids.replacement_product_id:
+            self.env['stock.quant']._update_available_quantity(
+                product, src, len(receipt.line_ids))
+        receipt.action_create_replacement_picking()
+        return receipt
+
+    def test_01_different_model_both_done(self):
+        receipt = self._claim()
+        self._done(receipt.return_picking_id)
+        self._done(receipt.replacement_picking_id)
+        _w, _r, remaining, status = self._report()._line_balance(receipt, receipt.line_ids)
+        self.assertEqual(remaining, 0.0)
+        self.assertEqual(status, 'รอตัด stock')
+
+    def test_02_two_lines_share_replacement_product(self):
+        receipt = self._claim(lines=2)
+        self._done(receipt.return_picking_id)
+        self._done(receipt.replacement_picking_id)
+        for line in receipt.line_ids:
+            _w, _r, remaining, status = self._report()._line_balance(receipt, line)
+            self.assertEqual(remaining, 0.0)
+            self.assertEqual(status, 'รอตัด stock')
+
+    def test_03_only_return_done(self):
+        receipt = self._claim()
+        self._done(receipt.return_picking_id)
+        _w, _r, remaining, status = self._report()._line_balance(receipt, receipt.line_ids)
+        self.assertEqual(remaining, -1.0)
+        self.assertEqual(status, '')
+
+    def test_04_same_model_unchanged(self):
+        receipt = self._claim()
+        receipt.line_ids.replacement_product_id = receipt.line_ids.product_id
+        self._done(receipt.return_picking_id)
+        _w, _r, remaining, status = self._report()._line_balance(receipt, receipt.line_ids)
+        self.assertEqual(status, '')
