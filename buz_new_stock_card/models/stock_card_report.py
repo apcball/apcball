@@ -556,7 +556,7 @@ class StockCardReport(models.AbstractModel):
         self, scope_location_ids, product_id, opening_balance,
         start_utc, end_utc, company_ids, show_movements_only,
         internal_location_ids, location_label, default_code, product_name,
-        include_value=False, opening_value=0.0,
+        include_value=False, opening_value=0.0, lines=None, value_context=None,
     ):
         """Flat ledger rows for one product over one scope (a list of location
         ids). Shared by get_all_stock_card_lines (scope = one location) and
@@ -564,7 +564,11 @@ class StockCardReport(models.AbstractModel):
 
         include_value=True adds a "value" (running มูลค่าสินค้า) key to each
         row, computed from stock.valuation.layer - caller must have already
-        checked GROUP_SEE_VALUE (see _can_see_value)."""
+        checked GROUP_SEE_VALUE (see _can_see_value).
+
+        ``lines`` / ``value_context`` let a bulk caller (the scoped view) read
+        the move lines and layer values for many products in one go and hand
+        each product its own slice instead of querying per product."""
         Location = self.env["stock.location"]
         detail_domain = [
             ("state", "=", "done"),
@@ -576,12 +580,12 @@ class StockCardReport(models.AbstractModel):
         if show_movements_only:
             detail_domain += [("quantity", "!=", 0)]
 
-        lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
-        self._prefetch_documents(lines)
+        if lines is None:
+            lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
+            self._prefetch_documents(lines)
 
-        value_context = None
         running_value = opening_value
-        if include_value:
+        if include_value and value_context is None:
             move_ids = {l["move_id"][0] for l in lines if l.get("move_id")}
             value_in_by_move, value_out_by_move = self._get_value_deltas_by_move(
                 move_ids, scope_location_ids, company_ids,
@@ -824,40 +828,18 @@ class StockCardReport(models.AbstractModel):
             del row["_sort_key"]
         return rows
 
-    @api.model
-    def get_scoped_stock_card_lines(
-        self, scope_location_ids, date_from, date_to, scope_label=None,
-        company_ids=None, show_movements_only=False,
-    ):
-        """Flat rows for every product that moved through ``scope_location_ids``
-        in the date range OR currently holds non-zero qty there. One row per
-        transaction; products with stock but no movement in range get a single
-        opening=closing row. Used when the export wizard is run with a
-        warehouse/location but no product."""
-        if not company_ids:
-            company_ids = self.env.companies.ids
-        can_see_value = self._can_see_value()
-        scope_location_ids = list(scope_location_ids)
-        if not scope_location_ids:
-            return []
-
-        start_utc, end_utc = self._date_range_utc(date_from, date_to)
-        internal_location_ids = set(self.env["stock.location"].search([
-            ("usage", "=", "internal"),
-            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
-        ]).ids)
-
-        MoveLine = self.env["stock.move.line"]
+    def _scoped_product_ids(self, scope_location_ids, start_utc, end_utc, company_ids):
+        """Ids of products that moved through the scope in range OR currently
+        hold non-zero qty there."""
         range_domain = [
             ("state", "=", "done"),
             ("company_id", "in", company_ids),
             ("date", ">=", start_utc),
             ("date", "<", end_utc),
         ] + self._scope_domain(scope_location_ids)
-
         moved_product_ids = {
             g["product_id"][0]
-            for g in MoveLine.read_group(range_domain, ["product_id"], ["product_id"])
+            for g in self.env["stock.move.line"].read_group(range_domain, ["product_id"], ["product_id"])
             if g["product_id"]
         }
         onhand_product_ids = {
@@ -869,9 +851,22 @@ class StockCardReport(models.AbstractModel):
             ], ["product_id"])
             if q["product_id"]
         }
-        product_ids = moved_product_ids | onhand_product_ids
+        return moved_product_ids | onhand_product_ids
+
+    def _scoped_rows_for_products(
+        self, product_ids, scope_location_ids, start_utc, end_utc, company_ids,
+        show_movements_only, label, can_see_value,
+    ):
+        """Ledger rows (unsorted across products, no ``seq``) for ``product_ids``
+        over the scope. Move lines, layer values and opening balances are read
+        once for the whole batch, not once per product."""
+        product_ids = list(product_ids)
         if not product_ids:
             return []
+        internal_location_ids = set(self.env["stock.location"].search([
+            ("usage", "=", "internal"),
+            "|", ("company_id", "in", company_ids), ("company_id", "=", False),
+        ]).ids)
 
         opening_by_product = self._get_opening_balances_by_product(
             product_ids, scope_location_ids, start_utc, company_ids,
@@ -881,10 +876,39 @@ class StockCardReport(models.AbstractModel):
             if can_see_value else {}
         )
 
-        Product = self.env["product.product"]
-        products = Product.browse(list(product_ids))
+        detail_domain = [
+            ("state", "=", "done"),
+            ("product_id", "in", product_ids),
+            ("company_id", "in", company_ids),
+            ("date", ">=", start_utc),
+            ("date", "<", end_utc),
+        ] + self._scope_domain(scope_location_ids)
+        if show_movements_only:
+            detail_domain += [("quantity", "!=", 0)]
+        all_lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
+        self._prefetch_documents(all_lines)
+        lines_by_product = {}
+        for line in all_lines:
+            lines_by_product.setdefault(line["product_id"][0], []).append(line)
+
+        value_context = None
+        if can_see_value:
+            # A move belongs to a single product, so the per-move totals over
+            # the whole batch equal the per-product ones.
+            move_ids = {l["move_id"][0] for l in all_lines if l.get("move_id")}
+            value_in_by_move, value_out_by_move = self._get_value_deltas_by_move(
+                move_ids, scope_location_ids, company_ids,
+            )
+            move_in_qty, move_out_qty = self._get_move_qty_totals(all_lines, scope_location_ids)
+            value_context = {
+                "value_in_by_move": value_in_by_move,
+                "value_out_by_move": value_out_by_move,
+                "move_in_qty": move_in_qty,
+                "move_out_qty": move_out_qty,
+            }
+
+        products = self.env["product.product"].browse(product_ids)
         product_info = {p.id: (p.default_code or "", p.name) for p in products}
-        label = scope_label or ""
 
         rows = []
         for product_id in product_ids:
@@ -896,6 +920,7 @@ class StockCardReport(models.AbstractModel):
                 start_utc, end_utc, company_ids, show_movements_only,
                 internal_location_ids, label, default_code, product_name,
                 include_value=can_see_value, opening_value=opening_value,
+                lines=lines_by_product.get(product_id, []), value_context=value_context,
             )
             if product_rows:
                 rows.extend(product_rows)
@@ -921,12 +946,127 @@ class StockCardReport(models.AbstractModel):
                 if can_see_value:
                     marker_row["value"] = opening_value
                 rows.append(marker_row)
+        return rows
 
+    @api.model
+    def get_scoped_stock_card_lines(
+        self, scope_location_ids, date_from, date_to, scope_label=None,
+        company_ids=None, show_movements_only=False,
+    ):
+        """Flat rows for every product that moved through ``scope_location_ids``
+        in the date range OR currently holds non-zero qty there. One row per
+        transaction; products with stock but no movement in range get a single
+        opening=closing row. Used when the export wizard is run with a
+        warehouse/location but no product."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+        can_see_value = self._can_see_value()
+        scope_location_ids = list(scope_location_ids)
+        if not scope_location_ids:
+            return []
+
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        product_ids = self._scoped_product_ids(scope_location_ids, start_utc, end_utc, company_ids)
+        if not product_ids:
+            return []
+
+        rows = self._scoped_rows_for_products(
+            product_ids, scope_location_ids, start_utc, end_utc, company_ids,
+            show_movements_only, scope_label or "", can_see_value,
+        )
         rows.sort(key=lambda r: r["_sort_key"])
         for idx, row in enumerate(rows):
             row["seq"] = idx + 1
             del row["_sort_key"]
         return rows
+
+    @api.model
+    def get_scoped_stock_card_page(
+        self, scope_location_ids, date_from, date_to, scope_label=None,
+        company_ids=None, show_movements_only=False, page=0, page_size=50,
+    ):
+        """One page of get_scoped_stock_card_lines for the on-screen view.
+
+        Row counts per product come from a single grouped count, so only the
+        products whose rows overlap the requested page are built (opening
+        balances, layers and documents are read for those alone) and only that
+        page travels to the browser. Row order and ``seq`` match
+        get_scoped_stock_card_lines."""
+        if not company_ids:
+            company_ids = self.env.companies.ids
+        can_see_value = self._can_see_value()
+        page_size = max(1, int(page_size or 50))
+        page = max(0, int(page or 0))
+        empty = {
+            "lines": [], "total_count": 0, "page_size": page_size,
+            "has_prev": page > 0, "has_next": False, "can_see_value": can_see_value,
+        }
+        scope_location_ids = list(scope_location_ids)
+        if not scope_location_ids:
+            return empty
+
+        start_utc, end_utc = self._date_range_utc(date_from, date_to)
+        product_ids = self._scoped_product_ids(scope_location_ids, start_utc, end_utc, company_ids)
+        if not product_ids:
+            return empty
+
+        count_domain = [
+            ("state", "=", "done"),
+            ("product_id", "in", list(product_ids)),
+            ("company_id", "in", company_ids),
+            ("date", ">=", start_utc),
+            ("date", "<", end_utc),
+        ] + self._scope_domain(scope_location_ids)
+        if show_movements_only:
+            count_domain += [("quantity", "!=", 0)]
+        line_count = {
+            g["product_id"][0]: g["product_id_count"]
+            for g in self.env["stock.move.line"].read_group(
+                count_domain, ["product_id"], ["product_id"],
+            )
+            if g["product_id"]
+        }
+
+        products = self.env["product.product"].browse(list(product_ids))
+        ordered = sorted(
+            products, key=lambda p: (p.default_code or "", p.name or "", p.id),
+        )
+        # A product without in-range lines still takes one marker row, unless
+        # only movements were asked for.
+        sizes = [
+            (p.id, line_count.get(p.id) or (0 if show_movements_only else 1))
+            for p in ordered
+        ]
+        total_count = sum(size for _pid, size in sizes)
+
+        start = page * page_size
+        end = start + page_size
+        offset = 0
+        selected, first_offset = [], None
+        for product_id, size in sizes:
+            if size and offset < end and offset + size > start:
+                if first_offset is None:
+                    first_offset = offset
+                selected.append(product_id)
+            offset += size
+
+        lines = []
+        if selected:
+            built = self._scoped_rows_for_products(
+                selected, scope_location_ids, start_utc, end_utc, company_ids,
+                show_movements_only, scope_label or "", can_see_value,
+            )
+            # _scoped_rows_for_products emits products in the order given and
+            # each product's rows already in (date, id) order.
+            for idx, row in enumerate(built, start=first_offset):
+                row["seq"] = idx + 1
+                row.pop("_sort_key", None)
+            lines = built[start - first_offset:end - first_offset]
+        return {
+            "lines": lines, "total_count": total_count, "page_size": page_size,
+            "has_prev": page > 0, "has_next": end < total_count,
+            "can_see_value": can_see_value,
+        }
 
     @api.model
     def split_scope_by_warehouse(self, scope_location_ids):

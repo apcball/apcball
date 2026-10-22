@@ -398,6 +398,32 @@ class TestStockCardReport(TransactionCase):
 
         self.assertEqual([r["seq"] for r in rows], list(range(1, len(rows) + 1)))
 
+    def test_scoped_page_matches_full_lines_slices(self):
+        product2 = self.env["product.product"].create({
+            "name": "Test Stock Card Product 2", "type": "product",
+        })
+        self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 40.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_supplier, self.loc_a, 5.0, self._dt("2024-06-11 08:00:00"))
+        self._mk_move(self.loc_supplier, self.loc_b, 7.0, self._dt("2024-06-12 08:00:00"), product=product2)
+        self._mk_move(self.loc_supplier, self.loc_b, 3.0, self._dt("2024-06-13 08:00:00"), product=product2)
+        scope = self._scope_stock()
+        full = self.engine.get_scoped_stock_card_lines(
+            scope, "2024-06-01", "2024-06-30", scope_label="Stock",
+        )
+        page_size = 2
+        collected = []
+        for page in range(0, (len(full) + page_size - 1) // page_size):
+            res = self.engine.get_scoped_stock_card_page(
+                scope, "2024-06-01", "2024-06-30", scope_label="Stock",
+                page=page, page_size=page_size,
+            )
+            self.assertEqual(res["total_count"], len(full))
+            self.assertEqual(res["has_prev"], page > 0)
+            self.assertEqual(res["has_next"], (page + 1) * page_size < len(full))
+            collected.extend(res["lines"])
+        self.assertEqual(collected, full)
+
     def test_scoped_idle_product_with_stock_gets_marker_row(self):
         # movement before the range + matching on-hand quant, nothing in range
         self._mk_move(self.loc_supplier, self.loc_a, 25.0, self._dt("2024-03-01 08:00:00"))
