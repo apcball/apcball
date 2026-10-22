@@ -1,3 +1,1 @@
-# -*- coding: utf-8 -*-
-
-from . import test_payment_voucher
+from . import test_po_monthly_report

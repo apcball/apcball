@@ -1,3 +1,1 @@
-# -*- coding: utf-8 -*-
-
-from . import payment_voucher_wizard
+from . import po_monthly_report_wizard

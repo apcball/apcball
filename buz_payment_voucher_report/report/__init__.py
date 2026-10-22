@@ -1,3 +1,1 @@
-# -*- coding: utf-8 -*-
-
-from . import payment_voucher_xlsx
+from . import po_monthly_report_xlsx
