@@ -15,7 +15,12 @@ class ServiceClaimXlsx(models.AbstractModel):
     using xlsxwriter. One row per service.receipt.line, showing
     withdrawn (เบิก - replacement product sent to customer) and
     returned (คืน - original product received from customer) qty,
-    dates, and remaining balance.
+    dates, remaining balance and stock write-off status.
+
+    Different-model claims (replacement product != returned product) are
+    balanced at claim level: once both the return and the replacement
+    pickings are done the remaining is 0 and the row is flagged
+    'รอตัด stock'.
     """
     _name = 'report.buz_service_receipt.report_service_claim_xlsx'
     _inherit = 'report.report_xlsx.abstract'
@@ -36,6 +41,26 @@ class ServiceClaimXlsx(models.AbstractModel):
             lambda m: m.product_id == product and m.state == 'done'
         )
         return sum(done_moves.mapped('quantity'))
+
+    def _is_different_model(self, line):
+        return bool(line.replacement_product_id
+                    and line.replacement_product_id != line.product_id)
+
+    def _both_legs_done(self, claim):
+        return (claim.return_picking_id.state == 'done'
+                and claim.replacement_picking_id.state == 'done')
+
+    def _line_balance(self, claim, line):
+        """Return (withdraw_qty, return_qty, remaining, stock_status)."""
+        withdraw = self._get_done_qty(claim.replacement_picking_id, line.replacement_product_id)
+        returned = self._get_done_qty(claim.return_picking_id, line.product_id)
+        if self._is_different_model(line) and self._both_legs_done(claim):
+            # Products differ, so per-product pools can be shared between lines
+            # or edited on the picking; use the line's own qty once both legs are done.
+            withdraw = line.replacement_qty or line.quantity or 0.0
+            returned = line.quantity or 0.0
+            return withdraw, returned, 0.0, 'รอตัด stock'
+        return withdraw, returned, withdraw - returned, ''
 
     def generate_xlsx_report(self, workbook, data, claims):
         sheet = workbook.add_worksheet('Claims')
@@ -63,9 +88,9 @@ class ServiceClaimXlsx(models.AbstractModel):
             'เลขที่ใบขอ', 'เลขที่ใบแจ้ง', 'ลูกค้า',
             'วันที่เบิก', 'เลขที่เอกสารเบิก', 'รหัสสินค้า (เบิก)', 'ชื่อสินค้า (เบิก)', 'จำนวน (เบิก)',
             'วันที่คืน', 'เลขที่เอกสารคืน', 'รหัสสินค้า (คืน)', 'ชื่อสินค้า (คืน)', 'จำนวน (คืน)',
-            'คงเหลือ', 'ผู้ทำรายการ', 'สถานะ',
+            'คงเหลือ', 'ผู้ทำรายการ', 'สถานะ', 'สถานะตัด stock',
         ]
-        widths = [16, 16, 24, 14, 18, 14, 22, 12, 14, 18, 14, 22, 12, 12, 20, 16]
+        widths = [16, 16, 24, 14, 18, 14, 22, 12, 14, 18, 14, 22, 12, 12, 20, 16, 16]
         for col, width in enumerate(widths):
             sheet.set_column(col, col, width)
 
@@ -90,11 +115,9 @@ class ServiceClaimXlsx(models.AbstractModel):
 
             for line in claim.line_ids:
                 # Remaining is based on actually validated (done) move qty, not the
-                # planned qty on the line — it only reaches 0 once both the withdraw
-                # and return pickings have been done with matching quantities.
-                done_withdraw_qty = self._get_done_qty(claim.replacement_picking_id, line.replacement_product_id)
-                done_return_qty = self._get_done_qty(claim.return_picking_id, line.product_id)
-                remaining = done_withdraw_qty - done_return_qty
+                # planned qty on the line.
+                done_withdraw_qty, done_return_qty, remaining, stock_status = \
+                    self._line_balance(claim, line)
 
                 sheet.write(row, 0, claim.claim_number or '')
                 sheet.write(row, 1, claim.name or '')
@@ -118,4 +141,5 @@ class ServiceClaimXlsx(models.AbstractModel):
                 sheet.write(row, 13, remaining, number)
                 sheet.write(row, 14, requester)
                 sheet.write(row, 15, self._get_state_label(claim))
+                sheet.write(row, 16, stock_status)
                 row += 1
