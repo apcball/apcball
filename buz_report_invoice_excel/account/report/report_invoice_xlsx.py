@@ -28,26 +28,22 @@ class ReportInvoiceExcel(models.AbstractModel):
         moves = sale_line.move_ids.filtered(lambda m: m.state != "cancel")
         return moves.picking_id.filtered(lambda p: p.state != "cancel")
 
-    def _get_reconciled_payment_names(self, invoice):
-        receivable_lines = invoice.line_ids.filtered(
-            lambda line: line.account_type == "asset_receivable"
-        )
-        partials = (
-            receivable_lines.mapped("matched_debit_ids")
-            | receivable_lines.mapped("matched_credit_ids")
-        )
-        counterpart_lines = (
-            partials.mapped("debit_move_id") | partials.mapped("credit_move_id")
-        )
-        payments = counterpart_lines.mapped("move_id.payment_id")
-        return ", ".join(sorted(filter(None, payments.mapped("name"))))
+    def _get_reconciled_rd_numbers(self, invoice):
+        # ใช้ helper เดียวกับ payment widget เพื่ออ่าน Journal Entry ที่ reconcile แล้ว
+        reconciled_partials = invoice.sudo()._get_all_reconciled_invoice_partials()
+        rd_numbers = set()
+        for partial in reconciled_partials:
+            move_name = partial["aml"].move_id.name or ""
+            if move_name.upper().startswith("RD"):
+                rd_numbers.add(move_name)
+        return ", ".join(sorted(rd_numbers))
 
     def _prepare_rows(self, invoices):
         rows = []
         sequence = 1
 
         for invoice in invoices:
-            payment_names = self._get_reconciled_payment_names(invoice)
+            rd_numbers = self._get_reconciled_rd_numbers(invoice)
             for line in invoice.invoice_line_ids.filtered(
                 lambda l: l.display_type not in ("line_section", "line_note")
             ):
@@ -169,7 +165,7 @@ class ReportInvoiceExcel(models.AbstractModel):
                     "trade_channel": self._safe_text(
                         getattr(invoice, "trade_channel", "") or ""
                     ),
-                    "customer_payment": payment_names,
+                    "rd_no": rd_numbers,
                 })
                 sequence += 1
 
@@ -317,7 +313,7 @@ class ReportInvoiceExcel(models.AbstractModel):
             ("SUM", 14, "sum_amount", number_format, True),
             ("Note", 24, "note", text_format, False),
             ("Trade Channel", 16, "trade_channel", text_format, False),
-            ("Customer Payment", 20, "customer_payment", text_format, False),
+            ("RD No.", 20, "rd_no", text_format, False),
         ]
 
         sheet = workbook.add_worksheet("Invoice Report")
