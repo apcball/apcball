@@ -1,6 +1,6 @@
 {
     "name": "MRP Job Close Report (Excel)",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "category": "Manufacturing/Reports",
     "summary": "Excel job ledger: MO header, issued materials, output, returns, employee time",
     "author": "Mogen Co., Ltd.",
