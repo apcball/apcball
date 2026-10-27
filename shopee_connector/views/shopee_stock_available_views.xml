@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopee_stock_available_tree" model="ir.ui.view">
+        <field name="name">shopee.stock.available.tree</field>
+        <field name="model">shopee.product.mapping</field>
+        <field name="arch" type="xml">
+            <tree create="0" delete="0" decoration-danger="stock_status == 'out'" decoration-warning="stock_status == 'low'" decoration-muted="stock_status == 'unknown'">
+                <field name="shopee_config_id"/>
+                <field name="shopee_sku"/>
+                <field name="product_id"/>
+                <field name="shopee_item_name"/>
+                <field name="shopee_model_name" optional="show"/>
+                <field name="odoo_free_qty" string="Warehouse Available"/>
+                <field name="shopee_stock" readonly="1" string="Shopee Stock (Last Pull)"/>
+                <field name="odoo_available_stock" readonly="1" string="Stock to Push"/>
+                <field name="use_stock_override" optional="show"/>
+                <field name="low_stock_threshold"/>
+                <field name="stock_status" widget="badge"/>
+                <field name="last_stock_sync"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_shopee_stock_available_search" model="ir.ui.view">
+        <field name="name">shopee.stock.available.search</field>
+        <field name="model">shopee.product.mapping</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="shopee_sku"/><field name="product_id"/>
+                <field name="shopee_item_name"/><field name="shopee_config_id"/>
+                <filter name="low" string="Low Stock" domain="[('stock_status','=','low')]"/>
+                <filter name="out" string="Out of Stock" domain="[('stock_status','=','out')]"/>
+                <filter name="ok" string="In Stock" domain="[('stock_status','=','ok')]"/>
+                <filter name="unknown" string="Not Available" domain="[('stock_status','=','unknown')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="shop" string="Shop" context="{'group_by':'shopee_config_id'}"/>
+                    <filter name="product" string="Product" context="{'group_by':'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_shopee_stock_available" model="ir.actions.act_window">
+        <field name="name">Stock Available</field>
+        <field name="res_model">shopee.product.mapping</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_shopee_stock_available_tree"/>
+        <field name="search_view_id" ref="view_shopee_stock_available_search"/>
+        <field name="help" type="html"><p>Sync Shopee listings and map products to see warehouse availability. Open a row to set its low-stock threshold.</p></field>
+    </record>
+    <menuitem id="menu_shopee_stock_available" name="Stock Available"
+        parent="shopee_connector_root_menu" action="action_shopee_stock_available"
+        sequence="5" groups="shopee_connector.group_shopee_user"/>
+</odoo>
