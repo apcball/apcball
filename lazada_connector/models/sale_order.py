@@ -10,7 +10,10 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-PAYMENT_SOURCES = [("order", "Lazada order data"), ("finance", "Lazada Finance API")]
+PAYMENT_SOURCES = [
+    ("order", "Lazada order data"), ("excel", "Seller Center export"),
+    ("finance", "Lazada Finance API"),
+]
 CANCELLED = {"canceled", "cancelled"}
 # Statuses after which Lazada can have posted the order's finance rows.
 FINANCE_STATUSES = {"shipped", "delivered", "confirmed"}
@@ -309,7 +312,10 @@ class SaleOrder(models.Model):
             return product
         Product = self.env["product.product"]
         if code:
-            product = Product.search([("default_code", "=ilike", code)], limit=1)
+            product = Product.search([
+                ("default_code", "=ilike", code),
+                *Product._check_company_domain(self.company_id),
+            ], limit=1)
         if not product:
             product = Product.sudo().create({
                 "name": name,
@@ -341,9 +347,10 @@ class SaleOrder(models.Model):
         if payment.get("voucher_amount"):
             codes = payment.get("voucher_codes") or []
             Product = self.env["product.product"]
-            product = Product.search(
-                [("default_code", "in", codes)], limit=1,
-            ) if codes else Product
+            product = Product.search([
+                ("default_code", "in", codes),
+                *Product._check_company_domain(self.company_id),
+            ], limit=1) if codes else Product
             if not product:
                 product = self._lazada_service_product(
                     config, "lazada_voucher_product_id", False,
