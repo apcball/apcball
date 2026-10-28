@@ -7,12 +7,12 @@
             <field name="default" eval="True"/>
             <field name="format">A4</field>
             <field name="orientation">Portrait</field>
-            <field name="margin_top">10</field>
+            <field name="margin_top">25</field>
             <field name="margin_bottom">10</field>
             <field name="margin_left">6</field>
             <field name="margin_right">6</field>
             <field name="header_line" eval="False"/>
-            <field name="header_spacing">0</field>
+            <field name="header_spacing">4</field>
             <field name="dpi">90</field>
         </record>
 
@@ -28,10 +28,38 @@
             <field name="binding_type">report</field>
         </record>
 
+        <!-- wkhtmltopdf ที่ไม่มี patched Qt ไม่รองรับ header-html จึงวางหัวในเนื้อหาทุกหน้า -->
+        <template id="report_unbuild_job_layout">
+            <t t-set="company" t-value="doc.company_id"/>
+            <div class="unbuild-job-header" style="display:table; width:100%; margin-bottom:6mm; font-size:14px; line-height:1.25;">
+                <div style="display:table-cell; width:68%; vertical-align:top;">
+                    <div style="font-size:18px; font-weight:bold; line-height:1.2;">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                    <div style="font-weight:normal; line-height:1.25;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                    <div style="font-weight:normal; line-height:1.25;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                </div>
+                <div style="display:table-cell; width:32%; vertical-align:top; text-align:right;">
+                    <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
+                         style="max-width:180px; max-height:48px; object-fit:contain;" alt="MOGEN"/>
+                    <div style="margin-top:2px; font-size:12px; font-weight:normal;">หน้า <t t-out="page_lines_index + 1"/>/<t t-out="len(report_pages)"/></div>
+                </div>
+            </div>
+        </template>
+
         <template id="report_unbuild_job_document">
+            <!-- ระยะบนเฉพาะรายงานนี้ ไม่เปลี่ยน paper format ที่รายงานอื่นอาจอ้างอิง -->
+            <t t-set="data_report_margin_top" t-value="10"/>
+            <t t-set="data_report_header_spacing" t-value="0"/>
             <t t-call="web.html_container">
+                <!-- ใช้ HTML body เดียว เพื่อให้ renderer ที่ไม่มี patched Qt พิมพ์หลายเอกสารได้ -->
+                <div class="article o_report_layout_standard"
+                     t-att-data-oe-model="len(docs) == 1 and docs._name"
+                     t-att-data-oe-id="len(docs) == 1 and docs.id"
+                     t-att-data-oe-lang="docs.env.context.get('lang')">
                 <t t-foreach="docs" t-as="doc">
-                    <t t-call="web.external_layout">
+                    <!-- กรองสินค้าตัวแม่ก่อนแบ่งหน้า และคงการเลือก stock move/BOM ตามเดิม -->
+                    <t t-set="report_lines" t-value="doc.produce_line_ids.filtered(lambda move: move.product_id != doc.product_id) if doc.produce_line_ids else doc.bom_id.bom_line_ids"/>
+                    <t t-set="lines_per_page" t-value="6"/>
+                    <t t-set="report_pages" t-value="[report_lines[i:i + lines_per_page] for i in range(0, len(report_lines), lines_per_page)] or [report_lines]"/>
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
@@ -45,8 +73,33 @@
                                 font-family: 'Sarabun', sans-serif !important;
                                 font-weight: bold;
                             }
+                            .unbuild-job-report table.table-bordered,
+                            .unbuild-job-report table.table-bordered th,
+                            .unbuild-job-report table.table-bordered td {
+                                border: 1px solid #555 !important;
+                            }
+                            @font-face {
+                                font-family: 'UnbuildHeaderSarabun';
+                                src: url('/buz_unbuild_state_guard/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                            }
+                            .unbuild-job-report .unbuild-job-header,
+                            .unbuild-job-report .unbuild-job-header * {
+                                font-family: 'UnbuildHeaderSarabun', sans-serif !important;
+                                font-weight: normal;
+                            }
+                            .unbuild-job-report {
+                                page-break-after: auto;
+                            }
+                            .unbuild-job-report tr,
+                            .unbuild-job-report .unbuild-job-header,
+                            .unbuild-job-report .unbuild-job-signatures {
+                                page-break-inside: avoid;
+                            }
                         </style>
-                        <div class="page">
+                    <t t-foreach="report_pages" t-as="page_lines">
+                        <div class="page unbuild-job-report"
+                             t-att-style="'page-break-before: always;' if doc_index or page_lines_index else ''">
+                            <t t-call="buz_unbuild_state_guard.report_unbuild_job_layout"/>
 
                             <!-- Title -->
                             <div class="text-center mb-4">
@@ -127,8 +180,8 @@
                                              อาจได้ส่วนประกอบต่างจากใน BOM (phantom/sub-assembly/substitute) -->
                                         <t t-if="doc.produce_line_ids">
                                             <!-- แสดงเฉพาะตัวลูกที่แยกออกมา ไม่แสดงตัวแม่ (สินค้าที่ถูกแยก = doc.product_id) -->
-                                            <t t-set="line_num" t-value="0"/>
-                                            <t t-foreach="doc.produce_line_ids" t-as="move">
+                                            <t t-set="line_num" t-value="page_lines_index * lines_per_page"/>
+                                            <t t-foreach="page_lines" t-as="move">
                                                 <t t-if="move.product_id != doc.product_id">
                                                     <t t-set="line_num" t-value="line_num + 1"/>
                                                     <tr>
@@ -141,7 +194,7 @@
                                                     </tr>
                                                 </t>
                                             </t>
-                                            <t t-if="not line_num">
+                                            <t t-if="not page_lines">
                                                 <tr>
                                                     <td colspan="6" class="text-center text-muted">ไม่มีข้อมูลส่วนประกอบที่แยกได้</td>
                                                 </tr>
@@ -149,8 +202,8 @@
                                         </t>
                                         <!-- ใบเปิด Job (ยังไม่ done): ยังไม่มี stock move จริง จึงประมาณการจาก BOM -->
                                         <t t-elif="doc.bom_id and doc.bom_id.bom_line_ids">
-                                            <t t-set="line_num" t-value="0"/>
-                                            <tr t-foreach="doc.bom_id.bom_line_ids" t-as="line">
+                                            <t t-set="line_num" t-value="page_lines_index * lines_per_page"/>
+                                            <tr t-foreach="page_lines" t-as="line">
                                                 <t t-set="line_num" t-value="line_num + 1"/>
                                                 <td class="text-center"><t t-esc="line_num"/></td>
                                                 <td><span t-field="line.product_id"/></td>
@@ -170,7 +223,7 @@
                             </div>
 
                             <!-- Picking Info -->
-                            <div class="mt-3" t-if="doc.picking_id">
+                            <div class="mt-3" t-if="page_lines_last and doc.picking_id">
                                 <h5 style="font-weight:bold; margin-bottom:4px;">ข้อมูล Picking</h5>
                                 <table class="table table-sm table-bordered">
                                     <tbody>
@@ -199,7 +252,7 @@
                             </div>
 
                             <!-- Signature / Approval Section -->
-                            <div class="mt-5">
+                            <div class="mt-5 unbuild-job-signatures" t-if="page_lines_last">
                                 <table class="table table-bordered" style="table-layout:fixed;">
                                     <tbody>
                                         <tr>
@@ -227,6 +280,7 @@
                         </div>
                     </t>
                 </t>
+                </div>
             </t>
         </template>
 
