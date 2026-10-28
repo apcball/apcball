@@ -31,16 +31,16 @@
         <!-- wkhtmltopdf ที่ไม่มี patched Qt ไม่รองรับ header-html จึงวางหัวในเนื้อหาทุกหน้า -->
         <template id="report_unbuild_job_layout">
             <t t-set="company" t-value="doc.company_id"/>
-            <div class="unbuild-job-header" style="display:table; width:100%; margin-bottom:6mm; font-size:14px; line-height:1.25;">
+            <div class="unbuild-job-header" style="display:table; width:100%; margin-bottom:6mm; font-size:18px; line-height:1.25;">
                 <div style="display:table-cell; width:68%; vertical-align:top;">
-                    <div style="font-size:18px; font-weight:bold; line-height:1.2;">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                    <div style="font-size:20px; font-weight:bold; line-height:1.2;">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
                     <div style="font-weight:normal; line-height:1.25;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
                     <div style="font-weight:normal; line-height:1.25;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                 </div>
                 <div style="display:table-cell; width:32%; vertical-align:top; text-align:right;">
                     <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
                          style="max-width:180px; max-height:48px; object-fit:contain;" alt="MOGEN"/>
-                    <div style="margin-top:2px; font-size:12px; font-weight:normal;">หน้า <t t-out="page_lines_index + 1"/>/<t t-out="len(report_pages)"/></div>
+                    <div style="margin-top:2px; font-size:14px; font-weight:normal;">หน้า <t t-out="page_lines_index + 1"/>/<t t-out="len(report_pages)"/></div>
                 </div>
             </div>
         </template>
