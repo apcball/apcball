@@ -58,6 +58,7 @@
                 <t t-foreach="docs" t-as="doc">
                     <!-- กรองสินค้าตัวแม่ก่อนแบ่งหน้า และคงการเลือก stock move/BOM ตามเดิม -->
                     <t t-set="report_lines" t-value="doc.produce_line_ids.filtered(lambda move: move.product_id != doc.product_id) if doc.produce_line_ids else doc.bom_id.bom_line_ids"/>
+                    <t t-set="closing_move_line" t-value="doc.produce_line_ids.mapped('move_line_ids').sorted('date', reverse=True)[:1]"/>
                     <t t-set="lines_per_page" t-value="6"/>
                     <t t-set="report_pages" t-value="[report_lines[i:i + lines_per_page] for i in range(0, len(report_lines), lines_per_page)] or [report_lines]"/>
                         <style>
@@ -113,7 +114,7 @@
                                     <tr>
                                         <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">เลขที่ Job</td>
                                         <td style="width:30%;"><span t-field="doc.name"/></td>
-                                        <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">วันที่</td>
+                                        <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">วันที่(เปิด)</td>
                                         <td style="width:30%;"><span t-field="doc.create_date" t-options="{'widget': 'date'}"/></td>
                                     </tr>
                                     <tr>
@@ -126,8 +127,8 @@
                                             <t t-elif="doc.state == 'done'">Done</t>
                                             <t t-else=""><span t-field="doc.state"/></t>
                                         </td>
-                                        <td style="background-color:#f0f0f0; font-weight:bold;">ผู้สร้าง</td>
-                                        <td><span t-field="doc.create_uid"/></td>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">วันที่(ปิด)</td>
+                                        <td><span t-if="doc.state == 'done' and closing_move_line" t-field="closing_move_line.date" t-options="{'widget': 'date'}"/></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -138,17 +139,14 @@
                                     <tr>
                                         <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">สินค้าที่แยก</td>
                                         <td style="width:30%;"><span t-field="doc.product_id"/></td>
-                                        <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">จำนวน</td>
-                                        <td style="width:30%;"><span t-field="doc.product_qty"/> <span t-field="doc.product_uom_id"/></td>
+                                        <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">ผู้สร้าง</td>
+                                        <td style="width:30%;"><span t-field="doc.create_uid"/></td>
                                     </tr>
                                     <tr>
                                         <td style="background-color:#f0f0f0; font-weight:bold;">BOM</td>
                                         <td><span t-field="doc.bom_id"/></td>
-                                        <td style="background-color:#f0f0f0; font-weight:bold;">Lot/Serial</td>
-                                        <td>
-                                            <span t-if="doc.lot_id" t-field="doc.lot_id"/>
-                                            <span t-else="">-</span>
-                                        </td>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">จำนวน</td>
+                                        <td><span t-field="doc.product_qty"/> <span t-field="doc.product_uom_id"/></td>
                                     </tr>
                                     <tr>
                                         <td style="background-color:#f0f0f0; font-weight:bold;">ต้นทาง</td>
