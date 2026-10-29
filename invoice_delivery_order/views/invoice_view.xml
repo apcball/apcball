@@ -11,8 +11,8 @@
                 <field name="available_picking_ids" invisible="1"/>
                 <field name="picking_ids"
                        invisible="move_type not in ('out_invoice', 'out_refund')"
-                       widget="many2many_tags"
-                       options="{'no_create': True, 'no_open': True}"
+                       widget="many2many_tags_open"
+                       options="{'no_create': True}"
                        readonly="0"
                        string="Delivery Order"/>
             </xpath>

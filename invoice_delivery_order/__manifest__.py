@@ -18,13 +18,18 @@ The DO number is displayed on the printed invoice PDF.
         'account',
         'stock',
         'sale',
+        'buz_dispatch_document',
     ],
     'data': [
         'security/ir.model.access.csv',
         'views/invoice_view.xml',
         'report/invoice_report.xml',
     ],
-    'assets': {},
+    'assets': {
+        'web.assets_backend': [
+            'invoice_delivery_order/static/src/js/many2many_tags_open.js',
+        ],
+    },
     'application': True,
     'installable': True,
     'auto_install': False,
