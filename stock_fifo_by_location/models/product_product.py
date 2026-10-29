@@ -79,7 +79,18 @@ class ProductProduct(models.Model):
                     f"remaining={c.remaining_qty}, "
                     f"warehouse={c.warehouse_id.name if c.warehouse_id else 'None'}"
                 )
-        
+
+        # Audit trail: the queue head core _run_fifo() will price from, so a
+        # delivery cost that disagrees with a FIFO replay can be traced.
+        _logger.info(
+            "FIFO queue product=%s wh=%s n=%s head=%s",
+            self.id, warehouse_id, len(candidates),
+            [
+                (c.id, c.remaining_qty, round(c.remaining_value, 2), str(c.create_date)[:19])
+                for c in candidates[:15]
+            ],
+        )
+
         return candidates
 
     def _prepare_internal_out_svl_vals(self, quantity, company, move=False):
