@@ -234,6 +234,8 @@ class TestApDashboard(TransactionCase):
     def test_is_cash_term(self):
         is_cash = self.env['biz.ap.dashboard']._is_cash_term
         self.assertTrue(is_cash(False))
+        self.assertTrue(is_cash(False, date(2031, 3, 10), date(2031, 3, 10)))
+        self.assertFalse(is_cash(False, date(2031, 3, 10), date(2031, 4, 9)))
         self.assertTrue(is_cash(self.term_now))
         self.assertFalse(is_cash(self.term_30))
         self.assertFalse(is_cash(self.term_eom))
@@ -253,15 +255,16 @@ class TestApDashboard(TransactionCase):
         self._bill(self.v1, D(2, 18), 2000.0, term=self.term_30)       # due 2031-03-20, credit, week 3
         self._bill(self.v2, D(3, 31), 500.0, due=D(3, 31), refund=True)  # cash refund, week 4
         self._bill(self.v2, D(2, 10), 700.0, due=D(2, 28))         # previous month: excluded
+        self._bill(self.v2, D(3, 1), 300.0, due=D(3, 15))          # no term, due later: credit
         payload = self._data()
-        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'total'), 2500.0, places=2)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'total'), 2800.0, places=2)
         self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'cash'), 500.0, places=2)
-        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'credit'), 2000.0, places=2)
-        self.assertEqual(self._delta(payload, 'kpi_payment', 'count'), 3)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'credit'), 2300.0, places=2)
+        self.assertEqual(self._delta(payload, 'kpi_payment', 'count'), 4)
         weekly = payload['weekly']
         base = self.baseline['weekly']
         self.assertAlmostEqual(weekly[0]['cash'] - base[0]['cash'], 1000.0, places=2)
-        self.assertAlmostEqual(weekly[2]['credit'] - base[2]['credit'], 2000.0, places=2)
+        self.assertAlmostEqual(weekly[2]['credit'] - base[2]['credit'], 2300.0, places=2)
         self.assertAlmostEqual(weekly[3]['cash'] - base[3]['cash'], -500.0, places=2)
         self.assertEqual(len(weekly), 4)
         self.assertEqual(weekly[0]['range'], '1-7 มี.ค.')

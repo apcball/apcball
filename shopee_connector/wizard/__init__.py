@@ -3,3 +3,4 @@ from . import shopee_stock_export
 from . import shopee_stock_import
 from . import shopee_buyer_address_import
 from . import shopee_order_sync
+from . import shopee_mapping_import

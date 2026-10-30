@@ -135,22 +135,12 @@ export class StockCardAction extends Component {
             if (requestId !== this.requestId) { return; }
 
             if (!filters.productId) {
-                const rows = await this.orm.call("buz.stock.card.report", "get_scoped_stock_card_lines", [
+                const page = await this.orm.call("buz.stock.card.report", "get_scoped_stock_card_page", [
                     scope.location_ids, filters.dateFrom, filters.dateTo, scope.label,
-                    [filters.companyId], filters.showMovementsOnly,
+                    [filters.companyId], filters.showMovementsOnly, filters.page, filters.pageSize,
                 ], options);
                 if (requestId !== this.requestId) { return; }
-                const totalCount = rows.length;
-                const start = filters.page * filters.pageSize;
-                const cardData = {
-                    mode: "multi",
-                    lines: rows.slice(start, start + filters.pageSize),
-                    total_count: totalCount,
-                    page_size: filters.pageSize,
-                    has_prev: filters.page > 0,
-                    has_next: start + filters.pageSize < totalCount,
-                    can_see_value: rows.length ? rows[0].value !== undefined : false,
-                };
+                const cardData = { mode: "multi", ...page };
                 Object.assign(this.state, {
                     cardData, product: null, scopeLabel: scope.label,
                     locationTree: [], locationCounts: {},
@@ -183,6 +173,7 @@ export class StockCardAction extends Component {
             });
         } catch (err) {
             if (requestId !== this.requestId) { return; }
+            console.error("Stock Card load failed", err);
             this.state.cardData = null;
             this.state.error = "ไม่สามารถโหลดข้อมูล Stock Card ได้ กรุณาตรวจสอบตัวกรองแล้วลองใหม่อีกครั้ง";
         } finally {

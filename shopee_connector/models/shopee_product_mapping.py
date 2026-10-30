@@ -1,5 +1,5 @@
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 class ShopeeProductMapping(models.Model):
     _name = "shopee.product.mapping"
@@ -63,6 +63,43 @@ class ShopeeProductMapping(models.Model):
     last_stock_push = fields.Datetime(readonly=True)
     last_pushed_price = fields.Float(readonly=True)
     last_price_push = fields.Datetime(readonly=True)
+
+    low_stock_threshold = fields.Integer(string="Low Stock Threshold", default=10,
+        help="Warn when warehouse free stock is positive and at or below this value. 0 disables low-stock warnings; out-of-stock warnings remain.")
+    stock_status = fields.Selection([
+        ("unknown", "Not Available"), ("out", "Out of Stock"),
+        ("low", "Low Stock"), ("ok", "In Stock")],
+        compute="_compute_stock_status", search="_search_stock_status", string="Stock Status")
+
+    @api.constrains("low_stock_threshold")
+    def _check_low_stock_threshold(self):
+        if any(m.low_stock_threshold < 0 for m in self):
+            raise ValidationError("Low stock threshold must be zero or greater.")
+
+    @api.depends("product_id", "odoo_free_qty", "low_stock_threshold",
+                 "shopee_config_id.shopee_warehouse_id", "shopee_config_id.shopee_stock_location_id")
+    def _compute_stock_status(self):
+        for mapping in self:
+            mapping.stock_status = "unknown"
+            if not mapping.product_id or mapping.product_id.type != "product":
+                continue
+            try:
+                mapping.shopee_config_id._shopee_stock_context()
+            except UserError:
+                continue
+            qty = mapping.odoo_free_qty
+            mapping.stock_status = ("out" if qty <= 0 else
+                "low" if mapping.low_stock_threshold > 0 and qty <= mapping.low_stock_threshold else "ok")
+
+    @api.model
+    def _search_stock_status(self, operator, value):
+        if operator not in ("=", "!=", "in", "not in"):
+            raise ValueError("Unsupported stock status operator")
+        wanted = value if operator in ("in", "not in") else [value]
+        # Non-stored: read current stock, with normal record rules and company scope.
+        records = self.search([("company_id", "in", self.env.companies.ids)])
+        ids = records.filtered(lambda m: m.stock_status in wanted).ids
+        return [("id", "not in" if operator in ("!=", "not in") else "in", ids)]
 
     _sql_constraints = [
         (

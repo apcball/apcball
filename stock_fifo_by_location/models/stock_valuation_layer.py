@@ -674,12 +674,18 @@ class StockValuationLayer(models.Model):
                 # `id != layer.id` (not `id <`) so sibling negative layers from a
                 # multi-line POS order / multi-move picking are still counted.
                 # One SUM in SQL instead of loading the whole ledger into the ORM.
-                self.flush_model(['product_id', 'warehouse_id', 'quantity'])
+                # Re-baseline layers (move reference IMEX-REBASELINE-*) are report-only
+                # corrections of pre-cutoff FIFO-reset residue; the physical quant was
+                # never touched, so counting them makes the ledger sit below real stock
+                # and falsely blocks deliveries.
+                self.flush_model(['product_id', 'warehouse_id', 'quantity', 'stock_move_id'])
                 self.env.cr.execute(
                     """
-                    SELECT COALESCE(SUM(quantity), 0)
-                      FROM stock_valuation_layer
-                     WHERE product_id = %s AND warehouse_id = %s AND id != %s
+                    SELECT COALESCE(SUM(svl.quantity), 0)
+                      FROM stock_valuation_layer svl
+                      LEFT JOIN stock_move sm ON sm.id = svl.stock_move_id
+                     WHERE svl.product_id = %s AND svl.warehouse_id = %s AND svl.id != %s
+                       AND COALESCE(sm.reference, '') NOT LIKE 'IMEX-REBASELINE%%'
                     """,
                     (layer.product_id.id, layer.warehouse_id.id, layer.id),
                 )
@@ -741,8 +747,31 @@ class StockValuationLayer(models.Model):
                         f"   4. ตรวจสอบ Inventory Adjustment ที่อาจทำให้ Stock ลดลง\n"
                     )
                     
-                    if validation_mode == 'strict':
-                        # STRICT: Always raise error
+                    # shortage_policy='error' blocks too (unless the check is
+                    # 'disabled'); 'fallback' leaves it to negative_balance_mode.
+                    shortage_policy = self.env['fifo.service'].get_shortage_policy()
+                    block = validation_mode == 'strict' or (
+                        shortage_policy == 'error' and validation_mode != 'disabled')
+                    if block:
+                        # Physical stock may exist with no FIFO layer behind it
+                        # (e.g. left over from a FIFO reset): say so explicitly.
+                        quants = self.env['stock.quant'].sudo()._read_group(
+                            [('product_id', '=', layer.product_id.id),
+                             ('location_id.usage', '=', 'internal'),
+                             ('location_id.warehouse_id', '=', layer.warehouse_id.id)],
+                            [], ['quantity:sum'])
+                        quant_qty = quants[0][0] or 0.0
+                        if float_compare(quant_qty, abs(layer.quantity), precision_digits=precision_qty) >= 0:
+                            error_msg += (
+                                f"\n⚠️ Stock จริง (quant) ในคลังนี้มี {quant_qty:.2f} "
+                                f"แต่ไม่มีชั้น FIFO รองรับ — ต้องแก้ข้อมูลชั้นต้นทุนก่อนโอน/ตัด"
+                            )
+                        error_msg += (
+                            f"\n📞 ระบบไม่อนุญาตให้ทำรายการนี้ต่อ "
+                            f"กรุณาติดต่อทีมระบบ พร้อมแจ้งเลขที่เอกสารและรหัสสินค้า "
+                            f"{layer.product_id.default_code or layer.product_id.display_name} "
+                            f"เพื่อตรวจสอบและแก้ไขข้อมูลก่อนทำรายการอีกครั้ง"
+                        )
                         raise ValidationError(error_msg)
                     elif validation_mode == 'warning':
                         # WARNING: Log warning but allow (for troubleshooting)
@@ -779,24 +808,19 @@ class StockValuationLayer(models.Model):
         # Handle both recordset and id
         wh_id = warehouse_id.id if hasattr(warehouse_id, 'id') else warehouse_id
         
-        layers = self.search([
-            ('product_id', '=', product_id.id),
-            ('warehouse_id', '=', wh_id),
-            ('company_id', '=', company_id),
-            ('quantity', '>', 0),
-        ])
-        
+        # One grouped query over the landed cost rows instead of one search per layer.
         landed_cost_model = self.env['stock.valuation.layer.landed.cost']
-        total_landed_cost = 0.0
-        
-        for layer in layers:
-            # Get landed costs for this layer at this warehouse
-            lc_records = landed_cost_model.search([
-                ('valuation_layer_id', '=', layer.id),
+        total_landed_cost = landed_cost_model._read_group(
+            [
+                ('valuation_layer_id.product_id', '=', product_id.id),
+                ('valuation_layer_id.warehouse_id', '=', wh_id),
+                ('valuation_layer_id.company_id', '=', company_id),
+                ('valuation_layer_id.quantity', '>', 0),
                 ('warehouse_id', '=', wh_id),
-            ])
-            total_landed_cost += sum(lc_records.mapped('landed_cost_value'))
-        
+            ],
+            aggregates=['landed_cost_value:sum'],
+        )[0][0] or 0.0
+
         precision = self.env['decimal.precision'].precision_get('Product Price')
         return float_round(total_landed_cost, precision_digits=precision)
 

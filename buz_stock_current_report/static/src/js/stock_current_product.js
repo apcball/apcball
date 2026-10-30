@@ -80,14 +80,17 @@ registry.category("views").add("stock_current_product_kanban", {
 // Warehouse panel: show the number of products on the "All" row.
 patch(SearchModel.prototype, {
     async _fetchCategories(categories) {
-        await super._fetchCategories(...arguments);
         if (this.resModel !== RES_MODEL) {
-            return;
+            return super._fetchCategories(...arguments);
         }
+        // "All" is the number of distinct products, which cannot be derived from
+        // the per-warehouse counts (a product can sit in several warehouses).
+        // Run the count in parallel with the panel read_group instead of after it.
         const domain = Domain.and([this.searchDomain, this._getFilterDomain()]).toList();
-        const total = await this.orm.searchCount(this.resModel, domain, {
-            context: this.globalContext,
-        });
+        const [, total] = await Promise.all([
+            super._fetchCategories(...arguments),
+            this.orm.searchCount(this.resModel, domain, { context: this.globalContext }),
+        ]);
         for (const category of categories) {
             const allValue = category.values.get(false);
             if (allValue) {

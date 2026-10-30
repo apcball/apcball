@@ -1159,7 +1159,7 @@ class WhtClearAdvanceWizard(models.TransientModel):
                         _logger.info("✅ Successfully reconciled bill %s with clearing entry %s - Bill is now PAID", 
                                    bill.name, move.name)
                     else:
-                        _logger.warning("⚠️ Could not find payable lines to reconcile (clearing: %s, bill: %s)", 
+                        _logger.info("ℹ️ No payable lines left to reconcile (clearing: %s, bill: %s)",
                                       bool(clearing_payable_line), bool(bill_payable_line))
                 else:
                     _logger.info("ℹ️ No bill found for reconciliation or bill not posted")

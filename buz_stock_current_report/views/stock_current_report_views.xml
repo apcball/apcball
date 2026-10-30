@@ -81,7 +81,6 @@
                 <filter string="In Stock" name="in_stock" domain="[('quantity', '&gt;', 0)]"/>
                 <separator/>
                 <filter string="High Value" name="high_value" domain="[('total_value', '&gt;', 1000)]" groups="buz_stock_current_report.group_stock_cost_viewer"/>
-                <filter string="High Value" name="high_value" domain="[('total_value', '&gt;', 1000)]"/>
                 <filter string="With Incoming" name="with_incoming" domain="[('incoming', '&gt;', 0)]"/>
                 <filter string="With Outgoing" name="with_outgoing" domain="[('outgoing', '&gt;', 0)]"/>
                 <separator/>

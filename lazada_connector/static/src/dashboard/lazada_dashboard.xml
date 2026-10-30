@@ -27,6 +27,9 @@
                             </t>
                         </select>
                     </label>
+                    <button class="o_lazada_refresh" t-on-click="openStock" t-att-disabled="!data">
+                        <i class="fa fa-cubes"/> Stock Available
+                    </button>
                     <button class="o_lazada_refresh" t-on-click="load">
                         <i t-attf-class="fa fa-refresh {{state.loading ? 'fa-spin' : ''}}"/> Refresh
                     </button>
@@ -35,6 +38,14 @@
 
             <div t-if="!data" class="o_lazada_loading">Loading…</div>
             <t t-else="">
+                <div class="o_lazada_stock_notice" role="status"
+                     t-if="data.tiles.low_stock.value || data.tiles.out_stock.value">
+                    <strong>Warehouse stock alert:</strong>
+                    <t t-esc="data.tiles.low_stock.value"/> low-stock listings ·
+                    <t t-esc="data.tiles.out_stock.value"/> out-of-stock listings.
+                    <button class="btn btn-link btn-sm" t-on-click="openStock">View stock</button>
+                    <span>Current warehouse quantities; updated when this dashboard is refreshed.</span>
+                </div>
                 <!-- KPI tiles -->
                 <section class="o_lazada_tiles">
                     <t t-foreach="tiles" t-as="tile" t-key="tile.key">

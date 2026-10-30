@@ -253,10 +253,13 @@ class ApDashboard(models.AbstractModel):
 
     @staticmethod
     def _is_cash_term(term, inv_date=None, due_date=None):
-        """เงินสด (ชำระทันที) = no payment term, or every term line is
-        "0 days after" (immediate), or the due date is not after the
-        invoice date. Everything else is credit."""
+        """เงินสด (ชำระทันที) = every term line is "0 days after" (immediate),
+        or the due date is not after the invoice date. Everything else is
+        credit. Without a payment term the dates decide (a hand-set later due
+        date is credit); with no dates to compare (POs) it counts as cash."""
         if not term:
+            if inv_date and due_date:
+                return due_date <= inv_date
             return True
         lines = term.line_ids
         if lines and all(
@@ -269,6 +272,8 @@ class ApDashboard(models.AbstractModel):
 
     def _is_cash(self, f, term, inv_date=None, due_date=None):
         """_is_cash_term with the per-term part memoised for one build."""
+        if not term:
+            return self._is_cash_term(term, inv_date, due_date)
         cache = f.setdefault('_term_cache', {})
         if term.id not in cache:
             cache[term.id] = self._is_cash_term(term)

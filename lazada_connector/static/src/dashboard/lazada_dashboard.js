@@ -4,6 +4,8 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
 const TILE_META = {
+    low_stock: { icon: "fa-exclamation-triangle", color: "#d97706", bg: "#fff4d6" },
+    out_stock: { icon: "fa-cubes", color: "#dc2626", bg: "#fee2e2" },
     api_errors: { icon: "fa-exclamation", color: "#ef4444", bg: "#fdecec" },
     retry_failed: { icon: "fa-refresh", color: "#f59e0b", bg: "#fef3e2" },
     stock_failed: { icon: "fa-cube", color: "#3b82f6", bg: "#e8f0fe" },
@@ -219,6 +221,12 @@ export class LazadaDashboard extends Component {
 
     openTile(tile) {
         return this._open(tile.action, tile.domain);
+    }
+
+    openStock() {
+        const ids = this.state.data ? this.state.data.selected_shop_ids : [];
+        return this._open("lazada_connector.action_lazada_stock_available",
+            [["lazada_config_id", "in", ids]]);
     }
 
     openOrders() {
