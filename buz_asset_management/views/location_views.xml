@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_asset_location_tree" model="ir.ui.view">
+        <field name="name">buz.asset.location.tree</field>
+        <field name="model">buz.asset.location</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="complete_name"/>
+                <field name="code"/>
+                <field name="warehouse_id"/>
+                <field name="location_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_location_form" model="ir.ui.view">
+        <field name="name">buz.asset.location.form</field>
+        <field name="model">buz.asset.location</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="เก็บถาวร" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="warehouse_id" options="{'no_create': True}"/>
+                            <field name="parent_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="location_type"/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                    <field name="address" placeholder="ที่อยู่"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_asset_location" model="ir.actions.act_window">
+        <field name="name">สถานที่ตั้งทรัพย์สิน</field>
+        <field name="res_model">buz.asset.location</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_asset_tree" model="ir.ui.view">
+        <field name="name">buz.asset.tree</field>
+        <field name="model">buz.asset</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="department_id" optional="show"/>
+                <field name="employee_id" optional="show"/>
+                <field name="location_id" optional="show"/>
+                <field name="in_service_date" optional="hide"/>
+                <field name="gross_cost" sum="ราคาทุน"/>
+                <field name="approval_state" widget="badge"/>
+                <field name="operational_state" widget="badge"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_form" model="ir.ui.view">
+        <field name="name">buz.asset.form</field>
+        <field name="model">buz.asset</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" string="ส่งขออนุมัติ" type="object" class="btn-primary"
+                            invisible="approval_state != 'draft'"
+                            groups="buz_asset_management.group_asset_officer"/>
+                    <button name="action_approve" string="อนุมัติ" type="object" class="btn-primary"
+                            invisible="approval_state != 'submitted'"
+                            groups="buz_asset_management.group_asset_manager"/>
+                    <button name="action_put_in_service" string="เริ่มใช้งาน" type="object"
+                            invisible="approval_state != 'approved' or operational_state != 'not_in_service'"
+                            groups="buz_asset_management.group_asset_officer"/>
+                    <button name="action_capitalize" string="บันทึกเป็นสินทรัพย์" type="object"
+                            invisible="approval_state != 'approved' or operational_state != 'in_service' or accounting_state != 'not_capitalized'"
+                            groups="buz_asset_management.group_asset_accountant"/>
+                    <button name="action_compute_schedule" string="คำนวณตารางค่าเสื่อม" type="object"
+                            invisible="operational_state == 'disposed' or not depreciable_base"
+                            groups="buz_asset_management.group_asset_accountant"/>
+                    <button name="action_new_maintenance" string="แจ้งงานบำรุงรักษา" type="object"
+                            invisible="approval_state != 'approved' or operational_state == 'disposed'"
+                            groups="buz_asset_management.group_asset_officer"/>
+                    <button name="action_new_transfer" string="โอนย้าย" type="object"
+                            invisible="approval_state != 'approved' or operational_state == 'disposed'"
+                            groups="buz_asset_management.group_asset_officer"/>
+                    <button name="action_reset_to_draft" string="รีเซ็ตเป็นร่าง" type="object"
+                            invisible="approval_state == 'draft' or operational_state != 'not_in_service'"
+                            groups="buz_asset_management.group_asset_manager"/>
+                    <field name="approval_state" widget="statusbar" statusbar_visible="draft,submitted,approved"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="เก็บถาวร" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="image_1920" widget="image" class="oe_avatar"/>
+                    <div class="oe_title">
+                        <h1><field name="code"/></h1>
+                        <h2><field name="name" placeholder="ชื่อทรัพย์สิน"/></h2>
+                    </div>
+                    <notebook>
+                        <page string="ภาพรวม" name="overview">
+                            <group>
+                                <group>
+                                    <field name="category_id"/>
+                                    <field name="company_id"/>
+                                    <field name="operational_state"/>
+                                    <field name="accounting_state"/>
+                                </group>
+                                <group>
+                                    <field name="serial_number"/>
+                                    <field name="manufacturer"/>
+                                    <field name="model_name"/>
+                                    <field name="barcode"/>
+                                    <field name="parent_asset_id"/>
+                                </group>
+                            </group>
+                            <field name="description" placeholder="รายละเอียด"/>
+                        </page>
+                        <page string="การได้มา" name="acquisition">
+                            <group>
+                                <group>
+                                    <field name="source_type"/>
+                                    <field name="source_ref"/>
+                                    <field name="source_move_id" invisible="not source_move_id"/>
+                                    <field name="vendor_id"/>
+                                </group>
+                                <group>
+                                    <field name="purchase_date"/>
+                                    <field name="in_service_date"/>
+                                    <field name="depreciation_start_date"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="บัญชี" name="accounting">
+                            <group>
+                                <group>
+                                    <field name="gross_cost"/>
+                                    <field name="residual_value"/>
+                                    <field name="depreciable_base"/>
+                                </group>
+                                <group>
+                                    <field name="depreciation_method"/>
+                                    <field name="depreciation_frequency"/>
+                                    <field name="useful_life_months"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="ตารางค่าเสื่อมราคา" name="depreciation">
+                            <field name="depreciation_line_ids" readonly="1">
+                                <tree>
+                                    <field name="sequence"/>
+                                    <field name="period_start"/>
+                                    <field name="depreciation_date"/>
+                                    <field name="planned_amount" sum="รวมตามแผน"/>
+                                    <field name="remaining_after"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ผู้ถือครองและสถานที่" name="custody">
+                            <group>
+                                <group>
+                                    <field name="department_id"/>
+                                    <field name="employee_id"/>
+                                </group>
+                                <group>
+                                    <field name="location_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="การรับประกัน/ประกันภัย" name="coverage">
+                            <group>
+                                <field name="warranty_end_date"/>
+                                <field name="insurance_end_date"/>
+                            </group>
+                            <field name="coverage_ids" context="{'default_asset_id': id}">
+                                <tree>
+                                    <field name="coverage_type"/>
+                                    <field name="reference"/>
+                                    <field name="provider_id"/>
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ประวัติการบำรุงรักษา" name="maintenance" invisible="not maintenance_ids">
+                            <field name="maintenance_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="maintenance_type"/>
+                                    <field name="planned_date"/>
+                                    <field name="total_cost"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ประวัติการโอนย้าย" name="transfers" invisible="not transfer_ids">
+                            <field name="transfer_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="effective_date"/>
+                                    <field name="from_employee_id"/>
+                                    <field name="to_employee_id"/>
+                                    <field name="from_location_id"/>
+                                    <field name="to_location_id"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ส่วนประกอบ" name="components" invisible="not child_asset_ids">
+                            <field name="child_asset_ids" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_search" model="ir.ui.view">
+        <field name="name">buz.asset.search</field>
+        <field name="model">buz.asset</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="serial_number"/>
+                <field name="barcode"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="location_id"/>
+                <filter name="draft" string="ร่าง" domain="[('approval_state', '=', 'draft')]"/>
+                <filter name="in_service" string="อยู่ระหว่างใช้งาน"
+                        domain="[('operational_state', '=', 'in_service')]"/>
+                <separator/>
+                <filter name="archived" string="เก็บถาวร" domain="[('active', '=', False)]"/>
+                <group expand="0" string="จัดกลุ่มตาม">
+                    <filter name="group_category" string="หมวดหมู่" context="{'group_by': 'category_id'}"/>
+                    <filter name="group_department" string="แผนก" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_location" string="สถานที่ตั้ง" context="{'group_by': 'location_id'}"/>
+                    <filter name="group_approval" string="สถานะการอนุมัติ" context="{'group_by': 'approval_state'}"/>
+                    <filter name="group_operational" string="สถานะการใช้งาน" context="{'group_by': 'operational_state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_buz_asset" model="ir.actions.act_window">
+        <field name="name">ทะเบียนทรัพย์สิน</field>
+        <field name="res_model">buz.asset</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_buz_asset_search"/>
+    </record>
+</odoo>

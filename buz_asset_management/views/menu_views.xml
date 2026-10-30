@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_buz_asset_root" name="บริหารทรัพย์สิน" sequence="45"
+              groups="buz_asset_management.group_asset_user"/>
+    <menuitem id="menu_buz_asset_dashboard" name="แดชบอร์ด" parent="menu_buz_asset_root"
+              action="action_buz_asset_dashboard" sequence="5"/>
+    <menuitem id="menu_buz_asset" name="ทะเบียนทรัพย์สิน" parent="menu_buz_asset_root"
+              action="action_buz_asset" sequence="10"/>
+    <menuitem id="menu_buz_asset_category_main" name="หมวดหมู่ทรัพย์สิน" parent="menu_buz_asset_root"
+              action="action_buz_asset_category" sequence="20"/>
+    <menuitem id="menu_buz_asset_depreciation" name="ค่าเสื่อมราคา" parent="menu_buz_asset_root"
+              action="action_buz_asset_depreciation_line" sequence="30"
+              groups="buz_asset_management.group_asset_accountant"/>
+    <menuitem id="menu_buz_asset_transfer" name="การโอนย้าย" parent="menu_buz_asset_root"
+              action="action_buz_asset_transfer" sequence="40"/>
+    <menuitem id="menu_buz_asset_maintenance" name="การบำรุงรักษา" parent="menu_buz_asset_root"
+              action="action_buz_asset_maintenance" sequence="50"/>
+    <menuitem id="menu_buz_asset_coverage" name="การรับประกัน/ประกันภัย" parent="menu_buz_asset_root"
+              action="action_buz_asset_coverage" sequence="55"/>
+    <menuitem id="menu_buz_asset_audit" name="การตรวจนับ" parent="menu_buz_asset_root"
+              action="action_buz_asset_audit" sequence="60"/>
+    <menuitem id="menu_buz_asset_disposal" name="การจำหน่าย" parent="menu_buz_asset_root"
+              action="action_buz_asset_disposal" sequence="70"/>
+
+    <menuitem id="menu_buz_asset_reports" name="รายงาน" parent="menu_buz_asset_root" sequence="80"/>
+    <menuitem id="menu_buz_report_register" name="ทะเบียนทรัพย์สิน" parent="menu_buz_asset_reports"
+              action="action_buz_report_register" sequence="10"/>
+    <menuitem id="menu_buz_report_book_value" name="มูลค่าตามบัญชี" parent="menu_buz_asset_reports"
+              action="action_buz_report_book_value" sequence="20"/>
+    <menuitem id="menu_buz_report_depreciation" name="ค่าเสื่อมราคา" parent="menu_buz_asset_reports"
+              action="action_buz_report_depreciation" sequence="30"
+              groups="buz_asset_management.group_asset_accountant"/>
+    <menuitem id="menu_buz_report_by_department" name="แยกตามแผนก" parent="menu_buz_asset_reports"
+              action="action_buz_report_by_department" sequence="40"/>
+    <menuitem id="menu_buz_report_by_location" name="แยกตามสถานที่" parent="menu_buz_asset_reports"
+              action="action_buz_report_by_location" sequence="50"/>
+    <menuitem id="menu_buz_report_reconcile" name="กระทบยอดกับ GL" parent="menu_buz_asset_reports"
+              action="action_buz_report_reconcile" sequence="5"
+              groups="buz_asset_management.group_asset_accountant"/>
+    <menuitem id="menu_buz_report_rollforward" name="ความเคลื่อนไหวทรัพย์สิน" parent="menu_buz_asset_reports"
+              action="action_buz_report_rollforward" sequence="25"
+              groups="buz_asset_management.group_asset_accountant"/>
+    <menuitem id="menu_buz_report_ageing" name="อายุทรัพย์สิน" parent="menu_buz_asset_reports"
+              action="action_buz_report_ageing" sequence="26"/>
+    <menuitem id="menu_buz_report_forecast" name="คาดการณ์ค่าเสื่อมราคา" parent="menu_buz_asset_reports"
+              action="action_buz_report_forecast" sequence="35"/>
+    <menuitem id="menu_buz_report_movement" name="การโอนย้าย" parent="menu_buz_asset_reports"
+              action="action_buz_report_movement" sequence="55"/>
+    <menuitem id="menu_buz_report_maintenance" name="ค่าบำรุงรักษา" parent="menu_buz_asset_reports"
+              action="action_buz_report_maintenance" sequence="56"/>
+    <menuitem id="menu_buz_report_audit" name="ผลการตรวจนับ" parent="menu_buz_asset_reports"
+              action="action_buz_report_audit" sequence="58"/>
+    <menuitem id="menu_buz_report_disposal" name="การจำหน่าย" parent="menu_buz_asset_reports"
+              action="action_buz_report_disposal" sequence="60"/>
+
+    <menuitem id="menu_buz_asset_configuration" name="ตั้งค่า" parent="menu_buz_asset_root"
+              sequence="90"/>
+    <menuitem id="menu_buz_asset_location" name="สถานที่ตั้ง"
+              parent="menu_buz_asset_configuration" action="action_buz_asset_location"
+              sequence="20" groups="buz_asset_management.group_asset_officer"/>
+</odoo>
