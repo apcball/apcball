@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Dashboard -->
+    <record id="view_buz_asset_dashboard_form" model="ir.ui.view">
+        <field name="name">buz.asset.dashboard.form</field>
+        <field name="model">buz.asset.dashboard</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0" delete="0">
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="company_ids" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_pending_approval" type="object" class="oe_stat_button" icon="fa-hourglass-half">
+                            <field name="pending_approval_count" widget="statinfo" string="รออนุมัติ"/>
+                        </button>
+                        <button name="action_open_due_lines" type="object" class="oe_stat_button" icon="fa-calendar-check-o">
+                            <field name="due_depreciation_count" widget="statinfo" string="ค่าเสื่อมค้างลงบัญชี"/>
+                        </button>
+                        <button name="action_open_exception_lines" type="object" class="oe_stat_button" icon="fa-exclamation-triangle">
+                            <field name="exception_count" widget="statinfo" string="ข้อยกเว้น"/>
+                        </button>
+                        <button name="action_open_maintenance" type="object" class="oe_stat_button" icon="fa-wrench">
+                            <field name="maintenance_open_count" widget="statinfo" string="งานซ่อมบำรุง"/>
+                        </button>
+                        <button name="action_open_overdue_maintenance" type="object" class="oe_stat_button" icon="fa-clock-o">
+                            <field name="maintenance_overdue_count" widget="statinfo" string="เลยกำหนด"/>
+                        </button>
+                        <button name="action_open_expiring_coverage" type="object" class="oe_stat_button" icon="fa-shield">
+                            <field name="coverage_expiring_count" widget="statinfo" string="ประกันใกล้หมด"/>
+                        </button>
+                        <button name="action_open_pending_disposals" type="object" class="oe_stat_button" icon="fa-trash-o">
+                            <field name="pending_disposal_count" widget="statinfo" string="รอจำหน่าย"/>
+                        </button>
+                    </div>
+                    <h1>แดชบอร์ดทรัพย์สิน</h1>
+                    <p class="text-muted">ตัวเลขจากข้อมูลจริงตามบริษัทที่เลือก ค่าเสื่อมราคาสะสมนับเฉพาะรายการที่ลงบัญชีแล้ว</p>
+                    <group>
+                        <group>
+                            <label for="asset_count"/>
+                            <div><field name="asset_count" class="oe_inline"/>
+                                <button name="action_open_assets" type="object" class="btn btn-link" string="ดูรายการ"/></div>
+                            <field name="total_cost"/>
+                        </group>
+                        <group>
+                            <field name="accumulated_depreciation"/>
+                            <field name="book_value"/>
+                            <field name="coverage_expired_count"/>
+                            <field name="audit_open_count"/>
+                            <field name="audit_rate" widget="progressbar"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_asset_dashboard" model="ir.actions.server">
+        <field name="name">แดชบอร์ดทรัพย์สิน</field>
+        <field name="model_id" ref="model_buz_asset_dashboard"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open()</field>
+    </record>
+
+    <!-- Asset reports (stored accumulated depreciation / book value) -->
+    <record id="view_buz_asset_report_tree" model="ir.ui.view">
+        <field name="name">buz.asset.report.tree</field>
+        <field name="model">buz.asset</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="department_id" optional="show"/>
+                <field name="location_id" optional="show"/>
+                <field name="in_service_date"/>
+                <field name="gross_cost" sum="รวม"/>
+                <field name="accumulated_depreciation" sum="รวม"/>
+                <field name="book_value" sum="รวม"/>
+                <field name="operational_state" widget="badge" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_report_pivot" model="ir.ui.view">
+        <field name="name">buz.asset.report.pivot</field>
+        <field name="model">buz.asset</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="category_id" type="row"/>
+                <field name="gross_cost" type="measure"/>
+                <field name="accumulated_depreciation" type="measure"/>
+                <field name="book_value" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_report_graph" model="ir.ui.view">
+        <field name="name">buz.asset.report.graph</field>
+        <field name="model">buz.asset</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="category_id"/>
+                <field name="book_value" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_buz_report_register" model="ir.actions.act_window">
+        <field name="name">รายงานทะเบียนทรัพย์สิน</field>
+        <field name="res_model">buz.asset</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_report_tree')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_buz_asset_report_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_buz_asset_report_graph')})]"/>
+        <field name="search_view_id" ref="view_buz_asset_search"/>
+    </record>
+
+    <record id="action_buz_report_book_value" model="ir.actions.act_window">
+        <field name="name">รายงานมูลค่าตามบัญชี</field>
+        <field name="res_model">buz.asset</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="domain">[('approval_state', '=', 'approved'), ('operational_state', '!=', 'disposed')]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_buz_asset_report_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_buz_asset_report_graph')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_report_tree')})]"/>
+        <field name="search_view_id" ref="view_buz_asset_search"/>
+    </record>
+
+    <record id="action_buz_report_by_department" model="ir.actions.act_window">
+        <field name="name">ทรัพย์สินแยกตามแผนก</field>
+        <field name="res_model">buz.asset</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="domain">[('operational_state', '!=', 'disposed')]</field>
+        <field name="context">{'pivot_row_groupby': ['department_id'], 'graph_groupbys': ['department_id']}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_buz_asset_report_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_buz_asset_report_graph')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_report_tree')})]"/>
+        <field name="search_view_id" ref="view_buz_asset_search"/>
+    </record>
+
+    <record id="action_buz_report_by_location" model="ir.actions.act_window">
+        <field name="name">ทรัพย์สินแยกตามสถานที่</field>
+        <field name="res_model">buz.asset</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="domain">[('operational_state', '!=', 'disposed')]</field>
+        <field name="context">{'pivot_row_groupby': ['location_id'], 'graph_groupbys': ['location_id']}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_buz_asset_report_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_buz_asset_report_graph')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_report_tree')})]"/>
+        <field name="search_view_id" ref="view_buz_asset_search"/>
+    </record>
+
+    <!-- Depreciation report -->
+    <record id="view_buz_depreciation_report_pivot" model="ir.ui.view">
+        <field name="name">buz.asset.depreciation.line.pivot</field>
+        <field name="model">buz.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="depreciation_date" interval="month" type="row"/>
+                <field name="state" type="col"/>
+                <field name="planned_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_buz_depreciation_report_graph" model="ir.ui.view">
+        <field name="name">buz.asset.depreciation.line.graph</field>
+        <field name="model">buz.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <graph type="bar" stacked="1">
+                <field name="depreciation_date" interval="month"/>
+                <field name="state"/>
+                <field name="planned_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_buz_report_depreciation" model="ir.actions.act_window">
+        <field name="name">รายงานค่าเสื่อมราคา</field>
+        <field name="res_model">buz.asset.depreciation.line</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_buz_depreciation_report_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_buz_depreciation_report_graph')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_depreciation_line_tree')})]"/>
+        <field name="search_view_id" ref="view_buz_asset_depreciation_line_search"/>
+    </record>
+
+    <!-- Disposal report -->
+    <record id="view_buz_disposal_report_pivot" model="ir.ui.view">
+        <field name="name">buz.asset.disposal.pivot</field>
+        <field name="model">buz.asset.disposal</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="disposal_date" interval="month" type="row"/>
+                <field name="disposal_type" type="col"/>
+                <field name="cost" type="measure"/>
+                <field name="accumulated_depreciation" type="measure"/>
+                <field name="proceeds" type="measure"/>
+                <field name="gain_loss" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_buz_report_disposal" model="ir.actions.act_window">
+        <field name="name">รายงานการจำหน่าย</field>
+        <field name="res_model">buz.asset.disposal</field>
+        <field name="view_mode">pivot,tree,form</field>
+        <field name="domain">[('state', '=', 'posted')]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_buz_disposal_report_pivot')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_disposal_tree')})]"/>
+    </record>
+</odoo>

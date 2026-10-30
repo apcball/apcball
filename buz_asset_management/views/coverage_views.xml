@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_asset_coverage_tree" model="ir.ui.view">
+        <field name="name">buz.asset.coverage.tree</field>
+        <field name="model">buz.asset.coverage</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state == 'expired'" decoration-warning="state == 'expiring'"
+                  decoration-muted="state == 'upcoming'">
+                <field name="asset_id"/>
+                <field name="coverage_type"/>
+                <field name="reference"/>
+                <field name="provider_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="days_left"/>
+                <field name="insured_amount" optional="show"/>
+                <field name="state" widget="badge"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_coverage_form" model="ir.ui.view">
+        <field name="name">buz.asset.coverage.form</field>
+        <field name="model">buz.asset.coverage</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <field name="active" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <widget name="web_ribbon" title="เก็บถาวร" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <field name="state" widget="statusbar" class="float-end"/>
+                        <h1><field name="reference" placeholder="เลขที่การรับประกัน / เลขที่กรมธรรม์"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="asset_id" options="{'no_create': True}" readonly="id"/>
+                            <field name="coverage_type"/>
+                            <field name="provider_id" options="{'no_create': True}"/>
+                            <field name="insured_amount" invisible="coverage_type != 'insurance'"/>
+                        </group>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="days_left"/>
+                            <field name="responsible_id"/>
+                            <field name="reminder_days"/>
+                            <field name="reminder_sent"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="coverage"/>
+                        <field name="terms"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_coverage_search" model="ir.ui.view">
+        <field name="name">buz.asset.coverage.search</field>
+        <field name="model">buz.asset.coverage</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="asset_id"/>
+                <field name="reference"/>
+                <field name="provider_id"/>
+                <filter name="warranty" string="การรับประกัน" domain="[('coverage_type', '=', 'warranty')]"/>
+                <filter name="insurance" string="ประกันภัย" domain="[('coverage_type', '=', 'insurance')]"/>
+                <separator/>
+                <filter name="expiring" string="ใกล้หมดอายุ" domain="[('state', '=', 'expiring')]"/>
+                <filter name="expired" string="หมดอายุ" domain="[('state', '=', 'expired')]"/>
+                <filter name="in_force" string="มีผลอยู่" domain="[('state', 'in', ('active', 'expiring'))]"/>
+                <filter name="archived" string="เก็บถาวร" domain="[('active', '=', False)]"/>
+                <group expand="0" string="จัดกลุ่มตาม">
+                    <filter name="group_type" string="ประเภท" context="{'group_by': 'coverage_type'}"/>
+                    <filter name="group_provider" string="ผู้ให้บริการ" context="{'group_by': 'provider_id'}"/>
+                    <filter name="group_end" string="เดือนที่สิ้นสุด" context="{'group_by': 'date_end:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_buz_asset_coverage" model="ir.actions.act_window">
+        <field name="name">การรับประกัน/ประกันภัย</field>
+        <field name="res_model">buz.asset.coverage</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_buz_asset_coverage_search"/>
+        <field name="context">{'search_default_in_force': 1}</field>
+    </record>
+</odoo>
