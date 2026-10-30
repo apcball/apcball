@@ -674,12 +674,18 @@ class StockValuationLayer(models.Model):
                 # `id != layer.id` (not `id <`) so sibling negative layers from a
                 # multi-line POS order / multi-move picking are still counted.
                 # One SUM in SQL instead of loading the whole ledger into the ORM.
-                self.flush_model(['product_id', 'warehouse_id', 'quantity'])
+                # Re-baseline layers (move reference IMEX-REBASELINE-*) are report-only
+                # corrections of pre-cutoff FIFO-reset residue; the physical quant was
+                # never touched, so counting them makes the ledger sit below real stock
+                # and falsely blocks deliveries.
+                self.flush_model(['product_id', 'warehouse_id', 'quantity', 'stock_move_id'])
                 self.env.cr.execute(
                     """
-                    SELECT COALESCE(SUM(quantity), 0)
-                      FROM stock_valuation_layer
-                     WHERE product_id = %s AND warehouse_id = %s AND id != %s
+                    SELECT COALESCE(SUM(svl.quantity), 0)
+                      FROM stock_valuation_layer svl
+                      LEFT JOIN stock_move sm ON sm.id = svl.stock_move_id
+                     WHERE svl.product_id = %s AND svl.warehouse_id = %s AND svl.id != %s
+                       AND COALESCE(sm.reference, '') NOT LIKE 'IMEX-REBASELINE%%'
                     """,
                     (layer.product_id.id, layer.warehouse_id.id, layer.id),
                 )
