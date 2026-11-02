@@ -340,6 +340,9 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(payload['kpi_payment']['paid_actual'], base['kpi_payment']['paid_actual'], places=2)
         self.assertAlmostEqual(payload['kpi_loan']['drawn'], 2000.0, places=2)
         self.assertAlmostEqual(payload['kpi_loan']['outstanding'], 2000.0, places=2)
+        for tab, key in (('vendor', 'p:%d' % self.v1.id),):
+            self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_loan'), 2000.0, places=2)
+            self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_total'), 2000.0, places=2)
         # the same entry's journal flagged as payable-note journal: loan wins
         self.company.apd_note_journal_ids = journal
         again = self._data()
@@ -612,6 +615,7 @@ class TestApDashboard(TransactionCase):
         self.assertEqual([t['id'] for t in payload['tabs']], ['vendor', 'project', 'category'])
         expected = {'seq', 'id', 'key', 'name', 'budget_pct',
                     'month_total', 'month_cash', 'month_credit', 'month_paid', 'month_residual',
+                    'act_total', 'act_loan', 'act_note', 'act_advance', 'act_cash',
                     'budget_approved', 'budget_used', 'budget_remaining',
                     'req_pending', 'req_approved', 'req_rejected',
                     'next_total', 'next_cash', 'next_credit'}
