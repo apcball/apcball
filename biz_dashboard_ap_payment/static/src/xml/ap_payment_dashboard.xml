@@ -113,10 +113,20 @@
                                 <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.credit_pct)"/>
                             </div>
                             <div class="o_apd_tile o_apd_tile--purple">
-                                <div class="o_apd_tile_label">ชำระแล้ว</div>
+                                <div class="o_apd_tile_label">ชำระแล้ว <small>(ตามวันครบกำหนด)</small></div>
                                 <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.paid)"/>
                                 <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.paid_pct)"/>
-                                <div class="o_apd_tile_note">จ่ายจริงในเดือน <t t-esc="fmtBaht(data.kpi_payment.paid_actual)"/></div>
+                                <div class="o_apd_tile_note">จ่ายจริงในเดือน (ตามวันที่ชำระ) <t t-esc="fmtBaht(data.kpi_payment.paid_actual)"/></div>
+                                <div class="o_apd_tile_note">
+                                    <t t-if="data.kpi_payment.paid_actual_loan">- ด้วยเงินกู้ <t t-esc="fmtBaht(data.kpi_payment.paid_actual_loan)"/><br/></t>
+                                    <t t-if="data.kpi_payment.paid_actual_note">- ตั๋วเงินจ่าย <t t-esc="fmtBaht(data.kpi_payment.paid_actual_note)"/><br/></t>
+                                    <t t-if="data.kpi_payment.paid_actual_advance">- เงินทดรองจ่าย <t t-esc="fmtBaht(data.kpi_payment.paid_actual_advance)"/><br/></t>
+                                    <t t-if="data.kpi_payment.paid_actual_loan or data.kpi_payment.paid_actual_note or data.kpi_payment.paid_actual_advance">- โอน / เช็ค / อื่น ๆ <t t-esc="fmtBaht(data.kpi_payment.paid_actual_cash)"/></t>
+                                </div>
+                                <div t-if="data.kpi_loan.configured" class="o_apd_tile_note">
+                                    สินเชื่อคงค้าง <t t-esc="fmtBaht(data.kpi_loan.outstanding)"/>
+                                    (เบิก <t t-esc="fmtBaht(data.kpi_loan.drawn)"/> / คืน <t t-esc="fmtBaht(data.kpi_loan.repaid)"/>)
+                                </div>
                             </div>
                             <div class="o_apd_tile o_apd_tile--orange">
                                 <div class="o_apd_tile_label">ค้างชำระ (ยังไม่ชำระ)</div>

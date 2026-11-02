@@ -8,3 +8,14 @@ class ResConfigSettings(models.TransientModel):
     apd_other_expense_account_ids = fields.Many2many(
         related='company_id.apd_other_expense_account_ids', readonly=False,
         domain="[('company_id', '=', company_id)]")
+
+    apd_loan_account_ids = fields.Many2many(
+        related='company_id.apd_loan_account_ids', readonly=False,
+        domain="[('company_id', '=', company_id)]")
+
+    apd_note_journal_ids = fields.Many2many(
+        related='company_id.apd_note_journal_ids', readonly=False,
+        domain="[('company_id', '=', company_id)]")
+    apd_advance_journal_ids = fields.Many2many(
+        related='company_id.apd_advance_journal_ids', readonly=False,
+        domain="[('company_id', '=', company_id)]")

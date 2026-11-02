@@ -308,6 +308,51 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'paid_actual'), 1500.0, places=2)
         self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'paid'), 0.0, places=2)
 
+    def test_paid_actual_loan_split(self):
+        """A bill closed by an entry crediting a configured loan account (TR) is
+        counted as paid-by-loan, not as cash; the loan KPI tracks the drawdown."""
+        Account = self.env['account.account']
+        loan = Account.create({
+            'code': 'APDLOAN', 'name': 'APD TR Loan', 'account_type': 'liability_current',
+            'company_id': self.company.id})
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general'), ('company_id', '=', self.company.id)], limit=1)
+        if not journal:
+            self.skipTest('No general journal in the test company')
+        bill = self._bill(self.v1, D(3, 12), 2000.0, term=self.term_now)
+        payable = bill.line_ids.filtered(lambda l: l.account_id.account_type == 'liability_payable')
+        entry = self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': D(3, 14),
+            'line_ids': [
+                (0, 0, {'account_id': payable.account_id.id, 'partner_id': self.v1.id,
+                        'debit': 2000.0, 'credit': 0.0}),
+                (0, 0, {'account_id': loan.id, 'debit': 0.0, 'credit': 2000.0}),
+            ]})
+        entry.action_post()
+        (payable | entry.line_ids.filtered(lambda l: l.account_id == payable.account_id)).reconcile()
+
+        base = self._data()
+        self.company.apd_loan_account_ids = loan
+        payload = self._data()
+        self.assertTrue(payload['kpi_loan']['configured'])
+        self.assertAlmostEqual(payload['kpi_payment']['paid_actual_loan'] - base['kpi_payment']['paid_actual_loan'], 2000.0, places=2)
+        self.assertAlmostEqual(payload['kpi_payment']['paid_actual_cash'] - base['kpi_payment']['paid_actual_cash'], -2000.0, places=2)
+        self.assertAlmostEqual(payload['kpi_payment']['paid_actual'], base['kpi_payment']['paid_actual'], places=2)
+        self.assertAlmostEqual(payload['kpi_loan']['drawn'], 2000.0, places=2)
+        self.assertAlmostEqual(payload['kpi_loan']['outstanding'], 2000.0, places=2)
+        # the same entry's journal flagged as payable-note journal: loan wins
+        self.company.apd_note_journal_ids = journal
+        again = self._data()
+        self.assertAlmostEqual(again['kpi_payment']['paid_actual_loan'], payload['kpi_payment']['paid_actual_loan'], places=2)
+        self.company.apd_loan_account_ids = False
+        as_note = self._data()
+        self.assertAlmostEqual(as_note['kpi_payment']['paid_actual_note'] - base['kpi_payment']['paid_actual_note'], 2000.0, places=2)
+        self.company.apd_note_journal_ids = False
+        self.company.apd_advance_journal_ids = journal
+        as_adv = self._data()
+        self.assertAlmostEqual(as_adv['kpi_payment']['paid_actual_advance'] - base['kpi_payment']['paid_actual_advance'], 2000.0, places=2)
+        self.assertAlmostEqual(as_adv['kpi_payment']['paid_actual'], base['kpi_payment']['paid_actual'], places=2)
+
     def test_other_expense_from_journal_entries(self):
         Account = self.env['account.account']
         salary = Account.create({
