@@ -14,6 +14,11 @@
                             <field name="apd_other_expense_account_ids" widget="many2many_tags"
                                    options="{'no_create': True}"/>
                         </setting>
+                        <setting string="บัญชีรายจ่ายนอกบิล - ด้านเดบิตเท่านั้น"
+                                 help="นับเฉพาะรายการด้านเดบิตของสมุดรายวัน เช่น ชำระคืนเงินกู้ (212100 / 212200) เงินประกันสังคม เงินเดือน ค่าแรง ดอกเบี้ยจ่าย — บัญชีที่เลือกในช่อง 'บัญชีรายจ่ายนอกบิล' ด้านบนจะนับเดบิตหักเครดิต (เช่น ค่าใช้จ่ายค้างจ่าย)">
+                            <field name="apd_other_expense_debit_account_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </setting>
                         <setting string="บัญชีเงินกู้ธนาคาร (TR / PN)"
                                  help="บิลที่จ่ายด้วยรายการที่ลงเครดิตบัญชีเหล่านี้ (เช่น 212200 เงินกู้ TR) จะแยกเป็น 'ด้วยเงินกู้' ในยอดจ่ายจริงของเดือน และแสดงยอดสินเชื่อคงค้าง">
                             <field name="apd_loan_account_ids" widget="many2many_tags"

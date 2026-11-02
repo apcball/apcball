@@ -395,6 +395,39 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(
             self._delta_row(payload, 'category', 'acc:%d' % salary.id, 'month_total'), 4000.0, places=2)
 
+    def test_other_expense_debit_only_accounts(self):
+        """Debit-only accounts count the debit side alone; net accounts debit - credit."""
+        Account = self.env['account.account']
+        loan = Account.create({'code': 'APDLN2', 'name': 'APD Loan', 'account_type': 'liability_current',
+                               'company_id': self.company.id})
+        accrual = Account.create({'code': 'APDACR', 'name': 'APD Accrual', 'account_type': 'liability_current',
+                                  'company_id': self.company.id})
+        bank = Account.create({'code': 'APDBNK', 'name': 'APD Bank', 'account_type': 'asset_current',
+                               'company_id': self.company.id})
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general'), ('company_id', '=', self.company.id)], limit=1)
+        if not journal:
+            self.skipTest('No general journal in the test company')
+
+        def entry(day, lines):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id, 'date': day,
+                'line_ids': [(0, 0, {'account_id': a.id, 'debit': dr, 'credit': cr}) for a, dr, cr in lines],
+            }).action_post()
+
+        entry(D(3, 10), [(loan, 3000.0, 0.0), (bank, 0.0, 3000.0)])        # repayment
+        entry(D(3, 12), [(loan, 0.0, 500.0), (bank, 500.0, 0.0)])          # drawdown: ignored
+        entry(D(3, 15), [(accrual, 0.0, 800.0), (bank, 800.0, 0.0)])       # accrual raised
+        entry(D(3, 20), [(accrual, 1200.0, 0.0), (bank, 0.0, 1200.0)])     # accrual paid
+        self.company.apd_other_expense_debit_account_ids = loan
+        self.company.apd_other_expense_account_ids = accrual
+        payload = self._data()
+        # loan: debit only 3000; accrual: net 1200 - 800 = 400
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'other'), 3400.0, places=2)
+        items = {i['name']: i['amount'] for i in payload['kpi_other']['items']}
+        self.assertAlmostEqual(items['APDLN2 APD Loan'], 3000.0, places=2)
+        self.assertAlmostEqual(items['APDACR APD Accrual'], 400.0, places=2)
+
     def test_vendor_rows_and_donut(self):
         self._bill(self.v1, D(3, 3), 1500.0, term=self.term_now)
         self._bill(self.v2, D(3, 4), 900.0, term=self.term_now)

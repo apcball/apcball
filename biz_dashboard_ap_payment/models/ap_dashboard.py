@@ -536,7 +536,9 @@ class ApDashboard(models.AbstractModel):
         if f['project_id']:
             return []
         companies = self.env['res.company'].browse(f['cids'])
-        accounts = companies.apd_other_expense_account_ids
+        net_accounts = companies.apd_other_expense_account_ids
+        debit_accounts = companies.apd_other_expense_debit_account_ids - net_accounts
+        accounts = net_accounts | debit_accounts
         if not accounts:
             return []
         domain = [
@@ -552,8 +554,13 @@ class ApDashboard(models.AbstractModel):
         out = []
         for line in self.env['account.move.line'].search(domain):
             company = line.company_id
+            # net accounts (accruals): debit - credit; debit-only accounts (loan
+            # repayment, payables settled, expenses): the debit side alone
+            raw = line.debit - line.credit if line.account_id in net_accounts else line.debit
+            if not raw:
+                continue
             total = self._convert(
-                line.debit - line.credit, company.currency_id, company, line.date, f['currency'])
+                raw, company.currency_id, company, line.date, f['currency'])
             out.append({
                 'date': line.date,
                 'week': _week_index(line.date.day),

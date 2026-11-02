@@ -15,6 +15,15 @@ class ResCompany(models.Model):
         help='บัญชีที่รายการสมุดรายวัน (ไม่ผ่านบิลเจ้าหนี้) ถูกนับรวมในยอดจ่ายประจำเดือน '
              'เช่น เงินเดือน ดอกเบี้ย')
 
+    apd_other_expense_debit_account_ids = fields.Many2many(
+        'account.account', 'apd_company_other_expense_debit_account_rel',
+        'company_id', 'account_id',
+        string='บัญชีรายจ่ายนอกบิล - ด้านเดบิตเท่านั้น (Payment Dashboard)',
+        domain="[('company_id', '=', id)]",
+        help='บัญชีที่นับเฉพาะรายการด้านเดบิตของสมุดรายวัน (ไม่ผ่านบิลเจ้าหนี้) เช่น ชำระคืนเงินกู้ '
+             'เงินประกันสังคม เงินเดือน ค่าแรง ดอกเบี้ยจ่าย ส่วนบัญชีใน "บัญชีรายจ่ายนอกบิล" '
+             'นับเดบิตหักเครดิต (ค่าใช้จ่ายค้างจ่าย)')
+
     apd_loan_account_ids = fields.Many2many(
         'account.account', 'apd_company_loan_account_rel',
         'company_id', 'account_id',
@@ -38,7 +47,7 @@ class ResCompany(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if {'apd_other_expense_account_ids', 'apd_loan_account_ids',
+        if {'apd_other_expense_account_ids', 'apd_other_expense_debit_account_ids', 'apd_loan_account_ids',
                 'apd_note_journal_ids', 'apd_advance_journal_ids'} & set(vals):
             clear_cache()
         return res
