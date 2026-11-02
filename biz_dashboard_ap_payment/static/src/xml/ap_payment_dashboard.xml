@@ -100,7 +100,7 @@
                             </div>
                         </div>
                         <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_payment.total)"/>
-                        <div class="o_apd_tile_note" t-if="data.kpi_payment.other">รวมรายจ่ายนอกบิล (สมุดรายวัน) <t t-esc="fmtBaht(data.kpi_payment.other)"/></div>
+                        <div class="o_apd_tile_note" t-if="data.kpi_payment.other">รวมรายจ่ายนอกบิล (สมุดรายวัน) <t t-esc="fmtBaht(data.kpi_payment.other)"/><t t-if="data.kpi_other.loan_repaid"> (ในนี้ชำระคืนเงินกู้ <t t-esc="fmtBaht(data.kpi_other.loan_repaid)"/>)</t></div>
                         <div class="o_apd_tiles">
                             <div class="o_apd_tile o_apd_tile--green">
                                 <div class="o_apd_tile_label">เงินสด (ชำระทันที)</div>
@@ -157,8 +157,11 @@
                             <div class="o_apd_row" t-if="data.kpi_payment.other">
                                 <span>รายจ่ายนอกบิล (สมุดรายวัน)</span><b t-esc="fmtNum(data.kpi_payment.other)"/>
                             </div>
-                            <div class="o_apd_row" t-if="data.kpi_loan.configured">
-                                <span>ชำระคืนเงินกู้ในเดือน</span><b t-esc="fmtNum(data.kpi_loan.repaid)"/>
+                            <div class="o_apd_row o_apd_row--sub" t-if="data.kpi_other.loan_repaid">
+                                <span>ในนี้: ชำระคืนเงินกู้</span><b t-esc="fmtNum(data.kpi_other.loan_repaid)"/>
+                            </div>
+                            <div class="o_apd_row" t-if="data.kpi_loan.configured and !data.kpi_other.loan_repaid and data.kpi_loan.repaid">
+                                <span>ชำระคืนเงินกู้ในเดือน (ไม่รวมในรายจ่ายนอกบิล)</span><b t-esc="fmtNum(data.kpi_loan.repaid)"/>
                             </div>
                             <div class="o_apd_row o_apd_row--hl" t-if="data.kpi_loan.configured">
                                 <span>เบิกเงินกู้ในเดือน / คงค้างสิ้นเดือน</span>

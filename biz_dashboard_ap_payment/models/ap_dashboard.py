@@ -552,6 +552,13 @@ class ApDashboard(models.AbstractModel):
         ]
         if f['partner_id']:
             domain.append(('partner_id.commercial_partner_id', '=', f['partner_id']))
+        if all(companies.mapped('apd_exclude_reversal')):
+            # an accrual reversal is not money out (the real bill is already in
+            # the bill totals): skip Odoo reversals and hand-made "(Reversal)" entries
+            domain += [
+                ('move_id.reversed_entry_id', '=', False),
+                '|', ('move_id.ref', '=', False), ('move_id.ref', 'not ilike', 'reversal'),
+            ]
         out = []
         for line in self.env['account.move.line'].search(domain):
             company = line.company_id
@@ -759,8 +766,12 @@ class ApDashboard(models.AbstractModel):
         kpi_payment['other'] = 0.0
         other_by_account = OrderedDict()
         other_count = 0
+        other_loan_repaid = 0.0
+        loan_account_ids = set(self.env['res.company'].browse(f['cids']).apd_loan_account_ids.ids)
         for v in self._other_expense_vals(f):
             other_count += 1
+            if v['category'][2] in loan_account_ids:
+                other_loan_repaid += v['total']
             name = v['category'][1]
             other_by_account[name] = other_by_account.get(name, 0.0) + v['total']
             amounts = dict(month_total=v['total'], month_cash=v['total'],
@@ -875,6 +886,7 @@ class ApDashboard(models.AbstractModel):
         other_total = kpi_payment['other']
         kpi_other = {
             'total': round(other_total, 2),
+            'loan_repaid': round(other_loan_repaid, 2),
             'count': other_count,
             'items': [
                 {'name': name, 'amount': round(amount, 2), 'pct': _pct(amount, other_total)}

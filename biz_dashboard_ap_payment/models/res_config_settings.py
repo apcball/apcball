@@ -23,3 +23,5 @@ class ResConfigSettings(models.TransientModel):
     apd_other_expense_debit_account_ids = fields.Many2many(
         related='company_id.apd_other_expense_debit_account_ids', readonly=False,
         domain="[('company_id', '=', company_id)]")
+
+    apd_exclude_reversal = fields.Boolean(related='company_id.apd_exclude_reversal', readonly=False)

@@ -24,6 +24,11 @@ class ResCompany(models.Model):
              'เงินประกันสังคม เงินเดือน ค่าแรง ดอกเบี้ยจ่าย ส่วนบัญชีใน "บัญชีรายจ่ายนอกบิล" '
              'นับเดบิตหักเครดิต (ค่าใช้จ่ายค้างจ่าย)')
 
+    apd_exclude_reversal = fields.Boolean(
+        string='ไม่นับรายการกลับรายการในรายจ่ายนอกบิล (Payment Dashboard)', default=True,
+        help='ข้ามรายการสมุดรายวันที่เป็นการกลับรายการ (reversal ของ Odoo หรือ ref มีคำว่า Reversal) '
+             'เพราะไม่ใช่เงินจ่ายออก และบิลจริงอยู่ในยอดบิลแล้ว')
+
     apd_loan_account_ids = fields.Many2many(
         'account.account', 'apd_company_loan_account_rel',
         'company_id', 'account_id',
@@ -47,7 +52,7 @@ class ResCompany(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if {'apd_other_expense_account_ids', 'apd_other_expense_debit_account_ids', 'apd_loan_account_ids',
+        if {'apd_exclude_reversal', 'apd_other_expense_account_ids', 'apd_other_expense_debit_account_ids', 'apd_loan_account_ids',
                 'apd_note_journal_ids', 'apd_advance_journal_ids'} & set(vals):
             clear_cache()
         return res

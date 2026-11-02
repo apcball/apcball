@@ -428,6 +428,39 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(items['APDLN2 APD Loan'], 3000.0, places=2)
         self.assertAlmostEqual(items['APDACR APD Accrual'], 400.0, places=2)
 
+    def test_other_expense_skips_reversal_and_reports_loan_repaid(self):
+        Account = self.env['account.account']
+        accrual = Account.create({'code': 'APDAC2', 'name': 'APD Accrual 2', 'account_type': 'liability_current',
+                                  'company_id': self.company.id})
+        loan = Account.create({'code': 'APDLN3', 'name': 'APD Loan 3', 'account_type': 'liability_current',
+                               'company_id': self.company.id})
+        bank = Account.create({'code': 'APDBK3', 'name': 'APD Bank 3', 'account_type': 'asset_current',
+                               'company_id': self.company.id})
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general'), ('company_id', '=', self.company.id)], limit=1)
+        if not journal:
+            self.skipTest('No general journal in the test company')
+
+        def entry(day, ref, lines):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id, 'date': day, 'ref': ref,
+                'line_ids': [(0, 0, {'account_id': a.id, 'debit': dr, 'credit': cr}) for a, dr, cr in lines],
+            }).action_post()
+
+        entry(D(3, 5), 'rebate (Reversal)', [(accrual, 700.0, 0.0), (bank, 0.0, 700.0)])
+        entry(D(3, 6), 'paid accrual', [(accrual, 300.0, 0.0), (bank, 0.0, 300.0)])
+        entry(D(3, 7), 'tr repay', [(loan, 2000.0, 0.0), (bank, 0.0, 2000.0)])
+        self.company.apd_other_expense_account_ids = accrual
+        self.company.apd_other_expense_debit_account_ids = loan
+        self.company.apd_loan_account_ids = loan
+        self.company.apd_exclude_reversal = True
+        payload = self._data()
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'other'), 2300.0, places=2)
+        self.assertAlmostEqual(payload['kpi_other']['loan_repaid'] - self.baseline['kpi_other']['loan_repaid'], 2000.0, places=2)
+        self.company.apd_exclude_reversal = False
+        payload = self._data()
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'other'), 3000.0, places=2)
+
     def test_vendor_rows_and_donut(self):
         self._bill(self.v1, D(3, 3), 1500.0, term=self.term_now)
         self._bill(self.v2, D(3, 4), 900.0, term=self.term_now)
