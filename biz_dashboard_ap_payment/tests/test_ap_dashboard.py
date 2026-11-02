@@ -641,7 +641,7 @@ class TestApDashboard(TransactionCase):
         json.dumps(payload)
         for key in ('filters', 'currency', 'as_of', 'updated_at', 'options', 'kpi_payment',
                     'kpi_budget', 'kpi_request', 'kpi_forecast', 'weekly', 'forecast_weekly',
-                    'vendor_share', 'tables', 'tabs'):
+                    'vendor_share', 'tables', 'tabs', 'actual_vendors', 'kpi_loan'):
             self.assertIn(key, payload)
         self.assertEqual(len(payload['weekly']), 4)
         self.assertEqual(len(payload['forecast_weekly']), 4)

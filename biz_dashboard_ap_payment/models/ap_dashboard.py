@@ -43,6 +43,7 @@ BILL_TYPES = ('in_invoice', 'in_refund')
 PO_STATES = ('purchase', 'done')
 REQ_STATES = ('pending', 'approved', 'rejected')
 TOP_VENDORS = 5
+ACTUAL_TOP_VENDORS = 8
 # PO unbilled amounts are computed untaxed from the PO lines; bills are
 # compared on their tax-inclusive total, so they are grossed up by the
 # PO's own tax ratio to keep every column on the same basis.
@@ -901,6 +902,10 @@ class ApDashboard(models.AbstractModel):
             kpi_request[state]['amount'] = round(kpi_request[state]['amount'], 2)
         kpi_request['total'] = round(sum(kpi_request[s]['amount'] for s in REQ_STATES), 2)
 
+        actual_total = kpi_payment['paid_actual']
+        for kind in ('loan', 'note', 'advance', 'cash'):
+            kpi_payment['paid_actual_%s_pct' % kind] = _pct(kpi_payment['paid_actual_%s' % kind], actual_total)
+
         tables = {}
         for tab, data in rows.items():
             finalized = self._finalize_rows(data)
@@ -929,6 +934,13 @@ class ApDashboard(models.AbstractModel):
             'kpi_request': kpi_request,
             'kpi_forecast': kpi_forecast,
             'kpi_other': kpi_other,
+            'actual_vendors': [
+                {'id': r['id'], 'name': r['name'], 'total': r['act_total'], 'loan': r['act_loan'],
+                 'note': r['act_note'], 'advance': r['act_advance'], 'cash': r['act_cash'],
+                 'pct': _pct(r['act_total'], actual_total)}
+                for r in sorted(tables['vendor']['rows'], key=lambda r: -r['act_total'])[:ACTUAL_TOP_VENDORS]
+                if r['act_total'] > 0
+            ],
             'kpi_loan': self._loan_kpi(f),
             'weekly': weekly,
             'forecast_weekly': forecast_weekly,

@@ -120,6 +120,7 @@ $apd-ink: #1b2a49;
         &--green { --c: #{$apd-green}; --bg: #e9f9f1; }
         &--orange { --c: #{$apd-orange}; --bg: #fff6e6; }
         &--purple { --c: #{$apd-purple}; --bg: #f3eefe; }
+        &--red { --c: #{$apd-red}; --bg: #fff0f3; }
     }
     .o_apd_card_head {
         display: flex;
@@ -251,6 +252,7 @@ $apd-ink: #1b2a49;
         &--orange { background: $apd-orange; }
         &--green { background: $apd-green; }
         &--red { background: $apd-red; }
+        &--purple { background: $apd-purple; }
     }
     .o_apd_note {
         font-size: 0.72rem;
