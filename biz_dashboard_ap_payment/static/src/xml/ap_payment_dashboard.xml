@@ -280,6 +280,7 @@
                                     <th rowspan="2" class="o_apd_th_seq">ลำดับ</th>
                                     <th rowspan="2" class="o_apd_th_name" t-esc="tabMeta.column"/>
                                     <th colspan="5" class="o_apd_th--pay">ยอดจ่ายประจำเดือน (<t t-esc="data.filters.month_label"/>)</th>
+                                    <th colspan="5" class="o_apd_th--act">จ่ายออกจริงในเดือน (ตามวันที่ชำระ)</th>
                                     <th colspan="4" class="o_apd_th--budget">การใช้งบประมาณ</th>
                                     <th colspan="3" class="o_apd_th--req">ขออนุมัติเพิ่มเติม (เดือนนี้)</th>
                                     <th colspan="3" class="o_apd_th--next">ประมาณการยอดจ่ายเดือนถัดไป (<t t-esc="data.filters.next_month_label"/>)</th>
@@ -290,6 +291,11 @@
                                     <th class="o_apd_th--pay text-primary">เครดิต</th>
                                     <th class="o_apd_th--pay">ชำระแล้ว</th>
                                     <th class="o_apd_th--pay text-danger">ค้างชำระ</th>
+                                    <th class="o_apd_th--act">จ่ายจริงรวม</th>
+                                    <th class="o_apd_th--act text-danger">เงินกู้ (TR)</th>
+                                    <th class="o_apd_th--act">ตั๋วเงินจ่าย</th>
+                                    <th class="o_apd_th--act">เงินทดรอง</th>
+                                    <th class="o_apd_th--act text-success">โอน/เช็ค/อื่น ๆ</th>
                                     <th class="o_apd_th--budget">งบอนุมัติ</th>
                                     <th class="o_apd_th--budget">ใช้แล้ว</th>
                                     <th class="o_apd_th--budget">% ใช้แล้ว</th>
@@ -312,6 +318,11 @@
                                         <td class="o_apd_num" t-esc="fmtNum(row.month_credit)"/>
                                         <td class="o_apd_num" t-esc="fmtNum(row.month_paid)"/>
                                         <td class="o_apd_num text-danger" t-esc="fmtNum(row.month_residual)"/>
+                                        <td class="o_apd_num fw-bold" t-esc="fmtNum(row.act_total)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.act_loan)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.act_note)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.act_advance)"/>
+                                        <td class="o_apd_num" t-esc="fmtNum(row.act_cash)"/>
                                         <td class="o_apd_num" t-esc="fmtNum(row.budget_approved)"/>
                                         <td class="o_apd_num" t-esc="fmtNum(row.budget_used)"/>
                                         <td class="o_apd_num o_apd_pct_cell">
@@ -330,7 +341,7 @@
                                     </tr>
                                 </t>
                                 <tr t-if="!table.rows.length">
-                                    <td colspan="17" class="text-center text-muted py-4">ไม่มีข้อมูลในช่วงที่เลือก</td>
+                                    <td colspan="22" class="text-center text-muted py-4">ไม่มีข้อมูลในช่วงที่เลือก</td>
                                 </tr>
                             </tbody>
                             <tfoot t-if="table.footer">
@@ -342,6 +353,11 @@
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.month_credit)"/>
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.month_paid)"/>
                                     <td class="o_apd_num text-danger" t-esc="fmtNum(table.footer.month_residual)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.act_total)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.act_loan)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.act_note)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.act_advance)"/>
+                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.act_cash)"/>
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.budget_approved)"/>
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.budget_used)"/>
                                     <td class="o_apd_num o_apd_pct_cell">

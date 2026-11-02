@@ -86,6 +86,7 @@ TABS = OrderedDict([
 ])
 ROW_AMOUNT_KEYS = (
     'month_total', 'month_cash', 'month_credit', 'month_paid', 'month_residual',
+    'act_total', 'act_loan', 'act_note', 'act_advance', 'act_cash',
     'budget_approved', 'budget_used', 'budget_remaining',
     'req_pending', 'req_approved', 'req_rejected',
     'next_total', 'next_cash', 'next_credit',
@@ -421,20 +422,28 @@ class ApDashboard(models.AbstractModel):
         return bills, by_move
 
     def _paid_actual(self, f):
+        """Totals of :meth:`_paid_actual_items` by settlement kind plus ``total``."""
+        result = {'total': 0.0, 'loan': 0.0, 'note': 0.0, 'advance': 0.0, 'cash': 0.0}
+        for _bill, kind, amount in self._paid_actual_items(f):
+            result['total'] += amount
+            result[kind] += amount
+        return result
+
+    def _paid_actual_items(self, f):
         """Cash actually paid out in the month: vendor-bill payable lines
         reconciled with a payment / bank entry whose reconcile date falls in the
         month, whatever the bill's due date (bills + refunds, refunds negative).
         Bill-to-bill offsets and exchange-difference entries are not cash.
 
-        Returns ``{'total', 'loan', 'note', 'advance', 'cash'}`` - how the bill
-        was settled, none of the first three being money out of the bank yet:
+        Returns ``[(bill, kind, amount)]`` - one per reconcile; ``kind`` is how the
+        bill was settled, none of the first three being money out of the bank yet:
         ``loan`` = bank-loan drawdown (entry crediting one of the company's
         ``apd_loan_account_ids``, e.g. Trust Receipt); ``note`` = payable-note
         journals (``apd_note_journal_ids``, cash goes out at maturity);
         ``advance`` = employee-advance journals (``apd_advance_journal_ids``,
         the company still owes the employee); ``cash`` = everything else
         (bank transfer / cheque / other)."""
-        result = {'total': 0.0, 'loan': 0.0, 'note': 0.0, 'advance': 0.0, 'cash': 0.0}
+        items = []
         companies = self.env['res.company'].browse(f['cids'])
         loan_accounts = companies.apd_loan_account_ids
         note_journals = set(companies.apd_note_journal_ids.ids)
@@ -446,7 +455,7 @@ class ApDashboard(models.AbstractModel):
             ('company_id', 'in', f['cids']),
         ])
         if not partials:
-            return result
+            return items
         bill_domain = [
             ('move_type', 'in', BILL_TYPES),
             ('state', '=', 'posted'),
@@ -484,7 +493,6 @@ class ApDashboard(models.AbstractModel):
                 continue
             amount = sign * self._convert(
                 partial.amount, company.currency_id, company, partial.max_date, f['currency'])
-            result['total'] += amount
             if other_move.id in loan_moves:
                 kind = 'loan'
             elif other_move.journal_id.id in note_journals:
@@ -493,8 +501,8 @@ class ApDashboard(models.AbstractModel):
                 kind = 'advance'
             else:
                 kind = 'cash'
-            result[kind] += amount
-        return result
+            items.append((bill_line.move_id, kind, amount))
+        return items
 
     def _loan_kpi(self, f):
         """Bank-loan (TR / PN ...) position of the configured loan accounts:
@@ -692,7 +700,11 @@ class ApDashboard(models.AbstractModel):
             self._accumulate(rows['project'], buckets['project'], **amounts)
 
         # 1. ยอดจ่ายประจำเดือน --------------------------------------------------
-        actual = self._paid_actual(f)
+        actual_items = self._paid_actual_items(f)
+        actual = {'total': 0.0, 'loan': 0.0, 'note': 0.0, 'advance': 0.0, 'cash': 0.0}
+        for _bill, kind, amount in actual_items:
+            actual['total'] += amount
+            actual[kind] += amount
         kpi_payment = {'total': 0.0, 'cash': 0.0, 'credit': 0.0, 'paid': 0.0, 'residual': 0.0, 'count': 0,
                        'paid_actual': actual['total'], 'paid_actual_loan': actual['loan'],
                        'paid_actual_note': actual['note'], 'paid_actual_advance': actual['advance'],
@@ -717,6 +729,23 @@ class ApDashboard(models.AbstractModel):
             for bucket, share in self._bill_line_shares(bill, v, f, bill_lines.get(bill.id, [])):
                 self._accumulate(rows['category'], bucket,
                                  **{k: val * share for k, val in amounts.items()})
+
+        # 1a. จ่ายออกจริงในเดือน (ตามวันที่ชำระ) แยกตามประเภทการจ่าย ต่อร้านค้า / โครงการ / หมวด
+        actual_bills = {bill.id: bill for bill, _kind, _amount in actual_items}
+        actual_lines = {}
+        if actual_bills:
+            actual_bills_rs, actual_lines = self._search_bills([('id', 'in', list(actual_bills))])
+            actual_bills = {b.id: b for b in actual_bills_rs}
+        for bill, kind, amount in actual_items:
+            bill = actual_bills.get(bill.id, bill)
+            v = {'vendor': self._vendor_bucket(bill.commercial_partner_id or bill.partner_id),
+                 'project': self._project_bucket(self._project_of(bill))}
+            amounts = {'act_total': amount, 'act_%s' % kind: amount}
+            add(v, **amounts)
+            shares = self._bill_line_shares(
+                bill, self._bill_vals(bill, f), f, actual_lines.get(bill.id, []))
+            for bucket, share in shares or [(NO_CATEGORY, 1.0)]:
+                self._accumulate(rows['category'], bucket, **{k: val * share for k, val in amounts.items()})
 
         # 1b. รายจ่ายนอกบิล (สมุดรายวัน: เงินเดือน ดอกเบี้ย ...) -----------------
         kpi_payment['other'] = 0.0
@@ -1142,6 +1171,7 @@ class ApDashboard(models.AbstractModel):
         groups = [
             ('', 2, 'head'),
             ('ยอดจ่ายประจำเดือน (%s)' % filters['month_label'], 5, 'group_pay'),
+            ('จ่ายออกจริงในเดือน (ตามวันที่ชำระ)', 5, 'group_pay'),
             ('การใช้งบประมาณ (PO)', 4, 'group_budget'),
             ('ขออนุมัติเพิ่มเติม (เดือนนี้)', 3, 'group_req'),
             ('ประมาณการยอดจ่ายเดือนถัดไป (%s)' % filters['next_month_label'], 3, 'group_next'),
@@ -1158,6 +1188,9 @@ class ApDashboard(models.AbstractModel):
             ('รวม', 'month_total', 'money'), ('เงินสด', 'month_cash', 'money'),
             ('เครดิต', 'month_credit', 'money'), ('ชำระแล้ว', 'month_paid', 'money'),
             ('ค้างชำระ', 'month_residual', 'money'),
+            ('จ่ายจริงรวม', 'act_total', 'money'), ('ด้วยเงินกู้ (TR)', 'act_loan', 'money'),
+            ('ตั๋วเงินจ่าย', 'act_note', 'money'), ('เงินทดรองจ่าย', 'act_advance', 'money'),
+            ('โอน / เช็ค / อื่น ๆ', 'act_cash', 'money'),
             ('งบอนุมัติ', 'budget_approved', 'money'), ('ใช้แล้ว', 'budget_used', 'money'),
             ('% ใช้แล้ว', 'budget_pct', 'pct'), ('คงเหลือ', 'budget_remaining', 'money'),
             ('รออนุมัติ', 'req_pending', 'money'), ('อนุมัติแล้ว', 'req_approved', 'money'),
