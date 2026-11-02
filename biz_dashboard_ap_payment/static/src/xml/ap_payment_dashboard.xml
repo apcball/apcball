@@ -116,7 +116,7 @@
                                 <div class="o_apd_tile_label">ชำระแล้ว <small>(ตามวันครบกำหนด)</small></div>
                                 <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.paid)"/>
                                 <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.paid_pct)"/>
-                                <div class="o_apd_tile_note">จ่ายจริงในเดือน (ตามวันที่ชำระ) <t t-esc="fmtBaht(data.kpi_payment.paid_actual)"/> · ดูการ์ดจ่ายจริงด้านล่าง</div>
+                                <div class="o_apd_tile_note">จ่ายบิลด้วยโอน/เช็คจริงในเดือน (ตามวันที่ชำระ) <t t-esc="fmtBaht(data.kpi_payment.paid_actual)"/> · ดูการ์ดจ่ายจริง</div>
                             </div>
                             <div class="o_apd_tile o_apd_tile--orange">
                                 <div class="o_apd_tile_label">ค้างชำระ (ยังไม่ชำระ)</div>
@@ -131,49 +131,36 @@
                             <span class="o_apd_card_icon"><i class="fa fa-credit-card"/></span>
                             <div>
                                 <div class="o_apd_card_title">2. จ่ายจริงในเดือน (<t t-esc="data.filters.month_label"/>)</div>
-                                <div class="o_apd_card_sub">นับตามวันที่ชำระ ไม่ขึ้นกับวันครบกำหนดบิล</div>
+                                <div class="o_apd_card_sub">เงินสดออกจากธนาคารจริง นับตามวันที่ชำระ · ไม่รวมบิลที่จ่ายด้วยเงินกู้ / ตั๋วเงินจ่าย / เงินทดรองจ่าย</div>
                             </div>
                         </div>
-                        <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_payment.paid_actual)"/>
+                        <div class="o_apd_card_value" t-esc="fmtBaht(data.kpi_payment.cash_out)"/>
                         <div class="o_apd_rows o_apd_rows--box">
                             <div class="o_apd_row">
-                                <span><i class="o_apd_dot o_apd_dot--red"/>ด้วยเงินกู้ (TR) <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.paid_actual_loan_pct)"/></small></span>
-                                <b t-esc="fmtNum(data.kpi_payment.paid_actual_loan)"/>
+                                <span><i class="o_apd_dot o_apd_dot--green"/>จ่ายบิลเจ้าหนี้ (โอน / เช็ค / อื่น ๆ) <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.cash_out_bills_pct)"/></small></span>
+                                <b t-esc="fmtNum(data.kpi_payment.paid_actual)"/>
                             </div>
                             <div class="o_apd_row">
-                                <span><i class="o_apd_dot o_apd_dot--orange"/>ตั๋วเงินจ่าย <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.paid_actual_note_pct)"/></small></span>
-                                <b t-esc="fmtNum(data.kpi_payment.paid_actual_note)"/>
-                            </div>
-                            <div class="o_apd_row">
-                                <span><i class="o_apd_dot o_apd_dot--purple"/>เงินทดรองจ่าย <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.paid_actual_advance_pct)"/></small></span>
-                                <b t-esc="fmtNum(data.kpi_payment.paid_actual_advance)"/>
-                            </div>
-                            <div class="o_apd_row">
-                                <span><i class="o_apd_dot o_apd_dot--green"/>โอน / เช็ค / อื่น ๆ <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.paid_actual_cash_pct)"/></small></span>
-                                <b t-esc="fmtNum(data.kpi_payment.paid_actual_cash)"/>
-                            </div>
-                        </div>
-                        <div class="o_apd_rows" t-if="data.kpi_payment.other or data.kpi_loan.configured">
-                            <div class="o_apd_row" t-if="data.kpi_payment.other">
-                                <span>รายจ่ายนอกบิล (สมุดรายวัน)</span><b t-esc="fmtNum(data.kpi_payment.other)"/>
+                                <span><i class="o_apd_dot o_apd_dot--orange"/>รายจ่ายนอกบิล (สมุดรายวัน) <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.cash_out_other_pct)"/></small></span>
+                                <b t-esc="fmtNum(data.kpi_payment.other)"/>
                             </div>
                             <div class="o_apd_row" t-if="data.kpi_loan.configured">
-                                <span>ชำระคืนเงินกู้ในเดือน (เงินต้น)</span><b t-esc="fmtNum(data.kpi_loan.repaid)"/>
+                                <span><i class="o_apd_dot o_apd_dot--red"/>ชำระคืนเงินกู้ (เงินต้น) <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.cash_out_loan_pct)"/></small></span>
+                                <b t-esc="fmtNum(data.kpi_loan.repaid)"/>
                             </div>
+                        </div>
+                        <div class="o_apd_rows" t-if="data.kpi_loan.configured">
                             <div class="o_apd_row o_apd_row--hl">
-                                <span>เงินสดออกจากธนาคาร (ประมาณ)</span><b t-esc="fmtNum(data.kpi_payment.cash_out)"/>
-                            </div>
-                            <div class="o_apd_row o_apd_row--hl" t-if="data.kpi_loan.configured">
                                 <span>เบิกเงินกู้ในเดือน / คงค้างสิ้นเดือน</span>
                                 <b><t t-esc="fmtNum(data.kpi_loan.drawn)"/> / <t t-esc="fmtNum(data.kpi_loan.outstanding)"/></b>
                             </div>
                         </div>
                         <div class="o_apd_rows" t-if="data.actual_vendors.length">
-                            <div class="o_apd_note">ร้านค้าที่จ่ายจริงสูงสุด (เงินกู้ในวงเล็บ)</div>
+                            <div class="o_apd_note">ร้านค้าที่จ่ายจริงสูงสุด (โอน / เช็ค / อื่น ๆ)</div>
                             <t t-foreach="data.actual_vendors" t-as="vendor" t-key="vendor.id">
                                 <div class="o_apd_row">
                                     <span t-esc="vendor.name"/>
-                                    <b><t t-esc="fmtNum(vendor.total)"/><small t-if="vendor.loan" class="text-danger"> (<t t-esc="fmtNum(vendor.loan)"/>)</small></b>
+                                    <b t-esc="fmtNum(vendor.total)"/>
                                 </div>
                             </t>
                         </div>
@@ -323,7 +310,7 @@
                                     <th rowspan="2" class="o_apd_th_seq">ลำดับ</th>
                                     <th rowspan="2" class="o_apd_th_name" t-esc="tabMeta.column"/>
                                     <th colspan="5" class="o_apd_th--pay">ยอดจ่ายประจำเดือน (<t t-esc="data.filters.month_label"/>)</th>
-                                    <th colspan="5" class="o_apd_th--act">จ่ายออกจริงในเดือน (ตามวันที่ชำระ)</th>
+                                    <th colspan="4" class="o_apd_th--act">จ่ายออกจริงในเดือน (ตามวันที่ชำระ)</th>
                                     <th colspan="4" class="o_apd_th--budget">การใช้งบประมาณ</th>
                                     <th colspan="3" class="o_apd_th--req">ขออนุมัติเพิ่มเติม (เดือนนี้)</th>
                                     <th colspan="3" class="o_apd_th--next">ประมาณการยอดจ่ายเดือนถัดไป (<t t-esc="data.filters.next_month_label"/>)</th>
@@ -334,11 +321,10 @@
                                     <th class="o_apd_th--pay text-primary">เครดิต</th>
                                     <th class="o_apd_th--pay">ชำระแล้ว</th>
                                     <th class="o_apd_th--pay text-danger">ค้างชำระ</th>
-                                    <th class="o_apd_th--act">จ่ายจริงรวม</th>
-                                    <th class="o_apd_th--act text-danger">เงินกู้ (TR)</th>
-                                    <th class="o_apd_th--act">ตั๋วเงินจ่าย</th>
-                                    <th class="o_apd_th--act">เงินทดรอง</th>
-                                    <th class="o_apd_th--act text-success">โอน/เช็ค/อื่น ๆ</th>
+                                    <th class="o_apd_th--act">จ่ายจริง <small>(โอน/เช็ค/อื่น ๆ)</small></th>
+                                    <th class="o_apd_th--act text-danger">เงินกู้ TR <small>(ไม่ใช่เงินออก)</small></th>
+                                    <th class="o_apd_th--act">ตั๋วเงินจ่าย <small>(ไม่ใช่เงินออก)</small></th>
+                                    <th class="o_apd_th--act">เงินทดรอง <small>(ไม่ใช่เงินออก)</small></th>
                                     <th class="o_apd_th--budget">งบอนุมัติ</th>
                                     <th class="o_apd_th--budget">ใช้แล้ว</th>
                                     <th class="o_apd_th--budget">% ใช้แล้ว</th>
@@ -365,7 +351,6 @@
                                         <td class="o_apd_num" t-esc="fmtNum(row.act_loan)"/>
                                         <td class="o_apd_num" t-esc="fmtNum(row.act_note)"/>
                                         <td class="o_apd_num" t-esc="fmtNum(row.act_advance)"/>
-                                        <td class="o_apd_num" t-esc="fmtNum(row.act_cash)"/>
                                         <td class="o_apd_num" t-esc="fmtNum(row.budget_approved)"/>
                                         <td class="o_apd_num" t-esc="fmtNum(row.budget_used)"/>
                                         <td class="o_apd_num o_apd_pct_cell">
@@ -384,7 +369,7 @@
                                     </tr>
                                 </t>
                                 <tr t-if="!table.rows.length">
-                                    <td colspan="22" class="text-center text-muted py-4">ไม่มีข้อมูลในช่วงที่เลือก</td>
+                                    <td colspan="21" class="text-center text-muted py-4">ไม่มีข้อมูลในช่วงที่เลือก</td>
                                 </tr>
                             </tbody>
                             <tfoot t-if="table.footer">
@@ -400,7 +385,6 @@
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.act_loan)"/>
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.act_note)"/>
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.act_advance)"/>
-                                    <td class="o_apd_num" t-esc="fmtNum(table.footer.act_cash)"/>
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.budget_approved)"/>
                                     <td class="o_apd_num" t-esc="fmtNum(table.footer.budget_used)"/>
                                     <td class="o_apd_num o_apd_pct_cell">

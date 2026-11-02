@@ -337,12 +337,13 @@ class TestApDashboard(TransactionCase):
         self.assertTrue(payload['kpi_loan']['configured'])
         self.assertAlmostEqual(payload['kpi_payment']['paid_actual_loan'] - base['kpi_payment']['paid_actual_loan'], 2000.0, places=2)
         self.assertAlmostEqual(payload['kpi_payment']['paid_actual_cash'] - base['kpi_payment']['paid_actual_cash'], -2000.0, places=2)
-        self.assertAlmostEqual(payload['kpi_payment']['paid_actual'], base['kpi_payment']['paid_actual'], places=2)
+        # loan-funded payments are not cash out yet: they leave paid_actual (transfers / cheques only)
+        self.assertAlmostEqual(payload['kpi_payment']['paid_actual'] - base['kpi_payment']['paid_actual'], -2000.0, places=2)
         self.assertAlmostEqual(payload['kpi_loan']['drawn'], 2000.0, places=2)
         self.assertAlmostEqual(payload['kpi_loan']['outstanding'], 2000.0, places=2)
         for tab, key in (('vendor', 'p:%d' % self.v1.id),):
             self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_loan'), 2000.0, places=2)
-            self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_total'), 2000.0, places=2)
+            self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_total'), 0.0, places=2)
         # the same entry's journal flagged as payable-note journal: loan wins
         self.company.apd_note_journal_ids = journal
         again = self._data()
@@ -354,7 +355,9 @@ class TestApDashboard(TransactionCase):
         self.company.apd_advance_journal_ids = journal
         as_adv = self._data()
         self.assertAlmostEqual(as_adv['kpi_payment']['paid_actual_advance'] - base['kpi_payment']['paid_actual_advance'], 2000.0, places=2)
-        self.assertAlmostEqual(as_adv['kpi_payment']['paid_actual'], base['kpi_payment']['paid_actual'], places=2)
+        # advance / note / loan are settled but not cash out: only transfers count
+        self.assertAlmostEqual(as_adv['kpi_payment']['paid_actual'] - base['kpi_payment']['paid_actual'], -2000.0, places=2)
+        self.assertAlmostEqual(as_note['kpi_payment']['paid_actual'] - base['kpi_payment']['paid_actual'], -2000.0, places=2)
 
     def test_other_expense_from_journal_entries(self):
         Account = self.env['account.account']

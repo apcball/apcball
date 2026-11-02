@@ -426,7 +426,8 @@ class ApDashboard(models.AbstractModel):
         """Totals of :meth:`_paid_actual_items` by settlement kind plus ``total``."""
         result = {'total': 0.0, 'loan': 0.0, 'note': 0.0, 'advance': 0.0, 'cash': 0.0}
         for _bill, kind, amount in self._paid_actual_items(f):
-            result['total'] += amount
+            if kind == 'cash':  # loan / note / advance: no money has left the bank yet
+                result['total'] += amount
             result[kind] += amount
         return result
 
@@ -718,7 +719,8 @@ class ApDashboard(models.AbstractModel):
         actual_items = self._paid_actual_items(f)
         actual = {'total': 0.0, 'loan': 0.0, 'note': 0.0, 'advance': 0.0, 'cash': 0.0}
         for _bill, kind, amount in actual_items:
-            actual['total'] += amount
+            if kind == 'cash':  # loan / note / advance: no money has left the bank yet
+                actual['total'] += amount
             actual[kind] += amount
         kpi_payment = {'total': 0.0, 'cash': 0.0, 'credit': 0.0, 'paid': 0.0, 'residual': 0.0, 'count': 0,
                        'paid_actual': actual['total'], 'paid_actual_loan': actual['loan'],
@@ -755,7 +757,7 @@ class ApDashboard(models.AbstractModel):
             bill = actual_bills.get(bill.id, bill)
             v = {'vendor': self._vendor_bucket(bill.commercial_partner_id or bill.partner_id),
                  'project': self._project_bucket(self._project_of(bill))}
-            amounts = {'act_total': amount, 'act_%s' % kind: amount}
+            amounts = {'act_total': amount if kind == 'cash' else 0.0, 'act_%s' % kind: amount}
             add(v, **amounts)
             shares = self._bill_line_shares(
                 bill, self._bill_vals(bill, f), f, actual_lines.get(bill.id, []))
@@ -928,6 +930,10 @@ class ApDashboard(models.AbstractModel):
         actual_total = kpi_payment['paid_actual']
         for kind in ('loan', 'note', 'advance', 'cash'):
             kpi_payment['paid_actual_%s_pct' % kind] = _pct(kpi_payment['paid_actual_%s' % kind], actual_total)
+        cash_out_total = kpi_payment['cash_out']
+        kpi_payment['cash_out_bills_pct'] = _pct(kpi_payment['paid_actual'], cash_out_total)
+        kpi_payment['cash_out_other_pct'] = _pct(kpi_payment['other'], cash_out_total)
+        kpi_payment['cash_out_loan_pct'] = _pct(kpi_loan['repaid'] if kpi_loan['configured'] else 0.0, cash_out_total)
 
         tables = {}
         for tab, data in rows.items():
@@ -1115,20 +1121,22 @@ class ApDashboard(models.AbstractModel):
         loan = data['kpi_loan']
         other = data['kpi_other']
         actual_lines = [
-            ('จ่ายจริงในเดือน (ตามวันที่ชำระ)', pay['paid_actual'], None),
-            ('   - ด้วยเงินกู้ (เบิกสินเชื่อ เช่น TR)', pay['paid_actual_loan'], pay['paid_actual_loan_pct']),
-            ('   - ด้วยตั๋วเงินจ่าย (เงินออกตอนครบกำหนด)', pay['paid_actual_note'], pay['paid_actual_note_pct']),
-            ('   - ด้วยเงินทดรองจ่าย (ค้างคืนพนักงาน)', pay['paid_actual_advance'], pay['paid_actual_advance_pct']),
-            ('   - โอน / เช็ค / อื่น ๆ', pay['paid_actual_cash'], pay['paid_actual_cash_pct']),
-            ('รายจ่ายนอกบิล (สมุดรายวัน)', pay['other'], None),
+            ('เงินสดออกจากธนาคารในเดือน (ตามวันที่ชำระ)', pay['cash_out'], None),
+            ('   - จ่ายบิลเจ้าหนี้ (โอน / เช็ค / อื่น ๆ)', pay['paid_actual'], pay['cash_out_bills_pct']),
+            ('   - รายจ่ายนอกบิล (สมุดรายวัน)', pay['other'], pay['cash_out_other_pct']),
         ]
         if loan['configured']:
             actual_lines += [
-                ('ชำระคืนเงินกู้ในเดือน (เงินต้น, ไม่รวมในยอดรวม)', loan['repaid'], None),
+                ('   - ชำระคืนเงินกู้ (เงินต้น)', loan['repaid'], pay['cash_out_loan_pct']),
                 ('เบิกเงินกู้ในเดือน', loan['drawn'], None),
                 ('สินเชื่อคงค้าง ณ สิ้นเดือน', loan['outstanding'], None),
             ]
-        actual_lines.append(('เงินสดออกจากธนาคารโดยประมาณ', pay['cash_out'], None))
+        actual_lines += [
+            ('บิลที่ชำระแล้วแต่ยังไม่ใช่เงินออก (ไม่รวมข้างต้น):', None, None),
+            ('   - ด้วยเงินกู้ TR', pay['paid_actual_loan'], None),
+            ('   - ด้วยตั๋วเงินจ่าย (เงินออกตอนครบกำหนด)', pay['paid_actual_note'], None),
+            ('   - ด้วยเงินทดรองจ่าย (ค้างคืนพนักงาน)', pay['paid_actual_advance'], None),
+        ]
         row = self._xlsx_block(ws, row, '2. จ่ายจริงในเดือน (%s)' % filters['month_label'], actual_lines, fmt)
         budget = data['kpi_budget']
         row = self._xlsx_block(ws, row, '3. ยอดการใช้งบประมาณ', [
@@ -1217,7 +1225,7 @@ class ApDashboard(models.AbstractModel):
         groups = [
             ('', 2, 'head'),
             ('ยอดจ่ายประจำเดือน (%s)' % filters['month_label'], 5, 'group_pay'),
-            ('จ่ายออกจริงในเดือน (ตามวันที่ชำระ)', 5, 'group_pay'),
+            ('จ่ายออกจริงในเดือน (ตามวันที่ชำระ)', 4, 'group_pay'),
             ('การใช้งบประมาณ (PO)', 4, 'group_budget'),
             ('ขออนุมัติเพิ่มเติม (เดือนนี้)', 3, 'group_req'),
             ('ประมาณการยอดจ่ายเดือนถัดไป (%s)' % filters['next_month_label'], 3, 'group_next'),
@@ -1234,9 +1242,10 @@ class ApDashboard(models.AbstractModel):
             ('รวม', 'month_total', 'money'), ('เงินสด', 'month_cash', 'money'),
             ('เครดิต', 'month_credit', 'money'), ('ชำระแล้ว', 'month_paid', 'money'),
             ('ค้างชำระ', 'month_residual', 'money'),
-            ('จ่ายจริงรวม', 'act_total', 'money'), ('ด้วยเงินกู้ (TR)', 'act_loan', 'money'),
-            ('ตั๋วเงินจ่าย', 'act_note', 'money'), ('เงินทดรองจ่าย', 'act_advance', 'money'),
-            ('โอน / เช็ค / อื่น ๆ', 'act_cash', 'money'),
+            ('จ่ายจริง (โอน / เช็ค / อื่น ๆ)', 'act_total', 'money'),
+            ('เงินกู้ TR (ไม่ใช่เงินออก)', 'act_loan', 'money'),
+            ('ตั๋วเงินจ่าย (ไม่ใช่เงินออก)', 'act_note', 'money'),
+            ('เงินทดรองจ่าย (ไม่ใช่เงินออก)', 'act_advance', 'money'),
             ('งบอนุมัติ', 'budget_approved', 'money'), ('ใช้แล้ว', 'budget_used', 'money'),
             ('% ใช้แล้ว', 'budget_pct', 'pct'), ('คงเหลือ', 'budget_remaining', 'money'),
             ('รออนุมัติ', 'req_pending', 'money'), ('อนุมัติแล้ว', 'req_approved', 'money'),
