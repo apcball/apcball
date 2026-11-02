@@ -769,9 +769,13 @@ class ApDashboard(models.AbstractModel):
         other_loan_repaid = 0.0
         loan_account_ids = set(self.env['res.company'].browse(f['cids']).apd_loan_account_ids.ids)
         for v in self._other_expense_vals(f):
-            other_count += 1
             if v['category'][2] in loan_account_ids:
+                # loan principal repayment: the bills it funded are already in the
+                # bill totals, so it is kept out of the month total (shown apart,
+                # and counted as cash out in the actual-paid card)
                 other_loan_repaid += v['total']
+                continue
+            other_count += 1
             name = v['category'][1]
             other_by_account[name] = other_by_account.get(name, 0.0) + v['total']
             amounts = dict(month_total=v['total'], month_cash=v['total'],
@@ -904,9 +908,16 @@ class ApDashboard(models.AbstractModel):
             'cash_pct': _pct(kpi_forecast['cash'], kpi_forecast['total']),
             'credit_pct': _pct(kpi_forecast['credit'], kpi_forecast['total']),
         })
+        kpi_loan = self._loan_kpi(f)
+        # cash really leaving the bank (estimate): transfers / cheques + off-bill
+        # spend + loan principal repaid. Loan-funded bills, payable notes and
+        # employee advances are not cash out yet.
+        kpi_payment['cash_out'] = (
+            kpi_payment['paid_actual_cash'] + kpi_payment['other']
+            + (kpi_loan['repaid'] if kpi_loan['configured'] else 0.0))
         for key in ('total', 'cash', 'credit', 'paid', 'residual', 'paid_actual',
                     'paid_actual_loan', 'paid_actual_note', 'paid_actual_advance',
-                    'paid_actual_cash', 'other'):
+                    'paid_actual_cash', 'other', 'cash_out'):
             kpi_payment[key] = round(kpi_payment[key], 2)
         for key in ('total', 'cash', 'credit', 'from_bills', 'from_po'):
             kpi_forecast[key] = round(kpi_forecast[key], 2)
@@ -953,7 +964,7 @@ class ApDashboard(models.AbstractModel):
                 for r in sorted(tables['vendor']['rows'], key=lambda r: -r['act_total'])[:ACTUAL_TOP_VENDORS]
                 if r['act_total'] > 0
             ],
-            'kpi_loan': self._loan_kpi(f),
+            'kpi_loan': kpi_loan,
             'weekly': weekly,
             'forecast_weekly': forecast_weekly,
             'vendor_share': self._vendor_share(tables['vendor']['rows'], total),
@@ -1099,16 +1110,28 @@ class ApDashboard(models.AbstractModel):
             ('เงินสด (ชำระทันที)', pay['cash'], pay['cash_pct']),
             ('เครดิต (ครบกำหนดเดือนนี้)', pay['credit'], pay['credit_pct']),
             ('ชำระแล้ว (ตามวันครบกำหนด)', pay['paid'], pay['paid_pct']),
-            ('จ่ายจริงในเดือน (ตามวันที่ชำระ)', pay['paid_actual'], None),
-            ('   - ด้วยเงินกู้ (เบิกสินเชื่อ เช่น TR)', pay['paid_actual_loan'], None),
-            ('   - ด้วยตั๋วเงินจ่าย (เงินออกตอนครบกำหนด)', pay['paid_actual_note'], None),
-            ('   - ด้วยเงินทดรองจ่าย (ค้างคืนพนักงาน)', pay['paid_actual_advance'], None),
-            ('   - โอน / เช็ค / อื่น ๆ', pay['paid_actual_cash'], None),
-            ('รายจ่ายนอกบิล (สมุดรายวัน)', pay['other'], None),
             ('ค้างชำระ (ยังไม่ชำระ)', pay['residual'], pay['residual_pct']),
         ], fmt)
+        loan = data['kpi_loan']
+        other = data['kpi_other']
+        actual_lines = [
+            ('จ่ายจริงในเดือน (ตามวันที่ชำระ)', pay['paid_actual'], None),
+            ('   - ด้วยเงินกู้ (เบิกสินเชื่อ เช่น TR)', pay['paid_actual_loan'], pay['paid_actual_loan_pct']),
+            ('   - ด้วยตั๋วเงินจ่าย (เงินออกตอนครบกำหนด)', pay['paid_actual_note'], pay['paid_actual_note_pct']),
+            ('   - ด้วยเงินทดรองจ่าย (ค้างคืนพนักงาน)', pay['paid_actual_advance'], pay['paid_actual_advance_pct']),
+            ('   - โอน / เช็ค / อื่น ๆ', pay['paid_actual_cash'], pay['paid_actual_cash_pct']),
+            ('รายจ่ายนอกบิล (สมุดรายวัน)', pay['other'], None),
+        ]
+        if loan['configured']:
+            actual_lines += [
+                ('ชำระคืนเงินกู้ในเดือน (เงินต้น, ไม่รวมในยอดรวม)', loan['repaid'], None),
+                ('เบิกเงินกู้ในเดือน', loan['drawn'], None),
+                ('สินเชื่อคงค้าง ณ สิ้นเดือน', loan['outstanding'], None),
+            ]
+        actual_lines.append(('เงินสดออกจากธนาคารโดยประมาณ', pay['cash_out'], None))
+        row = self._xlsx_block(ws, row, '2. จ่ายจริงในเดือน (%s)' % filters['month_label'], actual_lines, fmt)
         budget = data['kpi_budget']
-        row = self._xlsx_block(ws, row, '2. ยอดการใช้งบประมาณ', [
+        row = self._xlsx_block(ws, row, '3. ยอดการใช้งบประมาณ', [
             ('งบประมาณที่ได้รับอนุมัติ', budget['approved'], None),
             ('งบผูกพันจาก PO', budget['reserved'], None),
             ('งบใช้จริง (รับสินค้า/บริการแล้ว)', budget['used'], None),
@@ -1116,32 +1139,24 @@ class ApDashboard(models.AbstractModel):
             ('% ใช้แล้ว', None, budget['pct']),
         ], fmt)
         req = data['kpi_request']
-        row = self._xlsx_block(ws, row, '3. ยอดขออนุมัติงบประมาณเพิ่มเติม', [
+        row = self._xlsx_block(ws, row, '4. ยอดขออนุมัติงบประมาณเพิ่มเติม', [
             ('รวม', req['total'], None),
             ('รออนุมัติ (%d รายการ)' % req['pending']['count'], req['pending']['amount'], None),
             ('อนุมัติแล้ว (%d รายการ)' % req['approved']['count'], req['approved']['amount'], None),
             ('ไม่อนุมัติ (%d รายการ)' % req['rejected']['count'], req['rejected']['amount'], None),
         ], fmt)
-        other = data['kpi_other']
-        if other['items']:
-            row = self._xlsx_block(ws, row, '5. รายจ่ายนอกบิล (สมุดรายวัน)', [
-                ('รวม (%d รายการ)' % other['count'], other['total'], None),
-            ] + [(item['name'], item['amount'], item['pct']) for item in other['items']], fmt)
-        loan = data['kpi_loan']
-        if loan['configured']:
-            row = self._xlsx_block(ws, row, '6. สินเชื่อ / เงินกู้ธนาคาร (TR / PN)', [
-                ('เบิกในเดือน', loan['drawn'], None),
-                ('ชำระคืนในเดือน', loan['repaid'], None),
-                ('ยอดคงค้าง ณ สิ้นเดือน', loan['outstanding'], None),
-            ], fmt)
         fc = data['kpi_forecast']
-        row = self._xlsx_block(ws, row, '4. ประมาณการยอดจ่ายเดือนถัดไป (%s)' % filters['next_month_label'], [
+        row = self._xlsx_block(ws, row, '5. ประมาณการยอดจ่ายเดือนถัดไป (%s)' % filters['next_month_label'], [
             ('รวม', fc['total'], None),
             ('เงินสด (ชำระทันที)', fc['cash'], fc['cash_pct']),
             ('เครดิต (ครบกำหนดเดือนหน้า)', fc['credit'], fc['credit_pct']),
             ('จากใบแจ้งหนี้ค้างชำระ', fc['from_bills'], None),
             ('จาก PO ที่ยังไม่ตั้งบิล', fc['from_po'], None),
         ], fmt)
+        if other['items']:
+            row = self._xlsx_block(ws, row, '6. รายจ่ายนอกบิล (สมุดรายวัน)', [
+                ('รวม (%d รายการ)' % other['count'], other['total'], None),
+            ] + [(item['name'], item['amount'], item['pct']) for item in other['items']], fmt)
 
         for title, buckets in (
             ('ยอดจ่ายรายสัปดาห์ (%s)' % filters['month_label'], data['weekly']),

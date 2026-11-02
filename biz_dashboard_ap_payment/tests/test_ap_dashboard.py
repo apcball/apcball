@@ -455,11 +455,15 @@ class TestApDashboard(TransactionCase):
         self.company.apd_loan_account_ids = loan
         self.company.apd_exclude_reversal = True
         payload = self._data()
-        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'other'), 2300.0, places=2)
+        # loan principal repayment stays out of the month total; reversal skipped
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'other'), 300.0, places=2)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'total'), 300.0, places=2)
         self.assertAlmostEqual(payload['kpi_other']['loan_repaid'] - self.baseline['kpi_other']['loan_repaid'], 2000.0, places=2)
+        # cash out = other 300 + loan repaid 2000 (no loan-funded bills / transfers here)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'cash_out'), 2300.0, places=2)
         self.company.apd_exclude_reversal = False
         payload = self._data()
-        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'other'), 3000.0, places=2)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_payment', 'other'), 1000.0, places=2)
 
     def test_vendor_rows_and_donut(self):
         self._bill(self.v1, D(3, 3), 1500.0, term=self.term_now)
