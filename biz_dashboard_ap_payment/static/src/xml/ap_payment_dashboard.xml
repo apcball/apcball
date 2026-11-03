@@ -155,15 +155,6 @@
                                 <b><t t-esc="fmtNum(data.kpi_loan.drawn)"/> / <t t-esc="fmtNum(data.kpi_loan.outstanding)"/></b>
                             </div>
                         </div>
-                        <div class="o_apd_rows" t-if="data.actual_vendors.length">
-                            <div class="o_apd_note">ร้านค้าที่จ่ายจริงสูงสุด (โอน / เช็ค / อื่น ๆ)</div>
-                            <t t-foreach="data.actual_vendors" t-as="vendor" t-key="vendor.id">
-                                <div class="o_apd_row">
-                                    <span t-esc="vendor.name"/>
-                                    <b t-esc="fmtNum(vendor.total)"/>
-                                </div>
-                            </t>
-                        </div>
                     </div>
                     <!-- 2 -->
                     <div class="o_apd_card o_apd_card--green">
