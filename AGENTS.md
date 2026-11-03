@@ -175,3 +175,11 @@ Connect to live Odoo DB via MCP. Available tools:
 - Access this path for inspection only. Read-only examples include listing files (`ls`, `find`), searching text (`grep`), and displaying file contents (`cat`, `sed`).
 - Never create, edit, delete, rename, move, upload, or copy files in this path. Do not run module installs or upgrades, database changes, service commands, or scripts from this path. Do not use `scp`, `rsync`, editors, or any other write-capable command against it.
 - Do not add credentials or private key contents to this file. Use the configured SSH alias.
+
+### PROD Database Read-only Inspection
+
+- Any request to inspect or read the actual PROD Odoo database is strictly read-only. Do not modify or delete database records, schema, or files.
+- Use read-only ORM operations such as `search`, `read`, and `search_count`, or SQL `SELECT` inside a read-only transaction. Never use `create`, `write`, `unlink`, imports, SQL DML/DDL, module install/upgrade, migrations, tests, service commands, or scripts with side effects on PROD.
+- PROD filesystem access is inspection-only: listing, searching, and displaying files are allowed. Never create, edit, delete, rename, move, upload, or copy files. Do not use `scp`, `rsync`, editors, or write-capable commands against PROD.
+- If the available access method cannot guarantee read-only behavior, stop and report the limitation instead of querying through that method.
+- Never print or expose database credentials, passwords, tokens, or private keys.
