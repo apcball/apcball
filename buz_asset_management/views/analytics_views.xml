@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- GL reconciliation -->
+    <record id="view_buz_asset_reconcile_wizard_form" model="ir.ui.view">
+        <field name="name">buz.asset.reconcile.wizard.form</field>
+        <field name="model">buz.asset.reconcile.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute" string="คำนวณ" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="computed" invisible="1"/>
+                    <h1>กระทบยอดทะเบียนทรัพย์สินกับ GL</h1>
+                    <group>
+                        <group>
+                            <field name="company_id" options="{'no_create': True}"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group invisible="not computed">
+                            <field name="gl_nbv"/>
+                            <field name="subledger_nbv"/>
+                            <field name="nbv_variance" decoration-danger="nbv_variance != 0"
+                                   decoration-success="nbv_variance == 0"/>
+                        </group>
+                    </group>
+                    <p class="text-muted" invisible="not computed">
+                        ยอดทะเบียนนับเฉพาะทรัพย์สินที่บันทึกเป็นสินทรัพย์แล้ว เริ่มใช้งานภายในวันที่เลือก และยังไม่ถูกจำหน่าย ณ วันนั้น
+                        ค่าเสื่อมสะสมนับเฉพาะรายการที่ลงบัญชีแล้ว (ค่าตามแผนแสดงแยกคอลัมน์) ผลต่างที่ไม่เป็นศูนย์คือรายการที่ต้องตรวจสอบ
+                        เช่น ยอดยกมา ใบแจ้งหนี้ที่ยังไม่ผูกทรัพย์สิน หรือรายการบัญชีที่ไม่ได้มาจากโมดูลนี้
+                    </p>
+                    <field name="line_ids" invisible="not computed">
+                        <tree create="0" delete="0" decoration-danger="not matched" decoration-success="matched">
+                            <field name="kind"/>
+                            <field name="account_id"/>
+                            <field name="gl_balance" sum="รวม"/>
+                            <field name="subledger_balance" sum="รวม"/>
+                            <field name="variance" sum="รวม"/>
+                            <field name="unposted_due" optional="show"/>
+                            <field name="asset_count"/>
+                            <field name="matched" column_invisible="1"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <button name="action_open_gl" type="object" string="ดูรายการบัญชี" icon="fa-book"/>
+                            <button name="action_open_assets" type="object" string="ดูทรัพย์สิน" icon="fa-list"/>
+                        </tree>
+                    </field>
+                    <group string="ทรัพย์สินที่หมวดหมู่ยังไม่ตั้งบัญชี (ไม่ถูกนับในตารางด้านบน)"
+                           invisible="not unmapped_asset_ids">
+                        <field name="unmapped_asset_ids" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_report_reconcile" model="ir.actions.act_window">
+        <field name="name">กระทบยอดกับ GL</field>
+        <field name="res_model">buz.asset.reconcile.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- Roll-forward -->
+    <record id="view_buz_asset_rollforward_wizard_form" model="ir.ui.view">
+        <field name="name">buz.asset.rollforward.wizard.form</field>
+        <field name="model">buz.asset.rollforward.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute" string="คำนวณ" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="computed" invisible="1"/>
+                    <h1>ความเคลื่อนไหวทรัพย์สิน (Roll-forward)</h1>
+                    <group>
+                        <group>
+                            <field name="company_id" options="{'no_create': True}"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+                    <field name="line_ids" invisible="not computed">
+                        <tree create="0" delete="0">
+                            <field name="category_id"/>
+                            <field name="opening_cost" sum="รวม"/>
+                            <field name="additions" sum="รวม"/>
+                            <field name="disposals_cost" sum="รวม"/>
+                            <field name="closing_cost" sum="รวม"/>
+                            <field name="opening_accum" sum="รวม"/>
+                            <field name="depreciation" sum="รวม"/>
+                            <field name="disposals_accum" sum="รวม"/>
+                            <field name="closing_accum" sum="รวม"/>
+                            <field name="net_book_value" sum="รวม"/>
+                            <field name="cost_check" optional="hide"/>
+                            <field name="accum_check" optional="hide"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </tree>
+                    </field>
+                    <p class="text-muted" invisible="not computed">
+                        รายการเพิ่มขึ้นนับตามวันที่เริ่มใช้งาน ค่าเสื่อมนับตามวันที่ของรายการบัญชีที่ลงแล้ว หักด้วยรายการกลับรายการ
+                    </p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_report_rollforward" model="ir.actions.act_window">
+        <field name="name">ความเคลื่อนไหวทรัพย์สิน</field>
+        <field name="res_model">buz.asset.rollforward.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- Ageing -->
+    <record id="view_buz_asset_ageing_wizard_form" model="ir.ui.view">
+        <field name="name">buz.asset.ageing.wizard.form</field>
+        <field name="model">buz.asset.ageing.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute" string="คำนวณ" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="computed" invisible="1"/>
+                    <h1>อายุทรัพย์สิน</h1>
+                    <group>
+                        <group>
+                            <field name="company_id" options="{'no_create': True}"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+                    <field name="line_ids" invisible="not computed">
+                        <tree create="0" delete="0">
+                            <field name="bucket"/>
+                            <field name="asset_count" sum="รวม"/>
+                            <field name="cost" sum="รวม"/>
+                            <field name="accumulated" sum="รวม"/>
+                            <field name="book_value" sum="รวม"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <button name="action_open_assets" type="object" string="ดูทรัพย์สิน" icon="fa-list"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_report_ageing" model="ir.actions.act_window">
+        <field name="name">อายุทรัพย์สิน</field>
+        <field name="res_model">buz.asset.ageing.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- Depreciation forecast: not yet posted periods, by month -->
+    <record id="action_buz_report_forecast" model="ir.actions.act_window">
+        <field name="name">คาดการณ์ค่าเสื่อมราคา</field>
+        <field name="res_model">buz.asset.depreciation.line</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="domain">[('state', 'in', ('planned', 'exception'))]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_buz_depreciation_report_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_buz_depreciation_report_graph')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_depreciation_line_tree')})]"/>
+        <field name="search_view_id" ref="view_buz_asset_depreciation_line_search"/>
+    </record>
+</odoo>

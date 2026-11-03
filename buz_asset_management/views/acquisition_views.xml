@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_asset_register_wizard_form" model="ir.ui.view">
+        <field name="name">buz.asset.register.wizard.form</field>
+        <field name="model">buz.asset.register.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group><field name="move_id"/><field name="company_id" invisible="1"/></group>
+                <p class="text-muted">ระบุหมวดหมู่และราคาทุน หนึ่งแถวต่อหนึ่งทรัพย์สิน แบ่งรายการเดียวเป็นหลายทรัพย์สินได้โดยเพิ่มแถว</p>
+                <field name="line_ids">
+                    <tree editable="bottom" create="1">
+                        <field name="move_line_id" force_save="1" options="{'no_create': True}"
+                               domain="[('move_id', '=', parent.move_id), ('display_type', '=', 'product')]"/>
+                        <field name="name" force_save="1"/>
+                        <field name="asset_name"/>
+                        <field name="category_id" required="1" options="{'no_create': True}"/>
+                        <field name="amount"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_create_assets" string="สร้างทรัพย์สิน" type="object" class="btn-primary"/>
+                    <button string="ยกเลิก" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_move_form_buz_asset" model="ir.ui.view">
+        <field name="name">account.move.form.buz.asset</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_buz_register_assets" string="สร้างทรัพย์สิน" type="object"
+                        invisible="move_type != 'in_invoice' or state != 'posted'"
+                        groups="buz_asset_management.group_asset_officer"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: prefix/padding are owner-configurable after install. -->
+    <data noupdate="1">
+        <record id="seq_buz_asset" model="ir.sequence">
+            <field name="name">BUZ Asset</field>
+            <field name="code">buz.asset</field>
+            <field name="prefix">AST/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="seq_buz_asset_disposal" model="ir.sequence">
+            <field name="name">BUZ Asset Disposal</field>
+            <field name="code">buz.asset.disposal</field>
+            <field name="prefix">DSP/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="seq_buz_asset_transfer" model="ir.sequence">
+            <field name="name">BUZ Asset Transfer</field>
+            <field name="code">buz.asset.transfer</field>
+            <field name="prefix">TRF/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="seq_buz_asset_audit" model="ir.sequence">
+            <field name="name">BUZ Asset Audit</field>
+            <field name="code">buz.asset.audit</field>
+            <field name="prefix">AUD/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="seq_buz_asset_maintenance" model="ir.sequence">
+            <field name="name">BUZ Asset Maintenance</field>
+            <field name="code">buz.asset.maintenance</field>
+            <field name="prefix">MNT/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>
