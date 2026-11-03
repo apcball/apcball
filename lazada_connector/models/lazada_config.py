@@ -1,6 +1,7 @@
 import json
 import logging
 import secrets
+import time
 import urllib.parse
 from datetime import timedelta
 
@@ -12,6 +13,13 @@ from .lazada_api import LazadaAPI, LazadaAPIError
 _logger = logging.getLogger(__name__)
 
 _MAX_PAGES = 40
+# Periodic status sync: orders in a final status are re-checked at most once
+# per _STATUS_RECHECK_HOURS (catches returns / late finance rows) instead of on
+# every run; active orders are refreshed every run.
+_FINAL_STATUSES = ("delivered", "canceled", "cancelled", "returned", "failed", "lost", "damaged")
+_STATUS_RECHECK_HOURS = 24
+# Pause between per-order API calls in the periodic run (Lazada ApiCallLimit).
+_STATUS_CALL_PAUSE = 0.3
 _PAGE_SIZE = 50
 # Order import walks long backfills in bounded windows.
 _ORDER_WINDOW = timedelta(days=15)
@@ -669,6 +677,15 @@ class LazadaConfig(models.Model):
         if order_ids is not None:
             order_ids = [str(order_id) for order_id in order_ids]
             domain.append(("lazada_order_id", "in", order_ids))
+        if order_ids is None:
+            recheck_before = fields.Datetime.now() - timedelta(hours=_STATUS_RECHECK_HOURS)
+            domain += [
+                "|", "|", "|",
+                ("lazada_order_status", "=", False),
+                ("lazada_order_status", "not in", _FINAL_STATUSES),
+                ("lazada_last_status_sync", "=", False),
+                ("lazada_last_status_sync", "<", recheck_before),
+            ]
         orders = SaleOrder.search(
             domain, order="id desc", limit=200 if order_ids is None else None,
         )
@@ -685,6 +702,7 @@ class LazadaConfig(models.Model):
                 with self.env.cr.savepoint():
                     order.refresh_lazada_status(api=api, token=token)
                 updated += 1
+                time.sleep(_STATUS_CALL_PAUSE)
             except Exception as exc:
                 self.env["lazada.retry.queue"].enqueue(
                     self, "sync_order_status",
