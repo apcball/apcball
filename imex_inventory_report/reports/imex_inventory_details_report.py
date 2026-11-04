@@ -235,12 +235,8 @@ class ImexInventoryDetailsReport(models.Model):
             )
             SELECT row_number() OVER (ORDER BY a.report_location_id, a.date, a.reference) AS id, * FROM (
                 SELECT
-                    (SUM(CASE WHEN leg = 'in' THEN quantity ELSE 0 END)
-                    -
-                    SUM(CASE WHEN leg = 'out' THEN quantity ELSE 0 END)) AS initial,
-                    (SUM(CASE WHEN leg = 'in' THEN quantity * unit_cost ELSE 0 END)
-                    -
-                    SUM(CASE WHEN leg = 'out' THEN quantity * unit_cost ELSE 0 END)) AS initial_amount,
+                    z.initial,
+                    z.initial * COALESCE(uc.unit_cost, 0) AS initial_amount,
                     null AS date,
                     null AS product_id,
                     null AS product_qty,
@@ -252,13 +248,62 @@ class ImexInventoryDetailsReport(models.Model):
                     null AS origin,
                     null AS location_id,
                     null AS location_dest_id,
-                    report_location_id,
+                    z.report_location_id,
                     null AS product_in,
                     null AS product_out,
                     null AS picking_id
-                FROM move_leg
-                WHERE date < %s
-                GROUP BY report_location_id
+                FROM (
+                    -- Opening anchored on current on-hand: balance at the
+                    -- end of the window = quant now minus moves done after
+                    -- date_to; opening = that minus the window's own net.
+                    -- Pre-cut-off history is unreliable (FIFO reset), so it
+                    -- never drives the opening. Mirrors the summary report.
+                    SELECT COALESCE(w.report_location_id, q.location_id)
+                            AS report_location_id,
+                        (COALESCE(q.qty, 0) - COALESCE(w.net, 0)
+                            - COALESCE(af.net, 0)) AS initial
+                    FROM (
+                        SELECT report_location_id,
+                            SUM(CASE WHEN leg = 'in' THEN quantity
+                                     ELSE -quantity END) AS net
+                        FROM move_leg
+                        WHERE date >= %s
+                        GROUP BY report_location_id
+                    ) w
+                    FULL OUTER JOIN (
+                        SELECT sq.location_id, SUM(sq.quantity) AS qty
+                        FROM stock_quant sq
+                            JOIN stock_location sl ON sl.id = sq.location_id
+                        WHERE sq.location_id in %s
+                            AND sq.product_id in %s
+                            AND sl.usage in ('internal', 'transit')
+                        GROUP BY sq.location_id
+                    ) q ON q.location_id = w.report_location_id
+                    LEFT JOIN LATERAL (
+                        SELECT SUM(CASE
+                                WHEN sml.location_dest_id
+                                    = COALESCE(w.report_location_id, q.location_id)
+                                THEN sml.quantity_product_uom
+                                ELSE -sml.quantity_product_uom END) AS net
+                        FROM stock_move_line sml
+                        WHERE sml.state = 'done'
+                            AND sml.product_id in %s
+                            AND sml.date >= %s
+                            AND COALESCE(w.report_location_id, q.location_id)
+                                IN (sml.location_id, sml.location_dest_id)
+                    ) af ON true
+                ) z
+                LEFT JOIN LATERAL (
+                    SELECT CASE WHEN SUM(ABS(svl3.quantity)) > 0
+                            THEN SUM(ABS(svl3.value))
+                                / SUM(ABS(svl3.quantity))
+                            ELSE 0 END AS unit_cost
+                    FROM stock_valuation_layer svl3
+                        JOIN stock_location sl3
+                            ON sl3.id = z.report_location_id
+                    WHERE svl3.product_id in %s
+                        AND svl3.warehouse_id = sl3.warehouse_id
+                ) uc ON true
                 UNION ALL
                 SELECT
                     null as initial, null as initial_amount,
@@ -291,6 +336,11 @@ class ImexInventoryDetailsReport(models.Model):
                   utc_cutoff,
                   utc_date_to_excl,
                   utc_date_from,
+                  locations,
+                  product_ids,
+                  product_ids,
+                  utc_date_to_excl,
+                  product_ids,
                   utc_date_from)
 
         tools.drop_view_if_exists(self._cr, self._table)

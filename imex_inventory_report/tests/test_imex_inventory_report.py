@@ -229,6 +229,59 @@ class TestImexInventoryReport(TransactionCase):
         ])
         self.assertEqual((line.initial, line.balance), (4.0, 4.0))
 
+    def test_detail_report_anchors_opening_on_current_quant(self):
+        """Details report: opening is the plug between current on-hand and
+        the window's own moves, so the running balance ends on the quant."""
+        self.env["ir.config_parameter"].sudo().set_param(
+            "imex_inventory_report.cutoff_date", "2026-03-31")
+        other = self.env["stock.location"].create({
+            "name": "Test Other Internal Detail",
+            "usage": "internal",
+            "location_id": self.warehouse.view_location_id.id,
+        })
+        self._create_done_move(
+            self.location_production, self.location_stock, 5.0,
+            "2026-03-10 08:00:00", "IMEX/DET/IN")
+        self._create_done_move(
+            self.location_stock, other, 1.0,
+            "2026-05-10 08:00:00", "IMEX/DET/WIN")
+        self._create_done_move(
+            other, self.location_stock, 1.0,
+            "2026-06-10 08:00:00", "IMEX/DET/POST")
+        self._set_quants({self.location_stock: 2.0, other: 3.0})
+        wizard = self._create_wizard(is_groupby_location=True)
+
+        details = self.env["imex.inventory.details.report"]
+        details.init_results(wizard)
+        rows = details.search([])
+        initial = {
+            r.report_location_id.id: r.initial for r in rows
+            if not r.product_id}
+        self.assertEqual(initial[self.location_stock.id], 2.0)
+        self.assertEqual(initial[other.id], 3.0)
+        stock_lines = rows.filtered(
+            lambda r: r.product_id
+            and r.report_location_id == self.location_stock)
+        balance = (initial[self.location_stock.id]
+                   + sum(stock_lines.mapped("product_in"))
+                   - sum(stock_lines.mapped("product_out")))
+        self.assertEqual(balance, 1.0)  # quant 2 minus the June move (+1)
+
+    def test_detail_report_row_for_stock_without_window_moves(self):
+        self._create_done_move(
+            self.location_production, self.location_stock, 4.0,
+            "2026-03-10 08:00:00", "IMEX/DET/OLD")
+        self._set_quants({self.location_stock: 4.0})
+        wizard = self._create_wizard(is_groupby_location=True)
+
+        details = self.env["imex.inventory.details.report"]
+        details.init_results(wizard)
+        row = details.search([
+            ("report_location_id", "=", self.location_stock.id),
+            ("product_id", "=", False),
+        ])
+        self.assertEqual(row.initial, 4.0)
+
     def test_summary_report_uses_done_quantity(self):
         self._create_partial_done_move()
         wizard = self._create_wizard(is_groupby_location=False)
