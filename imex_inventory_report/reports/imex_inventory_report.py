@@ -370,6 +370,88 @@ class ImexInventoryReport(models.Model):
                       product_category_ids,
                       utc_lower,
                       utc_upper)
+            # Hybrid opening balance: pre-cut-off history is unreliable, so
+            # the per-location balance at date_to is anchored on the current
+            # stock_quant minus the moves done after date_to; `initial` is the
+            # plug so that initial + in - out == that balance. Locations that
+            # hold stock but had no move in the window still get a row.
+            base_query = query_
+            query_ = """
+                SELECT row_number() OVER () AS id, z.product_id, z.product_uom,
+                    z.location, z.product_category,
+                    z.initial, z.initial_amount,
+                    z.product_in, z.product_in_amount,
+                    z.product_out, z.product_out_amount,
+                    (z.initial + z.product_in - z.product_out) AS balance,
+                    (z.initial_amount + z.product_in_amount
+                        - z.product_out_amount) AS amount
+                FROM (
+                    SELECT COALESCE(b.product_id, q.product_id) AS product_id,
+                        COALESCE(b.product_uom, q.product_uom) AS product_uom,
+                        COALESCE(b.location, q.location) AS location,
+                        COALESCE(b.product_category, q.product_category)
+                            AS product_category,
+                        (COALESCE(q.qty, 0) - COALESCE(an.net, 0)
+                            - (COALESCE(b.product_in, 0)
+                               - COALESCE(b.product_out, 0))) AS initial,
+                        (COALESCE(q.qty, 0) - COALESCE(an.net, 0)
+                            - (COALESCE(b.product_in, 0)
+                               - COALESCE(b.product_out, 0)))
+                            * COALESCE(uc.unit_cost, 0) AS initial_amount,
+                        COALESCE(b.product_in, 0) AS product_in,
+                        COALESCE(b.product_in_amount, 0) AS product_in_amount,
+                        COALESCE(b.product_out, 0) AS product_out,
+                        COALESCE(b.product_out_amount, 0) AS product_out_amount
+                    FROM (""" + base_query + """) b
+                    FULL OUTER JOIN (
+                        SELECT sq.product_id, tmpl.uom_id AS product_uom,
+                            sq.location_id AS location,
+                            tmpl.categ_id AS product_category,
+                            SUM(sq.quantity) AS qty
+                        FROM stock_quant sq
+                            JOIN stock_location sl ON sl.id = sq.location_id
+                            JOIN product_product pp ON pp.id = sq.product_id
+                            JOIN product_template tmpl
+                                ON tmpl.id = pp.product_tmpl_id
+                        WHERE sq.location_id in %s
+                            AND sq.product_id in %s
+                            AND tmpl.categ_id in %s
+                            AND sl.usage in ('internal', 'transit')
+                        GROUP BY sq.product_id, tmpl.uom_id,
+                            sq.location_id, tmpl.categ_id
+                    ) q ON q.product_id = b.product_id
+                        AND q.location = b.location
+                    LEFT JOIN LATERAL (
+                        SELECT SUM(CASE
+                                WHEN sml.location_dest_id
+                                    = COALESCE(b.location, q.location)
+                                THEN sml.quantity_product_uom
+                                ELSE -sml.quantity_product_uom END) AS net
+                        FROM stock_move_line sml
+                        WHERE sml.state = 'done'
+                            AND sml.product_id
+                                = COALESCE(b.product_id, q.product_id)
+                            AND sml.date >= %s
+                            AND COALESCE(b.location, q.location)
+                                IN (sml.location_id, sml.location_dest_id)
+                    ) an ON true
+                    LEFT JOIN LATERAL (
+                        SELECT CASE WHEN SUM(ABS(svl3.quantity)) > 0
+                                THEN SUM(ABS(svl3.value))
+                                    / SUM(ABS(svl3.quantity))
+                                ELSE 0 END AS unit_cost
+                        FROM stock_valuation_layer svl3
+                            JOIN stock_location sl3
+                                ON sl3.id = COALESCE(b.location, q.location)
+                        WHERE svl3.product_id
+                                = COALESCE(b.product_id, q.product_id)
+                            AND svl3.warehouse_id = sl3.warehouse_id
+                    ) uc ON true
+                ) z
+                WHERE abs(z.initial) + z.product_in + z.product_out > 0
+            """
+            params = params + (locations, product_ids,
+                               product_category_ids, utc_upper)
         else:
             query_ = """ 
                 SELECT *, (a.initial + a.product_in - a.product_out) as balance,
