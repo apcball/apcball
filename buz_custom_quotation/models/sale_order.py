@@ -11,7 +11,7 @@ class SaleOrderLine(models.Model):
     def _compute_discount_percent(self):
         for line in self:
             if hasattr(line, 'normal_price') and line.normal_price and line.normal_price > 0:
-                line.discount_percent = round((1 - (line.price_unit / line.normal_price)) * 100, 2)
+                line.discount_percent = max(0.0, round((1 - (line.price_unit / line.normal_price)) * 100, 2))
             else:
                 line.discount_percent = line.discount
 

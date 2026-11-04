@@ -8,12 +8,18 @@
     'depends': [
         'sale',
         'sale_management',
+        'account',
+        'hr',
         'web',
+        'report_xlsx',
+        'buz_add_nornal_price',
+        'buz_margin_approval',
     ],
     'data': [
         'data/sequence.xml',
         'security/ir.model.access.csv',
         'report/sale_report_templates.xml',
+        'report/sale_report_xlsx.xml',
         'report/sale_report_stair.xml',
         'views/sale_order_views.xml',
     ],
