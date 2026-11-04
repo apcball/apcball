@@ -1,0 +1,147 @@
+// BUZ Asset Dashboard: soft enterprise look, tinted KPI cards, white content cards.
+$bam-border: #e3e8ef;
+$bam-ink: #1d2d44;
+$bam-muted: #6a7a90;
+$bam-accent: #2f6fe4;
+$bam-bg: #f4f7fb;
+
+@mixin tint($bg, $fg) {
+    background: $bg;
+    border-color: lighten($fg, 38%);
+    .bam-kpi-icon { background: lighten($fg, 40%); color: $fg; }
+}
+
+.bam-dashboard {
+    background: $bam-bg;
+    color: $bam-ink;
+    padding: 20px 24px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100%;
+
+    .bam-card {
+        background: #fff;
+        border: 1px solid $bam-border;
+        border-radius: 12px;
+        padding: 14px 18px;
+        box-shadow: 0 1px 2px rgba(29, 45, 68, .04);
+        min-width: 0;
+    }
+    .bam-card-title { font-weight: 600; margin-bottom: 10px; i { color: $bam-muted; margin-right: 6px; } }
+
+    // ---- header
+    .bam-header {
+        display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 16px;
+        h1 { font-size: 26px; font-weight: 700; margin: 0; }
+        p { margin: 2px 0 0; color: $bam-muted; }
+    }
+    .bam-header-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .bam-pill {
+        display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid $bam-border;
+        border-radius: 10px; padding: 6px 12px; margin: 0; min-width: 150px;
+        .bam-pill-text { display: flex; flex-direction: column; small { color: $bam-muted; font-size: 11px; line-height: 1.1; } }
+        input, select { border: 0; padding: 0; background: transparent; font-weight: 500; color: $bam-ink; outline: 0; }
+    }
+    .bam-icon-btn {
+        width: 40px; height: 40px; border-radius: 10px; border: 1px solid $bam-border; background: #fff; color: $bam-ink;
+        &:hover { background: $bam-bg; }
+    }
+    .bam-more { position: relative; }
+    .bam-more-panel {
+        position: absolute; right: 0; top: 46px; z-index: 20; width: 280px; background: #fff;
+        border: 1px solid $bam-border; border-radius: 12px; padding: 14px; box-shadow: 0 8px 24px rgba(29, 45, 68, .12);
+        label { display: block; margin-bottom: 8px; span { display: block; font-size: 12px; color: $bam-muted; } }
+        select { width: 100%; height: 32px; border: 1px solid $bam-border; border-radius: 6px; }
+        .bam-more-actions { display: flex; gap: 6px; flex-wrap: wrap; .btn { border: 1px solid $bam-border; } }
+    }
+
+    .bam-loading, .bam-empty-page, .bam-error { text-align: center; padding: 32px; }
+    .bam-empty-page { margin-bottom: 12px; color: $bam-muted; }
+    .bam-refreshing { font-size: 12px; color: $bam-muted; margin-bottom: 4px; }
+    .bam-dim { opacity: .6; }
+    .bam-empty { color: $bam-muted; text-align: center; padding: 24px 0; list-style: none; }
+
+    // ---- KPI cards
+    .bam-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .bam-kpi {
+        border: 1px solid $bam-border; border-radius: 14px; padding: 16px;
+        .bam-kpi-icon {
+            display: inline-flex; width: 38px; height: 38px; border-radius: 50%; align-items: center;
+            justify-content: center; margin-bottom: 10px; font-size: 16px;
+        }
+        .bam-kpi-label { font-weight: 600; font-size: 13px; }
+        .bam-kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; word-break: break-word; }
+        .bam-kpi-sub { font-size: 11px; color: $bam-muted; margin-top: 4px; }
+    }
+    .bam-tint-blue { @include tint(#eef4ff, #2f6fe4); }
+    .bam-tint-orange { @include tint(#fff6ec, #e9730c); }
+    .bam-tint-purple { @include tint(#f5f0ff, #7858ff); }
+    .bam-tint-green { @include tint(#eefaf3, #107e3e); }
+    .bam-tint-teal { @include tint(#ecf9fa, #1b9aa1); }
+    .bam-tint-red { @include tint(#fff0f0, #bb0000); }
+
+    // ---- rows
+    .bam-row { display: grid; gap: 14px; margin-bottom: 14px; }
+    .bam-row-trend { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+    .bam-row-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .bam-row-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .bam-row-bottom { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
+    .bam-chart-body { position: relative; height: 250px; }
+
+    .bam-donut-wrap { display: flex; align-items: center; gap: 12px; .bam-donut { flex: 0 0 45%; min-width: 0; } }
+    .bam-legend { flex: 1; font-size: 13px; td { padding: 4px 4px; } .num { text-align: right; color: $bam-muted; } }
+    .bam-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+
+    .bam-feed {
+        list-style: none; margin: 0; padding: 0; max-height: 250px; overflow: auto;
+        li { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eef1f6; align-items: center; }
+        li.clickable { cursor: pointer; &:hover { background: $bam-bg; } }
+        .bam-feed-icon {
+            flex: 0 0 34px; height: 34px; border-radius: 50%; background: #eef4ff; color: $bam-accent;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .bam-feed-body { flex: 1; min-width: 0; font-size: 13px; div { color: $bam-muted; font-size: 12px; } }
+        .bam-feed-date { font-size: 11px; color: $bam-muted; white-space: nowrap; }
+    }
+
+    .bam-actions {
+        display: flex; flex-direction: column; gap: 8px;
+        button {
+            text-align: left; background: #fff; border: 1px solid $bam-border; border-radius: 8px; padding: 9px 12px;
+            color: $bam-ink; i { width: 22px; color: $bam-muted; }
+            &:hover { background: $bam-bg; border-color: $bam-accent; }
+        }
+    }
+
+    .bam-table {
+        width: 100%; font-size: 13px;
+        th { color: $bam-muted; font-weight: 600; background: #f8fafc; padding: 6px 8px; }
+        td { padding: 7px 8px; border-bottom: 1px solid #eef1f6; }
+        .num { text-align: right; }
+        tr.clickable { cursor: pointer; &:hover { background: $bam-bg; } }
+    }
+}
+
+@media (max-width: 1200px) {
+    .bam-dashboard .bam-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+    .bam-dashboard {
+        .bam-row-trend, .bam-row-three, .bam-row-bottom, .bam-row-two { grid-template-columns: minmax(0, 1fr); }
+    }
+}
+@media (max-width: 768px) {
+    .bam-dashboard {
+        padding: 12px;
+        .bam-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .bam-header h1 { font-size: 20px; }
+        .bam-header-tools { width: 100%; }
+        .bam-pill { flex: 1; }
+        .bam-donut-wrap { flex-direction: column; .bam-donut { flex: none; width: 100%; } }
+        .bam-table { display: block; overflow-x: auto; }
+    }
+}
+@media print {
+    .bam-dashboard { background: #fff; .bam-header-tools, .bam-actions { display: none; } }
+}

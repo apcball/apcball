@@ -3,7 +3,7 @@
     <menuitem id="menu_buz_asset_root" name="บริหารทรัพย์สิน" sequence="45"
               groups="buz_asset_management.group_asset_user"/>
     <menuitem id="menu_buz_asset_dashboard" name="แดชบอร์ด" parent="menu_buz_asset_root"
-              action="action_buz_asset_dashboard" sequence="5"/>
+              action="action_buz_asset_dashboard_owl" sequence="5"/>
     <menuitem id="menu_buz_asset" name="ทะเบียนทรัพย์สิน" parent="menu_buz_asset_root"
               action="action_buz_asset" sequence="10"/>
 

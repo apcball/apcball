@@ -27,8 +27,18 @@
         'views/audit_views.xml',
         'views/report_views.xml',
         'views/analytics_views.xml',
+        'views/dashboard_actions.xml',
         'views/menu_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'buz_asset_management/static/src/dashboard/asset_dashboard.scss',
+            'buz_asset_management/static/src/dashboard/chart_card.js',
+            'buz_asset_management/static/src/dashboard/asset_dashboard.js',
+            'buz_asset_management/static/src/dashboard/asset_dashboard.xml',
+        ],
+    },
+    'external_dependencies': {'python': ['xlsxwriter']},
     'installable': True,
     'application': True,
 }
