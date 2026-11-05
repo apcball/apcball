@@ -459,7 +459,7 @@
                                     }
                                 </style>
                                 <!-- ผู้จัดทำ -->
-                                <div class="row" style="margin-top: 100px; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;">
+                                <div class="row" style="margin-top: -20px !important; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;">
                                     <!-- ส่วนที่ 1: ผู้จัดทำ -->
                                     <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
                                         <div style="text-align: center; font-size: 18px;">
