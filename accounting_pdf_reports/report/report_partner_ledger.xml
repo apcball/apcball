@@ -43,6 +43,12 @@
                                 <th>Credit</th>
                                 <th>Balance</th>
                                 <th t-if="data['form']['amount_currency']">Currency</th>
+                                <th>Payment Number</th>
+                                <th>Payment Date</th>
+                                <th>Paid Amount</th>
+                                <th>Remaining</th>
+                                <th t-if="data['form']['amount_currency']">Paid Amount (Currency)</th>
+                                <th t-if="data['form']['amount_currency']">Remaining (Currency)</th>
                             </tr>
                         </thead>
                         <t t-foreach="docs" t-as="o">
@@ -65,8 +71,10 @@
                                         <strong t-esc="sum_partner(data, o, 'debit - credit')"
                                                 t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
                                     </td>
+                                    <td t-if="data['form']['amount_currency']"/>
+                                    <td t-att-colspan="6 if data['form']['amount_currency'] else 4"/>
                                 </tr>
-                                <tr t-foreach="lines(data, o)" t-as="line">
+                                <tr t-foreach="lines_with_payment_details(data, o)" t-as="line">
                                     <td>
                                         <span t-esc="line['date']"/>
                                     </td>
@@ -80,22 +88,54 @@
                                         <span t-esc="line['displayed_name']"/>
                                     </td>
                                     <td class="text-end">
-                                        <span t-esc="line['debit']"
-                                              t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                        <t t-if="line['show_accounting_values']">
+                                            <span t-esc="line['debit']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                        </t>
                                     </td>
                                     <td class="text-end">
-                                        <span t-esc="line['credit']"
-                                              t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                        <t t-if="line['show_accounting_values']">
+                                            <span t-esc="line['credit']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                        </t>
                                     </td>
                                     <td class="text-end">
-                                        <span t-esc="line['progress']"
-                                              t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                        <t t-if="line['show_accounting_values']">
+                                            <span t-esc="line['progress']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                        </t>
                                     </td>
                                     <td class="text-end" t-if="data['form']['amount_currency']">
-                                        <t t-if="line['currency_id']">
+                                        <t t-if="line['show_accounting_values'] and line['currency_id']">
                                             <span t-esc="line['amount_currency']"
                                                   t-options="{'widget': 'monetary', 'display_currency': line['currency_id']}"/>
                                         </t>
+                                    </td>
+                                    <td>
+                                        <span t-if="line['payment_detail']" t-esc="line['payment_detail']['payment_number']"/>
+                                    </td>
+                                    <td>
+                                        <span t-if="line['payment_detail']" t-esc="line['payment_detail']['payment_date']"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-if="line['payment_detail'] and line['payment_detail']['paid_amount'] is not None"
+                                              t-esc="line['payment_detail']['paid_amount']"
+                                              t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-if="line['payment_detail']"
+                                              t-esc="line['payment_detail']['remaining']"
+                                              t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                    </td>
+                                    <td class="text-end" t-if="data['form']['amount_currency']">
+                                        <span t-if="line['payment_detail'] and line['payment_detail']['paid_amount_currency'] is not None"
+                                              t-esc="line['payment_detail']['paid_amount_currency']"
+                                              t-options="{'widget': 'monetary', 'display_currency': line['payment_detail']['currency']}"/>
+                                    </td>
+                                    <td class="text-end" t-if="data['form']['amount_currency']">
+                                        <span t-if="line['payment_detail']"
+                                              t-esc="line['payment_detail']['remaining_currency']"
+                                              t-options="{'widget': 'monetary', 'display_currency': line['payment_detail']['currency']}"/>
                                     </td>
                                 </tr>
                             </tbody>
