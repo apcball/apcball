@@ -13,6 +13,7 @@
         - Purchase Order / RFQ
         - Customer Invoice / Vendor Bill
         - Purchase Requisition (if available)
+        - Internal Transfer
     """,
     'depends': [
         'sale', 
@@ -20,12 +21,16 @@
         'account', 
         'analytic',
         'employee_purchase_requisition',
+        'stock',
+        'buz_tag_inventory',
+        'stock_analytic_connector',
     ],
     'data': [
         'views/sale_order_view.xml',
         'views/purchase_order_view.xml',
         'views/account_move_view.xml',
         'views/requisition_order_view.xml',
+        'views/stock_picking_view.xml',
     ],
     'license': 'LGPL-3',
     'installable': True,

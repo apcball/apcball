@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_analytic_auto_sync" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.analytic.auto.sync</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="buz_tag_inventory.view_picking_form_tag_ids"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tag_ids']" position="after">
+                <field name="analytic_auto_sync"
+                       widget="boolean_toggle"
+                       invisible="picking_type_code != 'internal'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
