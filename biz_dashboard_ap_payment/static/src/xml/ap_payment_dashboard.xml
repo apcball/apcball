@@ -112,12 +112,6 @@
                                 <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.credit)"/>
                                 <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.credit_pct)"/>
                             </div>
-                            <div class="o_apd_tile o_apd_tile--purple">
-                                <div class="o_apd_tile_label">ชำระแล้ว <small>(ตามวันครบกำหนด)</small></div>
-                                <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.paid)"/>
-                                <div class="o_apd_tile_pct" t-esc="fmtPct(data.kpi_payment.paid_pct)"/>
-                                <div class="o_apd_tile_note">จ่ายบิลด้วยโอน/เช็คจริงในเดือน (ตามวันที่ชำระ) <t t-esc="fmtBaht(data.kpi_payment.paid_actual)"/> · ดูการ์ดจ่ายจริง</div>
-                            </div>
                             <div class="o_apd_tile o_apd_tile--orange">
                                 <div class="o_apd_tile_label">ค้างชำระ (ยังไม่ชำระ)</div>
                                 <div class="o_apd_tile_value" t-esc="fmtBaht(data.kpi_payment.residual)"/>
