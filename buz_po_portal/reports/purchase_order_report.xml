@@ -348,7 +348,7 @@
        </t>     
             
       <!-- กล่องรวม หมายเหตุ + ผลรวม -->
-       <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
+       <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 3px; min-height: 174px; height: 174px;">
     
         <!-- ฝั่งซ้าย -->
         <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box; height: 100%;">
