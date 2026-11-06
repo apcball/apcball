@@ -1,5 +1,4 @@
 import time
-
 from odoo import api, models, _
 from odoo.exceptions import UserError
 
@@ -66,155 +65,6 @@ class ReportPartnerLedger(models.AbstractModel):
             result = contemp[0] or 0.0
         return result
 
-    def _get_bill_payment_details(self, bills, account_ids, form):
-        result = {}
-        date_from = form.get('date_from') or ''
-        date_to = form.get('date_to') or ''
-        journal_ids = set(form.get('journal_ids') or [])
-        for bill in bills:
-            bill_lines = bill.line_ids.filtered(
-                lambda line: line.account_id.id in account_ids and line.partner_id
-            )
-            partials = bill_lines.mapped('matched_debit_ids') | bill_lines.mapped('matched_credit_ids')
-            payment_events = {}
-            other_events = []
-
-            for partial in partials:
-                if partial.debit_move_id.move_id == bill:
-                    counterpart = partial.credit_move_id
-                    bill_currency_amount = partial.debit_amount_currency
-                elif partial.credit_move_id.move_id == bill:
-                    counterpart = partial.debit_move_id
-                    bill_currency_amount = partial.credit_amount_currency
-                else:
-                    continue
-
-                # shortcut: direct statement reconciliations lack an account.payment number; add explicit statement-reference support if required.
-                payment = counterpart.move_id.payment_id
-                event = {
-                    'date': payment.date if payment else partial.max_date,
-                    'id': partial.id,
-                    'amount': partial.amount,
-                    'amount_currency': bill_currency_amount,
-                    'payment': payment,
-                    'journal_id': (payment.move_id.journal_id.id if payment else counterpart.journal_id.id),
-                }
-                if payment:
-                    grouped = payment_events.setdefault(payment.id, {
-                        'date': payment.date,
-                        'id': partial.id,
-                        'amount': 0.0,
-                        'amount_currency': 0.0,
-                        'payment': payment,
-                        'journal_id': event['journal_id'],
-                    })
-                    grouped['id'] = min(grouped['id'], partial.id)
-                    grouped['amount'] += event['amount']
-                    grouped['amount_currency'] += event['amount_currency']
-                else:
-                    other_events.append(event)
-
-            company_currency = bill.company_id.currency_id
-            bill_currency = bill.currency_id or company_currency
-            remaining = sum(-line.balance for line in bill_lines)
-            remaining_currency = sum(-line.amount_currency for line in bill_lines)
-            payment_rows = []
-            events = other_events + list(payment_events.values())
-            for event in sorted(events, key=lambda item: (str(item['date'] or ''), item['id'])):
-                event_date = str(event['date'] or '')
-                if date_from and event_date and event_date < date_from:
-                    remaining = company_currency.round(remaining - event['amount'])
-                    remaining_currency = bill_currency.round(
-                        remaining_currency - event['amount_currency']
-                    )
-                    continue
-                if date_to and event_date and event_date > date_to:
-                    continue
-                remaining = company_currency.round(remaining - event['amount'])
-                remaining_currency = bill_currency.round(
-                    remaining_currency - event['amount_currency']
-                )
-                if not journal_ids or event['journal_id'] in journal_ids:
-                    payment = event['payment']
-                    payment_rows.append({
-                        'payment_number': payment.name if payment else None,
-                        'payment_date': event['date'],
-                        'paid_amount': event['amount'],
-                        'remaining': remaining,
-                        'paid_amount_currency': event['amount_currency'],
-                        'remaining_currency': remaining_currency,
-                        'currency': bill_currency,
-                    })
-
-            result[bill.id] = {
-                'payments': payment_rows,
-                'remaining': (
-                    remaining if date_to else sum(-line.amount_residual for line in bill_lines)
-                ),
-                'remaining_currency': (
-                    remaining_currency if date_to else
-                    sum(-line.amount_residual_currency for line in bill_lines)
-                ),
-            }
-        return result
-
-    def _lines_with_payment_details(self, data, partner):
-        lines = self._lines(data, partner)
-        move_lines = self.env['account.move.line'].browse(
-            [line['id'] for line in lines]
-        )
-        move_line_by_id = {line.id: line for line in move_lines}
-        bills = move_lines.mapped('move_id').filtered(
-            lambda move: move.move_type == 'in_invoice'
-        )
-        payment_details = self._get_bill_payment_details(
-            bills, set(data['computed']['account_ids']), data['form'],
-        )
-
-        report_lines = []
-        written_bills = set()
-        for line in lines:
-            move = move_line_by_id[line['id']].move_id
-            bill = move if move.move_type == 'in_invoice' else False
-            if not bill or bill.id in written_bills:
-                report_lines.append({
-                    **line,
-                    'payment_detail': None,
-                    'show_accounting_values': True,
-                })
-                continue
-
-            written_bills.add(bill.id)
-            bill_details = payment_details[bill.id]
-            payment_rows = bill_details['payments'] or [{
-                'payment_number': None,
-                'payment_date': None,
-                'paid_amount': None,
-                'remaining': bill_details['remaining'],
-                'paid_amount_currency': None,
-                'remaining_currency': bill_details['remaining_currency'],
-                'currency': bill.currency_id,
-            }]
-            for index, payment_detail in enumerate(payment_rows):
-                report_line = dict(line)
-                if index:
-                    report_line.update({
-                        'date': None,
-                        'code': None,
-                        'a_code': None,
-                        'displayed_name': bill.name,
-                        'debit': None,
-                        'credit': None,
-                        'progress': None,
-                        'amount_currency': None,
-                    })
-                report_line.update({
-                    'payment_detail': payment_detail,
-                    'show_accounting_values': not index,
-                })
-                report_lines.append(report_line)
-        return report_lines
-
     @api.model
     def _get_report_values(self, docids, data=None):
         if not data.get('form'):
@@ -268,6 +118,5 @@ class ReportPartnerLedger(models.AbstractModel):
             'docs': partners,
             'time': time,
             'lines': self._lines,
-            'lines_with_payment_details': self._lines_with_payment_details,
             'sum_partner': self._sum_partner,
         }
