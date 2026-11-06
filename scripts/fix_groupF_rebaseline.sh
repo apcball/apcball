@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Group F re-baseline (accounting approved all 39 rows "ทำ", file groupF_for_accounting_2026-11-05.xlsx) on MOG_LIVE.
 #
-# Rows: scripts/data/groupF_rebaseline_2026-11-05.csv (code, wh, quant, all-time/window qty+value, layer qty/value).
+# Rows: scripts/data/groupF_rebaseline_2026-11-05.csv (override with CSV=path; row count and net value are read from the CSV; 2026-11-06 re-apply = 36 rows, MO 770 rows left out because the user fixed its date) (code, wh, quant, all-time/window qty+value, layer qty/value).
 # State today for each row: all-time SVL == quant, report window (acct_date >= 2026-03-30 17:00 UTC) != quant.
 # Per row adds, like MT00811210 (fix_MT00811210_rebaseline.sh) and the 10 IMEX-REBASELINE products:
 #   * stock_move ref IMEX-REBASELINE-20260331, state done, NO move line (imex/stock card unaffected, quant untouched)
@@ -19,7 +19,9 @@ set -euo pipefail
 MODE="${1:-check}"
 case "$MODE" in check|dry|apply) ;; *) echo "usage: $0 check|dry|apply" >&2; exit 2;; esac
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CSV="$HERE/data/groupF_rebaseline_2026-11-05.csv"
+CSV="${CSV:-$HERE/data/groupF_rebaseline_2026-11-05.csv}"
+N_ROWS=$(( $(wc -l < "$CSV") - 1 ))
+NET_VAL=$(awk -F, 'NR>1{s+=$9} END{printf "%.2f", s}' "$CSV")
 REMOTE_ENV='PW=$(grep -E "^db_password" /etc/instance1.conf); export PGPASSWORD="${PW#*= }"'
 
 # temp table c from CSV + live state table s; mismatch view
@@ -65,7 +67,7 @@ BEGIN
   SELECT count(*) INTO bad FROM s WHERE n_prod<>1 OR pid IS NULL OR wid IS NULL OR l_quant<>quant OR l_all_q<>all_q OR l_win_q<>win_q
     OR abs(l_all_v-all_v)>0.01 OR abs(l_win_v-win_v)>0.01 OR l_done<>0;
   IF bad<>0 THEN RAISE EXCEPTION 'precondition failed: % rows differ from snapshot', bad; END IF;
-  IF (SELECT count(*) FROM s) <> 39 THEN RAISE EXCEPTION 'expected 39 rows'; END IF;
+  IF (SELECT count(*) FROM s) <> @@N@@ THEN RAISE EXCEPTION 'expected @@N@@ rows'; END IF;
   FOR r IN SELECT * FROM s ORDER BY code, wh LOOP
     SELECT lot_stock_id INTO stock_loc FROM stock_warehouse WHERE id=r.wid;
     ucost := abs(r.layer_v / r.layer_q);
@@ -112,14 +114,16 @@ BEGIN
   SELECT count(*) INTO bad FROM s2 WHERE w_q<>l_quant OR abs(w_v-all_v)>0.01 OR g_q<>l_quant OR a_q<>all_q+layer_q OR abs(a_v-(all_v+layer_v))>0.01;
   SELECT count(*), round(sum(value),2) INTO nl, net FROM stock_valuation_layer WHERE description LIKE 'Re-baseline adjustment 2026-03-31 - groupF%';
   SELECT count(*) INTO nm FROM stock_move WHERE name LIKE 'groupF re-baseline%';
-  IF bad<>0 OR nl<>39 OR nm<>39 OR net<>-33450.48 THEN
+  IF bad<>0 OR nl<>@@N@@ OR nm<>@@N@@ OR net<>@@NET@@ THEN
     RAISE EXCEPTION 'post-check failed: bad rows %, layers %, moves %, net value %', bad, nl, nm, net;
   END IF;
-  RAISE NOTICE 'post-check ok: 39 layers, 39 moves, net value %', net;
+  RAISE NOTICE 'post-check ok: @@N@@ layers, @@N@@ moves, net value %', net;
 END $$;
 SQLEOF
 )
 
+INSERTS="${INSERTS//@@N@@/$N_ROWS}"
+INSERTS="${INSERTS//@@NET@@/$NET_VAL}"
 { printf 'BEGIN;\n%s\n' "$SETUP"; cat "$CSV"; printf '\\.\n%s\n%s\n%s;\n' "$LIVE" "$INSERTS" "$COMMIT_OR_ROLLBACK"; } \
   | ssh mog-prod "$REMOTE_ENV; psql -h localhost -U odoo MOG_LIVE -v ON_ERROR_STOP=1 -q"
 echo ">>> $MODE finished ($COMMIT_OR_ROLLBACK)"
