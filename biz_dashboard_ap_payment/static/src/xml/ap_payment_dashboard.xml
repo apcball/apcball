@@ -143,16 +143,6 @@
                                 <b t-esc="fmtNum(data.kpi_loan.repaid)"/>
                             </div>
                         </div>
-                        <div class="o_apd_rows" t-if="data.kpi_loan.configured">
-                            <div class="o_apd_row o_apd_row--hl">
-                                <span>เบิกเงินกู้ในเดือน / คงค้างสิ้นเดือน</span>
-                                <b><t t-esc="fmtNum(data.kpi_loan.drawn)"/> / <t t-esc="fmtNum(data.kpi_loan.outstanding)"/></b>
-                            </div>
-                            <div class="o_apd_row" t-foreach="data.kpi_loan.accounts" t-as="acc" t-key="acc.id">
-                                <span><small class="text-muted"><t t-esc="acc.code"/> <t t-esc="acc.name"/>: ชำระคืน <t t-esc="fmtNum(acc.repaid)"/><t t-if="acc.manual"> (กรอกเอง)</t></small></span>
-                                <b><t t-esc="fmtNum(acc.drawn)"/> / <t t-esc="fmtNum(acc.outstanding)"/></b>
-                            </div>
-                        </div>
                     </div>
                     <!-- 2 -->
                     <div class="o_apd_card o_apd_card--green">
