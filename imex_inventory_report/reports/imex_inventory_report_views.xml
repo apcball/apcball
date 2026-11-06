@@ -31,7 +31,7 @@
         <field name="arch" type="xml">
             <tree create="false" string="Imex Inventory Report">
                 <field name="default_code" string="Default Code" optional="show"/>
-                <field name="product_id" string="Product"/>
+                <field name="product_id" string="Product" context="{'display_default_code': False}"/>
                 <field name="product_uom" string="UoM" optional="show"/>
                 <field name="product_category" string="Category" optional="show"/>
                 <field name="location" string="Location" optional="show"/>

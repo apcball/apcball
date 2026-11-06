@@ -63,6 +63,13 @@ class ImexInventoryReport(models.Model):
     #       => count internal transfer and group by location
     #    2.2: group_location = False
     #       => not count internal transfer and neither group by location
+    def export_data(self, fields_to_export):
+        # Excel/CSV export: product name only, default code has its own column.
+        return super(
+            ImexInventoryReport,
+            self.with_context(display_default_code=False),
+        ).export_data(fields_to_export)
+
     def _get_locations(self, location_id, is_groupby_location):
         count_internal_transfer = True
         if (location_id):
