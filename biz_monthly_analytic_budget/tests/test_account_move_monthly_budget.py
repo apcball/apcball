@@ -36,3 +36,34 @@ class TestAccountMoveMonthlyBudget(TransactionCase, BudgetTestMixin):
         )
         self.assertEqual(grouped, [])
         self.assertEqual(ignored, {})
+
+    def test_cancel_bill_releases_commitment_when_due_date_has_no_plan(self):
+        """Regression: cancelling a bill whose due-date month has no confirmed
+        plan must still release its reserved commitment (stale 7.8M on prod)."""
+        plan_date = fields.Date.to_date('2026-10-15')
+        self._create_confirmed_plan(plan_date, budget_amount=100000)
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': self.partner.id,
+            'invoice_date': plan_date,
+            'invoice_date_due': plan_date,
+            'invoice_line_ids': [fields.Command.create({
+                'product_id': self.product.id,
+                'quantity': 1,
+                'price_unit': 1000,
+                'analytic_distribution': {str(self.analytic_account.id): 100},
+            })],
+        })
+        Commitment = self.env['budget.commitment'].sudo()
+        domain = [
+            ('document_model', '=', 'account.move'),
+            ('document_id', '=', bill.id),
+            ('budget_source', '=', 'monthly'),
+        ]
+        self.assertTrue(Commitment.search(domain + [('state', '=', 'reserved')]))
+        # Move the due date to a month without any plan, keeping the old commitment.
+        bill.with_context(skip_monthly_bill_budget_sync=True).write({
+            'invoice_date_due': fields.Date.to_date('2026-08-31'),
+        })
+        bill.button_cancel()
+        self.assertFalse(Commitment.search(domain + [('state', 'in', ('reserved', 'used'))]))
