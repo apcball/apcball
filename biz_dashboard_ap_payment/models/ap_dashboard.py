@@ -140,7 +140,7 @@ class ApDashboard(models.AbstractModel):
         f = self._normalize_filters(filters or {})
         ttl = self._cache_ttl()
         key = ('data',) + self._cache_scope(f) + (
-            f['month'], f['year'], f['company_id'], f['project_id'], f['partner_id'])
+            f['month'], f['year'], f['company_id'], f['project_id'], f['analytic_id'], f['partner_id'])
         if ttl and not refresh:
             cached = _cache_get(key, ttl)
             if cached is not None:
@@ -229,6 +229,8 @@ class ApDashboard(models.AbstractModel):
             'company_id': company_id,
             'cids': cids,
             'project_id': _to_int(filters.get('project_id')),
+            'analytic_id': _to_int(filters.get('analytic_id')),
+            '_scope': {},
             'partner_id': partner_id,
             'currency': company.currency_id,
             'date_from': date_from,
@@ -352,6 +354,59 @@ class ApDashboard(models.AbstractModel):
             return NO_VENDOR
         return ('p:%d' % partner.id, partner.name or partner.display_name, partner.id)
 
+    def _analytic_scope(self, f):
+        """Analytic-account (budget) filter. Bills and POs carry their analytic
+        accounts per line in ``analytic_distribution`` (keys like "1,182,15" =
+        one account per plan, values = percent). Returns ``{'bills': {id: share},
+        'pos': {id: share}}``: the fraction of each document that belongs to the
+        chosen account (amount-weighted over its product lines); documents
+        without the account are absent. Computed once per call. ``None`` when
+        no analytic filter is set."""
+        aid = f.get('analytic_id')
+        if not aid:
+            return None
+        scope = f['_scope']
+        if not scope:
+            self.env.flush_all()  # raw SQL below must see pending ORM writes
+            cr = self.env.cr
+            pct = ("(SELECT sum(e.value::numeric) FROM jsonb_each_text(l.analytic_distribution) e "
+                   "WHERE %s = ANY(string_to_array(e.key, ',')))")
+            cr.execute("""
+                SELECT l.move_id, sum(abs(l.balance) * coalesce(""" + pct + """, 0)) / 100.0
+                       / nullif(sum(abs(l.balance)), 0)
+                  FROM account_move_line l JOIN account_move m ON m.id = l.move_id
+                 WHERE m.move_type IN %s AND m.state = 'posted' AND m.company_id = ANY(%s)
+                   AND l.display_type = 'product' AND l.analytic_distribution IS NOT NULL
+                 GROUP BY l.move_id
+                HAVING sum(abs(l.balance) * coalesce(""" + pct + """, 0)) > 0
+            """, (str(aid), BILL_TYPES, f['cids'], str(aid)))
+            scope['bills'] = {mid: min(1.0, share) for mid, share in cr.fetchall()}
+            cr.execute("""
+                SELECT l.order_id, sum(l.price_subtotal * coalesce(""" + pct + """, 0)) / 100.0
+                       / nullif(sum(l.price_subtotal), 0)
+                  FROM purchase_order_line l JOIN purchase_order o ON o.id = l.order_id
+                 WHERE o.state IN %s AND o.company_id = ANY(%s)
+                   AND l.display_type IS NULL AND l.analytic_distribution IS NOT NULL
+                 GROUP BY l.order_id
+                HAVING sum(l.price_subtotal * coalesce(""" + pct + """, 0)) > 0
+            """, (str(aid), PO_STATES, f['cids'], str(aid)))
+            scope['pos'] = {oid: min(1.0, share) for oid, share in cr.fetchall()}
+            scope['_loaded'] = True
+        return scope
+
+    def _share(self, f, kind, rec_id):
+        """Fraction of a bill (``kind='bills'``) / PO (``'pos'``) inside the analytic filter."""
+        scope = self._analytic_scope(f)
+        return 1.0 if scope is None else scope[kind].get(rec_id, 0.0)
+
+    @staticmethod
+    def _line_pct(line, aid):
+        """Fraction (0-1) of a line's analytic distribution on account ``aid``."""
+        if not aid:
+            return 1.0
+        dist = line.analytic_distribution or {}
+        return sum(v for k, v in dist.items() if str(aid) in k.split(',')) / 100.0
+
     def _project_domain(self, f, model):
         """Project filter on bills / POs. ``project_id`` on them comes from the
         optional job_costing_management; without it no document carries a project,
@@ -398,6 +453,9 @@ class ApDashboard(models.AbstractModel):
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ]
         domain += self._project_domain(f, 'account.move')
+        scope = self._analytic_scope(f)
+        if scope is not None:
+            domain.append(('id', 'in', list(scope['bills'])))
         if f['partner_id']:
             domain.append(('commercial_partner_id', '=', f['partner_id']))
         if unpaid_only:
@@ -415,7 +473,7 @@ class ApDashboard(models.AbstractModel):
         ] + (['project_id'] if 'project_id' in Move._fields else []))
         lines = self.env['account.move.line'].search_fetch(
             [('move_id', 'in', bills.ids), ('display_type', '=', 'product')],
-            ['move_id', 'balance', 'product_id', 'account_id'])
+            ['move_id', 'balance', 'product_id', 'account_id', 'analytic_distribution'])
         by_move = {}
         for line in lines:
             by_move.setdefault(line.move_id.id, []).append(line)
@@ -463,6 +521,9 @@ class ApDashboard(models.AbstractModel):
             ('state', '=', 'posted'),
             ('company_id', 'in', f['cids']),
         ] + self._project_domain(f, 'account.move')
+        scope = self._analytic_scope(f)
+        if scope is not None:
+            bill_domain.append(('id', 'in', list(scope['bills'])))
         if f['partner_id']:
             bill_domain.append(('commercial_partner_id', '=', f['partner_id']))
         bill_ids = set(self.env['account.move'].search(
@@ -503,7 +564,7 @@ class ApDashboard(models.AbstractModel):
                 kind = 'advance'
             else:
                 kind = 'cash'
-            items.append((bill_line.move_id, kind, amount))
+            items.append((bill_line.move_id, kind, amount * self._share(f, 'bills', bill_line.move_id.id)))
         return items
 
     def _loan_kpi(self, f):
@@ -571,8 +632,8 @@ class ApDashboard(models.AbstractModel):
         (``apd_other_expense_account_ids``) in posted ``entry`` moves dated in
         the month. Booked = paid, so they count as cash and paid. A project
         filter leaves none of them (entries carry no project)."""
-        if f['project_id']:
-            return []
+        if f['project_id'] or f['analytic_id']:
+            return []  # journal entries carry no project / budget analytic split
         companies = self.env['res.company'].browse(f['cids'])
         net_accounts = companies.apd_other_expense_account_ids
         debit_accounts = companies.apd_other_expense_debit_account_ids - net_accounts
@@ -660,6 +721,9 @@ class ApDashboard(models.AbstractModel):
             ('payment_date', '<=', date_to),
         ]
         domain += self._project_domain(f, 'purchase.order')
+        scope = self._analytic_scope(f)
+        if scope is not None:
+            domain.append(('id', 'in', list(scope['pos'])))
         if f['partner_id']:
             domain.append(('partner_id.commercial_partner_id', '=', f['partner_id']))
         return domain
@@ -690,8 +754,9 @@ class ApDashboard(models.AbstractModel):
         day = bill.invoice_date_due or bill.invoice_date
         company_ccy = bill.company_id.currency_id
         conv = lambda amount: self._convert(amount, company_ccy, bill.company_id, day, f['currency'])
-        total = conv(-bill.amount_total_signed)
-        residual = conv(-bill.amount_residual_signed)
+        share = self._share(f, 'bills', bill.id)
+        total = conv(-bill.amount_total_signed) * share
+        residual = conv(-bill.amount_residual_signed) * share
         return {
             'date': day,
             'week': _week_index(day.day),
@@ -718,6 +783,7 @@ class ApDashboard(models.AbstractModel):
             lines = [l for l in bill.invoice_line_ids if l.display_type == 'product']
         for line in lines:
             amount = self._convert(line.balance, company_ccy, bill.company_id, vals['date'], f['currency'])
+            amount *= self._line_pct(line, f['analytic_id'])
             if not amount:
                 continue
             allocated += amount
@@ -745,8 +811,9 @@ class ApDashboard(models.AbstractModel):
         factor = self._po_tax_factor(po)
         day = po.payment_date
         conv = lambda amount: self._convert(amount, po.currency_id, po.company_id, day, f['currency'])
-        remaining = self._po_unbilled(po) * factor
-        approved = po.amount_total
+        share = self._share(f, 'pos', po.id)
+        remaining = self._po_unbilled(po) * factor * share
+        approved = po.amount_total * share
         return {
             'date': day,
             'week': _week_index(day.day),
@@ -759,16 +826,17 @@ class ApDashboard(models.AbstractModel):
             'project': self._project_bucket(self._project_of(po)),
         }
 
-    def _po_line_shares(self, po):
+    def _po_line_shares(self, po, aid=False):
         """[(bucket, approved_fraction, remaining_fraction)] per product line."""
         lines = [l for l in po.order_line if l.display_type in (False, 'product', '')]
-        untaxed = sum(l.price_subtotal for l in lines)
-        remaining_total = sum(self._line_unbilled(l) for l in lines)
+        pct = {l.id: self._line_pct(l, aid) for l in lines}
+        untaxed = sum(l.price_subtotal * pct[l.id] for l in lines)
+        remaining_total = sum(self._line_unbilled(l) * pct[l.id] for l in lines)
         shares = []
         for line in lines:
             bucket = self._category_bucket(line.product_id)
-            approved_share = line.price_subtotal / untaxed if untaxed else 0.0
-            unbilled = self._line_unbilled(line)
+            approved_share = line.price_subtotal * pct[line.id] / untaxed if untaxed else 0.0
+            unbilled = self._line_unbilled(line) * pct[line.id]
             remaining_share = unbilled / remaining_total if remaining_total else 0.0
             shares.append((bucket, approved_share, remaining_share))
         return shares
@@ -888,13 +956,16 @@ class ApDashboard(models.AbstractModel):
         request_shares = {}
         for req in requests:
             po = req.ref_po_id
-            if (f['project_id'] or f['partner_id']) and not po:
+            if (f['project_id'] or f['analytic_id'] or f['partner_id']) and not po:
+                continue
+            req_share = self._share(f, 'pos', po.id) if f['analytic_id'] else 1.0
+            if not req_share:
                 continue
             if f['project_id'] and self._project_of(po).id != f['project_id']:
                 continue
             if f['partner_id'] and po.partner_id.commercial_partner_id.id != f['partner_id']:
                 continue
-            amount = self._convert(
+            amount = req_share * self._convert(
                 req.amount_requested, self._request_currency(req), req.company_id,
                 fields.Date.to_date(req.create_date), currency)
             kpi_request[req.state]['amount'] += amount
@@ -906,7 +977,7 @@ class ApDashboard(models.AbstractModel):
             }
             add(buckets, **{field: amount})
             if po and po.id not in request_shares:
-                request_shares[po.id] = self._po_line_shares(po)
+                request_shares[po.id] = self._po_line_shares(po, f['analytic_id'])
             shares = request_shares[po.id] if po else []
             if not shares:
                 self._accumulate(rows['category'], NO_CATEGORY, **{field: amount})
@@ -944,12 +1015,12 @@ class ApDashboard(models.AbstractModel):
             v = self._po_vals(po, f)
             kpi_forecast['from_po'] += v['remaining']
             add_forecast(v, v['remaining'],
-                         [(b, remaining_share) for b, _a, remaining_share in self._po_line_shares(po)])
+                         [(b, remaining_share) for b, _a, remaining_share in self._po_line_shares(po, f['analytic_id'])])
 
         # 4b. รายจ่ายนอกบิลที่คาดว่าจะเกิด (เงินเดือน ดอกเบี้ย ...) = เฉลี่ย 3 เดือนก่อนเดือนที่เลือก
         kpi_forecast['other'] = 0.0
         forecast_other_items = []
-        if not f['project_id']:
+        if not f['project_id'] and not f['analytic_id']:
             forecast_other = self._forecast_other(f)
             for (vendor, category), amount in forecast_other['buckets'].items():
                 kpi_forecast['other'] += amount
@@ -1027,6 +1098,7 @@ class ApDashboard(models.AbstractModel):
                 'year': f['year'],
                 'company_id': f['company_id'],
                 'project_id': f['project_id'],
+                'analytic_id': f['analytic_id'],
                 'partner_id': f['partner_id'],
                 'month_label': '%s %d' % (MONTHS_TH[f['month'] - 1], f['year']),
                 'next_month_label': '%s %d' % (MONTHS_TH[f['next_from'].month - 1], f['next_from'].year),
@@ -1070,6 +1142,8 @@ class ApDashboard(models.AbstractModel):
         ]
         if f['project_id']:
             domain.append(('project_id', '=', f['project_id']))
+        if f['analytic_id']:
+            domain.append(('analytic_account_id', '=', f['analytic_id']))
         lines = self.env['monthly.budget.line'].search(domain)
         lines.mapped('plan_id')  # prefetch
         return lines
@@ -1091,7 +1165,9 @@ class ApDashboard(models.AbstractModel):
             'remaining': round(remaining, 2),
             'pct': _pct(reserved + used, approved),
             'plan_count': len(lines.mapped('plan_id')),
-            'scope_note': ('งบประมาณตามแผนรายเดือน (เฉพาะบรรทัดงบของโครงการที่เลือก)'
+            'scope_note': ('งบประมาณตามแผนรายเดือน (เฉพาะบรรทัดงบของ Analytic Account ที่เลือก)'
+                           if f['analytic_id'] else
+                           'งบประมาณตามแผนรายเดือน (เฉพาะบรรทัดงบของโครงการที่เลือก)'
                            if f['project_id'] else
                            'งบประมาณตามแผนรายเดือน (ไม่กรองตามร้านค้า)'),
         }
@@ -1123,7 +1199,12 @@ class ApDashboard(models.AbstractModel):
             vendors = self.env['res.partner'].search_fetch(
                 [('supplier_rank', '>', 0), ('parent_id', '=', False)],
                 ['name'], order='name', limit=1000)
+            budget_lines = self.env['monthly.budget.line'].search_fetch(
+                [('company_id', 'in', f['cids']), ('plan_id.state', 'in', ('confirmed', 'closed'))],
+                ['analytic_account_id'])
+            analytics = budget_lines.analytic_account_id.sorted(lambda a: a.display_name or '')
             options = {
+                'analytics': [{'id': a.id, 'name': a.display_name} for a in analytics],
                 'companies': [{'id': c.id, 'name': c.name} for c in self.env.user.company_ids],
                 'projects': [{'id': p.id, 'name': p.name} for p in projects],
                 'vendors': [{'id': p.id, 'name': p.name} for p in vendors],
@@ -1189,8 +1270,9 @@ class ApDashboard(models.AbstractModel):
         ws.write(4, 0, 'โครงการ'); ws.write(4, 1, option_name('projects', filters['project_id']))
         ws.write(5, 0, 'ร้านค้า / ผู้ขาย'); ws.write(5, 1, option_name('vendors', filters['partner_id']))
         ws.write(6, 0, 'สกุลเงิน'); ws.write(6, 1, data['currency']['name'])
+        ws.write(7, 0, 'Analytic Account (งบ)'); ws.write(7, 1, option_name('analytics', filters['analytic_id']))
 
-        row = 8
+        row = 9
         pay = data['kpi_payment']
         row = self._xlsx_block(ws, row, '1. ยอดจ่ายประจำเดือน (%s)' % filters['month_label'], [
             ('รวม', pay['total'], None),

@@ -67,36 +67,42 @@ $apd-ink: #1b2a49;
 
     // ---- filters -------------------------------------------------------
     .o_apd_filters {
-        gap: 6px 10px;
+        display: grid;
+        // month | year | company | project | analytic | vendor | apply button
+        grid-template-columns: minmax(130px, 0.8fr) minmax(90px, 0.5fr) repeat(4, minmax(170px, 1fr)) auto;
+        gap: 10px 14px;
+        align-items: end;
         background: #fff;
         border-radius: 12px;
-        padding: 6px 10px;
+        padding: 12px 16px;
         box-shadow: 0 1px 4px rgba(30, 50, 90, 0.06);
+        @media (max-width: 1400px) {
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        }
     }
     .o_apd_filter {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 150px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        min-width: 0;
         label {
-            font-weight: 700;
-            font-size: 0.78rem;
+            font-weight: 600;
+            font-size: 0.72rem;
+            letter-spacing: 0.02em;
+            color: #5b6b85;
             margin: 0;
             white-space: nowrap;
         }
         select {
-            min-width: 120px;
-        }
-        &.o_apd_filter_sm {
-            min-width: 110px;
-        }
-        &.o_apd_filter_lg {
-            min-width: 200px;
-            flex: 1 1 200px;
+            width: 100%;
+            min-width: 0;
+            text-overflow: ellipsis;
         }
     }
     .o_apd_apply {
-        margin-left: auto;
+        justify-self: end;
+        white-space: nowrap;
         background: #7c4dff;
         border-color: #7c4dff;
         &:hover {

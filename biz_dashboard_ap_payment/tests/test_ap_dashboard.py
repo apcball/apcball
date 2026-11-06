@@ -446,6 +446,32 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(items['APDLN2 APD Loan'], 3000.0, places=2)
         self.assertAlmostEqual(items['APDACR APD Accrual'], 400.0, places=2)
 
+    def test_analytic_account_filter(self):
+        """Analytic (budget) filter keeps only the share of each bill on that account."""
+        before = self._data(analytic_id=self.analytic.id)
+        other = self.env['account.analytic.account'].create({
+            'name': 'APD Other', 'plan_id': self.analytic_plan.id})
+        a = self._bill(self.v1, D(3, 10), 1000.0, term=self.term_now)
+        b = self._bill(self.v1, D(3, 11), 2000.0, term=self.term_now)
+        c = self._bill(self.v1, D(3, 12), 4000.0, term=self.term_now)
+        a.invoice_line_ids.analytic_distribution = {str(self.analytic.id): 100.0}
+        b.invoice_line_ids.analytic_distribution = {str(self.analytic.id): 25.0, str(other.id): 75.0}
+        c.invoice_line_ids.analytic_distribution = {str(other.id): 100.0}
+        payload = self.engine.get_dashboard_data(
+            dict(self.F, analytic_id=self.analytic.id), refresh=True)
+        self.assertEqual(payload['filters']['analytic_id'], self.analytic.id)
+        # 1000 (all) + 2000 * 25% ; bill c is not on this account
+        self.assertAlmostEqual(
+            payload['kpi_payment']['total'] - before['kpi_payment']['total'], 1500.0, places=2)
+        # category / vendor tables follow the same filtered base
+        self.assertAlmostEqual(
+            payload['tables']['category']['footer']['month_total']
+            - before['tables']['category']['footer']['month_total'], 1500.0, places=2)
+        # no filter: the three bills count in full
+        unfiltered = self.engine.get_dashboard_data(dict(self.F), refresh=True)
+        self.assertAlmostEqual(
+            unfiltered['kpi_payment']['total'] - self.baseline['kpi_payment']['total'], 7000.0, places=2)
+
     def test_forecast_other_expense_three_month_average(self):
         """Next month's off-bill forecast = average of the 3 months before the
         selected one, real expense accounts only (no accruals, no loan principal)."""

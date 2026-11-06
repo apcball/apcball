@@ -33,7 +33,7 @@
             </div>
 
             <!-- Filters -->
-            <div class="o_apd_filters d-flex flex-wrap align-items-center mb-3">
+            <div class="o_apd_filters mb-3">
                 <div class="o_apd_filter">
                     <label>เดือน</label>
                     <select class="form-select" t-on-change="(ev) => this.onDraftChange('month', ev)">
@@ -65,6 +65,15 @@
                         <option value="all" t-att-selected="isSelected('project_id', 'all')">ทั้งหมด</option>
                         <t t-foreach="options.projects" t-as="p" t-key="p.id">
                             <option t-att-value="p.id" t-esc="p.name" t-att-selected="isSelected('project_id', p.id)"/>
+                        </t>
+                    </select>
+                </div>
+                <div class="o_apd_filter o_apd_filter_lg">
+                    <label>Analytic Account (งบ)</label>
+                    <select class="form-select" t-on-change="(ev) => this.onDraftChange('analytic_id', ev)">
+                        <option value="all" t-att-selected="isSelected('analytic_id', 'all')">ทั้งหมด</option>
+                        <t t-foreach="options.analytics" t-as="a" t-key="a.id">
+                            <option t-att-value="a.id" t-esc="a.name" t-att-selected="isSelected('analytic_id', a.id)"/>
                         </t>
                     </select>
                 </div>

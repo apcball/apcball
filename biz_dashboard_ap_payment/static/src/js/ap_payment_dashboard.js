@@ -97,6 +97,7 @@ export class ApPaymentDashboard extends Component {
             year: today.getFullYear(),
             company_id: "all",
             project_id: "all",
+            analytic_id: "all",
             partner_id: "all",
         };
         this.state = useState({
@@ -197,7 +198,7 @@ export class ApPaymentDashboard extends Component {
     }
 
     get options() {
-        return (this.data && this.data.options) || { companies: [], projects: [], vendors: [], years: [] };
+        return (this.data && this.data.options) || { companies: [], projects: [], analytics: [], vendors: [], years: [] };
     }
 
     get years() {
