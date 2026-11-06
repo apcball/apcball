@@ -565,7 +565,7 @@ class ApDashboard(models.AbstractModel):
         result['has_manual'] = bool(manual)
         return result
 
-    def _other_expense_vals(self, f):
+    def _other_expense_vals(self, f, expense_only=False):
         """Journal-entry spend that never goes through a vendor bill (salary,
         interest ...): lines of the accounts configured on the company
         (``apd_other_expense_account_ids``) in posted ``entry`` moves dated in
@@ -577,6 +577,10 @@ class ApDashboard(models.AbstractModel):
         net_accounts = companies.apd_other_expense_account_ids
         debit_accounts = companies.apd_other_expense_debit_account_ids - net_accounts
         accounts = net_accounts | debit_accounts
+        if expense_only:
+            # forecast base: real spend only (salary, interest ...). Net accrual
+            # accounts swing +/- and loan principal is lumpy: both left out.
+            accounts = debit_accounts - companies.apd_loan_account_ids
         if not accounts:
             return []
         domain = [
@@ -618,6 +622,35 @@ class ApDashboard(models.AbstractModel):
                 'category': self._category_bucket(False, line.account_id),
             })
         return out
+
+    FORECAST_OTHER_MONTHS = 3
+
+    def _forecast_other(self, f):
+        """Expected off-bill spend of the next month: the average of the
+        ``FORECAST_OTHER_MONTHS`` months before the selected one (real expense
+        accounts only, see ``_other_expense_vals(expense_only=True)``).
+        Returns ``{'buckets': {(vendor_bucket, category_bucket): amount},
+        'items': [{name, amount, pct}]}`` - amounts are monthly averages."""
+        n = self.FORECAST_OTHER_MONTHS
+        year, month = f['year'], f['month']
+        totals = {}
+        by_account = {}
+        for _i in range(n):
+            month -= 1
+            if month == 0:
+                year, month = year - 1, 12
+            date_from, date_to = _month_range(year, month)
+            for v in self._other_expense_vals(dict(f, date_from=date_from, date_to=date_to),
+                                              expense_only=True):
+                key = (v['vendor'], v['category'])
+                totals[key] = totals.get(key, 0.0) + v['total']
+                name = v['category'][1]
+                by_account[name] = by_account.get(name, 0.0) + v['total']
+        buckets = {k: amount / n for k, amount in totals.items() if abs(amount) > 0.005}
+        total = sum(by_account.values()) / n
+        items = [{'name': name, 'amount': round(amount / n, 2), 'pct': _pct(amount / n, total)}
+                 for name, amount in sorted(by_account.items(), key=lambda kv: -abs(kv[1]))]
+        return {'buckets': buckets, 'items': items}
 
     def _po_domain(self, f, date_from, date_to):
         domain = [
@@ -830,14 +863,11 @@ class ApDashboard(models.AbstractModel):
         pos = self.env['purchase.order'].search(self._po_domain(f, f['date_from'], f['date_to']))
         for po in pos:
             v = self._po_vals(po, f)
-            # project budget columns come from the monthly budget lines (below)
+            # Budget bases: vendor = PO commitments (a plan line has no vendor);
+            # project and category = monthly budget plan (2b), so both footers
+            # agree. PO figures are NOT added to category: that double-counted.
             self._accumulate(rows['vendor'], v['vendor'], budget_approved=v['approved'],
                              budget_used=v['used'], budget_remaining=v['remaining'])
-            for bucket, approved_share, remaining_share in self._po_line_shares(po):
-                remaining = v['remaining'] * remaining_share
-                approved = v['approved'] * approved_share
-                self._accumulate(rows['category'], bucket, budget_approved=approved,
-                                 budget_used=approved - remaining, budget_remaining=remaining)
 
         # 2b. งบประมาณต่อโครงการ / CapEx-OpEx จาก monthly.budget.line ------------
         for line in self._budget_lines(f):
@@ -916,6 +946,18 @@ class ApDashboard(models.AbstractModel):
             add_forecast(v, v['remaining'],
                          [(b, remaining_share) for b, _a, remaining_share in self._po_line_shares(po)])
 
+        # 4b. รายจ่ายนอกบิลที่คาดว่าจะเกิด (เงินเดือน ดอกเบี้ย ...) = เฉลี่ย 3 เดือนก่อนเดือนที่เลือก
+        kpi_forecast['other'] = 0.0
+        forecast_other_items = []
+        if not f['project_id']:
+            forecast_other = self._forecast_other(f)
+            for (vendor, category), amount in forecast_other['buckets'].items():
+                kpi_forecast['other'] += amount
+                v = {'vendor': vendor, 'project': NO_PROJECT, 'is_cash': True,
+                     'week': len(forecast_weekly) - 1}  # payroll / interest fall at month end
+                add_forecast(v, amount, [(category, 1.0)])
+            forecast_other_items = forecast_other['items']
+
         # 5. ยอดการใช้งบประมาณ (monthly budget plan) ------------------------------
         kpi_budget = self._allocation_summary(f)
 
@@ -957,8 +999,9 @@ class ApDashboard(models.AbstractModel):
                     'paid_actual_loan', 'paid_actual_note', 'paid_actual_advance',
                     'paid_actual_cash', 'other', 'cash_out'):
             kpi_payment[key] = round(kpi_payment[key], 2)
-        for key in ('total', 'cash', 'credit', 'from_bills', 'from_po'):
+        for key in ('total', 'cash', 'credit', 'from_bills', 'from_po', 'other'):
             kpi_forecast[key] = round(kpi_forecast[key], 2)
+        kpi_forecast['other_items'] = forecast_other_items
         for state in REQ_STATES:
             kpi_request[state]['amount'] = round(kpi_request[state]['amount'], 2)
         kpi_request['total'] = round(sum(kpi_request[s]['amount'] for s in REQ_STATES), 2)
@@ -969,6 +1012,8 @@ class ApDashboard(models.AbstractModel):
         cash_out_total = kpi_payment['cash_out']
         kpi_payment['cash_out_bills_pct'] = _pct(kpi_payment['paid_actual'], cash_out_total)
         kpi_payment['cash_out_other_pct'] = _pct(kpi_payment['other'], cash_out_total)
+        for acc in kpi_loan['accounts']:
+            acc['repaid_pct'] = _pct(acc['repaid'], cash_out_total)
         kpi_payment['cash_out_loan_pct'] = _pct(kpi_loan['repaid'] if kpi_loan['configured'] else 0.0, cash_out_total)
 
         tables = {}
@@ -1202,6 +1247,7 @@ class ApDashboard(models.AbstractModel):
             ('เครดิต (ครบกำหนดเดือนหน้า)', fc['credit'], fc['credit_pct']),
             ('จากใบแจ้งหนี้ค้างชำระ', fc['from_bills'], None),
             ('จาก PO ที่ยังไม่ตั้งบิล', fc['from_po'], None),
+            ('รายจ่ายนอกบิลคาดการณ์ (เฉลี่ย 3 เดือน)', fc['other'], None),
         ], fmt)
         if other['items']:
             row = self._xlsx_block(ws, row, '6. รายจ่ายนอกบิล (สมุดรายวัน)', [

@@ -446,6 +446,46 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(items['APDLN2 APD Loan'], 3000.0, places=2)
         self.assertAlmostEqual(items['APDACR APD Accrual'], 400.0, places=2)
 
+    def test_forecast_other_expense_three_month_average(self):
+        """Next month's off-bill forecast = average of the 3 months before the
+        selected one, real expense accounts only (no accruals, no loan principal)."""
+        Account = self.env['account.account']
+        mk = lambda code, t: Account.create({'code': code, 'name': code, 'account_type': t,
+                                             'company_id': self.company.id})
+        salary = mk('APDSAL', 'expense')
+        loan = mk('APDLN3', 'liability_current')
+        accrual = mk('APDACR3', 'liability_current')
+        bank = mk('APDBNK3', 'asset_current')
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general'), ('company_id', '=', self.company.id)], limit=1)
+        if not journal:
+            self.skipTest('No general journal in the test company')
+
+        def entry(day, account, amount):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id, 'date': day,
+                'line_ids': [(0, 0, {'account_id': account.id, 'debit': amount, 'credit': 0.0}),
+                             (0, 0, {'account_id': bank.id, 'debit': 0.0, 'credit': amount})],
+            }).action_post()
+
+        entry('%04d-12-10' % (YEAR - 1), salary, 3000.0)
+        entry(D(1, 10), salary, 6000.0)
+        entry(D(2, 10), salary, 9000.0)
+        entry(D(2, 11), loan, 50000.0)      # loan principal: not forecast
+        entry(D(2, 12), accrual, 700.0)     # accrual account: not forecast
+        entry(D(3, 10), salary, 99999.0)    # the selected month itself: not in the average
+        self.company.apd_other_expense_debit_account_ids = salary | loan
+        self.company.apd_other_expense_account_ids = accrual
+        self.company.apd_loan_account_ids = loan
+        payload = self._data()
+        self.assertAlmostEqual(self._delta(payload, 'kpi_forecast', 'other'), 6000.0, places=2)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_forecast', 'total'), 6000.0, places=2)
+        self.assertAlmostEqual(self._delta(payload, 'kpi_forecast', 'cash'), 6000.0, places=2)
+        # a project filter leaves no off-bill spend
+        if self.p1:
+            filtered = self._data(project_id=self.p1.id)
+            self.assertAlmostEqual(filtered['kpi_forecast']['other'], 0.0, places=2)
+
     def test_other_expense_skips_reversal_and_reports_loan_repaid(self):
         Account = self.env['account.account']
         accrual = Account.create({'code': 'APDAC2', 'name': 'APD Accrual 2', 'account_type': 'liability_current',
@@ -550,7 +590,8 @@ class TestApDashboard(TransactionCase):
         if self.p1:
             # project budget columns come from monthly.budget.line, not the PO
             self.assertAlmostEqual(self._delta_row(payload, 'project', 'p:%d' % self.p1.id, 'budget_approved'), 0.0, places=2)
-        self.assertAlmostEqual(self._delta_row(payload, 'category', 'cat:%d' % self.c1.id, 'budget_approved'), 10700.0, places=2)
+        # category budget comes from the plan only (no PO share), same base as project
+        self.assertAlmostEqual(self._delta_row(payload, 'category', 'cat:%d' % self.c1.id, 'budget_approved'), 0.0, places=2)
 
         # bill the PO in full -> used = approved, remaining = 0
         po.with_context(default_invoice_date=D(3, 10)).action_create_invoice()

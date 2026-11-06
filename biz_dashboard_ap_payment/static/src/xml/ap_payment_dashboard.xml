@@ -138,9 +138,9 @@
                                 <span><i class="o_apd_dot o_apd_dot--orange"/>รายจ่ายนอกบิล (สมุดรายวัน) <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.cash_out_other_pct)"/></small></span>
                                 <b t-esc="fmtNum(data.kpi_payment.other)"/>
                             </div>
-                            <div class="o_apd_row" t-if="data.kpi_loan.configured">
-                                <span><i class="o_apd_dot o_apd_dot--red"/>ชำระคืนเงินกู้ (เงินต้น) <small class="text-muted"><t t-esc="fmtPct(data.kpi_payment.cash_out_loan_pct)"/></small></span>
-                                <b t-esc="fmtNum(data.kpi_loan.repaid)"/>
+                            <div class="o_apd_row" t-foreach="data.kpi_loan.accounts" t-as="acc" t-key="acc.id">
+                                <span><i class="o_apd_dot o_apd_dot--red"/>คืนเงินต้น <t t-esc="acc.name"/> <small class="text-muted"><t t-esc="fmtPct(acc.repaid_pct)"/></small></span>
+                                <b t-esc="fmtNum(acc.repaid)"/>
                             </div>
                         </div>
                     </div>
@@ -212,6 +212,9 @@
                         </div>
                         <div class="o_apd_note">
                             บิลค้างชำระ <t t-esc="fmtNum(data.kpi_forecast.from_bills)"/> · PO ยังไม่ตั้งบิล <t t-esc="fmtNum(data.kpi_forecast.from_po)"/>
+                        </div>
+                        <div class="o_apd_note" t-if="data.kpi_forecast.other">
+                            รวมรายจ่ายนอกบิลคาดการณ์ (เงินเดือน / ดอกเบี้ย · เฉลี่ย 3 เดือนก่อนหน้า) <t t-esc="fmtNum(data.kpi_forecast.other)"/> · ไม่รวมเงินต้นเงินกู้
                         </div>
                     </div>
                     <!-- 5 -->
@@ -290,7 +293,7 @@
                                     <th rowspan="2" class="o_apd_th_name" t-esc="tabMeta.column"/>
                                     <th colspan="5" class="o_apd_th--pay">ยอดจ่ายประจำเดือน (<t t-esc="data.filters.month_label"/>)</th>
                                     <th colspan="4" class="o_apd_th--act">จ่ายออกจริงในเดือน (ตามวันที่ชำระ)</th>
-                                    <th colspan="4" class="o_apd_th--budget">การใช้งบประมาณ</th>
+                                    <th colspan="4" class="o_apd_th--budget"><t t-if="state.tab === 'vendor'">การใช้งบ (ตาม PO)</t><t t-else="">การใช้งบ (แผนงบรายเดือน)</t></th>
                                     <th colspan="3" class="o_apd_th--req">ขออนุมัติเพิ่มเติม (เดือนนี้)</th>
                                     <th colspan="3" class="o_apd_th--next">ประมาณการยอดจ่ายเดือนถัดไป (<t t-esc="data.filters.next_month_label"/>)</th>
                                 </tr>
