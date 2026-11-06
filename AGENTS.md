@@ -39,7 +39,8 @@ When the user requests a DEV deployment, use the following procedure unless
 the user explicitly requests a different target:
 
 ```powershell
-# Copy the selected module from local to DEV and overwrite files with the same names
+# Copy the selected module from local to DEV and overwrite files with the same names.
+# If the module contains __pycache__/ or *.pyc, upload explicit files instead of the whole tree.
 scp -r -i "$env:USERPROFILE\.ssh\id_ed25519_2172163233" `
   -o IdentitiesOnly=yes `
   .\<module> `
@@ -57,8 +58,15 @@ alternative when exact synchronization and deletion of stale module files are
 required:
 
 ```bash
-# Upload the selected module to DEV and remove stale files in that module
-rsync -az --delete "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
+# Preview updates and deletions first; inspect every deletion before syncing.
+rsync -azn --delete --itemize-changes \
+  --exclude='__pycache__/' --exclude='*.pyc' \
+  "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
+
+# Run only after the preview contains no unexpected deletions.
+rsync -az --delete \
+  --exclude='__pycache__/' --exclude='*.pyc' \
+  "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
 
 # Update the selected module in the DEV database
 ssh -i "$env:USERPROFILE/.ssh/id_ed25519_2172163233" \
@@ -72,6 +80,10 @@ ssh -i "$env:USERPROFILE/.ssh/id_ed25519_2172163233" \
 - `scp` overwrites matching files but does not remove files that were deleted
   from the local module. Use the optional `rsync --delete` procedure only when
   stale-file removal is explicitly required.
+- Keep the `rsync` source and destination limited to the selected module. Exclude
+  `__pycache__/` and `*.pyc` from every transfer, and never use
+  `--delete-excluded`. If the dry run shows unexpected deletions, stop and
+  report them instead of running the actual sync.
 - Do not deploy to PROD or run `systemctl restart instance1` unless the user
   explicitly requests a PROD deployment.
 - Report the upload result and module-update result separately.
