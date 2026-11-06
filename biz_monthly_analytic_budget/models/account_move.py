@@ -230,6 +230,8 @@ class AccountMove(models.Model):
 
             target_date = move._get_bill_target_date()
             if not target_date:
+                if move.state == 'posted':
+                    move._release_monthly_bill_commitments_for_document(states=('reserved',))
                 continue
 
             analytic_totals = {}
@@ -241,6 +243,12 @@ class AccountMove(models.Model):
                 self.env, target_date, move.company_id.id, analytic_totals,
             )
             if not grouped_totals:
+                if move.state == 'posted':
+                    # Nothing to consume: no confirmed plan for the due date, or the
+                    # analytic amounts net to zero (deposit offset). The reservation
+                    # made while the bill was a draft would otherwise stay forever
+                    # (2.06M stale on prod, 2026-11).
+                    move._release_monthly_bill_commitments_for_document(states=('reserved',))
                 continue
 
             # Draft bills → reserved commitment; Posted bills → used commitment
@@ -468,15 +476,15 @@ class AccountMove(models.Model):
 
         plan._refresh_budget_snapshot(refresh_report=True)
 
-    def _release_monthly_bill_commitments_for_document(self):
-        """Release every active monthly commitment of this bill, whatever its date/plan."""
+    def _release_monthly_bill_commitments_for_document(self, states=('reserved', 'used')):
+        """Release the active monthly commitments of this bill (in ``states``), whatever its date/plan."""
         self.ensure_one()
         Commitment = self.env['budget.commitment'].sudo()
         active = Commitment.search([
             ('budget_source', '=', 'monthly'),
             ('document_model', '=', self._name),
             ('document_id', '=', self.id),
-            ('state', 'in', ('reserved', 'used')),
+            ('state', 'in', list(states)),
         ])
         if not active:
             return

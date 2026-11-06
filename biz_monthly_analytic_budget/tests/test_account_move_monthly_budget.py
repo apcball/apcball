@@ -67,3 +67,38 @@ class TestAccountMoveMonthlyBudget(TransactionCase, BudgetTestMixin):
         })
         bill.button_cancel()
         self.assertFalse(Commitment.search(domain + [('state', 'in', ('reserved', 'used'))]))
+
+    def test_post_bill_without_plan_releases_draft_reservation(self):
+        """Regression: a draft bill reserved budget; when it is posted with a due date
+        that has no confirmed plan, the reservation must not stay forever."""
+        plan_date = fields.Date.to_date('2026-10-15')
+        self._create_confirmed_plan(plan_date, budget_amount=100000)
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': self.partner.id,
+            'invoice_date': plan_date,
+            'invoice_date_due': plan_date,
+            'invoice_line_ids': [fields.Command.create({
+                'product_id': self.product.id,
+                'quantity': 1,
+                'price_unit': 1000,
+                'analytic_distribution': {str(self.analytic_account.id): 100},
+            })],
+        })
+        Commitment = self.env['budget.commitment'].sudo()
+        domain = [
+            ('document_model', '=', 'account.move'),
+            ('document_id', '=', bill.id),
+            ('budget_source', '=', 'monthly'),
+        ]
+        self.assertTrue(Commitment.search(domain + [('state', '=', 'reserved')]))
+        bill.with_context(skip_monthly_bill_budget_sync=True).write({
+            'invoice_date_due': fields.Date.to_date('2026-08-31'),
+        })
+        if 'tax_invoice_ids' in bill._fields and bill.tax_invoice_ids:  # l10n_th_account_tax
+            bill.tax_invoice_ids.write({
+                'tax_invoice_number': 'BUDGET-TI-%d' % bill.id,
+                'tax_invoice_date': plan_date,
+            })
+        bill.action_post()
+        self.assertFalse(Commitment.search(domain + [('state', '=', 'reserved')]))
