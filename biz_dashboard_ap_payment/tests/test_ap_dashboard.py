@@ -341,6 +341,11 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(payload['kpi_payment']['paid_actual'] - base['kpi_payment']['paid_actual'], -2000.0, places=2)
         self.assertAlmostEqual(payload['kpi_loan']['drawn'], 2000.0, places=2)
         self.assertAlmostEqual(payload['kpi_loan']['outstanding'], 2000.0, places=2)
+        # split per configured loan account
+        by_acc = {r['id']: r for r in payload['kpi_loan']['accounts']}
+        self.assertEqual(set(by_acc), set(loan.ids))
+        self.assertAlmostEqual(by_acc[loan.id]['drawn'], 2000.0, places=2)
+        self.assertAlmostEqual(by_acc[loan.id]['outstanding'], 2000.0, places=2)
         for tab, key in (('vendor', 'p:%d' % self.v1.id),):
             self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_loan'), 2000.0, places=2)
             self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_total'), 0.0, places=2)

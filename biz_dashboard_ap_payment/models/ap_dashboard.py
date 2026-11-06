@@ -514,20 +514,34 @@ class ApDashboard(models.AbstractModel):
         companies = self.env['res.company'].browse(f['cids'])
         accounts = companies.apd_loan_account_ids
         kpi = {'configured': bool(accounts), 'drawn': 0.0, 'repaid': 0.0, 'outstanding': 0.0}
+        per_account = {acc.id: {'id': acc.id, 'code': acc.code, 'name': acc.name,
+                                'drawn': 0.0, 'repaid': 0.0, 'outstanding': 0.0}
+                       for acc in accounts.sorted('code')}
         if not accounts:
+            kpi['accounts'] = []
             return kpi
         Line = self.env['account.move.line']
         domain = [('account_id', 'in', accounts.ids), ('parent_state', '=', 'posted'),
                   ('company_id', 'in', f['cids']), ('date', '<=', f['date_to'])]
-        for line in Line.search_fetch(domain, ['company_id', 'date', 'debit', 'credit']):
+        for line in Line.search_fetch(domain, ['company_id', 'account_id', 'date', 'debit', 'credit']):
             company = line.company_id
             conv = lambda amount: self._convert(
                 amount, company.currency_id, company, line.date, f['currency'])
-            kpi['outstanding'] += conv(line.credit - line.debit)
+            acc = per_account[line.account_id.id]
+            outstanding = conv(line.credit - line.debit)
+            kpi['outstanding'] += outstanding
+            acc['outstanding'] += outstanding
             if line.date >= f['date_from']:
                 kpi['drawn'] += conv(line.credit)
                 kpi['repaid'] += conv(line.debit)
-        return {key: (round(val, 2) if key != 'configured' else val) for key, val in kpi.items()}
+                acc['drawn'] += conv(line.credit)
+                acc['repaid'] += conv(line.debit)
+        result = {key: (round(val, 2) if key != 'configured' else val) for key, val in kpi.items()}
+        # per configured loan account (e.g. 212100 PN bank loan / 212200 TR)
+        result['accounts'] = [
+            {k: (round(v, 2) if isinstance(v, float) else v) for k, v in acc.items()}
+            for acc in per_account.values()]
+        return result
 
     def _other_expense_vals(self, f):
         """Journal-entry spend that never goes through a vendor bill (salary,
@@ -1131,6 +1145,12 @@ class ApDashboard(models.AbstractModel):
                 ('เบิกเงินกู้ในเดือน', loan['drawn'], None),
                 ('สินเชื่อคงค้าง ณ สิ้นเดือน', loan['outstanding'], None),
             ]
+            for acc in loan['accounts']:
+                actual_lines += [
+                    ('   %s %s - ชำระคืนเงินต้น' % (acc['code'], acc['name']), acc['repaid'], None),
+                    ('   %s %s - เบิกในเดือน' % (acc['code'], acc['name']), acc['drawn'], None),
+                    ('   %s %s - คงค้างสิ้นเดือน' % (acc['code'], acc['name']), acc['outstanding'], None),
+                ]
         actual_lines += [
             ('บิลที่ชำระแล้วแต่ยังไม่ใช่เงินออก (ไม่รวมข้างต้น):', None, None),
             ('   - ด้วยเงินกู้ TR', pay['paid_actual_loan'], None),
