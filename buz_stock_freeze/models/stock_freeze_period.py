@@ -25,9 +25,12 @@ class StockFreezePeriod(models.Model):
         tracking=True,
         help="Freeze every internal location of every warehouse in the company.",
     )
-    warehouse_id = fields.Many2one(
+    warehouse_ids = fields.Many2many(
         "stock.warehouse",
-        string="Warehouse",
+        "stock_freeze_period_warehouse_rel",
+        "period_id",
+        "warehouse_id",
+        string="Warehouses",
         check_company=True,
         tracking=True,
     )
@@ -77,7 +80,7 @@ class StockFreezePeriod(models.Model):
     # ------------------------------------------------------------------
     # Compute / helpers
     # ------------------------------------------------------------------
-    @api.depends("warehouse_id", "location_ids", "freeze_all_warehouses")
+    @api.depends("warehouse_ids", "location_ids", "freeze_all_warehouses")
     def _compute_location_summary(self):
         for period in self:
             if period.location_ids:
@@ -86,8 +89,10 @@ class StockFreezePeriod(models.Model):
                 )
             elif period.freeze_all_warehouses:
                 period.location_summary = _("ทุกคลังสินค้า")
-            elif period.warehouse_id:
-                period.location_summary = period.warehouse_id.display_name
+            elif period.warehouse_ids:
+                period.location_summary = ", ".join(
+                    period.warehouse_ids.mapped("display_name")
+                )
             else:
                 period.location_summary = ""
 
@@ -104,8 +109,8 @@ class StockFreezePeriod(models.Model):
             ).view_location_id
         elif self.location_ids:
             base = self.location_ids
-        elif self.warehouse_id:
-            base = self.warehouse_id.view_location_id
+        elif self.warehouse_ids:
+            base = self.warehouse_ids.view_location_id
         else:
             return []
         if not base:
@@ -126,17 +131,17 @@ class StockFreezePeriod(models.Model):
                     _("End Date/Time must be later than Start Date/Time.")
                 )
 
-    @api.constrains("warehouse_id", "location_ids", "freeze_all_warehouses")
+    @api.constrains("warehouse_ids", "location_ids", "freeze_all_warehouses")
     def _check_scope_defined(self):
         for period in self:
             if (
                 not period.freeze_all_warehouses
-                and not period.warehouse_id
+                and not period.warehouse_ids
                 and not period.location_ids
             ):
                 raise ValidationError(
                     _(
-                        "Define a warehouse, at least one location, or tick "
+                        "Define at least one warehouse, at least one location, or tick "
                         "Freeze All Warehouses."
                     )
                 )
@@ -144,7 +149,7 @@ class StockFreezePeriod(models.Model):
     @api.constrains(
         "date_start",
         "date_end",
-        "warehouse_id",
+        "warehouse_ids",
         "location_ids",
         "freeze_all_warehouses",
         "state",
@@ -184,7 +189,7 @@ class StockFreezePeriod(models.Model):
     # ------------------------------------------------------------------
     _LOCKED_FIELDS_WHEN_ACTIVE = (
         "company_id",
-        "warehouse_id",
+        "warehouse_ids",
         "location_ids",
         "freeze_all_warehouses",
         "date_start",

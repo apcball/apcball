@@ -11,7 +11,7 @@
                 <field name="name"/>
                 <field name="company_id"/>
                 <field name="freeze_all_warehouses" optional="hide"/>
-                <field name="warehouse_id"/>
+                <field name="warehouse_ids" widget="many2many_tags" optional="show"/>
                 <field name="location_ids" widget="many2many_tags" optional="show"/>
                 <field name="date_start"/>
                 <field name="date_end"/>
@@ -50,7 +50,8 @@
                         <group string="General">
                             <field name="company_id"/>
                             <field name="freeze_all_warehouses"/>
-                            <field name="warehouse_id"
+                            <field name="warehouse_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
                                    invisible="freeze_all_warehouses"/>
                             <field name="location_ids" widget="many2many_tags"
                                    options="{'no_create': True}"
@@ -90,14 +91,14 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
-                <field name="warehouse_id"/>
+                <field name="warehouse_ids"/>
                 <field name="location_ids"/>
                 <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
                 <filter name="active" string="Active" domain="[('state', '=', 'active')]"/>
                 <filter name="done" string="Ended" domain="[('state', '=', 'done')]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
-                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_ids'}"/>
                 </group>
             </search>
         </field>

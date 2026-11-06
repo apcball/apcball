@@ -96,8 +96,16 @@ class TestStockFreeze(TransactionCase):
     # helpers
     # ------------------------------------------------------------------
     def _seed(self, location, qty=100.0, product=None):
+        """Seed through a validated receipt so a FIFO valuation layer exists.
+
+        Writing quants directly leaves the FIFO layers empty and the
+        stock_fifo_by_location negative-balance guard then blocks any
+        outgoing move.
+        """
         product = product or self.product
-        self.env["stock.quant"]._update_available_quantity(product, location, qty)
+        return self._do_move(
+            self.supplier_location, location, qty=qty, product=product
+        )
 
     def _make_period(self, **kw):
         vals = {
@@ -143,13 +151,13 @@ class TestStockFreeze(TransactionCase):
     # ------------------------------------------------------------------
     def test_01_delivery_blocked(self):
         self._seed(self.stock_location)
-        p = self._make_period(warehouse_id=self.warehouse.id)
+        p = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
         p.action_start_freeze()
         with self.assertRaises(UserError):
             self._do_move(self.stock_location, self.customer_location)
 
     def test_02_receipt_blocked(self):
-        p = self._make_period(warehouse_id=self.warehouse.id)
+        p = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
         p.action_start_freeze()
         with self.assertRaises(UserError):
             self._do_move(self.supplier_location, self.stock_location)
@@ -191,7 +199,7 @@ class TestStockFreeze(TransactionCase):
     def test_05_inventory_adjustment_allowed(self):
         self._seed(self.stock_location, 10.0)
         p = self._make_period(
-            warehouse_id=self.warehouse.id, allow_inventory_adjustment=True
+            warehouse_ids=[(6, 0, [self.warehouse.id])], allow_inventory_adjustment=True
         )
         p.action_start_freeze()
         self._apply_adjustment(self.stock_location, 25.0)
@@ -205,7 +213,7 @@ class TestStockFreeze(TransactionCase):
     def test_06_inventory_adjustment_blocked(self):
         self._seed(self.stock_location, 10.0)
         p = self._make_period(
-            warehouse_id=self.warehouse.id, allow_inventory_adjustment=False
+            warehouse_ids=[(6, 0, [self.warehouse.id])], allow_inventory_adjustment=False
         )
         p.action_start_freeze()
         with self.assertRaises(UserError):
@@ -217,7 +225,7 @@ class TestStockFreeze(TransactionCase):
     def test_07_override_allowed(self):
         self._seed(self.stock_location)
         p = self._make_period(
-            warehouse_id=self.warehouse.id, allow_manager_override=True
+            warehouse_ids=[(6, 0, [self.warehouse.id])], allow_manager_override=True
         )
         p.action_start_freeze()
         msg_count = len(p.message_ids)
@@ -232,7 +240,7 @@ class TestStockFreeze(TransactionCase):
     def test_08_override_denied_when_flag_off(self):
         self._seed(self.stock_location)
         p = self._make_period(
-            warehouse_id=self.warehouse.id, allow_manager_override=False
+            warehouse_ids=[(6, 0, [self.warehouse.id])], allow_manager_override=False
         )
         p.action_start_freeze()
         with self.assertRaises(UserError):
@@ -250,11 +258,27 @@ class TestStockFreeze(TransactionCase):
         wh_b = self.env["stock.warehouse"].search(
             [("company_id", "=", other_company.id)], limit=1
         )
-        self.env["stock.quant"].with_context(
+        env_b = self.env["stock.move"].with_company(other_company).with_context(
             allowed_company_ids=[self.company.id, other_company.id]
-        )._update_available_quantity(self.product, wh_b.lot_stock_id, 50.0)
+        )
+        receipt = env_b.create(
+            {
+                "name": self.product.name,
+                "product_id": self.product.id,
+                "product_uom": self.product.uom_id.id,
+                "product_uom_qty": 50.0,
+                "location_id": self.supplier_location.id,
+                "location_dest_id": wh_b.lot_stock_id.id,
+                "company_id": other_company.id,
+            }
+        )
+        receipt._action_confirm()
+        receipt._action_assign()
+        receipt.move_line_ids.quantity = 50.0
+        receipt.picked = True
+        receipt._action_done()
         p = self._make_period(
-            warehouse_id=self.warehouse.id, company_id=self.company.id
+            warehouse_ids=[(6, 0, [self.warehouse.id])], company_id=self.company.id
         )
         p.action_start_freeze()
         move = (
@@ -281,7 +305,7 @@ class TestStockFreeze(TransactionCase):
     def test_10_expired_period_allowed(self):
         self._seed(self.stock_location)
         p = self._make_period(
-            warehouse_id=self.warehouse.id,
+            warehouse_ids=[(6, 0, [self.warehouse.id])],
             date_start=fields.Datetime.now() - timedelta(hours=5),
             date_end=fields.Datetime.now() - timedelta(hours=1),
         )
@@ -291,7 +315,7 @@ class TestStockFreeze(TransactionCase):
     def test_11_draft_before_start_allowed(self):
         self._seed(self.stock_location)
         self._make_period(
-            warehouse_id=self.warehouse.id,
+            warehouse_ids=[(6, 0, [self.warehouse.id])],
             date_start=fields.Datetime.now() + timedelta(hours=1),
             date_end=fields.Datetime.now() + timedelta(hours=5),
         )
@@ -307,6 +331,36 @@ class TestStockFreeze(TransactionCase):
         # creation (draft periods are checked against active ones).
         with self.assertRaises(ValidationError):
             self._make_period(location_ids=[(6, 0, [self.loc_a.id])])
+
+    # ------------------------------------------------------------------
+    # Multi-warehouse scope
+    # ------------------------------------------------------------------
+    def _second_warehouse(self):
+        return self.env["stock.warehouse"].create(
+            {"name": "FZ WH2", "code": "FZ2", "company_id": self.company.id}
+        )
+
+    def test_12b_multi_warehouse_all_frozen(self):
+        wh2 = self._second_warehouse()
+        p = self._make_period(
+            warehouse_ids=[(6, 0, [self.warehouse.id, wh2.id])]
+        )
+        frozen = set(p._get_frozen_location_ids())
+        self.assertIn(self.warehouse.lot_stock_id.id, frozen)
+        self.assertIn(wh2.lot_stock_id.id, frozen)
+
+    def test_12c_multi_warehouse_overlap_on_shared(self):
+        wh2 = self._second_warehouse()
+        p1 = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
+        p1.action_start_freeze()
+        with self.assertRaises(ValidationError):
+            self._make_period(
+                warehouse_ids=[(6, 0, [self.warehouse.id, wh2.id])]
+            )
+
+    def test_12d_scope_required(self):
+        with self.assertRaises(ValidationError):
+            self._make_period(warehouse_ids=[(6, 0, [])])
 
     # ------------------------------------------------------------------
     # Tests 13-14 : manufacturing
@@ -346,7 +400,7 @@ class TestStockFreeze(TransactionCase):
 
     def test_13_mrp_consume_blocked(self):
         mo = self._build_mo()
-        p = self._make_period(warehouse_id=self.warehouse.id)
+        p = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
         p.action_start_freeze()
         with self.assertRaises(UserError):
             self._mark_mo_done(mo)
@@ -366,7 +420,7 @@ class TestStockFreeze(TransactionCase):
     # ------------------------------------------------------------------
     def test_15_scrap_blocked(self):
         self._seed(self.stock_location, 20.0)
-        p = self._make_period(warehouse_id=self.warehouse.id)
+        p = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
         p.action_start_freeze()
         scrap = self.env["stock.scrap"].create(
             {
@@ -398,7 +452,7 @@ class TestStockFreeze(TransactionCase):
             }
         )
         self._seed(self.stock_location, 10.0, product=finished)
-        p = self._make_period(warehouse_id=self.warehouse.id)
+        p = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
         p.action_start_freeze()
         unbuild = self.env["mrp.unbuild"].create(
             {
@@ -417,7 +471,7 @@ class TestStockFreeze(TransactionCase):
     # Extra : delete / edit restrictions
     # ------------------------------------------------------------------
     def test_17_delete_restricted(self):
-        p = self._make_period(warehouse_id=self.warehouse.id)
+        p = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
         p.action_start_freeze()
         with self.assertRaises(UserError):
             p.unlink()
@@ -426,7 +480,7 @@ class TestStockFreeze(TransactionCase):
             p.unlink()
 
     def test_18_edit_locked_when_active(self):
-        p = self._make_period(warehouse_id=self.warehouse.id)
+        p = self._make_period(warehouse_ids=[(6, 0, [self.warehouse.id])])
         p.action_start_freeze()
         with self.assertRaises(UserError):
             p.date_start = fields.Datetime.now()
@@ -443,7 +497,7 @@ class TestStockFreeze(TransactionCase):
     def test_19_end_date_before_start_rejected(self):
         with self.assertRaises(ValidationError):
             self._make_period(
-                warehouse_id=self.warehouse.id,
+                warehouse_ids=[(6, 0, [self.warehouse.id])],
                 date_start=fields.Datetime.now(),
                 date_end=fields.Datetime.now() - timedelta(hours=1),
             )
