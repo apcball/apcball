@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ap_dashboard_loan_manual_tree" model="ir.ui.view">
+        <field name="name">biz.ap.dashboard.loan.manual.tree</field>
+        <field name="model">biz.ap.dashboard.loan.manual</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="company_id" column_invisible="1" groups="!base.group_multi_company"/>
+                <field name="allowed_account_ids" column_invisible="1"/>
+                <field name="year"/>
+                <field name="month"/>
+                <field name="account_id" options="{'no_create': True}"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="drawn"/>
+                <field name="repaid"/>
+                <field name="outstanding"/>
+                <field name="note"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_ap_dashboard_loan_manual" model="ir.actions.act_window">
+        <field name="name">เงินกู้ (กรอกเอง) - Payment Dashboard</field>
+        <field name="res_model">biz.ap.dashboard.loan.manual</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">กรอกยอดเงินกู้รายเดือน</p>
+            <p>ยอดที่กรอกจะแทนยอดจากบัญชีของบัญชีนั้นในเดือนนั้นบนการ์ดเงินกู้ของ Dashboard</p>
+        </field>
+    </record>
+
+    <!-- Purchase > Configuration -->
+    <menuitem id="menu_ap_dashboard_loan_manual"
+              name="เงินกู้ (กรอกเอง) - Payment Dashboard"
+              parent="purchase.menu_purchase_config"
+              action="action_ap_dashboard_loan_manual"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user,account.group_account_invoice"
+              sequence="90"/>
+</odoo>

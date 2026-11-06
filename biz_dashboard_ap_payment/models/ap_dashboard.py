@@ -519,6 +519,7 @@ class ApDashboard(models.AbstractModel):
                        for acc in accounts.sorted('code')}
         if not accounts:
             kpi['accounts'] = []
+            kpi['has_manual'] = False
             return kpi
         Line = self.env['account.move.line']
         domain = [('account_id', 'in', accounts.ids), ('parent_state', '=', 'posted'),
@@ -536,11 +537,32 @@ class ApDashboard(models.AbstractModel):
                 kpi['repaid'] += conv(line.debit)
                 acc['drawn'] += conv(line.credit)
                 acc['repaid'] += conv(line.debit)
+        # manual entries of the month override the ledger figures of that account
+        manual = self.env['biz.ap.dashboard.loan.manual'].sudo().search([
+            ('company_id', 'in', f['cids']), ('year', '=', f['year']),
+            ('month', '=', str(f['month'])), ('account_id', 'in', accounts.ids)])
+        for rec in manual:
+            conv = lambda amount: self._convert(
+                amount, rec.company_id.currency_id, rec.company_id, f['date_to'], f['currency'])
+            acc = per_account[rec.account_id.id]
+            if not acc.get('manual'):
+                # first manual row of this account: drop the ledger figures of the account
+                # (a second company's row for the same account id cannot exist: accounts are per company)
+                acc.update(drawn=0.0, repaid=0.0, outstanding=0.0, manual=True)
+            acc['drawn'] += conv(rec.drawn)
+            acc['repaid'] += conv(rec.repaid)
+            acc['outstanding'] += conv(rec.outstanding)
+            acc['note'] = rec.note or ''
+        kpi = {'configured': kpi['configured'],
+               'drawn': sum(a['drawn'] for a in per_account.values()),
+               'repaid': sum(a['repaid'] for a in per_account.values()),
+               'outstanding': sum(a['outstanding'] for a in per_account.values())}
         result = {key: (round(val, 2) if key != 'configured' else val) for key, val in kpi.items()}
         # per configured loan account (e.g. 212100 PN bank loan / 212200 TR)
         result['accounts'] = [
             {k: (round(v, 2) if isinstance(v, float) else v) for k, v in acc.items()}
             for acc in per_account.values()]
+        result['has_manual'] = bool(manual)
         return result
 
     def _other_expense_vals(self, f):

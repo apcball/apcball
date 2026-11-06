@@ -346,6 +346,16 @@ class TestApDashboard(TransactionCase):
         self.assertEqual(set(by_acc), set(loan.ids))
         self.assertAlmostEqual(by_acc[loan.id]['drawn'], 2000.0, places=2)
         self.assertAlmostEqual(by_acc[loan.id]['outstanding'], 2000.0, places=2)
+        # a manual entry of the month replaces the ledger figures of that account
+        self.env['biz.ap.dashboard.loan.manual'].create({
+            'company_id': self.company.id, 'year': payload['filters']['year'],
+            'month': str(payload['filters']['month']), 'account_id': loan.id,
+            'drawn': 0.0, 'repaid': 500.0, 'outstanding': 9000.0})
+        manual = self._data()
+        self.assertTrue(manual['kpi_loan']['has_manual'])
+        self.assertAlmostEqual(manual['kpi_loan']['drawn'], 0.0, places=2)
+        self.assertAlmostEqual(manual['kpi_loan']['repaid'], 500.0, places=2)
+        self.assertAlmostEqual(manual['kpi_loan']['outstanding'], 9000.0, places=2)
         for tab, key in (('vendor', 'p:%d' % self.v1.id),):
             self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_loan'), 2000.0, places=2)
             self.assertAlmostEqual(self._delta_row(payload, tab, key, 'act_total'), 0.0, places=2)

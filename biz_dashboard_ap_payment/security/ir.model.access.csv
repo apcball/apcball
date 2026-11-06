@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ap_dashboard_loan_manual_budget,ap.dashboard.loan.manual budget user,model_biz_ap_dashboard_loan_manual,biz_monthly_analytic_budget.group_monthly_budget_user,1,1,1,1
+access_ap_dashboard_loan_manual_invoice,ap.dashboard.loan.manual invoicing,model_biz_ap_dashboard_loan_manual,account.group_account_invoice,1,1,1,1
