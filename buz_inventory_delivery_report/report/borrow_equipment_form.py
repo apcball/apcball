@@ -78,8 +78,7 @@ class BorrowEquipmentFormPDF(models.AbstractModel):
 
             for key, data_dict in bom_grouped.items():
                 prod = data_dict['product']
-                tmpl = prod if prod._name == 'product.template' else prod.product_tmpl_id
-                code = (('sku' in tmpl._fields and tmpl.sku) or prod.default_code or '')
+                code = prod.default_code or ''
                 qty_str = '{:,.2f}'.format(data_dict['qty']) if data_dict['qty'] else ''
 
                 sale_line = data_dict.get('sale_line_id')

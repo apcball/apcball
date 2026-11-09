@@ -307,8 +307,8 @@
                                                      <t t-set="move" t-value="item['move']"/>
                                                      <tr class="data-row" style="font-size: 20px;">
                                                          <td style="text-align: center;"><span t-esc="item['display_no']"/></td>
-                                                         <td t-if="item.get('is_component')" class="item-code"><span style="white-space: nowrap;">-&#160;</span><span t-esc="('sku' in move.product_id.product_tmpl_id._fields and move.product_id.product_tmpl_id.sku) or move.product_id.default_code or ''"/></td>
-                                                         <td t-if="not item.get('is_component')" class="item-code"><span t-esc="('sku' in move.product_id.product_tmpl_id._fields and move.product_id.product_tmpl_id.sku) or move.product_id.default_code or ''"/></td>
+                                                         <td t-if="item.get('is_component')" class="item-code"><span style="white-space: nowrap;">-&#160;</span><span t-esc="move.product_id.default_code or ''"/></td>
+                                                         <td t-if="not item.get('is_component')" class="item-code"><span t-field="move.product_id.default_code"/></td>
                                                          <td t-if="item.get('is_component')" class="item-description">
                                                              <span t-field="move.product_id.name"/>
                                                          </td>
