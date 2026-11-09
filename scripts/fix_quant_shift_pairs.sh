@@ -3,6 +3,8 @@
 # +n at location A / -n at location B are fixed by moving n of QUANT from A to B (total unchanged) and withdrawing OUR SVL correction
 # layers of that product at the two warehouses (G1/G2/flush-pair 'Reverse FIFO Reset Flush (...)', 'Missing receipt SVL...',
 # 'Re-baseline adjustment ... group F/D' and their zero-qty group moves), so SVL == quant == OB + moves.
+# If after the withdrawal a PRE-cut-off residue remains per warehouse (group-F pairs: flush/reset layers do not net to 0) and it is an exact
+# mirror between the two warehouses, a plain value-neutral pair dated 2026-03-30 16:59:59.999999 zeroes it, so pre-OB SVL == 0 per warehouse.
 # Each product runs in its own sub-transaction; it is SKIPPED (not failed) with a reason when a precondition/post-check fails:
 #   - exactly two locations with Initial != 0, equal and opposite;  - receiving/sending target quant must be >= 0;
 #   - source available (quantity - reserved) >= n;  - one quant record per location;  - after the change SVL (all-time and window)
@@ -35,7 +37,7 @@ SQLEOF
 RUN=$(cat <<'SQLEOF'
 DO $$
 DECLARE r record; pid int; a int; b int; n numeric; nloc int; wa int; wb int; qa record; qb record; nl int; lv numeric; vb numeric; va numeric; ini_a numeric; ini_b numeric;
-        sa numeric; sb numeric; wsa numeric; wsb numeric; qta numeric; qtb numeric; la text; lb text;
+        sa numeric; sb numeric; wsa numeric; wsb numeric; qta numeric; qtb numeric; la text; lb text; pa_q numeric; pa_v numeric; pb_q numeric; pb_v numeric;
 BEGIN
   FOR r IN SELECT code FROM todo ORDER BY rn LOOP
     BEGIN
@@ -92,6 +94,17 @@ BEGIN
         WHERE product_id=pid AND warehouse_id IN (wa,wb) AND (description LIKE 'Reverse FIFO Reset Flush (%' OR description LIKE 'Missing receipt SVL%' OR description LIKE 'Re-baseline adjustment 2026-03-31 - group%');
       DELETE FROM stock_valuation_layer WHERE product_id=pid AND warehouse_id IN (wa,wb) AND (description LIKE 'Reverse FIFO Reset Flush (%' OR description LIKE 'Missing receipt SVL%' OR description LIKE 'Re-baseline adjustment 2026-03-31 - group%');
       DELETE FROM stock_move WHERE product_id=pid AND (name LIKE 'groupF re-baseline%' OR name LIKE 'groupD re-baseline%') AND NOT EXISTS (SELECT 1 FROM stock_valuation_layer l WHERE l.stock_move_id=stock_move.id);
+      -- zero the PRE-cut-off residue per warehouse with a plain mirror pair dated just before the cut-off (like the flush layers)
+      SELECT coalesce(sum(quantity),0), coalesce(sum(value),0) INTO pa_q, pa_v FROM stock_valuation_layer WHERE product_id=pid AND warehouse_id=wa AND COALESCE(accounting_date,create_date)<'2026-03-30 17:00';
+      SELECT coalesce(sum(quantity),0), coalesce(sum(value),0) INTO pb_q, pb_v FROM stock_valuation_layer WHERE product_id=pid AND warehouse_id=wb AND COALESCE(accounting_date,create_date)<'2026-03-30 17:00';
+      IF abs(pa_q)>0.0001 OR abs(pb_q)>0.0001 THEN
+        IF wa=wb THEN RAISE EXCEPTION 'pre-cutoff residue in the same warehouse (% / %)', pa_q, pb_q; END IF;
+        IF abs(pa_q+pb_q)>0.0001 OR abs(pa_v+pb_v)>0.02 THEN RAISE EXCEPTION 'pre-cutoff residue is not a mirror (qty % / %, value % / %)', pa_q, pb_q, pa_v, pb_v; END IF;
+        INSERT INTO stock_valuation_layer (company_id, product_id, description, quantity, unit_cost, value, remaining_qty, remaining_value, warehouse_id, current_warehouse_id, create_uid, write_uid, create_date, write_date, accounting_date)
+        VALUES (1, pid, 'Reverse FIFO Reset Flush (pre-cutoff residue fix) - '||r.code||' WH '||la, -pa_q, abs(CASE WHEN pa_q<>0 THEN pa_v/pa_q ELSE 0 END), -pa_v, 0, 0, wa, wa, 2, 2, TIMESTAMP '2026-03-30 16:59:59.999999', now() AT TIME ZONE 'UTC', TIMESTAMP '2026-03-30 16:59:59.999999'),
+               (1, pid, 'Reverse FIFO Reset Flush (pre-cutoff residue fix) - '||r.code||' WH '||lb, -pb_q, abs(CASE WHEN pb_q<>0 THEN pb_v/pb_q ELSE 0 END), -pb_v, 0, 0, wb, wb, 2, 2, TIMESTAMP '2026-03-30 16:59:59.999999', now() AT TIME ZONE 'UTC', TIMESTAMP '2026-03-30 16:59:59.999999');
+        nl := nl + 2;
+      END IF;
       -- post-checks
       IF abs(pg_temp.initial(pid,a))>0.0001 OR abs(pg_temp.initial(pid,b))>0.0001 THEN RAISE EXCEPTION 'Initial not zero after change'; END IF;
       SELECT round(sum(value)::numeric,2) INTO va FROM stock_valuation_layer WHERE product_id=pid;
