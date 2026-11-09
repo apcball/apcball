@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_cogs_report_search" model="ir.ui.view">
+        <field name="name">buz.cogs.report.search</field>
+        <field name="model">buz.cogs.report</field>
+        <field name="arch" type="xml">
+            <search string="Actual COGS">
+                <field name="product_id"/>
+                <field name="product_categ_id"/>
+                <field name="warehouse_id"/>
+                <field name="partner_id"/>
+                <field name="picking_id"/>
+                <field name="dispatch_document_name"/>
+                <filter name="cogs_only" string="COGS (Sale + Return)" domain="[('kind','in',('sale','return'))]"/>
+                <filter name="sale" string="Sales" domain="[('kind','=','sale')]"/>
+                <filter name="return" string="Customer Returns" domain="[('kind','=','return')]"/>
+                <separator/>
+                <filter name="this_month" string="This Month"
+                        domain="[('acct_date','&gt;=',(context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_kind" string="Type" context="{'group_by': 'kind'}"/>
+                    <filter name="g_month" string="Month" context="{'group_by': 'acct_month'}"/>
+                    <filter name="g_wh" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="g_categ" string="Category" context="{'group_by': 'product_categ_id'}"/>
+                    <filter name="g_product" string="Product" context="{'group_by': 'product_id'}"/>
+                    <filter name="g_partner" string="Customer" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_buz_cogs_report_tree" model="ir.ui.view">
+        <field name="name">buz.cogs.report.tree</field>
+        <field name="model">buz.cogs.report</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false">
+                <field name="acct_date"/>
+                <field name="picking_id"/>
+                <field name="dispatch_document_name" optional="show"/>
+                <field name="partner_id" optional="show"/>
+                <field name="product_id"/>
+                <field name="warehouse_id"/>
+                <field name="kind"/>
+                <field name="quantity" sum="Qty"/>
+                <field name="value" sum="SVL Value"/>
+                <field name="cogs" sum="COGS"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_cogs_report_pivot" model="ir.ui.view">
+        <field name="name">buz.cogs.report.pivot</field>
+        <field name="model">buz.cogs.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Actual COGS">
+                <field name="warehouse_id" type="row"/>
+                <field name="acct_month" type="col"/>
+                <field name="cogs" type="measure"/>
+                <field name="value" type="measure"/>
+                <field name="quantity" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_buz_cogs_report_graph" model="ir.ui.view">
+        <field name="name">buz.cogs.report.graph</field>
+        <field name="model">buz.cogs.report</field>
+        <field name="arch" type="xml">
+            <graph string="Actual COGS" type="bar">
+                <field name="acct_month"/>
+                <field name="cogs" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_buz_cogs_report" model="ir.actions.act_window">
+        <field name="name">Actual COGS</field>
+        <field name="res_model">buz.cogs.report</field>
+        <field name="view_mode">pivot,tree,graph</field>
+        <field name="search_view_id" ref="view_buz_cogs_report_search"/>
+        <field name="context">{'search_default_g_month': 1, 'search_default_cogs_only': 1}</field>
+    </record>
+
+    <menuitem id="menu_buz_cogs_report"
+              name="Actual COGS"
+              parent="stock.menu_warehouse_report"
+              action="action_buz_cogs_report"
+              sequence="95"/>
+</odoo>

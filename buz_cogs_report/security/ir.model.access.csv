@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_cogs_report_manager,buz.cogs.report manager,model_buz_cogs_report,stock.group_stock_manager,1,0,0,0
+access_buz_cogs_report_account,buz.cogs.report accountant,model_buz_cogs_report,account.group_account_manager,1,0,0,0
