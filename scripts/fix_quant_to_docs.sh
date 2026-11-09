@@ -11,13 +11,13 @@ MODE="${1:-check}"; LIST="${2:-ALL}"; PRE="${PRE:-qty}"
 case "$MODE" in check|dry|apply) ;; *) echo "usage: [PRE=add|skip] $0 check|dry|apply [ALL|CODE,...]" >&2; exit 2;; esac
 case "$PRE" in add|skip|qty) ;; *) echo "PRE must be add, qty or skip" >&2; exit 2;; esac
 [ "$MODE" = apply ] && [ -z "${2:-}" ] && { echo "apply needs ALL or an explicit list" >&2; exit 2; }
-if ! [[ "$LIST" =~ ^[A-Za-z0-9,._+-]+$ ]]; then echo "bad list" >&2; exit 2; fi
+if [[ "$LIST" == *[\;\'\"\\\ ]* || -z "$LIST" ]]; then echo "bad list" >&2; exit 2; fi
 ALLC="ASS007,504110001,404030004,408010021,404020022,509030002,304010025,401020002,501190003,501190001"
 [ "$LIST" = ALL ] && LIST="$ALLC"
 REMOTE_ENV='PW=$(grep -E "^db_password" /etc/instance1.conf); export PGPASSWORD="${PW#*= }"'
 BODY=$(cat <<'SQLEOF'
 CREATE TEMP TABLE tgt(code text, loc int, wh int);
-INSERT INTO tgt VALUES ('ASS007',20,2),('504110001',116,14),('404030004',116,14),('408010021',116,14),('404020022',116,14),('509030002',116,14),('304010025',116,14),('401020002',116,14),('501190003',156,19),('501190001',156,19);
+INSERT INTO tgt VALUES ('ASS007',20,2),('504110001',116,14),('404030004',116,14),('408010021',116,14),('404020022',116,14),('509030002',116,14),('304010025',116,14),('401020002',116,14),('501190003',156,19),('501190001',156,19),('201030398',108,13),('(ไม่ใช้)C2S0001HI020000',108,13),('504040003',108,13),('511010014',108,13);
 CREATE FUNCTION pg_temp.initial(p int, loc int) RETURNS numeric LANGUAGE sql AS $f$
  SELECT coalesce((SELECT sum(quantity) FROM stock_quant WHERE product_id=p AND location_id=loc),0) - coalesce((
   SELECT sum(CASE WHEN ldst=loc THEN q ELSE 0 END)-sum(CASE WHEN lsrc=loc THEN q ELSE 0 END) FROM (
