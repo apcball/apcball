@@ -17,6 +17,7 @@ filter by date in the UI (opening cutoff 2026-03-30 is not applied).
     'data': [
         'security/ir.model.access.csv',
         'views/buz_cogs_report_views.xml',
+        'views/buz_cogs_export_wizard_views.xml',
     ],
     'installable': True,
 }

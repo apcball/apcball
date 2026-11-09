@@ -11,12 +11,14 @@
                 <field name="partner_id"/>
                 <field name="picking_id"/>
                 <field name="dispatch_document_name"/>
+                <field name="doc_no"/>
+                <field name="default_code"/>
                 <filter name="cogs_only" string="COGS (Sale + Return)" domain="[('kind','in',('sale','return'))]"/>
                 <filter name="sale" string="Sales" domain="[('kind','=','sale')]"/>
                 <filter name="return" string="Customer Returns" domain="[('kind','=','return')]"/>
                 <separator/>
                 <filter name="this_month" string="This Month"
-                        domain="[('acct_date','&gt;=',(context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('acct_date','&gt;=',(context_today()+relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter name="g_kind" string="Type" context="{'group_by': 'kind'}"/>
                     <filter name="g_month" string="Month" context="{'group_by': 'acct_month'}"/>
@@ -34,16 +36,23 @@
         <field name="model">buz.cogs.report</field>
         <field name="arch" type="xml">
             <tree create="false" edit="false" delete="false">
+                <field name="default_code"/>
+                <field name="product_name"/>
                 <field name="acct_date"/>
-                <field name="picking_id"/>
-                <field name="dispatch_document_name" optional="show"/>
-                <field name="partner_id" optional="show"/>
-                <field name="product_id"/>
-                <field name="warehouse_id"/>
-                <field name="kind"/>
-                <field name="quantity" sum="Qty"/>
-                <field name="value" sum="SVL Value"/>
-                <field name="cogs" sum="COGS"/>
+                <field name="doc_no"/>
+                <field name="qt" sum="Qty"/>
+                <field name="cost" sum="Cost"/>
+                <field name="qt_return" sum="Qty Return"/>
+                <field name="cost_return" sum="Cost Return"/>
+                <field name="picking_id" optional="hide"/>
+                <field name="partner_id" optional="hide"/>
+                <field name="warehouse_id" optional="hide"/>
+                <field name="kind" optional="hide"/>
+                <field name="quantity" optional="hide"/>
+                <field name="value" optional="hide"/>
+                <field name="cogs" optional="hide" sum="COGS (net)"/>
+                <field name="product_id" column_invisible="1"/>
+                <field name="dispatch_document_name" column_invisible="1"/>
                 <field name="currency_id" column_invisible="1"/>
             </tree>
         </field>
@@ -54,11 +63,12 @@
         <field name="model">buz.cogs.report</field>
         <field name="arch" type="xml">
             <pivot string="Actual COGS">
-                <field name="warehouse_id" type="row"/>
+                <field name="product_id" type="row"/>
                 <field name="acct_month" type="col"/>
-                <field name="cogs" type="measure"/>
-                <field name="value" type="measure"/>
-                <field name="quantity" type="measure"/>
+                <field name="qt" type="measure"/>
+                <field name="cost" type="measure"/>
+                <field name="qt_return" type="measure"/>
+                <field name="cost_return" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -69,7 +79,8 @@
         <field name="arch" type="xml">
             <graph string="Actual COGS" type="bar">
                 <field name="acct_month"/>
-                <field name="cogs" type="measure"/>
+                <field name="warehouse_id"/>
+                <field name="cost" type="measure"/>
             </graph>
         </field>
     </record>
@@ -79,7 +90,7 @@
         <field name="res_model">buz.cogs.report</field>
         <field name="view_mode">pivot,tree,graph</field>
         <field name="search_view_id" ref="view_buz_cogs_report_search"/>
-        <field name="context">{'search_default_g_month': 1, 'search_default_cogs_only': 1}</field>
+        <field name="context">{'search_default_cogs_only': 1}</field>
     </record>
 
     <menuitem id="menu_buz_cogs_report"

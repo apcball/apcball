@@ -37,6 +37,14 @@ class BuzCogsReport(models.Model):
     cogs = fields.Monetary(
         string='COGS', readonly=True, currency_field='currency_id',
         help='-value for Sale and Customer Return layers, else 0.')
+    default_code = fields.Char(string='Product Code', readonly=True)
+    product_name = fields.Char(string='Product Name', readonly=True)
+    doc_no = fields.Char(string='Document No', readonly=True,
+                         help='Dispatch document (DP) if any, else the transfer name.')
+    qt = fields.Float(string='Qty Sold', readonly=True)
+    cost = fields.Monetary(string='Cost', readonly=True, currency_field='currency_id')
+    qt_return = fields.Float(string='Qty Return', readonly=True)
+    cost_return = fields.Monetary(string='Cost Return', readonly=True, currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', readonly=True)
 
     def init(self):
@@ -78,6 +86,17 @@ class BuzCogsReport(models.Model):
                         WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer' THEN -svl.value
                         ELSE 0
                     END AS cogs,
+                    pp.default_code AS default_code,
+                    COALESCE(tmpl.name->>'en_US', tmpl.name->>'th_TH') AS product_name,
+                    COALESCE(dp.names, sp.name) AS doc_no,
+                    CASE WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer'
+                         THEN -svl.quantity ELSE 0 END AS qt,
+                    CASE WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer'
+                         THEN -svl.value ELSE 0 END AS cost,
+                    CASE WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer'
+                         THEN svl.quantity ELSE 0 END AS qt_return,
+                    CASE WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer'
+                         THEN svl.value ELSE 0 END AS cost_return,
                     comp.currency_id
                 FROM stock_valuation_layer svl
                 JOIN product_product pp ON pp.id = svl.product_id
