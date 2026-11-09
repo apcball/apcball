@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# OBSOLETE (2026-11-09): user confirmed the MOGEN_OB amounts are CORRECT; Initial plugs must NOT be fixed by editing/adding OB lines or rows before the OB.
+# The OB edits applied on 2026-11-05 were reverted on 2026-11-09. DO NOT RUN. Kept only for history.
 # imex rule (user, 2026-11-05): the opening balance IS the MOGEN_OB reseed pickings (2026-03-31 00:55); everything BEFORE
 # them must be 0. So the Initial plugs are fixed IN the OB documents, not by extra rows before them:
 #   +n on the OB move/move line at the location that physically holds the unit (Initial +n),

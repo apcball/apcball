@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# OBSOLETE (2026-11-09): user confirmed the MOGEN_OB amounts are CORRECT; Initial plugs must NOT be fixed by editing/adding OB lines or rows before the OB.
+# The OB edits applied on 2026-11-05 were reverted on 2026-11-09. DO NOT RUN. Kept only for history.
 # 406010069 (product 10355): imex Initial plug PD01/Stock +200 / RM02/Stock -200 fixed INSIDE the MOGEN_OB reseed
 # (user rule 2026-11-05: everything before the OB must be 0). The reseed put all 600 at RM02 (move line 148852, picking
 # RM02/IN/00362) although 200 were physically at PD01 (the pre-cutoff RM02->PD01 transfer that the FIFO Reset Flush

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# OBSOLETE (2026-11-09): user confirmed the MOGEN_OB amounts are CORRECT; Initial plugs must NOT be fixed by editing/adding OB lines or rows before the OB.
+# The OB edits applied on 2026-11-05 were reverted on 2026-11-09. DO NOT RUN. Kept only for history.
 # MA0142101 (product 3969): imex Initial plug FG10/Stock +2 / FG40/Stock -2 fixed INSIDE the MOGEN_OB reseed
 # (user rule 2026-11-05: everything before the OB must be 0).
 #   * FG40 OB (picking FG40/FG40/00001): the last two 1-unit lines (move lines 192970 / 192971, moves 203160 / 203161) -> 0

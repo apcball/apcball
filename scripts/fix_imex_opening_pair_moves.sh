@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# OBSOLETE (2026-11-09): user confirmed the MOGEN_OB amounts are CORRECT; Initial plugs must NOT be fixed by editing/adding OB lines or rows before the OB.
+# The OB edits applied on 2026-11-05 were reverted on 2026-11-09. DO NOT RUN. Kept only for history.
 # imex "Initial" must be 0 before the cut-off (user rule 2026-11-05): add ONE done internal move + ONE move line per
 # mirrored pair of Initial plugs, dated 2026-03-31 00:00 UTC (before the 00:55 reseed/OB pickings), reference
 # IMEX-OPENING-20260331. Option A of the imex-plug discussion: no change to quants, no new SVL (the G1/G2/flush-pair
