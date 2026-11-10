@@ -1,6 +1,6 @@
 {
     'name': 'Landed Cost Report',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'category': 'Inventory/Reporting',
     'summary': 'Landed Cost Report with Pivot and Excel Export',
     'description': """
