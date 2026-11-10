@@ -42,14 +42,21 @@ class ProductProduct(models.Model):
         warehouse_id = self.env.context.get('fifo_warehouse_id')
         
         if not warehouse_id:
+            # No warehouse scope: core would consume layers of EVERY warehouse
+            # (root cause of cross-warehouse FIFO drift). 'warn' keeps the legacy
+            # behaviour; 'block' returns no candidates so the shortage path
+            # (negative layer / shortage_policy) applies and other warehouses'
+            # layers stay untouched.
+            mode = self.env['ir.config_parameter'].sudo().get_param(
+                'stock_fifo_by_location.unscoped_fifo_mode', 'warn')
             _logger.warning(
-                f"⚠️ _get_fifo_candidates() called without fifo_warehouse_id in context! "
-                f"Product: {self.display_name}. This will return candidates from ALL warehouses. "
-                f"This should not happen in per-warehouse FIFO mode."
+                "_get_fifo_candidates() called without fifo_warehouse_id in context! "
+                "Product: %s, mode=%s.", self.display_name, mode,
             )
-            # Fallback to standard behavior
+            if mode == 'block':
+                return self.env['stock.valuation.layer']
             return super()._get_fifo_candidates(company)
-        
+
         _logger.debug(
             f"🔍 _get_fifo_candidates() for Product={self.display_name}, "
             f"Warehouse ID={warehouse_id}, Company={company.name}"
@@ -92,6 +99,36 @@ class ProductProduct(models.Model):
         )
 
         return candidates
+
+    def _run_fifo_vacuum(self, company=None):
+        """Vacuum each warehouse queue separately so a negative layer is never
+        compensated with another warehouse's layers. Negative layers without a
+        warehouse are only compensated by layers without a warehouse."""
+        if self.env.context.get('fifo_vacuum_warehouse_id'):
+            return super()._run_fifo_vacuum(company)
+        company = company or self.env.company
+        negatives = self.env['stock.valuation.layer'].sudo().search([
+            ('product_id', 'in', self.ids),
+            ('remaining_qty', '<', 0),
+            ('stock_move_id', '!=', False),
+            ('company_id', '=', company.id),
+        ])
+        buckets = set(negatives.mapped('warehouse_id').ids)
+        if negatives.filtered(lambda l: not l.warehouse_id):
+            buckets.add('none')  # layers without warehouse only meet each other
+        for wh_id in sorted(buckets, key=str):
+            super(ProductProduct, self.with_context(fifo_vacuum_warehouse_id=wh_id))\
+                ._run_fifo_vacuum(company)
+
+    def _prepare_out_svl_vals(self, quantity, company, lot=False, location=False):
+        """Scope the FIFO queue of an outgoing layer to the warehouse of the
+        source location when the caller did not set 'fifo_warehouse_id'."""
+        self.ensure_one()
+        if (not self.env.context.get('fifo_warehouse_id') and location
+                and location.warehouse_id):
+            self = self.with_context(fifo_warehouse_id=location.warehouse_id.id)
+        return super(ProductProduct, self)._prepare_out_svl_vals(
+            quantity, company, lot=lot, location=location)
 
     def _prepare_internal_out_svl_vals(self, quantity, company, move=False):
         """Record which cost origins an inter-warehouse transfer really consumes.

@@ -92,3 +92,53 @@ class TestTransferFifoScope(TransactionCase):
         layer_wh1.invalidate_recordset(['remaining_qty'])
         self.assertEqual(layer_wh2.remaining_qty, 10.0, "wh2 stock was not touched")
         self.assertEqual(layer_wh1.remaining_qty, 5.0, "the 5 units left wh1's queue")
+
+    def _delivery(self, wh, qty):
+        customer = self.env.ref('stock.stock_location_customers')
+        picking = self.env['stock.picking'].create({
+            'picking_type_id': wh.out_type_id.id, 'location_id': wh.lot_stock_id.id,
+            'location_dest_id': customer.id,
+        })
+        self.env['stock.move'].create({
+            'name': 'delivery', 'product_id': self.product.id, 'product_uom_qty': qty,
+            'product_uom': self.product.uom_id.id, 'picking_id': picking.id,
+            'location_id': wh.lot_stock_id.id, 'location_dest_id': customer.id,
+        })
+        self._validate(picking)
+        return picking
+
+    def test_delivery_consumes_only_the_source_warehouse_queue(self):
+        # older layer in wh2, newer layer in wh1: delivery from wh1 must not eat wh2
+        layer_wh2 = self._receipt(self.wh2, 10.0)
+        layer_wh1 = self._receipt(self.wh1, 10.0)
+        self._delivery(self.wh1, 4.0)
+        layer_wh2.invalidate_recordset(['remaining_qty'])
+        layer_wh1.invalidate_recordset(['remaining_qty'])
+        self.assertEqual(layer_wh2.remaining_qty, 10.0)
+        self.assertEqual(layer_wh1.remaining_qty, 6.0)
+
+    def test_unscoped_block_mode_returns_no_candidates(self):
+        self._receipt(self.wh1, 10.0)
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('stock_fifo_by_location.unscoped_fifo_mode', 'block')
+        self.assertFalse(self.product._get_fifo_candidates(self.env.company))
+        icp.set_param('stock_fifo_by_location.unscoped_fifo_mode', 'warn')
+        self.assertTrue(self.product._get_fifo_candidates(self.env.company))
+
+    def test_vacuum_compensates_within_the_same_warehouse_only(self):
+        base = self._receipt(self.wh1, 1.0)
+        move = base.stock_move_id
+        neg = self.layer_model.create({
+            'product_id': self.product.id, 'company_id': self.env.company.id,
+            'stock_move_id': move.id, 'warehouse_id': self.wh1.id,
+            'quantity': -3.0, 'value': -300.0, 'unit_cost': 100.0,
+            'remaining_qty': -3.0, 'remaining_value': 0.0, 'description': 'neg wh1',
+        })
+        other = self._receipt(self.wh2, 5.0)   # newer layer in ANOTHER warehouse
+        same = self._receipt(self.wh1, 5.0)    # newer layer in the SAME warehouse
+        self.product._run_fifo_vacuum(self.env.company)
+        for rec in (neg, other, same):
+            rec.invalidate_recordset(['remaining_qty'])
+        self.assertEqual(other.remaining_qty, 5.0, "other warehouse untouched")
+        self.assertEqual(same.remaining_qty, 2.0, "3 units taken from the same warehouse")
+        self.assertEqual(neg.remaining_qty, 0.0)

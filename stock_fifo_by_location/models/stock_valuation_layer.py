@@ -23,6 +23,20 @@ class StockValuationLayer(models.Model):
     """
     
     _inherit = 'stock.valuation.layer'
+
+    @api.model
+    def _read_group(self, domain, groupby=(), aggregates=(), having=(), offset=0,
+                    limit=None, order=None):
+        """Core _run_fifo_vacuum reads its candidate layers through _read_group with
+        no warehouse filter. When the vacuum runs for one warehouse (context key
+        'fifo_vacuum_warehouse_id', set by product.product._run_fifo_vacuum) both the
+        negative layers and the candidates are restricted to that warehouse."""
+        wh_id = self.env.context.get('fifo_vacuum_warehouse_id')
+        if wh_id:
+            domain = list(domain) + [('warehouse_id', '=', False if wh_id == 'none' else wh_id)]
+        return super()._read_group(
+            domain, groupby=groupby, aggregates=aggregates, having=having,
+            offset=offset, limit=limit, order=order)
     
     warehouse_id = fields.Many2one(
         'stock.warehouse',
