@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_buz_cogs_report" model="ir.module.category">
+        <field name="name">Actual COGS Report</field>
+        <field name="sequence">60</field>
+    </record>
+
+    <record id="group_buz_cogs_report_user" model="res.groups">
+        <field name="name">User (view and export)</field>
+        <field name="category_id" ref="module_category_buz_cogs_report"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>

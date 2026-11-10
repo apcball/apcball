@@ -63,6 +63,8 @@ class BuzCogsExportWizard(models.TransientModel):
 
     def action_export(self):
         self.ensure_one()
+        if not self.env.user.has_group('buz_cogs_report.group_buz_cogs_report_user'):
+            raise UserError('You are not allowed to export the Actual COGS report.')
         if self.date_from > self.date_to:
             raise UserError('Start Date must be before End Date.')
         if (self.date_to - self.date_from).days + 1 > self.MAX_DAYS:

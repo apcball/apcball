@@ -97,5 +97,6 @@
               name="Actual COGS"
               parent="stock.menu_warehouse_report"
               action="action_buz_cogs_report"
+              groups="group_buz_cogs_report_user"
               sequence="95"/>
 </odoo>
