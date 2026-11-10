@@ -13,7 +13,8 @@ filter by date in the UI (opening cutoff 2026-03-30 is not applied).
     'author': 'APC Ball',
     'category': 'Warehouse',
     'version': '17.0.1.0.0',
-    'depends': ['stock', 'stock_account', 'stock_fifo_by_location', 'buz_dispatch_document'],
+    'depends': ['stock', 'stock_account', 'stock_fifo_by_location', 'buz_dispatch_document',
+                'sale_stock', 'pos_lite'],
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',

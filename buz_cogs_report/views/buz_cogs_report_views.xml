@@ -12,6 +12,7 @@
                 <field name="picking_id"/>
                 <field name="dispatch_document_name"/>
                 <field name="doc_no"/>
+                <field name="source_doc"/>
                 <field name="default_code"/>
                 <filter name="cogs_only" string="COGS (Sale + Return)" domain="[('kind','in',('sale','return'))]"/>
                 <filter name="sale" string="Sales" domain="[('kind','=','sale')]"/>
@@ -40,6 +41,7 @@
                 <field name="product_name"/>
                 <field name="acct_date"/>
                 <field name="doc_no"/>
+                <field name="source_doc" optional="show"/>
                 <field name="qt" sum="Qty"/>
                 <field name="cost" sum="Cost"/>
                 <field name="qt_return" sum="Qty Return"/>

@@ -4,6 +4,17 @@ from datetime import datetime, timedelta
 from odoo import fields, models, tools
 
 
+# Only stock cut from these locations (and their children) counts as a sale.
+# Customer-bound moves from any other location stay in the view as other_out /
+# other_in so the FIFO reconciliation still holds, but are not COGS.
+# The move must also originate from a sale order or a POS order.
+SALES_LOCATIONS = ('FG10/Stock', 'OT01/Stock')
+SALES_LOCATIONS_SQL = (
+    "SELECT DISTINCT c.id FROM stock_location c "
+    "JOIN stock_location r ON r.complete_name IN " + str(SALES_LOCATIONS) +
+    " AND c.parent_path LIKE r.parent_path || '%%'")
+
+
 class BuzCogsReport(models.Model):
     _name = 'buz.cogs.report'
     _description = 'Actual COGS Report'
@@ -19,6 +30,7 @@ class BuzCogsReport(models.Model):
     stock_move_id = fields.Many2one('stock.move', string='Stock Move', readonly=True)
     picking_id = fields.Many2one('stock.picking', string='Transfer', readonly=True)
     partner_id = fields.Many2one('res.partner', string='Customer', readonly=True)
+    source_doc = fields.Char(string='Source (SO / POS)', readonly=True)
     dispatch_document_name = fields.Char(string='Dispatch Document (DP)', readonly=True)
     kind = fields.Selection(
         [('sale', 'Sale (to customer)'),
@@ -56,7 +68,7 @@ class BuzCogsReport(models.Model):
         utc_lower = (fields.Datetime.to_datetime(cutoff) - timedelta(hours=7)
                      if cutoff else datetime(1900, 1, 1))
         self.env.cr.execute("""
-            CREATE OR REPLACE VIEW %s AS (
+            CREATE OR REPLACE VIEW {VIEW} AS (
                 SELECT
                     svl.id AS id,
                     (COALESCE(svl.accounting_date, svl.create_date)
@@ -71,9 +83,10 @@ class BuzCogsReport(models.Model):
                     sm.picking_id,
                     sp.partner_id,
                     dp.names AS dispatch_document_name,
+                    COALESCE(so.name, posd.name) AS source_doc,
                     CASE
-                        WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer' THEN 'sale'
-                        WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer' THEN 'return'
+                        WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer' AND sls.id IS NOT NULL AND {SRC} IS NOT NULL THEN 'sale'
+                        WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer' AND sld.id IS NOT NULL AND {SRC} IS NOT NULL THEN 'return'
                         WHEN svl.quantity < 0 THEN 'other_out'
                         WHEN svl.quantity > 0 THEN 'other_in'
                         WHEN svl.stock_landed_cost_id IS NOT NULL THEN 'landed_cost'
@@ -82,20 +95,20 @@ class BuzCogsReport(models.Model):
                     svl.quantity AS quantity,
                     svl.value AS value,
                     CASE
-                        WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer' THEN -svl.value
-                        WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer' THEN -svl.value
+                        WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer' AND sls.id IS NOT NULL AND {SRC} IS NOT NULL THEN -svl.value
+                        WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer' AND sld.id IS NOT NULL AND {SRC} IS NOT NULL THEN -svl.value
                         ELSE 0
                     END AS cogs,
                     pp.default_code AS default_code,
                     COALESCE(tmpl.name->>'en_US', tmpl.name->>'th_TH') AS product_name,
                     COALESCE(dp.names, sp.name) AS doc_no,
-                    CASE WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer'
+                    CASE WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer' AND sls.id IS NOT NULL AND {SRC} IS NOT NULL
                          THEN -svl.quantity ELSE 0 END AS qt,
-                    CASE WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer'
+                    CASE WHEN svl.quantity < 0 AND ld.usage = 'customer' AND ls.usage <> 'customer' AND sls.id IS NOT NULL AND {SRC} IS NOT NULL
                          THEN -svl.value ELSE 0 END AS cost,
-                    CASE WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer'
+                    CASE WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer' AND sld.id IS NOT NULL AND {SRC} IS NOT NULL
                          THEN svl.quantity ELSE 0 END AS qt_return,
-                    CASE WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer'
+                    CASE WHEN svl.quantity > 0 AND ls.usage = 'customer' AND ld.usage <> 'customer' AND sld.id IS NOT NULL AND {SRC} IS NOT NULL
                          THEN svl.value ELSE 0 END AS cost_return,
                     comp.currency_id
                 FROM stock_valuation_layer svl
@@ -107,11 +120,24 @@ class BuzCogsReport(models.Model):
                 LEFT JOIN stock_location ls ON ls.id = sm.location_id
                 LEFT JOIN stock_picking sp ON sp.id = sm.picking_id
                 LEFT JOIN (
+                    SELECT DISTINCT ON (pid) pid, name FROM (
+                        SELECT p.picking_id AS pid, p.name FROM pos_lite_order p
+                        WHERE p.picking_id IS NOT NULL
+                        UNION ALL
+                        SELECT sp2.id, p.name FROM pos_lite_order p
+                        JOIN stock_picking sp2 ON sp2.origin = p.name
+                    ) u ORDER BY pid, name
+                ) posd ON posd.pid = sm.picking_id
+                LEFT JOIN sale_order_line sol ON sol.id = sm.sale_line_id
+                LEFT JOIN sale_order so ON so.id = COALESCE(sp.sale_id, sol.order_id)
+                LEFT JOIN ({SALES}) sls ON sls.id = ls.id
+                LEFT JOIN ({SALES}) sld ON sld.id = ld.id
+                LEFT JOIN (
                     SELECT stock_picking_id, string_agg(name, ', ' ORDER BY name) AS names
                     FROM buz_dispatch_document
                     WHERE name IS NOT NULL
                     GROUP BY stock_picking_id
                 ) dp ON dp.stock_picking_id = sm.picking_id
-                WHERE COALESCE(svl.accounting_date, svl.create_date) >= %%s
+                WHERE COALESCE(svl.accounting_date, svl.create_date) >= %s
             )
-        """ % self._table, (utc_lower,))
+        """.replace("{SRC}", "COALESCE(so.name, posd.name)").replace("{VIEW}", self._table).replace("{SALES}", SALES_LOCATIONS_SQL), (utc_lower,))
