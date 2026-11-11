@@ -39,6 +39,13 @@ ACCOUNTING_DATE_CTE = """
         SELECT l.*,
             COALESCE(l.accounting_date, l.create_date) AS acct_date
         FROM stock_valuation_layer l
+        LEFT JOIN stock_move sm ON sm.id = l.stock_move_id
+        -- Layers of cancelled moves never moved stock, and the plain reversing
+        -- layers written to neutralise them ("Reverse cancelled ...") carry no
+        -- move. Both are bookkeeping noise: hide them together so the net is
+        -- unchanged and cancelled documents do not show up as rows.
+        WHERE COALESCE(sm.state, '') <> 'cancel'
+          AND COALESCE(l.description, '') NOT LIKE 'Reverse cancelled%%'
     )
 """
 
