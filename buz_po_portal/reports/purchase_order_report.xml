@@ -297,7 +297,8 @@
                              <span t-field="line_tuple[1].product_uom.name"/>
                          </td>
                          <td style="border: 1px solid black; text-align: right; vertical-align: top; padding-right: 2px;">
-                            <span t-esc="'{:,.2f}'.format(line_tuple[1].price_unit)"/>
+                            <t t-set="cur_prefix" t-value="(o.currency_id.symbol or o.currency_id.name) if o.currency_id != o.company_id.currency_id else ''"/>
+                            <span t-esc="cur_prefix + '{:,.2f}'.format(line_tuple[1].price_unit)"/>
                         </td>
                          <td style="border: 1px solid black; text-align: right; vertical-align: top; padding-right: 2px;">
                              <t t-if="line_tuple[1].discount">
@@ -306,7 +307,7 @@
                          </td>
                          <td style="border: 1px solid black; text-align: right; vertical-align: top; padding-right: 2px;">
                              <t t-set="subtotal" t-value="line_tuple[1].product_uom_qty * line_tuple[1].price_unit * (1 - (line_tuple[1].discount or 0.0)/100)"/>
-                             <span t-esc="'{:,.2f}'.format(subtotal or 0.0)"/>
+                             <span t-esc="cur_prefix + '{:,.2f}'.format(subtotal or 0.0)"/>
                          </td>
                      </tr>
                  </t>
@@ -345,6 +346,7 @@
     
         <!-- ฝั่งขวา -->
         <div style="width: 40%; padding: 0 0 0 2px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column;">
+            <t t-set="cur_prefix" t-value="(o.currency_id.symbol or o.currency_id.name) if o.currency_id != o.company_id.currency_id else ''"/>
             <t t-set="total_gross" t-value="sum([(line.product_qty * line.price_unit) for line in o.order_line])"/>
             <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * (line.discount or 0.0)/100.0) for line in o.order_line])"/>
             <t t-set="amount_untaxed" t-value="o.amount_untaxed or 0.0"/>
@@ -355,31 +357,31 @@
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ราคารวม/Total:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(total_gross)"/>
+                        <span t-esc="cur_prefix + '{:,.2f}'.format(total_gross)"/>
                     </td>
                 </tr>
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ส่วนลด/Discount:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(total_discount)"/>
+                        <span t-esc="cur_prefix + '{:,.2f}'.format(total_discount)"/>
                     </td>
                 </tr>
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">คงเหลือ/Remaining:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
+                        <span t-esc="cur_prefix + '{:,.2f}'.format(amount_untaxed)"/>
                     </td>
                 </tr>
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ภาษีมูลค่าเพิ่ม 7%:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(amount_tax)"/>
+                        <span t-esc="cur_prefix + '{:,.2f}'.format(amount_tax)"/>
                     </td>
                 </tr>
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;"><strong>จำนวนเงินรวมทั้งสิ้น:</strong></td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;"><strong>
-                        <span t-esc="'{:,.2f}'.format(amount_total)"/>
+                        <span t-esc="cur_prefix + '{:,.2f}'.format(amount_total)"/>
                     </strong></td>
                 </tr>
             </table>
