@@ -196,6 +196,27 @@ class TestApprovalRequestMultiAccountDistribution(TransactionCase, BudgetTestMix
         self.assertAlmostEqual(request.amount_analytic, 1000.0, places=2)
         self.assertAlmostEqual(request.amount_overage, 900.0, places=2)
 
+    def test_pr_budget_approval_skips_head_approval(self):
+        target = fields.Date.today() + timedelta(days=15)
+        self._create_confirmed_plan(target, budget_amount=100)
+        pr = self._create_pr(lines=[(0, 0, {
+            'product_id': self.product.id,
+            'quantity': 10,
+            'unit_price': 100,
+            'analytic_distribution': {str(self.analytic_account.id): 100},
+        })], target=target)
+        self.assertEqual(pr.state, 'draft')
+        wizard_ctx = pr.action_request_monthly_budget_approval()['context']
+        self.env['monthly.budget.request.reason.wizard'].with_context(
+            **wizard_ctx).create({'reason': 'skip head'}).action_submit_request()
+        request = self.env['buz.monthly.budget.approval.request'].search([
+            ('document_type', '=', 'pr'), ('ref_pr_id', '=', pr.id)], limit=1)
+        if request.state == 'pending':
+            request._do_approve()
+        self.assertEqual(request.state, 'approved')
+        self.assertEqual(pr.state, 'waiting_purchase_approval')
+        self.assertTrue(pr.requisition_head_id)
+
     def test_po_analytic_amount_counts_only_budgeted_accounts(self):
         target = fields.Date.today() + timedelta(days=15)
         self._create_confirmed_plan(target, budget_amount=100)

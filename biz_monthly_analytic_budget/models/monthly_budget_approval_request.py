@@ -185,8 +185,22 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                                'Note: %s') % rec.note,
                     )
                     rec._notify_requester('approved')
+                    rec._advance_source_pr()
 
         return records
+
+    def _advance_source_pr(self):
+        """Budget approved -> PR goes straight to Purchase approval
+        (requester is the head who asked for the budget)."""
+        for rec in self:
+            pr = rec.ref_pr_id
+            if rec.document_type != 'pr' or not pr or rec.state != 'approved':
+                continue
+            if pr.state not in ('draft', 'waiting_head_approval'):
+                continue
+            head = rec.requester_id or self.env.user
+            pr.sudo()._skip_to_purchase_approval(
+                head, reason=_('monthly budget request %s approved') % rec.name)
 
     def action_approve(self):
         self.ensure_one()
@@ -241,6 +255,7 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                 ) % (self.env.user.name, rec.note or '-'),
             )
             rec._notify_requester('approved')
+            rec._advance_source_pr()
 
     def _do_reject(self):
         for rec in self:
