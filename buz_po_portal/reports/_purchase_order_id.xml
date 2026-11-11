@@ -166,6 +166,7 @@
                       <table style="width: 100%;">
                         <tr>
                           <td style="width: 50%; border: none;"><strong>โทร:</strong> <span t-field="o.partner_id.phone"/></td>
+                          <td style="width: 50%; border: none;"><strong>แฟ็กซ์:</strong> <span t-field="o.partner_id.fax"/></td>
                         </tr>
                       </table>
                     </div>

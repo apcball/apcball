@@ -109,14 +109,6 @@
                                   }
                                   @page {
                                     margin: 10mm 10mm 20mm 10mm; /* ซ้าย ขวา บน ล่าง */
-                                    @bottom-left {
-                                        content: "อนุมัติใช้วันที่ 14/09/2563";
-                                        font-size: 14px;
-                                    }
-                                    @bottom-right {
-                                        content: "FM-PUR-08.REV.01";
-                                        font-size: 14px;
-                                    }
                                     }
                                     
                            
@@ -127,7 +119,7 @@
         <t t-set="lines_per_page" t-value="10"/>
         <t t-set="total_pages" t-value="int((line_count + lines_per_page - 1) / lines_per_page)"/>
         <t t-foreach="range(total_pages)" t-as="page_num">
-            <div t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
+            <div t-attf-style="#{page_num &gt; 0 and 'page-break-before: always; padding-top: 14mm;' or ''}">
     
                 
     
@@ -178,7 +170,8 @@
                                     <div class="mb-1" style="margin-bottom:0; padding:0 1px;">
                                         <strong style="display: inline-block; width:25%;">ผู้ขาย/VENDOR:</strong>
                                         <span t-field="o.partner_id.name"/>
-                                        (<span t-field="o.partner_id.branch"/>)
+                                        <span t-if="o.partner_id.branch == '00000'">(สำนักงานใหญ่)</span>
+                                        <span t-elif="o.partner_id.branch">(สาขาที่ <t t-esc="o.partner_id.branch"/>)</span>
                                     </div>
                                     <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
                                         <strong style="display: inline-block; width: 25%;">ที่อยู่/ADDRESS:</strong>
@@ -245,7 +238,10 @@
                                 </td>
                                 <td style="width: 18.9%; border-left: 1px solid #000; padding: 2px; line-height: 1.1;">
                                     <strong>ใบขอซื้อเลขที่:</strong>
-                                    <t t-if="o.pr_number">
+                                    <t t-if="o.requisition_id and o.requisition_id.type_id.quantity_copy == 'none'">
+                                        <span t-esc="o.requisition_id.name"/>
+                                    </t>
+                                    <t t-elif="o.pr_number">
                                         <span t-esc="o.pr_number"/>
                                     </t>
                                 </td>
@@ -318,36 +314,11 @@
          </table>
          
                   
-                <t t-if="page_num != total_pages - 1">
-                    <div style="position: relative; min-height: 25mm; padding-bottom: 80mm;">
-                      <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
-                  
-                      <!-- Footer fixed bottom -->
-                      <div style="
-                        position: absolute;
-                        bottom: 0; left: 0; width: 100%;
-                        display: flex; justify-content: space-between;
-                        font-size: 10px;
-                        padding-left: 4mm; padding-right: 4mm;
-                        line-height: 1.2;
-                        page-break-inside: avoid;
-                        ">
-                        <div>
-                          <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
-                        </div>
-                        <div>
-                          <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
-                        </div>
-                      </div>
-                    </div>
-                  </t>
-                  
-                  
           </div>
        </t>     
             
       <!-- กล่องรวม หมายเหตุ + ผลรวม -->
-       <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 10px; min-height: 174px; height: 174px;">
+       <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px; margin-top: 3px; min-height: 174px; height: 174px;">
     
         <!-- ฝั่งซ้าย -->
         <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box; height: 100%;">
@@ -374,17 +345,17 @@
     
         <!-- ฝั่งขวา -->
         <div style="width: 40%; padding: 0 0 0 2px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column;">
-            <t t-set="amount_untaxed" t-value="o.amount_untaxed or 0.0"/>
+            <t t-set="total_gross" t-value="sum([(line.product_qty * line.price_unit) for line in o.order_line])"/>
             <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * (line.discount or 0.0)/100.0) for line in o.order_line])"/>
-            <t t-set="amount_after_discount" t-value="(amount_untaxed or 0.0) - (total_discount or 0.0)"/>
+            <t t-set="amount_untaxed" t-value="o.amount_untaxed or 0.0"/>
             <t t-set="amount_tax" t-value="o.has_vat and o.amount_tax or 0.0"/>
-            <t t-set="amount_total" t-value="(o.has_vat and amount_after_discount + amount_tax) or amount_after_discount"/>
+            <t t-set="amount_total" t-value="(o.has_vat and amount_untaxed + amount_tax) or amount_untaxed"/>
     
             <table style="width: 100%; border-collapse: collapse; font-size: 20px; border: 1px solid #000; margin: 0; height: 100%;">
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ราคารวม/Total:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
+                        <span t-esc="'{:,.2f}'.format(total_gross)"/>
                     </td>
                 </tr>
                 <tr>
@@ -396,7 +367,7 @@
                 <tr>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">คงเหลือ/Remaining:</td>
                     <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
-                        <span t-esc="'{:,.2f}'.format(amount_after_discount)"/>
+                        <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
                     </td>
                 </tr>
                 <tr>
@@ -458,7 +429,7 @@
                                     }
                                 </style>
                                 <!-- ผู้จัดทำ -->
-                                <div class="row" style="margin-top: 100px; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;">
+                                <div class="row" style="margin-top: -20px !important; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;">
                                     <!-- ส่วนที่ 1: ผู้จัดทำ -->
                                     <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
                                         <div style="text-align: center; font-size: 18px;">
