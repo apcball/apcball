@@ -4,8 +4,12 @@ class AgedPartnerXlsx(models.AbstractModel):
     _name = 'report.buz_gl_report_excel.report_aged_partner_xlsx'
     _inherit = 'report.report_xlsx.abstract'
 
+    _report_model = 'report.buz_gl_report_excel.report_aged_partner'
+    _sheet_title = 'Aged Partner'
+    _show_type = True
+
     def generate_xlsx_report(self, workbook, data, wizards):
-        pdf_report = self.env['report.buz_gl_report_excel.report_aged_partner']
+        pdf_report = self.env[self._report_model]
         report_data = pdf_report._get_report_values(wizards.ids, data=data)
         
         partners = report_data.get('partners', [])
@@ -15,7 +19,7 @@ class AgedPartnerXlsx(models.AbstractModel):
         result_selection = report_data.get('result_selection', 'Receivable/Payable')
         company = self.env['res.company'].browse(report_data.get('company_id', self.env.company.id))
 
-        sheet = workbook.add_worksheet('Aged Partner')
+        sheet = workbook.add_worksheet(self._sheet_title)
         
         title_fmt = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center'})
         header_fmt = workbook.add_format({
@@ -55,14 +59,19 @@ class AgedPartnerXlsx(models.AbstractModel):
         sheet.set_column('D:D', 8)
         sheet.set_column('E:L', 15)
 
-        sheet.merge_range('A1:L1', f"{company.name}: Aged Partner", title_fmt)
+        sheet.merge_range('A1:L1', f"{company.name}: {self._sheet_title}", title_fmt)
         sheet.write('A2', f"As of Date: {date_as_of}")
-        if 'aged_partner_xlsx.py' == 'aged_partner_xlsx.py':
+        if self._show_type:
             sheet.write('A3', f"Type: {result_selection.title()}")
         
         headers = [
             'Partner / Entry', 'Date', 'Due Date', 'Ccy', 'Amount Ccy',
-            'Not Due', '1-30 Days', '31-60 Days', '61-90 Days', '91-120 Days', '120+ Days', 'Total'
+            'Not Due',
+            f'1-{period_length} Days',
+            f'{period_length + 1}-{period_length * 2} Days',
+            f'{period_length * 2 + 1}-{period_length * 3} Days',
+            f'{period_length * 3 + 1}-{period_length * 4} Days',
+            f'{period_length * 4}+ Days', 'Total'
         ]
         
         for col_idx, header in enumerate(headers):

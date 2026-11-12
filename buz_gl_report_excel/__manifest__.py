@@ -1,6 +1,6 @@
 {
     'name': 'Buz General Ledger Report Excel',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.1',
     'summary': 'General Ledger and Aged Reports with Excel Export',
     'description': """
         General Ledger Report similar to standard but with specific layout and Excel export.
