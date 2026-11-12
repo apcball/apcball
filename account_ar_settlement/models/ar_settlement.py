@@ -48,6 +48,13 @@ class ArSettlement(models.Model):
         states={'confirmed': [('readonly', True)]},
         tracking=True,
     )
+    received_date = fields.Date(
+        string='Received date',
+        default=fields.Date.context_today,
+        states={'confirmed': [('readonly', True)]},
+        tracking=True,
+        help='วันที่รับชำระเงินจริง แยกจาก Payment Date ซึ่งเป็นวันที่ลงบัญชี',
+    )
     journal_id = fields.Many2one(
         'account.journal', string='Payment Journal', required=True,
         domain=[('type', 'in', ['bank', 'cash'])],
@@ -417,6 +424,46 @@ class ArSettlement(models.Model):
     #  ACTIONS – CONFIRM
     # ═══════════════════════════════════════════════════════════════════
 
+    def _check_allocations_still_open(self, inv_lines):
+        """Refuse to confirm when a selected invoice / credit note was already
+        settled (or partly settled) after this draft was loaded.
+
+        Lines are loaded when the draft is created, so another settlement or
+        payment may have consumed the same invoice in the meantime.
+        Confirming anyway would create an extra clearing entry that can never
+        be reconciled against the invoice.
+        """
+        self.ensure_one()
+        problems = []
+        for line in inv_lines:
+            inv = line.invoice_id
+            open_ar = inv.line_ids.filtered(
+                lambda l: l.account_id.account_type == 'asset_receivable'
+                and not l.reconciled and l.amount_residual != 0
+            )
+            if inv.state != 'posted' or not open_ar:
+                problems.append(_('%s is already paid or not posted') % inv.display_name)
+            elif self.currency_id.compare_amounts(
+                    line.pay_amount, abs(inv.amount_residual)) > 0:
+                problems.append(_('%s: allocated %s exceeds open residual %s') % (
+                    inv.display_name, line.pay_amount, abs(inv.amount_residual)))
+        for cl in self.credit_line_ids.filtered('selected'):
+            cn = cl.credit_move_id
+            if cl.use_amount > 0 and (
+                    cn.state != 'posted'
+                    or self.currency_id.compare_amounts(
+                        cl.use_amount, abs(cn.amount_residual)) > 0):
+                problems.append(_('Credit note %s is already used or has less residual than allocated')
+                                % cn.display_name)
+        if problems:
+            shown = '\n'.join('- %s' % p for p in problems[:15])
+            more = len(problems) - 15
+            raise UserError(_(
+                'Cannot confirm: some allocations changed since this settlement was loaded '
+                '(settled by another settlement or payment). '
+                'Reload invoices (Load Invoices) and try again.\n%s%s'
+            ) % (shown, _('\n… and %s more') % more if more > 0 else ''))
+
     def action_confirm(self):
         """Create payment, post, reconcile, handle difference."""
         self.ensure_one()
@@ -440,6 +487,8 @@ class ArSettlement(models.Model):
         inv_selected = inv_selected.filtered(lambda l: l.pay_amount > 0)
         if not inv_selected:
             raise UserError(_('All selected invoices have zero residual.'))
+
+        self._check_allocations_still_open(inv_selected)
 
         if self.amount_received <= 0:
             raise UserError(_('Amount received must be greater than zero.'))
@@ -492,6 +541,9 @@ class ArSettlement(models.Model):
             'partner_type': 'customer',
             'ref': self.name,
         }
+        # ส่งต่อเฉพาะเมื่อโมดูลที่เพิ่มฟิลด์นี้ใน account.payment ติดตั้งอยู่
+        if 'received_date' in self.env['account.payment']._fields:
+            payment_vals['received_date'] = self.received_date
         # buz_accounting_addon.account.payment.action_post() requires
         # buz_payment_channel on every customer inbound payment. Payments
         # created through the ORM skip the field's form default, so forward
@@ -825,9 +877,20 @@ class ArSettlement(models.Model):
                 'credit': amount_company,
             }
 
+        # Never post a clearing entry that cannot be matched to an open invoice
+        if not invoice.line_ids.filtered(
+            lambda l: l.account_id.account_type == 'asset_receivable'
+            and not l.reconciled and l.amount_residual != 0
+        ):
+            raise UserError(
+                _('Invoice %s has no open receivable to clear (already paid).')
+                % invoice.display_name
+            )
+
         clearing_move = self.env['account.move'].create({
             'journal_id': self.journal_id.id,
             'date': self.payment_date,
+            'ar_settlement_id': self.id,
             'ref': _('Clearing: %s → %s [%s]') % (
                 self.partner_id.name, invoice_partner.name, invoice.name,
             ),
@@ -947,6 +1010,7 @@ class ArSettlement(models.Model):
             clearing_move = self.env['account.move'].create({
                 'journal_id': self.journal_id.id,
                 'date': self.payment_date,
+                'ar_settlement_id': self.id,
                 'ref': _('CN Clearing: %s → %s [%s]') % (
                     cn_partner.name, self.partner_id.name, cn.name),
                 'partner_id': self.partner_id.id,
@@ -979,7 +1043,29 @@ class ArSettlement(models.Model):
         self.ensure_one()
         if self.state != 'confirmed':
             raise UserError(_('Only confirmed settlements can be cancelled.'))
+        # Undo the accounting so invoices re-open and nothing is left behind:
+        # clearing entries first (they hold the invoice reconciliation), then
+        # the payment.  button_draft() removes the reconciliations.
+        clearings = self.env['account.move'].search([
+            ('ar_settlement_id', '=', self.id), ('state', '=', 'posted'),
+        ])
+        if clearings:
+            clearings.button_draft()
+            clearings.button_cancel()
+        payment = self.payment_id
+        if payment and payment.state != 'cancel':
+            payment.action_draft()
+            payment.action_cancel()
         self.state = 'cancelled'
+
+    def unlink(self):
+        for rec in self:
+            if rec.state == 'confirmed' or (
+                    rec.payment_id and rec.payment_id.state != 'cancel'):
+                raise UserError(_(
+                    'Settlement %s has a live payment / clearing entries and '
+                    'cannot be deleted. Cancel it first.') % rec.name)
+        return super().unlink()
 
     def action_draft(self):
         self.ensure_one()
