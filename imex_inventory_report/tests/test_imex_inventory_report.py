@@ -213,6 +213,38 @@ class TestImexInventoryReport(TransactionCase):
             (oth.initial, oth.product_in, oth.product_out, oth.balance),
             (3.0, 1.0, 0.0, 4.0))
 
+    def test_self_transfer_after_date_to_does_not_skew_opening(self):
+        """A move whose source == destination after date_to nets to 0 and
+        must not shift the opening balance (it used to count as +qty)."""
+        self.env["ir.config_parameter"].sudo().set_param(
+            "imex_inventory_report.cutoff_date", "2026-03-31")
+        self._create_done_move(
+            self.location_stock, self.location_production, 1.0,
+            "2026-05-10 08:00:00", "IMEX/SELF/WIN")
+        self._create_done_move(
+            self.location_stock, self.location_stock, 5.0,
+            "2026-06-10 08:00:00", "IMEX/SELF/POST")
+        self._set_quants({self.location_stock: 4.0})
+        wizard = self._create_wizard(is_groupby_location=True)
+
+        self.env["imex.inventory.report"].init_results(wizard)
+        line = self.env["imex.inventory.report"].search([
+            ("product_id", "=", self.product.id),
+            ("location", "=", self.location_stock.id),
+        ])
+        # balance at date_to == quant (self move nets 0) == 4; window out 1
+        # -> opening 5.
+        self.assertEqual(
+            (line.initial, line.product_out, line.balance), (5.0, 1.0, 4.0))
+
+        details = self.env["imex.inventory.details.report"]
+        details.init_results(wizard)
+        row = details.search([
+            ("report_location_id", "=", self.location_stock.id),
+            ("product_id", "=", False),
+        ])
+        self.assertEqual(row.initial, 5.0)
+
     def test_summary_groupby_row_for_stock_without_window_moves(self):
         """A location holding stock but with no move in the window still gets
         a row (opening == on-hand)."""

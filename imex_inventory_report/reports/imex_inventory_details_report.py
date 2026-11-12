@@ -281,6 +281,8 @@ class ImexInventoryDetailsReport(models.Model):
                     ) q ON q.location_id = w.report_location_id
                     LEFT JOIN LATERAL (
                         SELECT SUM(CASE
+                                WHEN sml.location_id = sml.location_dest_id
+                                    THEN 0
                                 WHEN sml.location_dest_id
                                     = COALESCE(w.report_location_id, q.location_id)
                                 THEN sml.quantity_product_uom
