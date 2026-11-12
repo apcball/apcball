@@ -291,7 +291,8 @@
                              <span t-esc="'%.0f' % line_tuple[1].product_uom_qty if line_tuple[1].product_uom_qty else '0'"/>
                          </td>
                          <td style="border: 1px solid black; text-align: center; vertical-align: top;">
-                             <span t-field="line_tuple[1].product_uom.name"/>
+                             <span t-if="line_tuple[1].secondary_uom_id" t-field="line_tuple[1].secondary_uom_id"/>
+                             <span t-else="" t-field="line_tuple[1].product_uom.name"/>
                          </td>
                          <td style="border: 1px solid black; text-align: right; vertical-align: top; padding-right: 2px;">
                             <span t-esc="'{:,.2f}'.format(line_tuple[1].price_unit)"/>
