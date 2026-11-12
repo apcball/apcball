@@ -1,27 +1,32 @@
 #!/bin/bash
-# READ-ONLY dry-run plan: over-cleared "Clearing: Shopee -> customer [invoice]" entries (account_ar_settlement).
+# READ-ONLY dry-run plan: over-cleared "Clearing: <Platform> -> customer [invoice]" entries (account_ar_settlement).
 # Writes NOTHING to prod (psql runs with default_transaction_read_only=on).
 #
 # Plan per invoice ref (see conversation 2026-11-12):
 #   keeper = clearing whose customer leg is reconciled with the invoice
 #   extras = other clearings of the same ref
-#   fix    = (a) unreconcile extra's Shopee leg from payout, (b) cancel extra move,
-#            (c) reconcile freed payout credit with keeper's open Shopee debit leg.
+#   fix    = (a) unreconcile extra's platform leg from payout, (b) cancel extra move,
+#            (c) reconcile freed payout credit with keeper's open platform debit leg.
 #   GL impact 0 (all legs on the same receivable account, only partner sub-ledger moves).
 #
-# Usage:  scripts/shopee_dup_clearing_dryrun.sh [INVOICE_NO]     # optional: single invoice, e.g. IV260701646
-# Output: ~/Desktop/shopee_dup_clearing_plan_<date>.csv (per ref) and ..._detail_<date>.csv (per clearing)
+# Usage:  scripts/dup_clearing_dryrun.sh [PLATFORM] [INVOICE_NO]   # PLATFORM = Shopee (default) | Lazada ; INVOICE_NO optional, e.g. IV260701646
+# Output: ~/Desktop/dup_clearing_<platform>_plan_<date>.csv (per ref) and ..._detail_<date>.csv (per clearing)
 set -euo pipefail
-DOC="${1:-}"
+PLATFORM="${1:-Shopee}"; DOC="${2:-}"
+case "$PLATFORM" in
+  Shopee) PID=2142;;
+  Lazada) PID=2141;;
+  *) echo "unknown platform '$PLATFORM' (Shopee|Lazada)" >&2; exit 2;;
+esac
 OUT_DIR="$HOME/Desktop"; D=$(date +%F)
-PLAN="$OUT_DIR/shopee_dup_clearing_plan_${D}.csv"; DETAIL="$OUT_DIR/shopee_dup_clearing_detail_${D}.csv"
+PLAN="$OUT_DIR/dup_clearing_${PLATFORM}_plan_${D}.csv"; DETAIL="$OUT_DIR/dup_clearing_${PLATFORM}_detail_${D}.csv"
 [[ "$DOC" =~ ^[A-Za-z0-9_./-]*$ ]] || { echo "bad invoice no"; exit 1; }
 
 read -r -d '' BASE <<SQL || true
 with c as (
  select m.id mid, m.name, m.ref, m.date, m.create_date::date cdate, m.company_id,
   substring(m.ref from '\[([^\]]+)\]\s*\$') doc
- from account_move m where m.state='posted' and m.ref ilike 'Clearing: Shopee%'
+ from account_move m where m.state='posted' and m.ref ilike 'Clearing: ${PLATFORM}%'
 ),
 d as (select ref from c group by ref having count(*)>1),
 x as (
@@ -32,8 +37,8 @@ x as (
   coalesce((select string_agg(distinct pm.name, ',') from account_partial_reconcile pr join account_move_line pl on pl.id=pr.credit_move_id join account_move pm on pm.id=pl.move_id where pr.debit_move_id=sl.id),'') payouts,
   coalesce((select sum(pr.amount) from account_partial_reconcile pr where pr.credit_move_id=cl.id and pr.debit_move_id=il.id),0) cust_to_inv
  from c join d on d.ref=c.ref
- join account_move_line sl on sl.move_id=c.mid and sl.partner_id=2142 and sl.debit>0
- join account_move_line cl on cl.move_id=c.mid and cl.partner_id<>2142 and cl.credit>0
+ join account_move_line sl on sl.move_id=c.mid and sl.partner_id=${PID} and sl.debit>0
+ join account_move_line cl on cl.move_id=c.mid and cl.partner_id<>${PID} and cl.credit>0
  left join lateral (select id,amount_total,payment_state from account_move i where i.name=c.doc and i.move_type like 'out_%' limit 1) inv on true
  left join lateral (select l.id from account_move_line l join account_account a on a.id=l.account_id and a.account_type='asset_receivable' where l.move_id=inv.id limit 1) il on true
  where ('${DOC}'='' or c.doc='${DOC}')
@@ -51,7 +56,7 @@ PSQL='PW=$(grep -E "^db_password" /etc/instance1.conf | cut -d= -f2 | tr -d " ")
 # Per-clearing detail
 { echo "$BASE"; cat <<'SQL'
 select ref "Ref", name "Clearing move", date "Date", cdate "Created", role "Role",
- shopee_amt "Amount", shopee_resid "Shopee leg open", shopee_matched "Shopee matched to payout", payouts "Payout(s)",
+ shopee_amt "Amount", shopee_resid "Platform leg open", shopee_matched "Platform matched to payout", payouts "Payout(s)",
  cust_resid "Customer leg open", cust_to_inv "Customer matched to invoice", round(cust_used_elsewhere,2) "Customer used elsewhere",
  inv_total "Invoice total", payment_state "Invoice state",
  case when lock_date is not null and date<=lock_date then 'LOCKED' else '' end "Lock"
@@ -75,8 +80,8 @@ SQL
   string_agg(name, ',' order by role desc, name) moves
  from y group by ref)
 select ref "Ref", doc "Invoice", inv_total "Invoice total", n "Clearings", keepers "Keepers", extras "Extras",
- extra_amt "Extra amount", freed_payout "Payout freed on cancel", keeper_shopee_open "Keeper Shopee open",
- round(keeper_shopee_open - freed_payout,2) "Shopee residual after fix",
+ extra_amt "Extra amount", freed_payout "Payout freed on cancel", keeper_shopee_open "Keeper platform open",
+ round(keeper_shopee_open - freed_payout,2) "Platform residual after fix",
  extra_cust_open "Extra customer open (removed)", payouts "Payouts touched",
  case when keepers=0 then 'MANUAL: no keeper'
       when extras=0 then 'OK: nothing to remove'
@@ -84,7 +89,7 @@ select ref "Ref", doc "Invoice", inv_total "Invoice total", n "Clearings", keepe
       when keepers>1 then 'MANUAL: >1 keeper (partial payments?)'
       when abs(keeper_shopee_open - freed_payout)<0.005 and locked then 'AUTO-REVERSE: balanced but period locked'
       when abs(keeper_shopee_open - freed_payout)<0.005 then 'AUTO: cancel extras + reconcile'
-      when keeper_shopee_open - freed_payout>0 then 'MANUAL: keeper Shopee debit left (no payout)'
+      when keeper_shopee_open - freed_payout>0 then 'MANUAL: keeper platform debit left (no payout)'
       else 'MANUAL: freed payout exceeds keeper open' end "Plan",
  moves "Moves (keeper first)"
 from p order by 12 nulls last, 1;

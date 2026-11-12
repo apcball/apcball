@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove over-cleared "Clearing: Shopee -> customer [invoice]" entries (account_ar_settlement dup bug, see shopee_dup_clearing_dryrun.sh).
+# Remove over-cleared "Clearing: <Platform> -> customer [invoice]" entries (account_ar_settlement dup bug, see dup_clearing_dryrun.sh).
 # Per invoice ref with >1 clearing:
 #   keeper = clearing whose customer leg is reconciled with the invoice; extras = the rest.
 #   1. extras: button_draft() (drops reconciliations, frees the payout credit) then button_cancel()
@@ -7,32 +7,33 @@
 #   GL impact 0 (same receivable account, partner sub-ledger only).
 # Only plans the dry-run classes 'AUTO' are touched; anything else is skipped and listed.
 #
-# Usage: scripts/fix_shopee_dup_clearing.sh <dry|apply> <ALL|INVOICE_NO> [LIMIT] [BACKUP_DUMP_PATH_ON_MOG_PROD]
+# Usage: scripts/fix_dup_clearing.sh <dry|apply> <Shopee|Lazada> <ALL|INVOICE_NO> [LIMIT] [BACKUP_DUMP_PATH_ON_MOG_PROD]
 #   dry   : executes everything, reports, ROLLBACK (still takes row locks briefly; run off-hours)
 #   apply : needs BACKUP_DUMP_PATH (file must exist on mog-prod, policy: dump MOG_LIVE first); COMMITs per ref (resumable/idempotent)
 # Pilot: dry on one invoice, then apply on that one, then apply ALL in batches (LIMIT 100).
-# Log: ~/Desktop/shopee_dup_clearing_<mode>_<timestamp>.log
+# Log: ~/Desktop/dup_clearing_<platform>_<mode>_<timestamp>.log
 set -euo pipefail
-MODE="${1:-}"; SCOPE="${2:-}"; LIMIT="${3:-0}"; BACKUP="${4:-}"
-case "$MODE" in dry|apply) ;; *) echo "usage: $0 dry|apply ALL|INVOICE_NO [LIMIT] [BACKUP_PATH]" >&2; exit 2;; esac
+MODE="${1:-}"; PLATFORM="${2:-}"; SCOPE="${3:-}"; LIMIT="${4:-0}"; BACKUP="${5:-}"
+case "$MODE" in dry|apply) ;; *) echo "usage: $0 dry|apply Shopee|Lazada ALL|INVOICE_NO [LIMIT] [BACKUP_PATH]" >&2; exit 2;; esac
+case "$PLATFORM" in Shopee) PID=2142;; Lazada) PID=2141;; *) echo "unknown platform (Shopee|Lazada)" >&2; exit 2;; esac
 [[ "$SCOPE" =~ ^[A-Za-z0-9_./-]+$ ]] || { echo "bad scope" >&2; exit 2; }
 [[ "$LIMIT" =~ ^[0-9]+$ ]] || { echo "bad limit" >&2; exit 2; }
 [[ "$BACKUP" =~ ^[A-Za-z0-9_./~-]*$ ]] || { echo "bad backup path" >&2; exit 2; }
 if [ "$MODE" = apply ] && [ -z "$BACKUP" ]; then echo "apply requires BACKUP_PATH (pg_dump of MOG_LIVE on mog-prod)" >&2; exit 2; fi
-LOG="$HOME/Desktop/shopee_dup_clearing_${MODE}_$(date +%Y%m%d_%H%M%S).log"
+LOG="$HOME/Desktop/dup_clearing_${PLATFORM}_${MODE}_$(date +%Y%m%d_%H%M%S).log"
 ssh mog-prod "cd /opt/instance1/odoo17 && source /opt/instance1/odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http 2>&1 << 'PYEOF' | grep -E '^(>|ERR)'
-MODE = '$MODE'; SCOPE = '$SCOPE'; LIMIT = int('$LIMIT'); BACKUP = '$BACKUP'
+MODE = '$MODE'; SCOPE = '$SCOPE'; LIMIT = int('$LIMIT'); BACKUP = '$BACKUP'; PLATFORM = '$PLATFORM'; SH = int('$PID')
+PREFIX = 'Clearing: ' + PLATFORM + '%'
 import os
-SH = 2142
 Move = env['account.move']; Line = env['account.move.line']; Partial = env['account.partial.reconcile']
 def ctl(tag):
-    env.cr.execute('''select coalesce(sum(l.amount_residual) filter (where l.partner_id=2142),0),
-        coalesce(sum(l.amount_residual) filter (where l.partner_id<>2142),0),
+    env.cr.execute('''select coalesce(sum(l.amount_residual) filter (where l.partner_id=%s),0),
+        coalesce(sum(l.amount_residual) filter (where l.partner_id<>%s),0),
         count(*) filter (where abs(l.amount_residual)>0.004)
         from account_move_line l join account_move m on m.id=l.move_id join account_account a on a.id=l.account_id
-        where m.state='posted' and m.ref ilike 'Clearing: Shopee%' and a.account_type='asset_receivable' ''')
+        where m.state='posted' and m.ref ilike %s and a.account_type='asset_receivable' ''', (SH, SH, PREFIX))
     r = env.cr.fetchone()
-    print('> CTL', tag, 'shopee_open', round(r[0],2), 'customer_open', round(r[1],2), 'open_legs', r[2])
+    print('> CTL', tag, 'platform_open', round(r[0],2), 'customer_open', round(r[1],2), 'open_legs', r[2])
 def analyse(ref, moves):
     if '[' not in ref: return None, 'no invoice in ref'
     doc = ref.rsplit('[',1)[1].rstrip(']').strip()
@@ -65,7 +66,7 @@ try:
     if MODE=='apply':
         assert BACKUP and os.path.exists(os.path.expanduser(BACKUP)), 'backup dump not found: ' + BACKUP
     ctl('before')
-    moves = Move.search([('state','=','posted'),('ref','=like','Clearing: Shopee%')])
+    moves = Move.search([('state','=','posted'),('ref','=like',PREFIX)])
     groups = {}
     for m in moves: groups.setdefault(m.ref, Move)
     for m in moves: groups[m.ref] |= m
