@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_bill_payment_ref_user,buz.bill.payment.ref user,model_buz_bill_payment_ref,account.group_account_invoice,1,0,0,0
+access_buz_bill_payment_ref_readonly,buz.bill.payment.ref readonly,model_buz_bill_payment_ref,account.group_account_readonly,1,0,0,0

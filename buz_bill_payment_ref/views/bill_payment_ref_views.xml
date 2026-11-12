@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_bill_payment_ref_tree" model="ir.ui.view">
+        <field name="name">buz.bill.payment.ref.tree</field>
+        <field name="model">buz.bill.payment.ref</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="direction" optional="hide"/>
+                <field name="partner_id"/>
+                <field name="move_id"/>
+                <field name="move_type" optional="hide"/>
+                <field name="bill_ref" optional="show"/>
+                <field name="invoice_date"/>
+                <field name="invoice_date_due" optional="hide"/>
+                <field name="amount_total" optional="show"/>
+                <field name="payment_name"/>
+                <field name="payment_ref" optional="show"/>
+                <field name="journal_id" optional="show"/>
+                <field name="payment_date"/>
+                <field name="amount_paid" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_bill_payment_ref_search" model="ir.ui.view">
+        <field name="name">buz.bill.payment.ref.search</field>
+        <field name="model">buz.bill.payment.ref</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="move_id" string="Bill / Invoice No."/>
+                <field name="payment_name" string="Payment Doc No."/>
+                <field name="payment_ref"/>
+                <field name="bill_ref"/>
+                <field name="partner_id"/>
+                <field name="journal_id"/>
+                <filter name="pay" string="Payments (Vendor)" domain="[('direction','=','pay')]"/>
+                <filter name="receive" string="Receipts (Customer)" domain="[('direction','=','receive')]"/>
+                <separator/>
+                <filter name="year_2026" string="Payment date 2026"
+                        domain="[('payment_date','&gt;=','2026-01-01'),('payment_date','&lt;=','2026-12-31')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_payment" string="Payment Doc" context="{'group_by':'payment_name'}"/>
+                    <filter name="g_partner" string="Partner" context="{'group_by':'partner_id'}"/>
+                    <filter name="g_journal" string="Journal" context="{'group_by':'journal_id'}"/>
+                    <filter name="g_month" string="Payment Month" context="{'group_by':'payment_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_buz_bill_payment_ref" model="ir.actions.act_window">
+        <field name="name">Bill vs Payment Reference</field>
+        <field name="res_model">buz.bill.payment.ref</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_year_2026': 1}</field>
+    </record>
+
+    <menuitem id="menu_buz_bill_payment_ref"
+              name="Bill vs Payment Reference"
+              parent="account.menu_finance_reports"
+              action="action_buz_bill_payment_ref"
+              sequence="95"/>
+</odoo>
