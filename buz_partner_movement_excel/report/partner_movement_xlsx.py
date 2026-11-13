@@ -29,6 +29,25 @@ class PartnerMovementXlsx(models.AbstractModel):
     def _period_label(document_date, date_from):
         return 'Opening balance' if date_from and document_date < date_from else 'Period activity'
 
+    @staticmethod
+    def _skip_sibling_invoice(depth, move_type):
+        return depth > 1 and move_type in ('out_invoice', 'in_invoice')
+
+    @staticmethod
+    def _link_warning(depth, move_type, ambiguous):
+        return 'Bill allocation unclear' if depth > 1 and move_type == 'entry' and ambiguous else ''
+
+    @staticmethod
+    def _has_ambiguous_links(source_move, links, seen):
+        related_move_ids = set()
+        for partial in links:
+            debit, credit = partial.debit_move_id, partial.credit_move_id
+            own = debit if debit.move_id == source_move else credit
+            target = (credit if own == debit else debit).move_id
+            if target != source_move and target.id not in seen:
+                related_move_ids.add(target.id)
+        return len(related_move_ids) > 1
+
     def _amounts_as_of(self, lines, date_as_of):
         partials = self.env['account.partial.reconcile'].search([
             ('max_date', '<=', date_as_of),
@@ -84,12 +103,15 @@ class PartnerMovementXlsx(models.AbstractModel):
             seen.add(source_move.id)
             source_lines = source_move.line_ids
             _, _, links = self._amounts_as_of(source_lines, date_to)
+            ambiguous_links = self._has_ambiguous_links(source_move, links, seen)
             for partial in links:
                 debit, credit = partial.debit_move_id, partial.credit_move_id
                 own = debit if debit.move_id == source_move else credit
                 other = credit if own == debit else debit
                 target = other.move_id
                 if target == source_move or target.id in seen:
+                    continue
+                if self._skip_sibling_invoice(depth, target.move_type):
                     continue
                 rows.append({
                     'depth': depth,
@@ -101,7 +123,7 @@ class PartnerMovementXlsx(models.AbstractModel):
                     ),
                     'allocated': partial.amount,
                     'currency': target.currency_id.name or target.company_id.currency_id.name,
-                    'warning': 'Bill allocation unclear' if depth > 1 else '',
+                    'warning': self._link_warning(depth, target.move_type, ambiguous_links),
                 })
                 if target.move_type == 'entry':
                     append_links(target, depth + 1)
