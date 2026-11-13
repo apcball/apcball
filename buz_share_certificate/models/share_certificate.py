@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 DATA_FIELDS = (
@@ -9,6 +9,34 @@ DATA_FIELDS = (
     'previous_certificate_number', 'previous_certificate_date', 'receipt_date',
     'director_one', 'director_two',
 )
+
+
+LAYOUT_DEFAULTS = {
+    'page_offset_x_mm': 0.0,
+    'page_offset_y_mm': 0.0,
+    'stub_width_mm': 91.5,
+    'body_font_size_pt': 10.0,
+    'company_font_size_pt': 14.0,
+    'stub_header_top_mm': 24.0,
+    'stub_registration_top_mm': 33.0,
+    'stub_certificate_top_mm': 42.0,
+    'stub_shareholder_top_mm': 50.0,
+    'stub_share_count_top_mm': 58.0,
+    'stub_share_range_top_mm': 66.0,
+    'stub_paid_top_mm': 78.0,
+    'stub_total_paid_top_mm': 86.0,
+    'stub_cancellation_top_mm': 99.0,
+    'stub_receipt_top_mm': 168.0,
+    'certificate_number_top_mm': 16.0,
+    'certificate_company_top_mm': 33.0,
+    'certificate_registration_top_mm': 47.0,
+    'certificate_capital_top_mm': 66.0,
+    'certificate_shareholder_top_mm': 78.0,
+    'certificate_share_count_top_mm': 109.0,
+    'certificate_paid_top_mm': 132.0,
+    'certificate_issue_date_top_mm': 145.0,
+    'certificate_directors_top_mm': 171.0,
+}
 
 
 class ShareCertificateData(models.AbstractModel):
@@ -120,3 +148,78 @@ class ShareCertificate(models.Model):
             'context': dict(self.env.context, dialog_size='small'),
             'target': 'new',
         }
+
+
+class ShareCertificateLayoutConfig(models.Model):
+    _name = 'buz.share.certificate.layout.config'
+    _description = 'Share Certificate Print Layout Configuration'
+    _rec_name = 'name'
+
+    name = fields.Char(string='ชื่อ Configuration', required=True, default='ค่าเริ่มต้น')
+    page_offset_x_mm = fields.Float(string='ชดเชยแนวนอน (mm)', default=LAYOUT_DEFAULTS['page_offset_x_mm'])
+    page_offset_y_mm = fields.Float(string='ชดเชยแนวตั้ง (mm)', default=LAYOUT_DEFAULTS['page_offset_y_mm'])
+    stub_width_mm = fields.Float(string='ความกว้างต้นขั้ว (mm)', default=LAYOUT_DEFAULTS['stub_width_mm'])
+    body_font_size_pt = fields.Float(string='ขนาดตัวอักษรข้อมูล (pt)', default=LAYOUT_DEFAULTS['body_font_size_pt'])
+    company_font_size_pt = fields.Float(string='ขนาดชื่อบริษัท (pt)', default=LAYOUT_DEFAULTS['company_font_size_pt'])
+
+    stub_header_top_mm = fields.Float(string='ข้อมูลบริษัท (mm)', default=LAYOUT_DEFAULTS['stub_header_top_mm'])
+    stub_registration_top_mm = fields.Float(string='ทะเบียนเลขที่ (mm)', default=LAYOUT_DEFAULTS['stub_registration_top_mm'])
+    stub_certificate_top_mm = fields.Float(string='เลขที่และวันที่ใบหุ้น (mm)', default=LAYOUT_DEFAULTS['stub_certificate_top_mm'])
+    stub_shareholder_top_mm = fields.Float(string='ชื่อผู้ถือหุ้น (mm)', default=LAYOUT_DEFAULTS['stub_shareholder_top_mm'])
+    stub_share_count_top_mm = fields.Float(string='จำนวนหุ้น (mm)', default=LAYOUT_DEFAULTS['stub_share_count_top_mm'])
+    stub_share_range_top_mm = fields.Float(string='ช่วงเลขหุ้น (mm)', default=LAYOUT_DEFAULTS['stub_share_range_top_mm'])
+    stub_paid_top_mm = fields.Float(string='ชำระแล้วต่อหุ้น (mm)', default=LAYOUT_DEFAULTS['stub_paid_top_mm'])
+    stub_total_paid_top_mm = fields.Float(string='รวมชำระแล้ว (mm)', default=LAYOUT_DEFAULTS['stub_total_paid_top_mm'])
+    stub_cancellation_top_mm = fields.Float(string='ใบหุ้นเดิมที่ยกเลิก (mm)', default=LAYOUT_DEFAULTS['stub_cancellation_top_mm'])
+    stub_receipt_top_mm = fields.Float(string='วันที่รับใบหุ้น (mm)', default=LAYOUT_DEFAULTS['stub_receipt_top_mm'])
+
+    certificate_number_top_mm = fields.Float(string='เลขที่ใบหุ้น (mm)', default=LAYOUT_DEFAULTS['certificate_number_top_mm'])
+    certificate_company_top_mm = fields.Float(string='ชื่อบริษัท (mm)', default=LAYOUT_DEFAULTS['certificate_company_top_mm'])
+    certificate_registration_top_mm = fields.Float(string='ทะเบียนเลขที่ใบหุ้น (mm)', default=LAYOUT_DEFAULTS['certificate_registration_top_mm'])
+    certificate_capital_top_mm = fields.Float(string='ข้อมูลทุนและมูลค่าหุ้น (mm)', default=LAYOUT_DEFAULTS['certificate_capital_top_mm'])
+    certificate_shareholder_top_mm = fields.Float(string='ชื่อผู้ถือหุ้นใบหุ้น (mm)', default=LAYOUT_DEFAULTS['certificate_shareholder_top_mm'])
+    certificate_share_count_top_mm = fields.Float(string='จำนวนและเลขหุ้น (mm)', default=LAYOUT_DEFAULTS['certificate_share_count_top_mm'])
+    certificate_paid_top_mm = fields.Float(string='ข้อมูลการชำระค่าหุ้น (mm)', default=LAYOUT_DEFAULTS['certificate_paid_top_mm'])
+    certificate_issue_date_top_mm = fields.Float(string='วันที่ออกใบหุ้น (mm)', default=LAYOUT_DEFAULTS['certificate_issue_date_top_mm'])
+    certificate_directors_top_mm = fields.Float(string='ชื่อกรรมการ (mm)', default=LAYOUT_DEFAULTS['certificate_directors_top_mm'])
+
+    @api.model
+    def get_default_config(self):
+        return self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+
+    def action_reset_defaults(self):
+        self.ensure_one()
+        self.write(LAYOUT_DEFAULTS)
+        return True
+
+    def action_preview_layout(self):
+        self.ensure_one()
+        return self.env.ref(
+            'buz_share_certificate.action_report_share_certificate_preview'
+        ).report_action(self, config=False)
+
+    @api.constrains(
+        'page_offset_x_mm', 'page_offset_y_mm', 'stub_width_mm',
+        'body_font_size_pt', 'company_font_size_pt',
+        'stub_header_top_mm', 'stub_registration_top_mm',
+        'stub_certificate_top_mm', 'stub_shareholder_top_mm',
+        'stub_share_count_top_mm', 'stub_share_range_top_mm',
+        'stub_paid_top_mm', 'stub_total_paid_top_mm',
+        'stub_cancellation_top_mm', 'stub_receipt_top_mm',
+        'certificate_number_top_mm', 'certificate_company_top_mm',
+        'certificate_registration_top_mm', 'certificate_capital_top_mm',
+        'certificate_shareholder_top_mm', 'certificate_share_count_top_mm',
+        'certificate_paid_top_mm', 'certificate_issue_date_top_mm',
+        'certificate_directors_top_mm',
+    )
+    def _check_layout_bounds(self):
+        position_fields = [name for name in LAYOUT_DEFAULTS if name.endswith('_top_mm')]
+        for record in self:
+            if not 70 <= record.stub_width_mm <= 120:
+                raise ValidationError(_('ความกว้างต้นขั้วต้องอยู่ระหว่าง 70-120 mm'))
+            if not -25 <= record.page_offset_x_mm <= 25 or not -25 <= record.page_offset_y_mm <= 25:
+                raise ValidationError(_('ค่าชดเชยตำแหน่งต้องอยู่ระหว่าง -25 ถึง 25 mm'))
+            if not 6 <= record.body_font_size_pt <= 24 or not 6 <= record.company_font_size_pt <= 30:
+                raise ValidationError(_('ขนาดตัวอักษรอยู่นอกช่วงที่รองรับ'))
+            if any(not 0 <= getattr(record, name) <= 210 for name in position_fields):
+                raise ValidationError(_('ตำแหน่งแนวตั้งต้องอยู่ภายในกระดาษ A4 แนวนอน'))

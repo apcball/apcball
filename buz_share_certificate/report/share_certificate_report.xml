@@ -2,10 +2,15 @@
 <odoo>
     <record id="paperformat_share_certificate" model="report.paperformat">
         <field name="name">Share Certificate A4 Landscape</field>
-        <field name="format">A4</field><field name="orientation">Landscape</field>
-        <field name="margin_top">8</field><field name="margin_bottom">8</field>
-        <field name="margin_left">8</field><field name="margin_right">8</field>
-        <field name="header_line" eval="False"/><field name="header_spacing">0</field><field name="dpi">90</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
     </record>
     <record id="action_report_share_certificate" model="ir.actions.report">
         <field name="name">ใบหุ้น</field>
@@ -15,61 +20,189 @@
         <field name="report_file">buz_share_certificate.report_share_certificate</field>
         <field name="paperformat_id" ref="paperformat_share_certificate"/>
     </record>
+
     <template id="report_share_certificate">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.basic_layout">
-                    <style>
-                        @font-face { font-family: SarabunShare; src: url('/buz_share_certificate/static/fonts/Sarabun-Regular.ttf') format('truetype'); }
-                        @font-face { font-family: SarabunShare; src: url('/buz_share_certificate/static/fonts/Sarabun-Bold.ttf') format('truetype'); font-weight: bold; }
-                        .share-page { font-family: SarabunShare, sans-serif; font-size: 13px; line-height: 1.45; color: #000; }
-                        .share-page table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-                        .share-page td { vertical-align: top; }
-                        .share-stub { width: 30%; padding: 3mm 5mm 0 1mm; border-right: 1px dashed #888; }
-                        .share-main { width: 70%; padding: 3mm 3mm 0 7mm; }
-                        .share-line { border-bottom: 1px dotted #333; display: inline-block; min-width: 25mm; padding: 0 1mm; text-align: center; }
-                        .share-row { margin: 0 0 4mm; }
-                        .share-center { text-align: center; }
-                        .share-sign { display: inline-block; width: 43%; text-align: center; vertical-align: top; }
-                        .share-sign-line { border-bottom: 1px dotted #333; height: 10mm; }
-                    </style>
-                    <div class="page share-page">
-                        <table><tr>
-                            <td class="share-stub">
-                                <h4 class="share-center">ต้นขั้วใบหุ้น</h4>
-                                <p class="share-row">บริษัท <span class="share-line" t-esc="doc.company_name or ''"/> จำกัด</p>
-                                <p class="share-row">ทะเบียนเลขที่ <span class="share-line" t-esc="doc.registration_number or ''"/></p>
-                                <p class="share-row">ใบหุ้นเลขที่ <span class="share-line" t-esc="doc.certificate_number or ''"/> ออกเมื่อวันที่ <span t-esc="doc.thai_date(doc.issue_date)"/></p>
-                                <p class="share-row">ชื่อผู้ถือหุ้น <span class="share-line" t-esc="doc.shareholder_name or ''"/></p>
-                                <p class="share-row">ถือหุ้นจำนวน <span class="share-line" t-esc="doc.share_count or ''"/> หุ้น</p>
-                                <p class="share-row">หมายเลขหุ้นตั้งแต่ <span class="share-line" t-esc="doc.share_number_from or ''"/> ถึง <span class="share-line" t-esc="doc.share_number_to or ''"/></p>
-                                <p class="share-row">ได้ชำระค่าหุ้นแล้ว หุ้นละ <span class="share-line" t-esc="'{:,.2f}'.format(doc.paid_per_share)"/> บาท</p>
-                                <p class="share-row">รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว <span class="share-line" t-esc="'{:,.2f}'.format(doc.total_paid)"/> บาท</p>
-                                <p class="share-row">ในการออกใบหุ้นฉบับนี้ ได้ยกเลิกใบหุ้นเดิมเลขที่ <span class="share-line" t-esc="doc.previous_certificate_number or ''"/> ลงวันที่ <span t-esc="doc.thai_date(doc.previous_certificate_date)"/></p>
-                                <p style="margin-top: 9mm;">(ลงชื่อ)........................................................กรรมการ</p>
-                                <p style="margin-top: 7mm;">(ลงชื่อ)........................................................กรรมการ</p>
-                                <p style="margin-top: 9mm;">ข้าพเจ้า ผู้ถือหุ้นได้รับใบหุ้นตามต้นขั้วนี้ไปแล้วตั้งแต่วันที่ <span t-esc="doc.thai_date(doc.receipt_date)"/></p>
-                                <p style="margin-top: 9mm;">(ลงชื่อ)....................................................ผู้รับใบหุ้น</p>
-                                <p style="margin-top: 7mm;">หมายเหตุ ใบหุ้นปิดอากรแสตมป์ 5 บาท</p>
-                            </td>
-                            <td class="share-main">
-                                <p style="text-align:right;">ใบหุ้นเลขที่ <span class="share-line" t-esc="doc.certificate_number or ''"/></p>
-                                <h3 class="share-center" style="margin-top:10mm;">บริษัท <span class="share-line" style="min-width:85mm;" t-esc="doc.company_name or ''"/> จำกัด</h3>
-                                <p class="share-center">ทะเบียนเลขที่ <span class="share-line" style="min-width:80mm;" t-esc="doc.registration_number or ''"/></p>
-                                <p style="margin-top:10mm;">ทุนจดทะเบียน <span class="share-line" t-esc="'{:,.2f}'.format(doc.registered_capital)"/> บาท แบ่งเป็น <span class="share-line" t-esc="doc.total_shares or ''"/> หุ้น มูลค่าหุ้นละ <span class="share-line" t-esc="'{:,.2f}'.format(doc.share_value)"/> บาท</p>
-                                <h3 class="share-center" style="margin-top:7mm;">ใบหุ้นนี้ออกให้ไว้เพื่อแสดงว่า</h3>
-                                <p class="share-center" style="margin-top:8mm;"><span class="share-line" style="min-width:125mm;" t-esc="doc.shareholder_name or ''"/></p>
-                                <p style="margin-top:9mm;">ถือหุ้นจำนวน <span class="share-line" t-esc="doc.share_count or ''"/> หุ้น หมายเลขหุ้นตั้งแต่ <span class="share-line" t-esc="doc.share_number_from or ''"/> ถึง <span class="share-line" t-esc="doc.share_number_to or ''"/></p>
-                                <p style="margin-top:8mm;">ได้ชำระเงินค่าหุ้นแล้ว หุ้นละ <span class="share-line" t-esc="'{:,.2f}'.format(doc.paid_per_share)"/> บาท รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว <span class="share-line" t-esc="'{:,.2f}'.format(doc.total_paid)"/> บาท</p>
-                                <p class="share-center" style="margin-top:9mm;">ออกให้ไว้ ณ วันที่ <span class="share-line" style="min-width:12mm;" t-esc="doc.issue_date.day if doc.issue_date else ''"/> เดือน <span class="share-line" style="min-width:32mm;" t-esc="doc.thai_date(doc.issue_date).split(' ')[1] if doc.issue_date else ''"/> พุทธศักราช <span class="share-line" style="min-width:18mm;" t-esc="doc.issue_date.year + 543 if doc.issue_date else ''"/></p>
-                                <div class="share-center" style="margin-top:12mm;">
-                                    <div class="share-sign"><div class="share-sign-line"/><div>(<span t-esc="doc.director_one or '........................................................'"/>)</div><div>กรรมการ</div></div>
-                                    <div class="share-sign" style="margin-left:5%;"><div class="share-sign-line"/><div>(<span t-esc="doc.director_two or '........................................................'"/>)</div><div>กรรมการ</div></div>
-                                </div>
-                            </td>
-                        </tr></table>
-                    </div>
-                </t>
+                <t t-set="layout" t-value="doc.env['buz.share.certificate.layout.config'].sudo().get_default_config()"/>
+                <t t-set="values" t-value="{
+                    'company_name': doc.company_name or '',
+                    'registration_number': doc.registration_number or '',
+                    'certificate_number': doc.certificate_number or '',
+                    'shareholder_name': doc.shareholder_name or '',
+                    'share_count': '{:,}'.format(doc.share_count or 0),
+                    'share_number_from': doc.share_number_from or '',
+                    'share_number_to': doc.share_number_to or '',
+                    'registered_capital': '{:,.2f}'.format(doc.registered_capital or 0),
+                    'total_shares': '{:,}'.format(doc.total_shares or 0),
+                    'share_value': '{:,.2f}'.format(doc.share_value or 0),
+                    'paid_per_share': '{:,.2f}'.format(doc.paid_per_share or 0),
+                    'total_paid': '{:,.2f}'.format(doc.total_paid or 0),
+                    'previous_certificate_number': doc.previous_certificate_number or '',
+                    'previous_certificate_date': ('%02d/%02d/%04d' % (doc.previous_certificate_date.day, doc.previous_certificate_date.month, doc.previous_certificate_date.year + 543)) if doc.previous_certificate_date else '',
+                    'issue_date_short': ('%02d/%02d/%04d' % (doc.issue_date.day, doc.issue_date.month, doc.issue_date.year + 543)) if doc.issue_date else '',
+                    'issue_day': doc.issue_date.day if doc.issue_date else '',
+                    'issue_month': doc.thai_date(doc.issue_date).split(' ')[1] if doc.issue_date else '',
+                    'issue_year': doc.issue_date.year + 543 if doc.issue_date else '',
+                    'receipt_date': ('%02d/%02d/%04d' % (doc.receipt_date.day, doc.receipt_date.month, doc.receipt_date.year + 543)) if doc.receipt_date else '',
+                    'director_one': doc.director_one or '',
+                    'director_two': doc.director_two or '',
+                }"/>
+                <t t-set="show_reference" t-value="False"/>
+                <t t-call="buz_share_certificate.report_share_certificate_page"/>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_share_certificate_page">
+        <t t-call="web.basic_layout">
+            <style>
+                @font-face { font-family: SarabunShare; src: url('/buz_share_certificate/static/fonts/Sarabun-Regular.ttf') format('truetype'); }
+                @font-face { font-family: SarabunShare; src: url('/buz_share_certificate/static/fonts/Sarabun-Bold.ttf') format('truetype'); font-weight: bold; }
+                @page { size: A4 landscape; margin: 0; }
+                .share-page { width: 297mm; height: 210mm; margin: 0; padding: 0; position: relative; overflow: hidden; page-break-after: always; font-family: SarabunShare, sans-serif; color: #000; }
+                .share-reference { position: absolute; left: 0; top: 0; width: 297mm; height: 210mm; opacity: .32; z-index: 0; }
+                .share-value { position: absolute; z-index: 1; display: block; white-space: nowrap; line-height: 1.1; font-size: {{layout.body_font_size_pt}}pt; }
+                .share-center { text-align: center; }
+                .share-right { text-align: right; }
+                .share-company { font-weight: bold; font-size: {{layout.company_font_size_pt}}pt; }
+            </style>
+            <div class="page share-page">
+                <img t-if="show_reference" class="share-reference" src="/buz_share_certificate/static/preview/share_certificate_form_preview.jpg"/>
+
+                <!-- ต้นขั้ว: พิมพ์เฉพาะค่าลงช่องที่มีอยู่บนกระดาษ -->
+                <span t-if="values.get('company_name')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 22}}mm; top:{{layout.page_offset_y_mm + layout.stub_header_top_mm}}mm; width:64mm;"
+                      t-esc="values.get('company_name')"/>
+                <span t-if="values.get('registration_number')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 33}}mm; top:{{layout.page_offset_y_mm + layout.stub_registration_top_mm}}mm; width:53mm;"
+                      t-esc="values.get('registration_number')"/>
+                <span t-if="values.get('certificate_number')" class="share-value"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 26}}mm; top:{{layout.page_offset_y_mm + layout.stub_certificate_top_mm}}mm; width:32mm;"
+                      t-esc="values.get('certificate_number')"/>
+                <span t-if="values.get('issue_date_short')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 62}}mm; top:{{layout.page_offset_y_mm + layout.stub_certificate_top_mm}}mm; width:26mm;"
+                      t-esc="values.get('issue_date_short')"/>
+                <span t-if="values.get('shareholder_name')" class="share-value"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 31}}mm; top:{{layout.page_offset_y_mm + layout.stub_shareholder_top_mm}}mm; width:55mm;"
+                      t-esc="values.get('shareholder_name')"/>
+                <span t-if="values.get('share_count')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 49}}mm; top:{{layout.page_offset_y_mm + layout.stub_share_count_top_mm}}mm; width:17mm;"
+                      t-esc="values.get('share_count')"/>
+                <span t-if="values.get('share_number_from')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 39}}mm; top:{{layout.page_offset_y_mm + layout.stub_share_range_top_mm}}mm; width:19mm;"
+                      t-esc="values.get('share_number_from')"/>
+                <span t-if="values.get('share_number_to')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 67}}mm; top:{{layout.page_offset_y_mm + layout.stub_share_range_top_mm}}mm; width:18mm;"
+                      t-esc="values.get('share_number_to')"/>
+                <span t-if="values.get('paid_per_share')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 52}}mm; top:{{layout.page_offset_y_mm + layout.stub_paid_top_mm}}mm; width:25mm;"
+                      t-esc="values.get('paid_per_share')"/>
+                <span t-if="values.get('total_paid')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 48}}mm; top:{{layout.page_offset_y_mm + layout.stub_total_paid_top_mm}}mm; width:32mm;"
+                      t-esc="values.get('total_paid')"/>
+                <span t-if="values.get('previous_certificate_number')" class="share-value"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 37}}mm; top:{{layout.page_offset_y_mm + layout.stub_cancellation_top_mm}}mm; width:25mm;"
+                      t-esc="values.get('previous_certificate_number')"/>
+                <span t-if="values.get('previous_certificate_date')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 65}}mm; top:{{layout.page_offset_y_mm + layout.stub_cancellation_top_mm}}mm; width:25mm;"
+                      t-esc="values.get('previous_certificate_date')"/>
+                <span t-if="values.get('receipt_date')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + 31}}mm; top:{{layout.page_offset_y_mm + layout.stub_receipt_top_mm}}mm; width:53mm;"
+                      t-esc="values.get('receipt_date')"/>
+
+                <!-- ใบหุ้นด้านขวา -->
+                <span t-if="values.get('certificate_number')" class="share-value share-right"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 148}}mm; top:{{layout.page_offset_y_mm + layout.certificate_number_top_mm}}mm; width:42mm;"
+                      t-esc="values.get('certificate_number')"/>
+                <span t-if="values.get('company_name')" class="share-value share-center share-company"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 48}}mm; top:{{layout.page_offset_y_mm + layout.certificate_company_top_mm}}mm; width:112mm;"
+                      t-esc="values.get('company_name')"/>
+                <span t-if="values.get('registration_number')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 62}}mm; top:{{layout.page_offset_y_mm + layout.certificate_registration_top_mm}}mm; width:88mm;"
+                      t-esc="values.get('registration_number')"/>
+                <span t-if="values.get('registered_capital')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 18}}mm; top:{{layout.page_offset_y_mm + layout.certificate_capital_top_mm}}mm; width:47mm;"
+                      t-esc="values.get('registered_capital')"/>
+                <span t-if="values.get('total_shares')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 86}}mm; top:{{layout.page_offset_y_mm + layout.certificate_capital_top_mm}}mm; width:32mm;"
+                      t-esc="values.get('total_shares')"/>
+                <span t-if="values.get('share_value')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 153}}mm; top:{{layout.page_offset_y_mm + layout.certificate_capital_top_mm}}mm; width:35mm;"
+                      t-esc="values.get('share_value')"/>
+                <span t-if="values.get('shareholder_name')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 29}}mm; top:{{layout.page_offset_y_mm + layout.certificate_shareholder_top_mm}}mm; width:155mm;"
+                      t-esc="values.get('shareholder_name')"/>
+                <span t-if="values.get('share_count')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 37}}mm; top:{{layout.page_offset_y_mm + layout.certificate_share_count_top_mm}}mm; width:22mm;"
+                      t-esc="values.get('share_count')"/>
+                <span t-if="values.get('share_number_from')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 100}}mm; top:{{layout.page_offset_y_mm + layout.certificate_share_count_top_mm}}mm; width:21mm;"
+                      t-esc="values.get('share_number_from')"/>
+                <span t-if="values.get('share_number_to')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 169}}mm; top:{{layout.page_offset_y_mm + layout.certificate_share_count_top_mm}}mm; width:21mm;"
+                      t-esc="values.get('share_number_to')"/>
+                <span t-if="values.get('paid_per_share')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 53}}mm; top:{{layout.page_offset_y_mm + layout.certificate_paid_top_mm}}mm; width:30mm;"
+                      t-esc="values.get('paid_per_share')"/>
+                <span t-if="values.get('total_paid')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 155}}mm; top:{{layout.page_offset_y_mm + layout.certificate_paid_top_mm}}mm; width:38mm;"
+                      t-esc="values.get('total_paid')"/>
+                <span t-if="values.get('issue_day')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 53}}mm; top:{{layout.page_offset_y_mm + layout.certificate_issue_date_top_mm}}mm; width:15mm;"
+                      t-esc="values.get('issue_day')"/>
+                <span t-if="values.get('issue_month')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 108}}mm; top:{{layout.page_offset_y_mm + layout.certificate_issue_date_top_mm}}mm; width:42mm;"
+                      t-esc="values.get('issue_month')"/>
+                <span t-if="values.get('issue_year')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 178}}mm; top:{{layout.page_offset_y_mm + layout.certificate_issue_date_top_mm}}mm; width:28mm;"
+                      t-esc="values.get('issue_year')"/>
+                <span t-if="values.get('director_one')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 61}}mm; top:{{layout.page_offset_y_mm + layout.certificate_directors_top_mm}}mm; width:63mm;"
+                      t-esc="values.get('director_one')"/>
+                <span t-if="values.get('director_two')" class="share-value share-center"
+                      t-attf-style="left:{{layout.page_offset_x_mm + layout.stub_width_mm + 139}}mm; top:{{layout.page_offset_y_mm + layout.certificate_directors_top_mm}}mm; width:63mm;"
+                      t-esc="values.get('director_two')"/>
+            </div>
+        </t>
+    </template>
+
+    <record id="action_report_share_certificate_preview" model="ir.actions.report">
+        <field name="name">Preview Layout ใบหุ้น</field>
+        <field name="model">buz.share.certificate.layout.config</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_share_certificate.report_share_certificate_preview</field>
+        <field name="report_file">buz_share_certificate.report_share_certificate_preview</field>
+        <field name="paperformat_id" ref="paperformat_share_certificate"/>
+    </record>
+    <template id="report_share_certificate_preview">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="layout">
+                <t t-set="values" t-value="{
+                    'company_name': 'บริษัทตัวอย่าง',
+                    'registration_number': '0105567000001',
+                    'certificate_number': 'SC-0001',
+                    'shareholder_name': 'ตัวอย่างผู้ถือหุ้น',
+                    'share_count': '1,000',
+                    'share_number_from': '1',
+                    'share_number_to': '1,000',
+                    'registered_capital': '1,000,000.00',
+                    'total_shares': '10,000',
+                    'share_value': '100.00',
+                    'paid_per_share': '50.00',
+                    'total_paid': '50,000.00',
+                    'previous_certificate_number': 'OLD-0001',
+                    'previous_certificate_date': '01/01/2566',
+                    'issue_date_short': '01/11/2569',
+                    'issue_day': '1',
+                    'issue_month': 'พฤศจิกายน',
+                    'issue_year': '2569',
+                    'receipt_date': '01/11/2569',
+                    'director_one': 'กรรมการตัวอย่าง 1',
+                    'director_two': 'กรรมการตัวอย่าง 2',
+                }"/>
+                <t t-set="show_reference" t-value="True"/>
+                <t t-call="buz_share_certificate.report_share_certificate_page"/>
             </t>
         </t>
     </template>

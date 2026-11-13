@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_share_certificate_layout_config_form" model="ir.ui.view">
+        <field name="name">buz.share.certificate.layout.config.form</field>
+        <field name="model">buz.share.certificate.layout.config</field>
+        <field name="arch" type="xml">
+            <form string="ตั้งค่าแบบพิมพ์ใบหุ้น">
+                <header>
+                    <button name="action_preview_layout" type="object" string="Preview Layout" class="oe_highlight" icon="fa-eye"/>
+                    <button name="action_reset_defaults" type="object" string="คืนค่าเริ่มต้น" class="btn-secondary" icon="fa-refresh"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group string="กระดาษและตำแหน่ง">
+                            <field name="page_offset_x_mm"/>
+                            <field name="page_offset_y_mm"/>
+                            <field name="stub_width_mm"/>
+                        </group>
+                        <group string="ขนาดตัวอักษร">
+                            <field name="body_font_size_pt"/>
+                            <field name="company_font_size_pt"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        ใช้ Preview เทียบกับภาพฟอร์ม แล้วปรับค่าตำแหน่งเป็นมิลลิเมตร พิมพ์ทดสอบที่ 100% โดยปิด Fit to page
+                    </div>
+                    <notebook>
+                        <page string="ต้นขั้ว">
+                            <group>
+                                <group>
+                                    <field name="stub_header_top_mm"/>
+                                    <field name="stub_registration_top_mm"/>
+                                    <field name="stub_certificate_top_mm"/>
+                                    <field name="stub_shareholder_top_mm"/>
+                                    <field name="stub_share_count_top_mm"/>
+                                </group>
+                                <group>
+                                    <field name="stub_share_range_top_mm"/>
+                                    <field name="stub_paid_top_mm"/>
+                                    <field name="stub_total_paid_top_mm"/>
+                                    <field name="stub_cancellation_top_mm"/>
+                                    <field name="stub_receipt_top_mm"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="ใบหุ้น">
+                            <group>
+                                <group>
+                                    <field name="certificate_number_top_mm"/>
+                                    <field name="certificate_company_top_mm"/>
+                                    <field name="certificate_registration_top_mm"/>
+                                    <field name="certificate_capital_top_mm"/>
+                                    <field name="certificate_shareholder_top_mm"/>
+                                </group>
+                                <group>
+                                    <field name="certificate_share_count_top_mm"/>
+                                    <field name="certificate_paid_top_mm"/>
+                                    <field name="certificate_issue_date_top_mm"/>
+                                    <field name="certificate_directors_top_mm"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_share_certificate_layout_config" model="ir.actions.act_window">
+        <field name="name">ตั้งค่าแบบพิมพ์ใบหุ้น</field>
+        <field name="res_model">buz.share.certificate.layout.config</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_share_certificate_layout_config_form"/>
+        <field name="res_id" ref="share_certificate_layout_config_default"/>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem id="menu_share_certificate_layout_config" name="ตั้งค่าแบบพิมพ์"
+              parent="buz_share_certificate.menu_share_certificate_root"
+              action="action_share_certificate_layout_config"
+              groups="base.group_system" sequence="30"/>
+</odoo>
