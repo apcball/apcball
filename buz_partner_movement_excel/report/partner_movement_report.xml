@@ -1,0 +1,9 @@
+<odoo>
+    <record id="action_partner_movement_xlsx" model="ir.actions.report">
+        <field name="name">Partner Movement Excel</field>
+        <field name="model">partner.movement.excel.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_partner_movement_excel.partner_movement_xlsx</field>
+        <field name="report_file">partner_movement</field>
+    </record>
+</odoo>

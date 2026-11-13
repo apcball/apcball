@@ -1,0 +1,32 @@
+<odoo>
+    <record id="view_partner_movement_wizard_form" model="ir.ui.view">
+        <field name="name">partner.movement.excel.wizard.form</field>
+        <field name="model">partner.movement.excel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Partner Movement Excel">
+                <group>
+                    <field name="date_as_of"/>
+                    <field name="direction" widget="radio"/>
+                    <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="accrual_account_ids" widget="many2many_tags"
+                           options="{'no_create': True}" invisible="direction == 'receivable'"/>
+                    <field name="company_id" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx" string="Export Excel" type="object" class="oe_highlight"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_partner_movement_wizard" model="ir.actions.act_window">
+        <field name="name">Partner Movement Excel</field>
+        <field name="res_model">partner.movement.excel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_partner_movement_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+    <menuitem id="menu_partner_movement_excel" name="Partner Movement Excel"
+              parent="account.menu_finance_reports" action="action_partner_movement_wizard"
+              groups="account.group_account_invoice" sequence="23"/>
+</odoo>
