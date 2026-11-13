@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_share_certificate_template_owner" model="ir.rule">
+        <field name="name">Share certificate templates: owner</field>
+        <field name="model_id" ref="model_buz_share_certificate_template"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_share_certificate_owner" model="ir.rule">
+        <field name="name">Share certificates: owner</field>
+        <field name="model_id" ref="model_buz_share_certificate"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+</odoo>

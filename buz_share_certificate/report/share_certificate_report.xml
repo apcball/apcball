@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_share_certificate" model="report.paperformat">
+        <field name="name">Share Certificate A4 Landscape</field>
+        <field name="format">A4</field><field name="orientation">Landscape</field>
+        <field name="margin_top">8</field><field name="margin_bottom">8</field>
+        <field name="margin_left">8</field><field name="margin_right">8</field>
+        <field name="header_line" eval="False"/><field name="header_spacing">0</field><field name="dpi">90</field>
+    </record>
+    <record id="action_report_share_certificate" model="ir.actions.report">
+        <field name="name">ใบหุ้น</field>
+        <field name="model">buz.share.certificate</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_share_certificate.report_share_certificate</field>
+        <field name="report_file">buz_share_certificate.report_share_certificate</field>
+        <field name="paperformat_id" ref="paperformat_share_certificate"/>
+    </record>
+    <template id="report_share_certificate">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.basic_layout">
+                    <style>
+                        @font-face { font-family: SarabunShare; src: url('/buz_share_certificate/static/fonts/Sarabun-Regular.ttf') format('truetype'); }
+                        @font-face { font-family: SarabunShare; src: url('/buz_share_certificate/static/fonts/Sarabun-Bold.ttf') format('truetype'); font-weight: bold; }
+                        .share-page { font-family: SarabunShare, sans-serif; font-size: 13px; line-height: 1.45; color: #000; }
+                        .share-page table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                        .share-page td { vertical-align: top; }
+                        .share-stub { width: 30%; padding: 3mm 5mm 0 1mm; border-right: 1px dashed #888; }
+                        .share-main { width: 70%; padding: 3mm 3mm 0 7mm; }
+                        .share-line { border-bottom: 1px dotted #333; display: inline-block; min-width: 25mm; padding: 0 1mm; text-align: center; }
+                        .share-row { margin: 0 0 4mm; }
+                        .share-center { text-align: center; }
+                        .share-sign { display: inline-block; width: 43%; text-align: center; vertical-align: top; }
+                        .share-sign-line { border-bottom: 1px dotted #333; height: 10mm; }
+                    </style>
+                    <div class="page share-page">
+                        <table><tr>
+                            <td class="share-stub">
+                                <h4 class="share-center">ต้นขั้วใบหุ้น</h4>
+                                <p class="share-row">บริษัท <span class="share-line" t-esc="doc.company_name or ''"/> จำกัด</p>
+                                <p class="share-row">ทะเบียนเลขที่ <span class="share-line" t-esc="doc.registration_number or ''"/></p>
+                                <p class="share-row">ใบหุ้นเลขที่ <span class="share-line" t-esc="doc.certificate_number or ''"/> ออกเมื่อวันที่ <span t-esc="doc.thai_date(doc.issue_date)"/></p>
+                                <p class="share-row">ชื่อผู้ถือหุ้น <span class="share-line" t-esc="doc.shareholder_name or ''"/></p>
+                                <p class="share-row">ถือหุ้นจำนวน <span class="share-line" t-esc="doc.share_count or ''"/> หุ้น</p>
+                                <p class="share-row">หมายเลขหุ้นตั้งแต่ <span class="share-line" t-esc="doc.share_number_from or ''"/> ถึง <span class="share-line" t-esc="doc.share_number_to or ''"/></p>
+                                <p class="share-row">ได้ชำระค่าหุ้นแล้ว หุ้นละ <span class="share-line" t-esc="'{:,.2f}'.format(doc.paid_per_share)"/> บาท</p>
+                                <p class="share-row">รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว <span class="share-line" t-esc="'{:,.2f}'.format(doc.total_paid)"/> บาท</p>
+                                <p class="share-row">ในการออกใบหุ้นฉบับนี้ ได้ยกเลิกใบหุ้นเดิมเลขที่ <span class="share-line" t-esc="doc.previous_certificate_number or ''"/> ลงวันที่ <span t-esc="doc.thai_date(doc.previous_certificate_date)"/></p>
+                                <p style="margin-top: 9mm;">(ลงชื่อ)........................................................กรรมการ</p>
+                                <p style="margin-top: 7mm;">(ลงชื่อ)........................................................กรรมการ</p>
+                                <p style="margin-top: 9mm;">ข้าพเจ้า ผู้ถือหุ้นได้รับใบหุ้นตามต้นขั้วนี้ไปแล้วตั้งแต่วันที่ <span t-esc="doc.thai_date(doc.receipt_date)"/></p>
+                                <p style="margin-top: 9mm;">(ลงชื่อ)....................................................ผู้รับใบหุ้น</p>
+                                <p style="margin-top: 7mm;">หมายเหตุ ใบหุ้นปิดอากรแสตมป์ 5 บาท</p>
+                            </td>
+                            <td class="share-main">
+                                <p style="text-align:right;">ใบหุ้นเลขที่ <span class="share-line" t-esc="doc.certificate_number or ''"/></p>
+                                <h3 class="share-center" style="margin-top:10mm;">บริษัท <span class="share-line" style="min-width:85mm;" t-esc="doc.company_name or ''"/> จำกัด</h3>
+                                <p class="share-center">ทะเบียนเลขที่ <span class="share-line" style="min-width:80mm;" t-esc="doc.registration_number or ''"/></p>
+                                <p style="margin-top:10mm;">ทุนจดทะเบียน <span class="share-line" t-esc="'{:,.2f}'.format(doc.registered_capital)"/> บาท แบ่งเป็น <span class="share-line" t-esc="doc.total_shares or ''"/> หุ้น มูลค่าหุ้นละ <span class="share-line" t-esc="'{:,.2f}'.format(doc.share_value)"/> บาท</p>
+                                <h3 class="share-center" style="margin-top:7mm;">ใบหุ้นนี้ออกให้ไว้เพื่อแสดงว่า</h3>
+                                <p class="share-center" style="margin-top:8mm;"><span class="share-line" style="min-width:125mm;" t-esc="doc.shareholder_name or ''"/></p>
+                                <p style="margin-top:9mm;">ถือหุ้นจำนวน <span class="share-line" t-esc="doc.share_count or ''"/> หุ้น หมายเลขหุ้นตั้งแต่ <span class="share-line" t-esc="doc.share_number_from or ''"/> ถึง <span class="share-line" t-esc="doc.share_number_to or ''"/></p>
+                                <p style="margin-top:8mm;">ได้ชำระเงินค่าหุ้นแล้ว หุ้นละ <span class="share-line" t-esc="'{:,.2f}'.format(doc.paid_per_share)"/> บาท รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว <span class="share-line" t-esc="'{:,.2f}'.format(doc.total_paid)"/> บาท</p>
+                                <p class="share-center" style="margin-top:9mm;">ออกให้ไว้ ณ วันที่ <span class="share-line" style="min-width:12mm;" t-esc="doc.issue_date.day if doc.issue_date else ''"/> เดือน <span class="share-line" style="min-width:32mm;" t-esc="doc.thai_date(doc.issue_date).split(' ')[1] if doc.issue_date else ''"/> พุทธศักราช <span class="share-line" style="min-width:18mm;" t-esc="doc.issue_date.year + 543 if doc.issue_date else ''"/></p>
+                                <div class="share-center" style="margin-top:12mm;">
+                                    <div class="share-sign"><div class="share-sign-line"/><div>(<span t-esc="doc.director_one or '........................................................'"/>)</div><div>กรรมการ</div></div>
+                                    <div class="share-sign" style="margin-left:5%;"><div class="share-sign-line"/><div>(<span t-esc="doc.director_two or '........................................................'"/>)</div><div>กรรมการ</div></div>
+                                </div>
+                            </td>
+                        </tr></table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
