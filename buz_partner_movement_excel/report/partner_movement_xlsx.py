@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from odoo import models
+from odoo.osv import expression
 
 
 class PartnerMovementXlsx(models.AbstractModel):
@@ -11,6 +12,22 @@ class PartnerMovementXlsx(models.AbstractModel):
     @staticmethod
     def _signed_residual(balance, settled):
         return balance - settled if balance > 0 else balance + settled
+
+    @staticmethod
+    def _move_states(target_move):
+        return ['draft', 'posted'] if target_move == 'all' else ['posted']
+
+    @staticmethod
+    def _account_types(direction):
+        if direction == 'receivable':
+            return ['asset_receivable']
+        if direction == 'payable':
+            return ['liability_payable', 'liability_current']
+        return ['asset_receivable', 'liability_payable', 'liability_current']
+
+    @staticmethod
+    def _period_label(document_date, date_from):
+        return 'Opening balance' if date_from and document_date < date_from else 'Period activity'
 
     def _amounts_as_of(self, lines, date_as_of):
         partials = self.env['account.partial.reconcile'].search([
@@ -31,11 +48,11 @@ class PartnerMovementXlsx(models.AbstractModel):
             currency_residuals[line.id] = line.amount_currency - settled_currency[line.id]
         return company_residuals, currency_residuals, partials
 
-    def _document_rows(self, move, date_as_of):
+    def _document_rows(self, move, date_to, date_from):
         lines = move.line_ids.filtered(lambda line: line.account_id.account_type in (
             'asset_receivable', 'liability_payable',
         ))
-        residuals, currency_residuals, partials = self._amounts_as_of(lines, date_as_of)
+        residuals, currency_residuals, partials = self._amounts_as_of(lines, date_to)
         settled = sum(abs(line.balance - residuals[line.id]) for line in lines)
         total = sum(abs(line.balance) for line in lines)
         residual = sum(abs(residuals[line.id]) for line in lines)
@@ -66,7 +83,7 @@ class PartnerMovementXlsx(models.AbstractModel):
                 return
             seen.add(source_move.id)
             source_lines = source_move.line_ids
-            _, _, links = self._amounts_as_of(source_lines, date_as_of)
+            _, _, links = self._amounts_as_of(source_lines, date_to)
             for partial in links:
                 debit, credit = partial.debit_move_id, partial.credit_move_id
                 own = debit if debit.move_id == source_move else credit
@@ -84,7 +101,7 @@ class PartnerMovementXlsx(models.AbstractModel):
                     ),
                     'allocated': partial.amount,
                     'currency': target.currency_id.name or target.company_id.currency_id.name,
-                    'warning': 'ยอดของ Bill ระบุไม่ได้แน่ชัด' if depth > 1 else '',
+                    'warning': 'Bill allocation unclear' if depth > 1 else '',
                 })
                 if target.move_type == 'entry':
                     append_links(target, depth + 1)
@@ -98,35 +115,54 @@ class PartnerMovementXlsx(models.AbstractModel):
             'foreign_total': foreign_total, 'foreign_settled': foreign_settled,
             'foreign_residual': foreign_residual,
             'state': state, 'currency': move.currency_id.name or move.company_id.currency_id.name,
-            'links': rows,
+            'links': rows, 'period_label': self._period_label(move.invoice_date or move.date, date_from),
         }
 
     def _report_data(self, wizard):
-        date_as_of = wizard.date_as_of
-        account_types = []
-        if wizard.direction in ('receivable', 'both'):
-            account_types.append('asset_receivable')
-        if wizard.direction in ('payable', 'both'):
-            account_types.append('liability_payable')
+        account_types = self._account_types(wizard.direction)
         accounts = self.env['account.account'].search([
             ('company_id', '=', wizard.company_id.id), ('account_type', 'in', account_types),
             ('deprecated', '=', False),
         ])
-        accounts |= wizard.accrual_account_ids.filtered(
-            lambda account: account.company_id == wizard.company_id
-        )
+        if wizard.direction in ('payable', 'both'):
+            accounts |= self.env['account.account'].search([
+                ('company_id', '=', wizard.company_id.id),
+                ('account_type', '=', 'liability_current'), ('deprecated', '=', False),
+            ])
+        if wizard.account_ids:
+            accounts &= wizard.account_ids.filtered(lambda account: account.company_id == wizard.company_id)
         domain = [
-            ('company_id', '=', wizard.company_id.id), ('state', '=', 'posted'),
-            ('date', '<=', date_as_of), ('move_type', 'in', ('out_invoice', 'in_invoice')),
+            ('company_id', '=', wizard.company_id.id),
+            ('state', 'in', self._move_states(wizard.target_move)),
+            ('move_type', 'in', ('out_invoice', 'in_invoice')),
             ('line_ids.account_id', 'in', accounts.ids),
         ]
+        if wizard.date_to:
+            domain = expression.AND([domain, expression.OR([
+                [('invoice_date', '<=', wizard.date_to)],
+                [('invoice_date', '=', False), ('date', '<=', wizard.date_to)],
+            ])])
+        if wizard.date_from:
+            domain = expression.AND([domain, expression.OR([
+                [('invoice_date', '>=', wizard.date_from)],
+                [('invoice_date', '=', False), ('date', '>=', wizard.date_from)],
+            ])])
         if wizard.partner_ids:
             domain.append(('partner_id', 'in', wizard.partner_ids.ids))
         moves = self.env['account.move'].search(domain, order='partner_id, date, name')
         partners = []
         for partner in moves.mapped('partner_id'):
             partner_moves = moves.filtered(lambda move: move.partner_id == partner)
-            docs = [self._document_rows(move, date_as_of) for move in partner_moves]
+            docs = []
+            for move in partner_moves:
+                doc = self._document_rows(move, wizard.date_to, wizard.date_from)
+                if doc['period_label'] == 'Opening balance' and doc['residual'] <= 0.00001:
+                    continue
+                if not wizard.reconciled and doc['residual'] <= 0.00001:
+                    continue
+                docs.append(doc)
+            if not docs:
+                continue
             partners.append({
                 'partner': partner,
                 'docs': docs,
@@ -144,8 +180,10 @@ class PartnerMovementXlsx(models.AbstractModel):
         header = workbook.add_format({'bold': True, 'bg_color': '#D9EAF7', 'border': 1})
         money = workbook.add_format({'num_format': '#,##0.00'})
         bold = workbook.add_format({'bold': True})
-        sheet.write(0, 0, 'As of', header)
-        sheet.write(0, 1, str(wizard.date_as_of))
+        sheet.write(0, 0, 'Start Date', header)
+        sheet.write(0, 1, str(wizard.date_from or ''))
+        sheet.write(1, 0, 'End Date', header)
+        sheet.write(1, 1, str(wizard.date_to))
         headers = ['Partner / Document', 'Type', 'Date', 'Currency', 'Document Total (company currency)',
                    'Payments', 'Adjustments', 'Remaining', 'Status', 'Linked Document Total',
                    'Allocated Amount', 'Link Note']
@@ -159,11 +197,12 @@ class PartnerMovementXlsx(models.AbstractModel):
             sheet.write(row, 8, f"{partner['count']} documents", bold)
             row += 1
             for doc in partner['docs']:
-                values = [doc['number'], doc['type'], str(doc['date']), doc['currency'],
-                          doc['total'], doc['payment_amount'], doc['adjustment_amount'], doc['residual'], doc['state']]
+                state = f"{doc['period_label']} - {doc['state']}"
+                values = [doc['number'], doc['type'], str(doc['date']), wizard.company_id.currency_id.name,
+                          doc['total'], doc['payment_amount'], doc['adjustment_amount'], doc['residual'], state]
                 for col, value in enumerate(values):
                     sheet.write_number(row, col, value, money) if col in (4, 5, 6, 7) else sheet.write(row, col, value)
-                if doc['currency'] != wizard.company_id.currency_id.name:
+                if wizard.with_currency and doc['currency'] != wizard.company_id.currency_id.name:
                     sheet.write(row, 11, f"Foreign currency {doc['currency']}: total/settled/remaining {doc['foreign_total']:.2f} / {doc['foreign_settled']:.2f} / {doc['foreign_residual']:.2f}")
                 row += 1
                 for link in doc['links']:

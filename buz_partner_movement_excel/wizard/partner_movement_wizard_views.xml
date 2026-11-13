@@ -5,11 +5,14 @@
         <field name="arch" type="xml">
             <form string="Partner Movement Excel">
                 <group>
-                    <field name="date_as_of"/>
-                    <field name="direction" widget="radio"/>
+                    <field name="target_move" widget="radio"/>
+                    <field name="direction"/>
+                    <field name="with_currency"/>
+                    <field name="reconciled"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
                     <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                    <field name="accrual_account_ids" widget="many2many_tags"
-                           options="{'no_create': True}" invisible="direction == 'receivable'"/>
+                    <field name="account_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     <field name="company_id" invisible="1"/>
                 </group>
                 <footer>
