@@ -214,6 +214,9 @@ class PartnerMovementXlsx(models.AbstractModel):
             'text_wrap': True, 'valign': 'vcenter',
         })
         money = workbook.add_format({'num_format': '#,##0.00;[Red]-#,##0.00'})
+        partner_money = workbook.add_format({
+            'bold': True, 'bg_color': '#E2F0D9', 'num_format': '#,##0.00;[Red]-#,##0.00',
+        })
         wrapped = workbook.add_format({'text_wrap': True, 'valign': 'top'})
         partner_format = workbook.add_format({'bold': True, 'bg_color': '#E2F0D9'})
         headers = [
@@ -227,9 +230,10 @@ class PartnerMovementXlsx(models.AbstractModel):
             sheet.write(0, col, value, header)
         row = 1
         for partner in self._report_data(wizard):
+            sheet.set_row(row, None, partner_format)
             sheet.write(row, 0, partner['partner'].display_name, partner_format)
             for col, key in ((6, 'total'), (7, 'payment_amount'), (8, 'adjustment_amount'), (9, 'residual')):
-                sheet.write_number(row, col, partner[key], money)
+                sheet.write_number(row, col, partner[key], partner_money)
             sheet.write(row, 10, wizard.company_id.currency_id.name, partner_format)
             sheet.write(row, 12, f"รวม {partner['count']} เอกสาร", partner_format)
             row += 1

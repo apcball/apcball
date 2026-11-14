@@ -48,6 +48,7 @@ class TestPartnerMovementReport(TransactionCase):
                     for item in shared_root.findall('x:si', namespace)
                 ]
             sheet = ElementTree.fromstring(xlsx.read(sheets[0]))
+            styles = ElementTree.fromstring(xlsx.read('xl/styles.xml'))
 
         def cell_value(reference):
             cell = sheet.find(f".//x:c[@r='{reference}']", namespace)
@@ -60,6 +61,13 @@ class TestPartnerMovementReport(TransactionCase):
                 return shared[int(value.text)]
             return value.text if value is not None else None
 
+        def fill_color(style_id):
+            xfs = styles.find('x:cellXfs', namespace)
+            fills = styles.find('x:fills', namespace)
+            fill_id = int(xfs[int(style_id)].get('fillId'))
+            color = fills[fill_id].find('x:patternFill/x:fgColor', namespace)
+            return color.get('rgb') if color is not None else None
+
         self.assertEqual(cell_value('A1'), 'คู่ค้า / เลขที่เอกสาร')
         self.assertEqual(cell_value('A2'), 'Test Partner')
         self.assertEqual(cell_value('A3'), 'INV/001')
@@ -69,6 +77,11 @@ class TestPartnerMovementReport(TransactionCase):
         self.assertEqual(cell_value('D4'), 'Bank\n1010 Bank')
         self.assertEqual(cell_value('F4'), '25')
         self.assertEqual(cell_value('L4'), '25')
+        partner_row = sheet.find(".//x:row[@r='2']", namespace)
+        self.assertEqual(partner_row.get('customFormat'), '1')
+        self.assertEqual(fill_color(partner_row.get('s')), 'FFE2F0D9')
+        amount_cell = sheet.find(".//x:c[@r='G2']", namespace)
+        self.assertEqual(fill_color(amount_cell.get('s')), 'FFE2F0D9')
 
     def test_period_label_marks_pre_range_documents_as_opening(self):
         report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
