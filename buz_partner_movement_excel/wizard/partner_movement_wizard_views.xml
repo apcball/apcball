@@ -3,7 +3,7 @@
         <field name="name">partner.movement.excel.wizard.form</field>
         <field name="model">partner.movement.excel.wizard</field>
         <field name="arch" type="xml">
-            <form string="Partner Movement Excel">
+            <form string="รายงานการเคลื่อนไหวคู่ค้า">
                 <group>
                     <field name="target_move" widget="radio"/>
                     <field name="direction"/>
@@ -16,8 +16,8 @@
                     <field name="company_id" invisible="1"/>
                 </group>
                 <footer>
-                    <button name="action_export_xlsx" string="Export Excel" type="object" class="oe_highlight"/>
-                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                    <button name="action_export_xlsx" string="ส่งออก Excel" type="object" class="oe_highlight"/>
+                    <button string="ยกเลิก" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

@@ -22,6 +22,23 @@ class TestPartnerMovementReport(TransactionCase):
             'asset_receivable', 'liability_payable', 'liability_current',
         ])
 
+    def test_document_rows_include_every_supported_partner_account_type(self):
+        report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
+        self.assertEqual(report._partner_account_types(), [
+            'asset_receivable', 'liability_payable', 'liability_current',
+        ])
+
+    def test_export_filename_includes_date_range(self):
+        wizard = self.env['partner.movement.excel.wizard']
+        self.assertEqual(
+            wizard._get_export_filename('2026-09-01', '2026-11-14'),
+            'Partner Movement_2026-09-01_to_2026-11-14',
+        )
+        self.assertEqual(
+            wizard._get_export_filename(False, '2026-11-14'),
+            'Partner Movement_all_to_2026-11-14',
+        )
+
     def test_as_of_residual_for_receivable_and_payable(self):
         report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
         self.assertEqual(report._signed_residual(100.0, 40.0), 60.0)

@@ -5,5 +5,6 @@
         <field name="report_type">xlsx</field>
         <field name="report_name">buz_partner_movement_excel.partner_movement_xlsx</field>
         <field name="report_file">partner_movement</field>
+        <field name="print_report_name">object.get_export_filename()</field>
     </record>
 </odoo>
