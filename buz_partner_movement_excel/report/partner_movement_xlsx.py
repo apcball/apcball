@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from odoo import fields, models
+from odoo import models
 from odoo.osv import expression
 
 
@@ -39,7 +39,7 @@ class PartnerMovementXlsx(models.AbstractModel):
 
     @staticmethod
     def _link_warning(depth, move_type, ambiguous):
-        return 'Bill allocation unclear' if depth > 1 and move_type == 'entry' and ambiguous else ''
+        return 'ตรวจสอบการจัดสรร' if depth > 1 and move_type == 'entry' and ambiguous else ''
 
     @staticmethod
     def _has_ambiguous_links(source_move, links, seen):
@@ -126,9 +126,6 @@ class PartnerMovementXlsx(models.AbstractModel):
                     'currency': target.currency_id.name or target.company_id.currency_id.name,
                     'warning': self._link_warning(depth, target.move_type, ambiguous_links),
                     'journal': target.journal_id.display_name,
-                    'source_account': own.account_id.display_name,
-                    'source_debit': own.debit,
-                    'source_credit': own.credit,
                     'target_account': other.account_id.display_name,
                     'debit': other.debit,
                     'credit': other.credit,
@@ -212,87 +209,79 @@ class PartnerMovementXlsx(models.AbstractModel):
     def generate_xlsx_report(self, workbook, data, wizards):
         wizard = wizards.ensure_one()
         sheet = workbook.add_worksheet('Partner Movement')
-        header = workbook.add_format({'bold': True, 'bg_color': '#D9EAF7', 'border': 1, 'text_wrap': True})
+        header = workbook.add_format({
+            'bold': True, 'bg_color': '#D9EAF7', 'border': 1,
+            'text_wrap': True, 'valign': 'vcenter',
+        })
         money = workbook.add_format({'num_format': '#,##0.00;[Red]-#,##0.00'})
+        wrapped = workbook.add_format({'text_wrap': True, 'valign': 'top'})
         partner_format = workbook.add_format({'bold': True, 'bg_color': '#E2F0D9'})
-        metadata = [
-            ('บริษัท', wizard.company_id.display_name),
-            ('สกุลเงินบริษัท', wizard.company_id.currency_id.name),
-            ('ช่วงวันที่รายงาน', f"{wizard.date_from or 'ทั้งหมด'} ถึง {wizard.date_to}"),
-            ('วันเวลาออกรายงาน', fields.Datetime.context_timestamp(
-                wizard, fields.Datetime.now()
-            ).strftime('%Y-%m-%d %H:%M:%S')),
-            ('ทิศทาง', dict(wizard._fields['direction'].selection).get(wizard.direction, '')),
-            ('สถานะรายการ', dict(wizard._fields['target_move'].selection).get(wizard.target_move, '')),
-            ('รวมเอกสารที่ชำระครบแล้ว', 'ใช่' if wizard.reconciled else 'ไม่'),
-            ('แสดงยอดสกุลเงินต่างประเทศ', 'ใช่' if wizard.with_currency else 'ไม่'),
-            ('คู่ค้า', ', '.join(wizard.partner_ids.mapped('display_name')) or 'ทั้งหมด'),
-            ('บัญชี', ', '.join(wizard.account_ids.mapped('display_name')) or 'ทั้งหมด'),
-        ]
-        for row, (label, value) in enumerate(metadata):
-            sheet.write(row, 0, label, header)
-            sheet.write(row, 1, value)
         headers = [
-            'คู่ค้า / เลขที่เอกสาร', 'ประเภทเอกสาร', 'วันที่', 'สมุดรายวัน', 'บัญชีลูกหนี้/เจ้าหนี้',
-            'เดบิต (สกุลเงินบริษัท)', 'เครดิต (สกุลเงินบริษัท)', 'สกุลเงินเอกสาร',
+            'คู่ค้า / เลขที่เอกสาร', 'ประเภทเอกสาร', 'วันที่', 'สมุดรายวัน / บัญชี',
+            'เดบิต (สกุลเงินบริษัท)', 'เครดิต (สกุลเงินบริษัท)',
             'ยอดเอกสาร (สกุลเงินบริษัท)', 'รับ/จ่ายชำระ (สกุลเงินบริษัท)',
-            'รายการปรับปรุง (สกุลเงินบริษัท)', 'ยอดคงเหลือ (สกุลเงินบริษัท)', 'สถานะ',
-            'เอกสารที่เชื่อมโยง', 'บัญชีรายการที่เชื่อมโยง',
-            'เดบิตรายการที่เชื่อมโยง (สกุลเงินบริษัท)', 'เครดิตรายการที่เชื่อมโยง (สกุลเงินบริษัท)',
-            'ยอดจัดสรร (สกุลเงินบริษัท)',
-            'ยอดจัดสรร (สกุลเงินเอกสาร)',
-            'หมายเหตุ',
+            'รายการปรับปรุง (สกุลเงินบริษัท)', 'ยอดคงเหลือ (สกุลเงินบริษัท)',
+            'สกุลเงินเอกสาร', 'ยอดจัดสรร (สกุลเงินบริษัท)', 'สถานะ / หมายเหตุ',
         ]
-        header_row = len(metadata) + 1
         for col, value in enumerate(headers):
-            sheet.write(header_row, col, value, header)
-        row = header_row + 1
+            sheet.write(0, col, value, header)
+        row = 1
         for partner in self._report_data(wizard):
             sheet.write(row, 0, partner['partner'].display_name, partner_format)
-            for col, key in ((8, 'total'), (9, 'payment_amount'), (10, 'adjustment_amount'), (11, 'residual')):
+            for col, key in ((6, 'total'), (7, 'payment_amount'), (8, 'adjustment_amount'), (9, 'residual')):
                 sheet.write_number(row, col, partner[key], money)
+            sheet.write(row, 10, wizard.company_id.currency_id.name, partner_format)
             sheet.write(row, 12, f"รวม {partner['count']} เอกสาร", partner_format)
             row += 1
             for doc in partner['docs']:
                 period = 'ยอดยกมา' if doc['period_label'] == 'Opening balance' else 'รายการในช่วง'
                 status = {'Unpaid': 'ค้างชำระ', 'Partial': 'ชำระบางส่วน', 'Paid': 'ชำระครบ'}[doc['state']]
-                values = [doc['number'], doc['type'], str(doc['date']), doc['journal'], doc['account'],
-                          doc['debit'], doc['credit'], doc['currency'], doc['total'],
-                          doc['payment_amount'], doc['adjustment_amount'], doc['residual'], f'{period} - {status}']
-                for col, value in enumerate(values):
-                    if col in (5, 6, 8, 9, 10, 11):
-                        sheet.write_number(row, col, value, money)
-                    else:
-                        sheet.write(row, col, value)
+                sheet.write(row, 0, doc['number'])
+                sheet.write(row, 1, doc['type'])
+                sheet.write(row, 2, str(doc['date']))
+                sheet.write(row, 3, f"{doc['journal']}\n{doc['account']}", wrapped)
+                sheet.write_number(row, 4, doc['debit'], money)
+                sheet.write_number(row, 5, doc['credit'], money)
+                for col, key in (
+                    (6, 'total'), (7, 'payment_amount'),
+                    (8, 'adjustment_amount'), (9, 'residual'),
+                ):
+                    sheet.write_number(row, col, doc[key], money)
+                sheet.write(row, 10, doc['currency'])
+                sheet.write(row, 12, f'{period} · {status}')
                 if wizard.with_currency and doc['currency'] != wizard.company_id.currency_id.name:
-                    sheet.write(row, 19, f"ยอดต่างประเทศ {doc['currency']}: {doc['foreign_total']:.2f} / {doc['foreign_settled']:.2f} / {doc['foreign_residual']:.2f}")
+                    foreign_summary = (
+                        f"ยอดเอกสาร/ชำระแล้ว/คงเหลือ: {doc['foreign_total']:.2f} / "
+                        f"{doc['foreign_settled']:.2f} / {doc['foreign_residual']:.2f} {doc['currency']}"
+                    )
+                    sheet.write(row, 12, f'{period} · {status}\n{foreign_summary}', wrapped)
+                sheet.set_row(row, 30)
                 row += 1
                 for link in doc['links']:
-                    sheet.write(row, 0, f"{'  ' * link['depth']}↳ {link['number']}")
+                    sheet.write(row, 0, f"{'  ' * link['depth']}↳ {link['number']}", wrapped)
                     sheet.write(row, 1, link['type'])
                     sheet.write(row, 2, str(link['date']))
-                    sheet.write(row, 3, link['journal'])
-                    sheet.write(row, 4, link['source_account'])
-                    sheet.write_number(row, 5, link['source_debit'], money)
-                    sheet.write_number(row, 6, link['source_credit'], money)
-                    sheet.write(row, 7, link['currency'])
-                    sheet.write(row, 13, link['number'])
-                    sheet.write(row, 14, link['target_account'])
-                    sheet.write_number(row, 15, link['debit'], money)
-                    sheet.write_number(row, 16, link['credit'], money)
-                    sheet.write_number(row, 17, link['allocated'], money)
-                    sheet.write(row, 18, f"{link['allocated_currency']:.2f} {link['source_currency']}")
-                    sheet.write(row, 19, link['warning'])
+                    sheet.write(row, 3, f"{link['journal']}\n{link['target_account']}", wrapped)
+                    sheet.write_number(row, 4, link['debit'], money)
+                    sheet.write_number(row, 5, link['credit'], money)
+                    sheet.write(row, 10, link['currency'])
+                    sheet.write_number(row, 11, link['allocated'], money)
+                    note = link['warning']
+                    if wizard.with_currency and link['source_currency'] != wizard.company_id.currency_id.name:
+                        foreign_amount = f"{link['allocated_currency']:.2f} {link['source_currency']}"
+                        note = f'{note}\n' if note else ''
+                        note += f'จัดสรร {foreign_amount}'
+                    if note:
+                        sheet.write(row, 12, note, wrapped)
+                    sheet.set_row(row, 30)
                     row += 1
-        sheet.freeze_panes(header_row + 1, 0)
-        sheet.set_column('A:A', 34)
-        sheet.set_column('B:D', 19)
-        sheet.set_column('E:E', 28)
-        sheet.set_column('F:G', 16, money)
-        sheet.set_column('H:H', 13)
-        sheet.set_column('I:L', 18, money)
-        sheet.set_column('M:M', 25)
-        sheet.set_column('N:O', 30)
-        sheet.set_column('P:R', 20, money)
-        sheet.set_column('S:S', 26)
-        sheet.set_column('T:T', 42)
+        sheet.freeze_panes(1, 3)
+        sheet.set_row(0, 36)
+        sheet.set_column('A:A', 30)
+        sheet.set_column('B:B', 22)
+        sheet.set_column('C:C', 13)
+        sheet.set_column('D:D', 28)
+        sheet.set_column('E:J', 18, money)
+        sheet.set_column('K:K', 14)
+        sheet.set_column('L:L', 18, money)
+        sheet.set_column('M:M', 40, wrapped)

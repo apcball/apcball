@@ -1,9 +1,75 @@
+from io import BytesIO
 from types import SimpleNamespace
+from unittest.mock import patch
+from xml.etree import ElementTree
+from zipfile import ZipFile
 
+import xlsxwriter
 from odoo.tests import TransactionCase
 
 
 class TestPartnerMovementReport(TransactionCase):
+    def test_export_places_linked_rows_in_the_same_readable_columns(self):
+        report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
+        wizard = self.env['partner.movement.excel.wizard'].create({'date_to': '2026-11-14'})
+        link = {
+            'depth': 1, 'type': 'รายการบัญชี', 'number': 'PAY/001', 'date': '2026-10-01',
+            'allocated': 25.0, 'currency': 'THB', 'warning': '', 'journal': 'Bank',
+            'target_account': '1010 Bank', 'debit': 0.0, 'credit': 25.0,
+            'allocated_currency': 25.0, 'source_currency': 'THB',
+        }
+        document = {
+            'number': 'INV/001', 'type': 'ใบแจ้งหนี้ลูกค้า', 'date': '2026-09-01',
+            'journal': 'Sales', 'account': '1100 Receivable', 'debit': 100.0, 'credit': 0.0,
+            'currency': 'THB', 'total': 100.0, 'payment_amount': 25.0,
+            'adjustment_amount': 0.0, 'residual': 75.0, 'period_label': 'Period activity',
+            'state': 'Partial', 'links': [link],
+        }
+        partner = {
+            'partner': SimpleNamespace(display_name='Test Partner'), 'count': 1, 'total': 100.0,
+            'payment_amount': 25.0, 'adjustment_amount': 0.0, 'residual': 75.0,
+            'docs': [document],
+        }
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        with patch.object(type(report), '_report_data', return_value=[partner]):
+            report.generate_xlsx_report(workbook, {}, wizard)
+        workbook.close()
+
+        namespace = {'x': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+        with ZipFile(output) as xlsx:
+            sheets = [name for name in xlsx.namelist() if name.startswith('xl/worksheets/sheet') and name.endswith('.xml')]
+            self.assertEqual(len(sheets), 1)
+            shared = []
+            if 'xl/sharedStrings.xml' in xlsx.namelist():
+                shared_root = ElementTree.fromstring(xlsx.read('xl/sharedStrings.xml'))
+                shared = [
+                    ''.join(node.text or '' for node in item.findall('.//x:t', namespace))
+                    for item in shared_root.findall('x:si', namespace)
+                ]
+            sheet = ElementTree.fromstring(xlsx.read(sheets[0]))
+
+        def cell_value(reference):
+            cell = sheet.find(f".//x:c[@r='{reference}']", namespace)
+            if cell is None:
+                return None
+            value = cell.find('x:v', namespace)
+            if cell.get('t') == 'inlineStr':
+                return ''.join(node.text or '' for node in cell.findall('.//x:t', namespace))
+            if cell.get('t') == 's':
+                return shared[int(value.text)]
+            return value.text if value is not None else None
+
+        self.assertEqual(cell_value('A1'), 'คู่ค้า / เลขที่เอกสาร')
+        self.assertEqual(cell_value('A2'), 'Test Partner')
+        self.assertEqual(cell_value('A3'), 'INV/001')
+        self.assertEqual(cell_value('A4'), '  ↳ PAY/001')
+        self.assertEqual(cell_value('B3'), 'ใบแจ้งหนี้ลูกค้า')
+        self.assertEqual(cell_value('D3'), 'Sales\n1100 Receivable')
+        self.assertEqual(cell_value('D4'), 'Bank\n1010 Bank')
+        self.assertEqual(cell_value('F4'), '25')
+        self.assertEqual(cell_value('L4'), '25')
+
     def test_period_label_marks_pre_range_documents_as_opening(self):
         report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
         self.assertEqual(report._period_label('2026-03-31', '2026-04-01'), 'Opening balance')
@@ -61,7 +127,7 @@ class TestPartnerMovementReport(TransactionCase):
         self.assertEqual(report._link_warning(1, 'entry', True), '')
         self.assertEqual(report._link_warning(2, 'entry', False), '')
         self.assertEqual(report._link_warning(2, 'out_invoice', True), '')
-        self.assertEqual(report._link_warning(2, 'entry', True), 'Bill allocation unclear')
+        self.assertEqual(report._link_warning(2, 'entry', True), 'ตรวจสอบการจัดสรร')
 
     def test_multiple_remaining_links_make_indirect_entry_allocation_ambiguous(self):
         report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
