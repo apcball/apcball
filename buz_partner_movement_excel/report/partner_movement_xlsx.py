@@ -8,6 +8,7 @@ class PartnerMovementXlsx(models.AbstractModel):
     _name = 'report.buz_partner_movement_excel.partner_movement_xlsx'
     _inherit = 'report.report_xlsx.abstract'
     _description = 'Partner Movement Excel Report'
+    _partial_reconcile_batch_size = 1000
 
     @staticmethod
     def _signed_residual(balance, settled):
@@ -52,11 +53,58 @@ class PartnerMovementXlsx(models.AbstractModel):
                 related_move_ids.add(target.id)
         return len(related_move_ids) > 1
 
-    def _amounts_as_of(self, lines, date_as_of):
-        partials = self.env['account.partial.reconcile'].search([
-            ('max_date', '<=', date_as_of),
-            '|', ('debit_move_id', 'in', lines.ids), ('credit_move_id', 'in', lines.ids),
-        ])
+    @staticmethod
+    def _partials_for_lines(lines, partials):
+        line_ids = set(lines.ids)
+        return partials.filtered(
+            lambda partial: partial.debit_move_id.id in line_ids
+            or partial.credit_move_id.id in line_ids
+        )
+
+    def _partials_by_move(self, moves, date_as_of):
+        partial_model = self.env['account.partial.reconcile']
+        partials_by_move = {}
+        frontier = moves
+        for _depth in range(4):
+            frontier = frontier.filtered(lambda move: move.id not in partials_by_move)
+            if not frontier:
+                break
+            frontier_ids = set(frontier.ids)
+            line_ids = frontier.line_ids.ids
+            partial_ids = set()
+            for offset in range(0, len(line_ids), self._partial_reconcile_batch_size):
+                batch_line_ids = line_ids[offset:offset + self._partial_reconcile_batch_size]
+                partial_ids.update(partial_model.search([
+                    ('max_date', '<=', date_as_of),
+                    '|', ('debit_move_id', 'in', batch_line_ids),
+                    ('credit_move_id', 'in', batch_line_ids),
+                ]).ids)
+            partials = partial_model.browse(sorted(partial_ids))
+            grouped_ids = defaultdict(set)
+            next_move_ids = set()
+            for partial in partials:
+                debit_move = partial.debit_move_id.move_id
+                credit_move = partial.credit_move_id.move_id
+                if debit_move.id in frontier_ids:
+                    grouped_ids[debit_move.id].add(partial.id)
+                    if credit_move.move_type == 'entry' and credit_move.id not in partials_by_move:
+                        next_move_ids.add(credit_move.id)
+                if credit_move.id in frontier_ids:
+                    grouped_ids[credit_move.id].add(partial.id)
+                    if debit_move.move_type == 'entry' and debit_move.id not in partials_by_move:
+                        next_move_ids.add(debit_move.id)
+            for move in frontier:
+                partials_by_move[move.id] = partial_model.browse(sorted(grouped_ids[move.id]))
+            frontier = self.env['account.move'].browse(sorted(next_move_ids - frontier_ids))
+        return partials_by_move
+
+    def _amounts_as_of(self, lines, date_as_of, partials=None):
+        if partials is None:
+            partials = self.env['account.partial.reconcile'].search([
+                ('max_date', '<=', date_as_of),
+                '|', ('debit_move_id', 'in', lines.ids), ('credit_move_id', 'in', lines.ids),
+            ])
+        partials = self._partials_for_lines(lines, partials)
         settled = defaultdict(float)
         settled_currency = defaultdict(float)
         for partial in partials:
@@ -71,11 +119,12 @@ class PartnerMovementXlsx(models.AbstractModel):
             currency_residuals[line.id] = line.amount_currency - settled_currency[line.id]
         return company_residuals, currency_residuals, partials
 
-    def _document_rows(self, move, date_to, date_from):
+    def _document_rows(self, move, date_to, date_from, partials_by_move, payment_move_ids):
         lines = move.line_ids.filtered(
             lambda line: line.account_id.account_type in self._partner_account_types()
         )
-        residuals, currency_residuals, partials = self._amounts_as_of(lines, date_to)
+        partials = partials_by_move.get(move.id, self.env['account.partial.reconcile'])
+        residuals, currency_residuals, partials = self._amounts_as_of(lines, date_to, partials)
         settled = sum(abs(line.balance - residuals[line.id]) for line in lines)
         total = sum(abs(line.balance) for line in lines)
         residual = sum(abs(residuals[line.id]) for line in lines)
@@ -84,8 +133,6 @@ class PartnerMovementXlsx(models.AbstractModel):
         foreign_residual = sum(abs(currency_residuals[line.id]) for line in lines)
         payment_amount = 0.0
         adjustment_amount = 0.0
-        payment_moves = self.env['account.payment'].search([('move_id', 'in', partials.mapped('debit_move_id.move_id').ids + partials.mapped('credit_move_id.move_id').ids)])
-        payment_move_ids = set(payment_moves.mapped('move_id').ids)
         for partial in partials:
             if partial.debit_move_id.move_id == move:
                 counterpart = partial.credit_move_id.move_id
@@ -106,7 +153,8 @@ class PartnerMovementXlsx(models.AbstractModel):
                 return
             seen.add(source_move.id)
             source_lines = source_move.line_ids
-            _, _, links = self._amounts_as_of(source_lines, date_to)
+            source_partials = partials_by_move.get(source_move.id, self.env['account.partial.reconcile'])
+            _, _, links = self._amounts_as_of(source_lines, date_to, source_partials)
             ambiguous_links = self._has_ambiguous_links(source_move, links, seen)
             for partial in links:
                 debit, credit = partial.debit_move_id, partial.credit_move_id
@@ -182,12 +230,30 @@ class PartnerMovementXlsx(models.AbstractModel):
         if wizard.partner_ids:
             domain.append(('partner_id', 'in', wizard.partner_ids.ids))
         moves = self.env['account.move'].search(domain, order='partner_id, date, name')
+        partials_by_move = self._partials_by_move(moves, wizard.date_to)
+        payment_candidate_move_ids = set()
+        for move in moves:
+            lines = move.line_ids.filtered(
+                lambda line: line.account_id.account_type in self._partner_account_types()
+            )
+            partials = self._partials_for_lines(lines, partials_by_move.get(
+                move.id, self.env['account.partial.reconcile']
+            ))
+            for partial in partials:
+                payment_candidate_move_ids.add(partial.debit_move_id.move_id.id)
+                payment_candidate_move_ids.add(partial.credit_move_id.move_id.id)
+        payment_moves = self.env['account.payment'].search([
+            ('move_id', 'in', sorted(payment_candidate_move_ids)),
+        ]) if payment_candidate_move_ids else self.env['account.payment']
+        payment_move_ids = set(payment_moves.mapped('move_id').ids)
         partners = []
         for partner in moves.mapped('partner_id'):
             partner_moves = moves.filtered(lambda move: move.partner_id == partner)
             docs = []
             for move in partner_moves:
-                doc = self._document_rows(move, wizard.date_to, wizard.date_from)
+                doc = self._document_rows(
+                    move, wizard.date_to, wizard.date_from, partials_by_move, payment_move_ids
+                )
                 if doc['period_label'] == 'Opening balance' and doc['residual'] <= 0.00001:
                     continue
                 if not wizard.reconciled and doc['residual'] <= 0.00001:

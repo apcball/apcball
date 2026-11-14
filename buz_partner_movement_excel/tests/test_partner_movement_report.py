@@ -5,10 +5,63 @@ from xml.etree import ElementTree
 from zipfile import ZipFile
 
 import xlsxwriter
+from odoo import Command
 from odoo.tests import TransactionCase
 
 
 class TestPartnerMovementReport(TransactionCase):
+    def test_reconcile_and_payment_searches_are_batched_across_documents(self):
+        report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
+        company = self.env.company
+        partner = self.env['res.partner'].create({'name': 'Batch Query Partner'})
+        journal = self.env['account.journal'].search([
+            ('company_id', '=', company.id), ('type', '=', 'sale'),
+        ], limit=1)
+        income = self.env['account.account'].search([
+            ('company_id', '=', company.id), ('account_type', '=', 'income'),
+        ], limit=1)
+        for index in range(3):
+            move = self.env['account.move'].create({
+                'move_type': 'out_invoice', 'partner_id': partner.id,
+                'journal_id': journal.id, 'invoice_date': '2026-11-10',
+                'invoice_line_ids': [Command.create({
+                    'name': f'Batch query line {index}', 'quantity': 1,
+                    'price_unit': 100.0, 'account_id': income.id,
+                    'tax_ids': [Command.clear()],
+                })],
+            })
+            move.action_post()
+        wizard = self.env['partner.movement.excel.wizard'].create({
+            'date_from': '2026-11-01', 'date_to': '2026-11-14',
+            'partner_ids': [Command.set(partner.ids)],
+        })
+
+        partial_model = self.env['account.partial.reconcile']
+        payment_model = self.env['account.payment']
+        partial_search = type(partial_model).search
+        payment_search = type(payment_model).search
+        calls = {'partial': 0, 'payment': 0}
+
+        def count_partial_search(recordset, *args, **kwargs):
+            calls['partial'] += 1
+            return partial_search(recordset, *args, **kwargs)
+
+        def count_payment_search(recordset, *args, **kwargs):
+            calls['payment'] += 1
+            return payment_search(recordset, *args, **kwargs)
+
+        with patch.object(type(partial_model), 'search', count_partial_search), \
+                patch.object(type(payment_model), 'search', count_payment_search):
+            result = report._report_data(wizard)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['count'], 3)
+        self.assertAlmostEqual(result[0]['total'], 300.0)
+        self.assertAlmostEqual(result[0]['payment_amount'], 0.0)
+        self.assertAlmostEqual(result[0]['residual'], 300.0)
+        self.assertLessEqual(calls['partial'], 2)
+        self.assertLessEqual(calls['payment'], 1)
+
     def test_export_places_linked_rows_in_the_same_readable_columns(self):
         report = self.env['report.buz_partner_movement_excel.partner_movement_xlsx']
         wizard = self.env['partner.movement.excel.wizard'].create({'date_to': '2026-11-14'})
