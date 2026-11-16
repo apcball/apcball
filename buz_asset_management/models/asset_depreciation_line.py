@@ -172,14 +172,11 @@ class BuzAssetDepreciationLine(models.Model):
             if line.reversal_move_id:
                 continue
             date = reversal_date or fields.Date.context_today(self)
-            # Policy/lock errors propagate: nothing is changed on failure.
-            reversal = line.move_id._reverse_moves([{
+            # Policy/lock errors propagate: nothing is changed on failure. The account.move
+            # override links the reversal to this line and logs it on the asset.
+            line.move_id._reverse_moves([{
                 'ref': _("กลับรายการ %(ref)s: %(reason)s", ref=line.move_id.name, reason=reason or '-'),
                 'date': date}], cancel=True)
-            line.sudo().write({'state': 'reversed', 'reversal_move_id': reversal.id})
-            line.asset_id.sudo().message_post(
-                author_id=self.env.user.partner_id.id,
-                body=_("กลับรายการค่าเสื่อมราคา %(name)s: %(reason)s", name=line.name, reason=reason or '-'))
 
     def _cron_post_due_lines(self, batch_size=100):
         """Post due lines for companies that enabled auto-post; safe to rerun."""

@@ -163,6 +163,53 @@ class TestDepreciationPosting(TransactionCase):
         line.with_user(self.acc_manager).action_reverse(reason='again')
         self.assertEqual(self.env['account.move'].search_count([('reversed_entry_id', '=', original.id)]), 1)
 
+    def _native_reverse(self, move, user):
+        """Odoo's standard Reverse wizard (Accounting > entry > Reverse)."""
+        wizard = self.env['account.move.reversal'].with_user(user).with_context(
+            active_model='account.move', active_ids=move.ids).create({
+                'date': fields.Date.context_today(move), 'reason': 'native',
+                'journal_id': move.journal_id.id})
+        return wizard.refund_moves()
+
+    def test_native_reverse_wizard_syncs_line(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        original = line.move_id
+        posted_before = asset.accumulated_depreciation
+        self._native_reverse(original, self.acc_manager)
+        reversal = self.env['account.move'].search([('reversed_entry_id', '=', original.id)])
+        self.assertEqual(len(reversal), 1)
+        self.assertEqual(reversal.state, 'posted')
+        self.assertEqual(line.state, 'reversed')
+        self.assertEqual(line.reversal_move_id, reversal)
+        self.assertEqual(asset.accumulated_depreciation, posted_before - line.planned_amount)
+        # Reversing the same entry again (wizard or action) is refused, not duplicated.
+        with self.assertRaises(UserError):
+            self._native_reverse(original, self.acc_manager)
+        line.with_user(self.acc_manager).action_reverse(reason='again')
+        self.assertEqual(self.env['account.move'].search_count([('reversed_entry_id', '=', original.id)]), 1)
+
+    def test_native_reverse_requires_asset_accounting_manager(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        # Odoo accounting manager without the asset accounting-manager group.
+        with self.assertRaises(AccessError):
+            self._native_reverse(line.move_id, self.accountant)
+        self.assertEqual(line.state, 'posted')
+        self.assertFalse(self.env['account.move'].search([('reversed_entry_id', '=', line.move_id.id)]))
+
+    def test_native_reverse_must_post_immediately(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        # cancel=False leaves the reversal in draft: refused so the line never says "reversed" alone.
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            line.move_id.with_user(self.acc_manager)._reverse_moves(cancel=False)
+        self.assertEqual(line.state, 'posted')
+        self.assertFalse(line.reversal_move_id)
+
     def test_posted_move_cannot_be_reset_or_deleted(self):
         asset = self._running_asset()
         line = self._due(asset)[0]
@@ -233,6 +280,16 @@ class TestDepreciationPosting(TransactionCase):
         self.assertTrue(cancelled)
         with self.assertRaises(UserError):
             cancelled[:1].with_user(self.acc_manager).action_post_depreciation()
+
+    def test_disposal_move_cannot_be_reversed_natively(self):
+        asset, disposal = self._disposal_setup()
+        self._post_disposal(disposal)
+        move = disposal.move_id
+        with self.assertRaises(UserError):
+            self._native_reverse(move, self.acc_manager)
+        self.assertFalse(self.env['account.move'].search([('reversed_entry_id', '=', move.id)]))
+        self.assertEqual(disposal.state, 'posted')
+        self.assertEqual(asset.operational_state, 'disposed')
 
     def test_disposal_sale_proceeds_counted_once(self):
         partner = self.env['res.partner'].with_context(skip_partner_required_fields=True).create({'name': 'Buyer'})

@@ -286,3 +286,10 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
 - New result `lost` (สูญหาย) + line button. `quick_result` dropdown (compute/inverse) routed via `_record`/`_reset`; no JS.
 - 2026-11-16 QA: first version embedded the editable list in the audit form, but plain asset users have no audit write ACL, so Odoo renders that form `edit="False"` and the list was read-only for them. Replaced by header button "บันทึกผลตรวจนับ" (`action_open_count`) opening `view_buz_asset_audit_line_count_tree`, an editable list on the lines (users have line write ACL). The audit form tab is now a read-only overview; `audit.write` refuses `line_ids` again for everyone (no header bypass).
 - Only พบ/ไม่พบ/สูญหาย set inline; ยังไม่ตรวจ (reset) requires officer group; other results are refused and need the line form (row button opens it).
+
+## 2026-11-16 — Native reversal kept in sync (QA M4)
+- Every reversal path (Odoo Reverse wizard, reconcile un-matching, `action_reverse`) goes through `account.move._reverse_moves`; the override in `models/account_move.py` now:
+  - depreciation entry: requires `group_asset_accounting_manager`, line must be `posted` and not yet reversed, the reversal must be posted immediately (draft/scheduled refused), then marks the line `reversed`, links `reversal_move_id` and logs on the asset. `action_reverse` relies on it.
+  - disposal entry: refused (no flow restores the asset/schedule yet; a disposal-reversal feature needs owner sign-off).
+- Tests: +4 (wizard sync + no duplicate, permission, draft reversal refused, disposal refused). DEV: TestDepreciationPosting 36/36; full module 146 run, 0 failed, 3 skipped (single company).
+- Open: a posted reversal can still be reset to draft (M3); ledger does not check reversal state.
