@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.osv import expression
+
+_logger = logging.getLogger(__name__)
 
 
 class BuzAssetCoverage(models.Model):
@@ -119,14 +123,17 @@ class BuzAssetCoverage(models.Model):
             order='date_end', limit=batch_size * 3)
         due = candidates.filtered(lambda r: (r.date_end - today).days <= r.reminder_days)[:batch_size]
         for rec in due:
-            with self.env.cr.savepoint():
-                label = dict(self._fields['coverage_type'].selection)[rec.coverage_type]
-                summary = _("%(type)s ใกล้หมดอายุ: %(asset)s (%(ref)s) สิ้นสุด %(end)s",
-                            type=label, asset=rec.asset_id.display_name, ref=rec.reference, end=rec.date_end)
-                if rec.responsible_id:
-                    rec.activity_schedule('mail.mail_activity_data_todo', date_deadline=rec.date_end,
-                                          user_id=rec.responsible_id.id, summary=summary)
-                else:
-                    # No owner to notify: leave a visible trace instead of skipping silently.
-                    rec.message_post(body=summary)
-                rec.sudo().write({'reminder_sent': True})
+            try:
+                with self.env.cr.savepoint():
+                    label = dict(self._fields['coverage_type'].selection)[rec.coverage_type]
+                    summary = _("%(type)s ใกล้หมดอายุ: %(asset)s (%(ref)s) สิ้นสุด %(end)s",
+                                type=label, asset=rec.asset_id.display_name, ref=rec.reference, end=rec.date_end)
+                    if rec.responsible_id:
+                        rec.activity_schedule('mail.mail_activity_data_todo', date_deadline=rec.date_end,
+                                              user_id=rec.responsible_id.id, summary=summary)
+                    else:
+                        # No owner to notify: leave a visible trace instead of skipping silently.
+                        rec.message_post(body=summary)
+                    rec.sudo().write({'reminder_sent': True})
+            except Exception:  # per-record isolation: not marked sent, retried next run
+                _logger.exception('Asset coverage reminder failed for record %s', rec.id)

@@ -311,3 +311,7 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
 - `action_compute_schedule` still refuses once entries exist; its message now points to the re-plan.
 - Disposal: reversed/cancelled rows neither count nor block (supersedes the 2026-10-30 note that any reversed row blocks). Planned/exception/draft rows due by the disposal date still block.
 - Tests +4 (re-plan after reversal, after cost change, guards, disposal after reversal + re-plan). DEV: TestDepreciationPosting 44/44, TestScheduleMath 9/9, TestScheduleModel 8/8.
+
+## 2026-11-16 — Reminder crons isolate failures (QA L2)
+- `_cron_remind_expiring` (coverage) and `_cron_remind_due` (maintenance) used a savepoint without try: one failing record aborted the whole run. Each record now runs in try + savepoint; a failure is logged, the record is not marked `reminder_sent` and is retried next run.
+- Tests +2 (one record failing does not stop the others; it is reminded on the next run). DEV: TestAssetCoverage + TestAssetMaintenance + TestAssetAudit 44/44.

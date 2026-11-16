@@ -160,6 +160,32 @@ class TestAssetMaintenance(TransactionCase):
         self.assertFalse(far.activity_ids)
         self.assertFalse(draft.activity_ids)
 
+    def test_due_reminder_failure_is_isolated_and_retried(self):
+        from unittest.mock import patch
+        from odoo.tools import mute_logger
+        Maint = self.env['buz.asset.maintenance']
+        bad = self._job(planned_date=self.today + relativedelta(days=2))
+        good = self._job(planned_date=self.today + relativedelta(days=3))
+        for job in (bad, good):
+            job.with_user(self.officer).action_plan()
+        model_cls = type(Maint)
+        original = model_cls.activity_schedule
+
+        def flaky(rec, *args, **kwargs):
+            if rec == bad:
+                raise ValueError('boom')
+            return original(rec, *args, **kwargs)
+
+        with patch.object(model_cls, 'activity_schedule', flaky), \
+                mute_logger('odoo.addons.buz_asset_management.models.asset_maintenance'):
+            Maint._cron_remind_due()
+        self.assertTrue(good.reminder_sent)
+        self.assertFalse(bad.reminder_sent)
+        self.assertFalse(bad.activity_ids)
+        Maint._cron_remind_due()
+        self.assertTrue(bad.reminder_sent)
+        self.assertEqual(len(bad.activity_ids), 1)
+
     def test_overdue_filter_and_dashboard(self):
         late = self._job(planned_date=self.today - relativedelta(days=2))
         late.with_user(self.officer).action_plan()
