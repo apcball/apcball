@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'BUZ บริหารทรัพย์สิน',
+    'name': 'BUZ Asset Management',
     'version': '17.0.1.0.0',
-    'summary': 'ทะเบียนและวงจรชีวิตทรัพย์สินถาวร เชื่อมกับระบบบัญชี Odoo',
+    'summary': 'Fixed asset register and lifecycle, integrated with Odoo accounting',
     'category': 'Accounting',
     'author': 'Mogen Co.',
     'website': 'https://www.mogen.co.th',

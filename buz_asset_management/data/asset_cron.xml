@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
     <record id="cron_post_due_depreciation" model="ir.cron">
-        <field name="name">ทรัพย์สิน: ลงบัญชีค่าเสื่อมราคาที่ครบกำหนด</field>
+        <field name="name">Assets: Post Due Depreciation</field>
         <field name="model_id" ref="model_buz_asset_depreciation_line"/>
         <field name="state">code</field>
         <field name="code">model._cron_post_due_lines()</field>
@@ -11,7 +11,7 @@
         <field name="active" eval="True"/>
     </record>
     <record id="cron_maintenance_reminder" model="ir.cron">
-        <field name="name">ทรัพย์สิน: เตือนงานบำรุงรักษาใกล้ถึงกำหนด</field>
+        <field name="name">Assets: Maintenance Due Reminder</field>
         <field name="model_id" ref="model_buz_asset_maintenance"/>
         <field name="state">code</field>
         <field name="code">model._cron_remind_due()</field>
@@ -21,7 +21,7 @@
         <field name="active" eval="True"/>
     </record>
     <record id="cron_coverage_reminder" model="ir.cron">
-        <field name="name">ทรัพย์สิน: เตือนการรับประกัน/ประกันภัยใกล้หมดอายุ</field>
+        <field name="name">Assets: Warranty/Insurance Expiry Reminder</field>
         <field name="model_id" ref="model_buz_asset_coverage"/>
         <field name="state">code</field>
         <field name="code">model._cron_remind_expiring()</field>
