@@ -42,6 +42,10 @@
                     <button name="action_compute_schedule" string="คำนวณตารางค่าเสื่อม" type="object"
                             invisible="operational_state == 'disposed' or not depreciable_base"
                             groups="buz_asset_management.group_asset_accountant"/>
+                    <button name="action_replan_schedule" string="คำนวณตารางที่เหลือใหม่" type="object"
+                            invisible="operational_state == 'disposed' or accounting_state != 'capitalized'"
+                            groups="buz_asset_management.group_asset_accountant"
+                            confirm="ระบบจะเก็บงวดที่ลงบัญชี/กลับรายการแล้วไว้ และแทนงวดที่ยังไม่ลงบัญชีด้วยการกระจายมูลค่าคงเหลือตามอายุที่เหลือ ยืนยัน?"/>
                     <button name="action_new_maintenance" string="แจ้งงานบำรุงรักษา" type="object"
                             invisible="approval_state != 'approved' or operational_state == 'disposed'"
                             groups="buz_asset_management.group_asset_officer"/>

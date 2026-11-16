@@ -304,3 +304,10 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
 - `_cron_post_due_lines` now: selects only assets that are approved, in service/under maintenance and capitalized; skips assets holding an `exception`/`draft_move` due line (they wait for a person); stops an asset for the run after its first failure; a UserError found before posting marks that line `exception` with the message (one actionable exception per asset). Exception lines are not auto-retried; manual post retries them. Manual `action_post_depreciation` behaviour unchanged (still raises).
 - Note: `order='asset_id, sequence'` follows `buz.asset._order` (code desc), so newer assets are batched first.
 - Tests +2 (misconfigured asset does not starve another with batch_size=2; not-ready asset waits without exception). DEV: TestDepreciationPosting 40/40.
+
+## 2026-11-16 — Re-plan after reversal / cost change (QA M2, owner decision)
+- Owner decision 2026-11-16: corrections re-plan forward; a re-planned row in a locked period goes to exception when posted (no catch-up into the next open period).
+- `buz.asset.action_replan_schedule` (accountant; button "คำนวณตารางที่เหลือใหม่" on capitalized, not disposed assets): keeps posted/reversed/cancelled rows as history, deletes planned/exception rows, spreads (depreciable base − net posted) straight-line over useful-life months left after the last posted period (from the depreciation start when nothing is posted). New rows get sequences after the history and idempotency keys suffixed `:v<version>`. Refused when: disposed, a `draft_move` row exists, net posted exceeds the base (reverse first), or life is used up with value left (extend life first).
+- `action_compute_schedule` still refuses once entries exist; its message now points to the re-plan.
+- Disposal: reversed/cancelled rows neither count nor block (supersedes the 2026-10-30 note that any reversed row blocks). Planned/exception/draft rows due by the disposal date still block.
+- Tests +4 (re-plan after reversal, after cost change, guards, disposal after reversal + re-plan). DEV: TestDepreciationPosting 44/44, TestScheduleMath 9/9, TestScheduleModel 8/8.

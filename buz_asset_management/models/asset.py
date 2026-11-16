@@ -2,8 +2,11 @@
 import json
 import uuid
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import float_compare
 
 from ..services.depreciation import compute_straight_line_schedule
 
@@ -353,7 +356,7 @@ class BuzAsset(models.Model):
             raise UserError(_("กรุณาระบุอายุการใช้งานของ %s ก่อน", self.display_name))
         if self.depreciation_line_ids.filtered(lambda line: line.state != 'planned'):
             raise UserError(_(
-                "ทรัพย์สิน %s มีรายการเกินสถานะวางแผนแล้ว กรุณาใช้การกลับรายการหรือปรับปรุงแทนการคำนวณใหม่", self.display_name))
+                "ทรัพย์สิน %s มีงวดที่ลงบัญชีหรือกลับรายการแล้ว กรุณาใช้ 'คำนวณตารางที่เหลือใหม่'", self.display_name))
 
         rows = compute_straight_line_schedule(
             self.depreciable_base, self.useful_life_months, start_date, self.currency_id.round)
@@ -387,3 +390,80 @@ class BuzAsset(models.Model):
             author_id=self.env.user.partner_id.id,
             body=_("คำนวณตารางค่าเสื่อมราคาแล้ว: %(count)s งวด เวอร์ชัน %(version)s",
                    count=len(rows), version=version))
+
+    def action_replan_schedule(self):
+        """Re-plan the unposted remainder after a reversal or a cost/residual/life change.
+
+        Posted, reversed and cancelled rows stay as history. Planned/exception rows are
+        replaced by a straight-line spread of (depreciable base - net posted) over the
+        useful-life months left after the last posted period. Nothing is posted here;
+        a new row in a locked period goes to exception when posted, as usual.
+        """
+        self._require_group('buz_asset_management.group_asset_accountant')
+        for asset in self:
+            asset._replan_schedule()
+
+    def _replan_schedule(self):
+        self.ensure_one()
+        if self.operational_state == 'disposed':
+            raise UserError(_("ทรัพย์สิน %s ถูกจำหน่ายแล้ว จึงไม่มีตารางค่าเสื่อมราคา", self.display_name))
+        lines = self.depreciation_line_ids
+        if lines.filtered(lambda l: l.state == 'draft_move'):
+            raise UserError(_("ทรัพย์สิน %s มีงวดที่เป็นร่างรายการบัญชีอยู่ กรุณาจัดการก่อน", self.display_name))
+        start_date = self.depreciation_start_date or self.in_service_date
+        if not start_date:
+            raise UserError(_(
+                "กรุณาระบุวันที่เริ่มใช้งานหรือวันที่เริ่มคิดค่าเสื่อมราคาของ %s ก่อน", self.display_name))
+        rounding = self.currency_id.rounding
+        posted = lines.filtered(lambda l: l.state == 'posted')
+        net_posted = sum(posted.mapped('planned_amount'))
+        remaining = self.currency_id.round(self.depreciable_base - net_posted)
+        if float_compare(remaining, 0.0, precision_rounding=rounding) < 0:
+            raise UserError(_(
+                "ค่าเสื่อมราคาที่ลงบัญชีแล้วของ %(asset)s (%(posted)s) เกินมูลค่าที่ต้องคิดค่าเสื่อม (%(base)s) "
+                "ต้องกลับรายการงวดที่เกินก่อน", asset=self.display_name, posted=net_posted, base=self.depreciable_base))
+        # Next month after the last posted period; the original start when nothing is posted.
+        last_end = max(posted.mapped('period_end')) if posted else None
+        next_start = last_end + relativedelta(days=1) if last_end else start_date.replace(day=1)
+        elapsed = (next_start.year - start_date.year) * 12 + next_start.month - start_date.month
+        months_left = self.useful_life_months - elapsed
+        rows = []
+        if float_compare(remaining, 0.0, precision_rounding=rounding) > 0:
+            if months_left <= 0:
+                raise UserError(_(
+                    "อายุการใช้งานของ %(asset)s หมดแล้วแต่ยังเหลือมูลค่าที่ต้องคิดค่าเสื่อม %(left)s "
+                    "กรุณาขยายอายุการใช้งานก่อน", asset=self.display_name, left=remaining))
+            rows = compute_straight_line_schedule(remaining, months_left, next_start, self.currency_id.round)
+
+        version = max(lines.mapped('calculation_version') or [0]) + 1
+        offset = max((lines - lines.filtered(lambda l: l.state in ('planned', 'exception'))).mapped('sequence') or [0])
+        snapshot = json.dumps({
+            'mode': 'replan',
+            'depreciable_base': self.depreciable_base,
+            'net_posted': net_posted,
+            'remaining': remaining,
+            'useful_life_months': self.useful_life_months,
+            'months_left': months_left,
+            'start_date': fields.Date.to_string(next_start),
+            'convention': 'full_month',
+            'method': self.depreciation_method,
+        }, sort_keys=True)
+        # sudo: schedule lines have no direct write access; group checked in action.
+        lines.filtered(lambda l: l.state in ('planned', 'exception')).sudo().unlink()
+        self.env['buz.asset.depreciation.line'].sudo().create([{
+            'asset_id': self.id,
+            'sequence': offset + row['sequence'],
+            'name': '%s (%s/%s)' % (self.code, elapsed + row['sequence'], self.useful_life_months),
+            'depreciation_date': row['depreciation_date'],
+            'period_start': row['period_start'],
+            'period_end': row['period_end'],
+            'planned_amount': row['amount'],
+            'remaining_after': row['remaining_after'],
+            'idempotency_key': '%s:%s:depreciation:v%s' % (self.id, offset + row['sequence'], version),
+            'calculation_version': version,
+            'calculation_snapshot': snapshot,
+        } for row in rows])
+        self.sudo().message_post(
+            author_id=self.env.user.partner_id.id,
+            body=_("คำนวณตารางที่เหลือใหม่: ลงบัญชีแล้วสุทธิ %(posted)s คงเหลือ %(left)s ใน %(count)s งวด เวอร์ชัน %(version)s",
+                   posted=net_posted, left=remaining, count=len(rows), version=version))

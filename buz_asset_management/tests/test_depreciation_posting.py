@@ -210,6 +210,57 @@ class TestDepreciationPosting(TransactionCase):
         self.assertEqual(line.state, 'posted')
         self.assertFalse(line.reversal_move_id)
 
+    def _post_due(self, asset):
+        for line in self._due(asset):
+            if line.state == 'planned':
+                line.with_user(self.acc_manager).action_post_depreciation()
+
+    def test_replan_after_reversal_spreads_remainder(self):
+        asset = self._running_asset()          # base 1200 over 12 months = 100/month
+        self._post_due(asset)
+        due = self._due(asset)
+        self.assertGreaterEqual(len(due), 2)
+        p1, last = due[0], due[-1]
+        p1.with_user(self.acc_manager).action_reverse(reason='wrong period')
+        history = asset.depreciation_line_ids.filtered(lambda l: l.state in ('posted', 'reversed'))
+        asset.with_user(self.accountant).action_replan_schedule()
+        # History untouched.
+        self.assertEqual(p1.state, 'reversed')
+        self.assertTrue(all(history.exists()))
+        new = asset.depreciation_line_ids.filtered(lambda l: l.state == 'planned')
+        net_posted = sum(asset.depreciation_line_ids.filtered(lambda l: l.state == 'posted').mapped('planned_amount'))
+        elapsed = len(due)                      # months up to and including the last posted period
+        self.assertEqual(len(new), 12 - elapsed)
+        self.assertAlmostEqual(sum(new.mapped('planned_amount')), 1200.0 - net_posted, places=2)
+        self.assertEqual(min(new.mapped('period_start')), last.period_end + relativedelta(days=1))
+        self.assertGreater(min(new.mapped('sequence')), max(history.mapped('sequence')))   # posting order
+        self.assertEqual(len(set(asset.depreciation_line_ids.mapped('idempotency_key'))),
+                         len(asset.depreciation_line_ids))
+        # Book value follows posted entries only.
+        self.assertEqual(asset.accumulated_depreciation, net_posted)
+
+    def test_replan_after_cost_change(self):
+        asset = self._running_asset()
+        self._post_due(asset)
+        net_posted = sum(self._due(asset).mapped('planned_amount'))
+        asset.sudo().write({'gross_cost': 1900.0})   # cost correction after capitalization
+        asset.with_user(self.accountant).action_replan_schedule()
+        planned = asset.depreciation_line_ids.filtered(lambda l: l.state == 'planned')
+        self.assertAlmostEqual(sum(planned.mapped('planned_amount')), 1800.0 - net_posted, places=2)
+        # A plain recompute is refused once entries exist and points to the re-plan.
+        with self.assertRaises(UserError):
+            asset.with_user(self.accountant).action_compute_schedule()
+
+    def test_replan_guards(self):
+        asset = self._running_asset()
+        self._post_due(asset)
+        with self.assertRaises(AccessError):
+            asset.with_user(self.asset_manager).action_replan_schedule()
+        # Posted depreciation above the new base must be reversed first, never silently absorbed.
+        asset.sudo().write({'residual_value': 1250.0})
+        with self.assertRaises(UserError):
+            asset.with_user(self.accountant).action_replan_schedule()
+
     def test_reversal_move_cannot_be_reset_cancelled_or_deleted(self):
         asset = self._running_asset()
         line = self._due(asset)[0]
@@ -335,6 +386,21 @@ class TestDepreciationPosting(TransactionCase):
         self.assertTrue(cancelled)
         with self.assertRaises(UserError):
             cancelled[:1].with_user(self.acc_manager).action_post_depreciation()
+
+    def test_disposal_after_reversal_and_replan(self):
+        asset, disposal = self._disposal_setup()
+        due = self._due(asset)
+        due[0].with_user(self.acc_manager).action_reverse(reason='t')
+        asset.with_user(self.accountant).action_replan_schedule()
+        self._post_due(asset)                      # re-planned rows already due, if any
+        posted = asset.depreciation_line_ids.filtered(
+            lambda l: l.state == 'posted' and l.depreciation_date <= disposal.disposal_date)
+        self._post_disposal(disposal)
+        self.assertEqual(disposal.state, 'posted')
+        self.assertAlmostEqual(disposal.accumulated_depreciation, sum(posted.mapped('planned_amount')), places=2)
+        move = disposal.move_id
+        self.assertEqual(sum(move.line_ids.mapped('debit')), sum(move.line_ids.mapped('credit')))
+        self.assertEqual(due[0].state, 'reversed')   # history kept
 
     def test_disposal_move_cannot_be_reversed_natively(self):
         asset, disposal = self._disposal_setup()
@@ -552,7 +618,7 @@ class TestDepreciationPosting(TransactionCase):
         accum = self._row(wiz, 'accumulated', self.accum)
         self.assertEqual(accum.gl_balance, accum.subledger_balance)
         self.assertEqual(accum.subledger_balance, sum(due.mapped('planned_amount')) - due[0].planned_amount)
-        # Reversal makes period 1 unavailable to the disposal; use a clean asset for the disposal leg.
+        # Keep the reversal case separate from the disposal leg (see test_disposal_after_reversal_and_replan).
         asset2, disposal2 = self._disposal_setup()
         self._cost_entry()
         self._post_disposal(disposal2)
