@@ -259,6 +259,34 @@ class TestDepreciationPosting(TransactionCase):
         self.assertEqual(len(posted), len(self._due(asset)))
         self.assertEqual(len(posted.mapped('move_id')), len(posted))
 
+    def test_cron_misconfigured_asset_does_not_starve_others(self):
+        good = self._running_asset(name='Good')
+        broken_category = self.category.copy({'name': 'Broken'})
+        broken = self._running_asset(name='Broken', category_id=broken_category.id)
+        broken_category.expense_account_id = False   # setup error found only at posting time
+        # Batches follow buz.asset._order (code desc): the newer, broken asset comes first.
+        self.assertGreater(broken.code, good.code)
+        self.assertGreaterEqual(len(self._due(broken)), 2)
+        self.company.buz_asset_auto_post = True
+        Line = self.env['buz.asset.depreciation.line']
+        for _run in range(3):
+            Line._cron_post_due_lines(batch_size=2)
+        self.assertTrue(all(self._due(good).mapped('move_id')), "good asset starved by the broken one")
+        broken_due = self._due(broken)
+        self.assertEqual(broken_due[0].state, 'exception')
+        self.assertTrue(broken_due[0].exception_message)
+        self.assertEqual(set(broken_due[1:].mapped('state')), {'planned'})   # one actionable exception only
+        self.assertFalse(broken_due.mapped('move_id'))
+
+    def test_cron_skips_assets_not_ready(self):
+        asset = self._running_asset()
+        asset.sudo().write({'accounting_state': 'not_capitalized'})
+        self.company.buz_asset_auto_post = True
+        self.env['buz.asset.depreciation.line']._cron_post_due_lines()
+        due = self._due(asset)
+        self.assertEqual(set(due.mapped('state')), {'planned'})   # waits silently, no exception noise
+        self.assertFalse(due.mapped('move_id'))
+
     # ------------------------------------------------------------------
     # Disposal
     # ------------------------------------------------------------------

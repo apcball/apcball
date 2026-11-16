@@ -179,15 +179,38 @@ class BuzAssetDepreciationLine(models.Model):
                 'date': date}], cancel=True)
 
     def _cron_post_due_lines(self, batch_size=100):
-        """Post due lines for companies that enabled auto-post; safe to rerun."""
+        """Post due lines for companies that enabled auto-post; safe to rerun.
+
+        A line that cannot post must not stay in the batch forever (it would starve every
+        other asset): assets that are not ready are not selected, assets that already hold
+        an exception/draft line wait for a person, and a setup error found before posting
+        (missing account, journal of another company, ...) marks the line as exception.
+        Exception lines are not retried here; posting them manually retries.
+        """
         today = fields.Date.context_today(self)
         companies = self.env['res.company'].search([('buz_asset_auto_post', '=', True)])
-        lines = self.search([
-            ('state', '=', 'planned'), ('depreciation_date', '<=', today),
-            ('company_id', 'in', companies.ids)], order='asset_id, sequence', limit=batch_size)
+        if not companies:
+            return
+        base = [('depreciation_date', '<=', today), ('company_id', 'in', companies.ids)]
+        waiting = self.search(base + [('state', 'in', ('exception', 'draft_move'))]).asset_id
+        lines = self.search(base + [
+            ('state', '=', 'planned'), ('asset_id', 'not in', waiting.ids),
+            ('asset_id.approval_state', '=', 'approved'),
+            ('asset_id.operational_state', 'in', ('in_service', 'under_maintenance')),
+            ('asset_id.accounting_state', '=', 'capitalized'),
+        ], order='asset_id, sequence', limit=batch_size)
+        stopped = set()
         for line in lines:
+            if line.asset_id.id in stopped:
+                continue  # an earlier period of this asset did not post in this run
             try:
                 with self.env.cr.savepoint():
-                    line._post_lines()
-            except Exception:  # per-line isolation; logged and left for next run
+                    if line._post_lines():
+                        stopped.add(line.asset_id.id)  # blocked by policy, line now in exception
+            except UserError as exc:
+                stopped.add(line.asset_id.id)
+                # sudo: workflow-guarded state; cron context, no user action involved.
+                line.sudo().write({'state': 'exception', 'exception_message': exc.args[0]})
+            except Exception:  # per-asset isolation (e.g. row locked by a concurrent post); next run
+                stopped.add(line.asset_id.id)
                 _logger.exception('Asset depreciation auto-post failed for line %s', line.id)
