@@ -281,3 +281,8 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
 - Quick actions only open existing views; no state change from the dashboard.
 - PDF export is the browser print stylesheet (QWeb report not built yet). Manifest version not bumped (needs owner confirm).
 - Status: deployed to DEV (MOG_DEV); `TestDashboardService` 12 tests, 0 failed, 1 skipped (company-leak test: DEV has one company). Full module suite not rerun. Not browser-checked; prod not deployed.
+
+## 2026-11-04 — Count list (quick result) for audits
+- New result `lost` (สูญหาย) + line button. `quick_result` dropdown (compute/inverse) routed via `_record`/`_reset`; no JS.
+- 2026-11-16 QA: first version embedded the editable list in the audit form, but plain asset users have no audit write ACL, so Odoo renders that form `edit="False"` and the list was read-only for them. Replaced by header button "บันทึกผลตรวจนับ" (`action_open_count`) opening `view_buz_asset_audit_line_count_tree`, an editable list on the lines (users have line write ACL). The audit form tab is now a read-only overview; `audit.write` refuses `line_ids` again for everyone (no header bypass).
+- Only พบ/ไม่พบ/สูญหาย set inline; ยังไม่ตรวจ (reset) requires officer group; other results are refused and need the line form (row button opens it).

@@ -28,7 +28,9 @@
                     <button name="action_start" string="เริ่มตรวจนับ" type="object" class="btn-primary"
                             invisible="state != 'draft'" groups="buz_asset_management.group_asset_officer"
                             confirm="ระบบจะบันทึกข้อมูลที่คาดหวังของทรัพย์สินตามขอบเขต และเปลี่ยนขอบเขตไม่ได้อีก ยืนยัน?"/>
-                    <button name="action_open_scan" string="สแกน/ค้นหา" type="object" class="btn-primary"
+                    <button name="action_open_count" string="บันทึกผลตรวจนับ" type="object" class="btn-primary"
+                            invisible="state != 'in_progress'"/>
+                    <button name="action_open_scan" string="สแกน/ค้นหา" type="object" class="btn-secondary"
                             invisible="state != 'in_progress'"/>
                     <button name="action_close" string="ปิดรอบตรวจนับ" type="object"
                             invisible="state != 'in_progress'" groups="buz_asset_management.group_asset_manager"/>
@@ -68,6 +70,26 @@
                         <field name="category_ids" widget="many2many_tags" readonly="state != 'draft'"
                                options="{'no_create': True}"/>
                     </group>
+                    <notebook invisible="state == 'draft'">
+                        <page string="รายการทรัพย์สิน" name="lines">
+                            <!-- Read-only overview; counting happens in the "บันทึกผลตรวจนับ" list
+                                 (asset users have no write access on the audit itself). -->
+                            <field name="line_ids" readonly="1">
+                                <tree create="0" delete="0"
+                                      decoration-success="result == 'found'"
+                                      decoration-danger="result in ('not_found', 'lost', 'damaged')"
+                                      decoration-warning="result in ('wrong_location', 'wrong_custodian')"
+                                      decoration-muted="result == 'not_checked'">
+                                    <field name="asset_code"/>
+                                    <field name="asset_id"/>
+                                    <field name="expected_location_id"/>
+                                    <field name="expected_employee_id" optional="show"/>
+                                    <field name="result" widget="badge"/>
+                                    <field name="notes" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
                 <div class="oe_chatter">
                     <field name="message_follower_ids"/>
@@ -90,7 +112,7 @@
         <field name="model">buz.asset.audit.line</field>
         <field name="arch" type="xml">
             <tree create="0" delete="0" decoration-success="result == 'found'"
-                  decoration-danger="result in ('not_found', 'damaged')"
+                  decoration-danger="result in ('not_found', 'lost', 'damaged')"
                   decoration-warning="result in ('wrong_location', 'wrong_custodian')"
                   decoration-muted="result == 'not_checked'">
                 <field name="audit_id" optional="hide"/>
@@ -106,6 +128,31 @@
         </field>
     </record>
 
+    <!-- Count list: edited on the lines (asset users have line write access). Dropdown values
+         other than พบ/ไม่พบ/สูญหาย/ยังไม่ตรวจ are refused server-side and need the line form. -->
+    <record id="view_buz_asset_audit_line_count_tree" model="ir.ui.view">
+        <field name="name">buz.asset.audit.line.count.tree</field>
+        <field name="model">buz.asset.audit.line</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" create="0" delete="0"
+                  decoration-success="result == 'found'"
+                  decoration-danger="result in ('not_found', 'lost', 'damaged')"
+                  decoration-warning="result in ('wrong_location', 'wrong_custodian')"
+                  decoration-muted="result == 'not_checked'">
+                <field name="audit_state" column_invisible="1"/>
+                <field name="result" column_invisible="1"/>
+                <field name="asset_code" readonly="1"/>
+                <field name="asset_id" readonly="1"/>
+                <field name="expected_location_id" readonly="1"/>
+                <field name="expected_employee_id" readonly="1" optional="show"/>
+                <field name="quick_result" string="ผลการตรวจ" readonly="audit_state != 'in_progress'"/>
+                <field name="notes" optional="show" readonly="audit_state != 'in_progress'"/>
+                <button name="get_formview_action" type="object" icon="fa-external-link" title="เปิดฟอร์มรายการ"/>
+            </tree>
+        </field>
+    </record>
+
     <record id="view_buz_asset_audit_line_form" model="ir.ui.view">
         <field name="name">buz.asset.audit.line.form</field>
         <field name="model">buz.asset.audit.line</field>
@@ -115,6 +162,8 @@
                     <button name="action_found" string="พบ" type="object" class="btn-success"
                             invisible="audit_state != 'in_progress'"/>
                     <button name="action_not_found" string="ไม่พบ" type="object" class="btn-danger"
+                            invisible="audit_state != 'in_progress'"/>
+                    <button name="action_lost" string="สูญหาย" type="object" class="btn-danger"
                             invisible="audit_state != 'in_progress'"/>
                     <button name="action_wrong_location" string="ผิดสถานที่" type="object"
                             invisible="audit_state != 'in_progress'"/>
