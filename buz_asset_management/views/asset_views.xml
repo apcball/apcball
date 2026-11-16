@@ -225,6 +225,10 @@
         <field name="name">ทะเบียนทรัพย์สิน</field>
         <field name="res_model">buz.asset</field>
         <field name="view_mode">tree,form</field>
+        <!-- Explicit views: the report tree (create="0") lives on the same model and must never be picked here. -->
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_buz_asset_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_buz_asset_form')})]"/>
         <field name="search_view_id" ref="view_buz_asset_search"/>
     </record>
 </odoo>

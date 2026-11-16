@@ -261,6 +261,24 @@ class TestDepreciationPosting(TransactionCase):
         with self.assertRaises(UserError):
             asset.with_user(self.accountant).action_replan_schedule()
 
+    def test_asset_register_list_allows_create(self):
+        """Regression (prod): the register opened the report list (create="0"), so no New button."""
+        action = self.env.ref('buz_asset_management.action_buz_asset')
+        tree = self.env.ref('buz_asset_management.view_buz_asset_tree')
+        self.assertEqual(action.view_ids.filtered(lambda v: v.view_mode == 'tree').view_id, tree)
+        Asset = self.env['buz.asset'].with_user(self.asset_manager)
+        # Default list view of the model (no explicit view) must not be the read-only report list.
+        default = Asset.get_views([(False, 'list')])['views']['list']['arch']
+        self.assertNotIn('create="0"', default)
+        # The action's own view, as the web client requests it.
+        own = Asset.get_views([(tree.id, 'list')])['views']['list']['arch']
+        self.assertNotIn('create="0"', own)
+        self.assertNotIn('create="False"', own)
+        # Reports stay read-only.
+        report = self.env.ref('buz_asset_management.action_buz_report_register')
+        report_tree = report.view_ids.filtered(lambda v: v.view_mode == 'tree').view_id
+        self.assertIn('create="0"', report_tree.arch)
+
     def test_category_setup_rights(self):
         Category = self.env['buz.asset.category']
         vals = {'name': 'ACL Cat', 'company_id': self.company.id, 'useful_life_months': 12}
