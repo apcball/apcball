@@ -24,31 +24,46 @@
         <field name="arch" type="xml">
             <form string="กรอกข้อมูลใบหุ้น">
                 <header>
-                    <button name="action_print_options" type="object" string="พิมพ์ใบหุ้น" class="oe_highlight"/>
-                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" invisible="state != 'done'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                    <button name="action_print_options" type="object" string="พิมพ์ใบหุ้น" icon="fa-print" class="oe_highlight"/>
                 </header>
                 <sheet>
-                <group readonly="state == 'done'">
-                    <group string="ข้อมูลบริษัทและใบหุ้น">
-                        <field name="company_name" readonly="state == 'done'"/><field name="registration_number" readonly="state == 'done'"/>
-                        <field name="certificate_number" readonly="state == 'done'"/><field name="issue_date" readonly="state == 'done'"/>
-                        <field name="registered_capital" readonly="state == 'done'"/><field name="total_shares" readonly="state == 'done'"/><field name="share_value" readonly="state == 'done'"/>
+                    <field name="state" invisible="1"/>
+                    <group readonly="state == 'done'">
+                        <group string="ข้อมูลบริษัทและใบหุ้น">
+                            <field name="company_name" string="บริษัท"/>
+                            <field name="registration_number" string="ทะเบียนเลขที่"/>
+                            <field name="certificate_number" string="ใบหุ้นเลขที่"/>
+                            <field name="issue_date" string="ออกเมื่อวันที่"/>
+                            <field name="registered_capital" string="ทุนจดทะเบียน"/>
+                            <field name="total_shares" string="แบ่งเป็นจำนวนหุ้น"/>
+                            <field name="share_value" string="มูลค่าหุ้นละ"/>
+                        </group>
+                        <group string="ข้อมูลผู้ถือหุ้น">
+                            <field name="shareholder_name" string="ชื่อผู้ถือหุ้น" readonly="state == 'done'"/>
+                            <field name="share_count" string="ถือหุ้นจำนวน"/>
+                            <field name="share_number_from" string="หมายเลขหุ้นตั้งแต่"/>
+                            <field name="share_number_to" string="ถึง"/>
+                        </group>
                     </group>
-                    <group string="ข้อมูลผู้ถือหุ้น">
-                        <field name="shareholder_name" readonly="state == 'done'"/><field name="share_count" readonly="state == 'done'"/>
-                        <field name="share_number_from" readonly="state == 'done'"/><field name="share_number_to" readonly="state == 'done'"/>
-                        <field name="paid_per_share" readonly="state == 'done'"/><field name="total_paid" readonly="state == 'done'"/>
+                    <group readonly="state == 'done'">
+                        <group string="การชำระค่าหุ้น">
+                            <field name="paid_per_share" string="ได้ชำระค่าหุ้นแล้ว หุ้นละ"/>
+                            <field name="total_paid" string="รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว" readonly="1"/>
+                        </group>
+                        <group string="ใบหุ้นเดิมที่ยกเลิก (ถ้ามี)">
+                            <field name="previous_certificate_number" string="ยกเลิกใบหุ้นเดิมเลขที่"/>
+                            <field name="previous_certificate_date" string="ลงวันที่"/>
+                        </group>
                     </group>
-                </group>
-                <group readonly="state == 'done'">
-                    <group string="ใบหุ้นเดิมที่ยกเลิก">
-                        <field name="previous_certificate_number" readonly="state == 'done'"/><field name="previous_certificate_date" readonly="state == 'done'"/>
+                    <group readonly="state == 'done'">
+                        <group string="กรรมการ">
+                            <field name="director_one" string="กรรมการ 1"/>
+                            <field name="director_two" string="กรรมการ 2"/>
+                        </group>
+                        <group string="การรับใบหุ้น">
+                            <field name="receipt_date" string="วันที่"/>
+                        </group>
                     </group>
-                    <group string="ผู้ลงนามและการรับใบหุ้น">
-                        <field name="director_one" readonly="state == 'done'"/><field name="director_two" readonly="state == 'done'"/><field name="receipt_date" readonly="state == 'done'"/>
-                    </group>
-                </group>
                 </sheet>
             </form>
         </field>

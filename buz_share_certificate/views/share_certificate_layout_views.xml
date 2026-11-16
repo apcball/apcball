@@ -12,52 +12,94 @@
                 <sheet>
                     <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
                     <group>
-                        <group string="กระดาษและตำแหน่ง">
-                            <field name="page_offset_x_mm"/>
-                            <field name="page_offset_y_mm"/>
+                        <group string="ตั้งค่าหน้ากระดาษ">
+                            <div class="o_form_label">A4 แนวนอน (297 x 210 mm)</div>
+                            <field name="margin_top_mm"/>
+                            <field name="margin_bottom_mm"/>
+                            <field name="margin_left_mm"/>
+                            <field name="margin_right_mm"/>
                             <field name="stub_width_mm"/>
                         </group>
-                        <group string="ขนาดตัวอักษร">
-                            <field name="body_font_size_pt"/>
-                            <field name="company_font_size_pt"/>
+                        <group string="ตัวอักษร">
+                            <field name="font_family"/>
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert">
-                        ใช้ Preview เทียบกับภาพฟอร์ม แล้วปรับค่าตำแหน่งเป็นมิลลิเมตร พิมพ์ทดสอบที่ 100% โดยปิด Fit to page
+                        ใช้ Preview เทียบแบบฟอร์ม; X/Y ของทุกฟิลด์นับจากมุมซ้ายบนของกระดาษ A4 จริง ขอบทั้งสี่เป็นเส้นไกด์และไม่เลื่อนฟิลด์
+                    </div>
+                    <div invisible="not margin_warning" class="alert alert-warning" role="alert">
+                        <field name="margin_warning" readonly="1"/>
                     </div>
                     <notebook>
                         <page string="ต้นขั้ว">
                             <group>
-                                <group>
-                                    <field name="stub_header_top_mm"/>
-                                    <field name="stub_registration_top_mm"/>
-                                    <field name="stub_certificate_top_mm"/>
-                                    <field name="stub_shareholder_top_mm"/>
-                                    <field name="stub_share_count_top_mm"/>
+                                <group string="ข้อมูลบริษัทและใบหุ้น">
+                                    <field name="stub_company_x_mm"/><field name="stub_company_y_mm"/>
+                                    <field name="stub_registration_x_mm"/><field name="stub_registration_y_mm"/>
+                                    <field name="stub_certificate_number_x_mm"/><field name="stub_certificate_number_y_mm"/>
+                                    <field name="stub_issue_date_x_mm"/><field name="stub_issue_date_y_mm"/>
+                                    <field name="stub_shareholder_x_mm"/><field name="stub_shareholder_y_mm"/>
                                 </group>
-                                <group>
-                                    <field name="stub_share_range_top_mm"/>
-                                    <field name="stub_paid_top_mm"/>
-                                    <field name="stub_total_paid_top_mm"/>
-                                    <field name="stub_cancellation_top_mm"/>
-                                    <field name="stub_receipt_top_mm"/>
+                                <group string="จำนวนหุ้นและการชำระ">
+                                    <field name="stub_share_count_x_mm"/><field name="stub_share_count_y_mm"/>
+                                    <field name="stub_share_number_from_x_mm"/><field name="stub_share_number_from_y_mm"/>
+                                    <field name="stub_share_number_to_x_mm"/><field name="stub_share_number_to_y_mm"/>
+                                    <field name="stub_paid_per_share_x_mm"/><field name="stub_paid_per_share_y_mm"/>
+                                    <field name="stub_total_paid_x_mm"/><field name="stub_total_paid_y_mm"/>
+                                </group>
+                                <group string="ใบหุ้นเดิมและวันที่รับ">
+                                    <field name="stub_previous_certificate_number_x_mm"/><field name="stub_previous_certificate_number_y_mm"/>
+                                    <field name="stub_previous_certificate_date_x_mm"/><field name="stub_previous_certificate_date_y_mm"/>
+                                    <field name="stub_receipt_date_x_mm"/><field name="stub_receipt_date_y_mm"/>
                                 </group>
                             </group>
                         </page>
                         <page string="ใบหุ้น">
                             <group>
-                                <group>
-                                    <field name="certificate_number_top_mm"/>
-                                    <field name="certificate_company_top_mm"/>
-                                    <field name="certificate_registration_top_mm"/>
-                                    <field name="certificate_capital_top_mm"/>
-                                    <field name="certificate_shareholder_top_mm"/>
+                                <group string="ข้อมูลบริษัทและทุน">
+                                    <field name="certificate_number_x_mm"/><field name="certificate_number_y_mm"/>
+                                    <field name="certificate_company_x_mm"/><field name="certificate_company_y_mm"/>
+                                    <field name="certificate_registration_x_mm"/><field name="certificate_registration_y_mm"/>
+                                    <field name="certificate_registered_capital_x_mm"/><field name="certificate_registered_capital_y_mm"/>
+                                    <field name="certificate_total_shares_x_mm"/><field name="certificate_total_shares_y_mm"/>
+                                    <field name="certificate_share_value_x_mm"/><field name="certificate_share_value_y_mm"/>
+                                    <field name="certificate_shareholder_x_mm"/><field name="certificate_shareholder_y_mm"/>
                                 </group>
-                                <group>
-                                    <field name="certificate_share_count_top_mm"/>
-                                    <field name="certificate_paid_top_mm"/>
-                                    <field name="certificate_issue_date_top_mm"/>
-                                    <field name="certificate_directors_top_mm"/>
+                                <group string="จำนวนหุ้นและการชำระ">
+                                    <field name="certificate_share_count_x_mm"/><field name="certificate_share_count_y_mm"/>
+                                    <field name="certificate_share_number_from_x_mm"/><field name="certificate_share_number_from_y_mm"/>
+                                    <field name="certificate_share_number_to_x_mm"/><field name="certificate_share_number_to_y_mm"/>
+                                    <field name="certificate_paid_per_share_x_mm"/><field name="certificate_paid_per_share_y_mm"/>
+                                    <field name="certificate_total_paid_x_mm"/><field name="certificate_total_paid_y_mm"/>
+                                    <field name="certificate_issue_day_x_mm"/><field name="certificate_issue_day_y_mm"/>
+                                    <field name="certificate_issue_month_x_mm"/><field name="certificate_issue_month_y_mm"/>
+                                    <field name="certificate_issue_year_x_mm"/><field name="certificate_issue_year_y_mm"/>
+                                    <field name="certificate_director_one_x_mm"/><field name="certificate_director_one_y_mm"/>
+                                    <field name="certificate_director_two_x_mm"/><field name="certificate_director_two_y_mm"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="ขนาดตัวอักษร">
+                            <group>
+                                <group string="ต้นขั้ว">
+                                    <field name="stub_company_font_size_pt"/><field name="stub_registration_font_size_pt"/>
+                                    <field name="stub_certificate_number_font_size_pt"/><field name="stub_issue_date_font_size_pt"/>
+                                    <field name="stub_shareholder_font_size_pt"/><field name="stub_share_count_font_size_pt"/>
+                                    <field name="stub_share_number_from_font_size_pt"/><field name="stub_share_number_to_font_size_pt"/>
+                                    <field name="stub_paid_per_share_font_size_pt"/><field name="stub_total_paid_font_size_pt"/>
+                                    <field name="stub_previous_certificate_number_font_size_pt"/>
+                                    <field name="stub_previous_certificate_date_font_size_pt"/><field name="stub_receipt_date_font_size_pt"/>
+                                </group>
+                                <group string="ใบหุ้น">
+                                    <field name="certificate_number_font_size_pt"/><field name="certificate_company_font_size_pt"/>
+                                    <field name="certificate_registration_font_size_pt"/><field name="certificate_registered_capital_font_size_pt"/>
+                                    <field name="certificate_total_shares_font_size_pt"/><field name="certificate_share_value_font_size_pt"/>
+                                    <field name="certificate_shareholder_font_size_pt"/><field name="certificate_share_count_font_size_pt"/>
+                                    <field name="certificate_share_number_from_font_size_pt"/><field name="certificate_share_number_to_font_size_pt"/>
+                                    <field name="certificate_paid_per_share_font_size_pt"/><field name="certificate_total_paid_font_size_pt"/>
+                                    <field name="certificate_issue_day_font_size_pt"/><field name="certificate_issue_month_font_size_pt"/>
+                                    <field name="certificate_issue_year_font_size_pt"/><field name="certificate_director_one_font_size_pt"/>
+                                    <field name="certificate_director_two_font_size_pt"/>
                                 </group>
                             </group>
                         </page>
