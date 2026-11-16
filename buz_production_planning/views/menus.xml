@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_buz_plan_root" name="Production Planning" sequence="45"
+    <menuitem id="menu_buz_plan_root" name="Planning" sequence="45"
               web_icon="mrp,static/description/icon.png"
               groups="buz_production_planning.group_plan_user,mrp.group_mrp_user"/>
     <menuitem id="menu_buz_plan_run" name="Plans" parent="menu_buz_plan_root"
