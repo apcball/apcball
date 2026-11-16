@@ -22,7 +22,7 @@ RESOLUTIONS = [
 SNAPSHOT_FIELDS = ('expected_employee_id', 'expected_department_id', 'expected_location_id', 'asset_id', 'audit_id')
 RESULT_FIELDS = ('result', 'scanned_by_id', 'scanned_date')
 # Results the count list dropdown may set directly (others need the line form).
-QUICK_RESULTS = ('found', 'not_found', 'lost')
+QUICK_RESULTS = ('found', 'not_found', 'lost', 'damaged', 'retired')
 RESOLUTION_FIELDS = ('resolution', 'resolution_note')
 
 
@@ -223,12 +223,20 @@ class BuzAssetAuditLine(models.Model):
             value = line.quick_result
             if value == line.result:
                 continue
+            if not value:
+                raise UserError(_("กรุณาเลือกผลการตรวจของ %s", line.asset_id.display_name))
             if value in QUICK_RESULTS:
                 line._record(value)
             elif value == 'not_checked':
                 line._reset()
+            elif value == 'wrong_location':
+                raise UserError(_(
+                    "ผิดสถานที่: กรุณาเปิดฟอร์มรายการของ %s เพื่อระบุสถานที่ที่พบจริง", line.asset_id.display_name))
+            elif value == 'wrong_custodian':
+                raise UserError(_(
+                    "ผิดผู้ถือครอง: กรุณาเปิดฟอร์มรายการของ %s เพื่อระบุผู้ถือครองที่พบจริง", line.asset_id.display_name))
             else:
-                raise UserError(_("ผลนี้ต้องบันทึกผ่านฟอร์มรายการ (ต้องระบุสถานที่/ผู้ถือครองที่พบจริง)"))
+                raise UserError(_("ผลการตรวจนี้บันทึกจากรายการไม่ได้ กรุณาใช้ฟอร์มรายการ"))
 
     def _reset(self):
         if not self.env.user.has_group('buz_asset_management.group_asset_officer'):

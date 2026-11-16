@@ -128,8 +128,8 @@
         </field>
     </record>
 
-    <!-- Count list: edited on the lines (asset users have line write access). Dropdown values
-         other than พบ/ไม่พบ/สูญหาย/ยังไม่ตรวจ are refused server-side and need the line form. -->
+    <!-- Count list: edited on the lines (asset users have line write access). ผิดสถานที่/ผิดผู้ถือครอง
+         need the actual location/custodian and are refused here with a pointer to the line form. -->
     <record id="view_buz_asset_audit_line_count_tree" model="ir.ui.view">
         <field name="name">buz.asset.audit.line.count.tree</field>
         <field name="model">buz.asset.audit.line</field>

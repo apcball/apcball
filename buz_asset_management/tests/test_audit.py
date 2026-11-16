@@ -261,5 +261,20 @@ class TestAssetAudit(TransactionCase):
         line.with_user(self.viewer).action_lost()
         self.assertEqual(line.result, 'lost')
         other = self._line(audit, self.a1)
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, 'สถานที่ที่พบจริง'):
             other.with_user(self.viewer).write({'quick_result': 'wrong_location'})
+        with self.assertRaisesRegex(UserError, 'ผู้ถือครองที่พบจริง'):
+            other.with_user(self.viewer).write({'quick_result': 'wrong_custodian'})
+        with self.assertRaisesRegex(UserError, 'กรุณาเลือกผลการตรวจ'):
+            other.with_user(self.viewer).write({'quick_result': False})
+        self.assertEqual(other.result, 'not_checked')
+
+    def test_quick_result_damaged_and_retired(self):
+        audit = self._audit()
+        line = self._line(audit, self.a1)
+        line.with_user(self.viewer).write({'quick_result': 'damaged'})
+        self.assertEqual(line.result, 'damaged')
+        self.assertEqual(line.scanned_by_id, self.viewer)
+        line.with_user(self.viewer).write({'quick_result': 'retired'})
+        self.assertEqual(line.result, 'retired')
+        self.assertEqual(audit.exception_count, 1)

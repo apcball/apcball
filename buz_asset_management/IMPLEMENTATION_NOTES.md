@@ -285,7 +285,7 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
 ## 2026-11-04 — Count list (quick result) for audits
 - New result `lost` (สูญหาย) + line button. `quick_result` dropdown (compute/inverse) routed via `_record`/`_reset`; no JS.
 - 2026-11-16 QA: first version embedded the editable list in the audit form, but plain asset users have no audit write ACL, so Odoo renders that form `edit="False"` and the list was read-only for them. Replaced by header button "บันทึกผลตรวจนับ" (`action_open_count`) opening `view_buz_asset_audit_line_count_tree`, an editable list on the lines (users have line write ACL). The audit form tab is now a read-only overview; `audit.write` refuses `line_ids` again for everyone (no header bypass).
-- Only พบ/ไม่พบ/สูญหาย set inline; ยังไม่ตรวจ (reset) requires officer group; other results are refused and need the line form (row button opens it).
+- Inline: พบ/ไม่พบ/สูญหาย/ชำรุด/เลิกใช้ (2026-11-16 QA L6: damaged/retired need no extra input). ยังไม่ตรวจ (reset) requires officer. ผิดสถานที่/ผิดผู้ถือครอง are refused with a message pointing to the line form (row button opens it); an empty choice asks to pick a result.
 
 ## 2026-11-16 — Native reversal kept in sync (QA M4)
 - Every reversal path (Odoo Reverse wizard, reconcile un-matching, `action_reverse`) goes through `account.move._reverse_moves`; the override in `models/account_move.py` now:
