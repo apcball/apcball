@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_share_certificate_print_wizard_user,share.certificate.print.wizard.user,model_buz_share_certificate_print_wizard,base.group_user,1,1,1,0

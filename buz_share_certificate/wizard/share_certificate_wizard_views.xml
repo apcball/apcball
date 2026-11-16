@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_share_certificate_print_wizard" model="ir.ui.view">
+        <field name="name">buz.share.certificate.print.wizard.form</field>
+        <field name="model">buz.share.certificate.print.wizard</field>
+        <field name="arch" type="xml">
+            <form string="กรอกข้อมูลใบหุ้น">
+                <header>
+                    <button name="%(action_report_share_certificate)d"
+                            string="พิมพ์ใบหุ้น" type="action"
+                            class="oe_highlight" icon="fa-print"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="ข้อมูลบริษัทและใบหุ้น">
+                            <field name="company_name"/>
+                            <field name="company_registration_number"/>
+                            <field name="certificate_number"/>
+                            <field name="issue_date"/>
+                        </group>
+                        <group string="ทุนและมูลค่าหุ้น">
+                            <field name="registered_capital"/>
+                            <field name="registered_share_count"/>
+                            <field name="share_value"/>
+                        </group>
+                    </group>
+                    <group string="ผู้ถือหุ้นและการชำระเงิน">
+                        <group>
+                            <field name="shareholder_name"/>
+                            <field name="share_count"/>
+                        </group>
+                        <group>
+                            <field name="share_number_from"/>
+                            <field name="share_number_to"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="ค่าหุ้นที่ชำระแล้ว">
+                            <field name="paid_per_share"/>
+                            <field name="total_paid"/>
+                        </group>
+                        <group string="ใบหุ้นเดิมและการรับใบหุ้น">
+                            <field name="cancelled_certificate_number"/>
+                            <field name="cancelled_date"/>
+                            <field name="received_date"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_share_certificate_print_wizard_tree" model="ir.ui.view">
+        <field name="name">buz.share.certificate.print.wizard.tree</field>
+        <field name="model">buz.share.certificate.print.wizard</field>
+        <field name="arch" type="xml">
+            <tree create="1" edit="0" delete="0">
+                <field name="certificate_number"/>
+                <field name="company_name"/>
+                <field name="shareholder_name"/>
+                <field name="issue_date"/>
+                <field name="share_count"/>
+                <field name="share_number_from"/>
+                <field name="share_number_to"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_share_certificate_wizard" model="ir.actions.act_window">
+        <field name="name">กรอกข้อมูลใบหุ้น</field>
+        <field name="res_model">buz.share.certificate.print.wizard</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_share_certificate_print_wizard_tree"/>
+        <field name="domain">[]</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

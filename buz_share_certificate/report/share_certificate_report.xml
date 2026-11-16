@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_share_certificate">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page share-certificate-page">
+                    <style type="text/css">
+                        .share-certificate-page { font-family: 'Sarabun', sans-serif; font-size: 12pt; color: #171717; padding: 0; margin: 0; }
+                        .certificate-layout { width: 100%; height: 195mm; table-layout: fixed; border-collapse: collapse; }
+                        .certificate-layout td { vertical-align: top; }
+                        .stub { width: 31%; padding: 2mm 4mm 1mm 1mm; border-right: 1px dashed #555; font-size: 10.5pt; line-height: 1.45; }
+                        .certificate-cell { width: 69%; padding: 1mm 0 1mm 4mm; }
+                        .certificate-frame { height: 188mm; border: 3px double #76684f; padding: 5mm 8mm; text-align: center; box-sizing: border-box; }
+                        .stub-title, .certificate-title { font-size: 16pt; font-weight: 700; }
+                        .stub-company, .certificate-company { font-size: 16pt; font-weight: 700; }
+                        .certificate-company { margin-top: 1mm; }
+                        .certificate-registration { margin-bottom: 4mm; }
+                        .certificate-capital { margin: 2mm 0 5mm; }
+                        .certificate-lead { font-size: 15pt; margin: 2mm 0; }
+                        .shareholder { font-size: 17pt; font-weight: 700; margin: 5mm 0 2mm; }
+                        .share-details { font-size: 14pt; margin: 2mm 0; }
+                        .paid-details { font-size: 13pt; margin-top: 4mm; }
+                        .issue-date { font-size: 13pt; margin-top: 6mm; }
+                        .signatures { width: 100%; margin-top: 12mm; border-collapse: collapse; }
+                        .signatures td { width: 50%; text-align: center; padding: 0 4mm; }
+                        .signature-line { border-top: 1px dotted #333; margin-top: 10mm; padding-top: 1mm; }
+                        .stub-line { margin: 1.5mm 0; }
+                        .stub-label { font-weight: 700; }
+                        .stub-signature { text-align: center; margin-top: 4mm; }
+                        .stamp-note { font-size: 9pt; margin-top: 3mm; }
+                        .ornament-line { border-top: 1px solid #8b7a5b; border-bottom: 1px solid #8b7a5b; height: 1.5mm; margin: 1mm 10mm 3mm; }
+                    </style>
+
+                    <table class="certificate-layout">
+                        <tr>
+                            <td class="stub">
+                                <div class="stub-title">ต้นขั้วใบหุ้น</div>
+                                <div class="stub-company">บริษัท <span t-field="doc.company_name"/> จำกัด</div>
+                                <div class="stub-line">ทะเบียนเลขที่ <span t-field="doc.company_registration_number"/></div>
+                                <div class="stub-line">ใบหุ้นเลขที่ <span t-field="doc.certificate_number"/> ออกเมื่อวันที่ <span t-field="doc.issue_date"/></div>
+                                <div class="stub-line"><span class="stub-label">ชื่อผู้ถือหุ้น</span> <span t-field="doc.shareholder_name"/></div>
+                                <div class="stub-line">ถือหุ้นจำนวน <span t-field="doc.share_count"/> หุ้น</div>
+                                <div class="stub-line">หมายเลขหุ้นตั้งแต่ <span t-field="doc.share_number_from"/> ถึง <span t-field="doc.share_number_to"/></div>
+                                <div class="stub-line">ได้ชำระค่าหุ้นแล้ว หุ้นละ <span t-field="doc.paid_per_share"/> บาท</div>
+                                <div class="stub-line">รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว <span t-field="doc.total_paid"/> บาท</div>
+                                <div class="stub-line">ยกเลิกใบหุ้นเดิมเลขที่ <span t-field="doc.cancelled_certificate_number"/></div>
+                                <div class="stub-line">ลงวันที่ <span t-field="doc.cancelled_date"/></div>
+                                <div class="stub-signature">ลงชื่อ ........................................ กรรมการ</div>
+                                <div class="stub-signature">ลงชื่อ ........................................ กรรมการ</div>
+                                <div class="stub-line" style="margin-top: 5mm;">ผู้ถือหุ้นได้รับใบหุ้นตั้งแต่วันที่ <span t-field="doc.received_date"/></div>
+                                <div class="stub-signature">ลงชื่อ ........................................ ผู้รับใบหุ้น</div>
+                                <div class="stamp-note">หมายเหตุ ใบหุ้นปิดอากรแสตมป์ 5 บาท</div>
+                            </td>
+                            <td class="certificate-cell">
+                                <div class="certificate-frame">
+                                    <div class="ornament-line"></div>
+                                    <div class="certificate-company">บริษัท <span t-field="doc.company_name"/> จำกัด</div>
+                                    <div class="certificate-registration">ทะเบียนเลขที่ <span t-field="doc.company_registration_number"/></div>
+                                    <div class="certificate-capital">
+                                        ทุนจดทะเบียน <span t-field="doc.registered_capital"/> บาท
+                                        แบ่งเป็น <span t-field="doc.registered_share_count"/> หุ้น
+                                        มูลค่าหุ้นละ <span t-field="doc.share_value"/> บาท
+                                    </div>
+                                    <div class="certificate-title">ใบหุ้น</div>
+                                    <div class="certificate-lead">ใบหุ้นนี้ออกให้ไว้เพื่อแสดงว่า</div>
+                                    <div class="shareholder"><span t-field="doc.shareholder_name"/></div>
+                                    <div class="share-details">
+                                        ถือหุ้นจำนวน <span t-field="doc.share_count"/> หุ้น
+                                        หมายเลขหุ้นตั้งแต่ <span t-field="doc.share_number_from"/>
+                                        ถึง <span t-field="doc.share_number_to"/>
+                                    </div>
+                                    <div class="paid-details">
+                                        ได้ชำระเงินค่าหุ้นแล้ว หุ้นละ <span t-field="doc.paid_per_share"/> บาท
+                                        รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว <span t-field="doc.total_paid"/> บาท
+                                    </div>
+                                    <div class="issue-date">
+                                        ออกให้ไว้ ณ วันที่
+                                        <t t-if="doc.issue_date">
+                                            <span t-esc="doc.issue_date.day"/> เดือน <span t-esc="doc.issue_date.month"/>
+                                            พุทธศักราช <span t-esc="doc.issue_date.year + 543"/>
+                                        </t>
+                                    </div>
+                                    <table class="signatures">
+                                        <tr>
+                                            <td><div class="signature-line">กรรมการ</div></td>
+                                            <td><div class="signature-line">กรรมการ</div></td>
+                                        </tr>
+                                    </table>
+                                    <div class="ornament-line" style="margin-top: 6mm;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="paperformat_share_certificate" model="report.paperformat">
+        <field name="name">Share Certificate A4 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">5</field>
+        <field name="margin_bottom">5</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_share_certificate" model="ir.actions.report">
+        <field name="name">พิมพ์ใบหุ้น</field>
+        <field name="model">buz.share.certificate.print.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_share_certificate.report_share_certificate</field>
+        <field name="report_file">buz_share_certificate.report_share_certificate</field>
+        <field name="print_report_name">'Share Certificate - %s' % (object.certificate_number or object.id)</field>
+        <field name="paperformat_id" ref="paperformat_share_certificate"/>
+    </record>
+</odoo>
