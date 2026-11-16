@@ -315,3 +315,7 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
 ## 2026-11-16 — Reminder crons isolate failures (QA L2)
 - `_cron_remind_expiring` (coverage) and `_cron_remind_due` (maintenance) used a savepoint without try: one failing record aborted the whole run. Each record now runs in try + savepoint; a failure is logged, the record is not marked `reminder_sent` and is retried next run.
 - Tests +2 (one record failing does not stop the others; it is reminded on the next run). DEV: TestAssetCoverage + TestAssetMaintenance + TestAssetAudit 44/44.
+
+## 2026-11-16 — Category setup rights for Accounting Manager
+- Prod report: a user in Configuration could open Asset Categories but not create one (ACL gave write only to `base.group_system`). Categories drive accounts and the journal, so `group_asset_accounting_manager` now has read/write/create on `buz.asset.category` (no unlink; delete stays system-only). Other asset groups stay read-only.
+- Test `test_category_setup_rights`. Takes effect on prod only after the module upgrade (ACL CSV loads on `-u`).

@@ -261,6 +261,23 @@ class TestDepreciationPosting(TransactionCase):
         with self.assertRaises(UserError):
             asset.with_user(self.accountant).action_replan_schedule()
 
+    def test_category_setup_rights(self):
+        Category = self.env['buz.asset.category']
+        vals = {'name': 'ACL Cat', 'company_id': self.company.id, 'useful_life_months': 12}
+        # Accounting manager configures categories (they decide accounts/journal), but cannot delete.
+        category = Category.with_user(self.acc_manager).create(vals)
+        category.with_user(self.acc_manager).write({'useful_life_months': 24})
+        self.assertEqual(category.useful_life_months, 24)
+        with self.assertRaises(AccessError):
+            category.with_user(self.acc_manager).unlink()
+        # Accountant and asset manager still cannot change categories.
+        for user in (self.accountant, self.asset_manager):
+            with self.assertRaises(AccessError):
+                Category.with_user(user).create(dict(vals, name='ACL Cat 2'))
+            with self.assertRaises(AccessError):
+                category.with_user(user).write({'useful_life_months': 36})
+            self.assertTrue(category.with_user(user).name)   # read stays open
+
     def test_reversal_move_cannot_be_reset_cancelled_or_deleted(self):
         asset = self._running_asset()
         line = self._due(asset)[0]

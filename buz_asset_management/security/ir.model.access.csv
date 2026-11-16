@@ -3,6 +3,7 @@ access_buz_asset_user,buz.asset user,model_buz_asset,group_asset_user,1,0,0,0
 access_buz_asset_officer,buz.asset officer,model_buz_asset,group_asset_officer,1,1,1,0
 access_buz_asset_manager,buz.asset manager,model_buz_asset,group_asset_manager,1,1,1,1
 access_buz_asset_category_user,buz.asset.category user,model_buz_asset_category,group_asset_user,1,0,0,0
+access_buz_asset_category_accounting_manager,buz.asset.category accounting manager,model_buz_asset_category,group_asset_accounting_manager,1,1,1,0
 access_buz_asset_category_system,buz.asset.category system,model_buz_asset_category,base.group_system,1,1,1,1
 access_buz_asset_location_user,buz.asset.location user,model_buz_asset_location,group_asset_user,1,0,0,0
 access_buz_asset_location_officer,buz.asset.location officer,model_buz_asset_location,group_asset_officer,1,1,1,0
