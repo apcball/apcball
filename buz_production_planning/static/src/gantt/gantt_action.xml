@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_production_planning.GanttAction">
+        <div class="o_buz_gantt d-flex flex-column h-100">
+            <div class="o_buz_gantt_toolbar d-flex flex-wrap align-items-center gap-2 p-2 border-bottom bg-view">
+                <select class="form-select w-auto" t-on-change="onRunChange" t-att-value="state.runId">
+                    <t t-foreach="state.runs" t-as="r" t-key="r.id">
+                        <option t-att-value="r.id" t-att-selected="r.id === state.runId" t-esc="r.name"/>
+                    </t>
+                </select>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" t-on-click="() => this.shift(state.zoom === 'day' ? -1 : -7)" title="Previous"><i class="fa fa-chevron-left"/></button>
+                    <button class="btn btn-secondary" t-on-click="today">Today</button>
+                    <button class="btn btn-secondary" t-on-click="() => this.shift(state.zoom === 'day' ? 1 : 7)" title="Next"><i class="fa fa-chevron-right"/></button>
+                </div>
+                <div class="btn-group">
+                    <button t-attf-class="btn {{state.zoom === 'day' ? 'btn-primary' : 'btn-secondary'}}" t-on-click="() => this.setZoom('day')">Day</button>
+                    <button t-attf-class="btn {{state.zoom === 'week' ? 'btn-primary' : 'btn-secondary'}}" t-on-click="() => this.setZoom('week')">Week</button>
+                </div>
+                <select class="form-select w-auto o_buz_filter_line" t-on-change="(ev) => this.onFilterChange('pickingType', ev)">
+                    <option value="0">All production lines</option>
+                    <t t-foreach="state.pickingTypes" t-as="p" t-key="p.id">
+                        <option t-att-value="p.id" t-esc="p.name"/>
+                    </t>
+                </select>
+                <select class="form-select w-auto o_buz_filter_wc" t-on-change="(ev) => this.onFilterChange('workcenter', ev)">
+                    <option value="0">All workcenters</option>
+                    <t t-foreach="state.workcenters" t-as="w" t-key="w.id">
+                        <option t-att-value="w.id" t-esc="w.name"/>
+                    </t>
+                </select>
+                <label class="form-check-label d-flex align-items-center gap-1">
+                    <input type="checkbox" class="form-check-input o_buz_filter_late" t-on-change="(ev) => this.onFilterChange('lateOnly', ev)"/> Late only
+                </label>
+                <div class="ms-auto d-flex gap-2">
+                    <button class="btn btn-secondary o_buz_reschedule" t-on-click="reschedule" t-att-disabled="!state.runId">Re-schedule</button>
+                    <button class="btn btn-primary o_buz_apply" t-if="state.canApply" t-on-click="apply" t-att-disabled="!state.runId">Apply</button>
+                </div>
+            </div>
+            <div t-if="!state.runId and !state.loading" class="p-4 text-muted">
+                No plan has a schedule yet. Open a plan, click Schedule, then come back here.
+            </div>
+            <div class="o_buz_gantt_scroll flex-grow-1" t-if="state.runId">
+                <div class="o_buz_gantt_grid" t-attf-style="width: {{labelWidth + trackWidth}}px">
+                    <div class="o_buz_gantt_head d-flex">
+                        <div class="o_buz_gantt_label o_buz_head_label" t-attf-style="width: {{labelWidth}}px">
+                            <t t-esc="state.run and state.run.name"/>
+                        </div>
+                        <div class="o_buz_gantt_track o_buz_head_track" t-attf-style="width: {{trackWidth}}px; height: 40px">
+                            <t t-foreach="days" t-as="d" t-key="d.key">
+                                <div t-attf-class="o_buz_day_head {{d.weekend ? 'o_buz_weekend' : ''}} {{d.today ? 'o_buz_today' : ''}}"
+                                     t-attf-style="left: {{d.x}}px; width: {{d.w}}px" t-esc="d.label"/>
+                            </t>
+                            <t t-foreach="hours" t-as="h" t-key="h.x">
+                                <div class="o_buz_hour" t-attf-style="left: {{h.x}}px" t-esc="h.label"/>
+                            </t>
+                        </div>
+                    </div>
+                    <t t-foreach="rows" t-as="row" t-key="row.key">
+                        <div t-if="row.type === 'group'" class="o_buz_gantt_group" t-esc="row.label"/>
+                        <div t-else="" class="o_buz_gantt_row d-flex" t-attf-style="height: {{row.height}}px">
+                            <div class="o_buz_gantt_label" t-attf-style="width: {{labelWidth}}px">
+                                <span class="fw-bold" t-esc="row.wc.name"/>
+                                <small class="text-muted ms-1" t-esc="row.wc.code"/>
+                            </div>
+                            <div class="o_buz_gantt_track" t-attf-style="width: {{trackWidth}}px">
+                                <t t-foreach="days" t-as="d" t-key="d.key">
+                                    <div t-attf-class="o_buz_day_bg {{d.weekend ? 'o_buz_weekend' : ''}}"
+                                         t-attf-style="left: {{d.x}}px; width: {{d.w}}px"/>
+                                </t>
+                                <t t-foreach="row.cells" t-as="c" t-key="c.key">
+                                    <div t-attf-class="o_buz_load {{c.cls}}" t-attf-style="left: {{c.x}}px; width: {{c.w}}px" t-esc="c.text"/>
+                                </t>
+                                <div t-if="nowX !== null" class="o_buz_now" t-attf-style="left: {{nowX}}px"/>
+                                <t t-foreach="row.bars" t-as="b" t-key="b.line.id">
+                                    <div t-att-class="b.cls" t-att-title="b.title" t-att-data-line-id="b.line.id"
+                                         t-attf-style="left: {{b.left}}px; width: {{b.width}}px; top: {{b.top}}px"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(ev, b.line, 'move')">
+                                        <span class="o_buz_bar_text" t-esc="b.line.mo"/>
+                                        <small class="o_buz_bar_sub" t-esc="b.line.product"/>
+                                        <div t-if="!b.line.is_locked" class="o_buz_handle"
+                                             t-on-pointerdown="(ev) => this.onBarPointerDown(ev, b.line, 'resize')"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

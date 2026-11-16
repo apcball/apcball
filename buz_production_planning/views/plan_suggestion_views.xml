@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_plan_suggestion_tree" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.tree</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" create="0" decoration-danger="is_late" decoration-muted="state == 'rejected'">
+                <header>
+                    <button name="action_approve" type="object" string="Approve"/>
+                    <button name="action_reject" type="object" string="Reject"/>
+                    <button name="action_reset" type="object" string="Reset to Proposed"/>
+                </header>
+                <field name="company_id" column_invisible="1"/>
+                <field name="run_id" optional="hide"/>
+                <field name="product_id" readonly="1"/>
+                <field name="action" readonly="1"/>
+                <field name="qty" readonly="state in ('done', 'rejected')"/>
+                <field name="uom_id" readonly="1" optional="show"/>
+                <field name="date_need" readonly="state in ('done', 'rejected')"/>
+                <field name="date_release" readonly="state in ('done', 'rejected')"/>
+                <field name="is_late"/>
+                <field name="picking_type_id" optional="show"/>
+                <field name="vendor_id" optional="show"/>
+                <field name="level" optional="show"/>
+                <field name="onhand_qty" optional="hide"/>
+                <field name="incoming_qty" optional="hide"/>
+                <field name="demand_qty" optional="hide"/>
+                <field name="projected_qty" optional="hide"/>
+                <field name="shortage_qty" optional="show"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_suggestion_form" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.form</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state not in ('proposed', 'rejected')"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            invisible="state not in ('proposed', 'approved')"/>
+                    <button name="action_reset" type="object" string="Reset to Proposed"
+                            invisible="state not in ('approved', 'rejected')"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="run_id"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="product_id"/>
+                            <field name="action"/>
+                            <field name="qty"/>
+                            <field name="uom_id"/>
+                            <field name="level"/>
+                        </group>
+                        <group>
+                            <field name="date_need"/>
+                            <field name="date_release"/>
+                            <field name="is_late"/>
+                            <field name="bom_id"/>
+                            <field name="picking_type_id"/>
+                            <field name="vendor_id"/>
+                            <field name="parent_suggestion_id"/>
+                        </group>
+                        <group string="Explanation">
+                            <field name="onhand_qty"/>
+                            <field name="incoming_qty"/>
+                            <field name="demand_qty"/>
+                            <field name="projected_qty"/>
+                            <field name="shortage_qty"/>
+                        </group>
+                        <group string="Documents">
+                            <field name="production_id"/>
+                            <field name="purchase_line_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_suggestion_search" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.search</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="run_id"/>
+                <filter name="make" string="Make" domain="[('action', '=', 'make')]"/>
+                <filter name="buy" string="Buy" domain="[('action', '=', 'buy')]"/>
+                <separator/>
+                <filter name="late" string="Late" domain="[('is_late', '=', True)]"/>
+                <filter name="proposed" string="Proposed" domain="[('state', '=', 'proposed')]"/>
+                <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_line" string="Production Line" context="{'group_by': 'picking_type_id'}"/>
+                    <filter name="group_vendor" string="Vendor" context="{'group_by': 'vendor_id'}"/>
+                    <filter name="group_level" string="BoM Level" context="{'group_by': 'level'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_suggestion_pivot" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.pivot</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="product_id" type="row"/>
+                <field name="date_release" interval="week" type="col"/>
+                <field name="qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_buz_plan_suggestion" model="ir.actions.act_window">
+        <field name="name">Suggestions</field>
+        <field name="res_model">buz.plan.suggestion</field>
+        <field name="view_mode">tree,pivot,form</field>
+    </record>
+</odoo>
