@@ -293,3 +293,8 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
   - disposal entry: refused (no flow restores the asset/schedule yet; a disposal-reversal feature needs owner sign-off).
 - Tests: +4 (wizard sync + no duplicate, permission, draft reversal refused, disposal refused). DEV: TestDepreciationPosting 36/36; full module 146 run, 0 failed, 3 skipped (single company).
 - Open: a posted reversal can still be reset to draft (M3); ledger does not check reversal state.
+
+## 2026-11-16 — Reversal entries protected, ledger counts posted only (QA M3)
+- `account.move._buz_asset_entries()` = depreciation, disposal, or a move linked as a line's `reversal_move_id`. `button_draft`, `button_cancel` and `unlink` refuse all of them (before: reversal entries could be reset to draft/cancelled; `button_cancel` was unguarded for asset entries). `reversal_move_id` is now indexed (searched on those calls).
+- `services/ledger.py`: original counts only when posted on/before the date; reversal subtracts only when posted (`_posted_on_or_before`); roll-forward movements likewise. Defends against data that predates the guard.
+- Tests +2 (reversal entry draft/cancel/unlink refused; ledger ignores a non-posted reversal). DEV: full run 148, the only errors were ir.sequence deadlocks vs the live DEV server in TestAssetMaintenance; rerun TestAssetMaintenance + TestDepreciationPosting 50/50, exit 0.

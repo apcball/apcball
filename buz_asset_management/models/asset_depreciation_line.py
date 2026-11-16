@@ -46,7 +46,7 @@ class BuzAssetDepreciationLine(models.Model):
     ], required=True, default='planned', readonly=True, string='สถานะ')
     move_id = fields.Many2one('account.move', readonly=True, copy=False, ondelete='restrict', string='รายการบัญชี')
     reversal_move_id = fields.Many2one(
-        'account.move', readonly=True, copy=False, ondelete='restrict', string='รายการบัญชีกลับรายการ')
+        'account.move', readonly=True, copy=False, index=True, ondelete='restrict', string='รายการบัญชีกลับรายการ')
     posted_date = fields.Datetime(readonly=True, copy=False, string='ลงบัญชีเมื่อ')
     idempotency_key = fields.Char(required=True, readonly=True, copy=False, index=True, string='คีย์ป้องกันรายการซ้ำ')
     calculation_version = fields.Integer(readonly=True, string='เวอร์ชันการคำนวณ')

@@ -210,6 +210,33 @@ class TestDepreciationPosting(TransactionCase):
         self.assertEqual(line.state, 'posted')
         self.assertFalse(line.reversal_move_id)
 
+    def test_reversal_move_cannot_be_reset_cancelled_or_deleted(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        line.with_user(self.acc_manager).action_reverse(reason='t')
+        reversal = line.reversal_move_id
+        for method in (reversal.button_draft, reversal.button_cancel, reversal.unlink):
+            with self.assertRaises(UserError), self.env.cr.savepoint():
+                method()
+        self.assertEqual(reversal.state, 'posted')
+        self.assertEqual(line.state, 'reversed')
+
+    def test_ledger_ignores_unposted_reversal(self):
+        from odoo.addons.buz_asset_management.services.ledger import AssetLedger
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        line.with_user(self.acc_manager).action_reverse(reason='t')
+        today = fields.Date.context_today(asset)
+        accumulated = AssetLedger(self.env, self.company, today).accumulated_by_asset()
+        self.assertEqual(accumulated.get(asset, 0.0), 0.0)
+        # Data that predates the guard: reversal no longer posted -> GL holds the depreciation again.
+        self.env.cr.execute("UPDATE account_move SET state = 'draft' WHERE id = %s", (line.reversal_move_id.id,))
+        self.env.invalidate_all()
+        accumulated = AssetLedger(self.env, self.company, today).accumulated_by_asset()
+        self.assertEqual(accumulated.get(asset, 0.0), line.planned_amount)
+
     def test_posted_move_cannot_be_reset_or_deleted(self):
         asset = self._running_asset()
         line = self._due(asset)[0]

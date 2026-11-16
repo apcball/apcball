@@ -26,16 +26,26 @@ class AccountMove(models.Model):
             'name': _('สร้างทรัพย์สินจากใบแจ้งหนี้'), 'view_mode': 'form', 'target': 'new',
             'context': {'default_move_id': self.id}}
 
+    def _buz_asset_entries(self):
+        """Moves of self that belong to the asset subledger: depreciation, disposal, or the
+        reversal of a depreciation entry (the reversal carries no buz_asset_line_id; it is
+        linked from the line's reversal_move_id)."""
+        reversal_ids = set(self.env['buz.asset.depreciation.line'].sudo().search(
+            [('reversal_move_id', 'in', self.ids)]).reversal_move_id.ids)
+        return self.filtered(lambda m: m.buz_asset_line_id or m.buz_disposal_id or m.id in reversal_ids)
+
     def button_draft(self):
         if self._buz_has_asset_acquisition():
             raise UserError(_("ใบแจ้งหนี้นี้ถูกใช้สร้างทรัพย์สินแล้ว ตั้งกลับเป็นร่างไม่ได้ กรุณาใช้ใบลดหนี้หรือกลับรายการ"))
-        if self.filtered(lambda m: m.buz_asset_line_id or m.buz_disposal_id):
+        if self._buz_asset_entries():
             raise UserError(_("รายการทรัพย์สินตั้งกลับเป็นร่างไม่ได้ กรุณาใช้การกลับรายการ"))
         return super().button_draft()
 
     def button_cancel(self):
         if self._buz_has_asset_acquisition():
             raise UserError(_("ใบแจ้งหนี้นี้ถูกใช้สร้างทรัพย์สินแล้ว ยกเลิกไม่ได้"))
+        if self._buz_asset_entries():
+            raise UserError(_("รายการทรัพย์สินยกเลิกไม่ได้ กรุณาใช้การกลับรายการ"))
         return super().button_cancel()
 
     def _reverse_moves(self, default_values_list=None, cancel=False):
@@ -75,6 +85,6 @@ class AccountMove(models.Model):
         return reversals
 
     def unlink(self):
-        if self.filtered(lambda m: m.buz_asset_line_id or m.buz_disposal_id):
+        if self._buz_asset_entries():
             raise UserError(_("รายการทรัพย์สินลบไม่ได้ กรุณาใช้การกลับรายการ"))
         return super().unlink()
