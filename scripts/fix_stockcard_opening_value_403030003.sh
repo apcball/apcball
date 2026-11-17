@@ -7,16 +7,21 @@
 # Proposal: ONE qty-0 value-only layer per location dated 2026-03-30 16:59:59.999999 (before the report window 17:00, so the
 # FIFO/imex window and quants are untouched) bringing each location's opening value to 0.
 #   RM02 -18,404.40 / PD01 +17,825.00 / FXF +9,300.00   => product SVL total value +8,720.60  (ACCOUNTING DECISION)
-# Modes:  check = read-only preconditions + proposal;  dry = execute in a transaction then ROLLBACK.
-#         apply is intentionally NOT implemented - wait for accounting sign-off.
+# Modes:  check = read-only preconditions + proposal;  dry = execute in a transaction then ROLLBACK;
+#         apply = pg_dump backup then COMMIT (accounting signed off 2026-11-17).
 # Rollback if ever applied: DELETE FROM stock_valuation_layer WHERE description LIKE 'STOCKCARD-OPENING-VALUE-FIX 403030003%';
 set -euo pipefail
 MODE="${1:-check}"
-case "$MODE" in check|dry) ;; apply) echo "apply not implemented: needs accounting sign-off" >&2; exit 2;; *) echo "usage: $0 check|dry" >&2; exit 2;; esac
+case "$MODE" in check|dry|apply) ;; *) echo "usage: $0 check|dry|apply" >&2; exit 2;; esac
 REMOTE_ENV='PW=$(grep -E "^db_password" /etc/instance1.conf); export PGPASSWORD="${PW#*= }"'
 CHK=0; [ "$MODE" = check ] && CHK=1
+APPLY=0; [ "$MODE" = apply ] && APPLY=1
+if [ "$MODE" = apply ]; then
+  TS=$(date +%Y%m%d_%H%M%S)
+  ssh mog-prod "$REMOTE_ENV; mkdir -p ~/db_backups && pg_dump -h localhost -U odoo -Fc -t stock_quant -t stock_valuation_layer -t stock_move -t stock_move_line MOG_LIVE -f ~/db_backups/stockcard_opening_value_403030003_$TS.dump && ls -l ~/db_backups/stockcard_opening_value_403030003_$TS.dump"
+fi
 
-ssh mog-prod "$REMOTE_ENV; psql -h localhost -U odoo MOG_LIVE -X -v ON_ERROR_STOP=1 -v check=$CHK -P pager=off" <<'SQL'
+ssh mog-prod "$REMOTE_ENV; psql -h localhost -U odoo MOG_LIVE -X -v ON_ERROR_STOP=1 -v check=$CHK -v apply=$APPLY -P pager=off" <<'SQL'
 BEGIN;
 CREATE TEMP TABLE pr AS SELECT p.id pid, pt.categ_id FROM product_product p JOIN product_template pt ON pt.id=p.product_tmpl_id WHERE p.default_code='403030003';
 CREATE TEMP TABLE loc(id int, code text, whid int, expected numeric);
@@ -90,7 +95,11 @@ BEGIN
   THEN RAISE EXCEPTION 'post-check failed: quant / SVL qty / window per warehouse changed'; END IF;
   RAISE NOTICE 'post-check ok: opening value 0 at 3 locations; quants, SVL qty, report-window layers unchanged; product SVL value % -> %', s.svl_v, (SELECT round(sum(value)::numeric,2) FROM stock_valuation_layer WHERE product_id=(SELECT pid FROM pr));
 END $$;
-\echo '== inserted layers (rolled back) =='
+\echo '== inserted layers =='
 SELECT id, location_complete_name, warehouse_id, quantity, value, accounting_date FROM stock_valuation_layer WHERE description LIKE 'STOCKCARD-OPENING-VALUE-FIX 403030003%' ORDER BY id;
+\if :apply
+COMMIT;
+\else
 ROLLBACK;
+\endif
 SQL
