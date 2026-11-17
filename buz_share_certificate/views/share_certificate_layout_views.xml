@@ -17,6 +17,7 @@
                                     <field name="label" readonly="1"/>
                                     <field name="x_mm"/>
                                     <field name="y_mm"/>
+                                    <button name="action_reset_position" string="Reset" type="object" class="btn-link"/>
                                 </tree>
                             </field>
                         </page>
@@ -26,6 +27,7 @@
                                     <field name="label" readonly="1"/>
                                     <field name="x_mm"/>
                                     <field name="y_mm"/>
+                                    <button name="action_reset_position" string="Reset" type="object" class="btn-link"/>
                                 </tree>
                             </field>
                         </page>

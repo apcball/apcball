@@ -29,6 +29,18 @@ class TestShareCertificateLayout(TransactionCase):
         self.assertIn('left:42.5mm;top:24.0mm;', html)
         self.assertIn('Coordinate Test Company', html)
 
+    def test_reset_restores_only_selected_position(self):
+        config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+        position = config.position_ids.filtered(lambda item: item.code == 'stub_company')
+        other_position = config.position_ids.filtered(lambda item: item.code == 'stub_registration')
+        position.write({'x_mm': 42.5, 'y_mm': 52.5})
+        other_position.write({'x_mm': 99.0, 'y_mm': 98.0})
+
+        position.action_reset_position()
+
+        self.assertEqual((position.x_mm, position.y_mm), (22.0, 24.0))
+        self.assertEqual((other_position.x_mm, other_position.y_mm), (99.0, 98.0))
+
     def test_layout_configuration_is_admin_only(self):
         user = self.env['res.users'].create({
             'name': 'Certificate Layout User',

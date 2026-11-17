@@ -40,6 +40,12 @@ class ShareCertificateLayoutPosition(models.Model):
     sequence = fields.Integer(default=10, readonly=True)
     x_mm = fields.Float(string='แนวนอน (mm)', digits=(6, 2))
     y_mm = fields.Float(string='แนวตั้ง (mm)', digits=(6, 2))
+    x_default_mm = fields.Float(digits=(6, 2), readonly=True)
+    y_default_mm = fields.Float(digits=(6, 2), readonly=True)
+
+    def action_reset_position(self):
+        self.ensure_one()
+        self.write({'x_mm': self.x_default_mm, 'y_mm': self.y_default_mm})
 
     _sql_constraints = [
         ('config_code_unique', 'unique(config_id, code)', 'ตำแหน่งนี้มีอยู่แล้ว'),

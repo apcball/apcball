@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="position_stub_company" model="buz.share.certificate.layout.position"><field name="x_default_mm">22</field><field name="y_default_mm">24</field></record>
+        <record id="position_stub_registration" model="buz.share.certificate.layout.position"><field name="x_default_mm">33</field><field name="y_default_mm">33</field></record>
+        <record id="position_stub_certificate_number" model="buz.share.certificate.layout.position"><field name="x_default_mm">26</field><field name="y_default_mm">42</field></record>
+        <record id="position_stub_issue_date" model="buz.share.certificate.layout.position"><field name="x_default_mm">62</field><field name="y_default_mm">42</field></record>
+        <record id="position_stub_shareholder" model="buz.share.certificate.layout.position"><field name="x_default_mm">31</field><field name="y_default_mm">50</field></record>
+        <record id="position_stub_share_count" model="buz.share.certificate.layout.position"><field name="x_default_mm">49</field><field name="y_default_mm">58</field></record>
+        <record id="position_stub_share_number_from" model="buz.share.certificate.layout.position"><field name="x_default_mm">39</field><field name="y_default_mm">66</field></record>
+        <record id="position_stub_share_number_to" model="buz.share.certificate.layout.position"><field name="x_default_mm">67</field><field name="y_default_mm">66</field></record>
+        <record id="position_stub_paid_per_share" model="buz.share.certificate.layout.position"><field name="x_default_mm">52</field><field name="y_default_mm">78</field></record>
+        <record id="position_stub_total_paid" model="buz.share.certificate.layout.position"><field name="x_default_mm">48</field><field name="y_default_mm">86</field></record>
+        <record id="position_stub_cancelled_number" model="buz.share.certificate.layout.position"><field name="x_default_mm">37</field><field name="y_default_mm">99</field></record>
+        <record id="position_stub_cancelled_date" model="buz.share.certificate.layout.position"><field name="x_default_mm">65</field><field name="y_default_mm">99</field></record>
+        <record id="position_stub_received_date" model="buz.share.certificate.layout.position"><field name="x_default_mm">31</field><field name="y_default_mm">168</field></record>
+        <record id="position_certificate_number" model="buz.share.certificate.layout.position"><field name="x_default_mm">239.5</field><field name="y_default_mm">16</field></record>
+        <record id="position_certificate_company" model="buz.share.certificate.layout.position"><field name="x_default_mm">139.5</field><field name="y_default_mm">33</field></record>
+        <record id="position_certificate_registration" model="buz.share.certificate.layout.position"><field name="x_default_mm">153.5</field><field name="y_default_mm">47</field></record>
+        <record id="position_certificate_registered_capital" model="buz.share.certificate.layout.position"><field name="x_default_mm">109.5</field><field name="y_default_mm">66</field></record>
+        <record id="position_certificate_registered_shares" model="buz.share.certificate.layout.position"><field name="x_default_mm">177.5</field><field name="y_default_mm">66</field></record>
+        <record id="position_certificate_share_value" model="buz.share.certificate.layout.position"><field name="x_default_mm">244.5</field><field name="y_default_mm">66</field></record>
+        <record id="position_certificate_shareholder" model="buz.share.certificate.layout.position"><field name="x_default_mm">120.5</field><field name="y_default_mm">78</field></record>
+        <record id="position_certificate_share_count" model="buz.share.certificate.layout.position"><field name="x_default_mm">128.5</field><field name="y_default_mm">109</field></record>
+        <record id="position_certificate_share_number_from" model="buz.share.certificate.layout.position"><field name="x_default_mm">191.5</field><field name="y_default_mm">109</field></record>
+        <record id="position_certificate_share_number_to" model="buz.share.certificate.layout.position"><field name="x_default_mm">260.5</field><field name="y_default_mm">109</field></record>
+        <record id="position_certificate_paid_per_share" model="buz.share.certificate.layout.position"><field name="x_default_mm">144.5</field><field name="y_default_mm">132</field></record>
+        <record id="position_certificate_total_paid" model="buz.share.certificate.layout.position"><field name="x_default_mm">246.5</field><field name="y_default_mm">132</field></record>
+        <record id="position_certificate_issue_day" model="buz.share.certificate.layout.position"><field name="x_default_mm">144.5</field><field name="y_default_mm">145</field></record>
+        <record id="position_certificate_issue_month" model="buz.share.certificate.layout.position"><field name="x_default_mm">199.5</field><field name="y_default_mm">145</field></record>
+        <record id="position_certificate_issue_year" model="buz.share.certificate.layout.position"><field name="x_default_mm">269.5</field><field name="y_default_mm">145</field></record>
+    </data>
+</odoo>
