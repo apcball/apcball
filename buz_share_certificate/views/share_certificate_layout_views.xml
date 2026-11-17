@@ -5,6 +5,9 @@
         <field name="model">buz.share.certificate.layout.config</field>
         <field name="arch" type="xml">
             <form string="ตั้งค่าตำแหน่งพิมพ์ใบหุ้น" create="0" delete="0">
+                <header>
+                    <button name="action_preview_layout" string="Preview PDF" type="object" class="oe_highlight" icon="fa-eye"/>
+                </header>
                 <sheet>
                     <div class="alert alert-info" role="alert">
                         กำหนดตำแหน่งจากมุมซ้ายบนของกระดาษ A4 หน่วยเป็นมิลลิเมตร

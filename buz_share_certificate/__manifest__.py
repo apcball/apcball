@@ -1,6 +1,6 @@
 {
     'name': 'Share Certificate Print',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Accounting/Localizations',
     'summary': 'Fill and print a Thai share certificate',
     'license': 'LGPL-3',

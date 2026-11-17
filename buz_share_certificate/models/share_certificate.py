@@ -22,3 +22,9 @@ class ShareCertificate(models.Model):
     cancelled_certificate_number = fields.Char(string='เลขที่ใบหุ้นเดิมที่ยกเลิก')
     cancelled_date = fields.Date(string='วันที่ยกเลิกใบหุ้นเดิม')
     received_date = fields.Date(string='วันที่ผู้ถือหุ้นได้รับใบหุ้น')
+
+    def action_open_layout_config(self):
+        self.ensure_one()
+        action = self.env.ref('buz_share_certificate.action_share_certificate_layout_config').read()[0]
+        action['context'] = dict(self.env.context, preview_certificate_id=self.id)
+        return action

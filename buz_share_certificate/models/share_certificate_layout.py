@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 
 class ShareCertificateLayoutConfig(models.Model):
@@ -21,6 +22,16 @@ class ShareCertificateLayoutConfig(models.Model):
     @api.model
     def get_default_config(self):
         return self.search([], limit=1)
+
+    def action_preview_layout(self):
+        self.ensure_one()
+        certificate_id = self.env.context.get('preview_certificate_id')
+        certificate = self.env['buz.share.certificate.print.wizard'].browse(certificate_id).exists()
+        if not certificate:
+            raise UserError('กรุณาเปิดหน้าตั้งค่าจากใบหุ้นที่ต้องการดูตัวอย่าง')
+        return self.env.ref('buz_share_certificate.action_report_share_certificate').report_action(
+            certificate, config=False
+        )
 
 
 class ShareCertificateLayoutPosition(models.Model):

@@ -1,5 +1,8 @@
+from pathlib import Path
+from runpy import run_path
+
 from odoo import Command
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -40,6 +43,29 @@ class TestShareCertificateLayout(TransactionCase):
 
         self.assertEqual((position.x_mm, position.y_mm), (22.0, 24.0))
         self.assertEqual((other_position.x_mm, other_position.y_mm), (99.0, 98.0))
+
+    def test_preview_uses_current_certificate(self):
+        certificate = self.env['buz.share.certificate.print.wizard'].create({
+            'company_name': 'Preview Company',
+        })
+        action = certificate.action_open_layout_config()
+        self.assertEqual(action['context']['preview_certificate_id'], certificate.id)
+
+        config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+        preview = config.with_context(action['context']).action_preview_layout()
+        self.assertEqual(preview['report_name'], 'buz_share_certificate.report_share_certificate')
+        with self.assertRaises(UserError):
+            config.action_preview_layout()
+
+    def test_migration_populates_reset_defaults_without_moving_values(self):
+        position = self.env.ref('buz_share_certificate.position_stub_company')
+        position.write({'x_mm': 42.5, 'x_default_mm': 0, 'y_default_mm': 0})
+        migration = Path(__file__).resolve().parents[1] / 'migrations' / '17.0.1.1.0' / 'post-migration.py'
+
+        run_path(str(migration))['migrate'](self.env.cr, '17.0.1.0.0')
+
+        self.assertEqual((position.x_mm, position.y_mm), (42.5, 24.0))
+        self.assertEqual((position.x_default_mm, position.y_default_mm), (22.0, 24.0))
 
     def test_layout_configuration_is_admin_only(self):
         user = self.env['res.users'].create({
