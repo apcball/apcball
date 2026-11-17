@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# OBSOLETE / DO NOT RUN apply: rolled back 2026-11-17. Warehouse-level pre-cutoff value was already 0 (FIFO Reset Flush layers 127073-5, location NULL); this plug double-counts. See memory stockcard-opening-fix-mo010s101-403030003-2026-11-17.
 # DRAFT FOR ACCOUNTING REVIEW - 403030003 stock card OPENING VALUE at cutoff 2026-03-30 17:00 UTC.
 # Qty opening is 0 at RM02/Stock, PD01/Stock, RM03/FXF (fixed 2026-11-17, moves 379159), imex initial value is 0, but the
 # stock card sums SVL (location_id in scope, accounting_date < cutoff) = RM02 +18,404.40 / PD01 -17,825.00 / FXF -9,300.00.
