@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_share_certificate_layout_config_form" model="ir.ui.view">
+        <field name="name">buz.share.certificate.layout.config.form</field>
+        <field name="model">buz.share.certificate.layout.config</field>
+        <field name="arch" type="xml">
+            <form string="ตั้งค่าตำแหน่งพิมพ์ใบหุ้น" create="0" delete="0">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        กำหนดตำแหน่งจากมุมซ้ายบนของกระดาษ A4 หน่วยเป็นมิลลิเมตร
+                    </div>
+                    <field name="name" readonly="1"/>
+                    <notebook>
+                        <page string="ต้นขั้ว">
+                            <field name="position_ids" domain="[('section', '=', 'stub')]" nolabel="1">
+                                <tree editable="bottom" create="0" delete="0">
+                                    <field name="label" readonly="1"/>
+                                    <field name="x_mm"/>
+                                    <field name="y_mm"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ใบหุ้น">
+                            <field name="position_ids" domain="[('section', '=', 'certificate')]" nolabel="1">
+                                <tree editable="bottom" create="0" delete="0">
+                                    <field name="label" readonly="1"/>
+                                    <field name="x_mm"/>
+                                    <field name="y_mm"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_share_certificate_layout_config" model="ir.actions.act_window">
+        <field name="name">ตั้งค่าตำแหน่งพิมพ์ใบหุ้น</field>
+        <field name="res_model">buz.share.certificate.layout.config</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_share_certificate_layout_config_form"/>
+        <field name="res_id" ref="share_certificate_layout_config_default"/>
+        <field name="target">current</field>
+    </record>
+</odoo>

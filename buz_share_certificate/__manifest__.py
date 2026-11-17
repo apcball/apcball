@@ -7,7 +7,9 @@
     'depends': ['base', 'web'],
     'data': [
         'security/ir.model.access.csv',
+        'data/share_certificate_layout_data.xml',
         'report/share_certificate_report.xml',
+        'views/share_certificate_layout_views.xml',
         'views/share_certificate_views.xml',
         'views/menu.xml',
     ],

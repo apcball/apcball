@@ -9,6 +9,9 @@
                     <button name="%(action_report_share_certificate)d"
                             string="พิมพ์ใบหุ้น" type="action"
                             class="oe_highlight" icon="fa-print"/>
+                    <button name="%(action_share_certificate_layout_config)d"
+                            string="ตั้งค่าตำแหน่ง" type="action"
+                            groups="base.group_system" icon="fa-sliders"/>
                 </header>
                 <sheet>
                     <group>
