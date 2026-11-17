@@ -225,9 +225,12 @@ class ShopeeProductMapping(models.Model):
         """Create or refresh a shop listing, even before it is mapped in Odoo."""
         if not sku and not item_id:
             return self.env["shopee.product.mapping"]
+        # Include archived rows: the unique constraints still cover them, so
+        # a create next to an archived mapping would raise ValidationError.
+        Mapping = self.with_context(active_test=False)
         mapping = self.env["shopee.product.mapping"]
         if item_id:
-            mapping = self.search([
+            mapping = Mapping.search([
                 ("shopee_config_id", "=", config.id),
                 ("shopee_item_id", "=", str(item_id)),
                 ("shopee_model_id", "=", str(model_id) if model_id else False),
@@ -235,7 +238,7 @@ class ShopeeProductMapping(models.Model):
         if not mapping and sku:
             # Also reuse a mapping entered by hand with only the SKU, otherwise
             # the create below violates config_sku_unique.
-            mapping = self.search([
+            mapping = Mapping.search([
                 ("shopee_config_id", "=", config.id),
                 ("shopee_sku", "=", str(sku)),
             ], limit=1)
