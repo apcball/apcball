@@ -57,7 +57,7 @@
         <field name="name">buz.share.certificate.print.wizard.tree</field>
         <field name="model">buz.share.certificate.print.wizard</field>
         <field name="arch" type="xml">
-            <tree create="1" edit="0" delete="0">
+            <tree create="1" edit="0">
                 <field name="certificate_number"/>
                 <field name="company_name"/>
                 <field name="shareholder_name"/>

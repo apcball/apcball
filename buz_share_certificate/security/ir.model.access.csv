@@ -1,4 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_share_certificate_print_wizard_user,share.certificate.print.wizard.user,model_buz_share_certificate_print_wizard,base.group_user,1,1,1,0
+access_share_certificate_print_wizard_admin,share.certificate.print.wizard.admin,model_buz_share_certificate_print_wizard,base.group_system,1,1,1,1
 access_share_certificate_layout_config_admin,share.certificate.layout.config.admin,model_buz_share_certificate_layout_config,base.group_system,1,1,0,0
 access_share_certificate_layout_position_admin,share.certificate.layout.position.admin,model_buz_share_certificate_layout_position,base.group_system,1,1,0,0

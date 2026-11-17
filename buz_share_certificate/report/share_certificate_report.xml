@@ -4,8 +4,9 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.basic_layout">
-                    <div class="page share-certificate-page">
-                        <t t-set="layout" t-value="doc.env['buz.share.certificate.layout.config'].sudo().get_default_config()"/>
+                    <t t-set="layout" t-value="doc.env['buz.share.certificate.layout.config'].sudo().get_default_config()"/>
+                    <div class="page share-certificate-page"
+                         t-attf-style="width:{{297 - layout.margin_left - layout.margin_right}}mm;height:{{210 - layout.margin_top - layout.margin_bottom}}mm;">
                         <style type="text/css">
                             @font-face {
                                 font-family: 'Sarabun';
@@ -21,8 +22,6 @@
                             }
                             .share-certificate-page {
                                 position: relative;
-                                width: 297mm;
-                                height: 210mm;
                                 margin: 0;
                                 padding: 0;
                                 overflow: hidden;
@@ -33,10 +32,9 @@
                                 display: block;
                                 white-space: nowrap;
                                 color: #171717;
-                                font-size: 10pt;
                                 line-height: 1.1;
                             }
-                            .company-value { font-size: 14pt; font-weight: 700; }
+                            .company-value { font-weight: 700; }
                         </style>
                         <span class="field-value" t-field="doc.company_name" t-att-style="layout.get_position_style('stub_company')"/>
                         <span class="field-value" t-field="doc.company_registration_number" t-att-style="layout.get_position_style('stub_registration')"/>
@@ -74,6 +72,7 @@
         </t>
     </template>
 
+    <data noupdate="1">
     <record id="paperformat_share_certificate" model="report.paperformat">
         <field name="name">Share Certificate A4 Landscape</field>
         <field name="default" eval="False"/>
@@ -87,6 +86,7 @@
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
+    </data>
 
     <record id="action_report_share_certificate" model="ir.actions.report">
         <field name="name">พิมพ์ใบหุ้น</field>

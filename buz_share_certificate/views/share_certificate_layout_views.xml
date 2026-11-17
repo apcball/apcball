@@ -10,7 +10,7 @@
                 </header>
                 <sheet>
                     <div class="alert alert-info" role="alert">
-                        กำหนดตำแหน่งจากมุมซ้ายบนของกระดาษ A4 หน่วยเป็นมิลลิเมตร
+                        กำหนดตำแหน่งจากมุมซ้ายบนของพื้นที่พิมพ์บนกระดาษ A4 หน่วยเป็นมิลลิเมตร
                     </div>
                     <field name="name" readonly="1"/>
                     <notebook>
@@ -20,6 +20,7 @@
                                     <field name="label" readonly="1"/>
                                     <field name="x_mm"/>
                                     <field name="y_mm"/>
+                                    <field name="font_size_pt"/>
                                     <button name="action_reset_position" string="Reset" type="object" class="btn-link"/>
                                 </tree>
                             </field>
@@ -30,9 +31,22 @@
                                     <field name="label" readonly="1"/>
                                     <field name="x_mm"/>
                                     <field name="y_mm"/>
+                                    <field name="font_size_pt"/>
                                     <button name="action_reset_position" string="Reset" type="object" class="btn-link"/>
                                 </tree>
                             </field>
+                        </page>
+                        <page string="ระยะขอบกระดาษ">
+                            <group>
+                                <group>
+                                    <field name="margin_top"/>
+                                    <field name="margin_bottom"/>
+                                </group>
+                                <group>
+                                    <field name="margin_left"/>
+                                    <field name="margin_right"/>
+                                </group>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
