@@ -383,10 +383,13 @@ msgid "Bucket Start"
 msgstr "เริ่มช่วงสัปดาห์"
 
 #. module: buz_production_planning
+#. odoo-javascript
 #: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__supply_method__buy
 #: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__action__buy
 #: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
 #: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
 msgid "Buy"
 msgstr "ซื้อ"
 
@@ -756,7 +759,10 @@ msgid "Forecast look-back cannot be negative."
 msgstr "จำนวนสัปดาห์ย้อนหลังสำหรับพยากรณ์ต้องไม่ติดลบ"
 
 #. module: buz_production_planning
+#. odoo-javascript
 #: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_gantt
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
 msgid "Gantt"
 msgstr "Gantt"
 
@@ -918,10 +924,13 @@ msgid "Last Updated on"
 msgstr "ปรับปรุงล่าสุดเมื่อ"
 
 #. module: buz_production_planning
+#. odoo-javascript
 #: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__late_suggestion_count
 #: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__is_late
 #: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_schedule_line_search
 #: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
 msgid "Late"
 msgstr "ล่าช้า"
 
@@ -949,10 +958,13 @@ msgid "Locked"
 msgstr "ล็อก"
 
 #. module: buz_production_planning
+#. odoo-javascript
 #: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__supply_method__make
 #: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__action__make
 #: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
 #: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
 msgid "Make"
 msgstr "ผลิต"
 
@@ -1709,8 +1721,10 @@ msgstr "จำนวนตารางเวลา"
 
 #. module: buz_production_planning
 #. odoo-python
+#. odoo-javascript
 #: code:addons/buz_production_planning/models/plan_run.py:0
 #: model:ir.actions.client,name:buz_production_planning.action_buz_plan_gantt
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
 #, python-format
 msgid "Schedule Gantt"
 msgstr "ตาราง Gantt"
@@ -1929,10 +1943,13 @@ msgid "Suggestion Count"
 msgstr "จำนวนข้อเสนอ"
 
 #. module: buz_production_planning
+#. odoo-javascript
 #: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_suggestion
 #: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__suggestion_ids
 #: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_suggestion
 #: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
 msgid "Suggestions"
 msgstr "ข้อเสนอ"
 
@@ -2308,3 +2325,401 @@ msgstr "ซื้อ"
 #, python-format
 msgid "make"
 msgstr "ผลิต"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Suggestions to review"
+msgstr "ข้อเสนอที่รอตรวจ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Approved, no document yet"
+msgstr "อนุมัติแล้ว ยังไม่มีเอกสาร"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Late suggestions"
+msgstr "ข้อเสนอที่ล่าช้า"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Buy without vendor"
+msgstr "รายการซื้อที่ยังไม่มีผู้ขาย"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Products short"
+msgstr "สินค้าที่ขาด"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Work orders finishing late"
+msgstr "งานที่จะเสร็จช้ากว่ากำหนด"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Schedule lines not applied"
+msgstr "คิวงานที่ยังไม่ได้ปรับใช้"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: model:ir.model,name:buz_production_planning.model_buz_plan_dashboard
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Planning Dashboard"
+msgstr "แดชบอร์ดวางแผน"
+
+#. module: buz_production_planning
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_dashboard
+#: model:ir.actions.client,name:buz_production_planning.action_buz_plan_dashboard
+msgid "Dashboard"
+msgstr "แดชบอร์ด"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Schedule, week of %s"
+msgstr "คิวงาน สัปดาห์ของวันที่ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "hours"
+msgstr "ชั่วโมง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Capacity"
+msgstr "กำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Load within capacity"
+msgstr "ภาระงานที่อยู่ในกำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Load over capacity"
+msgstr "ภาระงานที่เกินกำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Week starting"
+msgstr "สัปดาห์ที่เริ่มวันที่"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Hours"
+msgstr "ชั่วโมง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Week of %s"
+msgstr "สัปดาห์ของวันที่ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Total load: %s hours"
+msgstr "ภาระงานรวม: %s ชั่วโมง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Schedule of %s"
+msgstr "คิวงานของ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "No working time"
+msgstr "ไม่มีเวลาทำงาน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+msgid "Load % of capacity"
+msgstr "ภาระงานเป็น % ของกำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+msgid "Load as % of capacity (dashed line = 100 %)"
+msgstr "ภาระงานเป็น % ของกำลังการผลิต (เส้นประ = 100 %)"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Load %s hours of %s hours capacity (%s)"
+msgstr "ภาระงาน %s ชั่วโมง จากกำลังการผลิต %s ชั่วโมง (%s)"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "on time"
+msgstr "ตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "manufacturing orders"
+msgstr "ใบสั่งผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "On time"
+msgstr "ตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Suggestions, week of %s"
+msgstr "ข้อเสนอ สัปดาห์ของวันที่ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "suggestions"
+msgstr "ข้อเสนอ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Week to order / start"
+msgstr "สัปดาห์ที่ต้องสั่งซื้อ / เริ่มผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Suggestions: %s"
+msgstr "ข้อเสนอ: %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Plan"
+msgstr "แผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Plan shown on this page"
+msgstr "แผนที่แสดงในหน้านี้"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Updated"
+msgstr "อัปเดตเมื่อ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Open plan"
+msgstr "เปิดแผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Refresh"
+msgstr "รีเฟรช"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Loading the dashboard…"
+msgstr "กำลังโหลดแดชบอร์ด…"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No plan yet"
+msgstr "ยังไม่มีแผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Create a production plan and click Compute Plan. Its numbers will show here."
+msgstr "สร้างแผนการผลิตแล้วกด 'คำนวณแผน' ตัวเลขของแผนจะแสดงที่นี่"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Create a plan"
+msgstr "สร้างแผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Next step:"
+msgstr "ขั้นตอนถัดไป:"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "All numbers on this page belong to the selected plan only. Click a number to open the list behind it."
+msgstr "ตัวเลขทั้งหมดในหน้านี้เป็นของแผนที่เลือกเท่านั้น กดที่ตัวเลขเพื่อเปิดรายการที่อยู่เบื้องหลัง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Load vs capacity by week"
+msgstr "ภาระงานเทียบกำลังการผลิต รายสัปดาห์"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Hours of planned work against the hours the work centers can work. Red = more work than capacity."
+msgstr "ชั่วโมงงานที่วางแผนไว้ เทียบกับชั่วโมงที่ศูนย์งานทำงานได้ สีแดง = งานมากกว่ากำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Only the first 26 weeks are shown; the schedule runs further."
+msgstr "แสดงเฉพาะ 26 สัปดาห์แรก ตารางเวลายังยาวต่อไปอีก"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No working time or planned work in this period."
+msgstr "ไม่มีเวลาทำงานหรืองานที่วางแผนไว้ในช่วงนี้"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Schedule the plan to see load."
+msgstr "กด 'จัดคิว' ในแผนก่อน จึงจะเห็นภาระงาน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Busiest work centers"
+msgstr "ศูนย์งานที่งานแน่นที่สุด"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+msgid "Top 10 by planned work as a share of capacity. Red = over 100 %."
+msgstr "10 อันดับแรกตามสัดส่วนงานที่วางแผนไว้ต่อกำลังการผลิต สีแดง = เกิน 100 %"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "On-time schedule"
+msgstr "งานที่เสร็จตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Manufacturing orders that finish before their deadline. Click to see the late work orders."
+msgstr "ใบสั่งผลิตที่เสร็จก่อนกำหนดส่ง กดเพื่อดูงานที่ล่าช้า"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Schedule the plan to see on-time results."
+msgstr "กด 'จัดคิว' ในแผนก่อน จึงจะเห็นผลงานตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Suggestions by release week"
+msgstr "ข้อเสนอตามสัปดาห์ที่ต้องเริ่ม"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Open suggestions by the week they must be ordered or started."
+msgstr "ข้อเสนอที่ยังเปิดอยู่ แยกตามสัปดาห์ที่ต้องสั่งซื้อหรือเริ่มผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No open suggestions in this plan."
+msgstr "แผนนี้ไม่มีข้อเสนอที่ยังเปิดอยู่"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Document progress"
+msgstr "ความคืบหน้าของเอกสาร"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "How far the suggestions are: no document yet, draft, in progress or done."
+msgstr "ข้อเสนอไปถึงขั้นไหนแล้ว: ยังไม่มีเอกสาร ฉบับร่าง กำลังดำเนินการ หรือเสร็จแล้ว"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No suggestions in this plan. Click Compute Plan first."
+msgstr "แผนนี้ยังไม่มีข้อเสนอ กด 'คำนวณแผน' ก่อน"

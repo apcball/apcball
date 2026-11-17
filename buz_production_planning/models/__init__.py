@@ -5,6 +5,7 @@ from . import plan_demand_line
 from . import plan_suggestion
 from . import plan_schedule_line
 from . import plan_operation_time
+from . import plan_dashboard
 from . import mrp_production
 from . import purchase_requisition
 from . import purchase_order

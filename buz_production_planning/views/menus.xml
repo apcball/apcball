@@ -3,6 +3,9 @@
     <menuitem id="menu_buz_plan_root" name="Planning" sequence="45"
               web_icon="mrp,static/description/icon.png"
               groups="buz_production_planning.group_plan_user,mrp.group_mrp_user"/>
+    <menuitem id="menu_buz_plan_dashboard" name="Dashboard" parent="menu_buz_plan_root"
+              action="action_buz_plan_dashboard" sequence="5"
+              groups="buz_production_planning.group_plan_user,mrp.group_mrp_user"/>
     <menuitem id="menu_buz_plan_run" name="Plans" parent="menu_buz_plan_root"
               action="action_buz_plan_run" sequence="10"/>
     <menuitem id="menu_buz_plan_suggestion" name="Suggestions" parent="menu_buz_plan_root"

@@ -1,6 +1,6 @@
 {
     'name': 'Production Planning (Demand → MRP → Schedule)',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Manufacturing/Manufacturing',
     'summary': 'Demand-driven make/buy suggestions and finite-capacity workorder scheduling',
     'author': 'Mogen Co.',
@@ -21,6 +21,7 @@
         'views/plan_demand_line_views.xml',
         'views/plan_schedule_line_views.xml',
         'views/res_config_settings_views.xml',
+        'views/plan_dashboard_views.xml',
         'views/menus.xml',
     ],
     'assets': {
@@ -28,6 +29,9 @@
             'buz_production_planning/static/src/gantt/gantt_action.js',
             'buz_production_planning/static/src/gantt/gantt_action.xml',
             'buz_production_planning/static/src/gantt/gantt.scss',
+            'buz_production_planning/static/src/dashboard/plan_dashboard.js',
+            'buz_production_planning/static/src/dashboard/plan_dashboard.xml',
+            'buz_production_planning/static/src/dashboard/plan_dashboard.scss',
         ],
     },
     'application': True,
