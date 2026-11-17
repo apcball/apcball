@@ -789,6 +789,31 @@ class TestStockCardReport(TransactionCase):
         )
         self.assertEqual(rows, [])
 
+    def test_valuation_source_stamped_transfer_in_counts_for_destination_scope(self):
+        # "Transfer IN" layers carry the SOURCE location (here loc_b) although
+        # the move delivers into loc_a. The destination scope must get the
+        # opening value (else it shows a large negative opening); the stamped
+        # location's scope must NOT get a phantom +value.
+        self._mk_valuation_layer(
+            self.product, self.loc_b, 10.0, 100.0, self._dt("2024-05-01 08:00:00"),
+            dest=self.loc_a,
+        )
+        opening_dest = self.engine._get_opening_value(
+            self.product.id, [self.loc_a.id], self._dt("2024-06-01 00:00:00"),
+            [self.env.company.id],
+        )
+        opening_src = self.engine._get_opening_value(
+            self.product.id, [self.loc_b.id], self._dt("2024-06-01 00:00:00"),
+            [self.env.company.id],
+        )
+        self.assertAlmostEqual(opening_dest, 1000.0)
+        self.assertAlmostEqual(opening_src, 0.0)
+        by_product = self.engine._get_opening_values_by_product(
+            [self.product.id], [self.loc_a.id], self._dt("2024-06-01 00:00:00"),
+            [self.env.company.id],
+        )
+        self.assertAlmostEqual(by_product[self.product.id], 1000.0)
+
     def test_valuation_lot_split_proportional(self):
         lot_model = self.env["stock.lot"]
         lot1 = lot_model.create({"name": "LOT1", "product_id": self.product.id})

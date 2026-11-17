@@ -193,9 +193,10 @@ class StockCardReport(models.AbstractModel):
     # agree with that report - EXCEPT where a layer's location_id (scoped
     # here, for sub-warehouse granularity) disagrees with its warehouse_id
     # (that report's scope key). That disagreement is a pre-existing data
-    # defect on some layers, not something either report gets wrong on its
-    # own - see project memory "type105-int-moveline-header-mismatch"; not
-    # fixed here.
+    # defect on some layers - see project memory
+    # "type105-int-moveline-header-mismatch". The most common form, a
+    # "Transfer IN" layer stamped with the transfer's SOURCE location, is
+    # handled in _layer_scope_domain; other forms are not fixed here.
     # ------------------------------------------------------------------
 
     def _can_see_value(self):
@@ -213,13 +214,55 @@ class StockCardReport(models.AbstractModel):
             "&", ("accounting_date", "=", False), ("create_date", "<", cutoff),
         ]
 
+    def _layer_scope_domain(self, scope_location_ids):
+        """Layers that belong to the scope's value ledger.
+
+        Normally a layer belongs to the scope when its location_id is in the
+        scope. "Transfer IN" layers are the exception: the transfer module
+        stamps them with the SOURCE location (e.g. RM01 for an RM01 -> FG10
+        transfer) although stock arrives in the destination. Matching on
+        location_id alone drops that inflow while the matching outflow/reset
+        layer stays, which shows up as a large negative opening value (see
+        WB0004A100 @FG10: +178 / 17,087.57 layer 88866 excluded).
+
+        The mirror image is also wrong: that same inflow layer would add
+        +value to the SOURCE scope (RM01), cancelling the transfer-out leg.
+
+        So an inbound layer (quantity > 0 with a move) is judged by its
+        move's destination, like the quantity side (_scope_domain):
+          A. location_id in scope, unless it is an inbound layer whose move
+             delivers to a DIFFERENT internal/transit location (a
+             source-stamped transfer-in). A positive correction layer on a
+             move into a virtual location (production, scrap...) is not a
+             transfer and stays in the scope, so it still nets against its
+             negative twin;
+          B. inbound layer stamped outside the scope whose move crosses into
+             it (destination in scope, source outside).
+        Outbound layers, move-less layers (flush / revaluation) and ordinary
+        receipts (layer location == move destination) behave exactly as
+        before, and intra-scope transfers still net to zero."""
+        scope = list(scope_location_ids)
+        return [
+            "|",
+            "&", ("location_id", "in", scope),
+            "|", "|", "|",
+            ("quantity", "<=", 0),
+            ("stock_move_id", "=", False),
+            ("stock_move_id.location_dest_id", "in", scope),
+            ("stock_move_id.location_dest_id.usage", "not in", ["internal", "transit"]),
+            "&", "&", "&",
+            ("quantity", ">", 0),
+            ("location_id", "not in", scope),
+            ("stock_move_id.location_dest_id", "in", scope),
+            ("stock_move_id.location_id", "not in", scope),
+        ]
+
     def _get_opening_value(self, product_id, scope_location_ids, start_utc, company_ids):
         Layer = self.env["stock.valuation.layer"]
         domain = [
             ("product_id", "=", product_id),
-            ("location_id", "in", list(scope_location_ids)),
             ("company_id", "in", company_ids),
-        ] + self._accounting_date_before_domain(start_utc)
+        ] + self._layer_scope_domain(scope_location_ids) + self._accounting_date_before_domain(start_utc)
         return sum(Layer.search(domain).mapped("value"))
 
     def _get_opening_values_by_product(self, product_ids, scope_location_ids, start_utc, company_ids):
@@ -231,9 +274,8 @@ class StockCardReport(models.AbstractModel):
         Layer = self.env["stock.valuation.layer"]
         domain = [
             ("product_id", "in", list(product_ids)),
-            ("location_id", "in", list(scope_location_ids)),
             ("company_id", "in", company_ids),
-        ] + self._accounting_date_before_domain(start_utc)
+        ] + self._layer_scope_domain(scope_location_ids) + self._accounting_date_before_domain(start_utc)
         values = dict.fromkeys(product_ids, 0.0)
         for group in Layer.read_group(domain, ["value:sum"], ["product_id"]):
             product = group.get("product_id")
@@ -250,9 +292,8 @@ class StockCardReport(models.AbstractModel):
         Layer = self.env["stock.valuation.layer"]
         base_domain = [
             ("stock_move_id", "in", list(move_ids)),
-            ("location_id", "in", list(scope_location_ids)),
             ("company_id", "in", company_ids),
-        ]
+        ] + self._layer_scope_domain(scope_location_ids)
         value_in_by_move = {}
         for group in Layer.read_group(base_domain + [("quantity", ">", 0)], ["value:sum"], ["stock_move_id"]):
             move = group.get("stock_move_id")
