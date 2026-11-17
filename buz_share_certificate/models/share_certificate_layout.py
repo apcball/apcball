@@ -64,7 +64,9 @@ class ShareCertificateLayoutConfig(models.Model):
         if not position:
             return 'display:none;'
         return 'left:%smm;top:%smm;font-size:%spt;' % (
-            position.x_mm, position.y_mm, position.font_size_pt
+            position.x_mm - self.margin_left,
+            position.y_mm - self.margin_top,
+            position.font_size_pt,
         )
 
     @api.model

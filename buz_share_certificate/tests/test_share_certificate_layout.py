@@ -104,6 +104,12 @@ class TestShareCertificateLayout(TransactionCase):
              report.paperformat_id.margin_left, report.paperformat_id.margin_right),
             (5, 5, 8, 7),
         )
+        company_position = config.position_ids.filtered(lambda item: item.code == 'stub_company')
+        self.assertEqual((company_position.x_mm, company_position.y_mm), (22, 24))
+        self.assertEqual(
+            config.get_position_style('stub_company'),
+            'left:14.0mm;top:19.0mm;font-size:10.0pt;',
+        )
 
         certificate = self.env['buz.share.certificate.print.wizard'].create({
             'company_name': 'Margin Test',
@@ -111,11 +117,16 @@ class TestShareCertificateLayout(TransactionCase):
         html, _content_type = report._render_qweb_html(report.report_name, certificate.ids)
         html = html.decode() if isinstance(html, bytes) else html
         self.assertIn('width:282.0mm;height:200.0mm;', html)
+        self.assertIn('left:14.0mm;top:19.0mm;font-size:10.0pt;', html)
 
         pdf, _content_type = report.with_context(force_report_rendering=True)._render_qweb_pdf(
             report.report_name, certificate.ids
         )
-        self.assertEqual(PdfFileReader(BytesIO(pdf)).getNumPages(), 1)
+        reader = PdfFileReader(BytesIO(pdf))
+        self.assertEqual(reader.getNumPages(), 1)
+        page = reader.getPage(0)
+        self.assertAlmostEqual(float(page.mediaBox.getWidth()), 841.89, delta=2)
+        self.assertAlmostEqual(float(page.mediaBox.getHeight()), 595.28, delta=2)
 
     def test_invalid_paper_margins_are_rejected(self):
         config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
