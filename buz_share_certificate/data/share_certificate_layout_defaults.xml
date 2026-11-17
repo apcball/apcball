@@ -35,5 +35,6 @@
         <record id="position_certificate_issue_day" model="buz.share.certificate.layout.position"><field name="x_default_mm">144.5</field><field name="y_default_mm">145</field></record>
         <record id="position_certificate_issue_month" model="buz.share.certificate.layout.position"><field name="x_default_mm">199.5</field><field name="y_default_mm">145</field></record>
         <record id="position_certificate_issue_year" model="buz.share.certificate.layout.position"><field name="x_default_mm">269.5</field><field name="y_default_mm">145</field></record>
+        <function model="buz.share.certificate.layout.position" name="_sync_document_labels" eval="[]"/>
     </data>
 </odoo>

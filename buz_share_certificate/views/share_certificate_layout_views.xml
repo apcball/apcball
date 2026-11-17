@@ -14,10 +14,10 @@
                     </div>
                     <field name="name" readonly="1"/>
                     <notebook>
-                        <page string="ต้นขั้ว">
+                        <page string="ต้นขั้วใบหุ้น (ด้านซ้าย)">
                             <field name="position_ids" domain="[('section', '=', 'stub')]" nolabel="1">
                                 <tree editable="bottom" create="0" delete="0">
-                                    <field name="label" readonly="1"/>
+                                    <field name="label" string="ข้อความบนเอกสาร" readonly="1"/>
                                     <field name="x_mm"/>
                                     <field name="y_mm"/>
                                     <field name="font_size_pt"/>
@@ -25,10 +25,10 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="ใบหุ้น">
+                        <page string="ใบหุ้น (ด้านขวา)">
                             <field name="position_ids" domain="[('section', '=', 'certificate')]" nolabel="1">
                                 <tree editable="bottom" create="0" delete="0">
-                                    <field name="label" readonly="1"/>
+                                    <field name="label" string="ข้อความบนเอกสาร" readonly="1"/>
                                     <field name="x_mm"/>
                                     <field name="y_mm"/>
                                     <field name="font_size_pt"/>

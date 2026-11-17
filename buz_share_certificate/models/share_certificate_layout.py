@@ -105,6 +105,51 @@ class ShareCertificateLayoutPosition(models.Model):
     x_default_mm = fields.Float(digits=(6, 2), readonly=True)
     y_default_mm = fields.Float(digits=(6, 2), readonly=True)
 
+    @api.model
+    def _sync_document_labels(self):
+        labels = {
+            'stub_company': 'บริษัท',
+            'stub_registration': 'ทะเบียนเลขที่',
+            'stub_certificate_number': 'ใบหุ้นเลขที่',
+            'stub_issue_date': 'ออกเมื่อวันที่: วัน',
+            'stub_issue_month': 'ออกเมื่อวันที่: เดือน',
+            'stub_issue_year': 'ออกเมื่อวันที่: ปี',
+            'stub_shareholder': 'ชื่อผู้ถือหุ้น',
+            'stub_share_count': 'ถือหุ้นจำนวน',
+            'stub_share_number_from': 'หมายเลขหุ้นตั้งแต่',
+            'stub_share_number_to': 'ถึง',
+            'stub_paid_per_share': 'ได้ชำระค่าหุ้นแล้ว หุ้นละ',
+            'stub_total_paid': 'รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว',
+            'stub_cancelled_number': 'ได้ยกเลิกใบหุ้นเดิมเลขที่',
+            'stub_cancelled_date': 'ลงวันที่: วัน',
+            'stub_cancelled_month': 'ลงวันที่: เดือน',
+            'stub_cancelled_year': 'ลงวันที่: ปี',
+            'stub_received_date': 'วันที่: วัน',
+            'stub_received_month': 'วันที่: เดือน',
+            'stub_received_year': 'วันที่: ปี',
+            'certificate_number': 'ใบหุ้นเลขที่',
+            'certificate_company': 'บริษัท',
+            'certificate_registration': 'ทะเบียนเลขที่',
+            'certificate_registered_capital': 'ทุนจดทะเบียน',
+            'certificate_registered_shares': 'แบ่งเป็น',
+            'certificate_share_value': 'มูลค่าหุ้นละ',
+            'certificate_shareholder': 'ใบหุ้นนี้ออกให้ไว้เพื่อแสดงว่า',
+            'certificate_share_count': 'ถือหุ้นจำนวน',
+            'certificate_share_number_from': 'หมายเลขหุ้นตั้งแต่',
+            'certificate_share_number_to': 'ถึง',
+            'certificate_paid_per_share': 'ได้ชำระเงินค่าหุ้นแล้ว หุ้นละ',
+            'certificate_total_paid': 'รวมเป็นเงินค่าหุ้นที่ได้ชำระแล้ว',
+            'certificate_issue_day': 'วันที่',
+            'certificate_issue_month': 'เดือน',
+            'certificate_issue_year': 'พุทธศักราช',
+        }
+        config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+        # XML ID ของตำแหน่งเป็น noupdate จึงปรับเฉพาะชื่อผ่าน ORM ตอนติดตั้งและอัปเกรด
+        for position in config.position_ids:
+            label = labels.get(position.code)
+            if label and position.label != label:
+                position.write({'label': label})
+
     def action_reset_position(self):
         self.ensure_one()
         self.write({'x_mm': self.x_default_mm, 'y_mm': self.y_default_mm})

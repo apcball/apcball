@@ -26,6 +26,26 @@ class TestShareCertificateLayout(TransactionCase):
         self.assertEqual(action.res_model, config._name)
         self.assertEqual(action.res_id, config.id)
 
+    def test_document_labels_update_without_changing_layout(self):
+        config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+        positions = {position.code: position for position in config.position_ids}
+        self.assertEqual(len(positions), 34)
+        self.assertEqual(positions['stub_certificate_number'].label, 'ใบหุ้นเลขที่')
+        self.assertEqual(positions['stub_issue_month'].label, 'ออกเมื่อวันที่: เดือน')
+        self.assertEqual(positions['stub_cancelled_year'].label, 'ลงวันที่: ปี')
+        self.assertEqual(positions['certificate_registered_shares'].label, 'แบ่งเป็น')
+        self.assertEqual(
+            positions['certificate_shareholder'].label,
+            'ใบหุ้นนี้ออกให้ไว้เพื่อแสดงว่า',
+        )
+        self.assertEqual(positions['certificate_issue_year'].label, 'พุทธศักราช')
+
+        position = positions['certificate_company']
+        position.write({'label': 'ชื่อบริษัท', 'x_mm': 140.25, 'font_size_pt': 16})
+        self.env['buz.share.certificate.layout.position']._sync_document_labels()
+        self.assertEqual(position.label, 'บริษัท')
+        self.assertEqual((position.x_mm, position.font_size_pt), (140.25, 16))
+
     def test_dates_print_as_separate_two_digit_values(self):
         config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
         certificate = self.env['buz.share.certificate.print.wizard'].create({
