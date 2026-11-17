@@ -39,7 +39,11 @@
                         <span class="field-value" t-field="doc.company_name" t-att-style="layout.get_position_style('stub_company')"/>
                         <span class="field-value" t-field="doc.company_registration_number" t-att-style="layout.get_position_style('stub_registration')"/>
                         <span class="field-value" t-field="doc.certificate_number" t-att-style="layout.get_position_style('stub_certificate_number')"/>
-                        <span class="field-value" t-field="doc.issue_date" t-att-style="layout.get_position_style('stub_issue_date')"/>
+                        <t t-if="doc.issue_date">
+                            <span class="field-value" t-esc="'%02d' % doc.issue_date.day" t-att-style="layout.get_position_style('stub_issue_date')"/>
+                            <span class="field-value" t-esc="'%02d' % doc.issue_date.month" t-att-style="layout.get_position_style('stub_issue_month')"/>
+                            <span class="field-value" t-esc="'%02d' % ((doc.issue_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_issue_year')"/>
+                        </t>
                         <span class="field-value" t-field="doc.shareholder_name" t-att-style="layout.get_position_style('stub_shareholder')"/>
                         <span class="field-value" t-field="doc.share_count" t-att-style="layout.get_position_style('stub_share_count')"/>
                         <span class="field-value" t-field="doc.share_number_from" t-att-style="layout.get_position_style('stub_share_number_from')"/>
@@ -47,8 +51,16 @@
                         <span class="field-value" t-field="doc.paid_per_share" t-att-style="layout.get_position_style('stub_paid_per_share')"/>
                         <span class="field-value" t-field="doc.total_paid" t-att-style="layout.get_position_style('stub_total_paid')"/>
                         <span class="field-value" t-field="doc.cancelled_certificate_number" t-att-style="layout.get_position_style('stub_cancelled_number')"/>
-                        <span class="field-value" t-field="doc.cancelled_date" t-att-style="layout.get_position_style('stub_cancelled_date')"/>
-                        <span class="field-value" t-field="doc.received_date" t-att-style="layout.get_position_style('stub_received_date')"/>
+                        <t t-if="doc.cancelled_date">
+                            <span class="field-value" t-esc="'%02d' % doc.cancelled_date.day" t-att-style="layout.get_position_style('stub_cancelled_date')"/>
+                            <span class="field-value" t-esc="'%02d' % doc.cancelled_date.month" t-att-style="layout.get_position_style('stub_cancelled_month')"/>
+                            <span class="field-value" t-esc="'%02d' % ((doc.cancelled_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_cancelled_year')"/>
+                        </t>
+                        <t t-if="doc.received_date">
+                            <span class="field-value" t-esc="'%02d' % doc.received_date.day" t-att-style="layout.get_position_style('stub_received_date')"/>
+                            <span class="field-value" t-esc="'%02d' % doc.received_date.month" t-att-style="layout.get_position_style('stub_received_month')"/>
+                            <span class="field-value" t-esc="'%02d' % ((doc.received_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_received_year')"/>
+                        </t>
                         <span class="field-value" t-field="doc.certificate_number" t-att-style="layout.get_position_style('certificate_number')"/>
                         <span class="field-value company-value" t-field="doc.company_name" t-att-style="layout.get_position_style('certificate_company')"/>
                         <span class="field-value" t-field="doc.company_registration_number" t-att-style="layout.get_position_style('certificate_registration')"/>
@@ -62,9 +74,9 @@
                         <span class="field-value" t-field="doc.paid_per_share" t-att-style="layout.get_position_style('certificate_paid_per_share')"/>
                         <span class="field-value" t-field="doc.total_paid" t-att-style="layout.get_position_style('certificate_total_paid')"/>
                         <t t-if="doc.issue_date">
-                            <span class="field-value" t-esc="doc.issue_date.day" t-att-style="layout.get_position_style('certificate_issue_day')"/>
-                            <span class="field-value" t-esc="doc.issue_date.month" t-att-style="layout.get_position_style('certificate_issue_month')"/>
-                            <span class="field-value" t-esc="doc.issue_date.year + 543" t-att-style="layout.get_position_style('certificate_issue_year')"/>
+                            <span class="field-value" t-esc="'%02d' % doc.issue_date.day" t-att-style="layout.get_position_style('certificate_issue_day')"/>
+                            <span class="field-value" t-esc="'%02d' % doc.issue_date.month" t-att-style="layout.get_position_style('certificate_issue_month')"/>
+                            <span class="field-value" t-esc="'%02d' % ((doc.issue_date.year + 543) % 100)" t-att-style="layout.get_position_style('certificate_issue_year')"/>
                         </t>
                     </div>
                 </t>

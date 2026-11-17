@@ -1,6 +1,7 @@
 from io import BytesIO
 
 from PyPDF2 import PdfFileReader
+from lxml import html as lxml_html
 
 from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -14,16 +15,61 @@ class TestShareCertificateLayout(TransactionCase):
         config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
         action = self.env.ref('buz_share_certificate.action_share_certificate_layout_config')
 
-        self.assertEqual(len(config.position_ids), 28)
+        self.assertEqual(len(config.position_ids), 34)
         self.assertTrue(all(
             position.x_mm == position.x_default_mm and position.y_mm == position.y_default_mm
             for position in config.position_ids
         ))
-        self.assertEqual(len(config.position_ids.filtered(lambda position: position.font_size_pt == 10)), 27)
+        self.assertEqual(len(config.position_ids.filtered(lambda position: position.font_size_pt == 10)), 33)
         self.assertEqual(config.get_position_style('stub_company'), 'left:22.0mm;top:24.0mm;font-size:10.0pt;')
         self.assertEqual(config.get_position_style('certificate_company'), 'left:139.5mm;top:33.0mm;font-size:14.0pt;')
         self.assertEqual(action.res_model, config._name)
         self.assertEqual(action.res_id, config.id)
+
+    def test_dates_print_as_separate_two_digit_values(self):
+        config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+        certificate = self.env['buz.share.certificate.print.wizard'].create({
+            'issue_date': '2026-11-09',
+            'cancelled_date': '2026-01-02',
+            'received_date': '2026-12-31',
+        })
+        report = self.env.ref('buz_share_certificate.action_report_share_certificate')
+        markup, _content_type = report._render_qweb_html(report.report_name, certificate.ids)
+        document = lxml_html.fromstring(markup)
+
+        expected = {
+            'stub_issue_date': '09', 'stub_issue_month': '11', 'stub_issue_year': '69',
+            'stub_cancelled_date': '02', 'stub_cancelled_month': '01', 'stub_cancelled_year': '69',
+            'stub_received_date': '31', 'stub_received_month': '12', 'stub_received_year': '69',
+            'certificate_issue_day': '09', 'certificate_issue_month': '11',
+            'certificate_issue_year': '69',
+        }
+        for code, value in expected.items():
+            spans = document.xpath('//span[@style=$style]', style=config.get_position_style(code))
+            self.assertEqual([span.text_content() for span in spans], [value], code)
+
+        empty = self.env['buz.share.certificate.print.wizard'].create({})
+        empty_markup, _content_type = report._render_qweb_html(report.report_name, empty.ids)
+        empty_document = lxml_html.fromstring(empty_markup)
+        for code in expected:
+            self.assertFalse(
+                empty_document.xpath('//span[@style=$style]', style=config.get_position_style(code)),
+                code,
+            )
+
+    def test_new_date_positions_reset_without_moving_day(self):
+        config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+        day = config.position_ids.filtered(lambda item: item.code == 'stub_issue_date')
+        month = config.position_ids.filtered(lambda item: item.code == 'stub_issue_month')
+        year = config.position_ids.filtered(lambda item: item.code == 'stub_issue_year')
+
+        self.assertEqual((day.x_mm, month.x_mm, year.x_mm), (62, 74, 86))
+        day.x_mm = 63.5
+        month.write({'x_mm': 80, 'y_mm': 45})
+        month.action_reset_position()
+
+        self.assertEqual((month.x_mm, month.y_mm), (74, 42))
+        self.assertEqual(day.x_mm, 63.5)
 
     def test_report_uses_saved_positions(self):
         config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')

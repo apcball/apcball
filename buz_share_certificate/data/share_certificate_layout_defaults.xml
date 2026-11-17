@@ -4,7 +4,9 @@
         <record id="position_stub_company" model="buz.share.certificate.layout.position"><field name="x_default_mm">22</field><field name="y_default_mm">24</field></record>
         <record id="position_stub_registration" model="buz.share.certificate.layout.position"><field name="x_default_mm">33</field><field name="y_default_mm">33</field></record>
         <record id="position_stub_certificate_number" model="buz.share.certificate.layout.position"><field name="x_default_mm">26</field><field name="y_default_mm">42</field></record>
-        <record id="position_stub_issue_date" model="buz.share.certificate.layout.position"><field name="x_default_mm">62</field><field name="y_default_mm">42</field></record>
+        <record id="position_stub_issue_date" model="buz.share.certificate.layout.position"><field name="label">วันออกใบหุ้น</field><field name="x_default_mm">62</field><field name="y_default_mm">42</field></record>
+        <record id="position_stub_issue_month" model="buz.share.certificate.layout.position"><field name="x_default_mm">74</field><field name="y_default_mm">42</field></record>
+        <record id="position_stub_issue_year" model="buz.share.certificate.layout.position"><field name="x_default_mm">86</field><field name="y_default_mm">42</field></record>
         <record id="position_stub_shareholder" model="buz.share.certificate.layout.position"><field name="x_default_mm">31</field><field name="y_default_mm">50</field></record>
         <record id="position_stub_share_count" model="buz.share.certificate.layout.position"><field name="x_default_mm">49</field><field name="y_default_mm">58</field></record>
         <record id="position_stub_share_number_from" model="buz.share.certificate.layout.position"><field name="x_default_mm">39</field><field name="y_default_mm">66</field></record>
@@ -12,8 +14,12 @@
         <record id="position_stub_paid_per_share" model="buz.share.certificate.layout.position"><field name="x_default_mm">52</field><field name="y_default_mm">78</field></record>
         <record id="position_stub_total_paid" model="buz.share.certificate.layout.position"><field name="x_default_mm">48</field><field name="y_default_mm">86</field></record>
         <record id="position_stub_cancelled_number" model="buz.share.certificate.layout.position"><field name="x_default_mm">37</field><field name="y_default_mm">99</field></record>
-        <record id="position_stub_cancelled_date" model="buz.share.certificate.layout.position"><field name="x_default_mm">65</field><field name="y_default_mm">99</field></record>
-        <record id="position_stub_received_date" model="buz.share.certificate.layout.position"><field name="x_default_mm">31</field><field name="y_default_mm">168</field></record>
+        <record id="position_stub_cancelled_date" model="buz.share.certificate.layout.position"><field name="label">วันยกเลิกใบหุ้นเดิม</field><field name="x_default_mm">65</field><field name="y_default_mm">99</field></record>
+        <record id="position_stub_cancelled_month" model="buz.share.certificate.layout.position"><field name="x_default_mm">77</field><field name="y_default_mm">99</field></record>
+        <record id="position_stub_cancelled_year" model="buz.share.certificate.layout.position"><field name="x_default_mm">89</field><field name="y_default_mm">99</field></record>
+        <record id="position_stub_received_date" model="buz.share.certificate.layout.position"><field name="label">วันรับใบหุ้น</field><field name="x_default_mm">31</field><field name="y_default_mm">168</field></record>
+        <record id="position_stub_received_month" model="buz.share.certificate.layout.position"><field name="x_default_mm">43</field><field name="y_default_mm">168</field></record>
+        <record id="position_stub_received_year" model="buz.share.certificate.layout.position"><field name="x_default_mm">55</field><field name="y_default_mm">168</field></record>
         <record id="position_certificate_number" model="buz.share.certificate.layout.position"><field name="x_default_mm">239.5</field><field name="y_default_mm">16</field></record>
         <record id="position_certificate_company" model="buz.share.certificate.layout.position"><field name="x_default_mm">139.5</field><field name="y_default_mm">33</field></record>
         <record id="position_certificate_registration" model="buz.share.certificate.layout.position"><field name="x_default_mm">153.5</field><field name="y_default_mm">47</field></record>
