@@ -11,6 +11,14 @@ class ShareCertificateLayoutConfig(models.Model):
     position_ids = fields.One2many(
         'buz.share.certificate.layout.position', 'config_id', string='ตำแหน่งค่าที่พิมพ์'
     )
+    stub_position_ids = fields.One2many(
+        'buz.share.certificate.layout.position', 'config_id',
+        string='ตำแหน่งต้นขั้ว', domain=[('section', '=', 'stub')]
+    )
+    certificate_position_ids = fields.One2many(
+        'buz.share.certificate.layout.position', 'config_id',
+        string='ตำแหน่งใบหุ้น', domain=[('section', '=', 'certificate')]
+    )
     margin_top = fields.Float(
         compute='_compute_margins', inverse='_inverse_margin_top', digits=(6, 2), string='ขอบบน (mm)'
     )

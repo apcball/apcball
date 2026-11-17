@@ -26,6 +26,33 @@ class TestShareCertificateLayout(TransactionCase):
         self.assertEqual(action.res_model, config._name)
         self.assertEqual(action.res_id, config.id)
 
+    def test_tabs_edit_independent_positions(self):
+        config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
+        stub_positions = config.stub_position_ids
+        certificate_positions = config.certificate_position_ids
+        self.assertEqual((len(stub_positions), len(certificate_positions)), (19, 15))
+        self.assertTrue(all(position.section == 'stub' for position in stub_positions))
+        self.assertTrue(all(position.section == 'certificate' for position in certificate_positions))
+
+        stub = stub_positions.filtered(lambda position: position.code == 'stub_company')
+        certificate = certificate_positions.filtered(lambda position: position.code == 'certificate_company')
+        self.assertEqual((len(stub), len(certificate)), (1, 1))
+        certificate_before = (certificate.x_mm, certificate.y_mm, certificate.font_size_pt)
+        config.write({'stub_position_ids': [Command.update(stub.id, {
+            'x_mm': 23, 'y_mm': 25, 'font_size_pt': 11,
+        })]})
+        self.assertEqual((stub.x_mm, stub.y_mm, stub.font_size_pt), (23, 25, 11))
+        self.assertEqual(
+            (certificate.x_mm, certificate.y_mm, certificate.font_size_pt), certificate_before
+        )
+
+        config.write({'certificate_position_ids': [Command.update(certificate.id, {
+            'x_mm': 141, 'y_mm': 34, 'font_size_pt': 15,
+        })]})
+        self.assertEqual((certificate.x_mm, certificate.y_mm, certificate.font_size_pt), (141, 34, 15))
+        self.assertEqual((stub.x_mm, stub.y_mm, stub.font_size_pt), (23, 25, 11))
+        self.assertEqual(len(config.position_ids), 34)
+
     def test_document_labels_update_without_changing_layout(self):
         config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
         positions = {position.code: position for position in config.position_ids}
