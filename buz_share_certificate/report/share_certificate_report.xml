@@ -1,85 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="report_share_certificate">
-        <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="doc">
-                <t t-call="web.basic_layout">
-                    <t t-set="layout" t-value="doc.env['buz.share.certificate.layout.config'].sudo().get_default_config()"/>
-                    <div class="page share-certificate-page"
-                         t-attf-style="width:{{297 - layout.margin_left - layout.margin_right}}mm;height:{{210 - layout.margin_top - layout.margin_bottom}}mm;">
-                        <style type="text/css">
-                            @font-face {
-                                font-family: 'Sarabun';
-                                src: url('/buz_share_certificate/static/fonts/Sarabun-Regular.ttf') format('truetype');
-                                font-weight: 400;
-                                font-style: normal;
-                            }
-                            @font-face {
-                                font-family: 'Sarabun';
-                                src: url('/buz_share_certificate/static/fonts/Sarabun-Bold.ttf') format('truetype');
-                                font-weight: 700;
-                                font-style: normal;
-                            }
-                            .share-certificate-page {
-                                position: relative;
-                                margin: 0;
-                                padding: 0;
-                                overflow: hidden;
-                                font-family: 'Sarabun', sans-serif;
-                            }
-                            .field-value {
-                                position: absolute;
-                                display: block;
-                                white-space: nowrap;
-                                color: #171717;
-                                line-height: 1.1;
-                            }
-                            .company-value { font-weight: 700; }
-                        </style>
-                        <span class="field-value" t-field="doc.company_name" t-att-style="layout.get_position_style('stub_company')"/>
-                        <span class="field-value" t-field="doc.company_registration_number" t-att-style="layout.get_position_style('stub_registration')"/>
-                        <span class="field-value" t-field="doc.certificate_number" t-att-style="layout.get_position_style('stub_certificate_number')"/>
-                        <t t-if="doc.issue_date">
-                            <span class="field-value" t-esc="'%02d' % doc.issue_date.day" t-att-style="layout.get_position_style('stub_issue_date')"/>
-                            <span class="field-value" t-esc="'%02d' % doc.issue_date.month" t-att-style="layout.get_position_style('stub_issue_month')"/>
-                            <span class="field-value" t-esc="'%02d' % ((doc.issue_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_issue_year')"/>
-                        </t>
-                        <span class="field-value" t-field="doc.shareholder_name" t-att-style="layout.get_position_style('stub_shareholder')"/>
-                        <span class="field-value" t-field="doc.share_count" t-att-style="layout.get_position_style('stub_share_count')"/>
-                        <span class="field-value" t-field="doc.share_number_from" t-att-style="layout.get_position_style('stub_share_number_from')"/>
-                        <span class="field-value" t-field="doc.share_number_to" t-att-style="layout.get_position_style('stub_share_number_to')"/>
-                        <span class="field-value" t-field="doc.paid_per_share" t-att-style="layout.get_position_style('stub_paid_per_share')"/>
-                        <span class="field-value" t-field="doc.total_paid" t-att-style="layout.get_position_style('stub_total_paid')"/>
-                        <span class="field-value" t-field="doc.cancelled_certificate_number" t-att-style="layout.get_position_style('stub_cancelled_number')"/>
-                        <t t-if="doc.cancelled_date">
-                            <span class="field-value" t-esc="'%02d' % doc.cancelled_date.day" t-att-style="layout.get_position_style('stub_cancelled_date')"/>
-                            <span class="field-value" t-esc="'%02d' % doc.cancelled_date.month" t-att-style="layout.get_position_style('stub_cancelled_month')"/>
-                            <span class="field-value" t-esc="'%02d' % ((doc.cancelled_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_cancelled_year')"/>
-                        </t>
-                        <t t-if="doc.received_date">
-                            <span class="field-value" t-esc="'%02d' % doc.received_date.day" t-att-style="layout.get_position_style('stub_received_date')"/>
-                            <span class="field-value" t-esc="'%02d' % doc.received_date.month" t-att-style="layout.get_position_style('stub_received_month')"/>
-                            <span class="field-value" t-esc="'%02d' % ((doc.received_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_received_year')"/>
-                        </t>
-                        <span class="field-value" t-field="doc.certificate_number" t-att-style="layout.get_position_style('certificate_number')"/>
-                        <span class="field-value company-value" t-field="doc.company_name" t-att-style="layout.get_position_style('certificate_company')"/>
-                        <span class="field-value" t-field="doc.company_registration_number" t-att-style="layout.get_position_style('certificate_registration')"/>
-                        <span class="field-value" t-field="doc.registered_capital" t-att-style="layout.get_position_style('certificate_registered_capital')"/>
-                        <span class="field-value" t-field="doc.registered_share_count" t-att-style="layout.get_position_style('certificate_registered_shares')"/>
-                        <span class="field-value" t-field="doc.share_value" t-att-style="layout.get_position_style('certificate_share_value')"/>
-                        <span class="field-value" t-field="doc.shareholder_name" t-att-style="layout.get_position_style('certificate_shareholder')"/>
-                        <span class="field-value" t-field="doc.share_count" t-att-style="layout.get_position_style('certificate_share_count')"/>
-                        <span class="field-value" t-field="doc.share_number_from" t-att-style="layout.get_position_style('certificate_share_number_from')"/>
-                        <span class="field-value" t-field="doc.share_number_to" t-att-style="layout.get_position_style('certificate_share_number_to')"/>
-                        <span class="field-value" t-field="doc.paid_per_share" t-att-style="layout.get_position_style('certificate_paid_per_share')"/>
-                        <span class="field-value" t-field="doc.total_paid" t-att-style="layout.get_position_style('certificate_total_paid')"/>
-                        <t t-if="doc.issue_date">
-                            <span class="field-value" t-esc="'%02d' % doc.issue_date.day" t-att-style="layout.get_position_style('certificate_issue_day')"/>
-                            <span class="field-value" t-esc="'%02d' % doc.issue_date.month" t-att-style="layout.get_position_style('certificate_issue_month')"/>
-                            <span class="field-value" t-esc="'%02d' % ((doc.issue_date.year + 543) % 100)" t-att-style="layout.get_position_style('certificate_issue_year')"/>
-                        </t>
-                    </div>
-                </t>
+        <t t-foreach="docs" t-as="doc">
+            <t t-call="web.basic_layout">
+                <t t-set="full_width" t-value="True"/>
+                <t t-set="layout" t-value="doc.env['buz.share.certificate.layout.config'].sudo().get_default_config()"/>
+                <div class="page share-certificate-page"
+                     t-attf-style="width:{{297 - layout.margin_left - layout.margin_right}}mm;height:{{210 - layout.margin_top - layout.margin_bottom}}mm;">
+                    <style type="text/css">
+                        body.container-fluid { margin: 0; padding: 0; }
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_share_certificate/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                            font-weight: 400;
+                            font-style: normal;
+                        }
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_share_certificate/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            font-weight: 700;
+                            font-style: normal;
+                        }
+                        .share-certificate-page {
+                            position: relative;
+                            margin: 0;
+                            padding: 0;
+                            overflow: hidden;
+                            font-family: 'Sarabun', sans-serif;
+                        }
+                        .field-value {
+                            position: absolute;
+                            display: block;
+                            white-space: nowrap;
+                            color: #171717;
+                            line-height: 1.1;
+                        }
+                        .company-value { font-weight: 700; }
+                    </style>
+                    <span class="field-value" t-field="doc.company_name" t-att-style="layout.get_position_style('stub_company')"/>
+                    <span class="field-value" t-field="doc.company_registration_number" t-att-style="layout.get_position_style('stub_registration')"/>
+                    <span class="field-value" t-field="doc.certificate_number" t-att-style="layout.get_position_style('stub_certificate_number')"/>
+                    <t t-if="doc.issue_date">
+                        <span class="field-value" t-esc="'%02d' % doc.issue_date.day" t-att-style="layout.get_position_style('stub_issue_date')"/>
+                        <span class="field-value" t-esc="'%02d' % doc.issue_date.month" t-att-style="layout.get_position_style('stub_issue_month')"/>
+                        <span class="field-value" t-esc="'%02d' % ((doc.issue_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_issue_year')"/>
+                    </t>
+                    <span class="field-value" t-field="doc.shareholder_name" t-att-style="layout.get_position_style('stub_shareholder')"/>
+                    <span class="field-value" t-field="doc.share_count" t-att-style="layout.get_position_style('stub_share_count')"/>
+                    <span class="field-value" t-field="doc.share_number_from" t-att-style="layout.get_position_style('stub_share_number_from')"/>
+                    <span class="field-value" t-field="doc.share_number_to" t-att-style="layout.get_position_style('stub_share_number_to')"/>
+                    <span class="field-value" t-field="doc.paid_per_share" t-att-style="layout.get_position_style('stub_paid_per_share')"/>
+                    <span class="field-value" t-field="doc.total_paid" t-att-style="layout.get_position_style('stub_total_paid')"/>
+                    <span class="field-value" t-field="doc.cancelled_certificate_number" t-att-style="layout.get_position_style('stub_cancelled_number')"/>
+                    <t t-if="doc.cancelled_date">
+                        <span class="field-value" t-esc="'%02d' % doc.cancelled_date.day" t-att-style="layout.get_position_style('stub_cancelled_date')"/>
+                        <span class="field-value" t-esc="'%02d' % doc.cancelled_date.month" t-att-style="layout.get_position_style('stub_cancelled_month')"/>
+                        <span class="field-value" t-esc="'%02d' % ((doc.cancelled_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_cancelled_year')"/>
+                    </t>
+                    <t t-if="doc.received_date">
+                        <span class="field-value" t-esc="'%02d' % doc.received_date.day" t-att-style="layout.get_position_style('stub_received_date')"/>
+                        <span class="field-value" t-esc="'%02d' % doc.received_date.month" t-att-style="layout.get_position_style('stub_received_month')"/>
+                        <span class="field-value" t-esc="'%02d' % ((doc.received_date.year + 543) % 100)" t-att-style="layout.get_position_style('stub_received_year')"/>
+                    </t>
+                    <span class="field-value" t-field="doc.certificate_number" t-att-style="layout.get_position_style('certificate_number')"/>
+                    <span class="field-value company-value" t-field="doc.company_name" t-att-style="layout.get_position_style('certificate_company')"/>
+                    <span class="field-value" t-field="doc.company_registration_number" t-att-style="layout.get_position_style('certificate_registration')"/>
+                    <span class="field-value" t-field="doc.registered_capital" t-att-style="layout.get_position_style('certificate_registered_capital')"/>
+                    <span class="field-value" t-field="doc.registered_share_count" t-att-style="layout.get_position_style('certificate_registered_shares')"/>
+                    <span class="field-value" t-field="doc.share_value" t-att-style="layout.get_position_style('certificate_share_value')"/>
+                    <span class="field-value" t-field="doc.shareholder_name" t-att-style="layout.get_position_style('certificate_shareholder')"/>
+                    <span class="field-value" t-field="doc.share_count" t-att-style="layout.get_position_style('certificate_share_count')"/>
+                    <span class="field-value" t-field="doc.share_number_from" t-att-style="layout.get_position_style('certificate_share_number_from')"/>
+                    <span class="field-value" t-field="doc.share_number_to" t-att-style="layout.get_position_style('certificate_share_number_to')"/>
+                    <span class="field-value" t-field="doc.paid_per_share" t-att-style="layout.get_position_style('certificate_paid_per_share')"/>
+                    <span class="field-value" t-field="doc.total_paid" t-att-style="layout.get_position_style('certificate_total_paid')"/>
+                    <t t-if="doc.issue_date">
+                        <span class="field-value" t-esc="'%02d' % doc.issue_date.day" t-att-style="layout.get_position_style('certificate_issue_day')"/>
+                        <span class="field-value" t-esc="'%02d' % doc.issue_date.month" t-att-style="layout.get_position_style('certificate_issue_month')"/>
+                        <span class="field-value" t-esc="'%02d' % ((doc.issue_date.year + 543) % 100)" t-att-style="layout.get_position_style('certificate_issue_year')"/>
+                    </t>
+                </div>
             </t>
         </t>
     </template>
