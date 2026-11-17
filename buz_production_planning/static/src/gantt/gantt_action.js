@@ -8,12 +8,17 @@ import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
 
 const { DateTime, Settings } = luxon;
 
-const LABEL_W = 230;       // px, left column with workcenter names
-const LOAD_H = 16;         // px, daily load strip
-const LANE_H = 24;         // px, one bar
+const LABEL_W = 430;       // px, two left columns (Plan / Document + Product / Description)
+const LOAD_H = 20;         // px, daily load strip
+const LANE_H = 28;         // px, one bar
+const GROUP_COLORS = ["#e0584f", "#4a90d9", "#f0a030", "#8e6cd9", "#14b8a6", "#64748b"];
+const CARD_ICON = {
+    to_review: "fa-file-text-o", no_document: "fa-check", late_suggestions: "fa-exclamation",
+    buy_no_vendor: "fa-shopping-cart", shortage_products: "fa-cube", not_applied: "fa-calendar",
+};
 const ZOOMS = {
-    day: { days: 3, pxPerMin: 0.5, snap: 15 },
-    week: { days: 14, pxPerMin: 0.06, snap: 30 },
+    day: { days: 14, pxPerMin: 104 / 1440, snap: 60, step: 7 },
+    week: { days: 42, pxPerMin: 40 / 1440, snap: 120, step: 28 },
 };
 
 export class BuzGanttAction extends Component {
@@ -26,11 +31,12 @@ export class BuzGanttAction extends Component {
         this.notification = useService("notification");
         this.state = useState({
             runId: this.props.action.params?.run_id || false,
-            runs: [], run: false, workcenters: [], lines: [], capacity: {}, load: {},
+            runs: [], run: false, cards: [], workcenters: [], lines: [], capacity: {}, load: {},
             pickingTypes: [], canApply: false, loading: true,
             zoom: "day",
-            start: DateTime.now().startOf("day"),
+            start: DateTime.now().startOf("week"),
             filters: { pickingType: 0, workcenter: 0, lateOnly: false },
+            collapsed: {}, pop: null,
         });
         this.drag = null;
         this._move = this.onPointerMove.bind(this);
@@ -64,7 +70,7 @@ export class BuzGanttAction extends Component {
         Object.assign(this.state, {
             runs: data.runs, run: data.run, workcenters: data.workcenters,
             capacity: data.capacity, load: data.load, pickingTypes: data.picking_types,
-            canApply: data.can_apply, runId: data.run ? data.run.id : false,
+            canApply: data.can_apply, cards: data.cards || [], runId: data.run ? data.run.id : false,
             lines: data.lines.map((l) => ({
                 ...l,
                 sMs: deserializeDateTime(l.start).toMillis(),
@@ -88,7 +94,7 @@ export class BuzGanttAction extends Component {
                 key: d.toFormat("yyyy-MM-dd"),
                 x: i * 1440 * this.pxPerMin,
                 w: 1440 * this.pxPerMin,
-                label: d.toFormat(this.state.zoom === "day" ? "ccc dd LLL" : "dd"),
+                label: d.toFormat("ccc dd"),
                 weekend: d.weekday >= 6,
                 today: d.hasSame(DateTime.now(), "day"),
             });
@@ -96,13 +102,42 @@ export class BuzGanttAction extends Component {
         return out;
     }
 
-    get hours() {
-        if (this.state.zoom !== "day") {
-            return [];
+    /** Top header tier: week bands in Day zoom, month bands in Week zoom. */
+    get headGroups() {
+        const out = [];
+        const dayZoom = this.state.zoom === "day";
+        let cur = null;
+        for (let i = 0; i < this.zoom.days; i++) {
+            const d = this.viewStart.plus({ days: i });
+            const key = dayZoom ? d.startOf("week").toFormat("yyyy-MM-dd") : d.toFormat("yyyy-MM");
+            if (!cur || cur.key !== key) {
+                cur = { key, x: i * 1440 * this.pxPerMin, w: 0, first: d, last: d };
+                out.push(cur);
+            }
+            cur.w += 1440 * this.pxPerMin;
+            cur.last = d;
+        }
+        for (const g of out) {
+            g.label = dayZoom
+                ? `${g.first.toFormat("dd LLL")} – ${g.last.toFormat("dd LLL yyyy")}`
+                : g.first.toFormat("LLLL yyyy");
+        }
+        return out;
+    }
+
+    /** Bottom header tier: one cell per day (Day zoom) or per week (Week zoom). */
+    get ticks() {
+        if (this.state.zoom === "day") {
+            return this.days.map((d) => ({ ...d, label: this.viewStart.plus({ days: Math.round(d.x / (1440 * this.pxPerMin)) }).toFormat("ccc dd") }));
         }
         const out = [];
-        for (let i = 0; i < this.zoom.days * 24; i += 3) {
-            out.push({ x: i * 60 * this.pxPerMin, label: String(i % 24).padStart(2, "0") });
+        for (let i = 0; i < this.zoom.days; i += 7) {
+            const d = this.viewStart.plus({ days: i });
+            out.push({
+                key: d.toFormat("yyyy-MM-dd"), x: i * 1440 * this.pxPerMin, w: 7 * 1440 * this.pxPerMin,
+                label: d.toFormat("dd LLL"), weekend: false,
+                today: DateTime.now() >= d && DateTime.now() < d.plus({ days: 7 }),
+            });
         }
         return out;
     }
@@ -119,10 +154,20 @@ export class BuzGanttAction extends Component {
             (byWc[l.wc] = byWc[l.wc] || []).push(l);
         }
         let lastGroup = null;
+        let gi = -1;
         for (const wc of this.state.workcenters) {
             if (wc.group !== lastGroup) {
-                rows.push({ type: "group", key: "g" + wc.group, label: wc.group });
+                gi += 1;
+                rows.push({
+                    type: "group", key: "g" + wc.group, label: wc.group,
+                    color: GROUP_COLORS[gi % GROUP_COLORS.length],
+                    collapsed: !!this.state.collapsed[wc.group],
+                    count: this.state.workcenters.filter((w) => w.group === wc.group).length,
+                });
                 lastGroup = wc.group;
+            }
+            if (this.state.collapsed[wc.group]) {
+                continue;
             }
             const bars = this.layoutBars(byWc[wc.id] || []);
             const lanes = Math.max(1, ...bars.map((b) => b.lane + 1));
@@ -130,6 +175,9 @@ export class BuzGanttAction extends Component {
                 type: "wc", key: "w" + wc.id, wc, bars,
                 height: LOAD_H + lanes * LANE_H + 8,
                 cells: this.loadCells(wc.id),
+                cap: this.capSummary(wc.id),
+                jobs: bars.length,
+                color: GROUP_COLORS[gi % GROUP_COLORS.length],
             });
         }
         return rows;
@@ -163,16 +211,32 @@ export class BuzGanttAction extends Component {
             conflict: b.conflict,
             left: this.xOf(b.line.sMs),
             width: Math.max(4, ((b.line.eMs - b.line.sMs) / 60000) * this.pxPerMin),
-            top: LOAD_H + 4 + b.lane * LANE_H,
+            top: LOAD_H + 3 + b.lane * LANE_H,
+            deadlineX: b.line.deadlineMs && b.line.deadlineMs >= b.line.sMs && b.line.deadlineMs <= b.line.eMs ? 1 : null,
             cls: this.barClass(b),
             title: this.tooltip(b.line),
         }));
+    }
+
+    /** done → Completed, late → Delay, waiting for components/predecessor → Waiting, else On Track. */
+    statusOf(l) {
+        if (l.wo_state === "done") {
+            return "done";
+        }
+        if (l.is_late) {
+            return "delay";
+        }
+        if (l.wo_state === "pending" || l.wo_state === "waiting") {
+            return "waiting";
+        }
+        return "track";
     }
 
     barClass(bar) {
         const l = bar.line;
         return [
             "o_buz_bar",
+            "o_buz_s_" + this.statusOf(l),
             l.is_late ? "o_buz_late" : "",
             l.is_locked ? "o_buz_locked" : "",
             l.is_manual ? "o_buz_manual" : "",
@@ -205,10 +269,79 @@ export class BuzGanttAction extends Component {
             const u = used[d.key] || 0;
             const ratio = c ? u / c : u ? 2 : 0;
             return {
-                key: d.key, x: d.x, w: d.w, text: c || u ? `${Math.round(u)}/${Math.round(c)}` : "",
+                key: d.key, x: d.x, w: d.w, text: this.state.zoom === "day" && (c || u) ? `${Math.round(u)} / ${Math.round(c)}` : "",
                 cls: ratio > 1 ? "o_buz_load_over" : ratio > 0.85 ? "o_buz_load_high" : ratio > 0 ? "o_buz_load_ok" : "",
             };
         });
+    }
+
+    capSummary(wcId) {
+        const cap = this.state.capacity[wcId] || {};
+        const used = this.state.load[wcId] || {};
+        let c = 0;
+        let u = 0;
+        for (const d of this.days) {
+            c += cap[d.key] || 0;
+            u += used[d.key] || 0;
+        }
+        const ratio = c ? u / c : u ? 2 : 0;
+        return {
+            text: `${Math.round(u)} / ${Math.round(c)} min`,
+            pct: Math.min(100, Math.round(ratio * 100)),
+            cls: ratio > 1 ? "o_buz_cap_over" : ratio > 0.85 ? "o_buz_cap_high" : "",
+        };
+    }
+
+    cardIcon(card) {
+        return CARD_ICON[card.key] || "fa-circle";
+    }
+
+    openCard(card) {
+        this.action.doAction({
+            type: "ir.actions.act_window", name: card.label, res_model: card.model, domain: card.domain,
+            views: [[false, "list"], [false, "form"]], target: "current",
+            context: card.group_by ? { group_by: [card.group_by] } : {},
+        });
+    }
+
+    exportCsv() {
+        const wcName = Object.fromEntries(this.state.workcenters.map((w) => [w.id, w.name]));
+        const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        const head = ["Plan", "Workcenter", "MO", "Product", "Operation", "Qty", "Start", "End", "Minutes", "Status"];
+        const rows = [...this.state.lines]
+            .sort((a, b) => a.sMs - b.sMs)
+            .map((l) => [
+                this.state.run?.name, wcName[l.wc], l.mo, l.product, l.operation, l.qty,
+                DateTime.fromMillis(l.sMs).toFormat("yyyy-MM-dd HH:mm"),
+                DateTime.fromMillis(l.eMs).toFormat("yyyy-MM-dd HH:mm"), Math.round(l.minutes), this.statusOf(l),
+            ]);
+        const csv = "\ufeff" + [head, ...rows].map((r) => r.map(esc).join(",")).join("\r\n");
+        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${(this.state.run?.name || "gantt").replace(/[^\w.-]+/g, "_")}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    toggleGroup(label) {
+        this.state.collapsed[label] = !this.state.collapsed[label];
+    }
+
+    showPopover(ev, bar) {
+        if (this.drag) {
+            return;
+        }
+        const r = ev.currentTarget.getBoundingClientRect();
+        const w = 320;
+        const x = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+        const below = r.bottom + 8;
+        const y = below + 230 > window.innerHeight ? Math.max(8, r.top - 238) : below;
+        this.state.pop = { line: bar.line, conflict: bar.conflict, x, y };
+    }
+
+    hidePopover() {
+        this.state.pop = null;
     }
 
     // ------------------------------------------------------------------ toolbar
@@ -217,7 +350,7 @@ export class BuzGanttAction extends Component {
         await this.load();
     }
     async today() {
-        this.state.start = DateTime.now().startOf("day");
+        this.state.start = DateTime.now().startOf("week");
         await this.load();
     }
     async setZoom(zoom) {
@@ -276,6 +409,7 @@ export class BuzGanttAction extends Component {
         }
         ev.preventDefault();
         ev.stopPropagation();
+        this.state.pop = null;
         // Locked jobs cannot be dragged but can still be clicked to open the MO.
         this.drag = {
             line, mode, x0: ev.clientX, s0: line.sMs, e0: line.eMs, moved: false,

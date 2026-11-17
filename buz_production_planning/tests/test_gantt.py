@@ -29,8 +29,10 @@ class TestGanttData(SchedulingCommon):
         self.assertEqual(row['mo'], self.mo.name)
         self.assertEqual(row['wc'], self.wc1.id)
         self.assertEqual(row['start'], fields.Datetime.to_string(self.line.date_start))
-        for key in ('product', 'qty', 'operation', 'deadline', 'is_late', 'is_locked', 'is_manual', 'minutes'):
+        for key in ('product', 'qty', 'operation', 'deadline', 'is_late', 'is_locked', 'is_manual', 'minutes',
+                    'progress', 'wo_state'):
             self.assertIn(key, row)
+        self.assertTrue(0 <= row['progress'] <= 100)
         self.assertTrue(data['can_apply'])
 
     def test_apply_button_hidden_for_non_manager(self):

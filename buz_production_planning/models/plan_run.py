@@ -270,7 +270,7 @@ class PlanRun(models.Model):
         run = self.browse(run_id) if run_id else runs[:1]
         res = {
             'runs': [{'id': r.id, 'name': r.name} for r in runs], 'run': False,
-            'workcenters': [], 'lines': [], 'capacity': {}, 'load': {}, 'picking_types': [],
+            'workcenters': [], 'lines': [], 'capacity': {}, 'load': {}, 'picking_types': [], 'cards': [],
             'can_apply': self.env.user.has_group('buz_production_planning.group_plan_manager'),
         }
         if not run:
@@ -278,6 +278,7 @@ class PlanRun(models.Model):
         run.check_access_rule('read')
         all_lines = run.schedule_line_ids
         res['run'] = {'id': run.id, 'name': run.name, 'state': run.state}
+        res['cards'] = self._gantt_cards(run)
         res['picking_types'] = [
             {'id': p.id, 'name': p.display_name} for p in all_lines.production_id.picking_type_id]
         lines = all_lines
@@ -310,10 +311,22 @@ class PlanRun(models.Model):
                 'minutes': round(l.duration_minutes, 1), 'source': l.duration_source,
                 'is_late': l.is_late, 'is_locked': l.is_locked or wo.state == 'progress',
                 'is_manual': l.is_manual, 'state': l.state,
+                'progress': 100 if wo.state == 'done' else (
+                    min(100, round(wo.duration / wo.duration_expected * 100))
+                    if wo.duration_expected else 0),
+                'wo_state': wo.state,
             })
         worktime = scheduler.CalendarWorkTime(self.env)
         res['capacity'], res['load'] = gantt.capacity_and_load(worktime, wcs, visible, d0, d1, tz)
         return res
+
+    def _gantt_cards(self, run):
+        """The six summary cards above the Gantt: same numbers and drill-down as the Dashboard."""
+        try:
+            cards = self.env['buz.plan.dashboard']._cards(run)
+        except AccessError:
+            return []
+        return [c for c in cards if c['key'] != 'late_workorders']
 
     def action_cancel(self):
         if any(run.state == 'done' for run in self):
