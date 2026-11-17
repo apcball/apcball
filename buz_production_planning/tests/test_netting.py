@@ -1,13 +1,15 @@
 from datetime import date, timedelta
 from unittest.mock import patch
 
+from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests.common import tagged
 
 from odoo.addons.buz_production_planning.engine.mrp_netting import (
-    MAX_DEPTH, bucket_index, forecast_window, round_up_qty, solve)
+    MAX_DEPTH, PlanGatherer, blanket_order_supply, bucket_index, forecast_window, round_up_qty,
+    solve)
 
-from .common import MONDAY, PlanCommon
+from .common import MONDAY, BlanketCommon, PlanCommon
 
 
 @tagged('post_install', '-at_install')
@@ -269,3 +271,98 @@ class TestNetting(PlanCommon):
             self.fg, boms={self.fg.id: bom}, params=params, delivery={self.fg.id: self.bk({1: 5})},
             allowed_picking_type_ids=[pt_a[0].id])
         self.assertEqual(len(res.suggestions), 1)
+
+
+@tagged('post_install', '-at_install')
+class TestBlanketOrderSupply(BlanketCommon):
+    """A plan's open blanket order counts as supply, exactly once."""
+
+    def _bo_suggestion(self, qty=10.0, product=None, day=7, run=None, wizard=True):
+        run = run or self.run_
+        sugg = self._sugg(product or self.p1, qty, day=day, run_id=run.id)
+        if wizard:
+            self._wizard(sugg, run=run)._create_documents()
+            sugg.requisition_id.state = 'ongoing'
+        return sugg
+
+    def _kept(self, run=None):
+        return {k['id']: k for k in PlanGatherer(run or self.run_)._kept()}
+
+    def test_open_blanket_order_line_is_supply_in_same_plan(self):
+        sugg = self._bo_suggestion(10)
+        kept = self._kept()
+        self.assertEqual(kept[sugg.id]['qty'], 10)
+        self.assertEqual(kept[sugg.id]['date_need'], sugg.date_need)
+        # Compute again: the same purchase is not proposed a second time.
+        data = self.data(self.p1, delivery={self.p1.id: self.bk({1: 10})}, kept=list(kept.values()))
+        self.assertFalse(solve(data).suggestions)
+        # Without the blanket order the shortage comes back.
+        data = self.data(self.p1, delivery={self.p1.id: self.bk({1: 10})})
+        self.assertEqual(solve(data).suggestions[0]['qty'], 10)
+
+    def test_open_blanket_order_line_is_supply_for_a_second_plan(self):
+        sugg = self._bo_suggestion(10)
+        other = self.env['buz.plan.run'].create({
+            'date_from': MONDAY, 'horizon_weeks': 4, 'state': 'computed',
+            'warehouse_ids': [Command.set(self.warehouse.ids)]})
+        drafts = {d['id']: d for d in PlanGatherer(other)._other_plan_drafts()}
+        self.assertEqual(drafts[sugg.id]['qty'], 10)
+        data = self.data(self.p1, delivery={self.p1.id: self.bk({1: 10})}, kept=list(drafts.values()))
+        self.assertFalse(solve(data).suggestions)
+
+    def test_draft_blanket_order_counts_too(self):
+        sugg = self._bo_suggestion(10)
+        sugg.requisition_id.state = 'draft'
+        self.assertEqual(self._kept()[sugg.id]['qty'], 10)
+
+    def test_hand_made_blanket_order_is_not_counted(self):
+        bo = self._hand_bo(self.vendor_a, self.p1, price=1.0, qty=10)
+        bo.state = 'ongoing'
+        sugg = self._sugg(self.p1, 10, state='done', requisition_line_id=bo.line_ids.id)
+        self.assertFalse(bo.buz_plan_run_id)
+        self.assertEqual(blanket_order_supply(sugg), {})
+        self.assertNotIn(sugg.id, self._kept())
+
+    def test_closed_cancelled_or_expired_blanket_order_is_not_counted(self):
+        for state in ('done', 'cancel'):
+            sugg = self._bo_suggestion(10, product=self.p2)
+            sugg.requisition_id.state = state
+            self.assertNotIn(sugg.id, self._kept(), state)
+        sugg = self._bo_suggestion(10, product=self.p3)
+        sugg.requisition_id.date_end = fields.Datetime.now() - timedelta(days=1)
+        self.assertNotIn(sugg.id, self._kept(), "past its deadline")
+        sugg.requisition_id.date_end = fields.Datetime.now() + timedelta(days=1)
+        self.assertIn(sugg.id, self._kept())
+
+    def test_confirmed_po_is_counted_once(self):
+        """qty_ordered (confirmed POs) leaves the blanket order and arrives as a receipt."""
+        sugg = self._bo_suggestion(100)
+        bo = sugg.requisition_id
+        po = self._po(self.vendor_a, self.p1, 1.0, qty=30, state='draft', requisition=bo)
+        self.assertEqual(self._kept()[sugg.id]['qty'], 100, "a draft PO stays inside the blanket order")
+        # DEV carries budget / analytic hooks on button_confirm that need real budget plans, so
+        # confirm the way Odoo does underneath: state 'purchase' and the receipt picking.
+        po.write({'state': 'purchase'})
+        po._create_picking()
+        self.assertEqual(po.state, 'purchase')
+        self.assertEqual(bo.line_ids.qty_ordered, 30)
+        self.assertEqual(self._kept()[sugg.id]['qty'], 70)
+        gatherer = PlanGatherer(self.run_)
+        self.env.flush_all()
+        receipts = gatherer._receipts([self.p1.id], MONDAY, 4)
+        self.assertEqual(sum(receipts[self.p1.id]), 30, "the 30 arrive as a stock move")
+        self.assertEqual(self._kept()[sugg.id]['qty'] + sum(receipts[self.p1.id]), 100)
+
+    def test_same_product_on_two_lines_is_not_double_counted(self):
+        """Odoo books qty_ordered on the first line of a product; the rest read 0."""
+        first = self._sugg(self.p1, 6, day=14)     # lower id, later date
+        second = self._sugg(self.p1, 10, day=7)
+        self._wizard(first | second)._create_documents()
+        bo = first.requisition_id
+        self.assertEqual(bo, second.requisition_id)
+        bo.state = 'ongoing'
+        self._po(self.vendor_a, self.p1, 1.0, qty=10, state='purchase', requisition=bo)
+        kept = self._kept()
+        self.assertNotIn(second.id, kept, "the earlier need is the one already ordered")
+        self.assertEqual(kept[first.id]['qty'], 6)
+        self.assertEqual(sum(k['qty'] for k in kept.values()), 6, "16 on the blanket order - 10 ordered")

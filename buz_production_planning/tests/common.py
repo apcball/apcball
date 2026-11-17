@@ -1,8 +1,8 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytz
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.tests.common import TransactionCase
 
 from odoo.addons.buz_production_planning.engine import scheduler
@@ -37,16 +37,20 @@ class PlanCommon(TransactionCase):
         })
 
     @classmethod
-    def _vendor(cls, name):
+    def _contact_vals(cls):
         # buz_partner_required_fields (installed on DEV/prod) demands a full contact.
         thailand = cls.env.ref('base.th')
-        return cls.env['res.partner'].create({
-            'name': name, 'street': '1 Test Rd', 'street2': 'Test Sub-district', 'city': 'Bangkok',
+        return {
+            'street': '1 Test Rd', 'street2': 'Test Sub-district', 'city': 'Bangkok',
             'state_id': cls.env['res.country.state'].search(
                 [('country_id', '=', thailand.id)], limit=1).id,
             'zip': '10110', 'country_id': thailand.id, 'phone': '021234567',
             'email': 'test-vendor@example.com',
-        })
+        }
+
+    @classmethod
+    def _vendor(cls, name):
+        return cls.env['res.partner'].create({'name': name, **cls._contact_vals()})
 
     def data(self, products, n=4, **kw):
         """PlanData without touching stock: callers pass plain dicts."""
@@ -127,3 +131,67 @@ class SchedulingCommon(PlanCommon):
     def _lines(self, *mos):
         return self.run_.schedule_line_ids.filtered(lambda l: l.production_id in sum(mos, mos[0].browse()))
 
+
+
+class BlanketCommon(PlanCommon):
+    """Plan, warehouse, vendors and helpers for blanket order tests."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        cls.company = env.company
+        cls.bo_type = env['purchase.requisition.type'].search(
+            [('quantity_copy', '=', 'none')], limit=1) or env['purchase.requisition.type'].create({
+                'name': 'TEST Blanket Order', 'quantity_copy': 'none', 'exclusive': 'multiple'})
+        cls.warehouse = env['stock.warehouse'].create({'name': 'TEST BO WH', 'code': 'TBW'})
+        cls.other_wh = env['stock.warehouse'].create({'name': 'TEST BO OTHER WH', 'code': 'TBO'})
+        cls.vendor_a = cls._vendor('TEST BO Vendor A')
+        cls.vendor_b = cls._vendor('TEST BO Vendor B')
+        cls.p1, cls.p2, cls.p3, cls.p4 = (cls._product('BO%s' % i) for i in range(1, 5))
+        cls.run_ = env['buz.plan.run'].create({
+            'date_from': MONDAY, 'horizon_weeks': 4, 'state': 'computed',
+            'warehouse_ids': [Command.set(cls.warehouse.ids)]})
+        cls.analytic_plan = env['account.analytic.plan'].create({'name': 'TEST BO plan'})
+        cls.analytic = env['account.analytic.account'].create(
+            {'name': 'TEST BO account', 'plan_id': cls.analytic_plan.id})
+        cls.dist = {str(cls.analytic.id): 100.0}
+
+    # -- helpers --------------------------------------------------------
+    def _sugg(self, product, qty=5.0, vendor=None, day=7, **kw):
+        vals = {
+            'run_id': self.run_.id, 'product_id': product.id, 'action': 'buy', 'qty': qty,
+            'uom_id': product.uom_id.id, 'date_need': MONDAY + timedelta(days=day),
+            'date_release': MONDAY + timedelta(days=day - 3), 'state': 'approved',
+            'vendor_id': (vendor or self.vendor_a).id,
+        }
+        vals.update(kw)
+        return self.env['buz.plan.suggestion'].create(vals)
+
+    def _wizard(self, suggestions, buy_document='bo', run=None):
+        run = run or self.run_
+        return self.env['buz.plan.create.documents.wizard'].create({
+            'run_id': run.id, 'buy_document': buy_document,
+            'suggestion_ids': [Command.set(suggestions.ids)]})
+
+    def _hand_bo(self, vendor, product, price=0.0, qty=10.0, **kw):
+        vals = {
+            'vendor_id': vendor.id, 'type_id': self.bo_type.id,
+            'picking_type_id': self.warehouse.in_type_id.id,
+            'line_ids': [Command.create({
+                'product_id': product.id, 'product_qty': qty, 'price_unit': price,
+                'product_uom_id': product.uom_id.id, **kw.pop('line', {})})],
+        }
+        vals.update(kw)
+        return self.env['purchase.requisition'].create(vals)
+
+    def _po(self, vendor, product, price, qty=1.0, state='purchase', requisition=None):
+        return self.env['purchase.order'].create({
+            'partner_id': vendor.id, 'state': state,
+            'requisition_id': requisition.id if requisition else False,
+            'picking_type_id': self.warehouse.in_type_id.id,
+            'order_line': [Command.create({
+                'product_id': product.id, 'name': product.name, 'product_qty': qty,
+                'product_uom': product.uom_id.id, 'price_unit': price,
+                'date_planned': fields.Datetime.now()})],
+        })

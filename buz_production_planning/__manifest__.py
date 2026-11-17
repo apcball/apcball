@@ -1,11 +1,14 @@
 {
     'name': 'Production Planning (Demand → MRP → Schedule)',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Manufacturing/Manufacturing',
     'summary': 'Demand-driven make/buy suggestions and finite-capacity workorder scheduling',
     'author': 'Mogen Co.',
     'license': 'LGPL-3',
-    'depends': ['mrp', 'purchase_stock', 'sale_stock', 'stock', 'mail'],
+    'depends': [
+        'mrp', 'purchase_stock', 'purchase_requisition', 'purchase_requisition_stock',
+        'sale_stock', 'stock', 'mail',
+    ],
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',

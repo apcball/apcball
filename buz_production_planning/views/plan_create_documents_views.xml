@@ -9,9 +9,20 @@
                     <field name="run_id"/>
                 </group>
                 <div class="alert alert-info" role="alert">
-                    Only draft manufacturing orders and draft purchase orders (RFQs) are created.
-                    Nothing is confirmed or reserved. Proposed suggestions in the list are approved first.
+                    Only drafts are created: draft manufacturing orders (Make) and draft blanket orders
+                    or RFQs (Buy). Nothing is confirmed or reserved. Proposed suggestions in the list
+                    are approved first.
                 </div>
+                <group string="What should Buy suggestions become?">
+                    <field name="buy_document" widget="radio" nolabel="1" colspan="2"/>
+                    <div class="text-muted" colspan="2" invisible="buy_document != 'bo'">
+                        Blanket Order: an agreement with the vendor. One draft per vendor. Purchasing
+                        reviews prices, confirms it and issues purchase orders from it later.
+                    </div>
+                    <div class="text-muted" colspan="2" invisible="buy_document != 'rfq'">
+                        RFQ: one draft purchase order per vendor, to send to the vendor now.
+                    </div>
+                </group>
                 <field name="summary"/>
                 <field name="suggestion_ids">
                     <tree create="0">
@@ -22,7 +33,7 @@
                         <field name="date_need"/>
                         <field name="picking_type_id"/>
                         <field name="vendor_id"/>
-                        <field name="state"/>
+                        <field name="state" widget="badge"/>
                     </tree>
                 </field>
                 <footer>
@@ -54,6 +65,40 @@
         <field name="name">mrp.production.form.buz.plan</field>
         <field name="model">mrp.production</field>
         <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_buz_plan" type="object" class="oe_stat_button" icon="fa-list-alt"
+                        invisible="not buz_plan_run_id" groups="buz_production_planning.group_plan_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Production Plan</span>
+                        <field name="buz_plan_run_id" class="o_stat_value" readonly="1"/>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_purchase_requisition_form_buz_plan" model="ir.ui.view">
+        <field name="name">purchase.requisition.form.buz.plan</field>
+        <field name="model">purchase.requisition</field>
+        <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_buz_plan" type="object" class="oe_stat_button" icon="fa-list-alt"
+                        invisible="not buz_plan_run_id" groups="buz_production_planning.group_plan_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Production Plan</span>
+                        <field name="buz_plan_run_id" class="o_stat_value" readonly="1"/>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_purchase_order_form_buz_plan" model="ir.ui.view">
+        <field name="name">purchase.order.form.buz.plan</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_open_buz_plan" type="object" class="oe_stat_button" icon="fa-list-alt"

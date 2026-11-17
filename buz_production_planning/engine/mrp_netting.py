@@ -90,6 +90,47 @@ def resolve_method(param, bom):
     return method
 
 
+def blanket_order_supply(suggestions):
+    """Quantity a plan's blanket orders still have to bring in, per suggestion.
+
+    Returns ``{suggestion.id: qty in the product's stock unit}`` for suggestions
+    linked to a blanket order line that is still open: the plan made the blanket
+    order (``buz_plan_run_id``; a hand-made one is never counted, prod keeps 176
+    old ones open), its state is not done / cancel and its deadline has not passed.
+
+    A blanket order creates no stock move until a PO issued from it is confirmed,
+    so without this the next Compute would propose the same purchase again.
+    ``qty_ordered`` counts only confirmed POs (state purchase / done); their
+    receipts are already netted through ``PlanGatherer._receipts``, and a draft PO
+    stays inside the remaining quantity, so every unit is counted exactly once.
+    Odoo books ``qty_ordered`` of a product on the FIRST line of that product in
+    the blanket order (the other lines read 0), so the remaining quantity is
+    worked out per (blanket order, product): the ordered quantity is consumed
+    against the earliest lines first and what is left stays on the latest ones.
+    """
+    now = fields.Datetime.now()
+    out = {}
+    linked = suggestions.filtered(lambda s: s.requisition_line_id)
+    requisitions = linked.requisition_id.filtered(
+        lambda r: r.buz_plan_run_id and r.state not in ('done', 'cancel')
+        and (not r.date_end or r.date_end >= now))
+    for req in requisitions:
+        by_product = defaultdict(list)
+        for line in req.line_ids:
+            by_product[line.product_id].append(line)
+        for product, lines in by_product.items():
+            ordered = sum(l.qty_ordered for l in lines)
+            remaining = {}
+            for line in sorted(lines, key=lambda l: (l.schedule_date or fields.Date.today(), l.id)):
+                used = min(line.product_qty, ordered)
+                ordered -= used
+                remaining[line.id] = line.product_uom_id._compute_quantity(
+                    max(line.product_qty - used, 0.0), product.uom_id, round=False)
+            for s in linked.filtered(lambda s: s.requisition_id == req and s.product_id == product):
+                out[s.id] = remaining.get(s.requisition_line_id.id, 0.0)
+    return out
+
+
 # ----------------------------------------------------------------------
 # Data containers
 # ----------------------------------------------------------------------
@@ -479,12 +520,18 @@ class PlanGatherer:
         moves are not in ``_raw``). Draft documents made by hand are not
         counted (many are abandoned RFQs)."""
         out = []
-        for s in self.env['buz.plan.suggestion'].search([
-                ('run_id', '!=', self.run.id), ('run_id.state', '!=', 'cancel'),
-                ('company_id', '=', self.run.company_id.id), ('state', '=', 'done')]):
+        others = self.env['buz.plan.suggestion'].search([
+            ('run_id', '!=', self.run.id), ('run_id.state', '!=', 'cancel'),
+            ('company_id', '=', self.run.company_id.id), ('state', '=', 'done')])
+        blanket = blanket_order_supply(others)
+        for s in others:
             product = s.product_id
             mo, pol = s.production_id, s.purchase_line_id
-            if mo and mo.state == 'draft':
+            if s.requisition_line_id:
+                qty = blanket.get(s.id, 0.0)
+                if qty <= EPS:
+                    continue
+            elif mo and mo.state == 'draft':
                 qty = mo.product_uom_id._compute_quantity(mo.product_qty, product.uom_id, round=False)
             elif pol and pol.order_id.state in ('draft', 'sent'):
                 qty = pol.product_uom._compute_quantity(pol.product_qty, product.uom_id, round=False)
@@ -533,14 +580,22 @@ class PlanGatherer:
 
     def _kept(self):
         kept = []
-        for s in self.run.suggestion_ids.filtered(lambda s: s.state in ('approved', 'done')):
+        suggestions = self.run.suggestion_ids.filtered(lambda s: s.state in ('approved', 'done'))
+        blanket = blanket_order_supply(suggestions)
+        for s in suggestions:
+            qty = s.qty
             if s.state == 'done':
-                doc_open = (s.production_id and s.production_id.state == 'draft') or (
-                    s.purchase_line_id and s.purchase_line_id.order_id.state in ('draft', 'sent'))
+                if s.requisition_line_id:
+                    # Counted for what the blanket order still has to bring in.
+                    qty = blanket.get(s.id, 0.0)
+                    doc_open = qty > EPS
+                else:
+                    doc_open = (s.production_id and s.production_id.state == 'draft') or (
+                        s.purchase_line_id and s.purchase_line_id.order_id.state in ('draft', 'sent'))
                 if not doc_open:
                     continue
             kept.append({
-                'id': s.id, 'product_id': s.product_id.id, 'action': s.action, 'qty': s.qty,
+                'id': s.id, 'product_id': s.product_id.id, 'action': s.action, 'qty': qty,
                 'date_need': s.date_need, 'date_release': s.date_release})
         return kept
 

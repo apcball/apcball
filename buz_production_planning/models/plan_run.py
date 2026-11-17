@@ -29,17 +29,21 @@ class PlanRun(models.Model):
         required=True, default=fields.Date.context_today, tracking=True,
         help="Start of the first weekly bucket (Monday of this date's week).")
     horizon_weeks = fields.Integer(
-        required=True, default=lambda self: get_plan_config(self.env)['horizon_weeks'])
+        required=True, default=lambda self: get_plan_config(self.env)['horizon_weeks'],
+        help="How many weeks ahead the plan looks. Demand and supply are netted week by week.")
     date_to = fields.Date(compute='_compute_date_to', store=True)
     warehouse_ids = fields.Many2many(
         'stock.warehouse', string="Supply Warehouses", check_company=True,
-        default=lambda self: self._default_warehouse_ids())
+        default=lambda self: self._default_warehouse_ids(),
+        help="Stock in these warehouses, and receipts into them, count as available supply.")
     picking_type_ids = fields.Many2many(
         'stock.picking.type', string="Production Lines", check_company=True,
         domain=[('code', '=', 'mrp_operation')],
-        help="Limit the plan to these production lines. Empty = all.")
+        help="Plan only products made on these production lines. Leave empty to plan every line.")
     forecast_lookback_weeks = fields.Integer(
-        required=True, default=lambda self: get_plan_config(self.env)['lookback_weeks'])
+        required=True, default=lambda self: get_plan_config(self.env)['lookback_weeks'],
+        help="Weeks of past deliveries averaged to forecast demand beyond the open orders. "
+             "0 = open orders only.")
     state = fields.Selection([
         ('draft', "Draft"),
         ('computed', "Computed"),
@@ -52,6 +56,31 @@ class PlanRun(models.Model):
     schedule_line_ids = fields.One2many('buz.plan.schedule.line', 'run_id')
     suggestion_count = fields.Integer(compute='_compute_counts')
     schedule_count = fields.Integer(compute='_compute_counts')
+    open_suggestion_count = fields.Integer(
+        string="To Review", compute='_compute_counts',
+        help="Suggestions waiting for a decision: proposed or approved, no document yet.")
+    late_suggestion_count = fields.Integer(
+        string="Late", compute='_compute_counts',
+        help="Open suggestions that should already have been released.")
+    document_count = fields.Integer(
+        string="Documents", compute='_compute_counts',
+        help="Documents (manufacturing orders, blanket orders, RFQs) created from this plan.")
+    production_count = fields.Integer(
+        string="Manufacturing Orders", compute='_compute_counts',
+        help="Manufacturing orders created from this plan.")
+    requisition_count = fields.Integer(
+        string="Blanket Orders", compute='_compute_counts',
+        help="Blanket orders created from this plan.")
+    purchase_count = fields.Integer(
+        string="Purchase Orders", compute='_compute_counts',
+        help="RFQs created directly by this plan plus the purchase orders issued from its blanket orders.")
+    next_step = fields.Selection([
+        ('compute', "Compute"), ('review', "Review"), ('schedule', "Schedule"),
+        ('apply', "Apply"), ('done', "Done"),
+    ], string="Step", compute='_compute_next_step', help="The step the planner should do next.")
+    next_step_hint = fields.Char(
+        string="Next Step", compute='_compute_next_step',
+        help="What to do next, in plain words.")
 
     _sql_constraints = [
         ('horizon_positive', 'check(horizon_weeks > 0)', "Horizon must be at least 1 week."),
@@ -74,11 +103,76 @@ class PlanRun(models.Model):
             else:
                 run.date_to = False
 
-    @api.depends('suggestion_ids', 'schedule_line_ids')
+    def _rfq_orders(self):
+        """RFQs the plan created directly (Buy suggestions that chose RFQ)."""
+        return self.suggestion_ids.purchase_line_id.order_id
+
+    def _purchase_domain(self):
+        """POs of this plan: its own RFQs plus POs issued from its blanket orders."""
+        self.ensure_one()
+        return ['|', ('id', 'in', self._rfq_orders().ids),
+                ('requisition_id.buz_plan_run_id', '=', self.id)]
+
+    @api.depends('suggestion_ids', 'suggestion_ids.state', 'suggestion_ids.is_late',
+                 'suggestion_ids.production_id', 'suggestion_ids.purchase_line_id',
+                 'suggestion_ids.requisition_id', 'schedule_line_ids')
     def _compute_counts(self):
+        BlanketOrder = self.env['purchase.requisition']
+        PurchaseOrder = self.env['purchase.order']
         for run in self:
-            run.suggestion_count = len(run.suggestion_ids)
+            sugg = run.suggestion_ids
+            open_ = sugg.filtered(lambda s: s.state in ('proposed', 'approved'))
+            run.suggestion_count = len(sugg)
             run.schedule_count = len(run.schedule_line_ids)
+            run.open_suggestion_count = len(open_)
+            run.late_suggestion_count = len(open_.filtered('is_late'))
+            run.production_count = len(sugg.production_id)
+            if run.id:
+                run.requisition_count = BlanketOrder.search_count([('buz_plan_run_id', '=', run.id)])
+                run.purchase_count = PurchaseOrder.search_count(run._purchase_domain())
+            else:
+                run.requisition_count = run.purchase_count = 0
+            run.document_count = len(sugg.production_id) + run.requisition_count + len(run._rfq_orders())
+
+    @api.depends('state', 'open_suggestion_count', 'late_suggestion_count', 'production_count',
+                 'requisition_count', 'purchase_count', 'schedule_line_ids.state')
+    def _compute_next_step(self):
+        for run in self:
+            lines = run.schedule_line_ids
+            if run.state == 'cancel':
+                step, hint = 'done', _("This plan is cancelled. Click Set to Draft to use it again.")
+            elif run.state == 'draft':
+                step, hint = 'compute', _(
+                    "Step 1 of 4: check the dates and warehouses, then click Compute Plan.")
+            elif run.open_suggestion_count:
+                step = 'review'
+                hint = _("Step 2 of 4: review %(n)s suggestions (%(late)s late), "
+                         "then click Create Documents.",
+                         n=run.open_suggestion_count, late=run.late_suggestion_count)
+            elif not lines:
+                step = 'schedule'
+                made = run._documents_made_text()
+                hint = (_("Step 3 of 4: %s were created. Click Schedule to plan the workorders.", made)
+                        if made else _("Step 3 of 4: click Schedule to plan the workorders."))
+            elif any(l.state == 'proposed' for l in lines):
+                step, hint = 'apply', _(
+                    "Step 4 of 4: check the Gantt, then click Apply Schedule "
+                    "to write the dates on the workorders.")
+            else:
+                step, hint = 'done', _("All steps are done. The schedule is applied.")
+            run.next_step, run.next_step_hint = step, hint
+
+    def _documents_made_text(self):
+        self.ensure_one()
+        parts = []
+        if self.production_count:
+            parts.append(_("%s manufacturing orders", self.production_count))
+        if self.requisition_count:
+            parts.append(_("%s blanket orders", self.requisition_count))
+        rfqs = len(self._rfq_orders())
+        if rfqs:
+            parts.append(_("%s RFQs", rfqs))
+        return ", ".join(parts)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -243,4 +337,26 @@ class PlanRun(models.Model):
             'buz_production_planning.action_buz_plan_schedule_line')
         action['domain'] = [('run_id', '=', self.id)]
         action['context'] = {'default_run_id': self.id}
+        return action
+
+    def action_open_productions(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('mrp.mrp_production_action')
+        action['domain'] = [('id', 'in', self.suggestion_ids.production_id.ids)]
+        action['context'] = {}
+        return action
+
+    def action_open_requisitions(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'purchase_requisition.action_purchase_requisition')
+        action['domain'] = [('buz_plan_run_id', '=', self.id)]
+        action['context'] = {}
+        return action
+
+    def action_open_purchases(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('purchase.purchase_rfq')
+        action['domain'] = self._purchase_domain()
+        action['context'] = {}
         return action

@@ -1,6 +1,6 @@
 # คู่มือการใช้งาน BUZ Production Planning
 
-โมดูลวางแผนการผลิตสำหรับ Odoo 17 ของ Mogen Co. ทำ flow ตั้งแต่ความต้องการสินค้า (ใบส่งของค้าง + ค่าพยากรณ์ + สต็อกสำรอง) → คำนวณความต้องการสุทธิแบบหลายชั้น BoM → เสนอ **ผลิต/ซื้อ** → สร้าง **MO / PO แบบร่าง** → จัดคิว workorder ลง workcenter → ดูและลากแก้บน **Gantt** → **Apply** วันที่ลง workorder จริง
+โมดูลวางแผนการผลิตสำหรับ Odoo 17 ของ Mogen Co. ทำ flow ตั้งแต่ความต้องการสินค้า (ใบส่งของค้าง + ค่าพยากรณ์ + สต็อกสำรอง) → คำนวณความต้องการสุทธิแบบหลายชั้น BoM → เสนอ **ผลิต/ซื้อ** → สร้าง **MO แบบร่าง** และ **Blanket Order (หรือ RFQ) แบบร่าง** → จัดคิว workorder ลง workcenter → ดูและลากแก้บน **Gantt** → **Apply** วันที่ลง workorder จริง
 
 > ชื่อเมนูและปุ่มเป็นภาษาอังกฤษ (มีคำแปลไทยเมื่อเลือกภาษาไทย) คู่มือนี้ใช้ชื่อตามหน้าจอภาษาอังกฤษ
 
@@ -14,7 +14,7 @@
 4. [พารามิเตอร์สินค้า](#4-พารามิเตอร์สินค้า)
 5. [สร้างแผนและคำนวณ](#5-สร้างแผนและคำนวณ)
 6. [ตรวจและอนุมัติข้อเสนอ](#6-ตรวจและอนุมัติข้อเสนอ)
-7. [สร้าง MO / PO แบบร่าง](#7-สร้าง-mo--po-แบบร่าง)
+7. [สร้าง MO / Blanket Order แบบร่าง](#7-สร้าง-mo--blanket-order-แบบร่าง)
 8. [จัดคิว (Schedule)](#8-จัดคิว-schedule)
 9. [Gantt](#9-gantt)
 10. [Apply ลง workorder](#10-apply-ลง-workorder)
@@ -29,7 +29,7 @@
 
 | เมนู | ใช้ทำอะไร |
 |---|---|
-| **Plans** | หัวแผน สร้าง/คำนวณ/จัดคิว/Apply |
+| **Plans** | หัวแผน สร้าง/คำนวณ/จัดคิว/Apply หน้าแผนมีแถบสีฟ้า "ขั้นตอนถัดไป" บอกว่าต้องทำอะไรต่อ |
 | **Suggestions** | ข้อเสนอผลิต/ซื้อ อนุมัติหรือปฏิเสธ |
 | **Demand** | ความต้องการรายสินค้ารายสัปดาห์ (แก้ค่าพยากรณ์ได้) |
 | **Schedule** | คิวงานที่เสนอ (ตาราง + pivot) |
@@ -41,21 +41,22 @@
 
 ### แนวคิดสำคัญ
 
-- **โมดูลนี้ไม่แตะสต็อก** ไม่ confirm MO/PO ไม่ reserve ไม่เบิกของ เอกสารที่สร้างมีแค่ **MO สถานะ Draft** และ **PO (RFQ) สถานะ Draft** การเบิกวัตถุดิบยังเป็นหน้าที่ของ flow เดิม (`buz_mrp_stock_request`)
+- **โมดูลนี้ไม่แตะสต็อก** ไม่ confirm MO/PO ไม่ reserve ไม่เบิกของ เอกสารที่สร้างมีแค่ **MO สถานะ Draft** และ **Blanket Order สถานะ Draft** (หรือ **RFQ สถานะ Draft** ถ้าเลือก) การเบิกวัตถุดิบยังเป็นหน้าที่ของ flow เดิม (`buz_mrp_stock_request`)
 - **Demand ที่เชื่อได้** = ใบส่งของ (delivery) ที่ยังเปิดอยู่และปลายทางเป็นลูกค้า ไม่ใช้บรรทัดค้างส่งของ Sales Order
 - **ข้อมูลก่อน 2026-04-01 ไม่ใช้** (วัน cut-off ตั้งได้ใน Settings)
 - **Bucket = สัปดาห์** (จันทร์–อาทิตย์) ของที่ค้างเกินกำหนดลงสัปดาห์แรก ของที่เลยปลาย horizon ไม่นับ
 - **Demand ต่อสัปดาห์ = max(ใบส่งของ, ค่าพยากรณ์)** ค่าพยากรณ์ไม่บวกซ้อนกับใบส่งของที่มีอยู่แล้ว
-- **Supply** = สต็อกในคลังที่เลือก + PO เปิด + MO เปิด + เอกสารแบบร่างที่แผนอื่นสร้างไว้
+- **Supply** = สต็อกในคลังที่เลือก + PO เปิด + MO เปิด + เอกสารแบบร่างที่แผนสร้างไว้ (รวม **Blanket Order ที่แผนสร้างและยังเปิดอยู่** นับเท่าที่ยังไม่ได้ออก PO)
 - ผลจัดคิวอยู่ในตาราง Schedule จนกว่าจะกด **Apply** ถึงจะเขียนลง workorder จริง
 
 ### Flow โดยย่อ
 
 ```
-Plans → New → Compute Demand & Suggestions
-      → Suggestions: Approve / Reject
-      → Create Documents (MO draft / PO draft)
-      → Schedule → Gantt (ลากแก้) → Apply Schedule
+Plans → New → Compute Plan                        (ขั้นที่ 1)
+      → Suggestions: ตรวจ / Approve / Reject
+      → Create Documents (MO draft / Blanket Order draft หรือ RFQ draft)   (ขั้นที่ 2)
+      → Schedule                                       (ขั้นที่ 3)
+      → Gantt (ลากแก้) → Apply Schedule                (ขั้นที่ 4)
 ```
 
 ---
@@ -132,10 +133,10 @@ Plans → New → Compute Demand & Suggestions
 | Production Lines | จำกัดเฉพาะสายผลิต (ว่าง = ทุกสาย) |
 | Forecast Lookback Weeks | ย้อนดูยอดส่งกี่สัปดาห์ (ไม่ย้อนก่อนวัน cut-off) |
 
-กด **Compute Demand & Suggestions** ระบบจะ:
+กด **Compute Plan** ระบบจะ:
 
 1. รวมใบส่งของค้าง + ค่าพยากรณ์ (ค่าเฉลี่ยรายสัปดาห์) + วัตถุดิบที่ MO เปิดยังต้องใช้
-2. หักสต็อก + ของที่กำลังจะเข้า (PO เปิด, MO เปิด, ข้อเสนอที่อนุมัติแล้ว, เอกสารแบบร่างของแผนอื่น)
+2. หักสต็อก + ของที่กำลังจะเข้า (PO เปิด, MO เปิด, ข้อเสนอที่อนุมัติแล้ว, เอกสารแบบร่างของแผนอื่น, Blanket Order ที่แผนสร้างไว้)
 3. ถ้าต่ำกว่า Safety Stock สร้างข้อเสนอ ปัดตาม Minimum Batch / Batch Multiple
 4. สินค้าที่ผลิต → ระเบิด BoM (phantom ระเบิดทะลุ) แล้วคำนวณชั้นถัดไป
 
@@ -173,15 +174,16 @@ Plans → New → Compute Demand & Suggestions
 |---|---|
 | Action | Make (ผลิต) / Buy (ซื้อ) |
 | Qty | จำนวนที่เสนอ แก้ได้ในตาราง |
-| Date Need | วันที่ของต้องพร้อม (วันแรกของสัปดาห์ที่ขาด) |
-| Date Release | วันที่ต้องเริ่มสั่ง/ผลิต = Date Need − lead time |
+| Needed By | วันที่ของต้องพร้อม (วันแรกของสัปดาห์ที่ขาด) |
+| Order / Start By | วันที่ต้องเริ่มสั่ง/ผลิต = Needed By − lead time |
 | Late | วันสั่งเลยมาแล้ว ระบบตั้งเป็นวันนี้และติดธง |
 | Production Line / Vendor | สายผลิตของ MO / vendor ของ PO |
 | BoM Level | ชั้น BoM (0 = สินค้าขาย) |
-| Shortage | ยอดที่ขาดก่อนปัดขึ้นตาม batch (ฟอร์มข้อเสนอมีคำอธิบายครบ: On Hand, Incoming, Demand, Projected) |
+| Shortage | ยอดที่ขาดก่อนปัดขึ้นตาม batch (ฟอร์มข้อเสนอมีประโยคอธิบายด้านบน เช่น "On hand 120 + incoming 40 - demand 300 = ...") |
+| Document / Document Status | เอกสารที่สร้างจากข้อเสนอ (MO, Blanket Order หรือ PO) และสถานะ กดปุ่มลูกศรท้ายแถวเพื่อเปิดเอกสาร |
 | Pegged To | วัตถุดิบนี้มาจากข้อเสนอผลิตตัวไหน |
 
-ปุ่มบนตาราง: **Approve / Reject / Reset to Proposed** (เลือกหลายบรรทัดได้) กรองได้ด้วย Make / Buy / Late / Proposed / Approved จัดกลุ่มตามสายผลิต/vendor/level ได้
+ปุ่มบนตาราง: **Approve / Reject / Reset to Proposed** (เลือกหลายบรรทัดได้) เมนู Suggestions เปิดมาพร้อมตัวกรอง **To Review** (ข้อเสนอที่ยังเป็น Proposed) ตัวกรองอื่น: Make / Buy / Late / Approved / **No Document Yet / No Vendor / Has Document** จัดกลุ่มตามสายผลิต / vendor / level / **Document Status / Blanket Order** ได้ คอลัมน์ที่ใช้น้อย (BoM Level, On Hand, Incoming, Demand, Projected) ซ่อนไว้ เปิดได้จากปุ่มเลือกคอลัมน์
 
 สถานะ: **Proposed → Approved → Done** หรือ **Rejected**
 
@@ -189,31 +191,67 @@ Plans → New → Compute Demand & Suggestions
 
 ---
 
-## 7. สร้าง MO / PO แบบร่าง
+## 7. สร้าง MO / Blanket Order แบบร่าง
 
-ที่แผนกด **Create Documents** (หรือเลือกข้อเสนอในเมนู Suggestions แล้วเรียกจาก Action) หน้าต่างสรุปจะบอกก่อนสร้าง: กี่ MO กี่ PO vendor ไหน รายการที่ข้าม/ถูกบล็อก
+ที่แผนกด **Create Documents** (หรือเลือกข้อเสนอในเมนู Suggestions แล้วเรียกจาก Action) หน้าต่างแบ่งสรุปเป็นสองส่วนก่อนสร้าง: **Will be created** (กี่ MO กี่ Blanket Order/RFQ vendor ไหน) และ **Needs attention** (รายการที่ข้าม/ถูกบล็อก พร้อมวิธีแก้)
 
 | ประเภท | สร้างเป็น | หมายเหตุ |
 |---|---|---|
-| Make | **MO สถานะ Draft** | Origin = เลขแผน, Deadline = Date Need, เริ่มตาม Date Release ไม่ confirm |
-| Buy | **PO (RFQ) สถานะ Draft** | รวมบรรทัดตาม vendor, Origin = เลขแผน |
+| Make | **MO สถานะ Draft** | Origin = เลขแผน, Deadline = Needed By, เริ่มตาม Order / Start By ไม่ confirm |
+| Buy | **Blanket Order สถานะ Draft** (ค่าเริ่มต้น) หรือ **RFQ สถานะ Draft** | เลือกได้ทุกครั้งที่ช่อง *Buy Suggestions Become* รวมบรรทัดตาม vendor หนึ่งใบต่อ vendor ต่อการกดหนึ่งครั้ง สร้างใบใหม่เสมอ ไม่ต่อเข้าใบเดิม |
+
+### เลือก Blanket Order หรือ RFQ
+
+- **Blanket Order** เป็นข้อตกลงกับ vendor ฝ่ายจัดซื้อตรวจราคา กด Confirm เอง (เลข BO-... ออกตอน Confirm) แล้วออก PO จากข้อตกลงนี้ภายหลัง
+- **RFQ** คือใบสั่งซื้อฉบับร่างหนึ่งใบต่อ vendor ใช้ส่งให้ vendor ทันที (พฤติกรรมเดิม)
+
+ค่าที่ระบบใส่ใน **Blanket Order**:
+
+| ช่อง | ค่า |
+|---|---|
+| Vendor / Origin | vendor ของข้อเสนอ / เลขแผน |
+| Type | ประเภท Blanket Order ของบริษัท (Quantities = Set quantities manually) |
+| Currency | สกุลเงินของ Blanket Order ล่าสุดของ vendor นี้ → สกุลเงินจัดซื้อของ vendor → สกุลเงินบริษัท |
+| Operation Type (รับสินค้า) | ของ Blanket Order ล่าสุดของ vendor นี้ **ถ้าอยู่ในคลังที่แผนนับเป็น supply** มิฉะนั้นใช้ใบรับของของคลังแรกในแผน |
+| Ordering Date / Delivery Date / Deadline | วันนี้ / Needed By ที่เร็วที่สุด / สิ้นวันสุดท้ายของแผน |
+| Product / Quantity / Unit | สินค้า / จำนวน (แปลงเป็นหน่วยซื้อ) / หน่วยซื้อของสินค้า |
+| Unit Price | 1) ราคาใน Vendor Pricelist 2) บรรทัด Blanket Order ล่าสุดของ vendor+สินค้า 3) บรรทัด PO ที่ยืนยันล่าสุด 4) **0 และแจ้งว่าไม่พบราคา** |
+| Analytic | บรรทัด Blanket Order ล่าสุดของสินค้าที่มี analytic → บรรทัด PO ล่าสุดที่มี → ว่างและแจ้ง |
+
+> Blanket Order ที่สร้างอยู่สถานะ **Draft** เสมอ ฝ่ายจัดซื้อต้องตรวจราคา (บรรทัดที่ราคา 0 จะ Confirm ไม่ได้) และ analytic ก่อนกด Confirm เอง PO ที่ออกจาก Blanket Order คัดลอก analytic จากบรรทัดนี้ ถ้าว่าง PO จะถูกระบบบัญชีปฏิเสธ
 
 ### กติกาที่ควรรู้
 
 - ข้อเสนอที่ **Proposed** จะถูกอนุมัติให้อัตโนมัติในหน้านี้ ที่ **Rejected** ถูกข้าม
 - **ไม่มี Production Line** → หยุดและแจ้งชื่อสินค้า ต้องกรอกที่พารามิเตอร์สินค้าแล้ว Compute ใหม่
 - **ไม่มี vendor** → ข้าม แจ้งในสรุป ไม่ได้หยุดทั้งชุด
-- **MO ที่ระบบบัญชีไม่ยอมให้สร้าง** (ดูหัวข้อ Analytic ด้านล่าง) → ข้ามใบนั้นพร้อมเหตุผล ใบอื่นยังสร้างต่อ ข้อเสนอนั้นคงสถานะ Approved เพื่อให้แก้แล้วลองใหม่ได้
+- **MO หรือ Blanket Order ที่ระบบบัญชีไม่ยอมให้สร้าง** (ดูหัวข้อ Analytic ด้านล่าง) → ข้ามใบนั้นพร้อมเหตุผล ใบอื่นยังสร้างต่อ ข้อเสนอนั้นคงสถานะ Approved เพื่อให้แก้แล้วลองใหม่ได้
 - **สร้างซ้ำไม่ได้** ข้อเสนอที่มีเอกสารแล้วจะถูกข้าม
-- หลังสร้างแล้ว แผนเป็น **Confirmed** (ยังมีข้อเสนอค้าง) หรือ **Done** (หมดแล้ว) และสรุปผลโพสต์ใน chatter
+- หลังสร้างแล้วระบบกลับมาหน้าแผน ปุ่มสถิติ (Manufacturing Orders / Blanket Orders / Purchase Orders) และแถบ "ขั้นตอนถัดไป" อัปเดตทันที แจ้งเตือนเป็นสีเหลืองถ้ามีรายการที่ไม่ได้สร้าง สรุปผลพร้อมลิงก์ไปยังเอกสารโพสต์ใน chatter (Blanket Order ฉบับร่างยังชื่อ "New" จึงแสดงเป็น Blanket Order (draft) - ชื่อ vendor)
+- แผนเป็น **Confirmed** (ยังมีข้อเสนอค้าง) หรือ **Done** (หมดแล้ว)
 
-### Analytic บน MO และ PO
+### การเชื่อมระหว่างแผนกับเอกสาร
+
+- บนแผน: ปุ่ม **Manufacturing Orders / Blanket Orders / Purchase Orders** (ซ่อนเมื่อเป็น 0) Purchase Orders = RFQ ที่แผนสร้างตรง + PO ที่ออกจาก Blanket Order ของแผน
+- บน **MO, Blanket Order และ PO** มีปุ่ม **Production Plan** กดกลับไปแผนต้นทาง
+- บนข้อเสนอ: คอลัมน์ Document / Document Status และปุ่ม **Open Document**
+
+### Blanket Order นับเป็น supply
+
+Blanket Order ไม่สร้าง stock move จนกว่าจะออก PO แล้วยืนยัน ถ้าไม่นับ การ Compute ครั้งต่อไปจะเสนอซื้อซ้ำ ระบบจึงนับ **จำนวนคงเหลือของบรรทัด Blanket Order ที่แผนสร้าง** (จำนวน − จำนวนที่ออก PO ที่ยืนยันแล้ว) เป็นของเข้า ณ วัน Needed By ของข้อเสนอนั้น ทั้งในแผนเดิมและแผนอื่น
+
+- PO ที่ยืนยันแล้วจะนับผ่านใบรับของตามปกติ ไม่นับซ้ำ PO ฉบับร่างอยู่ในจำนวนคงเหลือของ Blanket Order
+- ไม่นับถ้า Blanket Order **Closed / Cancelled** หรือเลย **Deadline**
+- **Blanket Order ที่ทำด้วยมือไม่นับเด็ดขาด** (ของเดิมมีค้างเปิดอยู่มาก)
+
+### Analytic บน MO, Blanket Order และ PO
 
 บริษัทบังคับ **Analytic (BU + Production)** บน MO ระบบจึงคัดลอก analytic จาก **MO ล่าสุดของสินค้านั้น** ให้อัตโนมัติ
 
 - สินค้าที่ไม่เคยมี MO → ระบบสร้างไม่ได้ จะแจ้งในสรุป ให้สร้าง MO เองหนึ่งใบหรือปรับ analytic แล้วลองใหม่
 - ตรวจ/แก้ analytic บน MO draft ก่อนกด Confirm ได้เสมอ
-- **PO ที่ระบบสร้างยังไม่มี analytic** ฝ่ายจัดซื้อต้องกรอก (BU / Department / Section) ตอน Confirm RFQ
+- **Blanket Order** คัดลอก analytic จากบรรทัด Blanket Order / PO ล่าสุดของสินค้า ถ้าไม่พบจะแจ้ง ให้กรอกที่บรรทัดก่อน Confirm
+- **RFQ ที่ระบบสร้างยังไม่มี analytic** ฝ่ายจัดซื้อต้องกรอก (BU / Department / Section) ตอน Confirm RFQ
 
 ### ปุ่มสถิติบน MO
 
@@ -307,7 +345,10 @@ Plans → New → Compute Demand & Suggestions
 | อาการ | สาเหตุ / วิธีแก้ |
 |---|---|
 | "ไม่มีสายผลิต" ตอนสร้างเอกสาร | สินค้าไม่เคยมี MO และไม่มีพารามิเตอร์ ตั้ง **Production Line** ที่ Product Parameters แล้ว Compute ใหม่ หรือ Reject ข้อเสนอนั้น |
-| ข้อเสนอ Buy "ไม่มี vendor" | ตั้ง vendor ที่สินค้า หรือใส่ **Vendor Override** ในพารามิเตอร์ ข้อเสนอแบบนี้ถูกข้ามตอนสร้าง PO |
+| ข้อเสนอ Buy "ไม่มี vendor" | ตั้ง vendor ที่สินค้า หรือใส่ **Vendor Override** ในพารามิเตอร์ ข้อเสนอแบบนี้ถูกข้ามตอนสร้าง Blanket Order / RFQ |
+| Blanket Order บรรทัดราคา 0 / ไม่มี analytic | ไม่พบราคาหรือ analytic จากประวัติ กรอกที่บรรทัด Blanket Order ก่อน Confirm (Confirm ไม่ได้ถ้าราคาเป็น 0) |
+| "ไม่ได้ตั้งค่าประเภท Blanket Order" | สร้างประเภทที่ จัดซื้อ > การกำหนดค่า > ประเภทข้อตกลง ที่ Quantities = Set quantities manually |
+| Compute แล้วยังเสนอซื้อซ้ำทั้งที่มี Blanket Order | Blanket Order ทำด้วยมือไม่ถูกนับ หรือ Blanket Order ถูก Close / Cancel / เลย Deadline หรือใบรับของไปเข้าคลังที่ไม่ได้อยู่ใน Supply Warehouses ของแผน |
 | สร้าง MO ไม่ได้ ติด Analytic | บริษัทบังคับ analytic บน MO สินค้านั้นไม่เคยมี MO ให้คัดลอก สร้าง MO เองหนึ่งใบเพื่อให้มีต้นแบบ หรือแจ้งฝ่ายบัญชี |
 | Compute แล้วข้อเสนอเยอะมาก | ตรวจ Supply Warehouses ว่าครบ ตรวจสินค้า Do not plan ตรวจ Safety Stock และค่าพยากรณ์ที่ Demand |
 | ข้อเสนอเลยวันสั่ง (Late) เยอะ | lead time ยาวกว่าเวลาที่เหลือ ปรับ lead time ในพารามิเตอร์ หรือเลื่อนกำหนดส่ง |
@@ -320,6 +361,6 @@ Plans → New → Compute Demand & Suggestions
 ### ข้อจำกัดที่รู้
 
 - **Re-schedule ลบบรรทัดที่ Apply แล้ว** และสองแผนสามารถ Apply วันที่ต่างกันลง workorder เดียวกันได้ ควรใช้แผนจัดคิวเพียงแผนเดียวต่อสายผลิตในเวลาเดียวกัน
-- เอกสารแบบร่างที่สร้างด้วยมือ (ไม่ได้มาจากแผน) **ไม่ถูกนับ** เป็นของเข้า เพราะมี RFQ ค้างที่ไม่ได้ใช้จริงปนอยู่มาก
+- เอกสารแบบร่างที่สร้างด้วยมือ (ไม่ได้มาจากแผน) **ไม่ถูกนับ** เป็นของเข้า เพราะมี RFQ และ Blanket Order ค้างที่ไม่ได้ใช้จริงปนอยู่มาก
 - หน้า Operation Time History เริ่มนับที่ 2026-04-01 เสมอ ไม่ตามวัน cut-off ใน Settings
-- PO ที่ระบบสร้างไม่มี analytic ต้องกรอกตอน Confirm
+- RFQ ที่ระบบสร้างไม่มี analytic ต้องกรอกตอน Confirm (Blanket Order คัดลอกจากประวัติให้)
