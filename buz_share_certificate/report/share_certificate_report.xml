@@ -5,7 +5,7 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="page share-certificate-page">
                     <style type="text/css">
-                        .share-certificate-page { font-family: 'Sarabun', sans-serif; font-size: 12pt; color: #171717; padding: 0; margin: 0; }
+                        .share-certificate-page { font-size: 12pt; color: #171717; padding: 0; margin: 0; }
                         .certificate-layout { width: 100%; height: 195mm; table-layout: fixed; border-collapse: collapse; }
                         .certificate-layout td { vertical-align: top; }
                         .stub { width: 31%; padding: 2mm 4mm 1mm 1mm; border-right: 1px dashed #555; font-size: 10.5pt; line-height: 1.45; }

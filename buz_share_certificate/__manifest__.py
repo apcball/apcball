@@ -8,14 +8,9 @@
     'data': [
         'security/ir.model.access.csv',
         'report/share_certificate_report.xml',
-        'wizard/share_certificate_wizard_views.xml',
+        'views/share_certificate_views.xml',
         'views/menu.xml',
     ],
-    'assets': {
-        'web.report_assets_common': [
-            '/buz_share_certificate/static/src/css/share_certificate_report.css',
-        ],
-    },
     'installable': True,
     'application': True,
     'auto_install': False,

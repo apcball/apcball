@@ -1,7 +1,7 @@
 from odoo import fields, models
 
 
-class ShareCertificatePrintWizard(models.Model):
+class ShareCertificate(models.Model):
     _name = 'buz.share.certificate.print.wizard'
     _description = 'Share Certificate'
     _rec_name = 'certificate_number'
