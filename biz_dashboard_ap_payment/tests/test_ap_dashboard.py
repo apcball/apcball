@@ -758,41 +758,6 @@ class TestApDashboard(TransactionCase):
             after['kpi_request']['pending']['amount'] - before['kpi_request']['pending']['amount'],
             200.0, places=2)
 
-    def test_plan_overdue_and_due_prev(self):
-        self._bill(self.v1, D(1, 10), 1000.0, due=D(1, 20))   # due before previous month -> overdue
-        self._bill(self.v1, D(2, 1), 400.0, due=D(2, 15))     # due previous month
-        self._bill(self.v2, D(3, 1), 900.0, due=D(3, 15))     # this month: not in the plan
-        payload = self._data()
-        plan, base = payload['kpi_plan'], self.baseline['kpi_plan']
-        rows = {r['key']: r for r in plan['rows']}
-        base_rows = {r['key']: r for r in base['rows']}
-        self.assertAlmostEqual(rows['overdue']['plan'] - base_rows['overdue']['plan'], 1000.0, places=2)
-        self.assertAlmostEqual(rows['due_prev']['plan'] - base_rows['due_prev']['plan'], 400.0, places=2)
-        self.assertAlmostEqual(plan['total_plan'] - base['total_plan'], 1400.0, places=2)
-        self.assertEqual(plan['bill_count'] - base['bill_count'], 2)
-        self.assertEqual(plan['prev_month_label'], 'กุมภาพันธ์ %d' % YEAR)
-        for r in plan['rows']:
-            self.assertAlmostEqual(r['diff'], r['actual'] - r['plan'], places=2)
-            if not r['plan']:
-                self.assertEqual(r['pct'], 0.0)
-        self.assertAlmostEqual(plan['total_diff'], plan['total_actual'] - plan['total_plan'], places=2)
-        for key in ('po_open', 'po_received', 'po_billed', 'po_paid'):
-            self.assertIn(key, payload['kpi_budget'])
-
-    def test_vendor_detail(self):
-        bill = self._bill(self.v1, D(3, 5), 1000.0, term=self.term_now)
-        self._bill(self.v2, D(3, 6), 300.0, term=self.term_now)
-        detail = self.engine.get_vendor_detail(self.F, self.v1.id)
-        self.assertIn(bill.id, [b['id'] for b in detail['bills']])
-        self.assertTrue(all(b['id'] != 0 for b in detail['bills']))
-        row = next(b for b in detail['bills'] if b['id'] == bill.id)
-        self.assertAlmostEqual(row['total'], 1000.0, places=2)
-        other = self.engine.get_vendor_detail(self.F, self.v2.id)
-        self.assertNotIn(bill.id, [b['id'] for b in other['bills']])
-        self.assertEqual(self.engine.get_vendor_detail(self.F, False)['bills'], [])
-        with self.assertRaises(AccessError):
-            self.env['biz.ap.dashboard'].with_user(self.plain_user).get_vendor_detail(self.F, self.v1.id)
-
     def test_payload_shape_and_serializable(self):
         payload = self._data()
         json.dumps(payload)

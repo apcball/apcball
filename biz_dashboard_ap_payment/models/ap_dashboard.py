@@ -155,48 +155,6 @@ class ApDashboard(models.AbstractModel):
         return data
 
     @api.model
-    def get_vendor_detail(self, filters=None, partner_id=None):
-        """Document list behind one vendor row: bills due in the month, payments
-        made in the month, unpaid bills due next month and the month's POs. Same
-        filters / access rules as :meth:`get_dashboard_data`, scoped to one vendor."""
-        self._check_access()
-        f = self._normalize_filters(dict(filters or {}, partner_id=partner_id))
-        if not f['partner_id']:
-            return {'bills': [], 'payments': [], 'next_bills': [], 'pos': []}
-        return self.sudo()._vendor_detail(f)
-
-    def _vendor_detail(self, f):
-        def bill_row(bill, **extra):
-            v = self._bill_vals(bill, f)
-            row = {'id': bill.id, 'name': bill.name or bill.ref or '/', 'ref': bill.ref or '',
-                   'invoice_date': fields.Date.to_string(bill.invoice_date),
-                   'due_date': fields.Date.to_string(v['date']),
-                   'total': round(v['total'], 2), 'paid': round(v['paid'], 2),
-                   'residual': round(v['residual'], 2), 'is_cash': v['is_cash'],
-                   'project': v['project'][1], 'payment_state': bill.payment_state}
-            row.update(extra)
-            return row
-
-        bills, _lines = self._search_bills(self._bill_domain(f, f['date_from'], f['date_to']))
-        next_bills, _lines = self._search_bills(
-            self._bill_domain(f, f['next_from'], f['next_to'], unpaid_only=True))
-        payments = []
-        for bill, kind, amount in self._paid_actual_items(f):
-            payments.append(bill_row(bill, kind=kind, amount=round(amount, 2)))
-        pos = []
-        for po in self.env['purchase.order'].search(self._po_domain(f, f['date_from'], f['date_to'])):
-            v = self._po_vals(po, f)
-            pos.append({'id': po.id, 'name': po.name, 'date': fields.Date.to_string(v['date']),
-                        'approved': round(v['approved'], 2), 'billed': round(v['used'], 2),
-                        'remaining': round(v['remaining'], 2), 'project': v['project'][1]})
-        return {
-            'bills': sorted((bill_row(b) for b in bills), key=lambda r: (r['due_date'], r['name'])),
-            'payments': sorted(payments, key=lambda r: r['name']),
-            'next_bills': sorted((bill_row(b) for b in next_bills), key=lambda r: (r['due_date'], r['name'])),
-            'pos': sorted(pos, key=lambda r: r['name']),
-        }
-
-    @api.model
     def build_export(self, filters=None, sheet='all'):
         if sheet not in SHEETS:
             raise ValueError('Unknown sheet: %s' % sheet)
@@ -1129,9 +1087,6 @@ class ApDashboard(models.AbstractModel):
             acc['repaid_pct'] = _pct(acc['repaid'], cash_out_total)
         kpi_payment['cash_out_loan_pct'] = _pct(kpi_loan['repaid'] if kpi_loan['configured'] else 0.0, cash_out_total)
 
-        kpi_budget.update(self._po_flow(f, pos))
-        kpi_plan = self._plan_kpi(f, kpi_budget, kpi_forecast, actual_items, kpi_payment['other'])
-
         tables = {}
         for tab, data in rows.items():
             finalized = self._finalize_rows(data)
@@ -1161,7 +1116,6 @@ class ApDashboard(models.AbstractModel):
             'kpi_request': kpi_request,
             'kpi_forecast': kpi_forecast,
             'kpi_other': kpi_other,
-            'kpi_plan': kpi_plan,
             'actual_vendors': [
                 {'id': r['id'], 'name': r['name'], 'total': r['act_total'], 'loan': r['act_loan'],
                  'note': r['act_note'], 'advance': r['act_advance'], 'cash': r['act_cash'],
@@ -1216,83 +1170,6 @@ class ApDashboard(models.AbstractModel):
                            'งบประมาณตามแผนรายเดือน (เฉพาะบรรทัดงบของโครงการที่เลือก)'
                            if f['project_id'] else
                            'งบประมาณตามแผนรายเดือน (ไม่กรองตามร้านค้า)'),
-        }
-
-    def _po_flow(self, f, pos):
-        """PO flow of the month's POs (same scope as the PO budget columns), tax
-        included, presentation currency: open = PO total, received = goods /
-        services received, billed = covered by a non-cancelled bill line, paid =
-        billed x paid share of the PO's posted bills."""
-        res = {'po_open': 0.0, 'po_received': 0.0, 'po_billed': 0.0, 'po_paid': 0.0}
-        for po in pos:
-            v = self._po_vals(po, f)
-            conv = lambda amount: self._convert(
-                amount, po.currency_id, po.company_id, v['date'], f['currency'])
-            share = self._share(f, 'pos', po.id)
-            received = 0.0
-            for line in po.order_line:
-                if line.display_type in (False, 'product', '') and line.product_qty:
-                    received += line.price_subtotal * min(1.0, line.qty_received / line.product_qty)
-            bills = po.invoice_ids.filtered(lambda m: m.state == 'posted' and m.move_type in BILL_TYPES)
-            bill_total = sum(abs(b.amount_total) for b in bills)
-            paid_ratio = 1.0 - sum(abs(b.amount_residual) for b in bills) / bill_total if bill_total else 0.0
-            res['po_open'] += v['approved']
-            res['po_received'] += conv(received * v['factor'] * share)
-            res['po_billed'] += v['used']
-            res['po_paid'] += v['used'] * paid_ratio
-        return {key: round(val, 2) for key, val in res.items()}
-
-    def _plan_kpi(self, f, kpi_budget, kpi_forecast, actual_items, other_actual):
-        """แผนการใช้เงิน (AP outstanding carried in + month plan) vs จ่ายจริง.
-
-        overdue = unpaid posted bills due before the previous month; due_prev =
-        unpaid posted bills due in the previous month; month_spend = approved
-        monthly budget; other = forecast off-bill (salary ...). Actual cash paid
-        in the month is attributed to the row of the bill's due date. As in the
-        mockup the plan total is overdue + due_prev (the AP outstanding)."""
-        year, month = (f['year'] - 1, 12) if f['month'] == 1 else (f['year'], f['month'] - 1)
-        prev_from, prev_to = _month_range(year, month)
-        floor = date(2000, 1, 1)
-        buckets = {'overdue': [0.0, 0], 'due_prev': [0.0, 0]}
-        for key, d_from, d_to in (
-                ('overdue', floor, prev_from - timedelta(days=1)), ('due_prev', prev_from, prev_to)):
-            bills, _lines = self._search_bills(self._bill_domain(f, d_from, d_to, unpaid_only=True))
-            for bill in bills:
-                buckets[key][0] += self._bill_vals(bill, f)['residual']
-                buckets[key][1] += 1
-        paid = {'overdue': 0.0, 'due_prev': 0.0, 'month_spend': 0.0, 'advance': 0.0}
-        for bill, kind, amount in actual_items:
-            if kind != 'cash':
-                continue
-            due = bill.invoice_date_due or bill.invoice_date
-            if due > f['date_to']:
-                paid['advance'] += amount
-            elif due >= f['date_from']:
-                paid['month_spend'] += amount
-            elif due >= prev_from:
-                paid['due_prev'] += amount
-            else:
-                paid['overdue'] += amount
-        plans = {'overdue': buckets['overdue'][0], 'due_prev': buckets['due_prev'][0],
-                 'month_spend': kpi_budget['approved'], 'other': kpi_forecast['other'], 'advance': 0.0}
-        actuals = dict(paid, other=other_actual)
-        labels = OrderedDict([
-            ('overdue', 'ยอดหนี้ยกมา (Overdue)'), ('due_prev', 'ยอดหนี้ Due เดือนก่อน'),
-            ('month_spend', 'ยอดใช้จ่ายเดือนนี้'), ('other', 'ประมาณการเงินเดือน + รายจ่ายอื่นๆ'),
-            ('advance', 'จ่ายชำระล่วงหน้า')])
-        rows = [{'key': key, 'label': label, 'plan': round(plans[key], 2),
-                 'actual': round(actuals[key], 2), 'diff': round(actuals[key] - plans[key], 2),
-                 'pct': _pct(actuals[key], plans[key])} for key, label in labels.items()]
-        total_plan = plans['overdue'] + plans['due_prev']
-        total_actual = sum(actuals.values())
-        return {
-            'rows': rows,
-            'total_plan': round(total_plan, 2),
-            'total_actual': round(total_actual, 2),
-            'total_diff': round(total_actual - total_plan, 2),
-            'total_pct': _pct(total_actual, total_plan),
-            'bill_count': buckets['overdue'][1] + buckets['due_prev'][1],
-            'prev_month_label': '%s %d' % (MONTHS_TH[month - 1], year),
         }
 
     @staticmethod

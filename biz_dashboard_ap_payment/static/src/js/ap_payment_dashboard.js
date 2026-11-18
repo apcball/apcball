@@ -17,14 +17,6 @@ const COLORS = {
     ink: "#1b2a49",
 };
 
-const PLAN_STYLE = {
-    overdue: { color: "red", icon: "fa-exclamation-circle", hex: "#f0385a" },
-    due_prev: { color: "blue", icon: "fa-calendar", hex: "#2f80ed" },
-    month_spend: { color: "green", icon: "fa-money", hex: "#10b981" },
-    other: { color: "purple", icon: "fa-users", hex: "#7c4dff" },
-    advance: { color: "gray", icon: "fa-clock-o", hex: "#9ca3af" },
-};
-
 const DONUT_COLORS = ["#2f80ed", "#f97316", "#10b981", "#7c4dff", "#f59e0b", "#9ca3af"];
 
 function compactNumber(value) {
@@ -99,7 +91,6 @@ export class ApPaymentDashboard extends Component {
     setup() {
         this.rpc = useService("rpc");
         this.notification = useService("notification");
-        this.action = useService("action");
         const today = new Date();
         const initial = {
             month: today.getMonth() + 1,
@@ -118,13 +109,11 @@ export class ApPaymentDashboard extends Component {
             exporting: false,
             exportOpen: false,
             error: "",
-            detail: { open: false, loading: false, vendor: null, data: null, tab: "bills" },
         });
         this.refs = {
             weekly: useRef("weeklyChart"),
             donut: useRef("donutChart"),
             forecast: useRef("forecastChart"),
-            plan: useRef("planChart"),
         };
         this.charts = {};
         this.months = MONTHS_TH.map((name, i) => ({ id: i + 1, name }));
@@ -184,49 +173,6 @@ export class ApPaymentDashboard extends Component {
         return stamp.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
     }
 
-    // ---- vendor drill-down ---------------------------------------------
-    get dd() {
-        return this.state.detail.data;
-    }
-
-    async openVendor(row) {
-        if (!row.id) return;
-        const detail = this.state.detail;
-        Object.assign(detail, { open: true, loading: true, vendor: { id: row.id, name: row.name }, data: null, tab: "bills" });
-        try {
-            const { project_id, company_id, analytic_id, month, year } = this.state.applied;
-            detail.data = await this.rpc("/ap_dashboard/api/vendor_detail", {
-                vendor_id: row.id, project_id, company_id, analytic_id, month, year,
-            });
-        } catch (error) {
-            console.error("AP dashboard vendor detail failed", error);
-            this.notification.add("โหลดรายละเอียดร้านค้าไม่สำเร็จ", { type: "danger" });
-            detail.open = false;
-        } finally {
-            detail.loading = false;
-        }
-    }
-
-    closeVendor() {
-        this.state.detail.open = false;
-    }
-
-    setDetailTab(id) {
-        this.state.detail.tab = id;
-    }
-
-    openRecord(model, id) {
-        this.action.doAction({ type: "ir.actions.act_window", res_model: model, res_id: id, views: [[false, "form"]], target: "current" });
-    }
-
-    billStateLabel(state) {
-        return { not_paid: "ยังไม่ชำระ", partial: "ชำระบางส่วน", in_payment: "กำลังชำระ", paid: "ชำระแล้ว", reversed: "กลับรายการ" }[state] || state;
-    }
-
-    kindLabel(kind) {
-        return { cash: "โอน/เช็ค/อื่นๆ", loan: "เงินกู้ TR", note: "ตั๋วเงินจ่าย", advance: "เงินทดรอง" }[kind] || kind;
-    }
-
     setTab(id) {
         this.state.tab = id;
     }
@@ -284,16 +230,6 @@ export class ApPaymentDashboard extends Component {
         return `${d} ${MONTHS_TH[m - 1]} ${y}`;
     }
 
-    /** The four plan rows of card 1 (the advance row only belongs to card 2). */
-    get planRows() {
-        const rows = (this.data && this.data.kpi_plan.rows) || [];
-        return rows.filter((r) => r.key !== "advance").map((r) => ({ ...r, ...PLAN_STYLE[r.key] }));
-    }
-
-    planIcon(key) {
-        return (PLAN_STYLE[key] || PLAN_STYLE.advance).icon;
-    }
-
     donutColor(index) {
         return DONUT_COLORS[index % DONUT_COLORS.length];
     }
@@ -340,7 +276,6 @@ export class ApPaymentDashboard extends Component {
         if (!this.data) return;
         this.renderStacked("weekly", this.data.weekly);
         this.renderDonut();
-        this.renderPlanDonut();
         this.renderStacked("forecast", this.data.forecast_weekly);
     }
 
@@ -401,35 +336,6 @@ export class ApPaymentDashboard extends Component {
                 },
             },
             plugins: [stackTotalsPlugin],
-        });
-    }
-
-    renderPlanDonut() {
-        const rows = this.planRows.filter((r) => r.plan > 0);
-        const total = this.data.kpi_plan.total_plan;
-        this._draw("plan", {
-            type: "doughnut",
-            data: {
-                labels: rows.map((r) => r.label),
-                datasets: [{
-                    data: rows.map((r) => r.plan),
-                    backgroundColor: rows.map((r) => r.hex),
-                    borderWidth: 2,
-                    borderColor: "#fff",
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: "68%",
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: { label: (ctx) => " " + ctx.label + ": " + this.fmtBaht(ctx.parsed) },
-                    },
-                },
-            },
-            plugins: [centerTextPlugin(() => ({ title: "เจ้าหนี้รวม", value: formatNumber(total) }))],
         });
     }
 
