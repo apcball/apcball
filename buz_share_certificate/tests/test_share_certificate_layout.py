@@ -1,6 +1,9 @@
 from io import BytesIO
 
 from PyPDF2 import PdfFileReader
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LTFigure, LTImage
+from reportlab.lib.units import mm
 from lxml import html as lxml_html
 
 from odoo import Command
@@ -132,6 +135,12 @@ class TestShareCertificateLayout(TransactionCase):
         self.assertIn('left:42.5mm;top:24.0mm;font-size:10.0pt;', html)
         self.assertIn('Coordinate Test Company', html)
 
+        pdf, _content_type = report._render_qweb_pdf(report.report_name, certificate.ids)
+        page = next(extract_pages(BytesIO(pdf)))
+        images = [image for figure in page if isinstance(figure, LTFigure)
+                  for image in figure if isinstance(image, LTImage)]
+        self.assertTrue(any(abs(image.x0 - 42.5 * mm) < 1 for image in images))
+
     def test_paper_margins_apply_to_preview_and_print(self):
         config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')
         report = self.env.ref('buz_share_certificate.action_report_share_certificate')
@@ -146,6 +155,7 @@ class TestShareCertificateLayout(TransactionCase):
             report.paperformat_id,
             self.env.ref('buz_share_certificate.paperformat_share_certificate'),
         )
+        self.assertTrue(report.paperformat_id.disable_shrinking)
         self.assertEqual(
             (report.paperformat_id.margin_top, report.paperformat_id.margin_bottom,
              report.paperformat_id.margin_left, report.paperformat_id.margin_right),
@@ -174,6 +184,23 @@ class TestShareCertificateLayout(TransactionCase):
         page = reader.getPage(0)
         self.assertAlmostEqual(float(page.mediaBox.getWidth()), 841.89, delta=2)
         self.assertAlmostEqual(float(page.mediaBox.getHeight()), 595.28, delta=2)
+        rendered_page = next(extract_pages(BytesIO(pdf)))
+        images = [image for figure in rendered_page if isinstance(figure, LTFigure)
+                  for image in figure if isinstance(image, LTImage)]
+        self.assertTrue(any(
+            abs(image.x0 - 22 * mm) < 1
+            and abs(image.y1 - (rendered_page.height - 24 * mm)) < 1
+            for image in images
+        ))
+        self.assertTrue(any(
+            abs(image.x0 - 139.5 * mm) < 1
+            and abs(image.y1 - (rendered_page.height - 33 * mm)) < 1
+            for image in images
+        ))
+
+        second = self.env['buz.share.certificate.print.wizard'].create({'company_name': 'Second Page'})
+        pdf, _content_type = report._render_qweb_pdf(report.report_name, [certificate.id, second.id])
+        self.assertEqual(PdfFileReader(BytesIO(pdf)).getNumPages(), 2)
 
     def test_invalid_paper_margins_are_rejected(self):
         config = self.env.ref('buz_share_certificate.share_certificate_layout_config_default')

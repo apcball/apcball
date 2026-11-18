@@ -8,7 +8,7 @@
                 <div class="page share-certificate-page"
                      t-attf-style="width:{{297 - layout.margin_left - layout.margin_right}}mm;height:{{210 - layout.margin_top - layout.margin_bottom}}mm;">
                     <style type="text/css">
-                        body.container-fluid { margin: 0; padding: 0; }
+                        body.container, body.container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; }
                         @font-face {
                             font-family: 'Sarabun';
                             src: url('/buz_share_certificate/static/fonts/Sarabun-Regular.ttf') format('truetype');
@@ -97,6 +97,7 @@
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
+        <field name="disable_shrinking" eval="True"/>
     </record>
     </data>
 
