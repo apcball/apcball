@@ -13,6 +13,11 @@
     'author': 'BUZ Team',
     'website': 'https://www.buzteam.com',
     'depends': ['base', 'account', 'sale', 'buz_invoice_view', 'buz_dispatch_document'],
+    'assets': {
+        'web.assets_backend': [
+            'buz_accounting_etax/static/src/css/etax_state_badge.css',
+        ],
+    },
     'data': [
         'security/ir.model.access.csv',
         'data/etax_data.xml',

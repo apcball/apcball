@@ -189,11 +189,12 @@
                 <field name="document_date"/>
                 <field name="invoice_total"/>
                 <field name="transaction_code"/>
-                <field name="state" widget="badge"
+                <field name="state" widget="badge" class="o_etax_state_badge"
                     decoration-muted="state=='draft'"
                     decoration-warning="state=='sending'"
                     decoration-info="state=='pending'"
                     decoration-success="state=='sent'"
+                    decoration-bf="state=='cancel'"
                     decoration-danger="state=='error'"/>
             </tree>
         </field>
