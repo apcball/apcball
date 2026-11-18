@@ -248,24 +248,26 @@ class TestShareCertificateLayout(TransactionCase):
         with self.assertRaises(UserError):
             config.action_preview_layout()
 
-    def test_layout_configuration_is_admin_only(self):
-        user = self.env['res.users'].create({
-            'name': 'Certificate Layout User',
-            'login': 'certificate-layout-user',
-            'groups_id': [Command.set([self.env.ref('base.group_user').id])],
-        })
-
-        with self.assertRaises(AccessError):
-            self.env['buz.share.certificate.layout.config'].with_user(user).check_access_rights('read')
-
-    def test_only_admin_can_delete_saved_certificate(self):
+    def test_certificate_access_roles(self):
         users = self.env['res.users']
         internal_group = self.env.ref('base.group_user').id
+        user_group = self.env.ref('buz_share_certificate.group_share_certificate_user').id
+        manager_group = self.env.ref('buz_share_certificate.group_share_certificate_manager').id
         admin_group = self.env.ref('base.group_system').id
+        unassigned = users.create({
+            'name': 'Certificate Unassigned User',
+            'login': 'certificate-unassigned-user',
+            'groups_id': [Command.set([internal_group])],
+        })
         regular = users.create({
             'name': 'Certificate Regular User',
             'login': 'certificate-regular-user',
-            'groups_id': [Command.set([internal_group])],
+            'groups_id': [Command.set([internal_group, user_group])],
+        })
+        manager = users.create({
+            'name': 'Certificate Manager User',
+            'login': 'certificate-manager-user',
+            'groups_id': [Command.set([internal_group, manager_group])],
         })
         admin = users.create({
             'name': 'Certificate Admin User',
@@ -275,11 +277,35 @@ class TestShareCertificateLayout(TransactionCase):
         certificates = self.env['buz.share.certificate.print.wizard']
         selected = certificates.create({'certificate_number': 'DELETE-001'})
         other = certificates.create({'certificate_number': 'KEEP-002'})
+        layout = self.env['buz.share.certificate.layout.config']
+        position = self.env['buz.share.certificate.layout.position']
+        report = self.env.ref('buz_share_certificate.action_report_share_certificate')
+
+        with self.assertRaises(AccessError):
+            certificates.with_user(unassigned).search([])
+        with self.assertRaises(AccessError):
+            report.with_user(unassigned)._render_qweb_pdf(report.report_name, selected.ids)
+
+        self.assertEqual(certificates.with_user(regular).search_count([]), 2)
+        regular_created = certificates.with_user(regular).create({'certificate_number': 'USER-003'})
+        regular_created.with_user(regular).write({'shareholder_name': 'User'})
+        self.assertEqual(regular_created.shareholder_name, 'User')
+        self.assertTrue(manager.has_group('buz_share_certificate.group_share_certificate_user'))
 
         with self.assertRaises(AccessError):
             selected.with_user(regular).unlink()
         self.assertTrue(selected.exists())
+        with self.assertRaises(AccessError):
+            layout.with_user(regular).check_access_rights('read')
+        with self.assertRaises(AccessError):
+            position.with_user(regular).check_access_rights('read')
 
-        selected.with_user(admin).unlink()
+        self.assertTrue(layout.with_user(manager).check_access_rights('write'))
+        self.assertTrue(position.with_user(manager).check_access_rights('write'))
+        self.assertEqual(certificates.with_user(manager).search_count([]), 3)
+        selected.with_user(manager).unlink()
         self.assertFalse(selected.exists())
-        self.assertTrue(other.exists())
+
+        self.assertTrue(layout.with_user(admin).check_access_rights('write'))
+        other.with_user(admin).unlink()
+        self.assertFalse(other.exists())

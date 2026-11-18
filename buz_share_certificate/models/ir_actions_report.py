@@ -24,6 +24,10 @@ class IrActionsReport(models.Model):
         if self._get_report(report_ref).report_name != REPORT_NAME or not res_ids:
             return super()._render_qweb_pdf(report_ref, res_ids=res_ids, data=data)
 
+        certificates = self.env['buz.share.certificate.print.wizard'].browse(res_ids)
+        certificates.check_access_rights('read')
+        certificates.check_access_rule('read')
+
         if not features.check('raqm'):
             raise UserError('ไม่สามารถพิมพ์ใบหุ้นได้: ระบบจัดรูปอักษรไทย RAQM ไม่พร้อมใช้งาน')
 

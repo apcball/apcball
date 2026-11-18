@@ -103,6 +103,7 @@
 
     <record id="action_report_share_certificate" model="ir.actions.report">
         <field name="name">พิมพ์ใบหุ้น</field>
+        <field name="groups_id" eval="[(4, ref('group_share_certificate_user')), (4, ref('base.group_system'))]"/>
         <field name="model">buz.share.certificate.print.wizard</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_share_certificate.report_share_certificate</field>

@@ -11,7 +11,7 @@
                             class="oe_highlight" icon="fa-print"/>
                     <button name="action_open_layout_config"
                             string="ตั้งค่าตำแหน่ง" type="object"
-                            groups="base.group_system" icon="fa-sliders"/>
+                            groups="buz_share_certificate.group_share_certificate_manager,base.group_system" icon="fa-sliders"/>
                 </header>
                 <sheet>
                     <group>
@@ -71,6 +71,7 @@
 
     <record id="action_share_certificate_wizard" model="ir.actions.act_window">
         <field name="name">กรอกข้อมูลใบหุ้น</field>
+        <field name="groups_id" eval="[(4, ref('group_share_certificate_user')), (4, ref('base.group_system'))]"/>
         <field name="res_model">buz.share.certificate.print.wizard</field>
         <field name="view_mode">tree,form</field>
         <field name="view_id" ref="view_share_certificate_print_wizard_tree"/>

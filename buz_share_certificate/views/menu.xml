@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_share_certificate_root" name="ใบหุ้น"
-              action="action_share_certificate_wizard" sequence="80"/>
+              action="action_share_certificate_wizard" sequence="80"
+              groups="buz_share_certificate.group_share_certificate_user,base.group_system"/>
 </odoo>

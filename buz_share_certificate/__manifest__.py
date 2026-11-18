@@ -1,11 +1,12 @@
 {
     'name': 'Share Certificate Print',
-    'version': '17.0.1.2.2',
+    'version': '17.0.1.2.3',
     'category': 'Accounting/Localizations',
     'summary': 'Fill and print a Thai share certificate',
     'license': 'LGPL-3',
     'depends': ['base', 'web'],
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'data/share_certificate_layout_data.xml',
         'data/share_certificate_layout_defaults.xml',

@@ -56,6 +56,7 @@
 
     <record id="action_share_certificate_layout_config" model="ir.actions.act_window">
         <field name="name">ตั้งค่าตำแหน่งพิมพ์ใบหุ้น</field>
+        <field name="groups_id" eval="[(4, ref('group_share_certificate_manager')), (4, ref('base.group_system'))]"/>
         <field name="res_model">buz.share.certificate.layout.config</field>
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_share_certificate_layout_config_form"/>
