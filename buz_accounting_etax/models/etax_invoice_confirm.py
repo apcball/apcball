@@ -23,6 +23,19 @@ class AccountMoveInherit(models.Model):
         ('fixed', 'Down payment (fixed amount)'),
     ], string='Invoice Payment Method', copy=False, help='Payment method used when creating this invoice from sale order')
 
+    def write(self, vals):
+        cancelling_invoice_ids = (
+            self.filtered(lambda move: move.state != 'cancel').ids
+            if vals.get('state') == 'cancel' else []
+        )
+        result = super().write(vals)
+        if cancelling_invoice_ids:
+            self.env['etax.transaction'].search([
+                ('invoice_id', 'in', cancelling_invoice_ids),
+                ('state', '=', 'draft'),
+            ]).write({'state': 'cancel'})
+        return result
+
     def action_post(self):
         """
         Override method action_post ที่ถูกเรียกเมื่อกดปุ่ม Confirm

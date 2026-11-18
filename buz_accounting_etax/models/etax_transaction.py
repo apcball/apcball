@@ -31,6 +31,7 @@ class EtaxTransaction(models.Model):
         ('pending', 'กำลังประมวลผล'),
         ('sent', 'ส่งสำเร็จ'),
         ('error', 'ข้อผิดพลาด'),
+        ('cancel', 'ยกเลิก'),
     ], 'สถานะ', default='draft')
 
     queued_date = fields.Datetime('วันที่เข้าคิว', readonly=True)
