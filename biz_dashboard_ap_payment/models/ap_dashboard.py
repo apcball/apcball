@@ -155,12 +155,205 @@ class ApDashboard(models.AbstractModel):
         return data
 
     @api.model
+    def get_vendor_detail(self, filters=None, partner_id=None):
+        """Document list behind one vendor row: bills due in the month, payments
+        made in the month, unpaid bills due next month and the month's POs. Same
+        filters / access rules as :meth:`get_dashboard_data`, scoped to one vendor."""
+        self._check_access()
+        f = self._normalize_filters(dict(filters or {}, partner_id=partner_id))
+        if not f['partner_id']:
+            return {'bills': [], 'payments': [], 'next_bills': [], 'pos': []}
+        return self.sudo()._vendor_detail(f)
+
+    def _vendor_detail(self, f):
+        def bill_row(bill, **extra):
+            v = self._bill_vals(bill, f)
+            row = {'id': bill.id, 'name': bill.name or bill.ref or '/', 'ref': bill.ref or '',
+                   'invoice_date': fields.Date.to_string(bill.invoice_date),
+                   'due_date': fields.Date.to_string(v['date']),
+                   'total': round(v['total'], 2), 'paid': round(v['paid'], 2),
+                   'residual': round(v['residual'], 2), 'is_cash': v['is_cash'],
+                   'project': v['project'][1], 'payment_state': bill.payment_state}
+            row.update(extra)
+            return row
+
+        bills, _lines = self._search_bills(self._bill_domain(f, f['date_from'], f['date_to']))
+        next_bills, _lines = self._search_bills(
+            self._bill_domain(f, f['next_from'], f['next_to'], unpaid_only=True))
+        payments = []
+        for bill, kind, amount in self._paid_actual_items(f):
+            payments.append(bill_row(bill, kind=kind, amount=round(amount, 2)))
+        pos = []
+        for po in self.env['purchase.order'].search(self._po_domain(f, f['date_from'], f['date_to'])):
+            v = self._po_vals(po, f)
+            pos.append({'id': po.id, 'name': po.name, 'date': fields.Date.to_string(v['date']),
+                        'approved': round(v['approved'], 2), 'billed': round(v['used'], 2),
+                        'remaining': round(v['remaining'], 2), 'project': v['project'][1]})
+        return {
+            'bills': sorted((bill_row(b) for b in bills), key=lambda r: (r['due_date'], r['name'])),
+            'payments': sorted(payments, key=lambda r: r['name']),
+            'next_bills': sorted((bill_row(b) for b in next_bills), key=lambda r: (r['due_date'], r['name'])),
+            'pos': sorted(pos, key=lambda r: r['name']),
+        }
+
+    @api.model
     def build_export(self, filters=None, sheet='all'):
         if sheet not in SHEETS:
             raise ValueError('Unknown sheet: %s' % sheet)
         # same cache entry as the screen: the export matches what the user sees
         data = self.get_dashboard_data(filters)
         return self._render_xlsx(data, sheet)
+
+    # ------------------------------------------------------------------
+    # Cache
+    # ------------------------------------------------------------------
+    @api.model
+    def build_paid_detail_export(self, filters=None):
+        """Document-level detail of the actual-paid card (card 2) for finance:
+        every bill payment, off-bill entry and director-loan repayment behind
+        the headline, reconciled to the dashboard figure."""
+        data = self.get_dashboard_data(filters)
+        f = self._normalize_filters(filters)
+        entries = sorted(self._paid_actual_entries(f), key=lambda e: (e['date'], e['pay_move'].name or ''))
+        others = sorted(
+            [v for v in self._other_expense_vals(f)
+             if v['category'][2] not in set(self.env['res.company'].browse(f['cids']).apd_loan_account_ids.ids)],
+            key=lambda v: (v['date'], v.get('move_name') or ''))
+        loan_lines = self._loan_repay_lines(f)
+        return self._render_paid_detail_xlsx(data, f, entries, others, loan_lines)
+
+    def _loan_repay_lines(self, f):
+        companies = self.env['res.company'].browse(f['cids'])
+        accounts = companies.apd_loan_account_ids
+        if not accounts or f['project_id'] or f['analytic_id'] or f['partner_id']:
+            return []
+        lines = self.env['account.move.line'].search([
+            ('account_id', 'in', accounts.ids), ('parent_state', '=', 'posted'),
+            ('company_id', 'in', f['cids']), ('date', '>=', f['date_from']),
+            ('date', '<=', f['date_to']), ('debit', '>', 0)], order='date, id')
+        return [{
+            'company': l.company_id.name, 'date': l.date, 'doc': l.move_id.name or '',
+            'ref': l.move_id.ref or l.name or '', 'account': '%s %s' % (l.account_id.code, l.account_id.name),
+            'in_bill': l.move_type in BILL_TYPES,
+            'amount': self._convert(l.debit, l.company_id.currency_id, l.company_id, l.date, f['currency']),
+        } for l in lines]
+
+    def _render_paid_detail_xlsx(self, data, f, entries, others, loan_lines):
+        import xlsxwriter
+
+        output = io.BytesIO()
+        book = xlsxwriter.Workbook(output, {'in_memory': True})
+        fmt = {
+            'title': book.add_format({'bold': True, 'font_size': 14}),
+            'head': book.add_format({'bold': True, 'font_color': '#FFFFFF', 'bg_color': '#305496',
+                                     'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True}),
+            'text': book.add_format({'border': 1}),
+            'money': book.add_format({'border': 1, 'num_format': '#,##0.00;[Red]-#,##0.00'}),
+            'bold': book.add_format({'bold': True}),
+            'foot': book.add_format({'bold': True, 'border': 1, 'top': 2}),
+            'foot_money': book.add_format({'bold': True, 'border': 1, 'top': 2,
+                                           'num_format': '#,##0.00;[Red]-#,##0.00'}),
+        }
+        pay = data['kpi_payment']
+        loan = data['kpi_loan']
+        month_label = data['filters']['month_label']
+        cash = [e for e in entries if e['kind'] == 'cash']
+        noncash = [e for e in entries if e['kind'] != 'cash']
+        kind_label = {'loan': 'เงินยืม / วงเงินกู้', 'note': 'ตั๋วเงินจ่าย', 'advance': 'เงินทดรองจ่าย'}
+
+        def table(name, heads, rows, widths, money_cols):
+            ws = book.add_worksheet(name)
+            for col, (head, width) in enumerate(zip(heads, widths)):
+                ws.write(0, col, head, fmt['head'])
+                ws.set_column(col, col, width)
+            for r, row in enumerate(rows, 1):
+                for col, val in enumerate(row):
+                    ws.write(r, col, val, fmt['money'] if col in money_cols else fmt['text'])
+            last = len(rows) + 1
+            ws.write(last, 0, 'รวม', fmt['foot'])
+            for col in range(1, len(heads)):
+                if col in money_cols and col == max(money_cols):
+                    ws.write_formula(last, col, '=SUM(%s2:%s%d)' % (_col(col), _col(col), last),
+                                     fmt['foot_money'], sum(r[col] for r in rows))
+                else:
+                    ws.write(last, col, '', fmt['foot'])
+            ws.freeze_panes(1, 0)
+            ws.autofilter(0, 0, max(last - 1, 1), len(heads) - 1)
+            return ws
+
+        def _col(i):
+            return xlsxwriter.utility.xl_col_to_name(i)
+
+        bill_rows = [[
+            i, e['bill'].company_id.name, str(e['date']), e['pay_move'].name or '', e['pay_move'].journal_id.name,
+            (e['bill'].commercial_partner_id or e['bill'].partner_id).name or '', e['bill'].name or '',
+            'ใบลดหนี้' if e['bill'].move_type == 'in_refund' else 'ใบแจ้งหนี้',
+            str(e['bill'].invoice_date or ''), str(e['bill'].invoice_date_due or ''),
+            round(abs(e['bill'].amount_total_signed), 2), round(e['amount'], 2),
+            e['pay_move'].ref or '', e['bill'].ref or '',
+        ] for i, e in enumerate(cash, 1)]
+        # summary
+        ws = book.add_worksheet('สรุป')
+        ws.set_column(0, 0, 62); ws.set_column(1, 3, 22)
+        ws.write(0, 0, 'สรุปยอดจ่ายจริง %s (สำหรับการเงินตรวจสอบ)' % month_label, fmt['title'])
+        ws.write(1, 0, 'ที่มา: Dashboard card 2 จ่ายชำระจริง · ข้อมูล ณ %s' % data['updated_at'])
+        for col, head in enumerate(['รายการ', 'ยอด Dashboard', 'ยอดจากรายละเอียดในไฟล์', 'ผลต่าง']):
+            ws.write(3, col, head, fmt['head'])
+        other_sum = sum(v['total'] for v in others)
+        loan_cash_sum = sum(l['amount'] for l in loan_lines if not l['in_bill'])
+        lines = [
+            ('1. จ่ายบิลเจ้าหนี้ (โอน / เช็ค / อื่น ๆ) ตามวันที่ชำระ', pay['paid_actual_cash'], sum(r[11] for r in bill_rows)),
+            ('2. รายจ่ายนอกบิล (เงินเดือน / ดอกเบี้ย ฯลฯ)', pay['other'], other_sum),
+            ('3. ชำระคืนเงินยืมกรรมการ (นอกบิล)', loan['repaid_cash'] if loan['configured'] else 0.0,
+             loan['repaid_cash'] if loan.get('has_manual') else loan_cash_sum),
+        ]
+        for i, (label, dash, detail) in enumerate(lines, 4):
+            ws.write(i, 0, label, fmt['text'])
+            ws.write(i, 1, dash, fmt['money'])
+            ws.write(i, 2, detail, fmt['money'])
+            ws.write_formula(i, 3, '=C%d-B%d' % (i + 1, i + 1), fmt['money'], detail - dash)
+        ws.write(7, 0, 'รวมจ่ายจริงในเดือน (ตรงกับ card 2)', fmt['foot'])
+        ws.write(7, 1, pay['cash_out'], fmt['foot_money'])
+        ws.write_formula(7, 2, '=SUM(C5:C7)', fmt['foot_money'], sum(l[2] for l in lines))
+        ws.write_formula(7, 3, '=C8-B8', fmt['foot_money'], sum(l[2] for l in lines) - pay['cash_out'])
+        ws.write(9, 0, 'ไม่นับเป็นเงินออกจากธนาคาร (sheet 3)', fmt['bold'])
+        for i, (label, key) in enumerate([('จ่ายบิลด้วยเงินยืม / วงเงินกู้', 'paid_actual_loan'),
+                                          ('จ่ายบิลด้วยตั๋วเงินจ่าย', 'paid_actual_note'),
+                                          ('จ่ายบิลด้วยเงินทดรองจ่าย', 'paid_actual_advance')], 10):
+            ws.write(i, 0, label); ws.write(i, 1, pay[key], fmt['money'])
+        notes = [
+            'หลักการนับ',
+            '• จ่ายบิล = ยอดที่ reconcile กับบิลเจ้าหนี้ (posted) โดยวันที่ reconcile อยู่ในเดือน ไม่ว่าบิลจะครบกำหนดเมื่อใด (ใบลดหนี้เป็นยอดติดลบ)',
+            '• ไม่นับการหักกลบบิลกับบิล และรายการผลต่างอัตราแลกเปลี่ยน',
+            '• รายจ่ายนอกบิล = รายการสมุดรายวันของบัญชีที่ตั้งค่าไว้ (เงินเดือน ดอกเบี้ย ฯลฯ) วันที่อยู่ในเดือน ไม่รวมกลับรายการ (reversal)',
+            '• การคืนเงินยืมกรรมการที่บันทึกผ่านบิล (sheet 4) จ่ายผ่านบิลอยู่แล้ว จึงอยู่ใน sheet 1 ไม่นับซ้ำ',
+        ]
+        if loan.get('has_manual'):
+            notes.append('• เดือนนี้มีการกรอกยอดเงินยืมกรรมการด้วยมือ ยอดข้อ 3 ใช้ตามที่กรอก')
+        for i, txt in enumerate(notes, 14):
+            ws.write(i, 0, txt, fmt['bold'] if i == 14 else None)
+
+        table('1.จ่ายบิลเจ้าหนี้',
+              ['ลำดับ', 'บริษัท', 'วันที่ชำระ', 'เลขที่เอกสารจ่าย', 'Journal', 'ผู้ขาย / เจ้าหนี้', 'เลขที่บิล',
+               'ประเภทเอกสาร', 'วันที่บิล', 'วันครบกำหนด', 'ยอดบิลรวม', 'ยอดที่จ่ายในเดือนนี้', 'อ้างอิงจ่าย', 'อ้างอิงบิล'],
+              bill_rows, [7, 34, 12, 18, 18, 34, 18, 12, 12, 12, 16, 18, 40, 40], {10, 11})
+        table('2.รายจ่ายนอกบิล', ['ลำดับ', 'วันที่', 'เลขที่เอกสาร', 'ผู้ขาย', 'บัญชี', 'ยอดเงิน'],
+              [[i, str(v['date']), v.get('move_name') or '', v['vendor'][1] if v.get('vendor') else '',
+                v['category'][1], round(v['total'], 2)] for i, v in enumerate(others, 1)],
+              [7, 12, 18, 24, 44, 16], {5})
+        table('3.จ่ายด้วยเงินยืม(ไม่นับ)',
+              ['ลำดับ', 'บริษัท', 'วันที่ชำระ', 'เลขที่เอกสารจ่าย', 'Journal', 'ผู้ขาย', 'เลขที่บิล', 'ประเภทการจ่าย', 'ยอดที่จ่าย'],
+              [[i, e['bill'].company_id.name, str(e['date']), e['pay_move'].name or '', e['pay_move'].journal_id.name,
+                (e['bill'].commercial_partner_id or e['bill'].partner_id).name or '', e['bill'].name or '',
+                kind_label.get(e['kind'], e['kind']), round(e['amount'], 2)] for i, e in enumerate(noncash, 1)],
+              [7, 34, 12, 18, 18, 30, 18, 18, 16], {8})
+        table('4.คืนเงินยืมกรรมการ',
+              ['ลำดับ', 'บริษัท', 'วันที่', 'เลขที่เอกสาร', 'บัญชี', 'หมายเหตุ', 'ผ่านบิล (นับใน sheet 1)', 'ยอดเงิน'],
+              [[i, l['company'], str(l['date']), l['doc'], l['account'], l['ref'],
+                'ใช่' if l['in_bill'] else 'ไม่ใช่', round(l['amount'], 2)] for i, l in enumerate(loan_lines, 1)],
+              [7, 34, 12, 18, 30, 24, 22, 16], {7})
+        book.close()
+        return output.getvalue()
 
     # ------------------------------------------------------------------
     # Cache
@@ -223,6 +416,8 @@ class ApDashboard(models.AbstractModel):
         date_from, date_to = _month_range(year, month)
         next_year, next_month = _next_month(year, month)
         next_from, next_to = _month_range(next_year, next_month)
+        prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+        prev_from, prev_to = _month_range(prev_year, prev_month)
         return {
             'month': month,
             'year': year,
@@ -237,6 +432,8 @@ class ApDashboard(models.AbstractModel):
             'date_to': date_to,
             'next_from': next_from,
             'next_to': next_to,
+            'prev_from': prev_from,
+            'prev_to': prev_to,
             'today': today,
         }
 
@@ -462,6 +659,25 @@ class ApDashboard(models.AbstractModel):
             domain.append(('payment_state', 'in', ('not_paid', 'partial')))
         return domain
 
+    def _overdue_domain(self, f):
+        """Unpaid posted bills whose due date is before the previous month
+        (หนี้ยกมา / Overdue); the previous month itself is its own bucket."""
+        domain = [
+            ('move_type', 'in', BILL_TYPES),
+            ('state', '=', 'posted'),
+            ('company_id', 'in', f['cids']),
+            ('payment_state', 'in', ('not_paid', 'partial')),
+            ('invoice_date_due', '!=', False),
+            ('invoice_date_due', '<', f['prev_from']),
+        ]
+        domain += self._project_domain(f, 'account.move')
+        scope = self._analytic_scope(f)
+        if scope is not None:
+            domain.append(('id', 'in', list(scope['bills'])))
+        if f['partner_id']:
+            domain.append(('commercial_partner_id', '=', f['partner_id']))
+        return domain
+
     def _search_bills(self, domain):
         """One query for the needed columns instead of loading every stored
         field of account.move, then warm the line / product caches in batch."""
@@ -490,12 +706,16 @@ class ApDashboard(models.AbstractModel):
         return result
 
     def _paid_actual_items(self, f):
+        """``[(bill, kind, amount)]`` of :meth:`_paid_actual_entries`."""
+        return [(e['bill'], e['kind'], e['amount']) for e in self._paid_actual_entries(f)]
+
+    def _paid_actual_entries(self, f):
         """Cash actually paid out in the month: vendor-bill payable lines
         reconciled with a payment / bank entry whose reconcile date falls in the
         month, whatever the bill's due date (bills + refunds, refunds negative).
         Bill-to-bill offsets and exchange-difference entries are not cash.
 
-        Returns ``[(bill, kind, amount)]`` - one per reconcile; ``kind`` is how the
+        Returns ``[{'bill', 'kind', 'amount', 'pay_move', 'date'}]`` - one per reconcile; ``kind`` is how the
         bill was settled, none of the first three being money out of the bank yet:
         ``loan`` = bank-loan drawdown (entry crediting one of the company's
         ``apd_loan_account_ids``, e.g. Trust Receipt); ``note`` = payable-note
@@ -564,28 +784,47 @@ class ApDashboard(models.AbstractModel):
                 kind = 'advance'
             else:
                 kind = 'cash'
-            items.append((bill_line.move_id, kind, amount * self._share(f, 'bills', bill_line.move_id.id)))
+            items.append({
+                'bill': bill_line.move_id, 'kind': kind,
+                'amount': amount * self._share(f, 'bills', bill_line.move_id.id),
+                'pay_move': other_move, 'date': partial.max_date,
+            })
         return items
 
     def _loan_kpi(self, f):
-        """Bank-loan (TR / PN ...) position of the configured loan accounts:
+        """Director-loan (เงินยืมกรรมการ) position of the configured loan accounts:
         drawn and repaid in the month, outstanding at month end (company
-        currency of each company, converted). Not filtered by vendor / project:
-        loan entries carry no bill link."""
+        currency of each company, converted). Loan entries carry no vendor /
+        project / analytic link, so with any of those filters set the loan
+        position is left out (``configured`` False) like the off-bill spend.
+
+        ``repaid`` is the ledger total; ``repaid_in_bills`` is the part booked
+        as a vendor-bill line on the loan account (a repayment paid through a
+        normal bill), whose payment already sits in the bill payments of the
+        actual-paid card, so ``repaid_cash`` (= repaid - repaid_in_bills) is what
+        the cash-out card adds on top. A manual entry replaces the ledger
+        figures and counts fully as cash."""
+        if f['project_id'] or f['analytic_id'] or f['partner_id']:
+            return {'configured': False, 'drawn': 0.0, 'repaid': 0.0, 'repaid_in_bills': 0.0,
+                    'repaid_cash': 0.0, 'outstanding': 0.0, 'accounts': [], 'has_manual': False}
         companies = self.env['res.company'].browse(f['cids'])
         accounts = companies.apd_loan_account_ids
-        kpi = {'configured': bool(accounts), 'drawn': 0.0, 'repaid': 0.0, 'outstanding': 0.0}
+        kpi = {'configured': bool(accounts), 'drawn': 0.0, 'repaid': 0.0,
+               'repaid_in_bills': 0.0, 'outstanding': 0.0}
         per_account = {acc.id: {'id': acc.id, 'code': acc.code, 'name': acc.name,
-                                'drawn': 0.0, 'repaid': 0.0, 'outstanding': 0.0}
+                                'drawn': 0.0, 'repaid': 0.0, 'repaid_in_bills': 0.0,
+                                'outstanding': 0.0}
                        for acc in accounts.sorted('code')}
         if not accounts:
             kpi['accounts'] = []
+            kpi['repaid_cash'] = 0.0
             kpi['has_manual'] = False
             return kpi
         Line = self.env['account.move.line']
         domain = [('account_id', 'in', accounts.ids), ('parent_state', '=', 'posted'),
                   ('company_id', 'in', f['cids']), ('date', '<=', f['date_to'])]
-        for line in Line.search_fetch(domain, ['company_id', 'account_id', 'date', 'debit', 'credit']):
+        for line in Line.search_fetch(
+                domain, ['company_id', 'account_id', 'date', 'debit', 'credit', 'move_type']):
             company = line.company_id
             conv = lambda amount: self._convert(
                 amount, company.currency_id, company, line.date, f['currency'])
@@ -598,6 +837,11 @@ class ApDashboard(models.AbstractModel):
                 kpi['repaid'] += conv(line.debit)
                 acc['drawn'] += conv(line.credit)
                 acc['repaid'] += conv(line.debit)
+                if line.move_type in BILL_TYPES:
+                    # repayment booked through a vendor bill: its payment is already
+                    # counted by payment date in the bill payments
+                    kpi['repaid_in_bills'] += conv(line.debit)
+                    acc['repaid_in_bills'] += conv(line.debit)
         # manual entries of the month override the ledger figures of that account
         manual = self.env['biz.ap.dashboard.loan.manual'].sudo().search([
             ('company_id', 'in', f['cids']), ('year', '=', f['year']),
@@ -609,7 +853,7 @@ class ApDashboard(models.AbstractModel):
             if not acc.get('manual'):
                 # first manual row of this account: drop the ledger figures of the account
                 # (a second company's row for the same account id cannot exist: accounts are per company)
-                acc.update(drawn=0.0, repaid=0.0, outstanding=0.0, manual=True)
+                acc.update(drawn=0.0, repaid=0.0, repaid_in_bills=0.0, outstanding=0.0, manual=True)
             acc['drawn'] += conv(rec.drawn)
             acc['repaid'] += conv(rec.repaid)
             acc['outstanding'] += conv(rec.outstanding)
@@ -617,12 +861,16 @@ class ApDashboard(models.AbstractModel):
         kpi = {'configured': kpi['configured'],
                'drawn': sum(a['drawn'] for a in per_account.values()),
                'repaid': sum(a['repaid'] for a in per_account.values()),
+               'repaid_in_bills': sum(a['repaid_in_bills'] for a in per_account.values()),
                'outstanding': sum(a['outstanding'] for a in per_account.values())}
         result = {key: (round(val, 2) if key != 'configured' else val) for key, val in kpi.items()}
         # per configured loan account (e.g. 212100 PN bank loan / 212200 TR)
-        result['accounts'] = [
-            {k: (round(v, 2) if isinstance(v, float) else v) for k, v in acc.items()}
-            for acc in per_account.values()]
+        result['repaid_cash'] = round(result['repaid'] - result['repaid_in_bills'], 2)
+        result['accounts'] = []
+        for acc in per_account.values():
+            acc['repaid_cash'] = acc['repaid'] - acc['repaid_in_bills']
+            result['accounts'].append(
+                {k: (round(v, 2) if isinstance(v, float) else v) for k, v in acc.items()})
         result['has_manual'] = bool(manual)
         return result
 
@@ -681,6 +929,8 @@ class ApDashboard(models.AbstractModel):
                 'vendor': self._vendor_bucket(line.partner_id),
                 'project': NO_PROJECT,
                 'category': self._category_bucket(False, line.account_id),
+                'move_id': line.move_id.id,
+                'move_name': line.move_id.name or line.move_id.ref or '',
             })
         return out
 
@@ -890,8 +1140,19 @@ class ApDashboard(models.AbstractModel):
         if actual_bills:
             actual_bills_rs, actual_lines = self._search_bills([('id', 'in', list(actual_bills))])
             actual_bills = {b.id: b for b in actual_bills_rs}
+        paid_bucket = {'overdue': 0.0, 'prev_due': 0.0, 'month': 0.0, 'prepay': 0.0}
         for bill, kind, amount in actual_items:
             bill = actual_bills.get(bill.id, bill)
+            if kind == 'cash':
+                due = bill.invoice_date_due or bill.invoice_date
+                if not due or due > f['date_to']:
+                    paid_bucket['prepay'] += amount
+                elif due >= f['date_from']:
+                    paid_bucket['month'] += amount
+                elif due >= f['prev_from']:
+                    paid_bucket['prev_due'] += amount
+                else:
+                    paid_bucket['overdue'] += amount
             v = {'vendor': self._vendor_bucket(bill.commercial_partner_id or bill.partner_id),
                  'project': self._project_bucket(self._project_of(bill))}
             amounts = {'act_total': amount if kind == 'cash' else 0.0, 'act_%s' % kind: amount}
@@ -1065,7 +1326,7 @@ class ApDashboard(models.AbstractModel):
         # employee advances are not cash out yet.
         kpi_payment['cash_out'] = (
             kpi_payment['paid_actual_cash'] + kpi_payment['other']
-            + (kpi_loan['repaid'] if kpi_loan['configured'] else 0.0))
+            + (kpi_loan['repaid_cash'] if kpi_loan['configured'] else 0.0))
         for key in ('total', 'cash', 'credit', 'paid', 'residual', 'paid_actual',
                     'paid_actual_loan', 'paid_actual_note', 'paid_actual_advance',
                     'paid_actual_cash', 'other', 'cash_out'):
@@ -1077,6 +1338,22 @@ class ApDashboard(models.AbstractModel):
             kpi_request[state]['amount'] = round(kpi_request[state]['amount'], 2)
         kpi_request['total'] = round(sum(kpi_request[s]['amount'] for s in REQ_STATES), 2)
 
+        # card 3 breakdown: plan + approved extra requests (card 4) vs open PO
+        # (reserved), received-not-billed POs and billed (used) commitments
+        po_received = sum(self._po_vals(po, f)['remaining'] for po in pos)
+        total_budget = kpi_budget['approved'] + kpi_request['approved']['amount']
+        spent = kpi_budget['reserved'] + po_received + kpi_budget['used']
+        kpi_budget.update({
+            'extra': round(kpi_request['approved']['amount'], 2),
+            'total': round(total_budget, 2),
+            'po_open': kpi_budget['reserved'],
+            'po_received': round(po_received, 2),
+            'po_billed': kpi_budget['used'],
+            'remaining': round(total_budget - spent, 2),
+            'over': round(max(0.0, spent - total_budget), 2),
+            'pct': _pct(spent, total_budget),
+        })
+
         actual_total = kpi_payment['paid_actual']
         for kind in ('loan', 'note', 'advance', 'cash'):
             kpi_payment['paid_actual_%s_pct' % kind] = _pct(kpi_payment['paid_actual_%s' % kind], actual_total)
@@ -1084,8 +1361,16 @@ class ApDashboard(models.AbstractModel):
         kpi_payment['cash_out_bills_pct'] = _pct(kpi_payment['paid_actual'], cash_out_total)
         kpi_payment['cash_out_other_pct'] = _pct(kpi_payment['other'], cash_out_total)
         for acc in kpi_loan['accounts']:
-            acc['repaid_pct'] = _pct(acc['repaid'], cash_out_total)
-        kpi_payment['cash_out_loan_pct'] = _pct(kpi_loan['repaid'] if kpi_loan['configured'] else 0.0, cash_out_total)
+            acc['repaid_pct'] = _pct(acc['repaid_cash'], cash_out_total)
+        by_name = OrderedDict()
+        for acc in kpi_loan['accounts']:
+            by_name[acc['name']] = by_name.get(acc['name'], 0.0) + acc['repaid_cash']
+        kpi_loan['repay_rows'] = [
+            {'name': name, 'repaid': round(amount, 2), 'repaid_pct': _pct(amount, cash_out_total)}
+            for name, amount in by_name.items() if abs(amount) > 0.005]
+        kpi_payment['cash_out_loan_pct'] = _pct(kpi_loan['repaid_cash'] if kpi_loan['configured'] else 0.0, cash_out_total)
+
+        kpi_plan = self._plan_kpi(f, kpi_payment, kpi_loan, paid_bucket, kpi_forecast['other'])
 
         tables = {}
         for tab, data in rows.items():
@@ -1116,6 +1401,7 @@ class ApDashboard(models.AbstractModel):
             'kpi_request': kpi_request,
             'kpi_forecast': kpi_forecast,
             'kpi_other': kpi_other,
+            'kpi_plan': kpi_plan,
             'actual_vendors': [
                 {'id': r['id'], 'name': r['name'], 'total': r['act_total'], 'loan': r['act_loan'],
                  'note': r['act_note'], 'advance': r['act_advance'], 'cash': r['act_cash'],
@@ -1170,6 +1456,63 @@ class ApDashboard(models.AbstractModel):
                            'งบประมาณตามแผนรายเดือน (เฉพาะบรรทัดงบของโครงการที่เลือก)'
                            if f['project_id'] else
                            'งบประมาณตามแผนรายเดือน (ไม่กรองตามร้านค้า)'),
+        }
+
+    def _plan_kpi(self, f, kpi_payment, kpi_loan, paid_bucket, forecast_other):
+        """Card 1 (แผนการใช้เงิน) and card 2 (จ่ายจริง vs แผน). Plan rows:
+        overdue (unpaid, due before last month), last month's unpaid due, this
+        month's bills, off-bill spend. Actual = cash paid in the month, split
+        by the due bucket of the settled bill (due after month end = prepay)."""
+        vendors = set()
+
+        def residual(domain):
+            bills, _lines = self._search_bills(domain)
+            total = 0.0
+            for bill in bills:
+                v = self._bill_vals(bill, f)
+                total += v['residual']
+                if abs(v['residual']) > 0.005:
+                    vendors.add(bill.commercial_partner_id.id or bill.partner_id.id)
+            return total, len(bills)
+
+        overdue, overdue_n = residual(self._overdue_domain(f))
+        prev_due, prev_n = residual(self._bill_domain(f, f['prev_from'], f['prev_to'], unpaid_only=True))
+        # this month's bills still unpaid also count as creditors (paid ones do not)
+        unpaid_month = self.env['account.move'].search_fetch(
+            self._bill_domain(f, f['date_from'], f['date_to'], unpaid_only=True),
+            ['commercial_partner_id', 'partner_id'])
+        vendors.update((m.commercial_partner_id or m.partner_id).id for m in unpaid_month)
+        month_spend = kpi_payment['total'] - kpi_payment['other']
+        salary_other = kpi_payment['other']                # actual off-bill spend this month
+        salary_plan = forecast_other                       # = card 5 forecast (3-month avg)
+        plan_rows = [
+            ('overdue', 'ยอดหนี้ยกมา (Overdue)', overdue, paid_bucket['overdue']),
+            ('month', 'ยอดการใช้งบประมาณ', month_spend, paid_bucket['month']),
+            ('other', 'ประมาณการเงินเดือน + รายจ่ายอื่นๆ', salary_plan, salary_other),
+            ('prepay', 'จ่ายชำระล่วงหน้า', 0.0, paid_bucket['prepay']),
+        ]
+        for i, repay in enumerate(kpi_loan.get('repay_rows', [])):
+            plan_rows.append(('loan%d' % i, 'คืนเงินต้น %s' % repay['name'], 0.0, repay['repaid']))
+        rows = [{
+            'key': key, 'name': name, 'plan': round(plan, 2), 'actual': round(actual, 2),
+            'diff': round(actual - plan, 2), 'pct': _pct(actual, plan) if plan else None,
+        } for key, name, plan, actual in plan_rows]
+        total_plan = sum(r['plan'] for r in rows)
+        total_actual = sum(r['actual'] for r in rows)
+        return {
+            'overdue': round(overdue, 2),
+            'prev_due': round(prev_due, 2),
+            'month': round(month_spend, 2),
+            'other': round(salary_plan, 2),
+            'total': round(overdue + month_spend + salary_plan, 2),
+            'creditor_count': len(vendors),
+            'bill_count': overdue_n + prev_n + len(unpaid_month),
+            'rows': rows,
+            'footer': {
+                'plan': round(total_plan, 2), 'actual': round(total_actual, 2),
+                'diff': round(total_actual - total_plan, 2),
+                'pct': _pct(total_actual, total_plan) if total_plan else None,
+            },
         }
 
     @staticmethod
@@ -1290,13 +1633,13 @@ class ApDashboard(models.AbstractModel):
         ]
         if loan['configured']:
             actual_lines += [
-                ('   - ชำระคืนเงินกู้ (เงินต้น)', loan['repaid'], pay['cash_out_loan_pct']),
+                ('   - ชำระคืนเงินกู้ (เงินต้น)', loan['repaid_cash'], pay['cash_out_loan_pct']),
                 ('เบิกเงินกู้ในเดือน', loan['drawn'], None),
                 ('สินเชื่อคงค้าง ณ สิ้นเดือน', loan['outstanding'], None),
             ]
             for acc in loan['accounts']:
                 actual_lines += [
-                    ('   %s %s - ชำระคืนเงินต้น' % (acc['code'], acc['name']), acc['repaid'], None),
+                    ('   %s %s - ชำระคืนเงินต้น' % (acc['code'], acc['name']), acc['repaid_cash'], None),
                     ('   %s %s - เบิกในเดือน' % (acc['code'], acc['name']), acc['drawn'], None),
                     ('   %s %s - คงค้างสิ้นเดือน' % (acc['code'], acc['name']), acc['outstanding'], None),
                 ]
@@ -1309,10 +1652,14 @@ class ApDashboard(models.AbstractModel):
         row = self._xlsx_block(ws, row, '2. จ่ายจริงในเดือน (%s)' % filters['month_label'], actual_lines, fmt)
         budget = data['kpi_budget']
         row = self._xlsx_block(ws, row, '3. ยอดการใช้งบประมาณ', [
-            ('งบประมาณที่ได้รับอนุมัติ', budget['approved'], None),
-            ('งบผูกพันจาก PO', budget['reserved'], None),
-            ('งบใช้จริง (รับสินค้า/บริการแล้ว)', budget['used'], None),
-            ('งบคงเหลือ', budget['remaining'], None),
+            ('งบประมาณที่ตั้งไว้', budget['approved'], None),
+            ('งบประมาณเพิ่มเติม (ใบขอที่อนุมัติแล้ว)', budget['extra'], None),
+            ('เปิด PO (MR / PR / PO Draft · Reserve)', budget['po_open'], None),
+            ('รับของ (PO ที่ยังไม่ตั้งบิล)', budget['po_received'], None),
+            ('ตั้งหนี้ (Use · บิล Draft / Post)', budget['po_billed'], None),
+            ('ใช้เกินงบประมาณ' if budget['over'] else 'งบคงเหลือ',
+             budget['over'] or budget['remaining'], None),
+            ('รวมงบประมาณ', budget['total'], None),
             ('% ใช้แล้ว', None, budget['pct']),
         ], fmt)
         req = data['kpi_request']
@@ -1353,7 +1700,7 @@ class ApDashboard(models.AbstractModel):
                 row += 1
             row += 1
 
-        ws.write(row, 0, 'สัดส่วนยอดจ่ายประจำเดือนตามร้านค้า', fmt['h2'])
+        ws.write(row, 0, 'สัดส่วนการใช้เงินประจำเดือน', fmt['h2'])
         row += 1
         for col, label in enumerate(('ร้านค้า', 'ยอด', '%')):
             ws.write(row, col, label, fmt['head'])

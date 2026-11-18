@@ -662,7 +662,9 @@ class TestApDashboard(TransactionCase):
         # the two confirmed plans created in setUpClass (100M, March) are visible
         self.assertGreaterEqual(budget['approved'] - self.baseline['kpi_budget']['approved'], 100000000.0 - 0.01)
         self.assertAlmostEqual(
-            budget['remaining'], budget['approved'] - budget['reserved'] - budget['used'], places=2)
+            budget['remaining'],
+            budget['total'] - budget['po_open'] - budget['po_received'] - budget['po_billed'], delta=0.02)
+        self.assertAlmostEqual(budget['total'], budget['approved'] + budget['extra'], places=2)
         self.assertTrue(budget['scope_note'])
         # project / vendor filters do not change the plan-level KPI
         filtered = self._data(partner_id=self.v1.id)
@@ -757,6 +759,38 @@ class TestApDashboard(TransactionCase):
         self.assertAlmostEqual(
             after['kpi_request']['pending']['amount'] - before['kpi_request']['pending']['amount'],
             200.0, places=2)
+
+    def test_plan_overdue_and_prev_due(self):
+        self._bill(self.v1, D(1, 10), 1000.0, due=D(1, 20))   # due before previous month -> overdue
+        self._bill(self.v1, D(2, 1), 400.0, due=D(2, 15))     # due previous month: shown, not in total
+        self._bill(self.v2, D(3, 1), 900.0, due=D(3, 15))     # this month: not overdue
+        payload = self._data()
+        plan, base = payload['kpi_plan'], self.baseline['kpi_plan']
+        rows = {r['key']: r for r in plan['rows']}
+        base_rows = {r['key']: r for r in base['rows']}
+        self.assertAlmostEqual(rows['overdue']['plan'] - base_rows['overdue']['plan'], 1000.0, places=2)
+        self.assertAlmostEqual(plan['prev_due'] - base['prev_due'], 400.0, places=2)
+        self.assertNotIn('prev_due', rows)
+        self.assertAlmostEqual(plan['total'], plan['overdue'] + plan['month'] + plan['other'], places=2)
+        self.assertGreaterEqual(plan['bill_count'] - base['bill_count'], 3)
+        for r in plan['rows']:
+            self.assertAlmostEqual(r['diff'], r['actual'] - r['plan'], places=2)
+        foot = plan['footer']
+        self.assertAlmostEqual(foot['diff'], foot['actual'] - foot['plan'], places=2)
+
+    def test_vendor_detail(self):
+        bill = self._bill(self.v1, D(3, 5), 1000.0, term=self.term_now)
+        self._bill(self.v2, D(3, 6), 300.0, term=self.term_now)
+        detail = self.engine.get_vendor_detail(self.F, self.v1.id)
+        self.assertIn(bill.id, [b['id'] for b in detail['bills']])
+        self.assertTrue(all(b['id'] != 0 for b in detail['bills']))
+        row = next(b for b in detail['bills'] if b['id'] == bill.id)
+        self.assertAlmostEqual(row['total'], 1000.0, places=2)
+        other = self.engine.get_vendor_detail(self.F, self.v2.id)
+        self.assertNotIn(bill.id, [b['id'] for b in other['bills']])
+        self.assertEqual(self.engine.get_vendor_detail(self.F, False)['bills'], [])
+        with self.assertRaises(AccessError):
+            self.env['biz.ap.dashboard'].with_user(self.plain_user).get_vendor_detail(self.F, self.v1.id)
 
     def test_payload_shape_and_serializable(self):
         payload = self._data()
