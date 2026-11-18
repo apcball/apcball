@@ -75,10 +75,7 @@ class AccountMove(models.Model):
                 continue
             target_date = move._get_bill_target_date()
             if target_date:
-                analytic_totals = {}
-                for line in move.invoice_line_ids:
-                    for account_id, amount in extract_analytic_amounts(line, self.env['monthly.budget.line']):
-                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+                analytic_totals = move._get_monthly_bill_analytic_totals()
                 grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                     self.env, target_date, move.company_id.id, analytic_totals,
                 )
@@ -203,7 +200,6 @@ class AccountMove(models.Model):
 
     def _sync_monthly_bill_budget(self):
         """Synchronize bill commitments based on source and current state."""
-        BudgetLine = self.env['monthly.budget.line']
         for move in self:
             if move.move_type not in ('in_invoice', 'in_refund'):
                 continue
@@ -234,10 +230,7 @@ class AccountMove(models.Model):
                     move._release_monthly_bill_commitments_for_document(states=('reserved',))
                 continue
 
-            analytic_totals = {}
-            for line in move.invoice_line_ids:
-                for account_id, amount in extract_analytic_amounts(line, BudgetLine):
-                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            analytic_totals = move._get_monthly_bill_analytic_totals()
 
             grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                 self.env, target_date, move.company_id.id, analytic_totals,
@@ -258,6 +251,22 @@ class AccountMove(models.Model):
             elif move.state == 'posted':
                 for plan, plan_totals in grouped_totals:
                     move._sync_monthly_bill_usage(plan, plan_totals, target_date)
+
+    def _get_monthly_bill_analytic_totals(self):
+        """Budget amount of the bill per analytic account (company currency).
+
+        ``price_subtotal`` is positive on vendor refund lines, but a refund gives
+        budget back, so its amounts are negated; otherwise a credit note would
+        be booked as extra consumption.
+        """
+        self.ensure_one()
+        BudgetLine = self.env['monthly.budget.line']
+        sign = -1.0 if self.move_type == 'in_refund' else 1.0
+        analytic_totals = {}
+        for line in self.invoice_line_ids:
+            for account_id, amount in extract_analytic_amounts(line, BudgetLine):
+                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + sign * amount
+        return analytic_totals
 
     def _get_related_purchase_order(self):
         """Return the PO(s) linked to this bill, if any."""
@@ -506,11 +515,7 @@ class AccountMove(models.Model):
             target_date = move._get_bill_target_date()
             if not target_date:
                 target_date = fields.Date.context_today(move)
-            analytic_totals = {}
-            BudgetLine = self.env['monthly.budget.line']
-            for line in move.invoice_line_ids:
-                for account_id, amount in extract_analytic_amounts(line, BudgetLine):
-                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            analytic_totals = move._get_monthly_bill_analytic_totals()
             grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                 self.env, target_date, move.company_id.id, analytic_totals,
             )
