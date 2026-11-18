@@ -663,7 +663,7 @@ class TestApDashboard(TransactionCase):
         self.assertGreaterEqual(budget['approved'] - self.baseline['kpi_budget']['approved'], 100000000.0 - 0.01)
         self.assertAlmostEqual(
             budget['remaining'],
-            budget['total'] - budget['po_open'] - budget['po_received'] - budget['po_billed'], delta=0.02)
+            budget['total'] - budget['po_open'] - budget['po_billed'], delta=0.02)
         self.assertAlmostEqual(budget['total'], budget['approved'] + budget['extra'], places=2)
         self.assertTrue(budget['scope_note'])
         # project / vendor filters do not change the plan-level KPI

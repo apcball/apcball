@@ -179,8 +179,7 @@
                         <div class="o_apd_rows o_apd_rows--box">
                             <div class="o_apd_row"><span>งบประมาณที่ตั้งไว้</span><b t-esc="fmtNum(data.kpi_budget.approved)"/></div>
                             <div class="o_apd_row"><span><i class="fa fa-plus-circle me-2"/>งบประมาณเพิ่มเติม</span><b t-esc="fmtNum(data.kpi_budget.extra)"/></div>
-                            <div class="o_apd_row"><span><i class="fa fa-shopping-cart me-2"/>เปิด PO <small class="text-muted">(MR / PR / PO Draft · Reserve)</small></span><b t-esc="fmtNum(data.kpi_budget.po_open)"/></div>
-                            <div class="o_apd_row"><span><i class="fa fa-cubes me-2"/>รับของ <small class="text-muted">(PO Purchase Order)</small></span><b t-esc="fmtNum(data.kpi_budget.po_received)"/></div>
+                            <div class="o_apd_row"><span><i class="fa fa-shopping-cart me-2"/>เปิด PO <small class="text-muted">(PR / PO Draft · Reserve)</small></span><b t-esc="fmtNum(data.kpi_budget.po_open)"/></div>
                             <div class="o_apd_row"><span><i class="fa fa-file-text-o me-2"/>ตั้งหนี้ <small class="text-muted">(Use · บิล Draft / Post)</small></span><b t-esc="fmtNum(data.kpi_budget.po_billed)"/></div>
                             <div t-if="data.kpi_budget.over" class="o_apd_row text-danger"><span>ใช้เกินงบประมาณ</span><b t-esc="fmtNum(data.kpi_budget.over)"/></div>
                             <div t-else="" class="o_apd_row"><span>งบคงเหลือ</span><b t-esc="fmtNum(data.kpi_budget.remaining)"/></div>

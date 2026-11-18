@@ -1339,15 +1339,13 @@ class ApDashboard(models.AbstractModel):
         kpi_request['total'] = round(sum(kpi_request[s]['amount'] for s in REQ_STATES), 2)
 
         # card 3 breakdown: plan + approved extra requests (card 4) vs open PO
-        # (reserved), received-not-billed POs and billed (used) commitments
-        po_received = sum(self._po_vals(po, f)['remaining'] for po in pos)
+        # (reserved) and billed (used) commitments
         total_budget = kpi_budget['approved'] + kpi_request['approved']['amount']
-        spent = kpi_budget['reserved'] + po_received + kpi_budget['used']
+        spent = kpi_budget['reserved'] + kpi_budget['used']
         kpi_budget.update({
             'extra': round(kpi_request['approved']['amount'], 2),
             'total': round(total_budget, 2),
             'po_open': kpi_budget['reserved'],
-            'po_received': round(po_received, 2),
             'po_billed': kpi_budget['used'],
             'remaining': round(total_budget - spent, 2),
             'over': round(max(0.0, spent - total_budget), 2),
@@ -1654,8 +1652,7 @@ class ApDashboard(models.AbstractModel):
         row = self._xlsx_block(ws, row, '3. ยอดการใช้งบประมาณ', [
             ('งบประมาณที่ตั้งไว้', budget['approved'], None),
             ('งบประมาณเพิ่มเติม (ใบขอที่อนุมัติแล้ว)', budget['extra'], None),
-            ('เปิด PO (MR / PR / PO Draft · Reserve)', budget['po_open'], None),
-            ('รับของ (PO ที่ยังไม่ตั้งบิล)', budget['po_received'], None),
+            ('เปิด PO (PR / PO Draft · Reserve)', budget['po_open'], None),
             ('ตั้งหนี้ (Use · บิล Draft / Post)', budget['po_billed'], None),
             ('ใช้เกินงบประมาณ' if budget['over'] else 'งบคงเหลือ',
              budget['over'] or budget['remaining'], None),
