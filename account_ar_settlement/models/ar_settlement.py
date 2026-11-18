@@ -26,21 +26,33 @@ class ArSettlement(models.Model):
         string='VAT Group', compute='_compute_vat_group', store=True,
         help='Invoices from partners sharing this VAT will be loaded.',
     )
-    trade_channel = fields.Selection([
-        ('shopee', 'Shopee'),
-        ('lazada', 'Lazada'),
-        ('nocnoc', 'Noc Noc'),
-        ('tiktok', 'Tiktok'),
-        ('spx', 'SPX'),
-        ('online_line_fb', 'ONLINE / Line + Facebook'),
-        ('offline_mogen_outlet', 'OFFLINE / Mogen Outlet'),
-        ('after_sale_service', 'After Sale Service'),
-        ('installation_service', 'Installation Service'),
-        ('own_channel_cdc', 'Own Channel (CDC)'),
-        ('other', 'Other'),
-    ], string='Trade Channel',
+    trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Trade Channel',
         states={'confirmed': [('readonly', True)]},
     )
+
+    _TRADE_CHANNEL_FALLBACK = [
+            ('shopee', 'Shopee'),
+            ('lazada', 'Lazada'),
+            ('nocnoc', 'Noc Noc'),
+            ('tiktok', 'Tiktok'),
+            ('spx', 'SPX'),
+            ('online_line_fb', 'ONLINE / Line + Facebook'),
+            ('offline_mogen_outlet', 'OFFLINE / Mogen Outlet'),
+            ('after_sale_service', 'After Sale Service'),
+            ('installation_service', 'Installation Service'),
+            ('own_channel_cdc', 'Own Channel (CDC)'),
+            ('other', 'Other'),
+    ]
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Same dynamic list as account.move.trade_channel (marketplace.channel)
+        when marketplace_settlement is installed; static fallback otherwise."""
+        if 'marketplace.channel' in self.env:
+            return self.env['marketplace.channel'].get_selection()
+        return list(self._TRADE_CHANNEL_FALLBACK)
 
     payment_date = fields.Date(
         string='Payment Date', required=True,
