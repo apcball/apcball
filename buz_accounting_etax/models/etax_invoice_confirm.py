@@ -99,18 +99,19 @@ class AccountMoveInherit(models.Model):
         etax_config = self.env['etax.config'].search([('active', '=', True)], limit=1)
         sale_order = self.env['sale.order'].search([('name', '=', move.sales_order_number)], limit=1)
 
-        # ตรวจสอบประเภท invoice จาก sale order หรือจากรายการสินค้า
-        invoice_type = move.advance_payment_method or 'delivered'
-
+        # คำนวณยอดมัดจำเฉพาะใบแจ้งหนี้ที่เป็น down payment จริงเท่านั้น
+        # เคส invoice ปกติที่มีสินค้า/บริการพิเศษ (เช่น service_policy = ordered_prepaid)
+        # ต้องไม่ถูกตีความเป็น deposit เพราะจะทำให้ tax basis กลายเป็น 0
         down_payment_lines = move.invoice_line_ids.filtered(lambda l: l.is_downpayment)
-    
-        # คำนวณผลรวม
-        total_amount = sum(down_payment_lines.mapped('price_subtotal'))
-        total_with_tax = sum(down_payment_lines.mapped('price_total'))
 
-        # คำนวณผลรวม Down payment สำหรับ invoice_type = delivered (ยอดเงินมัดจำ)
-        if invoice_type == 'delivered':
-            down_payment_product_lines = move.invoice_line_ids.filtered(lambda l: l.product_id.service_policy == 'ordered_prepaid')
+        total_amount = 0.0
+        if down_payment_lines:
+            total_amount = abs(sum(down_payment_lines.mapped('price_subtotal')))
+        elif move.advance_payment_method in ('percentage', 'fixed'):
+            # Fallback สำหรับข้อมูลเดิมที่อาจยังไม่มี is_downpayment บนบรรทัด
+            down_payment_product_lines = move.invoice_line_ids.filtered(
+                lambda l: l.product_id and getattr(l.product_id, 'service_policy', False) == 'ordered_prepaid'
+            )
             total_amount = abs(sum(down_payment_product_lines.mapped('price_subtotal')))
 
         if move.move_type == 'out_invoice': # Customers / Invoices
@@ -134,9 +135,16 @@ class AccountMoveInherit(models.Model):
         terms = move.narration
         narration = html2plaintext(terms) if terms else ""
 
-        # ค้นหา invoice จากชื่อที่อยู่ใน move.ref
+        # ค้นหา invoice ต้นทาง: ลำดับความน่าเชื่อถือจากมากไปน้อย
+        # 1) reversed_entry_id (ฟิลด์มาตรฐานของ Odoo เชื่อมโยงตรงจาก reversal wizard
+        #    หรือถูกตั้งค่าโดยโมดูลอื่น เช่น pos_lite เมื่อสร้างใบลดหนี้จากการคืนสินค้า)
         selected_invoice_id = False
-        if move.ref:
+        if move.reversed_entry_id and move.reversed_entry_id.state == 'posted':
+            selected_invoice_id = move.reversed_entry_id.id
+
+        # 2) ค้นหา invoice จากชื่อที่อยู่ใน move.ref (ใช้เมื่อไม่มี reversed_entry_id เช่น
+        #    เอกสารเก่าที่สร้างผ่าน reversal wizard แต่ฟิลด์ reversed_entry_id ไม่ถูกตั้งค่า)
+        if not selected_invoice_id and move.ref:
             # พยายามดึงชื่อ invoice จาก ref (เช่น "Reversal of: MIV-25120074, test")
             invoice_name = None
             if ': ' in move.ref:
@@ -155,7 +163,7 @@ class AccountMoveInherit(models.Model):
                 if related_invoice:
                     selected_invoice_id = related_invoice.id
 
-        # Fallback: credit note ที่ไม่มี reversal (ป้อน original_invoice_number จาก buz_custom_invoice)
+        # 3) Fallback: credit note ที่ไม่มี reversal (ป้อน original_invoice_number จาก buz_custom_invoice)
         if not selected_invoice_id and move.move_type == 'out_refund':
             if hasattr(move, 'original_invoice_number') and move.original_invoice_number:
                 related_invoice = self.env['account.move'].sudo().search([
@@ -184,7 +192,7 @@ class AccountMoveInherit(models.Model):
             'amount_vat': move.amount_tax,
             'net_amount_total': move.amount_total,
             'amount_total': move.amount_total,
-            'deposit': total_amount
+            'deposit': total_amount,
             # 'notes': narration or "",
             # 'notes': invoice_type,
         })

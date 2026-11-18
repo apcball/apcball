@@ -1,8 +1,10 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
+from psycopg2 import OperationalError
 import requests
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 
 _logger = logging.getLogger(__name__)
@@ -17,17 +19,22 @@ class EtaxTransaction(models.Model):
     document_id = fields.Char('เลขที่เอกสาร', required=False)
     document_type = fields.Selection([
         ('T03', 'ใบแจ้งหนี้/ใบกำกับภาษี'),
+        ('T04', 'ใบกำกับภาษีอย่างย่อ'),
         ('81', 'ใบลดหนี้'),
         ('80', 'ใบเพิ่มหนี้'),
     ], 'ประเภทเอกสาร', default='T03', required=True)
     
     state = fields.Selection([
         ('draft', 'ร่าง'),
+        ('queued', 'อยู่ในคิว'),
         ('sending', 'กำลังส่ง'),
         ('pending', 'กำลังประมวลผล'),
         ('sent', 'ส่งสำเร็จ'),
         ('error', 'ข้อผิดพลาด'),
     ], 'สถานะ', default='draft')
+
+    queued_date = fields.Datetime('วันที่เข้าคิว', readonly=True)
+    sent_date = fields.Datetime('วันที่ส่งสำเร็จ', readonly=True)
     
     journal_entry_memo = fields.Char(
         string='เลขที่อ้างอิง',
@@ -70,7 +77,10 @@ class EtaxTransaction(models.Model):
     # ข้อมูล API
     etax_config_id = fields.Many2one('etax.config', 'การตั้งค่า E-Tax', required=False)
     transaction_code = fields.Char('รหัสธุรกรรม E-Tax', readonly=True)
-    
+    invoice_user_id = fields.Many2one(
+        'res.users', string='Salesperson',
+        related='invoice_id.invoice_user_id', store=True, readonly=True)
+
     # ข้อมูลลูกค้า
     partner_id = fields.Many2one('res.partner', 'ลูกค้า', required=True)
     partner_tax_id = fields.Char('เลขประจำตัวผู้เสียภาษีลูกค้า')
@@ -84,6 +94,15 @@ class EtaxTransaction(models.Model):
         string='ใบสั่งขายอ้างอิง',
         domain="[('partner_id', '=', partner_id), ('state', 'in', ['sale', 'done'])]"
     )
+    
+    is_substitute = fields.Boolean('ใบแทน')
+    substitute_number = fields.Char('เลขที่ใบแทน')
+    substitute_reason_code = fields.Selection([
+        ('TIVC01', 'ชื่อผิด'),
+        ('TIVC02', 'ที่อยู่ผิด'),
+        ('TIVC99', 'อื่นๆ ระบุ'),
+    ], 'สาเหตุการออกเอกสารแทน')
+    substitute_reason = fields.Char('สาเหตุใบแทน')
     
     # วันที่
     document_date = fields.Datetime('วันที่เอกสาร', default=fields.Datetime.now)
@@ -177,6 +196,21 @@ class EtaxTransaction(models.Model):
                     'sale_order_ref': [('id', '=', False)]  # ไม่แสดงอะไรเลยถ้าไม่เลือก customer
                 }
             }
+    @api.onchange('is_substitute', 'invoice_id')
+    def _onchange_is_substitute(self):
+        # เมื่อติ๊ก checkbox ใบแทน ให้นำเลขที่ใบแจ้งหนี้มาต่อท้ายด้วยเลข running
+        for record in self:
+            if record.is_substitute and record.invoice_id:
+                base_number = record.invoice_id.name
+                # นับจำนวนใบแทนที่มีเลขฐานเดียวกันเพื่อสร้างเลข running
+                running = self.env['etax.transaction'].search_count([
+                    ('substitute_number', '=like', base_number + '-%'),
+                ]) + 1
+                record.substitute_number = '%s-%s' % (base_number, running)
+                record.selected_invoice_id = record.invoice_id
+            elif not record.is_substitute:
+                record.substitute_number = False
+                record.selected_invoice_id = False        
 
     @api.onchange('sale_order_ref')
     def _onchange_sale_order_ref(self):
@@ -396,31 +430,46 @@ class EtaxTransaction(models.Model):
                 "H03-DOCUMENT_ID": self.invoice_id.name or "", # เลขที่เอกสาร
                 "H04-DOCUMENT_ISSUE_DTM": self.document_date.strftime("%Y-%m-%dT00:00:00"), # วันที่ออกเอกสาร
                 "H05-CREATE_PURPOSE_CODE": (
-                    self.remark_dbn if self.document_type == '80'
+                    self.substitute_reason_code if self.document_type == 'T03' and self.is_substitute
                     else self.remark_cdn if self.document_type == '81'
+                    else self.remark_dbn if self.document_type == '80'
                     else ''
                 ),  # เหตุผลในการเพิ่ม/ลดหนี้
                 "H06-CREATE_PURPOSE": (
-                    dbn_label if self.document_type == '80'
+                    (self.substitute_reason if self.substitute_reason_code == 'TIVC99' else (dict(self._fields['substitute_reason_code'].selection).get(self.substitute_reason_code) or ''))
+                    if self.document_type == 'T03' and self.is_substitute
                     else cdn_label if self.document_type == '81'
+                    else dbn_label if self.document_type == '80'
                     else ''
                 ), # เหตุผลในการเพิ่ม/ลดหนี้
 
                 "H07-ADDITIONAL_REF_ASSIGN_ID": (
-                    self.selected_invoice_id.name
-                    if self.selected_invoice_id
-                    else self.invoice_id.original_invoice_number
-                    if hasattr(self.invoice_id, 'original_invoice_number') and self.invoice_id.original_invoice_number
-                    else self.invoice_id.name
-                ) if self.document_type in ('80', '81') else "", # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
+                    self.invoice_id.name
+                    if self.document_type == 'T03' and self.is_substitute
+                    else (
+                        self.selected_invoice_id.name
+                        if self.selected_invoice_id
+                        else self.invoice_id.original_invoice_number
+                        if hasattr(self.invoice_id, 'original_invoice_number') and self.invoice_id.original_invoice_number
+                        else self.invoice_id.name
+                    ) if self.document_type in ('80', '81') else ""
+                ), # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
                 "H08-ADDITIONAL_REF_ISSUE_DTM": (
-                    self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
-                    if self.selected_invoice_id
-                    else self.invoice_id.original_invoice_date.strftime("%Y-%m-%dT00:00:00")
-                    if hasattr(self.invoice_id, 'original_invoice_date') and self.invoice_id.original_invoice_date
-                    else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
-                ) if self.document_type in ('80', '81') else "", # วันที่ใบกำกับภาษีเดิม [CN, DN]
-                "H09-ADDITIONAL_REF_TYPE_CODE": self.document_type if self.document_type in ('80', '81') else "", # T03 = ว่าง
+                    fields.Date.context_today(self).strftime("%Y-%m-%dT00:00:00")
+                    if self.document_type == 'T03' and self.is_substitute
+                    else (
+                        self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
+                        if self.selected_invoice_id
+                        else self.invoice_id.original_invoice_date.strftime("%Y-%m-%dT00:00:00")
+                        if hasattr(self.invoice_id, 'original_invoice_date') and self.invoice_id.original_invoice_date
+                        else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
+                    ) if self.document_type in ('80', '81') else ""
+                ), # วันที่ใบกำกับภาษีเดิม [CN, DN]
+                "H09-ADDITIONAL_REF_TYPE_CODE": (
+                    'T03' if self.document_type == 'T03' and self.is_substitute
+                    else self.document_type if self.document_type in ('80', '81')
+                    else ""
+                ), # T03 = ว่าง
                 "H10-ADDITIONAL_REF_DOCUMENT_NAME": "",
                 "H11-DELIVERY_TYPE_CODE": "",
                 "H12-BUYER_ORDER_ASSIGN_ID": f"{self.sale_order_ref.client_order_ref or ''}", #invoice.custom_reference or "", # self.sale_order_ref.name or "", # ใบสั่งซื้อเลขที่ [T03]
@@ -457,7 +506,7 @@ class EtaxTransaction(models.Model):
                 # ข้อมูลลูกค้า
                 "B01-BUYER_ID": str(self.partner_id.id).zfill(6),
                 "B02-BUYER_NAME": self.partner_id.name[:100], # ผู้ซื้อ
-                "B03-BUYER_TAX_ID_TYPE": "OTHR" if not self.partner_id.vat or self.partner_id.vat == 'N/A' else "TXID",
+                "B03-BUYER_TAX_ID_TYPE": "OTHR" if self.partner_id.is_government_agency or not self.partner_id.vat or self.partner_id.vat == 'N/A' else "TXID",
                 "B04-BUYER_TAX_ID": self.partner_id.vat or "N/A", # เลขประจำตัวผู้เสียภาษีอากร
                 "B05-BUYER_BRANCH_ID": (self.partner_id.branch or "")[:5] if self.partner_id.branch else '00000', #self.partner_branch_id, # รหัสสาขาผู้ซื้อ
                 "B06-BUYER_CONTACT_PERSON_NAME": "",
@@ -547,14 +596,14 @@ class EtaxTransaction(models.Model):
                 "F48-TAX_TOTAL_AMOUNT": 
                 (
                     f"{abs(self.amount_tax):.2f}" if self.document_type in ['80', '81']
-                    else f"{abs(self.amount_vat):.2f}" if self.document_type == 'T03'
+                    else f"{abs(self.amount_vat):.2f}" if self.document_type in ('T03', 'T04')
                     else "0.00"
                 ), # รวมจำนวนเงิน [T03, CN, DN]
                 "F49-TAX_TOTAL_CURRENCY_CODE": currency_code,
                 "F50-GRAND_TOTAL_AMOUNT":
                 (
                     f"{abs(self.amount_total):.2f}" if self.document_type in ['80', '81']
-                    else f"{abs(self.net_amount_total):.2f}" if self.document_type == 'T03'
+                    else f"{abs(self.net_amount_total):.2f}" if self.document_type in ('T03', 'T04')
                     else "0.00"
                 ), # รวมจำนวนเงิน [T03, CN, DN]
                 "F51-GRAND_TOTAL_CURRENCY_CODE": currency_code,
@@ -608,16 +657,27 @@ class EtaxTransaction(models.Model):
         
         return etax_data
 
-    def send_to_etax(self):
-        """ส่งข้อมูลไปยัง E-Tax API"""
+    def _send_to_etax_core(self):
+        """
+        ส่งข้อมูลไปยัง E-Tax API จริง (ไม่มี UI notification)
+        ใช้ร่วมกันทั้งปุ่มส่งเดี่ยว และตัวประมวลผลคิว (_process_queue_batch)
+        คืนค่า dict: {'success': bool, 'title': str, 'message': str, 'notif_type': str}
+        """
         self.ensure_one()
 
+        # กันการส่งซ้ำ (เช่น ถูกเรียกซ้ำจากคิว ในขณะที่กำลังประมวลผล/ส่งสำเร็จไปแล้ว)
+        if self.state not in ('draft', 'queued', 'error'):
+            return {
+                'success': False,
+                'title': 'ข้ามรายการ',
+                'message': f'เอกสารอยู่ในสถานะ "{self.state}" แล้ว ไม่ส่งซ้ำ',
+                'notif_type': 'warning',
+            }
+
         etax_data = self.prepare_etax_data()
-        # self.notes = json.dumps(etax_data, ensure_ascii=False, indent=2)
         try:
             self.state = 'sending'
-            
-            # ส่งข้อมูลไป API
+
             headers = {
                 'Content-Type': 'application/json',
                 'Authorization': f"Bearer {self.etax_config_id.api_key}"
@@ -629,36 +689,26 @@ class EtaxTransaction(models.Model):
                 headers=headers,
                 timeout=30
             )
-            
-            # บันทึกการตอบกลับ
+
             self.api_response = response.text
-            
+
             if response.status_code == 200:
                 result = response.json()
-                
+
                 if result.get('status') == 'OK':
-                    # อัพเดทข้อมูลเมื่อสำเร็จ
                     self.write({
                         'state': 'sent',
+                        'sent_date': fields.Datetime.now(),
                         'transaction_code': result.get('transactionCode'),
                         'pdf_url': result.get('pdfURL'),
                         'xml_url': result.get('xmlURL'),
                         'error_message': '',
                     })
-                    
                     return {
-                        'type': 'ir.actions.client',
-                        'tag': 'display_notification',
-                        'params': {
-                            'title': 'สำเร็จ!',
-                            'message': f'ส่งข้อมูลไปยัง E-Tax สำเร็จ\nรหัสธุรกรรม: {result.get("transactionCode")}',
-                            'type': 'success',
-                            'sticky': False,
-                            'next': {
-                                'type': 'ir.actions.client',
-                                'tag': 'reload',
-                            }
-                        }
+                        'success': True,
+                        'title': 'สำเร็จ!',
+                        'message': f'ส่งข้อมูลไปยัง E-Tax สำเร็จ\nรหัสธุรกรรม: {result.get("transactionCode")}',
+                        'notif_type': 'success',
                     }
                 elif result.get('status') == 'PC':
                     # e-Tax รับเอกสารแล้ว และกำลังประมวลผลแบบ async (PC001 = Processing Code)
@@ -669,66 +719,190 @@ class EtaxTransaction(models.Model):
                         'error_message': '',
                     })
                     return {
-                        'type': 'ir.actions.client',
-                        'tag': 'display_notification',
-                        'params': {
-                            'title': 'กำลังประมวลผล',
-                            'message': (f'E-Tax รับเอกสารแล้ว และกำลังประมวลผล\n'
-                                        f'รหัสธุรกรรม: {result.get("transactionCode")}'),
-                            'type': 'warning',
-                            'sticky': True,
-                            'next': {'type': 'ir.actions.client', 'tag': 'reload'},
-                        }
+                        'success': True,
+                        'title': 'กำลังประมวลผล',
+                        'message': (f'E-Tax รับเอกสารแล้ว และกำลังประมวลผล\n'
+                                    f'รหัสธุรกรรม: {result.get("transactionCode")}'),
+                        'notif_type': 'warning',
+                    }
+                elif result.get('errorCode') == 'ER011' and result.get('transactionCode'):
+                    # ER011 = เอกสารซ้ำ: แปลว่า E-Tax เคยรับเอกสารนี้สำเร็จไปแล้วในการส่งครั้งก่อน
+                    # (เช่น request เดิม timeout ฝั่ง Odoo แต่จริงๆ E-Tax ประมวลผลสำเร็จ แล้วมีการส่งซ้ำ)
+                    # provider ยังคืนค่า pdfURL/xmlURL/transactionCode ของเอกสารจริงมาด้วย ให้กู้คืนเป็นสถานะสำเร็จ
+                    self.write({
+                        'state': 'sent',
+                        'sent_date': fields.Datetime.now(),
+                        'transaction_code': result.get('transactionCode'),
+                        'pdf_url': result.get('pdfURL'),
+                        'xml_url': result.get('xmlURL'),
+                        'error_message': '',
+                    })
+                    return {
+                        'success': True,
+                        'title': 'สำเร็จ (กู้คืนจากเอกสารซ้ำ)!',
+                        'message': (f'เอกสารนี้เคยส่งสำเร็จไปแล้วก่อนหน้านี้\n'
+                                    f'รหัสธุรกรรม: {result.get("transactionCode")}'),
+                        'notif_type': 'success',
                     }
                 else:
-                    # มีข้อผิดพลาดจาก API
+                    error_msg = result.get('errorMessage') or result.get('message') or 'ไม่ทราบสาเหตุ'
                     self.write({
                         'state': 'error',
-                        'error_message': result.get('message', 'ไม่ทราบสาเหตุ'),
+                        'error_message': error_msg,
                     })
-                    
                     return {
-                        'type': 'ir.actions.client',
-                        'tag': 'display_notification',
-                        'params': {
-                            'title': 'ข้อผิดพลาด 01!',
-                            'message': f'E-Tax API Error: {result.get("message", etax_data)}',
-                            'type': 'warning',
-                        }
+                        'success': False,
+                        'title': 'ข้อผิดพลาด!',
+                        'message': f'E-Tax API Error: {error_msg}',
+                        'notif_type': 'warning',
                     }
             else:
-                # HTTP Error
                 self.write({
                     'state': 'error',
                     'error_message': f'HTTP Error {response.status_code}: {response.text}',
                 })
-                
                 return {
-                    'type': 'ir.actions.client',
-                    'tag': 'display_notification',
-                    'params': {
-                        'title': 'ข้อผิดพลาด 02!',
-                        'message': f'HTTP Error {response.status_code}',
-                        'type': 'danger',
-                    }
+                    'success': False,
+                    'title': 'ข้อผิดพลาด!',
+                    'message': f'HTTP Error {response.status_code}',
+                    'notif_type': 'danger',
                 }
-                
+
         except Exception as e:
             _logger.error(f"E-Tax Send Error: {str(e)}")
             self.write({
                 'state': 'error',
                 'error_message': str(e),
             })
-            
             return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'ข้อผิดพลาด 03!',
-                    'message': f'เกิดข้อผิดพลาด 04: {str(etax_data)}',
-                    'type': 'danger',
-                }
+                'success': False,
+                'title': 'ข้อผิดพลาด!',
+                'message': f'เกิดข้อผิดพลาด: {str(e)}',
+                'notif_type': 'danger',
             }
+
+    def send_to_etax(self):
+        """ส่งข้อมูลไปยัง E-Tax API (ปุ่มส่งเดี่ยวจากฟอร์ม) — ล็อครายการกันการกดส่งซ้ำ"""
+        self.ensure_one()
+
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute(
+                    "SELECT id FROM etax_transaction WHERE id = %s FOR UPDATE NOWAIT",
+                    (self.id,)
+                )
+        except OperationalError:
+            raise UserError('เอกสารนี้กำลังถูกประมวลผลอยู่ กรุณารอสักครู่แล้วลองใหม่')
+
+        result = self._send_to_etax_core()
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': result['title'],
+                'message': result['message'],
+                'type': result['notif_type'],
+                'sticky': not result['success'],
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            }
+        }
+
+    def action_add_to_queue(self):
+        """เพิ่มรายการที่เลือก (ร่าง/ข้อผิดพลาด) เข้าคิวสำหรับส่งแบบ batch"""
+        added = 0
+        skipped = 0
+        for record in self:
+            if record.state not in ('draft', 'error'):
+                continue
+            if not record.etax_config_id or not record.partner_id or not record.line_ids:
+                record.write({
+                    'state': 'error',
+                    'error_message': 'ข้อมูลไม่ครบ ไม่สามารถเข้าคิวได้ (ต้องมี การตั้งค่า E-Tax, ลูกค้า, รายการสินค้า)',
+                })
+                skipped += 1
+                continue
+            record.write({
+                'state': 'queued',
+                'queued_date': fields.Datetime.now(),
+                'error_message': '',
+            })
+            added += 1
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'เพิ่มเข้าคิวแล้ว',
+                'message': f'เข้าคิว {added} รายการ, ข้าม {skipped} รายการ (ดูสาเหตุที่ข้อผิดพลาด)',
+                'type': 'success' if skipped == 0 else 'warning',
+                'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            }
+        }
+
+    @api.model
+    def _process_queue_batch(self, batch_size=None):
+        """
+        ประมวลผลคิวส่ง E-Tax แบบ batch — เรียกจาก ir.cron หรือปุ่ม 'ประมวลผลคิวตอนนี้'
+        รายการที่ส่งไม่สำเร็จจะถูกข้าม (state='error') ไม่ทำให้ทั้ง batch หยุด
+        คืนค่า dict สรุปผล {'processed', 'sent', 'error', 'transaction_ids'}
+        """
+        etax_config = self.env['etax.config'].search([('active', '=', True)], limit=1)
+
+        if batch_size is None:
+            batch_size = etax_config.queue_batch_size if etax_config else 20
+        delay_seconds = etax_config.queue_delay_seconds if etax_config else 0.7
+
+        queued = self.search([('state', '=', 'queued')], order='queued_date asc', limit=batch_size)
+
+        sent_count = 0
+        error_count = 0
+
+        for record in queued:
+            try:
+                with self.env.cr.savepoint():
+                    result = record._send_to_etax_core()
+                if result['success']:
+                    sent_count += 1
+                else:
+                    error_count += 1
+            except Exception as e:
+                _logger.error(f"E-Tax Queue Processing Error (transaction {record.id}): {str(e)}")
+                record.write({
+                    'state': 'error',
+                    'error_message': str(e),
+                })
+                error_count += 1
+
+            # commit ทีละรายการ กันข้อมูลหายหาก process ถูกหยุดกลางทาง
+            self.env.cr.commit()
+
+            if delay_seconds:
+                time.sleep(delay_seconds)
+
+        return {
+            'processed': len(queued),
+            'sent': sent_count,
+            'error': error_count,
+            'transaction_ids': queued.ids,
+        }
+
+    def action_process_queue_now(self):
+        """ปุ่ม 'ประมวลผลคิวตอนนี้' — ประมวลผล batch แบบ synchronous แล้วเปิดหน้ารายงานผล"""
+        run_start = fields.Datetime.now()
+        summary = self._process_queue_batch()
+
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'buz_accounting_etax.action_etax_queue'
+        )
+        action['domain'] = [('write_date', '>=', run_start)]
+        action['context'] = {}
+        action['name'] = (
+            f"ผลการประมวลผลคิว: ส่งสำเร็จ {summary['sent']} รายการ, "
+            f"ผิดพลาด {summary['error']} รายการ (จากทั้งหมด {summary['processed']})"
+        )
+        return action
 
     def action_download_pdf(self):
         """ดาวน์โหลดไฟล์ PDF"""
@@ -763,8 +937,11 @@ class EtaxTransaction(models.Model):
     def _compute_amount_untaxed(self):
         for record in self:
             total = 0.0
-            if record.document_type in ['T03']:
-                total = sum(line.price_subtotal for line in record.line_ids)
+            if record.document_type in ('T03', 'T04'):
+                if record.invoice_id:
+                    total = record.invoice_id.amount_untaxed
+                else:
+                    total = sum(line.price_subtotal for line in record.line_ids)
             elif record.document_type in ['81']:
                 total = abs((record.original_amount or 0.0) - (record.difference_amount or 0.0))
             elif record.document_type in ['80']: # เพิ่มหนี้
@@ -782,26 +959,20 @@ class EtaxTransaction(models.Model):
             if record.invoice_id and record.document_type in ('80', '81'):
                 record.amount_tax = record.invoice_id.amount_tax
             else:
-                total_tax = sum(line.price_tax for line in record.line_ids)
-                if total_tax:
-                    total_tax = abs(record.difference_amount or 0.0) * 7 / 100
-                record.amount_tax = total_tax
+                record.amount_tax = sum(line.price_tax for line in record.line_ids)
 
     @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed', 'invoice_id')
     def _compute_net_amount_tax(self):
         for record in self:
-            if record.invoice_id and record.document_type == 'T03':
+            if record.invoice_id and record.document_type in ('T03', 'T04'):
                 record.amount_vat = record.invoice_id.amount_tax
             else:
-                total_tax = sum(line.price_tax for line in record.line_ids)
-                if total_tax:
-                    total_tax = abs(record.total_after_deposit or 0.0) * 7 / 100
-                record.amount_vat = total_tax
+                record.amount_vat = sum(line.price_tax for line in record.line_ids)
 
     @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed', 'amount_tax')
     def _compute_amount_total(self):
         for record in self:
-            if record.document_type in ['T03']:
+            if record.document_type in ('T03', 'T04'):
                 total = abs((record.original_amount or 0.0) - (record.amount_untaxed or 0.0))
             elif record.document_type in ['81', '80']:
                 total = sum(line.price_subtotal for line in record.line_ids)
@@ -818,7 +989,7 @@ class EtaxTransaction(models.Model):
             else:
                 record.net_amount_total = round((record.total_after_deposit or 0.0) + (record.amount_vat or 0.0), 2)
 
-    @api.depends('invoice_id.amount_untaxed', 'invoice_id.original_tax_invoice_amount')
+    @api.depends('selected_invoice_id.amount_untaxed', 'invoice_id.amount_untaxed', 'invoice_id.original_tax_invoice_amount')
     def _compute_original_amount(self):
         for record in self:
             invoice = record.selected_invoice_id if record.selected_invoice_id else False
@@ -850,7 +1021,7 @@ class EtaxTransaction(models.Model):
         for record in self:
             if record.document_type in ['81', '80']:
                 record.invoice_total = record.amount_total
-            elif record.document_type in ['T03']:
+            elif record.document_type in ('T03', 'T04'):
                 record.invoice_total = record.net_amount_total
             else:
                 record.invoice_total = 0.0

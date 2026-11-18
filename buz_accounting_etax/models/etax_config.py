@@ -33,7 +33,15 @@ class EtaxConfig(models.Model):
         ('Y', 'ส่งอีเมล'),
         ('N', 'ไม่ส่งอีเมล')
     ], 'ส่งอีเมลอัตโนมัติ', default='Y')
-    
+
+    # การตั้งค่าคิว
+    queue_batch_size = fields.Integer(
+        'จำนวนต่อรอบ (Batch Size)', default=20,
+        help='จำนวนเอกสารสูงสุดที่จะประมวลผลต่อการรันคิวหนึ่งครั้ง')
+    queue_delay_seconds = fields.Float(
+        'หน่วงเวลาระหว่างรายการ (วินาที)', default=0.7,
+        help='เวลาหน่วงระหว่างการส่งแต่ละเอกสารในคิว เพื่อไม่ให้เรียก API ถี่เกินไป')
+
     def test_connection(self):
         """ทดสอบการเชื่อมต่อ API"""
         try:
