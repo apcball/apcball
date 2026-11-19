@@ -1,7 +1,8 @@
 # Copyright 2017 ForgeFlow S.L.
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl)
 
-from odoo import api, fields, models
+from odoo import Command, api, fields, models
+from odoo.tools import frozendict
 from odoo.tools.float_utils import float_is_zero
 
 
@@ -50,7 +51,75 @@ class AccountMoveLine(models.Model):
             for line in self:
                 if line.discount_fixed:
                     line.discount = line._get_discount_from_fixed_discount()
+                    if line.move_id.fixed_discount_tax_exact:
+                        line._compute_totals()
         return res
+
+    @api.depends(
+        "tax_ids", "currency_id", "partner_id", "analytic_distribution",
+        "balance", "move_id.partner_id", "price_unit", "quantity", "discount",
+        "discount_fixed", "move_id.fixed_discount_tax_exact",
+    )
+    def _compute_all_tax(self):
+        exact_lines = self.filtered(
+            lambda line: line.move_id.fixed_discount_tax_exact
+            and line.move_id.is_invoice(True)
+            and line.display_type == "product"
+            and not float_is_zero(
+                line.discount_fixed, precision_rounding=line.currency_id.rounding
+            )
+        )
+        super(AccountMoveLine, self - exact_lines)._compute_all_tax()
+        for line in exact_lines:
+            # Odoo core ใช้ discount % ที่ถูกปัด แต่ยอดสินค้าใช้ discount_fixed จริง
+            sign = line.move_id.direction_sign
+            taxes = line.with_context(is_invoice=True).tax_ids.compute_all(
+                sign * (line.price_unit - line.discount_fixed),
+                currency=line.currency_id,
+                quantity=line.quantity,
+                product=line.product_id,
+                partner=line.move_id.partner_id or line.partner_id,
+                is_refund=line.is_refund,
+                handle_price_include=True,
+                include_caba_tags=line.move_id.always_tax_exigible,
+                fixed_multiplicator=sign,
+            )
+            rate = (
+                line.amount_currency / line.balance
+                if line.amount_currency and line.balance
+                else line.currency_rate
+            )
+            line.compute_all_tax_dirty = True
+            line.compute_all_tax = {
+                frozendict({
+                    "tax_repartition_line_id": tax["tax_repartition_line_id"],
+                    "group_tax_id": tax["group"] and tax["group"].id or False,
+                    "account_id": tax["account_id"] or line.account_id.id,
+                    "currency_id": line.currency_id.id,
+                    "analytic_distribution": (
+                        (tax["analytic"] or not tax["use_in_tax_closing"])
+                        and line.analytic_distribution
+                    ),
+                    "tax_ids": [Command.set(tax["tax_ids"])],
+                    "tax_tag_ids": [Command.set(tax["tag_ids"])],
+                    "partner_id": line.move_id.partner_id.id or line.partner_id.id,
+                    "move_id": line.move_id.id,
+                    "display_type": line.display_type,
+                }): {
+                    "name": tax["name"],
+                    "balance": tax["amount"] / rate,
+                    "amount_currency": tax["amount"],
+                    "tax_base_amount": (
+                        tax["base"] / rate * (-1 if line.tax_tag_invert else 1)
+                    ),
+                }
+                for tax in taxes["taxes"]
+                if tax["amount"]
+            }
+            if not line.tax_repartition_line_id:
+                line.compute_all_tax[frozendict({"id": line.id})] = {
+                    "tax_tag_ids": [Command.set(taxes["base_tags"])],
+                }
 
     @api.depends("quantity", "discount", "price_unit", "tax_ids", "currency_id")
     def _compute_totals(self):

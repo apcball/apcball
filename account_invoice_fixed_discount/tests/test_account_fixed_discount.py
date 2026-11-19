@@ -11,6 +11,7 @@ class TestInvoiceFixedDiscount(TransactionCase):
         super().setUpClass()
 
         cls.env.user.groups_id |= cls.env.ref("account.group_account_invoice")
+        cls.env["decimal.precision"].search([("name", "=", "Discount")]).digits = 3
         cls.partner = cls.env["res.partner"].create({"name": "Test"})
         cls.product = cls.env["product.product"].search(
             [("sale_ok", "=", True)], limit=1
@@ -48,36 +49,44 @@ class TestInvoiceFixedDiscount(TransactionCase):
         cls.invoice = cls._create_invoice()
 
     @classmethod
-    def _create_invoice(cls, discount=0.00, discount_fixed=0.00):
+    def _create_invoice(
+        cls, discount=0.00, discount_fixed=0.00, price_unit=200.00,
+        quantity=1.0, fixed_discount_tax_exact=None, move_type="out_invoice",
+    ):
         invoice_vals = [
             (
                 0,
                 0,
                 {
                     "product_id": cls.product.id,
-                    "quantity": 1.0,
+                    "quantity": quantity,
                     "account_id": cls.account.id,
                     "name": "Line 1",
-                    "price_unit": 200.00,
+                    "price_unit": price_unit,
                     "discount_fixed": discount_fixed,
                     "discount": discount,
                     "tax_ids": [(6, 0, [cls.vat.id])],
                 },
             )
         ]
+        move_vals = {
+            "journal_id": cls.env["account.journal"]
+            .search([("type", "=", "sale")], limit=1)
+            .id,
+            "partner_id": cls.partner.id,
+            "invoice_line_ids": invoice_vals,
+        }
+        if move_type:
+            move_vals["move_type"] = move_type
+        if fixed_discount_tax_exact is not None:
+            move_vals["fixed_discount_tax_exact"] = fixed_discount_tax_exact
         invoice = (
             cls.env["account.move"]
-            .with_context(check_move_validity=False)
-            .create(
-                {
-                    "journal_id": cls.env["account.journal"]
-                    .search([("type", "=", "sale")], limit=1)
-                    .id,
-                    "partner_id": cls.partner.id,
-                    "move_type": "out_invoice",
-                    "invoice_line_ids": invoice_vals,
-                }
+            .with_context(
+                check_move_validity=False,
+                default_move_type=move_type or "out_invoice",
             )
+            .create(move_vals)
         )
         return invoice
 
@@ -162,3 +171,68 @@ class TestInvoiceFixedDiscount(TransactionCase):
             price_unit=10,
             currency=1,
         )
+
+    def test_exact_tax_base_for_new_invoice(self):
+        self.env.company.tax_calculation_rounding_method = "round_globally"
+        self.vat.amount = 7.0
+        invoice = self._create_invoice(
+            discount=0.066, discount_fixed=9.35, price_unit=14158.88
+        )
+        self.assertTrue(invoice.fixed_discount_tax_exact)
+        self.assertEqual(invoice.invoice_line_ids.price_subtotal, 14149.53)
+        self.assertEqual(invoice.line_ids.filtered("tax_line_id").tax_base_amount, 14149.53)
+        self.assertEqual(invoice.amount_tax, 990.47)
+        self.assertEqual(invoice.amount_total, 15140.00)
+
+    def test_exact_tax_base_with_ui_default_move_type(self):
+        self.env.company.tax_calculation_rounding_method = "round_globally"
+        self.vat.amount = 7.0
+        invoice = self._create_invoice(
+            discount=0.066, discount_fixed=9.35, price_unit=14158.88,
+            move_type=None,
+        )
+        self.assertTrue(invoice.fixed_discount_tax_exact)
+        self.assertEqual(invoice.line_ids.filtered("tax_line_id").tax_base_amount, 14149.53)
+
+    def test_legacy_invoice_keeps_tax_base(self):
+        self.env.company.tax_calculation_rounding_method = "round_globally"
+        self.vat.amount = 7.0
+        invoice = self._create_invoice(
+            discount=0.066, discount_fixed=9.35, price_unit=14158.88,
+            fixed_discount_tax_exact=False,
+        )
+        self.assertFalse(invoice.fixed_discount_tax_exact)
+        self.assertEqual(invoice.invoice_line_ids.price_subtotal, 14149.53)
+        self.assertEqual(invoice.line_ids.filtered("tax_line_id").tax_base_amount, 14149.54)
+
+    def test_exact_tax_base_with_multiple_units(self):
+        self.env.company.tax_calculation_rounding_method = "round_globally"
+        self.vat.amount = 7.0
+        invoice = self._create_invoice(
+            discount=0.066, discount_fixed=9.35, price_unit=14158.88,
+            quantity=2.0,
+        )
+        self.assertEqual(invoice.invoice_line_ids.price_subtotal, 28299.06)
+        self.assertEqual(invoice.line_ids.filtered("tax_line_id").tax_base_amount, 28299.06)
+
+    def test_exact_tax_base_after_discount_change(self):
+        self.env.company.tax_calculation_rounding_method = "round_globally"
+        self.vat.amount = 7.0
+        invoice = self._create_invoice(
+            discount=0.066, discount_fixed=9.35, price_unit=14158.88
+        )
+        invoice.invoice_line_ids.discount_fixed = 9.36
+        self.assertEqual(invoice.invoice_line_ids.price_subtotal, 14149.52)
+        self.assertEqual(invoice.line_ids.filtered("tax_line_id").tax_base_amount, 14149.52)
+
+    def test_exact_tax_base_on_refund(self):
+        self.env.company.tax_calculation_rounding_method = "round_globally"
+        self.vat.amount = 7.0
+        refund = self._create_invoice(
+            discount=0.066, discount_fixed=9.35, price_unit=14158.88,
+            move_type="out_refund",
+        )
+        self.assertTrue(refund.fixed_discount_tax_exact)
+        self.assertEqual(refund.invoice_line_ids.price_subtotal, 14149.53)
+        self.assertEqual(abs(refund.line_ids.filtered("tax_line_id").tax_base_amount), 14149.53)
+        self.assertEqual(refund.amount_total, 15140.00)
