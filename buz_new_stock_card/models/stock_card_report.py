@@ -133,39 +133,55 @@ class StockCardReport(models.AbstractModel):
     # Opening balance
     # ------------------------------------------------------------------
 
-    def _get_opening_balance(self, product_id, scope_location_ids, start_utc, company_ids=None):
-        domain = [
-            ("state", "=", "done"),
-            ("product_id", "=", product_id),
-            ("date", "<", start_utc),
-            ("company_id", "in", company_ids or self.env.companies.ids),
-        ] + self._scope_domain(scope_location_ids)
-        lines = self._read_lines_with_base_qty(domain)
-        balance = 0.0
-        for line in lines:
-            in_qty, out_qty = self._direction_qty(line, scope_location_ids)
-            balance += in_qty - out_qty
-        return balance
+    # Opening balances are anchored on the CURRENT stock_quant, like
+    # imex_inventory_report: opening = quant now - net of done moves dated
+    # >= start. The move-line ledger before the 30/03/2026 FIFO flush and
+    # 31/03 re-opening carries residue the reset did not wipe; the quant
+    # does not.
 
-    def _get_opening_balances_by_product(self, product_ids, scope_location_ids, start_utc, company_ids):
-        """Opening balance for many products at once: one search_read over all
-        pre-range done moves that cross the scope boundary, aggregated per
-        product in Python (keeps the base-UoM conversion the single-product
-        path uses, without a query per product)."""
+    def _get_scope_quant_qty(self, product_ids, scope_location_ids, company_ids):
+        """{product_id: on-hand qty in scope locations} from stock_quant."""
         if not product_ids:
             return {}
+        groups = self.env["stock.quant"].sudo().read_group(
+            [
+                ("company_id", "in", list(company_ids)),
+                ("product_id", "in", list(product_ids)),
+                ("location_id", "in", list(scope_location_ids)),
+            ],
+            ["quantity:sum"], ["product_id"], lazy=False,
+        )
+        return {g["product_id"][0]: g["quantity"] or 0.0 for g in groups}
+
+    def _get_post_start_net(self, product_ids, scope_location_ids, start_utc, company_ids):
+        """{product_id: in - out} of done lines dated >= start_utc."""
         domain = [
             ("state", "=", "done"),
             ("product_id", "in", list(product_ids)),
             ("company_id", "in", company_ids),
-            ("date", "<", start_utc),
+            ("date", ">=", start_utc),
         ] + self._scope_domain(scope_location_ids)
-        lines = self._read_lines_with_base_qty(domain)
-        balances = dict.fromkeys(product_ids, 0.0)
-        for line in lines:
+        net = dict.fromkeys(product_ids, 0.0)
+        for line in self._read_lines_with_base_qty(domain):
             in_qty, out_qty = self._direction_qty(line, scope_location_ids)
-            balances[line["product_id"][0]] = balances.get(line["product_id"][0], 0.0) + in_qty - out_qty
-        return balances
+            pid = line["product_id"][0]
+            net[pid] = net.get(pid, 0.0) + in_qty - out_qty
+        return net
+
+    def _get_opening_balance(self, product_id, scope_location_ids, start_utc, company_ids=None):
+        return self._get_opening_balances_by_product(
+            [product_id], scope_location_ids, start_utc,
+            company_ids or self.env.companies.ids,
+        ).get(product_id, 0.0)
+
+    def _get_opening_balances_by_product(self, product_ids, scope_location_ids, start_utc, company_ids):
+        """Opening balance for many products at once, quant-anchored."""
+        if not product_ids:
+            return {}
+        product_ids = list(product_ids)
+        quant = self._get_scope_quant_qty(product_ids, scope_location_ids, company_ids)
+        net = self._get_post_start_net(product_ids, scope_location_ids, start_utc, company_ids)
+        return {pid: quant.get(pid, 0.0) - net.get(pid, 0.0) for pid in product_ids}
 
     def _get_prefix_delta(self, detail_domain, order, offset, scope_location_ids):
         if offset <= 0:
@@ -1344,8 +1360,12 @@ class StockCardReport(models.AbstractModel):
         domain = [
             ("state", "=", "done"),
             ("company_id", "in", company_ids),
-            ("date", "<", start_utc),
-        ] + self._scope_domain(scope_location_ids)
+            ("date", ">=", start_utc),
+            # Not only boundary-crossing moves: the quant is per location, so
+            # transfers between two scope locations must be undone as well.
+            "|", ("location_id", "in", list(scope_location_ids)),
+            ("location_dest_id", "in", list(scope_location_ids)),
+        ]
         if product_ids:
             domain.append(("product_id", "in", list(product_ids)))
         groups = self.env["stock.move.line"].read_group(
@@ -1372,12 +1392,35 @@ class StockCardReport(models.AbstractModel):
             src_id = group["location_id"][0]
             dest_id = group["location_dest_id"][0]
             lot_id = group["lot_id"][0] if group["lot_id"] else False
+            if src_id == dest_id:
+                continue
             if dest_id in scope:
-                key, signed = (product_id, dest_id, lot_id), qty
-            else:
-                key, signed = (product_id, src_id, lot_id), -qty
-            balances[key] = balances.get(key, 0.0) + signed
-        return balances
+                key = (product_id, dest_id, lot_id)
+                balances[key] = balances.get(key, 0.0) + qty
+            if src_id in scope:
+                key = (product_id, src_id, lot_id)
+                balances[key] = balances.get(key, 0.0) - qty
+        # Quant-anchored: opening = on-hand now - net of moves >= start.
+        quant_domain = [
+            ("location_id", "in", list(scope_location_ids)),
+            ("company_id", "in", list(company_ids)),
+        ]
+        if product_ids:
+            quant_domain.append(("product_id", "in", list(product_ids)))
+        qgroups = self.env["stock.quant"].sudo().read_group(
+            quant_domain, ["quantity:sum"],
+            ["product_id", "location_id", "lot_id"], lazy=False,
+        )
+        opening = {}
+        for g in qgroups:
+            if not (g["product_id"] and g["location_id"]):
+                continue
+            key = (g["product_id"][0], g["location_id"][0],
+                   g["lot_id"][0] if g["lot_id"] else False)
+            opening[key] = g["quantity"] or 0.0
+        for key, net in balances.items():
+            opening[key] = opening.get(key, 0.0) - net
+        return opening
 
     def _opening_layer_values(self, scope_location_ids, product_ids, start_utc, company_ids):
         """{(location_id, product_id): layer value} booked before start_utc."""
