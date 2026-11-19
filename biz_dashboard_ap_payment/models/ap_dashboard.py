@@ -387,9 +387,8 @@ class ApDashboard(models.AbstractModel):
         if self.env.su:
             return
         user = self.env.user
-        if not (user.has_group('biz_monthly_analytic_budget.group_monthly_budget_user')
-                or user.has_group('account.group_account_invoice')):
-            raise AccessError(_('ต้องเป็น Budget User หรือ Accounting / Invoicing user'))
+        if not user.has_group('biz_dashboard_ap_payment.group_ap_payment_dashboard_user'):
+            raise AccessError(_('ต้องอยู่ในกลุ่ม Budget & Payment Control / Dashboard User'))
 
     def _normalize_filters(self, filters):
         user = self.env.user

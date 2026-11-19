@@ -53,7 +53,7 @@ class TestApDashboard(TransactionCase):
             'name': 'APD Viewer', 'login': 'apd_viewer_user',
             'groups_id': [(6, 0, [
                 env.ref('base.group_user').id,
-                env.ref('biz_monthly_analytic_budget.group_monthly_budget_user').id,
+                env.ref('biz_dashboard_ap_payment.group_ap_payment_dashboard_user').id,
             ])],
             'company_id': cls.company.id,
             'company_ids': [(6, 0, [cls.company.id])],
