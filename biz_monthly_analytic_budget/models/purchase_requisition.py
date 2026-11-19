@@ -550,6 +550,16 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         if not target_date or not self.requisition_order_ids:
             return
 
+        # Once a PO of this PR is confirmed it owns the reservation: the PR commitment
+        # then only holds the still-unbilled amount of its POs. Re-reserving the full
+        # PR amount here (PR edit, payment_date sync) would overwrite that, so let the
+        # POs recompute it instead.
+        confirmed_pos = self._get_linked_confirmed_pos()
+        if confirmed_pos:
+            for po in confirmed_pos:
+                po._consume_monthly_analytic_budget()
+            return
+
         BudgetLine = self.env['monthly.budget.line']
         engine = self.env['budget.engine'].sudo()
         AnalyticAccount = self.env['account.analytic.account']
@@ -627,6 +637,19 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 )
 
             plan._refresh_budget_snapshot(refresh_report=True)
+
+    def _get_linked_confirmed_pos(self):
+        """Confirmed / done POs whose source requisition is this PR."""
+        self.ensure_one()
+        POs = self.env['purchase.order'].sudo().search([
+            ('company_id', '=', self.company_id.id),
+            ('state', 'in', ('purchase', 'done')),
+            '|', '|',
+            ('requisition_order', '=', self.name),
+            ('pr_number', '=', self.name),
+            ('origin', '=', self.name),
+        ])
+        return POs.filtered(lambda po: po._get_source_requisition() == self)
 
     def _has_linked_po_commitment(self, account_id):
         """True when a PO linked to this PR already holds an active monthly

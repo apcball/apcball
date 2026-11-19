@@ -613,9 +613,12 @@ class PurchaseOrder(models.Model):
         if not target_date:
             return
 
-        # Aggregate UNBILLED amounts by analytic across all PO lines
+        # POs booked together under one PR commitment (a single PO books under itself)
+        orders = self._get_budget_document_orders()
+
+        # Aggregate UNBILLED amounts by analytic across the lines of those POs
         analytic_totals = {}
-        for line in self.order_line:
+        for line in orders.order_line:
             # Find billed qty including draft and posted bills (excluding cancelled)
             invoice_lines = line.invoice_lines.filtered(lambda l: l.move_id.state != 'cancel')
             billed_qty = sum(invoice_lines.mapped('quantity'))
@@ -632,8 +635,8 @@ class PurchaseOrder(models.Model):
         # If everything is fully billed, we should still proceed with analytic_totals = {account_id: 0}
         # to release the remaining PO commitments.
         if not analytic_totals:
-            # Gather all accounts that were originally on this PO so we can zero them out
-            for line in self.order_line:
+            # Gather all accounts that were originally on these POs so we can zero them out
+            for line in orders.order_line:
                 for account_id, amount in extract_analytic_amounts(line, BudgetLine):
                     if account_id not in analytic_totals:
                         analytic_totals[account_id] = 0.0
@@ -708,6 +711,29 @@ class PurchaseOrder(models.Model):
                         own_reserved.action_release()
 
             plan._refresh_budget_snapshot(refresh_report=True)
+
+    def _get_budget_document_orders(self):
+        """POs whose unbilled amounts share one budget commitment with this PO.
+
+        A PO books under its source PR, so every confirmed PO of that PR writes to the
+        same commitment: it must hold the SUM of their unbilled amounts, not the last
+        PO written. A PO without a source PR books under itself."""
+        self.ensure_one()
+        document_model, document_id = self._get_budget_document_identity()
+        if document_model == self._name:
+            return self
+        req = self.env['employee.purchase.requisition'].sudo().browse(document_id)
+        if not req.exists():
+            return self
+        siblings = self.sudo().search([
+            ('company_id', '=', self.company_id.id),
+            ('state', 'in', ('purchase', 'done')),
+            '|', '|',
+            ('requisition_order', '=', req.name),
+            ('pr_number', '=', req.name),
+            ('origin', '=', req.name),
+        ]).filtered(lambda po: po._get_source_requisition() == req)
+        return self | siblings
 
     def _get_source_requisition(self):
         """Return the source employee PR linked to this PO, if any."""
