@@ -1441,7 +1441,6 @@ class ApDashboard(models.AbstractModel):
             approved += conv(line.budget_amount + line.carried_amount)
             reserved += conv(line.reserved_amount)
             used += conv(line.used_amount)
-        carried_reserved, carried_used = self._carried_in_commitments(f, lines)
         remaining = approved - reserved - used
         return {
             'approved': round(approved, 2),
@@ -1450,68 +1449,12 @@ class ApDashboard(models.AbstractModel):
             'remaining': round(remaining, 2),
             'pct': _pct(reserved + used, approved),
             'plan_count': len(lines.mapped('plan_id')),
-            'carried_reserved': round(carried_reserved, 2),
-            'carried_used': round(carried_used, 2),
-            'carried_in': round(carried_reserved + carried_used, 2),
             'scope_note': ('งบประมาณตามแผนรายเดือน (เฉพาะบรรทัดงบของ Analytic Account ที่เลือก)'
                            if f['analytic_id'] else
                            'งบประมาณตามแผนรายเดือน (เฉพาะบรรทัดงบของโครงการที่เลือก)'
                            if f['project_id'] else
                            'งบประมาณตามแผนรายเดือน (ไม่กรองตามร้านค้า)'),
         }
-
-    def _carried_in_commitments(self, f, lines):
-        """``(reserved, used)`` part of the month's plan consumption that comes from
-        documents issued BEFORE the month (presentation currency).
-
-        The budget books a document to the month it is due / expected to be paid, so
-        last month's bill falling due now, or a PR raised last month, legitimately
-        uses this month's plan. This only splits that part out for display; the
-        card totals still come from the budget lines. Document date: bill
-        ``invoice_date`` (else ``date``), PO ``date_order``, anything else (PR / MR)
-        ``create_date``. A commitment whose document no longer exists is not counted."""
-        pairs = {(l.company_id.id, l.analytic_account_id.id) for l in lines if l.analytic_account_id}
-        if not pairs:
-            return 0.0, 0.0
-        commitments = self.env['budget.commitment'].sudo().search([
-            ('budget_source', '=', 'monthly'),
-            ('state', 'in', ('reserved', 'used')),
-            ('company_id', 'in', list({c for c, _a in pairs})),
-            ('analytic_account_id', 'in', list({a for _c, a in pairs})),
-            ('date', '>=', f['date_from']),
-            ('date', '<=', f['date_to']),
-        ]).filtered(lambda c: (c.company_id.id, c.analytic_account_id.id) in pairs)
-
-        issued = {}   # (model, id) -> date the document was issued
-        by_model = {}
-        for c in commitments:
-            by_model.setdefault(c.document_model, set()).add(c.document_id)
-        for model, ids in by_model.items():
-            if model not in self.env:
-                continue
-            Model = self.env[model].sudo()
-            if model == 'account.move':
-                for rec in Model.search_fetch([('id', 'in', list(ids))], ['invoice_date', 'date']):
-                    issued[(model, rec.id)] = rec.invoice_date or rec.date
-            elif model == 'purchase.order':
-                for rec in Model.search_fetch([('id', 'in', list(ids))], ['date_order']):
-                    issued[(model, rec.id)] = fields.Date.to_date(rec.date_order)
-            else:
-                for rec in Model.search_fetch([('id', 'in', list(ids))], ['create_date']):
-                    issued[(model, rec.id)] = fields.Date.to_date(rec.create_date)
-
-        totals = {'reserved': {}, 'used': {}}   # state -> {(company, currency): amount}
-        for c in commitments:
-            doc_date = issued.get((c.document_model, c.document_id))
-            if not doc_date or doc_date >= f['date_from']:
-                continue
-            key = (c.company_id, c.currency_id or c.company_id.currency_id)
-            totals[c.state][key] = totals[c.state].get(key, 0.0) + c.amount
-        converted = {
-            state: sum(self._convert(amount, currency, company, f['date_from'], f['currency'])
-                       for (company, currency), amount in groups.items())
-            for state, groups in totals.items()}
-        return converted['reserved'], converted['used']
 
     def _plan_kpi(self, f, kpi_payment, kpi_loan, paid_bucket, forecast_other):
         """Card 1 (แผนการใช้เงิน) and card 2 (จ่ายจริง vs แผน). Plan rows:
@@ -1714,7 +1657,6 @@ class ApDashboard(models.AbstractModel):
             ('ใช้เกินงบประมาณ' if budget['over'] else 'งบคงเหลือ',
              budget['over'] or budget['remaining'], None),
             ('รวมงบประมาณ', budget['total'], None),
-            ('ภาระยกมาจากเอกสารก่อนเดือนนี้ (รวมในยอดใช้ไปแล้ว)', budget['carried_in'], None),
             ('% ใช้แล้ว', None, budget['pct']),
         ], fmt)
         req = data['kpi_request']

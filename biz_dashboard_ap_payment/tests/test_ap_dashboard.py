@@ -670,34 +670,6 @@ class TestApDashboard(TransactionCase):
         filtered = self._data(partner_id=self.v1.id)
         self.assertAlmostEqual(filtered['kpi_budget']['approved'], budget['approved'], places=2)
 
-    def test_budget_commitments_split_carried_in_from_earlier_documents(self):
-        """A bill issued last month but falling due now uses this month's plan: it stays
-        in the totals and is also shown as carried in from earlier documents."""
-        bill_prev = self._bill(self.v1, D(2, 20), 1000.0, due=D(3, 10))
-        bill_now = self._bill(self.v1, D(3, 5), 2000.0, due=D(3, 25))
-        Commitment = self.env['budget.commitment'].sudo()
-        for bill, amount in ((bill_prev, 1000.0), (bill_now, 2000.0)):
-            Commitment.create({
-                'company_id': self.company.id, 'analytic_account_id': self.analytic.id,
-                'budget_source': 'monthly', 'document_model': 'account.move',
-                'document_id': bill.id, 'amount': amount, 'state': 'used',
-                'date': bill.invoice_date_due,
-            })
-        Commitment.create({  # reserved, document that no longer exists: not counted
-            'company_id': self.company.id, 'analytic_account_id': self.analytic.id,
-            'budget_source': 'monthly', 'document_model': 'employee.purchase.requisition',
-            'document_id': 2147483000, 'amount': 5000.0, 'state': 'reserved', 'date': D(3, 12),
-        })
-        budget = self.engine.get_dashboard_data(self.F, refresh=True)['kpi_budget']
-        base = self.baseline['kpi_budget']
-        self.assertAlmostEqual(budget['po_billed'] - base['po_billed'], 3000.0, places=2)
-        self.assertAlmostEqual(budget['po_open'] - base['po_open'], 5000.0, places=2)
-        # only the February bill predates March; the commitment of a deleted document is not carried in
-        self.assertAlmostEqual(budget['carried_used'] - base['carried_used'], 1000.0, places=2)
-        self.assertAlmostEqual(budget['carried_reserved'] - base['carried_reserved'], 0.0, places=2)
-        self.assertAlmostEqual(
-            budget['carried_in'], budget['carried_reserved'] + budget['carried_used'], places=2)
-
     def test_budget_kpi_includes_closed_plan(self):
         plan = self.plans[-1]  # month 5
         f = dict(self.F, month=5)

@@ -377,6 +377,17 @@ $apd-ink: #1b2a49;
                 color: var(--c);
             }
         }
+        &--big {
+            padding: 8px 10px;
+            span {
+                font-weight: 700;
+                color: var(--c);
+            }
+            b {
+                font-size: 1.05rem;
+                font-weight: 800;
+            }
+        }
     }
     .o_apd_dot {
         display: inline-block;
