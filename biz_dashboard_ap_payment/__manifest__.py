@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Budget & Payment Control Dashboard',
-    'version': '17.0.1.1.1',
+    'version': '17.0.1.2.0',
     'category': 'Accounting',
     'summary': 'Dashboard ควบคุมงบประมาณและยอดจ่าย (AP payment control)',
     'description': """
@@ -26,6 +26,8 @@ OWL dashboard for accounts-payable control:
     ],
     'external_dependencies': {'python': ['xlsxwriter']},
     'data': [
+        'security/ir.model.access.csv',
+        'views/loan_manual_views.xml',
         'views/ap_dashboard_views.xml',
         'views/res_config_settings_views.xml',
     ],
