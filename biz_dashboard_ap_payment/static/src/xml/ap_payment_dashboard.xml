@@ -185,6 +185,10 @@
                             <div t-else="" class="o_apd_row"><span>งบคงเหลือ</span><b t-esc="fmtNum(data.kpi_budget.remaining)"/></div>
                             <div class="o_apd_row o_apd_row--hl"><span>รวมงบประมาณ</span><b t-esc="fmtBaht(data.kpi_budget.total)"/></div>
                         </div>
+                        <div class="o_apd_note" t-if="data.kpi_budget.carried_in">
+                            ในจำนวนที่ใช้ไปแล้ว เป็นภาระยกมาจากเอกสารที่ออกก่อนเดือนนี้ <b t-esc="fmtBaht(data.kpi_budget.carried_in)"/>
+                            (เปิด PO <t t-esc="fmtNum(data.kpi_budget.carried_reserved)"/> · ตั้งหนี้ <t t-esc="fmtNum(data.kpi_budget.carried_used)"/>)
+                        </div>
                         <div class="o_apd_note" t-esc="data.kpi_budget.scope_note"/>
                     </div>
                     <!-- 4 -->
