@@ -48,6 +48,17 @@ class StockPicking(models.Model):
                     move.location_id,
                     strict=True,
                 )
+                # Stock this move already reserved at its own source location
+                # (e.g. reservation_method=at_confirm) is no longer "available"
+                # but proves the stock exists; count it so selling the last
+                # units of a location is not blocked by its own reservation.
+                own_reserved_qty = sum(
+                    move.move_line_ids.filtered(
+                        lambda ml, move=move: ml.state != "cancel"
+                        and ml.location_id == move.location_id
+                    ).mapped("quantity_product_uom")
+                )
+                available_qty += own_reserved_qty
                 if float_compare(
                     available_qty,
                     0.0,
