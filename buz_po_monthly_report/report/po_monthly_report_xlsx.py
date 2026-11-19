@@ -75,15 +75,17 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
             )) from error
         return {requisition.name: requisition for requisition in requisitions}
 
-    def _date_value(self, value):
+    def _date_value(self, value, tz=None):
         if not value:
             return False
         if isinstance(value, datetime):
-            return fields.Datetime.context_timestamp(self, value).date()
+            if tz is None:
+                return fields.Datetime.context_timestamp(self, value).date()
+            return pytz.utc.localize(value).astimezone(tz).date()
         return fields.Date.to_date(value)
 
-    def _write_date(self, sheet, row, col, value, cell_format):
-        date_value = self._date_value(value)
+    def _write_date(self, sheet, row, col, value, cell_format, tz=None):
+        date_value = self._date_value(value, tz)
         if date_value:
             sheet.write_datetime(
                 row, col, datetime.combine(date_value, time.min), cell_format,
@@ -151,52 +153,70 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
         sheet.set_row(3, 32)
         sheet.freeze_panes(4, 0)
 
+        tz = pytz.timezone(
+            self.env.context.get('tz') or self.env.user.tz or 'UTC'
+        )
+        lines_by_order = {}
+        if orders:
+            all_lines = self.env['purchase.order.line'].search_fetch(
+                [('order_id', 'in', orders.ids), ('display_type', '=', False)],
+                ['order_id', 'sequence', 'name', 'price_unit', 'product_qty',
+                 'price_subtotal', 'qty_received', 'date_planned'],
+                order='order_id, sequence, id',
+            )
+            for line in all_lines:
+                lines_by_order.setdefault(line.order_id.id, []).append(line)
+        # Warm caches in one query each instead of per line.
+        orders.mapped('partner_id.partner_code')
+        location_names = {
+            location.id: location.display_name
+            for location in orders.destination_location_id
+        }
+
+        write_string = sheet.write_string
+        write_number = sheet.write_number
         row = 4
         item_number = 0
         for order in orders:
+            order_lines = lines_by_order.get(order.id)
+            if not order_lines:
+                continue
             pr_name = order.pr_number or order.requisition_order or ''
             requisition = requisitions.get(pr_name)
-            lines = order.order_line.filtered(
-                lambda line: not line.display_type
-            ).sorted(key=lambda item: (item.sequence, item.id))
-            for line in lines:
+            order_name = order.name or ''
+            order_date = order.date_order
+            partner = order.partner_id
+            partner_code = partner.partner_code or ''
+            partner_name = partner.name or ''
+            approval_date = requisition.approval_date if requisition else False
+            notes = html2plaintext(order.notes or '')
+            destination = location_names.get(order.destination_location_id.id, '')
+            for line in order_lines:
                 item_number += 1
-                values = [
-                    item_number,
-                    order.name or '',
-                    order.date_order,
-                    order.partner_id.partner_code or '',
-                    order.partner_id.name or '',
-                    pr_name,
-                    line.date_planned,
-                    requisition.approval_date if requisition else False,
-                    html2plaintext(order.notes or ''),
-                    line.name or '',
-                    line.price_unit,
-                    line.product_qty,
-                    line.price_subtotal,
-                    line.qty_received,
-                    None,
-                    order.destination_location_id.display_name
-                    if order.destination_location_id else '',
-                    None,
-                ]
-                sheet.write_number(row, 0, values[0])
-                sheet.write(row, 1, values[1])
-                self._write_date(sheet, row, 2, values[2], date_format)
-                sheet.write(row, 3, values[3])
-                sheet.write(row, 4, values[4])
-                sheet.write(row, 5, values[5])
-                self._write_date(sheet, row, 6, values[6], date_format)
-                self._write_date(sheet, row, 7, values[7], date_format)
-                sheet.write(row, 8, values[8], notes_format)
-                sheet.write(row, 9, values[9])
-                sheet.write_number(row, 10, values[10] or 0.0, price_format)
-                sheet.write_number(row, 11, values[11] or 0.0, integer_format if float(values[11] or 0.0).is_integer() else decimal_format)
-                sheet.write_number(row, 12, values[12] or 0.0, price_format)
-                sheet.write_number(row, 13, values[13] or 0.0, integer_format if float(values[13] or 0.0).is_integer() else decimal_format)
+                write_number(row, 0, item_number)
+                write_string(row, 1, order_name)
+                self._write_date(sheet, row, 2, order_date, date_format, tz)
+                write_string(row, 3, partner_code)
+                write_string(row, 4, partner_name)
+                write_string(row, 5, pr_name)
+                self._write_date(sheet, row, 6, line.date_planned, date_format, tz)
+                self._write_date(sheet, row, 7, approval_date, date_format, tz)
+                write_string(row, 8, notes, notes_format)
+                write_string(row, 9, line.name or '')
+                write_number(row, 10, line.price_unit or 0.0, price_format)
+                qty = line.product_qty or 0.0
+                write_number(
+                    row, 11, qty,
+                    integer_format if float(qty).is_integer() else decimal_format,
+                )
+                write_number(row, 12, line.price_subtotal or 0.0, price_format)
+                received = line.qty_received or 0.0
+                write_number(
+                    row, 13, received,
+                    integer_format if float(received).is_integer() else decimal_format,
+                )
                 sheet.write_blank(row, 14, None)
-                sheet.write(row, 15, values[15])
+                write_string(row, 15, destination)
                 sheet.write_blank(row, 16, None)
                 row += 1
 

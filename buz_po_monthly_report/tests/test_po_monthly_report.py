@@ -73,3 +73,40 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
             'buz.po.monthly.report.xlsx.generator'
         ].generate_xlsx(wizard)
         self.assertTrue(zipfile.is_zipfile(io.BytesIO(content)))
+
+    def test_export_rows_skip_display_lines_and_keep_order(self):
+        try:
+            from openpyxl import load_workbook
+        except ImportError:
+            self.skipTest('openpyxl not installed')
+        partner = self.env['res.partner'].with_context(
+            skip_partner_required_fields=True,
+        ).create({'name': 'PO Report Vendor'})
+        product = self.env['product.product'].create({'name': 'PO Report Item'})
+        order = self.env['purchase.order'].create({
+            'partner_id': partner.id,
+            'date_order': '2026-05-10 03:00:00',
+            'order_line': [
+                (0, 0, {'display_type': 'line_section', 'name': 'Section'}),
+                (0, 0, {
+                    'product_id': product.id, 'name': 'Item A',
+                    'product_qty': 2, 'price_unit': 10,
+                }),
+                (0, 0, {
+                    'product_id': product.id, 'name': 'Item B',
+                    'product_qty': 1.5, 'price_unit': 20,
+                }),
+            ],
+        })
+        wizard = self.env['po.monthly.report.wizard'].new({
+            'po_date_from': date(2026, 5, 10),
+            'po_date_to': date(2026, 5, 10),
+        })
+        content = self.env[
+            'buz.po.monthly.report.xlsx.generator'
+        ].generate_xlsx(wizard)
+        sheet = load_workbook(io.BytesIO(content)).active
+        rows = [r for r in sheet.iter_rows(min_row=5, values_only=True) if r[1] == order.name]
+        self.assertEqual([r[9] for r in rows], ['Item A', 'Item B'])
+        self.assertEqual([r[0] for r in rows][1] - [r[0] for r in rows][0], 1)
+        self.assertEqual(rows[0][12], 20)
