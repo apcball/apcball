@@ -36,3 +36,151 @@ class TestAccountMoveMonthlyBudget(TransactionCase, BudgetTestMixin):
         )
         self.assertEqual(grouped, [])
         self.assertEqual(ignored, {})
+
+    def test_cancel_bill_releases_commitment_when_due_date_has_no_plan(self):
+        """Regression: cancelling a bill whose due-date month has no confirmed
+        plan must still release its reserved commitment (stale 7.8M on prod)."""
+        plan_date = fields.Date.to_date('2026-10-15')
+        self._create_confirmed_plan(plan_date, budget_amount=100000)
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': self.partner.id,
+            'invoice_date': plan_date,
+            'invoice_date_due': plan_date,
+            'invoice_line_ids': [fields.Command.create({
+                'product_id': self.product.id,
+                'quantity': 1,
+                'price_unit': 1000,
+                'analytic_distribution': {str(self.analytic_account.id): 100},
+            })],
+        })
+        Commitment = self.env['budget.commitment'].sudo()
+        domain = [
+            ('document_model', '=', 'account.move'),
+            ('document_id', '=', bill.id),
+            ('budget_source', '=', 'monthly'),
+        ]
+        self.assertTrue(Commitment.search(domain + [('state', '=', 'reserved')]))
+        # Move the due date to a month without any plan, keeping the old commitment.
+        bill.with_context(skip_monthly_bill_budget_sync=True).write({
+            'invoice_date_due': fields.Date.to_date('2026-08-31'),
+        })
+        bill.button_cancel()
+        self.assertFalse(Commitment.search(domain + [('state', 'in', ('reserved', 'used'))]))
+
+    def test_post_bill_without_plan_releases_draft_reservation(self):
+        """Regression: a draft bill reserved budget; when it is posted with a due date
+        that has no confirmed plan, the reservation must not stay forever."""
+        plan_date = fields.Date.to_date('2026-10-15')
+        self._create_confirmed_plan(plan_date, budget_amount=100000)
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': self.partner.id,
+            'invoice_date': plan_date,
+            'invoice_date_due': plan_date,
+            'invoice_line_ids': [fields.Command.create({
+                'product_id': self.product.id,
+                'quantity': 1,
+                'price_unit': 1000,
+                'analytic_distribution': {str(self.analytic_account.id): 100},
+            })],
+        })
+        Commitment = self.env['budget.commitment'].sudo()
+        domain = [
+            ('document_model', '=', 'account.move'),
+            ('document_id', '=', bill.id),
+            ('budget_source', '=', 'monthly'),
+        ]
+        self.assertTrue(Commitment.search(domain + [('state', '=', 'reserved')]))
+        bill.with_context(skip_monthly_bill_budget_sync=True).write({
+            'invoice_date_due': fields.Date.to_date('2026-08-31'),
+        })
+        if 'tax_invoice_ids' in bill._fields and bill.tax_invoice_ids:  # l10n_th_account_tax
+            bill.tax_invoice_ids.write({
+                'tax_invoice_number': 'BUDGET-TI-%d' % bill.id,
+                'tax_invoice_date': plan_date,
+            })
+        bill.action_post()
+        self.assertFalse(Commitment.search(domain + [('state', '=', 'reserved')]))
+
+    # ------------------------------------------------------------------
+    # Vendor refunds (credit notes) give budget back
+    # ------------------------------------------------------------------
+    def _create_bill(self, move_type, plan_date, price=1000.0, qty=1):
+        return self.env['account.move'].create({
+            'move_type': move_type,
+            'partner_id': self.partner.id,
+            'invoice_date': plan_date,
+            'invoice_date_due': plan_date,
+            'invoice_line_ids': [fields.Command.create({
+                'product_id': self.product.id,
+                'quantity': qty,
+                'price_unit': price,
+                'analytic_distribution': {str(self.analytic_account.id): 100},
+            })],
+        })
+
+    def _post_bill(self, bill):
+        if 'tax_invoice_ids' in bill._fields and bill.tax_invoice_ids:  # l10n_th_account_tax
+            bill.tax_invoice_ids.write({
+                'tax_invoice_number': 'BUDGET-TI-%d' % bill.id,
+                'tax_invoice_date': bill.invoice_date,
+            })
+        bill.action_post()
+
+    def _commitments(self, bill, state):
+        return self.env['budget.commitment'].sudo().search([
+            ('document_model', '=', 'account.move'),
+            ('document_id', '=', bill.id),
+            ('budget_source', '=', 'monthly'),
+            ('state', '=', state),
+        ])
+
+    def test_bill_analytic_totals_sign_by_move_type(self):
+        """Refund lines carry a positive price_subtotal; the helper must negate them."""
+        plan_date = fields.Date.to_date('2026-10-15')
+        self._create_confirmed_plan(plan_date, budget_amount=100000)
+        invoice = self._create_bill('in_invoice', plan_date, price=1000.0)
+        refund = self._create_bill('in_refund', plan_date, price=400.0)
+        self.assertAlmostEqual(
+            invoice._get_monthly_bill_analytic_totals()[self.analytic_account.id], 1000.0, places=2)
+        self.assertAlmostEqual(
+            refund._get_monthly_bill_analytic_totals()[self.analytic_account.id], -400.0, places=2)
+
+    def test_draft_refund_reserves_negative_amount(self):
+        plan_date = fields.Date.to_date('2026-10-15')
+        self._create_confirmed_plan(plan_date, budget_amount=100000)
+        refund = self._create_bill('in_refund', plan_date, price=400.0)
+        reserved = self._commitments(refund, 'reserved')
+        self.assertEqual(len(reserved), 1)
+        self.assertAlmostEqual(reserved.amount, -400.0, places=2)
+
+    def test_posted_refund_uses_negative_amount_and_lowers_budget_used(self):
+        plan_date = fields.Date.to_date('2026-10-15')
+        plan = self._create_confirmed_plan(plan_date, budget_amount=100000)
+        line = plan.budget_line_ids.filtered(
+            lambda l: l.analytic_account_id == self.analytic_account)
+        invoice = self._create_bill('in_invoice', plan_date, price=1000.0)
+        self._post_bill(invoice)
+        line.invalidate_recordset(['used_amount'])
+        used_after_invoice = line.used_amount
+        self.assertAlmostEqual(used_after_invoice, 1000.0, places=2)
+
+        refund = self._create_bill('in_refund', plan_date, price=400.0)
+        self._post_bill(refund)
+        used = self._commitments(refund, 'used')
+        self.assertEqual(len(used), 1)
+        self.assertAlmostEqual(used.amount, -400.0, places=2)
+        line.invalidate_recordset(['used_amount'])
+        self.assertAlmostEqual(line.used_amount, used_after_invoice - 400.0, places=2)
+
+    def test_cancel_posted_refund_releases_commitment(self):
+        plan_date = fields.Date.to_date('2026-10-15')
+        self._create_confirmed_plan(plan_date, budget_amount=100000)
+        refund = self._create_bill('in_refund', plan_date, price=400.0)
+        self._post_bill(refund)
+        self.assertTrue(self._commitments(refund, 'used'))
+        refund.button_draft()
+        refund.button_cancel()
+        self.assertFalse(self._commitments(refund, 'used'))
+        self.assertFalse(self._commitments(refund, 'reserved'))
