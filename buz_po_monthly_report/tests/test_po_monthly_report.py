@@ -14,6 +14,7 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
         self.assertEqual(report.HEADERS, [
             'ลำดับ', 'เลขที่เอกสาร', 'วันที่เปิดPO', 'รหัสผู้จำหน่าย',
             'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'หมายเหตุ',
+            'Internal Reference',
             'ชื่อ', 'ราคา', 'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง',
             'CREDIT',
         ])
@@ -82,7 +83,9 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
         partner = self.env['res.partner'].with_context(
             skip_partner_required_fields=True,
         ).create({'name': 'PO Report Vendor'})
-        product = self.env['product.product'].create({'name': 'PO Report Item'})
+        product = self.env['product.product'].create({
+            'name': 'PO Report Item', 'default_code': 'TEST-REF-001',
+        })
         order = self.env['purchase.order'].create({
             'partner_id': partner.id,
             'date_order': '2026-05-10 03:00:00',
@@ -107,6 +110,7 @@ class TestPurchaseOrderMonthlyReport(TransactionCase):
         ].generate_xlsx(wizard)
         sheet = load_workbook(io.BytesIO(content)).active
         rows = [r for r in sheet.iter_rows(min_row=5, values_only=True) if r[1] == order.name]
-        self.assertEqual([r[9] for r in rows], ['Item A', 'Item B'])
+        self.assertEqual([r[9] for r in rows], ['TEST-REF-001', 'TEST-REF-001'])
+        self.assertEqual([r[10] for r in rows], ['Item A', 'Item B'])
         self.assertEqual([r[0] for r in rows][1] - [r[0] for r in rows][0], 1)
-        self.assertEqual(rows[0][12], 20)
+        self.assertEqual(rows[0][13], 20)

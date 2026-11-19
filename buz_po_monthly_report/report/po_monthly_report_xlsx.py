@@ -16,6 +16,7 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
     HEADERS = [
         'ลำดับ', 'เลขที่เอกสาร', 'วันที่เปิดPO', 'รหัสผู้จำหน่าย',
         'ชื่อผู้จำหน่าย', 'Ref', 'กำหนดส่ง', 'วันที่ Approve', 'หมายเหตุ',
+        'Internal Reference',
         'ชื่อ', 'ราคา', 'จำนวน', 'AMOUNT', 'รับ', 'คงเหลือ', 'สถานที่ส่ง',
         'CREDIT',
     ]
@@ -135,7 +136,9 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
         integer_format = workbook.add_format({'num_format': '#,##0'})
         decimal_format = workbook.add_format({'num_format': '#,##0.########'})
         notes_format = workbook.add_format({'text_wrap': True, 'valign': 'top'})
-        widths = [8, 18, 14, 18, 36, 20, 14, 14, 40, 58, 14, 12, 16, 12, 14, 28, 12]
+        widths = [
+            8, 18, 14, 18, 36, 20, 14, 14, 40, 22, 58, 14, 12, 16, 12, 14, 28, 12,
+        ]
         for col, width in enumerate(widths):
             sheet.set_column(col, col, width)
 
@@ -160,7 +163,8 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
         if orders:
             all_lines = self.env['purchase.order.line'].search_fetch(
                 [('order_id', 'in', orders.ids), ('display_type', '=', False)],
-                ['order_id', 'sequence', 'name', 'price_unit', 'product_qty',
+                ['order_id', 'sequence', 'name', 'product_id', 'price_unit',
+                 'product_qty',
                  'price_subtotal', 'qty_received', 'date_planned'],
                 order='order_id, sequence, id',
             )
@@ -202,22 +206,23 @@ class PurchaseOrderMonthlyXlsx(models.AbstractModel):
                 self._write_date(sheet, row, 6, line.date_planned, date_format, tz)
                 self._write_date(sheet, row, 7, approval_date, date_format, tz)
                 write_string(row, 8, notes, notes_format)
-                write_string(row, 9, line.name or '')
-                write_number(row, 10, line.price_unit or 0.0, price_format)
+                write_string(row, 9, line.product_id.default_code or '')
+                write_string(row, 10, line.name or '')
+                write_number(row, 11, line.price_unit or 0.0, price_format)
                 qty = line.product_qty or 0.0
                 write_number(
-                    row, 11, qty,
+                    row, 12, qty,
                     integer_format if float(qty).is_integer() else decimal_format,
                 )
-                write_number(row, 12, line.price_subtotal or 0.0, price_format)
+                write_number(row, 13, line.price_subtotal or 0.0, price_format)
                 received = line.qty_received or 0.0
                 write_number(
-                    row, 13, received,
+                    row, 14, received,
                     integer_format if float(received).is_integer() else decimal_format,
                 )
-                sheet.write_blank(row, 14, None)
-                write_string(row, 15, destination)
-                sheet.write_blank(row, 16, None)
+                sheet.write_blank(row, 15, None)
+                write_string(row, 16, destination)
+                sheet.write_blank(row, 17, None)
                 row += 1
 
         sheet.autofilter(3, 0, max(3, row - 1), len(self.HEADERS) - 1)
