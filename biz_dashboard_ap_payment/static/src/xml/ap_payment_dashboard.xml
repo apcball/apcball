@@ -242,10 +242,6 @@
                                 <b t-esc="fmtBaht(data.kpi_forecast.other)"/>
                             </div>
                             <t t-if="data.kpi_forecast.other">
-                                <div class="o_apd_row o_apd_row--sub" t-foreach="(data.kpi_forecast.other_items || []).slice(0, 3)" t-as="oi" t-key="oi.name">
-                                    <span t-esc="oi.name"/>
-                                    <b><t t-esc="fmtNum(oi.amount)"/> <small class="text-muted">(<t t-esc="fmtPct(oi.pct)"/>)</small></b>
-                                </div>
                                 <div class="o_apd_note">เฉลี่ย 3 เดือนก่อนหน้า · ไม่รวมเงินต้นเงินกู้ · รวมอยู่ในยอดเงินสดด้านบนแล้ว</div>
                             </t>
                         </div>
