@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_po_lot_xlsx" model="ir.actions.report">
+        <field name="name">Stock by PO Lot (xlsx)</field>
+        <field name="model">buz.po.lot.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_stock_po_lot_report.po_lot_xlsx</field>
+        <field name="report_file">po_lot_report</field>
+        <field name="groups_id" eval="[(4, ref('buz_stock_po_lot_report.group_po_lot_report_user'))]"/>
+    </record>
+</odoo>
