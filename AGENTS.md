@@ -19,7 +19,7 @@ Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service
 ## Commands
 
 Requires SSH aliases in `~/.ssh/config`:
-- `dev` — DEV server (Docker `odoo:17.0`)
+- `Dev-Server` — DEV server (Docker `odoo:17.0`)
 
 ```bash
 # Test on live DB (DEV only) — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.
@@ -183,7 +183,7 @@ Connect to live Odoo DB via MCP. Available tools:
 
 ### PROD Addons Read-only Inspection
 
-- The additional addons path `/srv/docker/odoo_mogen/custom-addon` is on PROD and is accessible through the SSH alias `PROD-Server` (`mogenit@160.187.249.148`), as configured in the local SSH config.
+- The additional addons path `/srv/docker/odoo_mogen/custom-addon` is on PROD and is accessible through the SSH alias `Prod-Server` (`mogenit@160.187.249.148`), as configured in the local SSH config.
 - Access this path for inspection only. Read-only examples include listing files (`ls`, `find`), searching text (`grep`), and displaying file contents (`cat`, `sed`).
 - Never create, edit, delete, rename, move, upload, or copy files in this path. Do not run module installs or upgrades, database changes, service commands, or scripts from this path. Do not use `scp`, `rsync`, editors, or any other write-capable command against it.
 - Do not add credentials or private key contents to this file. Use the configured SSH alias.
