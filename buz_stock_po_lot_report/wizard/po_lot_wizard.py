@@ -167,7 +167,7 @@ class BuzPoLotWizard(models.TransientModel):
             bq += net_q
             bv += net_v
             vals = {'line_type': 'move', 'date': self.date_to,
-                    'doc_ref': 'โอนระหว่างคลัง (ผลต่างสุทธิ)',
+                    'doc_ref': 'โอนระหว่างคลัง (สุทธิ)',
                     'bal_qty': bq, 'bal_value': bv,
                     'bal_cost': (bv / bq) if bq else 0.0}
             if net_q > 0 or (net_q == 0 and net_v >= 0):
@@ -238,7 +238,7 @@ class BuzPoLotWizard(models.TransientModel):
                     bal_qty=wh_q - alloc, bal_cost=0.0, bal_value=0.0)
         diff = bv - lot_val
         if abs(diff) >= 0.01:
-            row(line_type='adjust', doc_ref='ปรับมูลค่า (ผลต่างจากล็อต)', bal_value=diff)
+            row(line_type='adjust', doc_ref='ปรับมูลค่า (ต่างจากล็อต)', bal_value=diff)
         return out
 
     # ----------------------------------------------------------- actions

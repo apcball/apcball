@@ -20,9 +20,10 @@ class PoLotXlsx(models.AbstractModel):
             cost = workbook.add_format({'num_format': '#,##0.0000', 'border': 1})
             tot = workbook.add_format({'num_format': '#,##0.00', 'border': 1, 'bold': True})
             txt = workbook.add_format({'border': 1})
+            doc = workbook.add_format({'border': 1, 'text_wrap': True, 'valign': 'top'})
             dat = workbook.add_format({'num_format': 'dd/mm/yyyy', 'border': 1})
             sheet.set_column('A:A', 12)
-            sheet.set_column('B:B', 20)
+            sheet.set_column('B:B', 44)
             sheet.set_column('C:K', 14)
             comp = wiz.company_id
             r = 0
@@ -64,7 +65,7 @@ class PoLotXlsx(models.AbstractModel):
                         sheet.write_datetime(r, 0, datetime.combine(l.date, time.min), dat)
                     else:
                         sheet.write(r, 0, '', txt)
-                    sheet.write(r, 1, l.doc_ref or '', txt)
+                    sheet.write(r, 1, l.doc_ref or '', doc)
                     if l.line_type in ('move', 'total'):
                         sheet.write(r, 2, l.in_qty, n)
                         sheet.write(r, 3, l.in_cost, cost)
