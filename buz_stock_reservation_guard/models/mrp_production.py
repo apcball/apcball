@@ -31,6 +31,12 @@ class MrpProduction(models.Model):
         errors = []
         for production in self:
             demand_map = {}
+            ratio = 1.0
+            if (
+                production.product_qty
+                and 0 < production.qty_producing < production.product_qty
+            ):
+                ratio = production.qty_producing / production.product_qty
             moves = production.move_raw_ids.filtered(
                 lambda m: m.state not in ("done", "cancel")
                 and m.product_id.type == "product"
@@ -43,17 +49,33 @@ class MrpProduction(models.Model):
                 demand_map.setdefault(
                     key, {"product": move.product_id, "location": move.location_id, "quantity": 0.0}
                 )
+                if move.picked and move.quantity:
+                    need = move.quantity
+                else:
+                    # Partial production: only the share being produced now
+                    # is consumed; the rest moves to the backorder.
+                    need = move.product_uom_qty * ratio
                 qty = move.product_uom._compute_quantity(
-                    move.product_uom_qty, move.product_id.uom_id
+                    need, move.product_id.uom_id
                 )
                 demand_map[key]["quantity"] += qty
+                # Own reservation must not count against the MO itself.
+                demand_map[key]["own_reserved"] = demand_map[key].get(
+                    "own_reserved", 0.0
+                ) + sum(
+                    ml.product_uom_id._compute_quantity(
+                        ml.quantity, move.product_id.uom_id
+                    )
+                    for ml in move.move_line_ids
+                    if ml.location_id == move.location_id
+                )
 
             for values in demand_map.values():
                 available_qty = self.env["stock.quant"]._get_available_quantity(
                     values["product"],
                     values["location"],
                     strict=True,
-                )
+                ) + values.get("own_reserved", 0.0)
                 if float_compare(
                     available_qty,
                     values["quantity"],
