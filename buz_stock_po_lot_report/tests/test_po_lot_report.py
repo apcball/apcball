@@ -21,3 +21,36 @@ class TestTaxStockReport(TransactionCase):
         self.assertAlmostEqual(total['bal_qty'], sum(svl_all.mapped('quantity')), places=3)
         self.assertAlmostEqual(
             total['bal_value'], sum(r['bal_value'] for r in rows if r['line_type'] in ('lot', 'adjust')), places=1)
+
+    def test_no_product_filter_lists_balance_products(self):
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2000-01-01', 'date_to': '2099-12-31', 'hide_zero': True})
+        rows = wiz._compute_rows()  # must not raise without product/prefix
+        if not rows:
+            self.skipTest('no valuation layers')
+        totals = [r for r in rows if r['line_type'] == 'total']
+        for t in totals:
+            self.assertTrue(t['bal_qty'] or t['bal_value'] or t['in_qty'] or t['out_qty'])
+        models = [r['model_code'] for r in rows if r['line_type'] == 'opening']
+        self.assertEqual(models, sorted(models))
+
+    def test_transfer_in_traced_to_origin_receipt(self):
+        """Transfer-in layers show the origin receipt doc, not the transfer."""
+        Svl = self.env['stock.valuation.layer']
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2000-01-01', 'date_to': '2099-12-31', 'hide_zero': False})
+        start_utc, end_utc = wiz._utc_bounds()
+        cutoff = self.env['ir.config_parameter'].sudo().get_param(
+            'stock_fifo_valuation_report.cutoff_date')
+        from datetime import datetime
+        from odoo import fields
+        cutoff_utc = wiz._bangkok_start_utc(fields.Date.to_date(cutoff)) if cutoff else datetime.min
+        cand = Svl.search([('quantity', '>', 0), ('warehouse_id', '!=', False),
+                           ('description', 'like', 'Transfer IN%')], limit=20)
+        for sv in cand:
+            items = [((sv.accounting_date or sv.create_date), sv.id, sv)]
+            labels = wiz._origin_labels(sv.product_id, items, cutoff_utc, end_utc)
+            if sv.id in labels:
+                self.assertTrue(labels[sv.id][0])
+                return
+        self.skipTest('no traceable transfer-in layer')

@@ -35,9 +35,16 @@ class PoLotXlsx(models.AbstractModel):
             r += 1
             sheet.write(r, 0, 'ชื่อผู้ประกอบการ: %s' % comp.name)
             r += 2
+            last_model = None
             for prod in wiz.line_ids.mapped('product_id'):
                 lines = wiz.line_ids.filtered(lambda l: l.product_id == prod).sorted('seq')
                 categ = prod.categ_id
+                model = lines[:1].model_code or ''
+                if model != last_model:
+                    sheet.write(r, 0, 'รุ่นสินค้า', bold)
+                    sheet.write(r, 1, model, bold)
+                    r += 1
+                    last_model = model
                 sheet.write(r, 0, 'รหัสสินค้า', bold)
                 sheet.write(r, 1, prod.default_code or '')
                 r += 1
@@ -66,7 +73,7 @@ class PoLotXlsx(models.AbstractModel):
                     else:
                         sheet.write(r, 0, '', txt)
                     sheet.write(r, 1, l.doc_ref or '', doc)
-                    if l.line_type in ('move', 'total'):
+                    if l.line_type in ('move', 'total', 'lot'):
                         sheet.write(r, 2, l.in_qty, n)
                         sheet.write(r, 3, l.in_cost, cost)
                         sheet.write(r, 4, l.in_value, n)

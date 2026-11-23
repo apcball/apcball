@@ -1,6 +1,6 @@
 {
     'name': 'Tax Stock Report with PO Lots',
-    'version': '17.0.2.5.0',
+    'version': '17.0.2.6.0',
     'summary': 'รายงานสินค้าและวัตถุดิบ: per-product ledger + ending lots',
     'category': 'Inventory/Reports',
     'depends': ['stock', 'stock_account', 'report_xlsx',
