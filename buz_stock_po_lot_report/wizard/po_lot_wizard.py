@@ -217,6 +217,21 @@ class BuzPoLotWizard(models.TransientModel):
             if sv.quantity < 0 and sv.is_tr:
                 outs_by_move[sv.move_id].append((d, sv))
 
+        # transfer: show the out leg before its in leg (same day), so the lot
+        # rows under the in leg match the balance printed on it
+        emitted, ordered = set(), []
+        for d, i, sv in seq_all:
+            if i in emitted:
+                continue
+            if sv.is_tr and sv.quantity > 0 and sv.move_id:
+                for od, osv in outs_by_move.get(sv.move_id, []):
+                    if osv.id not in emitted and loc_date(od) == loc_date(d):
+                        ordered.append((od, osv.id, osv))
+                        emitted.add(osv.id)
+            ordered.append((d, i, sv))
+            emitted.add(i)
+        seq_all = ordered
+
         def consume(d, sv):
             done.add(sv.id)
             q = queues[sv.wh_id]
@@ -230,14 +245,28 @@ class BuzPoLotWizard(models.TransientModel):
                     continue
                 lot[3] -= take
                 rem -= take
-                got.append([lot[0], lot[1], take])
+                got.append([lot[0], lot[1], take, lot[5]])
             while q and q[0][3] <= 1e-9:
                 q.pop(0)  # exhausted lots are always a prefix
             if rem > 1e-9:
-                got.append([sv.doc, loc_date(d), rem])  # shortfall (negative stock)
+                got.append([sv.doc, loc_date(d), rem, {sv.id}])  # shortfall (negative stock)
             return got
 
+        seen = set()      # layer ids already applied
+        pending = defaultdict(float)  # parent layer id -> value booked before the lot exists
+
+        def flush_pending(sv):
+            """Back-dated landed cost whose parent lot arrived later: add it now."""
+            val = pending.pop(sv.id, 0.0)
+            if val:
+                hit = [lot for lot in queues[sv.wh_id] if sv.id in lot[5]]
+                rec = sum(lot[4] for lot in hit)
+                for lot in hit:
+                    if rec:
+                        lot[2] += val / rec
+
         def apply(d, sv):
+            seen.add(sv.id)
             q = sv.quantity
             if q < 0:
                 if sv.id in done:
@@ -247,15 +276,28 @@ class BuzPoLotWizard(models.TransientModel):
                     pieces[sv.move_id] += got
             elif q == 0 and sv.parent_id and sv.value:
                 # landed cost / revaluation: spread over the lot it hangs off
-                hit = [lot for lot in queues[sv.wh_id] if lot[5] == sv.parent_id]
+                # (lot[5] = ids of every layer the lot passed through, so the
+                # parent is still found after the lot moved between warehouses)
+                hit = [lot for lot in queues[sv.wh_id] if sv.parent_id in lot[5]]
                 rec = sum(lot[4] for lot in hit)
-                for lot in hit:
-                    if rec:
+                if rec:
+                    for lot in hit:
                         lot[2] += sv.value / rec
+                elif sv.parent_id not in seen:
+                    # booked (back-dated) before its parent lot exists: wait for it
+                    pending[sv.parent_id] += sv.value
+                else:
+                    # parent lot already used up: spread over what is left in
+                    # the warehouse so lots keep adding up to the ledger balance
+                    left = [lot for lot in queues[sv.wh_id] if lot[3] > 1e-9]
+                    rem_q = sum(lot[3] for lot in left)
+                    for lot in left:
+                        lot[2] += sv.value / rem_q
             elif q > 0:
                 unit = sv.value / q
                 if not sv.is_tr:
-                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q, sv.id])
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q, {sv.id}])
+                    flush_pending(sv)
                     return
                 mid = sv.move_id
                 for od, osv in outs_by_move.get(mid, []):
@@ -265,13 +307,14 @@ class BuzPoLotWizard(models.TransientModel):
                 while need > 1e-9 and pieces[mid]:
                     pc = pieces[mid][0]
                     take = min(pc[2], need)
-                    queues[sv.wh_id].append([pc[0], pc[1], unit, take, take, sv.id])
+                    queues[sv.wh_id].append([pc[0], pc[1], unit, take, take, pc[3] | {sv.id}])
                     pc[2] -= take
                     need -= take
                     if pc[2] <= 1e-9:
                         pieces[mid].pop(0)
                 if need > 1e-9:
-                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need, sv.id])
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need, {sv.id}])
+                flush_pending(sv)
 
         def live_lots():
             """Remaining lots of the selected warehouses, one row per
