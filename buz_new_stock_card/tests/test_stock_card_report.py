@@ -45,7 +45,24 @@ class TestStockCardReport(TransactionCase):
             "name": "Test Stock Card Product",
             "type": "product",
         })
-        cls.uom_dozen = cls.env.ref("uom.product_uom_dozen")
+        cls.uom_dozen = cls.env.ref("uom.product_uom_dozen", raise_if_not_found=False)
+        if not cls.uom_dozen:
+            # some databases (e.g. the prod copy) no longer carry the stock dozen
+            cls.uom_dozen = cls.env["uom.uom"].create({
+                "name": "Test Dozen",
+                "category_id": cls.env.ref("uom.product_uom_categ_unit").id,
+                "uom_type": "bigger",
+                "factor_inv": 12.0,
+            })
+
+    def _adj_quant(self, product, location, qty, lot=None):
+        """Keep stock_quant consistent with the done-move ledger: the card's
+        opening balance is anchored on the current quant."""
+        if location.usage in ("internal", "transit") and qty:
+            self.env["stock.quant"].with_context(
+                bypass_done_move_line_guard=True,
+                skip_warehouse_consistency_check=True,
+            )._update_available_quantity(product, location, qty, lot_id=lot or None)
 
     def _mk_move(self, src, dest, qty, date_val, uom=None, state="done", product=None):
         product = product or self.product
@@ -82,10 +99,19 @@ class TestStockCardReport(TransactionCase):
         if state != "draft":
             move.with_context(**ctx).write({"state": state})
         move.move_line_ids.with_context(**ctx).write({"date": date_val})
+        # drop the guard seed; a done move then also shifts the real quants
+        self._adj_quant(product, src, -base_qty)
+        if state == "done":
+            self._adj_quant(product, src, -base_qty)
+            self._adj_quant(product, dest, base_qty)
         return move
 
-    def _set_done(self, move):
+    def _set_done(self, move, adjust=True):
         ctx = dict(bypass_done_move_line_guard=True)
+        for ml in (move.move_line_ids if adjust else []):
+            base_qty = ml.product_uom_id._compute_quantity(ml.quantity, ml.product_id.uom_id)
+            self._adj_quant(ml.product_id, ml.location_id, -base_qty, ml.lot_id)
+            self._adj_quant(ml.product_id, ml.location_dest_id, base_qty, ml.lot_id)
         move.with_context(**ctx).write({"state": "done"})
         move.move_line_ids.with_context(**ctx).write({"date": move.date})
 
@@ -202,9 +228,19 @@ class TestStockCardReport(TransactionCase):
         self.env.user.groups_id = [Command.link(
             self.env.ref("buz_new_stock_card.group_stock_card_see_value").id
         )]
-        self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
-        self._mk_move(self.loc_a, self.loc_customer, 30.0, self._dt("2024-06-10 08:00:00"))
-        self._mk_move(self.loc_supplier, self.loc_a, 20.0, self._dt("2024-06-15 10:00:00"))
+        moves = [
+            self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00")),
+            self._mk_move(self.loc_a, self.loc_customer, 30.0, self._dt("2024-06-10 08:00:00")),
+            self._mk_move(self.loc_supplier, self.loc_a, 20.0, self._dt("2024-06-15 10:00:00")),
+        ]
+        # value is read from the moves' layers; book them explicitly
+        for move, qty in zip(moves, (100.0, -30.0, 20.0)):
+            self.env["stock.valuation.layer"].create({
+                "product_id": self.product.id, "company_id": self.env.company.id,
+                "quantity": qty, "unit_cost": 10.0, "value": qty * 10.0,
+                "remaining_qty": 0.0, "remaining_value": 0.0,
+                "stock_move_id": move.id, "location_id": self.loc_a.id,
+            })
         data = self.engine.get_stock_card_data(
             self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30", page_size=20, page=0,
         )
@@ -398,10 +434,35 @@ class TestStockCardReport(TransactionCase):
 
         self.assertEqual([r["seq"] for r in rows], list(range(1, len(rows) + 1)))
 
+    def test_scoped_page_matches_full_lines_slices(self):
+        product2 = self.env["product.product"].create({
+            "name": "Test Stock Card Product 2", "type": "product",
+        })
+        self._mk_move(self.loc_supplier, self.loc_a, 100.0, self._dt("2024-05-15 10:00:00"))
+        self._mk_move(self.loc_a, self.loc_customer, 40.0, self._dt("2024-06-10 08:00:00"))
+        self._mk_move(self.loc_supplier, self.loc_a, 5.0, self._dt("2024-06-11 08:00:00"))
+        self._mk_move(self.loc_supplier, self.loc_b, 7.0, self._dt("2024-06-12 08:00:00"), product=product2)
+        self._mk_move(self.loc_supplier, self.loc_b, 3.0, self._dt("2024-06-13 08:00:00"), product=product2)
+        scope = self._scope_stock()
+        full = self.engine.get_scoped_stock_card_lines(
+            scope, "2024-06-01", "2024-06-30", scope_label="Stock",
+        )
+        page_size = 2
+        collected = []
+        for page in range(0, (len(full) + page_size - 1) // page_size):
+            res = self.engine.get_scoped_stock_card_page(
+                scope, "2024-06-01", "2024-06-30", scope_label="Stock",
+                page=page, page_size=page_size,
+            )
+            self.assertEqual(res["total_count"], len(full))
+            self.assertEqual(res["has_prev"], page > 0)
+            self.assertEqual(res["has_next"], (page + 1) * page_size < len(full))
+            collected.extend(res["lines"])
+        self.assertEqual(collected, full)
+
     def test_scoped_idle_product_with_stock_gets_marker_row(self):
         # movement before the range + matching on-hand quant, nothing in range
         self._mk_move(self.loc_supplier, self.loc_a, 25.0, self._dt("2024-03-01 08:00:00"))
-        self.env["stock.quant"]._update_available_quantity(self.product, self.loc_a, 25.0)
         rows = self.engine.get_scoped_stock_card_lines(
             self._scope_stock(), "2024-06-01", "2024-06-30", scope_label="Stock",
         )
@@ -419,7 +480,6 @@ class TestStockCardReport(TransactionCase):
         })
         self._mk_move(self.loc_supplier, self.loc_a, 10.0, self._dt("2024-06-10 08:00:00"))
         self._mk_move(self.loc_supplier, self.loc_b, 5.0, self._dt("2024-03-01 08:00:00"), product=product2)
-        self.env["stock.quant"]._update_available_quantity(product2, self.loc_b, 5.0)
 
         rows = self.engine.get_scoped_stock_card_lines(
             self._scope_stock(), "2024-06-01", "2024-06-30",
@@ -516,7 +576,6 @@ class TestStockCardReport(TransactionCase):
 
     def test_product_all_locations_idle_stock_marker_row(self):
         self._mk_move(self.loc_supplier, self.loc_a, 25.0, self._dt("2024-03-01 08:00:00"))
-        self.env["stock.quant"]._update_available_quantity(self.product, self.loc_a, 25.0)
 
         rows = self.engine.get_product_all_locations_lines(
             self.product.id, "2024-06-01", "2024-06-30",
@@ -588,9 +647,11 @@ class TestStockCardReport(TransactionCase):
             "lot_id": lot.id if lot else False,
             "date": move_date,
         })
-        self._set_done(move)
+        self._set_done(move, adjust=False)
         remaining_qty = qty if remaining_qty is None else remaining_qty
-        return self.env["stock.valuation.layer"].create({
+        layer = self.env["stock.valuation.layer"].with_context(
+            skip_warehouse_consistency_check=True,
+        ).create({
             "product_id": product.id,
             "company_id": self.env.company.id,
             "quantity": qty,
@@ -601,6 +662,11 @@ class TestStockCardReport(TransactionCase):
             "stock_move_id": move.id,
             "location_id": location.id,
         })
+        # quants follow the ledger only after the layer (negative-balance
+        # guard): the guard seed (qty < 0) is dropped together with the move.
+        self._adj_quant(product, src, -abs(qty) * (2 if qty < 0 else 1))
+        self._adj_quant(product, dest, abs(qty))
+        return layer
 
     def test_valuation_opening_row_from_outstanding_layer(self):
         self._mk_valuation_layer(
@@ -762,6 +828,31 @@ class TestStockCardReport(TransactionCase):
             self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
         )
         self.assertEqual(rows, [])
+
+    def test_valuation_source_stamped_transfer_in_counts_for_destination_scope(self):
+        # "Transfer IN" layers carry the SOURCE location (here loc_b) although
+        # the move delivers into loc_a. The destination scope must get the
+        # opening value (else it shows a large negative opening); the stamped
+        # location's scope must NOT get a phantom +value.
+        self._mk_valuation_layer(
+            self.product, self.loc_b, 10.0, 100.0, self._dt("2024-05-01 08:00:00"),
+            dest=self.loc_a,
+        )
+        opening_dest = self.engine._get_opening_value(
+            self.product.id, [self.loc_a.id], self._dt("2024-06-01 00:00:00"),
+            [self.env.company.id],
+        )
+        opening_src = self.engine._get_opening_value(
+            self.product.id, [self.loc_b.id], self._dt("2024-06-01 00:00:00"),
+            [self.env.company.id],
+        )
+        self.assertAlmostEqual(opening_dest, 1000.0)
+        self.assertAlmostEqual(opening_src, 0.0)
+        by_product = self.engine._get_opening_values_by_product(
+            [self.product.id], [self.loc_a.id], self._dt("2024-06-01 00:00:00"),
+            [self.env.company.id],
+        )
+        self.assertAlmostEqual(by_product[self.product.id], 1000.0)
 
     def test_valuation_lot_split_proportional(self):
         lot_model = self.env["stock.lot"]

@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="module_category_buz_asset" model="ir.module.category">
-        <field name="name">บริหารทรัพย์สิน</field>
+        <field name="name">Asset Management</field>
         <field name="sequence">45</field>
     </record>
 
     <record id="group_asset_user" model="res.groups">
-        <field name="name">ผู้ใช้ทรัพย์สิน</field>
+        <field name="name">Asset User</field>
         <field name="category_id" ref="module_category_buz_asset"/>
     </record>
     <record id="group_asset_officer" model="res.groups">
-        <field name="name">เจ้าหน้าที่ทรัพย์สิน</field>
+        <field name="name">Asset Officer</field>
         <field name="category_id" ref="module_category_buz_asset"/>
         <field name="implied_ids" eval="[(4, ref('group_asset_user'))]"/>
     </record>
     <record id="group_asset_manager" model="res.groups">
-        <field name="name">ผู้จัดการทรัพย์สิน</field>
+        <field name="name">Asset Manager</field>
         <field name="category_id" ref="module_category_buz_asset"/>
         <field name="implied_ids" eval="[(4, ref('group_asset_officer'))]"/>
     </record>
     <record id="group_asset_accountant" model="res.groups">
-        <field name="name">นักบัญชีทรัพย์สิน</field>
+        <field name="name">Asset Accountant</field>
         <field name="category_id" ref="module_category_buz_asset"/>
         <field name="implied_ids" eval="[(4, ref('group_asset_user'))]"/>
     </record>
     <record id="group_asset_accounting_manager" model="res.groups">
-        <field name="name">ผู้จัดการบัญชีทรัพย์สิน</field>
+        <field name="name">Asset Accounting Manager</field>
         <field name="category_id" ref="module_category_buz_asset"/>
         <field name="implied_ids" eval="[(4, ref('group_asset_accountant'))]"/>
     </record>

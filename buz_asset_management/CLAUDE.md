@@ -139,6 +139,10 @@ unless they conflict with this specification.
     record result.
 -   Separate planned values from posted accounting values.
 -   No custom JS unless standard widgets cannot satisfy requirement.
+    Owner-approved exception (2026-11-04): the OWL dashboard client action in
+    `static/src/dashboard/` (Chart.js from core). It is read-only; data comes from
+    `buz.asset.dashboard.service`, figures from `services/ledger.py`. Do not add
+    other JS without approval.
 
 ### Naming
 

@@ -35,7 +35,12 @@ class MrpJobReportWizard(models.TransientModel):
         string="Date Basis", default="create", required=True,
     )
     state_filter = fields.Selection(
-        [("done", "Done Only"), ("all", "All (except cancelled)"), ("all_cancel", "All (including cancelled)")],
+        [
+            ("done", "Done Only"),
+            ("open", "Open (Confirmed / In Progress, issued only)"),
+            ("all", "All (except cancelled)"),
+            ("all_cancel", "All (including cancelled)"),
+        ],
         string="Status", default="done", required=True,
     )
     picking_type_ids = fields.Many2many("stock.picking.type", string="Operation Types")
@@ -55,6 +60,8 @@ class MrpJobReportWizard(models.TransientModel):
         ]
         if self.state_filter == "done":
             domain.append(("state", "=", "done"))
+        elif self.state_filter == "open":
+            domain.append(("state", "in", ["confirmed", "progress", "to_close"]))
         elif self.state_filter == "all":
             domain.append(("state", "!=", "cancel"))
         if self.picking_type_ids:
@@ -182,10 +189,17 @@ class MrpJobReportWizard(models.TransientModel):
                 return fields.Datetime.context_timestamp(self, val).date()
             return val
 
+        is_open = self.state_filter == "open"
         rows = []
         for mo in mos:
             job, close = self._split_name(mo.name)
             dept = mo.user_id.employee_id.department_id.name or ""
+            issues = [
+                i for i in self._issue_lines(mo, raw_by_mo.get(mo.id, []))
+                if abs(i["qty"]) >= 1e-9  # requested but never issued
+            ]
+            if is_open and not issues:
+                continue
             r = blank()
             r[0], r[1], r[2], r[3] = job, d(mo.create_date), d(mo.date_deadline), d(mo.date_start)
             r[4], r[5] = mo.picking_type_id.name, dept
@@ -194,9 +208,7 @@ class MrpJobReportWizard(models.TransientModel):
             r[0], r[6], r[7] = job, mo.product_id.default_code or "", mo.product_id.display_name
             r[8], r[9] = mo.product_qty, mo.product_uom_id.name
             rows.append(r)
-            for iss in self._issue_lines(mo, raw_by_mo.get(mo.id, [])):
-                if abs(iss["qty"]) < 1e-9:
-                    continue  # requested but never issued
+            for iss in issues:
                 r = blank()
                 r[0] = job
                 r[10] = iss["dept"] or dept
@@ -268,10 +280,14 @@ class MrpJobReportWizard(models.TransientModel):
         ws = wb.add_worksheet("ใบปิด JOB")
         ws.hide_gridlines(2)
         ws.set_zoom(90)
+        is_open = self.state_filter == "open"
+        # open MOs have no close / return output yet: hide those column groups
+        hidden = set(range(19, 32)) if is_open else set()
         for c, w in enumerate(self._WIDTHS):
-            ws.set_column(c, c, w)
+            ws.set_column(c, c, w, None, {"hidden": c in hidden})
         ws.set_row(0, 26)
-        ws.write(0, 0, "รายงานใบปิด JOB (Manufacturing Job Close Report)", title)
+        ws.write(0, 0, "รายงาน JOB ที่ยังไม่ปิด (เบิกของแล้ว)" if is_open
+                 else "รายงานใบปิด JOB (Manufacturing Job Close Report)", title)
         ws.write(1, 0, "ช่วงวันที่ %s ถึง %s  |  บริษัท %s  |  %d แถว" % (
             self.date_from.strftime("%d/%m/%Y"), self.date_to.strftime("%d/%m/%Y"),
             self.company_id.name, len(rows)), sub)
@@ -332,7 +348,8 @@ class MrpJobReportWizard(models.TransientModel):
         self._write_sheet(wb, rows)
         wb.close()
         att = self.env["ir.attachment"].create({
-            "name": "ใบปิด JOB %s-%s.xlsx" % (self.date_from, self.date_to),
+            "name": "%s %s-%s.xlsx" % (
+                "JOB ค้างปิด" if self.state_filter == "open" else "ใบปิด JOB", self.date_from, self.date_to),
             "type": "binary",
             "datas": base64.b64encode(buf.getvalue()),
             "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

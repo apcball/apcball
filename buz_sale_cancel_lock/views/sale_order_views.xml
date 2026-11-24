@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_cancel_lock" model="ir.ui.view">
+        <field name="name">sale.order.form.cancel.lock</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_cancel']" position="attributes">
+                <attribute name="invisible">state not in ['draft', 'sent', 'sale'] or not id or locked or has_posted_invoice</attribute>
+            </xpath>
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="has_posted_invoice" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -173,6 +173,19 @@ class LazadaDashboard(models.AbstractModel):
                 "bad" if jobs else "ok", _("Shipments Need Attention")),
         }
 
+        stock_records = Mapping.search(shop_dom)
+        for key, status, label, severity in (
+            ("low_stock", "low", _("Low Warehouse Stock"), "warn"),
+            ("out_stock", "out", _("Out of Warehouse Stock"), "bad"),
+        ):
+            count = len(stock_records.filtered(lambda m: m.stock_status == status))
+            tiles[key] = {
+                "value": count, "label": label, "severity": severity if count else "ok",
+                "action": "lazada_connector.action_lazada_stock_available",
+                "domain": shop_dom + [("stock_status", "=", status)],
+                "delta": None, "series": [],
+            }
+
         # ---- orders ----
         order_base = [("is_lazada_order", "=", True), ("lazada_config_id", "in", shops.ids)]
         order_dom = order_base + [("date_order", ">=", since)]

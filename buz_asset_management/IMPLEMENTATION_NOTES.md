@@ -271,3 +271,51 @@ Rule to keep: exactly one engine per asset. Do not name any BUZ model `account.a
 - DEV tests: 147 run, 0 failed (10 new: GL match with unposted plan shown separately, variance + drill-down, disposal + reversal legs, unmapped category, permissions, roll-forward identities incl. disposal, ageing buckets, forecast domain). Two earlier failures were test bugs (owner's real asset polluting totals; duplicate account codes), fixed in the tests.
 - DEV real-data run (read-only, rolled back) on the owner's AST/00461: NBV variance -48,958.33. Cost 122000 GL 0 vs 50,000 (asset is register-only, no cost entry in the GL); accumulated account 12300 GL 0 vs 1,041.67 posted — the posted depreciation entry landed on an account that is no longer the category's accumulated account, so the report flags it. Expected behaviour, and a useful catch.
 - Limits: mapping uses the CURRENT category accounts, not the accounts on each historical entry; if a category's accounts change after posting, old entries stay on the old account and show as variance until reclassified. Cost GL is not split by source (opening balances, bills, adjustments) — variance is a prompt to investigate, drill-down shows the lines. Additions use the in-service date, not the bill date. No multi-currency/second-company test (DEV cannot create a company). No printable PDF versions; screens only. Not browser-checked; prod not deployed.
+
+## 28. OWL dashboard (2026-11-04, in progress)
+
+- Owner approved OWL JS for the dashboard only (see CLAUDE.md exception) and approved `AssetLedger` as the read layer; the ARCHITECTURE §6 adapter class was never built and is NOT created. Legacy transient `buz.asset.dashboard` and its action are kept; menu `menu_buz_asset_dashboard` now opens client action `buz_asset_management.dashboard`.
+- Files: `models/asset_dashboard_service.py` (abstract `buz.asset.dashboard.service`, `get_data(filters)`, read-only, no sudo), `controllers/dashboard.py` (`/buz_asset/dashboard/data` json, `/buz_asset/dashboard/export` xlsx), `static/src/dashboard/*` (OWL + Chart.js from core), `views/dashboard_actions.xml`, `tests/test_dashboard_service.py`.
+- Figures: cost / accumulated / NBV from `AssetLedger` at the as-of date (posted lines only). Pending depreciation is split planned / draft_move / exception, due on or before as-of. `draft_move` is never produced by current posting, so Draft shows 0.
+- Filters applied in Python to the ledger's live set (department, category, location, operational state); company limited to `env.companies`.
+- Quick actions only open existing views; no state change from the dashboard.
+- PDF export is the browser print stylesheet (QWeb report not built yet). Manifest version not bumped (needs owner confirm).
+- Status: deployed to DEV (MOG_DEV); `TestDashboardService` 12 tests, 0 failed, 1 skipped (company-leak test: DEV has one company). Full module suite not rerun. Not browser-checked; prod not deployed.
+
+## 2026-11-04 — Count list (quick result) for audits
+- New result `lost` (สูญหาย) + line button. `quick_result` dropdown (compute/inverse) routed via `_record`/`_reset`; no JS.
+- 2026-11-16 QA: first version embedded the editable list in the audit form, but plain asset users have no audit write ACL, so Odoo renders that form `edit="False"` and the list was read-only for them. Replaced by header button "บันทึกผลตรวจนับ" (`action_open_count`) opening `view_buz_asset_audit_line_count_tree`, an editable list on the lines (users have line write ACL). The audit form tab is now a read-only overview; `audit.write` refuses `line_ids` again for everyone (no header bypass).
+- Inline: พบ/ไม่พบ/สูญหาย/ชำรุด/เลิกใช้ (2026-11-16 QA L6: damaged/retired need no extra input). ยังไม่ตรวจ (reset) requires officer. ผิดสถานที่/ผิดผู้ถือครอง are refused with a message pointing to the line form (row button opens it); an empty choice asks to pick a result.
+
+## 2026-11-16 — Native reversal kept in sync (QA M4)
+- Every reversal path (Odoo Reverse wizard, reconcile un-matching, `action_reverse`) goes through `account.move._reverse_moves`; the override in `models/account_move.py` now:
+  - depreciation entry: requires `group_asset_accounting_manager`, line must be `posted` and not yet reversed, the reversal must be posted immediately (draft/scheduled refused), then marks the line `reversed`, links `reversal_move_id` and logs on the asset. `action_reverse` relies on it.
+  - disposal entry: refused (no flow restores the asset/schedule yet; a disposal-reversal feature needs owner sign-off).
+- Tests: +4 (wizard sync + no duplicate, permission, draft reversal refused, disposal refused). DEV: TestDepreciationPosting 36/36; full module 146 run, 0 failed, 3 skipped (single company).
+- Open: a posted reversal can still be reset to draft (M3); ledger does not check reversal state.
+
+## 2026-11-16 — Reversal entries protected, ledger counts posted only (QA M3)
+- `account.move._buz_asset_entries()` = depreciation, disposal, or a move linked as a line's `reversal_move_id`. `button_draft`, `button_cancel` and `unlink` refuse all of them (before: reversal entries could be reset to draft/cancelled; `button_cancel` was unguarded for asset entries). `reversal_move_id` is now indexed (searched on those calls).
+- `services/ledger.py`: original counts only when posted on/before the date; reversal subtracts only when posted (`_posted_on_or_before`); roll-forward movements likewise. Defends against data that predates the guard.
+- Tests +2 (reversal entry draft/cancel/unlink refused; ledger ignores a non-posted reversal). DEV: full run 148, the only errors were ir.sequence deadlocks vs the live DEV server in TestAssetMaintenance; rerun TestAssetMaintenance + TestDepreciationPosting 50/50, exit 0.
+
+## 2026-11-16 — Auto-post cron no longer starves (QA M1)
+- Before: a due line that failed a pre-post check (missing account, other-company journal, asset not capitalized, earlier period in exception) raised outside the posting try, stayed `planned` and was picked again every run; enough of them filled the batch and no other asset auto-posted.
+- `_cron_post_due_lines` now: selects only assets that are approved, in service/under maintenance and capitalized; skips assets holding an `exception`/`draft_move` due line (they wait for a person); stops an asset for the run after its first failure; a UserError found before posting marks that line `exception` with the message (one actionable exception per asset). Exception lines are not auto-retried; manual post retries them. Manual `action_post_depreciation` behaviour unchanged (still raises).
+- Note: `order='asset_id, sequence'` follows `buz.asset._order` (code desc), so newer assets are batched first.
+- Tests +2 (misconfigured asset does not starve another with batch_size=2; not-ready asset waits without exception). DEV: TestDepreciationPosting 40/40.
+
+## 2026-11-16 — Re-plan after reversal / cost change (QA M2, owner decision)
+- Owner decision 2026-11-16: corrections re-plan forward; a re-planned row in a locked period goes to exception when posted (no catch-up into the next open period).
+- `buz.asset.action_replan_schedule` (accountant; button "คำนวณตารางที่เหลือใหม่" on capitalized, not disposed assets): keeps posted/reversed/cancelled rows as history, deletes planned/exception rows, spreads (depreciable base − net posted) straight-line over useful-life months left after the last posted period (from the depreciation start when nothing is posted). New rows get sequences after the history and idempotency keys suffixed `:v<version>`. Refused when: disposed, a `draft_move` row exists, net posted exceeds the base (reverse first), or life is used up with value left (extend life first).
+- `action_compute_schedule` still refuses once entries exist; its message now points to the re-plan.
+- Disposal: reversed/cancelled rows neither count nor block (supersedes the 2026-10-30 note that any reversed row blocks). Planned/exception/draft rows due by the disposal date still block.
+- Tests +4 (re-plan after reversal, after cost change, guards, disposal after reversal + re-plan). DEV: TestDepreciationPosting 44/44, TestScheduleMath 9/9, TestScheduleModel 8/8.
+
+## 2026-11-16 — Reminder crons isolate failures (QA L2)
+- `_cron_remind_expiring` (coverage) and `_cron_remind_due` (maintenance) used a savepoint without try: one failing record aborted the whole run. Each record now runs in try + savepoint; a failure is logged, the record is not marked `reminder_sent` and is retried next run.
+- Tests +2 (one record failing does not stop the others; it is reminded on the next run). DEV: TestAssetCoverage + TestAssetMaintenance + TestAssetAudit 44/44.
+
+## 2026-11-16 — Category setup rights for Accounting Manager
+- Prod report: a user in Configuration could open Asset Categories but not create one (ACL gave write only to `base.group_system`). Categories drive accounts and the journal, so `group_asset_accounting_manager` now has read/write/create on `buz.asset.category` (no unlink; delete stays system-only). Other asset groups stay read-only.
+- Test `test_category_setup_rights`. Takes effect on prod only after the module upgrade (ACL CSV loads on `-u`).

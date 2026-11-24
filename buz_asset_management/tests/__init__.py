@@ -6,3 +6,4 @@ from . import test_transfer
 from . import test_audit
 from . import test_maintenance
 from . import test_coverage
+from . import test_dashboard_service

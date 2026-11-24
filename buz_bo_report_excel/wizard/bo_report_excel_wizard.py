@@ -7,6 +7,9 @@ from odoo.exceptions import UserError
 
 logger = logging.getLogger(__name__)
 
+# Embedded image resolution multiplier vs. displayed cell size
+HIRES_FACTOR = 6
+
 try:
     import openpyxl
     from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, numbers
@@ -370,14 +373,26 @@ class BOReportExcelWizard(models.TransientModel):
                         img_bytes = base64.b64decode(img_field)
                         pil_img = PILImage.open(io.BytesIO(img_bytes))
 
-                        # Resize to fit image cell C and row height
+                        # Display size (px) fitted to cell C / row height.
+                        # Embedded pixels are kept high-res (up to
+                        # HIRES_FACTOR x display size) so zooming in Excel
+                        # stays sharp; anchor ext controls displayed size.
                         max_w, max_h = 90, 55
-                        w_ratio = max_w / pil_img.width
-                        h_ratio = max_h / pil_img.height
-                        ratio = min(w_ratio, h_ratio, 1.0)
-                        new_w = int(pil_img.width * ratio)
-                        new_h = int(pil_img.height * ratio)
-                        pil_img = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
+                        ratio = min(max_w / pil_img.width,
+                                    max_h / pil_img.height, 1.0)
+                        new_w = max(1, int(pil_img.width * ratio))
+                        new_h = max(1, int(pil_img.height * ratio))
+
+                        if pil_img.mode not in ("RGB", "RGBA"):
+                            pil_img = pil_img.convert("RGBA")
+                        hi_ratio = min(
+                            new_w * HIRES_FACTOR / pil_img.width,
+                            new_h * HIRES_FACTOR / pil_img.height, 1.0)
+                        if hi_ratio < 1.0:
+                            pil_img = pil_img.resize(
+                                (max(1, int(pil_img.width * hi_ratio)),
+                                 max(1, int(pil_img.height * hi_ratio))),
+                                PILImage.LANCZOS)
 
                         resized_buf = io.BytesIO()
                         pil_img.save(resized_buf, format="PNG")

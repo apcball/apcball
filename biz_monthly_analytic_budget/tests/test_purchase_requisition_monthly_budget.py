@@ -36,7 +36,7 @@ class TestPurchaseRequisitionMonthlyBudget(TransactionCase):
                 'delay_type': 'days_after',
             })],
         })
-        vendor = self.env['res.partner'].create({
+        vendor = self.env['res.partner'].with_context(skip_partner_required_fields=True).create({
             'name': 'Vendor A',
             'property_supplier_payment_term_id': payment_term.id,
         })
@@ -57,7 +57,7 @@ class TestPurchaseRequisitionMonthlyBudget(TransactionCase):
                 'delay_type': 'days_after',
             })],
         })
-        vendor = self.env['res.partner'].create({
+        vendor = self.env['res.partner'].with_context(skip_partner_required_fields=True).create({
             'name': 'Vendor B',
             'property_supplier_payment_term_id': payment_term.id,
         })
@@ -81,7 +81,7 @@ class TestPurchaseRequisitionMonthlyBudget(TransactionCase):
                 'delay_type': 'days_after',
             })],
         })
-        vendor = self.env['res.partner'].create({
+        vendor = self.env['res.partner'].with_context(skip_partner_required_fields=True).create({
             'name': 'Vendor Line',
             'property_supplier_payment_term_id': payment_term.id,
         })

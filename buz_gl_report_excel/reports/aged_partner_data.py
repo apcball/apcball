@@ -42,6 +42,7 @@ class AgedPartnerReport(models.AbstractModel):
                 l.move_name AS move_name,
                 l.date AS date,
                 l.date_maturity AS date_maturity,
+                a.account_type,
                 l.currency_id,
                 c.name AS currency_name,
                 l.amount_currency AS original_amount_currency,
@@ -75,6 +76,8 @@ class AgedPartnerReport(models.AbstractModel):
             params.append(tuple(journal_ids))
         if target_move == 'posted':
             query += " AND m.state = 'posted'"
+        else:
+            query += " AND m.state != 'cancel'"
             
         self.env.cr.execute(query, params)
         lines = self.env.cr.dictfetchall()
@@ -122,9 +125,8 @@ class AgedPartnerReport(models.AbstractModel):
             if result_selection == 'supplier':
                 line_sign = -1
             elif result_selection == 'customer_supplier':
-                # Can be either. Usually debit balance means they owe us, credit means we owe them.
-                # If balance is negative, it's a credit balance. We'll show absolute values.
-                line_sign = 1 if line['residual_amount'] > 0 else -1
+                # sign by account type: receivable +, payable flipped
+                line_sign = 1 if line['account_type'] == 'asset_receivable' else -1
 
             residual_amount = line['residual_amount'] * line_sign
             

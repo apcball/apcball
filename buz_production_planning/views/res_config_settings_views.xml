@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_buz_plan" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.buz.plan</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="95"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Production Planning" name="buz_production_planning"
+                     groups="buz_production_planning.group_plan_manager">
+                    <block title="Supply and Lead Times" name="plan_supply">
+                        <setting string="Supply Warehouses"
+                                 help="Warehouses counted as available supply in a new plan.">
+                            <field name="plan_supply_warehouse_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Default Lead Times"
+                                 help="Used for products without history.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="plan_lead_make_days" class="col-lg-6 o_light_label"/>
+                                    <field name="plan_lead_make_days"/>
+                                </div>
+                                <div class="row">
+                                    <label for="plan_lead_buy_days" class="col-lg-6 o_light_label"/>
+                                    <field name="plan_lead_buy_days"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                    <block title="Forecast and History" name="plan_history">
+                        <setting string="Horizon and Look-back"
+                                 help="Defaults for new plans (weeks).">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="plan_horizon_weeks" class="col-lg-6 o_light_label"/>
+                                    <field name="plan_horizon_weeks"/>
+                                </div>
+                                <div class="row">
+                                    <label for="plan_lookback_weeks" class="col-lg-6 o_light_label"/>
+                                    <field name="plan_lookback_weeks"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="History Cut-off"
+                                 help="Data before this date is never used for averages or forecasts.">
+                            <field name="plan_history_cutoff"/>
+                        </setting>
+                    </block>
+                    <block title="Scheduling" name="plan_scheduling">
+                        <setting string="Duration Rules"
+                                 help="History is used when an operation has at least this many done workorders; otherwise expected duration × factor.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="plan_min_history_wo" class="col-lg-6 o_light_label"/>
+                                    <field name="plan_min_history_wo"/>
+                                </div>
+                                <div class="row">
+                                    <label for="plan_expected_factor" class="col-lg-6 o_light_label"/>
+                                    <field name="plan_expected_factor"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_buz_plan_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'buz_production_planning', 'bin_size': False}</field>
+    </record>
+</odoo>

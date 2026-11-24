@@ -49,7 +49,18 @@ class ResPartner(models.Model):
             )
             if state:
                 return State.browse(state.id)
+        # Spelling differs ("Chonburi" vs "Chon Buri"): compare without spaces.
+        key = re.sub(r"[\s.\-]", "", name).casefold()
+        for lang in ("en_US", "th_TH"):
+            for state in State.with_context(lang=lang).search(domain):
+                if re.sub(r"[\s.\-]", "", state.name or "").casefold() == key:
+                    return State.browse(state.id)
         return State
+
+    @staticmethod
+    def _lazada_parts(value):
+        """Lazada TH names come as "ไทย/ English"; return the non-empty parts."""
+        return [part.strip() for part in str(value or "").split("/") if part.strip()]
 
     @staticmethod
     def _lazada_split_street(full_address, tail_parts):
@@ -82,10 +93,13 @@ class ResPartner(models.Model):
 
     @staticmethod
     def _lazada_thai_phone(value):
-        """Lazada may send Thai numbers as 66XXXXXXXXX; show them as 0XXXXXXXXX."""
+        """Lazada sends Thai numbers as 660XXXXXXXXX or 66XXXXXXXXX; show
+        them as 0XXXXXXXXX."""
         if not value:
             return value
         digits = re.sub(r"\D", "", str(value))
+        if digits.startswith("660") and len(digits) == 12:
+            return digits[2:]
         if digits.startswith("66") and len(digits) == 11:
             return "0" + digits[2:]
         return value
@@ -108,25 +122,35 @@ class ResPartner(models.Model):
     def _lazada_address_values(self, address, config=None):
         """Partner values from a Lazada address (real data only).
 
-        Lazada: address1 = detailed address, address3 = province,
-        address4 = district (อำเภอ/เขต), address5 = sub-district
-        (ตำบล/แขวง), post_code. Masked or missing fields are left out:
-        never fill a buyer with somebody else's data (e.g. the company).
+        Lazada TH: address1 = detailed address, address3 = province and
+        address4 = district as "ไทย/ English", address5 = post code (a
+        sub-district elsewhere), post_code. Masked or missing fields are left
+        out: never fill a buyer with somebody else's data (e.g. the company).
         """
         address = address or {}
         clean = self._lazada_clean
         country = self._lazada_country(address, config)
         state_name = clean(address.get("address3"))
-        state = self._lazada_find_state(state_name, country)
+        state_parts = self._lazada_parts(state_name)
+        state = self.env["res.country.state"]
+        for part in state_parts or [state_name]:
+            state = self._lazada_find_state(part, country)
+            if state:
+                break
         district = (clean(address.get("address4")) or clean(address.get("addressDistrict"))
-                    or clean(address.get("addressDsitrict")))
-        city = district or clean(address.get("city"))
-        subdistrict = clean(address.get("address5"))
-        zipcode = clean(address.get("post_code") or address.get("postcode"))
+                    or clean(address.get("addressDsitrict")) or clean(address.get("city")))
+        district_parts = self._lazada_parts(district)
+        city = district_parts[0] if district_parts else district
+        fifth = clean(address.get("address5"))
+        zipcode = clean(address.get("post_code") or address.get("postcode")) or (
+            fifth if fifth and fifth.isdigit() else False
+        )
+        subdistrict = fifth if fifth and not fifth.isdigit() else False
         street, tail_subdistrict = self._lazada_split_street(
             clean(address.get("address1")),
-            [zipcode, state_name, state_name and _STATE_PREFIX.sub("", state_name),
-             city, district, subdistrict, clean(address.get("city"))],
+            [zipcode, state_name, *state_parts,
+             *[_STATE_PREFIX.sub("", part) for part in state_parts],
+             district, *district_parts, subdistrict],
         )
         values = {
             "name": " ".join(filter(None, [

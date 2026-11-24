@@ -125,17 +125,21 @@ class BuzAssetDisposal(models.Model):
             raise UserError(_("ทรัพย์สิน %s ยังไม่อนุมัติ", asset.display_name))
 
     def _compute_figures(self):
-        """Carrying value from POSTED depreciation lines only; blocks on gaps."""
+        """Carrying value from POSTED depreciation lines only; blocks on gaps.
+
+        Reversed (and cancelled) rows are history: they neither count nor block. After a
+        reversal the accountant re-plans the remainder, and those new rows must be posted
+        up to the disposal date like any other."""
         self.ensure_one()
         asset, rounding = self.asset_id, self.currency_id.rounding
         lines = asset.depreciation_line_ids
         due = lines.filtered(lambda l: l.depreciation_date <= self.disposal_date)
-        not_posted = due.filtered(lambda l: l.state != 'posted')
+        not_posted = due.filtered(lambda l: l.state in ('planned', 'draft_move', 'exception'))
         if not_posted:
             raise UserError(_(
                 "ต้องลงบัญชีค่าเสื่อมราคาถึงวันที่จำหน่ายให้ครบก่อน (ค้าง: %s)",
                 ', '.join(not_posted.mapped('name'))))
-        accumulated = sum(due.mapped('planned_amount'))
+        accumulated = sum(due.filtered(lambda l: l.state == 'posted').mapped('planned_amount'))
         cost = asset.gross_cost
         carrying = cost - accumulated
         proceeds = 0.0

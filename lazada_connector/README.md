@@ -113,8 +113,8 @@ installation and live Lazada calls have not been verified yet.
 
 ## 17.0.2.0.0 — parity with shopee_connector 17.0.2.20.0
 
-- **Menus** as in the Shopee app: Dashboard, Orders, Sync Orders, Logs &
-  Queue, Configurations (Seller Connections, Product Mappings, Import
+- **Menus** as in the Shopee app: Dashboard, Orders, Sync Orders, Import
+  Buyer Addresses, Logs & Queue, Configurations (Seller Connections, Product Mappings, Import
   Mappings). Import Stock File, Stock and Shipping Batches are hidden
   (the code stays); the "Arrange shipment" action is unbound like Shopee.
 - **Lazada Ops Dashboard** (`lazada.dashboard`, OWL client action
@@ -174,5 +174,22 @@ installation and live Lazada calls have not been verified yet.
   escrow summary. Only quotations are changed; re-applying replaces lines.
 
 Field names follow Lazada's documentation; verify them against real orders
-(`Lazada Payload` on the order) before relying on them. "Import Buyer
-Addresses" waits for a Lazada Seller Center export sample.
+(`Lazada Payload` on the order) before relying on them.
+
+### Import Buyer Addresses
+
+**Lazada -> Import Buyer Addresses** (Lazada Manager) reads the Seller Center
+order export (Orders -> Export, `.xlsx`/`.csv`, camelCase headers such as
+`orderNumber`, `shippingAddress`…`shippingAddress5`, `taxCode`,
+`sellerDiscountTotal`). For each order already in Odoo (matched on Lazada
+order id or Customer Reference) it copies the recipient to the Lazada buyer
+contact, puts the tax invoice identity (`taxCode` when
+`taxInvoiceRequested` is true, billing address) on the buyer with the
+recipient as a delivery contact, sets the Delivery Date from `createTime`,
+and on quotations adds the shipping fee and the seller discount
+(`sellerDiscountTotal`) unless the Finance API already filled the payment
+details. No orders are created; unknown orders are listed.
+
+Real exports show Thai provinces/districts as `"ไทย/ English"`, the post code
+in `address5` and phones as `660XXXXXXXXX`; buyer addresses (from the export
+and from the API) are parsed accordingly.

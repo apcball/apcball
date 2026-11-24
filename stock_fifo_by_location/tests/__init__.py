@@ -15,3 +15,4 @@ from . import test_fifo_consume_rows
 from . import test_landed_cost_ratio_cap
 from . import test_transfer_origin_split
 from . import test_transfer_fifo_scope
+from . import test_shortage_policy

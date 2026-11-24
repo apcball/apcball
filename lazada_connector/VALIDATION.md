@@ -65,3 +65,15 @@ shipping/labels work (local commit `af3da59`).
   format, `created_at`/`updated_at` format, Finance API path/parameters and row
   fields (`amount`, `fee_type`, `fee_name`).
 
+## Import Buyer Addresses
+
+- Parser `models/lazada_export_helpers.py` checked against a real Seller Center
+  export (7 orders: bilingual province/district, post code in `address5`,
+  `660…` phones, tax code on 6 orders); offline suite `qa/test_export_offline.py`:
+  **6 passed**.
+- Wizard `lazada.buyer.address.import.wizard` + menu (Lazada Manager);
+  Odoo tests `tests/test_buyer_address_import.py` **written, not executed**.
+- Address parsing (`res_partner`) now splits `"ไทย/ English"` names, takes the
+  post code from `address5`, matches provinces ignoring spaces
+  ("Chonburi" = "Chon Buri") and converts `660XXXXXXXXX` phones.
+

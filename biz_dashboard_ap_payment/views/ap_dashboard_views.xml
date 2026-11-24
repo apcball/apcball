@@ -10,7 +10,7 @@
               name="Budget &amp; Payment Control"
               parent="biz_monthly_analytic_budget.menu_monthly_budget_root"
               action="action_ap_payment_dashboard"
-              groups="biz_monthly_analytic_budget.group_monthly_budget_user,account.group_account_invoice"
+              groups="biz_dashboard_ap_payment.group_ap_payment_dashboard_user"
               sequence="6"/>
 
     <!-- Accounting > Reporting -->
@@ -18,6 +18,6 @@
               name="Budget &amp; Payment Control"
               parent="account.menu_finance_reports"
               action="action_ap_payment_dashboard"
-              groups="biz_monthly_analytic_budget.group_monthly_budget_user,account.group_account_invoice"
+              groups="biz_dashboard_ap_payment.group_ap_payment_dashboard_user"
               sequence="5"/>
 </odoo>

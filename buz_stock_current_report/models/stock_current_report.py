@@ -3,6 +3,21 @@ from odoo.exceptions import UserError
 import logging
 _logger = logging.getLogger(__name__)
 
+LOC_STATS_CTE = """
+    loc_stats AS (
+        SELECT sq.location_id,
+               COUNT(DISTINCT sq.product_id) AS product_count,
+               SUM(sq.quantity) AS total_quantity,
+               SUM(sq.quantity * COALESCE(pt.list_price, 0)) AS total_value
+        FROM stock_quant sq
+        JOIN product_product pp ON pp.id = sq.product_id
+        JOIN product_template pt ON pt.id = pp.product_tmpl_id
+        JOIN stock_location sl ON sl.id = sq.location_id
+        WHERE sl.usage IN ('internal', 'transit')
+        GROUP BY sq.location_id
+    )
+"""
+
 class StockCurrentReport(models.Model):
     _name = 'stock.current.report'
     _description = 'Current Stock Report (by Date)'
@@ -252,12 +267,49 @@ class StockCurrentReport(models.Model):
                 COALESCE(psales.qty, 0) AS sales_qty_90d
             """
 
-            base_id = "(SELECT COALESCE(MAX(id), 0) FROM stock_quant)"
+            # Synthetic ids for non-quant rows are deterministic (no window
+            # function / MAX(id)), so they stay stable between search and read
+            # and the planner can push filters down.
+            kit_id_base = 10 ** 13
+            noloc_id_base = 2 * 10 ** 13
 
             # Shared CTEs: each heavy aggregate is declared once and reused by
             # every UNION part, so PostgreSQL materializes it a single time
             # instead of recomputing it per reference.
             ctes = ["""
+                warehouse_location AS (
+                    SELECT DISTINCT ON (location_id) location_id, warehouse_id
+                    FROM (
+                        SELECT lot_stock_id AS location_id, id AS warehouse_id FROM stock_warehouse
+                        UNION ALL
+                        SELECT wh_input_stock_loc_id, id FROM stock_warehouse
+                        UNION ALL
+                        SELECT wh_output_stock_loc_id, id FROM stock_warehouse
+                        UNION ALL
+                        SELECT wh_pack_stock_loc_id, id FROM stock_warehouse
+                        UNION ALL
+                        SELECT wh_qc_stock_loc_id, id FROM stock_warehouse
+                    ) x
+                    WHERE location_id IS NOT NULL
+                    ORDER BY location_id, warehouse_id
+                )
+            """, """
+                open_incoming AS (
+                    SELECT sm.location_dest_id AS location_id, sm.product_id,
+                           SUM(sm.product_qty) AS qty
+                    FROM stock_move sm
+                    WHERE sm.state IN ('waiting', 'confirmed', 'partially_available', 'assigned')
+                    GROUP BY sm.location_dest_id, sm.product_id
+                )
+            """, """
+                open_outgoing AS (
+                    SELECT sm.location_id, sm.product_id,
+                           SUM(sm.product_qty) AS qty
+                    FROM stock_move sm
+                    WHERE sm.state IN ('waiting', 'confirmed', 'partially_available', 'assigned')
+                    GROUP BY sm.location_id, sm.product_id
+                )
+            """, """
                 products_with_stock AS (
                     SELECT DISTINCT sq.product_id
                     FROM stock_quant sq
@@ -287,7 +339,7 @@ class StockCurrentReport(models.Model):
                 SELECT sq.id AS id,
                        sq.product_id,
                        sq.location_id,
-                       COALESCE(sl.warehouse_id, w.id) AS warehouse_id,
+                       COALESCE(sl.warehouse_id, wl.warehouse_id) AS warehouse_id,
                        {common_fields},
                        COALESCE(sq.quantity, 0) AS quantity,
                        -- Free to Use is the quantity currently available at this
@@ -309,26 +361,11 @@ class StockCurrentReport(models.Model):
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
                 LEFT JOIN product_sales psales ON psales.product_id = pp.id
                 JOIN stock_location sl ON sl.id = sq.location_id
-                LEFT JOIN stock_warehouse w ON (
-                    sl.id = w.lot_stock_id OR sl.id = w.wh_input_stock_loc_id OR
-                    sl.id = w.wh_output_stock_loc_id OR sl.id = w.wh_pack_stock_loc_id OR
-                    sl.id = w.wh_qc_stock_loc_id)
-                LEFT JOIN (
-                    SELECT sml.location_dest_id, sml.product_id, SUM(sml.quantity) AS qty
-                    FROM stock_move_line sml
-                    JOIN stock_move sm ON sm.id = sml.move_id
-                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
-                    AND sml.location_dest_id IS NOT NULL
-                    GROUP BY sml.location_dest_id, sml.product_id
-                ) incoming ON incoming.location_dest_id = sq.location_id AND incoming.product_id = sq.product_id
-                LEFT JOIN (
-                    SELECT sml.location_id, sml.product_id, SUM(sml.quantity) AS qty
-                    FROM stock_move_line sml
-                    JOIN stock_move sm ON sm.id = sml.move_id
-                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
-                    AND sml.location_id IS NOT NULL
-                    GROUP BY sml.location_id, sml.product_id
-                ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
+                LEFT JOIN warehouse_location wl ON wl.location_id = sl.id
+                LEFT JOIN open_incoming incoming
+                    ON incoming.location_id = sq.location_id AND incoming.product_id = sq.product_id
+                LEFT JOIN open_outgoing outgoing
+                    ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
                 WHERE sl.usage IN ('internal', 'production', 'inventory', 'transit')
             """)
 
@@ -390,10 +427,10 @@ class StockCurrentReport(models.Model):
 
                 parts.append(f"""
                     UNION ALL
-                    SELECT {base_id} + ROW_NUMBER() OVER (ORDER BY bom_l.product_id, bom_l.location_id) AS id,
+                    SELECT ({kit_id_base}::bigint + bom_l.product_id::bigint * 10000000 + bom_l.location_id) AS id,
                            bom_l.product_id,
                            bom_l.location_id,
-                           COALESCE(sl.warehouse_id, w.id) AS warehouse_id,
+                           COALESCE(sl.warehouse_id, wl.warehouse_id) AS warehouse_id,
                            {common_fields},
                            bom_l.bom_qty AS quantity,
                            bom_l.bom_qty AS free_to_use,
@@ -406,10 +443,7 @@ class StockCurrentReport(models.Model):
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
                     LEFT JOIN product_sales psales ON psales.product_id = pp.id
                     JOIN stock_location sl ON sl.id = bom_l.location_id
-                    LEFT JOIN stock_warehouse w ON (
-                        sl.id = w.lot_stock_id OR sl.id = w.wh_input_stock_loc_id OR
-                        sl.id = w.wh_output_stock_loc_id OR sl.id = w.wh_pack_stock_loc_id OR
-                        sl.id = w.wh_qc_stock_loc_id)
+                    LEFT JOIN warehouse_location wl ON wl.location_id = sl.id
                 """)
             else:
                 ctes.append("""
@@ -425,8 +459,7 @@ class StockCurrentReport(models.Model):
             # location — NULL warehouse, qty=0.
             parts.append(f"""
                 UNION ALL
-                SELECT {base_id} + (SELECT COUNT(*) FROM bom_available_by_location)
-                    + ROW_NUMBER() OVER (ORDER BY pp.id) AS id,
+                SELECT ({noloc_id_base}::bigint + pp.id) AS id,
                        pp.id AS product_id,
                        NULL::integer AS location_id,
                        NULL::integer AS warehouse_id,
@@ -440,7 +473,8 @@ class StockCurrentReport(models.Model):
                 FROM product_product pp
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
                 LEFT JOIN product_sales psales ON psales.product_id = pp.id
-                WHERE NOT EXISTS (
+                WHERE pp.active AND pt.active
+                AND NOT EXISTS (
                     SELECT 1 FROM products_with_stock ps WHERE ps.product_id = pp.id)
                 AND NOT EXISTS (
                     SELECT 1 FROM bom_available_by_location bl WHERE bl.product_id = pp.id)
@@ -510,23 +544,17 @@ class StockCurrentReport(models.Model):
     def get_warehouses_with_locations(self):
         """Enhanced method to include both internal and transit locations"""
         query = """
+            WITH """ + LOC_STATS_CTE + """
             SELECT
                 w.id,
                 w.name,
                 w.code,
                 COUNT(DISTINCT l.id) as location_count,
-                COALESCE(SUM(s.total_products), 0) as total_products,
+                COALESCE(SUM(s.product_count), 0) as total_products,
                 COALESCE(SUM(s.total_value), 0) as total_value
             FROM stock_warehouse w
             LEFT JOIN stock_location l ON l.warehouse_id = w.id AND l.usage IN ('internal', 'transit') AND l.active = true
-            LEFT JOIN (
-                SELECT
-                    location_id,
-                    COUNT(DISTINCT product_id) as total_products,
-                    SUM(total_value) as total_value
-                FROM stock_current_report
-                GROUP BY location_id
-            ) s ON s.location_id = l.id
+            LEFT JOIN loc_stats s ON s.location_id = l.id
             WHERE w.active = true
             GROUP BY w.id, w.name, w.code
             ORDER BY w.name
@@ -537,21 +565,21 @@ class StockCurrentReport(models.Model):
         # Fetch every warehouse's locations in one pass instead of two
         # queries per warehouse (each of which scanned the report view).
         location_query = """
+            WITH """ + LOC_STATS_CTE + """
             SELECT
                 l.warehouse_id,
                 l.id,
                 l.name,
                 l.complete_name,
                 l.usage,
-                COUNT(DISTINCT scr.product_id) as product_count,
-                COALESCE(SUM(scr.quantity), 0) as total_quantity,
-                COALESCE(SUM(scr.total_value), 0) as total_value
+                COALESCE(s.product_count, 0) as product_count,
+                COALESCE(s.total_quantity, 0) as total_quantity,
+                COALESCE(s.total_value, 0) as total_value
             FROM stock_location l
-            LEFT JOIN stock_current_report scr ON scr.location_id = l.id
+            LEFT JOIN loc_stats s ON s.location_id = l.id
             WHERE l.warehouse_id IS NOT NULL
               AND l.usage IN ('internal', 'transit')
               AND l.active = true
-            GROUP BY l.warehouse_id, l.id, l.name, l.complete_name, l.usage
             ORDER BY l.name
         """
         self._cr.execute(location_query)

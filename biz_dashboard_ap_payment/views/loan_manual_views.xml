@@ -35,6 +35,6 @@
               name="เงินกู้ (กรอกเอง) - Payment Dashboard"
               parent="purchase.menu_purchase_config"
               action="action_ap_dashboard_loan_manual"
-              groups="biz_monthly_analytic_budget.group_monthly_budget_user,account.group_account_invoice"
+              groups="biz_dashboard_ap_payment.group_ap_payment_dashboard_user"
               sequence="90"/>
 </odoo>

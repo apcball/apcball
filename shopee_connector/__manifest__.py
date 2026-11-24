@@ -1,6 +1,6 @@
 {
     "name": "Shopee Odoo Connector",
-    "version": "17.0.2.20.0",
+    "version": "17.0.2.21.0",
     "category": "Sales/Sales",
     "summary": "Full Shopee Open Platform v2 Integration",
     "author": "Custom Developer",
@@ -22,7 +22,9 @@
         "views/product_views.xml",
         "views/shopee_log_views.xml",
         "views/shopee_product_mapping_views.xml",
+        "views/shopee_stock_available_views.xml",
         "views/shopee_stock_import_views.xml",
+        "views/shopee_mapping_import_views.xml",
         "views/shopee_buyer_address_import_views.xml",
         "views/shopee_order_sync_views.xml",
     ],

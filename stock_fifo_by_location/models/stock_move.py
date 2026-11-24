@@ -512,6 +512,16 @@ class StockMove(models.Model):
                         origin_layer = original_pos_layers[0].origin_valuation_layer_id or original_pos_layers[0]
             
             if unit_cost <= 0:
+                # The transfer-out layer already consumed the source queue, so asking
+                # the queue again would find it drained (and log an ERROR) whenever the
+                # last units leave. What that layer was booked at is the cost.
+                out_layers = existing_layers.filtered(
+                    lambda l: l.quantity < 0 and l.warehouse_id == source_wh)
+                out_qty = -sum(out_layers.mapped('quantity'))
+                if out_qty > 0:
+                    unit_cost = -sum(out_layers.mapped('value')) / out_qty
+
+            if unit_cost <= 0:
                 fifo_service = self.env['fifo.service']
                 fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
                     product, source_wh, valued_qty, company.id

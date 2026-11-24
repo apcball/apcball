@@ -163,6 +163,166 @@ class TestDepreciationPosting(TransactionCase):
         line.with_user(self.acc_manager).action_reverse(reason='again')
         self.assertEqual(self.env['account.move'].search_count([('reversed_entry_id', '=', original.id)]), 1)
 
+    def _native_reverse(self, move, user):
+        """Odoo's standard Reverse wizard (Accounting > entry > Reverse)."""
+        wizard = self.env['account.move.reversal'].with_user(user).with_context(
+            active_model='account.move', active_ids=move.ids).create({
+                'date': fields.Date.context_today(move), 'reason': 'native',
+                'journal_id': move.journal_id.id})
+        return wizard.refund_moves()
+
+    def test_native_reverse_wizard_syncs_line(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        original = line.move_id
+        posted_before = asset.accumulated_depreciation
+        self._native_reverse(original, self.acc_manager)
+        reversal = self.env['account.move'].search([('reversed_entry_id', '=', original.id)])
+        self.assertEqual(len(reversal), 1)
+        self.assertEqual(reversal.state, 'posted')
+        self.assertEqual(line.state, 'reversed')
+        self.assertEqual(line.reversal_move_id, reversal)
+        self.assertEqual(asset.accumulated_depreciation, posted_before - line.planned_amount)
+        # Reversing the same entry again (wizard or action) is refused, not duplicated.
+        with self.assertRaises(UserError):
+            self._native_reverse(original, self.acc_manager)
+        line.with_user(self.acc_manager).action_reverse(reason='again')
+        self.assertEqual(self.env['account.move'].search_count([('reversed_entry_id', '=', original.id)]), 1)
+
+    def test_native_reverse_requires_asset_accounting_manager(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        # Odoo accounting manager without the asset accounting-manager group.
+        with self.assertRaises(AccessError):
+            self._native_reverse(line.move_id, self.accountant)
+        self.assertEqual(line.state, 'posted')
+        self.assertFalse(self.env['account.move'].search([('reversed_entry_id', '=', line.move_id.id)]))
+
+    def test_native_reverse_must_post_immediately(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        # cancel=False leaves the reversal in draft: refused so the line never says "reversed" alone.
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            line.move_id.with_user(self.acc_manager)._reverse_moves(cancel=False)
+        self.assertEqual(line.state, 'posted')
+        self.assertFalse(line.reversal_move_id)
+
+    def _post_due(self, asset):
+        for line in self._due(asset):
+            if line.state == 'planned':
+                line.with_user(self.acc_manager).action_post_depreciation()
+
+    def test_replan_after_reversal_spreads_remainder(self):
+        asset = self._running_asset()          # base 1200 over 12 months = 100/month
+        self._post_due(asset)
+        due = self._due(asset)
+        self.assertGreaterEqual(len(due), 2)
+        p1, last = due[0], due[-1]
+        p1.with_user(self.acc_manager).action_reverse(reason='wrong period')
+        history = asset.depreciation_line_ids.filtered(lambda l: l.state in ('posted', 'reversed'))
+        asset.with_user(self.accountant).action_replan_schedule()
+        # History untouched.
+        self.assertEqual(p1.state, 'reversed')
+        self.assertTrue(all(history.exists()))
+        new = asset.depreciation_line_ids.filtered(lambda l: l.state == 'planned')
+        net_posted = sum(asset.depreciation_line_ids.filtered(lambda l: l.state == 'posted').mapped('planned_amount'))
+        elapsed = len(due)                      # months up to and including the last posted period
+        self.assertEqual(len(new), 12 - elapsed)
+        self.assertAlmostEqual(sum(new.mapped('planned_amount')), 1200.0 - net_posted, places=2)
+        self.assertEqual(min(new.mapped('period_start')), last.period_end + relativedelta(days=1))
+        self.assertGreater(min(new.mapped('sequence')), max(history.mapped('sequence')))   # posting order
+        self.assertEqual(len(set(asset.depreciation_line_ids.mapped('idempotency_key'))),
+                         len(asset.depreciation_line_ids))
+        # Book value follows posted entries only.
+        self.assertEqual(asset.accumulated_depreciation, net_posted)
+
+    def test_replan_after_cost_change(self):
+        asset = self._running_asset()
+        self._post_due(asset)
+        net_posted = sum(self._due(asset).mapped('planned_amount'))
+        asset.sudo().write({'gross_cost': 1900.0})   # cost correction after capitalization
+        asset.with_user(self.accountant).action_replan_schedule()
+        planned = asset.depreciation_line_ids.filtered(lambda l: l.state == 'planned')
+        self.assertAlmostEqual(sum(planned.mapped('planned_amount')), 1800.0 - net_posted, places=2)
+        # A plain recompute is refused once entries exist and points to the re-plan.
+        with self.assertRaises(UserError):
+            asset.with_user(self.accountant).action_compute_schedule()
+
+    def test_replan_guards(self):
+        asset = self._running_asset()
+        self._post_due(asset)
+        with self.assertRaises(AccessError):
+            asset.with_user(self.asset_manager).action_replan_schedule()
+        # Posted depreciation above the new base must be reversed first, never silently absorbed.
+        asset.sudo().write({'residual_value': 1250.0})
+        with self.assertRaises(UserError):
+            asset.with_user(self.accountant).action_replan_schedule()
+
+    def test_asset_register_list_allows_create(self):
+        """Regression (prod): the register opened the report list (create="0"), so no New button."""
+        action = self.env.ref('buz_asset_management.action_buz_asset')
+        tree = self.env.ref('buz_asset_management.view_buz_asset_tree')
+        self.assertEqual(action.view_ids.filtered(lambda v: v.view_mode == 'tree').view_id, tree)
+        Asset = self.env['buz.asset'].with_user(self.asset_manager)
+        # Default list view of the model (no explicit view) must not be the read-only report list.
+        default = Asset.get_views([(False, 'list')])['views']['list']['arch']
+        self.assertNotIn('create="0"', default)
+        # The action's own view, as the web client requests it.
+        own = Asset.get_views([(tree.id, 'list')])['views']['list']['arch']
+        self.assertNotIn('create="0"', own)
+        self.assertNotIn('create="False"', own)
+        # Reports stay read-only.
+        report = self.env.ref('buz_asset_management.action_buz_report_register')
+        report_tree = report.view_ids.filtered(lambda v: v.view_mode == 'tree').view_id
+        self.assertIn('create="0"', report_tree.arch)
+
+    def test_category_setup_rights(self):
+        Category = self.env['buz.asset.category']
+        vals = {'name': 'ACL Cat', 'company_id': self.company.id, 'useful_life_months': 12}
+        # Accounting manager configures categories (they decide accounts/journal), but cannot delete.
+        category = Category.with_user(self.acc_manager).create(vals)
+        category.with_user(self.acc_manager).write({'useful_life_months': 24})
+        self.assertEqual(category.useful_life_months, 24)
+        with self.assertRaises(AccessError):
+            category.with_user(self.acc_manager).unlink()
+        # Accountant and asset manager still cannot change categories.
+        for user in (self.accountant, self.asset_manager):
+            with self.assertRaises(AccessError):
+                Category.with_user(user).create(dict(vals, name='ACL Cat 2'))
+            with self.assertRaises(AccessError):
+                category.with_user(user).write({'useful_life_months': 36})
+            self.assertTrue(category.with_user(user).name)   # read stays open
+
+    def test_reversal_move_cannot_be_reset_cancelled_or_deleted(self):
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        line.with_user(self.acc_manager).action_reverse(reason='t')
+        reversal = line.reversal_move_id
+        for method in (reversal.button_draft, reversal.button_cancel, reversal.unlink):
+            with self.assertRaises(UserError), self.env.cr.savepoint():
+                method()
+        self.assertEqual(reversal.state, 'posted')
+        self.assertEqual(line.state, 'reversed')
+
+    def test_ledger_ignores_unposted_reversal(self):
+        from odoo.addons.buz_asset_management.services.ledger import AssetLedger
+        asset = self._running_asset()
+        line = self._due(asset)[0]
+        line.with_user(self.acc_manager).action_post_depreciation()
+        line.with_user(self.acc_manager).action_reverse(reason='t')
+        today = fields.Date.context_today(asset)
+        accumulated = AssetLedger(self.env, self.company, today).accumulated_by_asset()
+        self.assertEqual(accumulated.get(asset, 0.0), 0.0)
+        # Data that predates the guard: reversal no longer posted -> GL holds the depreciation again.
+        self.env.cr.execute("UPDATE account_move SET state = 'draft' WHERE id = %s", (line.reversal_move_id.id,))
+        self.env.invalidate_all()
+        accumulated = AssetLedger(self.env, self.company, today).accumulated_by_asset()
+        self.assertEqual(accumulated.get(asset, 0.0), line.planned_amount)
+
     def test_posted_move_cannot_be_reset_or_deleted(self):
         asset = self._running_asset()
         line = self._due(asset)[0]
@@ -184,6 +344,34 @@ class TestDepreciationPosting(TransactionCase):
         posted = asset.depreciation_line_ids.filtered('move_id')
         self.assertEqual(len(posted), len(self._due(asset)))
         self.assertEqual(len(posted.mapped('move_id')), len(posted))
+
+    def test_cron_misconfigured_asset_does_not_starve_others(self):
+        good = self._running_asset(name='Good')
+        broken_category = self.category.copy({'name': 'Broken'})
+        broken = self._running_asset(name='Broken', category_id=broken_category.id)
+        broken_category.expense_account_id = False   # setup error found only at posting time
+        # Batches follow buz.asset._order (code desc): the newer, broken asset comes first.
+        self.assertGreater(broken.code, good.code)
+        self.assertGreaterEqual(len(self._due(broken)), 2)
+        self.company.buz_asset_auto_post = True
+        Line = self.env['buz.asset.depreciation.line']
+        for _run in range(3):
+            Line._cron_post_due_lines(batch_size=2)
+        self.assertTrue(all(self._due(good).mapped('move_id')), "good asset starved by the broken one")
+        broken_due = self._due(broken)
+        self.assertEqual(broken_due[0].state, 'exception')
+        self.assertTrue(broken_due[0].exception_message)
+        self.assertEqual(set(broken_due[1:].mapped('state')), {'planned'})   # one actionable exception only
+        self.assertFalse(broken_due.mapped('move_id'))
+
+    def test_cron_skips_assets_not_ready(self):
+        asset = self._running_asset()
+        asset.sudo().write({'accounting_state': 'not_capitalized'})
+        self.company.buz_asset_auto_post = True
+        self.env['buz.asset.depreciation.line']._cron_post_due_lines()
+        due = self._due(asset)
+        self.assertEqual(set(due.mapped('state')), {'planned'})   # waits silently, no exception noise
+        self.assertFalse(due.mapped('move_id'))
 
     # ------------------------------------------------------------------
     # Disposal
@@ -233,6 +421,31 @@ class TestDepreciationPosting(TransactionCase):
         self.assertTrue(cancelled)
         with self.assertRaises(UserError):
             cancelled[:1].with_user(self.acc_manager).action_post_depreciation()
+
+    def test_disposal_after_reversal_and_replan(self):
+        asset, disposal = self._disposal_setup()
+        due = self._due(asset)
+        due[0].with_user(self.acc_manager).action_reverse(reason='t')
+        asset.with_user(self.accountant).action_replan_schedule()
+        self._post_due(asset)                      # re-planned rows already due, if any
+        posted = asset.depreciation_line_ids.filtered(
+            lambda l: l.state == 'posted' and l.depreciation_date <= disposal.disposal_date)
+        self._post_disposal(disposal)
+        self.assertEqual(disposal.state, 'posted')
+        self.assertAlmostEqual(disposal.accumulated_depreciation, sum(posted.mapped('planned_amount')), places=2)
+        move = disposal.move_id
+        self.assertEqual(sum(move.line_ids.mapped('debit')), sum(move.line_ids.mapped('credit')))
+        self.assertEqual(due[0].state, 'reversed')   # history kept
+
+    def test_disposal_move_cannot_be_reversed_natively(self):
+        asset, disposal = self._disposal_setup()
+        self._post_disposal(disposal)
+        move = disposal.move_id
+        with self.assertRaises(UserError):
+            self._native_reverse(move, self.acc_manager)
+        self.assertFalse(self.env['account.move'].search([('reversed_entry_id', '=', move.id)]))
+        self.assertEqual(disposal.state, 'posted')
+        self.assertEqual(asset.operational_state, 'disposed')
 
     def test_disposal_sale_proceeds_counted_once(self):
         partner = self.env['res.partner'].with_context(skip_partner_required_fields=True).create({'name': 'Buyer'})
@@ -440,7 +653,7 @@ class TestDepreciationPosting(TransactionCase):
         accum = self._row(wiz, 'accumulated', self.accum)
         self.assertEqual(accum.gl_balance, accum.subledger_balance)
         self.assertEqual(accum.subledger_balance, sum(due.mapped('planned_amount')) - due[0].planned_amount)
-        # Reversal makes period 1 unavailable to the disposal; use a clean asset for the disposal leg.
+        # Keep the reversal case separate from the disposal leg (see test_disposal_after_reversal_and_replan).
         asset2, disposal2 = self._disposal_setup()
         self._cost_entry()
         self._post_disposal(disposal2)

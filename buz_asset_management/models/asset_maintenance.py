@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
+
+_logger = logging.getLogger(__name__)
 
 GUARDED = ('state', 'actual_start', 'actual_end', 'reminder_sent')
 LOCKED_AFTER_DONE = ('asset_id', 'maintenance_type', 'planned_date', 'vendor_id', 'technician', 'description',
@@ -212,11 +216,15 @@ class BuzAssetMaintenance(models.Model):
         jobs = self.search([('state', '=', 'planned'), ('reminder_sent', '=', False),
                             ('planned_date', '<=', limit), ('responsible_id', '!=', False)], limit=batch_size)
         for job in jobs:
-            with self.env.cr.savepoint():
-                job.activity_schedule(
-                    'mail.mail_activity_data_todo', date_deadline=job.planned_date, user_id=job.responsible_id.id,
-                    summary=_("งานบำรุงรักษาใกล้ถึงกำหนด: %s", job.asset_id.display_name))
-                job.sudo().write({'reminder_sent': True})
+            try:
+                with self.env.cr.savepoint():
+                    job.activity_schedule(
+                        'mail.mail_activity_data_todo', date_deadline=job.planned_date,
+                        user_id=job.responsible_id.id,
+                        summary=_("งานบำรุงรักษาใกล้ถึงกำหนด: %s", job.asset_id.display_name))
+                    job.sudo().write({'reminder_sent': True})
+            except Exception:  # per-record isolation: not marked sent, retried next run
+                _logger.exception('Asset maintenance reminder failed for job %s', job.id)
 
 
 class BuzAssetMaintenancePart(models.Model):

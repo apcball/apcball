@@ -1,0 +1,31 @@
+# Thai translation for buz_sale_cancel_lock
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. module: buz_sale_cancel_lock
+#. odoo-python
+#: code:addons/buz_sale_cancel_lock/models/sale_order.py:0
+msgid ""
+"Cannot cancel a Sales Order that already has a posted invoice. Cancel or "
+"reset the invoice first.\n"
+"%s"
+msgstr ""
+"ไม่สามารถยกเลิกใบสั่งขายที่มี Invoice ที่ Post แล้วได้ "
+"กรุณายกเลิกหรือ Reset Invoice ก่อน\n"
+"%s"
+
+#. module: buz_sale_cancel_lock
+#. odoo-python
+#: code:addons/buz_sale_cancel_lock/models/sale_order.py:0
+msgid "%(order)s (invoice: %(invoices)s)"
+msgstr "%(order)s (invoice: %(invoices)s)"
+
+#. module: buz_sale_cancel_lock
+#: model:ir.model.fields,field_description:buz_sale_cancel_lock.field_sale_order__has_posted_invoice
+msgid "Has Posted Invoice"
+msgstr "มี Invoice ที่ Post แล้ว"

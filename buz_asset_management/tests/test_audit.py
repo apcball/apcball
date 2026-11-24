@@ -202,3 +202,79 @@ class TestAssetAudit(TransactionCase):
         html = report.with_user(self.officer)._render_qweb_html(report.report_name, self.a1.ids)[0].decode()
         self.assertIn(self.a1.code, html)
         self.assertIn('/report/barcode/', html)
+
+    def test_count_list_is_editable_for_plain_asset_user(self):
+        """The count list must open editable for users without audit write access
+        (an embedded list in the audit form would be read-only for them)."""
+        audit = self._audit()
+        action = audit.with_user(self.viewer).action_open_count()
+        self.assertEqual(action['res_model'], 'buz.asset.audit.line')
+        self.assertEqual(action['domain'], [('audit_id', '=', audit.id)])
+        tree_id = action['views'][0][0]
+        arch = self.env['buz.asset.audit.line'].with_user(self.viewer).get_views(
+            [(tree_id, 'tree')])['views']['tree']['arch']
+        self.assertIn('editable="bottom"', arch)
+        self.assertNotIn('edit="False"', arch)
+        self.assertIn('name="quick_result"', arch)
+
+    def test_count_list_quick_result(self):
+        audit = self._audit()
+        line = self._line(audit, self.a1)
+        # Same write the editable count list sends (web_save on the line).
+        line.with_user(self.viewer).write({'quick_result': 'lost', 'notes': 'gone'})
+        self.assertEqual(line.result, 'lost')
+        self.assertEqual(line.notes, 'gone')
+        self.assertEqual(line.scanned_by_id, self.viewer)
+        self.assertTrue(line.scanned_date)
+        self.assertEqual(audit.exception_count, 1)
+        line.with_user(self.viewer).write({'quick_result': 'found'})
+        self.assertEqual(line.result, 'found')
+        self.assertEqual(line.actual_location_id, self.loc_a)
+        # undo needs officer
+        with self.assertRaises(AccessError):
+            line.with_user(self.viewer).write({'quick_result': 'not_checked'})
+        line.with_user(self.officer).write({'quick_result': 'not_checked'})
+        self.assertEqual(line.result, 'not_checked')
+        self.assertFalse(line.scanned_by_id)
+
+    def test_count_list_guards(self):
+        audit = self._audit()
+        line = self._line(audit, self.a1)
+        with self.assertRaises(AccessError):
+            line.with_user(self.viewer).write({'result': 'found'})
+        with self.assertRaises(AccessError):
+            line.with_user(self.viewer).write({'expected_location_id': self.loc_b.id})
+        # Lines are never edited through the audit header (users have no audit write; officers are refused too).
+        with self.assertRaises(AccessError):
+            audit.with_user(self.viewer).write({'line_ids': [(1, line.id, {'quick_result': 'lost'})]})
+        with self.assertRaises(AccessError):
+            audit.with_user(self.officer).write({'line_ids': [(1, line.id, {'quick_result': 'lost'})]})
+        for l in audit.line_ids:
+            l.with_user(self.viewer).action_found()
+        audit.with_user(self.manager).action_close()
+        with self.assertRaises(UserError):
+            line.with_user(self.viewer).write({'quick_result': 'lost'})
+
+    def test_lost_button_and_wrong_location_quick_result_rejected(self):
+        audit = self._audit()
+        line = self._line(audit, self.a2)
+        line.with_user(self.viewer).action_lost()
+        self.assertEqual(line.result, 'lost')
+        other = self._line(audit, self.a1)
+        with self.assertRaisesRegex(UserError, 'สถานที่ที่พบจริง'):
+            other.with_user(self.viewer).write({'quick_result': 'wrong_location'})
+        with self.assertRaisesRegex(UserError, 'ผู้ถือครองที่พบจริง'):
+            other.with_user(self.viewer).write({'quick_result': 'wrong_custodian'})
+        with self.assertRaisesRegex(UserError, 'กรุณาเลือกผลการตรวจ'):
+            other.with_user(self.viewer).write({'quick_result': False})
+        self.assertEqual(other.result, 'not_checked')
+
+    def test_quick_result_damaged_and_retired(self):
+        audit = self._audit()
+        line = self._line(audit, self.a1)
+        line.with_user(self.viewer).write({'quick_result': 'damaged'})
+        self.assertEqual(line.result, 'damaged')
+        self.assertEqual(line.scanned_by_id, self.viewer)
+        line.with_user(self.viewer).write({'quick_result': 'retired'})
+        self.assertEqual(line.result, 'retired')
+        self.assertEqual(audit.exception_count, 1)

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_plan_schedule_line_tree" model="ir.ui.view">
+        <field name="name">buz.plan.schedule.line.tree</field>
+        <field name="model">buz.plan.schedule.line</field>
+        <field name="arch" type="xml">
+            <tree create="0" decoration-danger="is_late" decoration-muted="is_locked">
+                <field name="company_id" column_invisible="1"/>
+                <field name="run_id" optional="hide"/>
+                <field name="production_id"/>
+                <field name="product_id"/>
+                <field name="workorder_id"/>
+                <field name="workcenter_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="duration_minutes"/>
+                <field name="duration_source" optional="show"/>
+                <field name="is_locked"/>
+                <field name="is_manual"/>
+                <field name="is_late"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_schedule_line_pivot" model="ir.ui.view">
+        <field name="name">buz.plan.schedule.line.pivot</field>
+        <field name="model">buz.plan.schedule.line</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="workcenter_id" type="row"/>
+                <field name="date_start" interval="day" type="col"/>
+                <field name="duration_minutes" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_schedule_line_search" model="ir.ui.view">
+        <field name="name">buz.plan.schedule.line.search</field>
+        <field name="model">buz.plan.schedule.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="production_id"/>
+                <field name="product_id"/>
+                <field name="workcenter_id"/>
+                <field name="run_id"/>
+                <filter name="late" string="Late" domain="[('is_late', '=', True)]"/>
+                <filter name="locked" string="Locked" domain="[('is_locked', '=', True)]"/>
+                <filter name="manual" string="Manual" domain="[('is_manual', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_wc" string="Workcenter" context="{'group_by': 'workcenter_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_buz_plan_schedule_line" model="ir.actions.act_window">
+        <field name="name">Schedule</field>
+        <field name="res_model">buz.plan.schedule.line</field>
+        <field name="view_mode">tree,pivot</field>
+    </record>
+
+    <record id="action_buz_plan_gantt" model="ir.actions.client">
+        <field name="name">Schedule Gantt</field>
+        <field name="tag">buz_production_planning.gantt</field>
+    </record>
+
+    <record id="action_buz_plan_load_capacity" model="ir.actions.act_window">
+        <field name="name">Load vs Capacity</field>
+        <field name="res_model">buz.plan.schedule.line</field>
+        <field name="view_mode">pivot,tree</field>
+    </record>
+
+    <record id="view_buz_plan_operation_time_tree" model="ir.ui.view">
+        <field name="name">buz.plan.operation.time.tree</field>
+        <field name="model">buz.plan.operation.time</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0">
+                <field name="workcenter_id"/>
+                <field name="operation_id"/>
+                <field name="wo_count"/>
+                <field name="actual_minutes_per_unit"/>
+                <field name="expected_minutes_per_unit"/>
+                <field name="ratio"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_buz_plan_operation_time" model="ir.actions.act_window">
+        <field name="name">Operation Time History</field>
+        <field name="res_model">buz.plan.operation.time</field>
+        <field name="view_mode">tree</field>
+    </record>
+</odoo>

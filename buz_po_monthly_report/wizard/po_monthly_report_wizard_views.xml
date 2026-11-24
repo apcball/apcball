@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_po_monthly_report_wizard_form" model="ir.ui.view">
+        <field name="name">po.monthly.report.wizard.form</field>
+        <field name="model">po.monthly.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="รายงานใบสั่งซื้อสินค้า">
+                <sheet>
+                    <group>
+                        <group string="ช่วงวันที่เปิด PO">
+                            <field name="po_date_from" required="po_date_to"/>
+                            <field name="po_date_to" required="po_date_from"/>
+                        </group>
+                        <group string="สถานะ PR ปัจจุบัน (ไม่เลือกเพื่อแสดงทั้งหมด)">
+                            <group>
+                                <field name="pr_state_draft"/>
+                                <field name="pr_state_waiting_head_approval"/>
+                                <field name="pr_state_waiting_purchase_approval"/>
+                                <field name="pr_state_approved"/>
+                            </group>
+                            <group>
+                                <field name="pr_state_purchase_order_created"/>
+                                <field name="pr_state_received"/>
+                                <field name="pr_state_cancelled"/>
+                            </group>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_export_xlsx" type="object" string="ดาวน์โหลด Excel" class="oe_highlight"/>
+                    <button string="ยกเลิก" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_po_monthly_report_wizard" model="ir.actions.act_window">
+        <field name="name">รายงานใบสั่งซื้อสินค้า</field>
+        <field name="res_model">po.monthly.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_po_monthly_report_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+</odoo>

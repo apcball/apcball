@@ -65,7 +65,15 @@ class StockCurrentProduct(models.Model):
         """
         self._cr.execute(f"""
             CREATE OR REPLACE VIEW {self._table} AS (
-                WITH agg AS (
+                WITH image_product AS (
+                    SELECT DISTINCT res_id FROM ir_attachment
+                    WHERE res_model = 'product.product'
+                      AND res_field IN ('image_1920', 'image_variant_1920')
+                ), image_template AS (
+                    SELECT DISTINCT res_id FROM ir_attachment
+                    WHERE res_model = 'product.template'
+                      AND res_field IN ('image_1920', 'image_variant_1920')
+                ), agg AS (
                     SELECT product_id, warehouse_id, {measures}
                     FROM stock_current_report
                     WHERE warehouse_id IS NOT NULL
@@ -75,17 +83,14 @@ class StockCurrentProduct(models.Model):
                     FROM stock_current_report
                     GROUP BY product_id
                 )
-                SELECT ROW_NUMBER() OVER (ORDER BY product_id, warehouse_id NULLS FIRST) AS id,
+                SELECT (agg.product_id::bigint * 100000 + COALESCE(agg.warehouse_id, 0)) AS id,
                        agg.*,
                        CASE WHEN agg.free_to_use > 0 THEN 'in_stock' ELSE 'active' END AS state_badge,
-                       EXISTS (
-                           SELECT 1 FROM ir_attachment ia
-                           WHERE ia.res_field IN ('image_1920', 'image_variant_1920')
-                             AND ((ia.res_model = 'product.product' AND ia.res_id = agg.product_id)
-                               OR (ia.res_model = 'product.template' AND ia.res_id = pp.product_tmpl_id))
-                       ) AS has_image
+                       (ia_p.res_id IS NOT NULL OR ia_t.res_id IS NOT NULL) AS has_image
                 FROM agg
                 JOIN product_product pp ON pp.id = agg.product_id
+                LEFT JOIN image_product ia_p ON ia_p.res_id = agg.product_id
+                LEFT JOIN image_template ia_t ON ia_t.res_id = pp.product_tmpl_id
             )
         """)
 

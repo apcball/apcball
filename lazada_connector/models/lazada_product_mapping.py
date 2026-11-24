@@ -1,5 +1,5 @@
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 class LazadaProductMapping(models.Model):
     _name = "lazada.product.mapping"
@@ -59,6 +59,43 @@ class LazadaProductMapping(models.Model):
     last_pushed_price = fields.Float(readonly=True)
     last_price_push = fields.Datetime(readonly=True)
 
+    low_stock_threshold = fields.Integer(string="Low Stock Threshold", default=10,
+        help="Warn when warehouse free stock is positive and at or below this value. 0 disables low-stock warnings; out-of-stock warnings remain.")
+    stock_status = fields.Selection([
+        ("unknown", "Not Available"), ("out", "Out of Stock"),
+        ("low", "Low Stock"), ("ok", "In Stock")],
+        compute="_compute_stock_status", search="_search_stock_status", string="Stock Status")
+
+    @api.constrains("low_stock_threshold")
+    def _check_low_stock_threshold(self):
+        if any(m.low_stock_threshold < 0 for m in self):
+            raise ValidationError("Low stock threshold must be zero or greater.")
+
+    @api.depends("product_id", "product_id.type", "odoo_free_qty", "low_stock_threshold",
+                 "lazada_config_id.lazada_warehouse_id", "lazada_config_id.lazada_stock_location_id")
+    def _compute_stock_status(self):
+        for mapping in self:
+            mapping.stock_status = "unknown"
+            if not mapping.product_id or mapping.product_id.type != "product":
+                continue
+            try:
+                mapping.lazada_config_id._lazada_stock_context()
+            except UserError:
+                continue
+            qty = mapping.odoo_free_qty
+            mapping.stock_status = ("out" if qty <= 0 else
+                "low" if mapping.low_stock_threshold > 0 and qty <= mapping.low_stock_threshold else "ok")
+
+    @api.model
+    def _search_stock_status(self, operator, value):
+        if operator not in ("=", "!=", "in", "not in"):
+            raise ValueError("Unsupported stock status operator")
+        wanted = value if operator in ("in", "not in") else [value]
+        # Non-stored: read current stock, with normal record rules and company scope.
+        records = self.search([("company_id", "in", self.env.companies.ids)])
+        ids = records.filtered(lambda m: m.stock_status in wanted).ids
+        return [("id", "not in" if operator in ("!=", "not in") else "in", ids)]
+
     _sql_constraints = [
         (
             "config_sku_unique",
@@ -72,7 +109,10 @@ class LazadaProductMapping(models.Model):
         ),
     ]
 
-    @api.depends("product_id", "lazada_config_id", "use_stock_override", "stock_override")
+    @api.depends("product_id", "product_id.free_qty", "lazada_config_id",
+                 "lazada_config_id.lazada_warehouse_id",
+                 "lazada_config_id.lazada_stock_location_id",
+                 "use_stock_override", "stock_override")
     def _compute_odoo_available_stock(self):
         for mapping in self:
             qty = 0

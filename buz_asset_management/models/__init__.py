@@ -13,3 +13,4 @@ from . import asset_transfer
 from . import asset_audit
 from . import asset_maintenance
 from . import asset_coverage
+from . import asset_dashboard_service

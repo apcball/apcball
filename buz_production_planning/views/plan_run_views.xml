@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_plan_run_tree" model="ir.ui.view">
+        <field name="name">buz.plan.run.tree</field>
+        <field name="model">buz.plan.run</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'cancel'" decoration-success="state == 'done'"
+                  decoration-info="state == 'draft'">
+                <field name="name"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="suggestion_count" optional="hide"/>
+                <field name="open_suggestion_count"/>
+                <field name="late_suggestion_count" decoration-danger="late_suggestion_count > 0"/>
+                <field name="document_count"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'"
+                       decoration-warning="state in ('computed', 'confirmed')"
+                       decoration-success="state == 'done'"/>
+                <field name="company_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_run_form" model="ir.ui.view">
+        <field name="name">buz.plan.run.form</field>
+        <field name="model">buz.plan.run</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute" type="object" string="Compute Plan" class="btn-primary"
+                            invisible="next_step != 'compute' or state == 'cancel'"/>
+                    <button name="action_compute" type="object" string="Compute Plan"
+                            invisible="next_step == 'compute' or state not in ('computed', 'confirmed')"/>
+                    <button name="%(action_buz_plan_create_documents)d" type="action" string="Create Documents"
+                            class="btn-primary" context="{'default_run_id': id}"
+                            invisible="next_step != 'review' or state not in ('computed', 'confirmed')"/>
+                    <button name="%(action_buz_plan_create_documents)d" type="action" string="Create Documents"
+                            context="{'default_run_id': id}"
+                            invisible="next_step == 'review' or state not in ('computed', 'confirmed')"/>
+                    <button name="action_schedule" type="object" string="Schedule" class="btn-primary"
+                            invisible="next_step != 'schedule' or state in ('draft', 'cancel')"/>
+                    <button name="action_schedule" type="object" string="Schedule"
+                            invisible="next_step == 'schedule' or state in ('draft', 'cancel')"/>
+                    <button name="action_open_gantt" type="object" string="Open Gantt"
+                            invisible="schedule_count == 0 or state == 'cancel'"/>
+                    <button name="action_apply_schedule" type="object" string="Apply Schedule" class="btn-primary"
+                            groups="buz_production_planning.group_plan_manager"
+                            confirm="This writes the planned start and end dates on the real workorders and moves the manufacturing order dates. Continue?"
+                            invisible="next_step != 'apply' or schedule_count == 0 or state == 'cancel'"/>
+                    <button name="action_apply_schedule" type="object" string="Apply Schedule"
+                            groups="buz_production_planning.group_plan_manager"
+                            confirm="This writes the planned start and end dates on the real workorders and moves the manufacturing order dates. Continue?"
+                            invisible="next_step == 'apply' or schedule_count == 0 or state == 'cancel'"/>
+                    <button name="action_draft" type="object" string="Set to Draft"
+                            invisible="state != 'cancel'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('cancel', 'done')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,computed,confirmed,done"/>
+                </header>
+                <sheet>
+                    <field name="next_step" invisible="1"/>
+                    <div class="alert alert-info" role="alert" invisible="not next_step_hint or state == 'cancel'">
+                        <field name="next_step_hint" nolabel="1"/>
+                    </div>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_suggestions" type="object" class="oe_stat_button" icon="fa-lightbulb-o">
+                            <field name="suggestion_count" widget="statinfo" string="Suggestions"/>
+                        </button>
+                        <button name="action_open_productions" type="object" class="oe_stat_button" icon="fa-cogs"
+                                invisible="production_count == 0">
+                            <field name="production_count" widget="statinfo" string="Manufacturing Orders"/>
+                        </button>
+                        <button name="action_open_requisitions" type="object" class="oe_stat_button" icon="fa-handshake-o"
+                                invisible="requisition_count == 0">
+                            <field name="requisition_count" widget="statinfo" string="Blanket Orders"/>
+                        </button>
+                        <button name="action_open_purchases" type="object" class="oe_stat_button" icon="fa-shopping-cart"
+                                invisible="purchase_count == 0">
+                            <field name="purchase_count" widget="statinfo" string="Purchase Orders"/>
+                        </button>
+                        <button name="action_open_schedule" type="object" class="oe_stat_button" icon="fa-calendar">
+                            <field name="schedule_count" widget="statinfo" string="Schedule"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="user_id"/>
+                            <field name="date_from" readonly="state not in ('draft', 'computed')"/>
+                            <field name="horizon_weeks" readonly="state not in ('draft', 'computed')"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="forecast_lookback_weeks" readonly="state not in ('draft', 'computed')"/>
+                            <field name="warehouse_ids" widget="many2many_tags" readonly="state not in ('draft', 'computed')"/>
+                            <field name="picking_type_ids" widget="many2many_tags" readonly="state not in ('draft', 'computed')"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Demand" name="demand">
+                            <field name="demand_line_ids" readonly="1">
+                                <tree>
+                                    <field name="product_id"/>
+                                    <field name="bucket_start"/>
+                                    <field name="source"/>
+                                    <field name="qty"/>
+                                    <field name="qty_manual"/>
+                                    <field name="origin_ref"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Suggestions" name="suggestions">
+                            <field name="suggestion_ids" readonly="1">
+                                <tree>
+                                    <field name="product_id"/>
+                                    <field name="action"/>
+                                    <field name="qty"/>
+                                    <field name="date_need"/>
+                                    <field name="date_release"/>
+                                    <field name="vendor_id" optional="show"/>
+                                    <field name="is_late"/>
+                                    <field name="document_ref"/>
+                                    <field name="document_state" widget="badge"
+                                           decoration-info="document_state == 'open'"
+                                           decoration-warning="document_state == 'draft'"
+                                           decoration-success="document_state == 'done'"
+                                           decoration-danger="document_state == 'cancel'"
+                                           invisible="document_state == 'none'"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Schedule" name="schedule">
+                            <field name="schedule_line_ids" readonly="1">
+                                <tree>
+                                    <field name="production_id"/>
+                                    <field name="workcenter_id"/>
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="is_late"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_plan_run" model="ir.actions.act_window">
+        <field name="name">Production Plans</field>
+        <field name="res_model">buz.plan.run</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first production plan</p>
+            <p>
+                1. Create a plan: choose the start date, the horizon and the warehouses.<br/>
+                2. Compute Plan: the system suggests what to make and what to buy.<br/>
+                3. Review the suggestions, then Create Documents: draft manufacturing orders and
+                blanket orders (or RFQs). Nothing is confirmed.<br/>
+                4. Schedule the workorders, check the Gantt, then Apply Schedule.
+            </p>
+        </field>
+    </record>
+</odoo>

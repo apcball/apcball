@@ -1,6 +1,6 @@
 {
     "name": "BUZ Sales Performance Engine",
-    "version": "17.0.2.2.1",
+    "version": "17.0.2.3.0",
     "summary": "Measure REAL sales performance: recognized only when delivered AND invoice posted. Includes POS Lite sales.",
     "description": """
 BUZ Sales Performance Engine
@@ -52,6 +52,7 @@ Features
         "views/sale_performance_target_views.xml",
         "views/sale_order_views.xml",
         "views/crm_team_views.xml",
+        "views/product_template_views.xml",
         "views/res_users_views.xml",
         "views/spe_dashboard_views.xml",
         "views/menus.xml",

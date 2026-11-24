@@ -13,6 +13,11 @@ their numbers always agree):
 from collections import defaultdict
 
 
+def _posted_on_or_before(move, date):
+    """Only POSTED entries count; a draft/cancelled original or reversal is ignored."""
+    return bool(move) and move.state == 'posted' and move.date <= date
+
+
 class AssetLedger:
 
     def __init__(self, env, company, date):
@@ -44,9 +49,9 @@ class AssetLedger:
         lines = self.env['buz.asset.depreciation.line'].search([
             ('asset_id', 'in', live.ids), ('state', 'in', ('posted', 'reversed')), ('move_id', '!=', False)])
         for line in lines:
-            if line.move_id.date > self.date:
+            if not _posted_on_or_before(line.move_id, self.date):
                 continue
-            if line.reversal_move_id and line.reversal_move_id.date <= self.date:
+            if _posted_on_or_before(line.reversal_move_id, self.date):
                 continue
             result[line.asset_id] += line.planned_amount
         return result
@@ -85,9 +90,10 @@ def period_movements(env, company, date_from, date_to):
         ('company_id', '=', company.id), ('state', 'in', ('posted', 'reversed')), ('move_id', '!=', False)])
     for line in lines:
         category = line.asset_id.category_id
-        if date_from <= line.move_id.date <= date_to:
+        if line.move_id.state == 'posted' and date_from <= line.move_id.date <= date_to:
             depreciation[category] += line.planned_amount
-        if line.reversal_move_id and date_from <= line.reversal_move_id.date <= date_to:
+        reversal = line.reversal_move_id
+        if reversal and reversal.state == 'posted' and date_from <= reversal.date <= date_to:
             depreciation[category] -= line.planned_amount
     disposals = env['buz.asset.disposal'].search([
         ('company_id', '=', company.id), ('state', '=', 'posted'),

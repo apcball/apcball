@@ -1,0 +1,58 @@
+.o_buz_dash {
+    --buz-dash-line: rgba(128, 128, 128, 0.25);
+
+    .o_buz_dash_cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .o_buz_dash_card {
+        display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+        padding: 12px 14px; text-align: left; color: inherit;
+        background: var(--o-view-background-color, #fff);
+        border: 1px solid var(--buz-dash-line); border-left: 4px solid var(--buz-tone);
+        border-radius: 6px; cursor: pointer;
+
+        &:hover, &:focus-visible { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
+        .o_buz_dash_value {
+            font-size: 2rem; font-weight: 700; line-height: 1.1; color: var(--buz-tone);
+            font-variant-numeric: tabular-nums;
+        }
+        .o_buz_dash_label { font-size: 0.9rem; }
+    }
+    .o_buz_tone_danger { --buz-tone: var(--bs-danger, #d9534f); }
+    .o_buz_tone_warning { --buz-tone: #b5791a; }
+    .o_buz_tone_info { --buz-tone: var(--bs-info, #3b82c4); }
+    .o_buz_tone_muted {
+        --buz-tone: var(--bs-secondary-color, #8a8f98);
+        .o_buz_dash_label { color: var(--bs-secondary-color, #8a8f98); }
+    }
+
+    .o_buz_dash_charts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .o_buz_dash_wide { grid-column: 1 / -1; }
+
+    .o_buz_dash_panel {
+        min-width: 0; padding: 14px;
+        background: var(--o-view-background-color, #fff);
+        border: 1px solid var(--buz-dash-line); border-radius: 6px;
+
+        h4 { margin: 0 0 2px; }
+        p { margin-bottom: 8px; }
+    }
+    .o_buz_dash_canvas { position: relative; width: 100%; }
+    .o_buz_dash_nodata {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 140px; padding: 16px; text-align: center;
+        color: var(--bs-secondary-color, #8a8f98);
+        border: 1px dashed var(--buz-dash-line); border-radius: 6px;
+    }
+
+    @media (max-width: 991.98px) {
+        .o_buz_dash_charts { grid-template-columns: minmax(0, 1fr); }
+    }
+}

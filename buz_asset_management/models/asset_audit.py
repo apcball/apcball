@@ -6,6 +6,7 @@ RESULTS = [
     ('not_checked', 'ยังไม่ตรวจ'),
     ('found', 'พบ'),
     ('not_found', 'ไม่พบ'),
+    ('lost', 'สูญหาย'),
     ('wrong_location', 'ผิดสถานที่'),
     ('wrong_custodian', 'ผิดผู้ถือครอง'),
     ('damaged', 'ชำรุด'),
@@ -20,6 +21,8 @@ RESOLUTIONS = [
 ]
 SNAPSHOT_FIELDS = ('expected_employee_id', 'expected_department_id', 'expected_location_id', 'asset_id', 'audit_id')
 RESULT_FIELDS = ('result', 'scanned_by_id', 'scanned_date')
+# Results the count list dropdown may set directly (others need the line form).
+QUICK_RESULTS = ('found', 'not_found', 'lost', 'damaged', 'retired')
 RESOLUTION_FIELDS = ('resolution', 'resolution_note')
 
 
@@ -161,6 +164,15 @@ class BuzAssetAudit(models.Model):
                 'name': _('รายการตรวจนับ'), 'domain': [('audit_id', '=', self.id)],
                 'context': {'search_default_group_result': 1}}
 
+    def action_open_count(self):
+        """Editable count list on the lines themselves: asset users have write access on
+        lines but not on the audit, so an embedded list in the audit form is read-only for them."""
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'res_model': 'buz.asset.audit.line', 'view_mode': 'tree,form',
+                'name': _('บันทึกผลตรวจนับ %s', self.name), 'domain': [('audit_id', '=', self.id)],
+                'views': [(self.env.ref('buz_asset_management.view_buz_asset_audit_line_count_tree').id, 'tree'),
+                          (False, 'form')]}
+
 
 class BuzAssetAuditLine(models.Model):
     _name = 'buz.asset.audit.line'
@@ -192,9 +204,49 @@ class BuzAssetAuditLine(models.Model):
     resolution = fields.Selection(RESOLUTIONS, string='การแก้ไข')
     resolution_note = fields.Text(string='รายละเอียดการแก้ไข')
 
+    quick_result = fields.Selection(
+        RESULTS, compute='_compute_quick_result', inverse='_inverse_quick_result', string='บันทึกผล')
+
     _sql_constraints = [
         ('audit_asset_uniq', 'unique(audit_id, asset_id)', 'ทรัพย์สินปรากฏได้เพียงครั้งเดียวในรอบตรวจนับ'),
     ]
+
+    @api.depends('result')
+    def _compute_quick_result(self):
+        for line in self:
+            line.quick_result = line.result
+
+    def _inverse_quick_result(self):
+        """Inline dropdown: routed through the same guarded paths as the buttons."""
+        self._require_user()
+        for line in self:
+            value = line.quick_result
+            if value == line.result:
+                continue
+            if not value:
+                raise UserError(_("กรุณาเลือกผลการตรวจของ %s", line.asset_id.display_name))
+            if value in QUICK_RESULTS:
+                line._record(value)
+            elif value == 'not_checked':
+                line._reset()
+            elif value == 'wrong_location':
+                raise UserError(_(
+                    "ผิดสถานที่: กรุณาเปิดฟอร์มรายการของ %s เพื่อระบุสถานที่ที่พบจริง", line.asset_id.display_name))
+            elif value == 'wrong_custodian':
+                raise UserError(_(
+                    "ผิดผู้ถือครอง: กรุณาเปิดฟอร์มรายการของ %s เพื่อระบุผู้ถือครองที่พบจริง", line.asset_id.display_name))
+            else:
+                raise UserError(_("ผลการตรวจนี้บันทึกจากรายการไม่ได้ กรุณาใช้ฟอร์มรายการ"))
+
+    def _reset(self):
+        if not self.env.user.has_group('buz_asset_management.group_asset_officer'):
+            raise AccessError(_("เฉพาะเจ้าหน้าที่ทรัพย์สินที่ยกเลิกผลการตรวจได้"))
+        for line in self:
+            if line.audit_id.state != 'in_progress':
+                raise UserError(_("บันทึกผลได้เฉพาะรอบตรวจนับที่กำลังดำเนินการ"))
+            # sudo: result fields are write-guarded; officer group checked above.
+            line.sudo().write({'result': 'not_checked', 'scanned_by_id': False, 'scanned_date': False,
+                               'resolution': False, 'resolution_note': False})
 
     def write(self, vals):
         if not self.env.su:
@@ -240,6 +292,10 @@ class BuzAssetAuditLine(models.Model):
     def action_not_found(self):
         self._require_user()
         self._record('not_found')
+
+    def action_lost(self):
+        self._require_user()
+        self._record('lost')
 
     def action_wrong_location(self):
         self._require_user()

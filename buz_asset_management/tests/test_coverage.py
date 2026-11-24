@@ -101,6 +101,29 @@ class TestAssetCoverage(TransactionCase):
         Cov._cron_remind_expiring()
         self.assertEqual(len(soon.activity_ids), 2)
 
+    def test_reminder_failure_is_isolated_and_retried(self):
+        from unittest.mock import patch
+        Cov = self.env['buz.asset.coverage']
+        bad, good = self._cov(-10, 20), self._cov(-10, 25)
+        model_cls = type(Cov)
+        original = model_cls.activity_schedule
+
+        def flaky(rec, *args, **kwargs):
+            if rec == bad:
+                raise ValueError('boom')
+            return original(rec, *args, **kwargs)
+
+        with patch.object(model_cls, 'activity_schedule', flaky), \
+                mute_logger('odoo.addons.buz_asset_management.models.asset_coverage'):
+            Cov._cron_remind_expiring()
+        self.assertTrue(good.reminder_sent)
+        self.assertEqual(len(good.activity_ids), 1)
+        self.assertFalse(bad.reminder_sent)      # not marked: retried next run
+        self.assertFalse(bad.activity_ids)
+        Cov._cron_remind_expiring()
+        self.assertTrue(bad.reminder_sent)
+        self.assertEqual(len(good.activity_ids), 1)
+
     def test_expired_and_upcoming_are_not_reminded(self):
         Cov = self.env['buz.asset.coverage']
         expired, upcoming = self._cov(-100, -1), self._cov(5, 20)

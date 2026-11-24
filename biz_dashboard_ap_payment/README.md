@@ -3,7 +3,7 @@
 Dashboard ควบคุมงบประมาณและยอดจ่าย สำหรับ Odoo 17 Community
 เมนู: **Purchase > Budget Control > Budget & Payment Control** และ **Accounting > Reporting > Budget & Payment Control**
 
-สิทธิ์: ผู้ใช้ในกลุ่ม *Monthly Budget User* (`biz_monthly_analytic_budget`) หรือ *Accounting / Invoicing* (`account.group_account_invoice`)
+สิทธิ์: ผู้ใช้ในกลุ่ม *Budget & Payment Control / Dashboard User* (`biz_dashboard_ap_payment.group_ap_payment_dashboard_user`) — admin (`base.group_system`) ได้อัตโนมัติ; ตอนอัปเกรดเป็น 1.3.0 ผู้ที่เคยมี Budget User หรือ Invoicing จะถูกเพิ่มเข้ากลุ่มให้ครั้งเดียว
 
 ## ตัวกรอง
 เดือน / ปี / บริษัท / โครงการ (`project.project`) / ร้านค้า-ผู้ขาย — กดปุ่ม **กรองข้อมูล** จึงจะโหลดใหม่

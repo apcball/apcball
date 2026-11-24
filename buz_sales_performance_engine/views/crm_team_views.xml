@@ -13,6 +13,9 @@
                     </div>
                 </button>
             </xpath>
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="spe_count_in_sales"/>
+            </xpath>
         </field>
     </record>
 </odoo>
