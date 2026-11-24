@@ -104,6 +104,11 @@ class BuzPoLotWizard(models.TransientModel):
                         ELSE COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''),
                                       NULLIF(m.name, ''), NULLIF(l.description, ''), '')
                    END AS doc,
+                   CASE WHEN l.quantity = 0 AND l.value <> 0
+                             AND l.stock_valuation_layer_id IS NOT NULL
+                             AND NULLIF(l.description, '') IS NOT NULL
+                        THEN COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''), NULLIF(m.name, ''))
+                   END AS lcdoc,
                    m.id,
                    (m.id IS NOT NULL AND ls.usage IN ('internal', 'transit')
                         AND ld.usage IN ('internal', 'transit')) AS is_tr,
@@ -127,10 +132,43 @@ class BuzPoLotWizard(models.TransientModel):
              ORDER BY COALESCE(l.accounting_date, l.create_date), l.id
         """, (self.company_id.id, list(product_ids), cutoff_utc, end_utc))
         by_prod = defaultdict(list)
-        for (lid, pid, wh, q, v, d, doc, mid, tr, swh, dwh, par) in cr.fetchall():
+        lcdoc = {}
+        for (lid, pid, wh, q, v, d, doc, lcd, mid, tr, swh, dwh, par) in cr.fetchall():
             by_prod[pid].append((d, lid, Layer(lid, pid, wh, q or 0.0, v or 0.0, doc,
                                                mid, bool(tr), swh, dwh, par)))
-        return {pid: self._landed_after_parent(lst) for pid, lst in by_prod.items()}
+            if lcd:
+                lcdoc[lid] = lcd
+        tz = pytz.timezone(self.env.user.tz or 'Asia/Bangkok')
+        return {pid: self._group_landed(self._landed_after_parent(lst), lcdoc, tz)
+                for pid, lst in by_prod.items()}
+
+    @staticmethod
+    def _group_landed(items, lcdoc, tz):
+        """Merge value-only layers (landed cost / revaluation) that hang off the
+        same layer, in the same warehouse, on the same local accounting date into
+        one row (value summed, kept at the position of the first one). {layer id:
+        receipt name} in `lcdoc` marks which layers are value-only."""
+        out, first = [], {}
+        for d, lid, sv in items:
+            if lid not in lcdoc:
+                out.append((d, lid, sv))
+                continue
+            day = pytz.UTC.localize(d).astimezone(tz).date()
+            key = (sv.parent_id, sv.wh_id, day)
+            if key in first:
+                grp = first[key]
+                grp['n'] += 1
+                grp['value'] += sv.value
+            else:
+                grp = first[key] = {'n': 1, 'value': sv.value, 'idx': len(out)}
+                out.append((d, lid, sv))
+        for key, grp in first.items():
+            if grp['n'] > 1:
+                d, lid, sv = out[grp['idx']]
+                out[grp['idx']] = (d, lid, sv._replace(
+                    value=round(grp['value'], 2),
+                    doc='ค่าใช้จ่ายนำเข้า %d รายการ (ลงล็อต %s)' % (grp['n'], lcdoc[lid])))
+        return out
 
     @staticmethod
     def _landed_after_parent(items):
