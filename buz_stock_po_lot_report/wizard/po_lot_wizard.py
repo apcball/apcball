@@ -209,7 +209,7 @@ class BuzPoLotWizard(models.TransientModel):
         seq = 0
         out = []
 
-        queues = defaultdict(list)    # wh id -> [[doc, date, unit, remaining, received]]
+        queues = defaultdict(list)    # wh id -> [[doc, date, unit, remaining, received, layer id]]
         pieces = defaultdict(list)    # move id -> [[doc, date, qty]] eaten at the source
         done = set()
         outs_by_move = defaultdict(list)
@@ -247,10 +247,11 @@ class BuzPoLotWizard(models.TransientModel):
                     pieces[sv.move_id] += got
             elif q == 0 and sv.parent_id and sv.value:
                 # landed cost / revaluation: spread over the lot it hangs off
-                for lot in queues[sv.wh_id]:
-                    if len(lot) > 5 and lot[5] == sv.parent_id and lot[4]:
-                        lot[2] += sv.value / lot[4]
-                        break
+                hit = [lot for lot in queues[sv.wh_id] if lot[5] == sv.parent_id]
+                rec = sum(lot[4] for lot in hit)
+                for lot in hit:
+                    if rec:
+                        lot[2] += sv.value / rec
             elif q > 0:
                 unit = sv.value / q
                 if not sv.is_tr:
@@ -264,13 +265,13 @@ class BuzPoLotWizard(models.TransientModel):
                 while need > 1e-9 and pieces[mid]:
                     pc = pieces[mid][0]
                     take = min(pc[2], need)
-                    queues[sv.wh_id].append([pc[0], pc[1], unit, take, take])
+                    queues[sv.wh_id].append([pc[0], pc[1], unit, take, take, sv.id])
                     pc[2] -= take
                     need -= take
                     if pc[2] <= 1e-9:
                         pieces[mid].pop(0)
                 if need > 1e-9:
-                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need])
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need, sv.id])
 
         def live_lots():
             """Remaining lots of the selected warehouses, one row per
