@@ -95,8 +95,15 @@ class BuzPoLotWizard(models.TransientModel):
         cr.execute("""
             SELECT l.id, l.product_id, COALESCE(l.warehouse_id, pl.warehouse_id), l.quantity, l.value,
                    COALESCE(l.accounting_date, l.create_date) AS d,
-                   COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''),
-                            NULLIF(m.name, ''), NULLIF(l.description, ''), '') AS doc,
+                   CASE WHEN l.quantity = 0 AND l.value <> 0
+                             AND l.stock_valuation_layer_id IS NOT NULL
+                             AND NULLIF(l.description, '') IS NOT NULL
+                        -- landed cost / revaluation: show its own bill, not the parent receipt
+                        THEN l.description || COALESCE(' (ลงล็อต ' || COALESCE(
+                                 NULLIF(p.name, ''), NULLIF(m.reference, ''), NULLIF(m.name, '')) || ')', '')
+                        ELSE COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''),
+                                      NULLIF(m.name, ''), NULLIF(l.description, ''), '')
+                   END AS doc,
                    m.id,
                    (m.id IS NOT NULL AND ls.usage IN ('internal', 'transit')
                         AND ld.usage IN ('internal', 'transit')) AS is_tr,
