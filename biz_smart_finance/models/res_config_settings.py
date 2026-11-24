@@ -5,7 +5,7 @@ from odoo import fields, models
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
-    # key แยกของโมดูลเอง (ผู้ใช้เลือก) — ไม่ reuse ai_pm_flow.* ของ biz_smart_project
+    # key แยกของโมดูลเอง (ผู้ใช้เลือก)
     bsf_openrouter_api_key = fields.Char(
         string="OpenRouter API Key",
         config_parameter="biz_smart_finance.openrouter_api_key",

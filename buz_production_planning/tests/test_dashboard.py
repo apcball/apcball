@@ -59,7 +59,8 @@ class TestDashboardPlans(DashboardCommon):
 
     def test_payload_shape_and_json(self):
         data = self._data()
-        for key in ('runs', 'run', 'cards', 'charts', 'bottlenecks', 'updated_at', 'can_create'):
+        for key in ('runs', 'run', 'cards', 'charts', 'top_suggestions', 'status', 'activity',
+                    'updated_at', 'can_create'):
             self.assertIn(key, data)
         for key in ('id', 'name', 'state', 'state_label', 'date_from', 'date_to', 'planner',
                     'next_step', 'next_step_hint'):
@@ -71,16 +72,13 @@ class TestDashboardPlans(DashboardCommon):
         for card in data['cards']:
             self.assertEqual(
                 set(card), {'key', 'label', 'value', 'tone', 'model', 'domain', 'group_by'})
-        self.assertEqual(
-            set(data['charts']), {'load_weeks', 'on_time', 'release_weeks', 'documents'})
+        self.assertEqual(set(data['charts']), {'load_weeks'})
         json.dumps(data)
 
     def test_unscheduled_plan_has_no_load(self):
         data = self._data()
         self.assertFalse(data['charts']['load_weeks']['scheduled'])
         self.assertFalse(data['charts']['load_weeks']['weeks'])
-        self.assertFalse(data['bottlenecks'])
-        self.assertEqual(data['charts']['on_time']['total'], 0)
 
     def test_no_plan_at_all(self):
         company = self._company('TEST DASH empty company')
@@ -89,7 +87,7 @@ class TestDashboardPlans(DashboardCommon):
         self.assertIs(data['run'], False)
         self.assertEqual(data['runs'], [])
         self.assertEqual(data['cards'], [])
-        self.assertEqual(data['bottlenecks'], [])
+        self.assertEqual(data['top_suggestions'], [])
         json.dumps(data)
 
     def test_default_is_latest_not_cancelled(self):
@@ -233,16 +231,6 @@ class TestDashboardNumbers(DashboardCommon):
         self.assertEqual(
             self.env['buz.plan.schedule.line'].search_count(first['domain']), 4)
 
-    def test_bottlenecks_rank_by_load_share(self):
-        rows = self._data()['bottlenecks']
-        self.assertEqual([r['id'] for r in rows], [self.wc1.id, self.wc2.id])
-        self.assertEqual(rows[0]['load_hours'], 11.5)
-        self.assertEqual(rows[0]['capacity_hours'], 80.0)
-        self.assertEqual(rows[0]['pct'], 14.4)
-        self.assertFalse(rows[0]['overloaded'])
-        self.assertEqual(
-            self.env['buz.plan.schedule.line'].search_count(rows[0]['domain']), 3)
-
     def test_window_follows_the_schedule_past_the_horizon_and_is_capped(self):
         line = self._line(self.mo1)
         line.write({'date_start': local('2027-01-04 08:00'), 'date_end': local('2027-01-04 18:00')})
@@ -255,31 +243,31 @@ class TestDashboardNumbers(DashboardCommon):
         self.assertTrue(truncated)
         self.assertTrue(self._data()['charts']['load_weeks']['truncated'])
 
-    def test_on_time_counts_manufacturing_orders(self):
-        on_time = self._data()['charts']['on_time']
-        self.assertEqual(
-            (on_time['total'], on_time['late'], on_time['on_time']), (2, 1, 1),
-            "one late line of three makes one late MO")
-        self.assertEqual(on_time['pct'], 50.0)
-        self.assertEqual(
-            self.env['buz.plan.schedule.line'].search_count(on_time['late_domain']), 1)
+    def test_status_adds_up_to_100_and_matches_open_suggestions(self):
+        status = self._data()['status']
+        open_count = self.env['buz.plan.suggestion'].search_count(
+            [('run_id', '=', self.run_.id), ('state', 'in', ('proposed', 'approved'))])
+        self.assertEqual(status['total'], open_count)
+        self.assertEqual([r['key'] for r in status['rows']], ['on_track', 'at_risk', 'overdue'])
+        self.assertEqual(sum(r['count'] for r in status['rows']), open_count)
+        if open_count:
+            self.assertEqual(sum(r['pct'] for r in status['rows']), 100)
 
-    def test_release_weeks_split_make_and_buy(self):
-        weeks = self._data()['charts']['release_weeks']
-        self.assertEqual(
-            [(w['week'], w['make'], w['buy']) for w in weeks],
-            [('2026-11-16', 4, 1), ('2026-11-23', 0, 1)])
-        Sugg = self.env['buz.plan.suggestion']
-        self.assertEqual([Sugg.search_count(w['domain']) for w in weeks], [5, 1])
+    def test_top_suggestions_are_at_most_five_and_most_urgent_first(self):
+        rows = self._data()['top_suggestions']
+        self.assertLessEqual(len(rows), 5)
+        rank = {'overdue': 0, 'at_risk': 1, 'on_track': 2}
+        self.assertEqual([r['priority'] for r in rows],
+                         sorted((r['priority'] for r in rows), key=rank.get))
+        self.assertEqual({r['priority_label'] for r in rows} - {'High', 'Medium', 'Low'}, set())
 
-    def test_documents_by_status(self):
-        docs = {d['key']: d for d in self._data()['charts']['documents']}
-        self.assertEqual(set(docs), {'none', 'draft', 'open', 'done'}, "cancel hidden when empty")
-        self.assertEqual(docs['none']['count'], 5)
-        self.assertEqual(docs['open']['count'], 1, "confirmed MO = in progress")
-        Sugg = self.env['buz.plan.suggestion']
-        for doc in docs.values():
-            self.assertEqual(doc['count'], Sugg.search_count(doc['domain']), doc['key'])
+    def test_activity_lists_plan_notes_newest_first(self):
+        self.run_.message_post(body="TEST DASH note one")
+        self.run_.message_post(body="TEST DASH note two")
+        rows = self._data()['activity']
+        self.assertLessEqual(len(rows), 5)
+        self.assertEqual(rows[0]['text'], "TEST DASH note two")
+        json.dumps(rows)
 
     def test_dashboard_writes_nothing(self):
         lines = self.run_.schedule_line_ids

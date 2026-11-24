@@ -9,7 +9,11 @@
     <t t-name="buz_production_planning.PlanDashboard">
         <div class="o_buz_dash h-100 overflow-auto">
             <div class="o_buz_dash_header d-flex flex-wrap align-items-center gap-2 p-3 border-bottom bg-view">
-                <h2 class="m-0 me-2">Planning Dashboard</h2>
+                <span class="o_buz_dash_logo"><i class="fa fa-calendar"/></span>
+                <div class="me-2">
+                    <h2 class="m-0">Planning Dashboard</h2>
+                    <div class="text-muted small">Plan your resources, maximize capacity</div>
+                </div>
                 <t t-if="state.run">
                     <label class="visually-hidden" for="o_buz_dash_run">Plan</label>
                     <select id="o_buz_dash_run" class="form-select w-auto" title="Plan shown on this page"
@@ -48,64 +52,90 @@
                 <div t-if="state.run.next_step_hint" class="alert alert-info d-flex align-items-center mb-3" role="status">
                     <i class="fa fa-lightbulb-o me-2"/>
                     <span><b>Next step:</b> <t t-esc="state.run.next_step_hint"/></span>
+                    <button class="btn btn-sm btn-light ms-auto" t-on-click="openPlan">View details <i class="fa fa-arrow-right ms-1"/></button>
                 </div>
-                <p class="text-muted small mb-2">
-                    All numbers on this page belong to the selected plan only. Click a number to open the list behind it.
-                </p>
 
                 <div class="o_buz_dash_cards mb-3">
                     <t t-foreach="state.cards" t-as="card" t-key="card.key">
-                        <button type="button" t-attf-class="o_buz_dash_card o_buz_tone_{{card.tone}}"
+                        <button type="button" t-attf-class="o_buz_dash_card o_buz_tone_{{card.tone}} o_buz_card_{{card.key}}"
                                 t-on-click="() => this.openCard(card)">
+                            <span class="o_buz_dash_icon"><i t-attf-class="fa {{iconFor(card)}}"/></span>
                             <span class="o_buz_dash_value" t-esc="card.value"/>
                             <span class="o_buz_dash_label" t-esc="card.label"/>
+                            <i class="fa fa-arrow-right o_buz_dash_go"/>
                         </button>
                     </t>
                 </div>
 
-                <div class="o_buz_dash_charts">
-                    <section class="o_buz_dash_panel o_buz_dash_wide">
-                        <h4>Load vs capacity by week</h4>
-                        <p class="text-muted small">
-                            Hours of planned work against the hours the work centers can work. Red = more work than capacity.
-                            <t t-if="state.charts.truncated"> Only the first 26 weeks are shown; the schedule runs further.</t>
-                        </p>
-                        <BuzPlanChart t-if="state.charts.load" config="state.charts.load" height="300"/>
-                        <div t-else="" class="o_buz_dash_nodata">
-                            <t t-if="state.charts.scheduled">No working time or planned work in this period.</t>
-                            <t t-else="">Schedule the plan to see load.</t>
+                <section class="o_buz_dash_panel mb-3">
+                    <div class="d-flex flex-wrap align-items-start gap-2">
+                        <div class="me-auto">
+                            <h4>Load vs Capacity by <t t-esc="state.period"/></h4>
+                            <p class="text-muted small">
+                                Hours of planned work against the hours the work centers can work. <span class="text-danger">Red = more work than capacity.</span>
+                                <t t-if="state.charts.truncated"> Only the first 26 weeks are shown; the schedule runs further.</t>
+                            </p>
                         </div>
-                    </section>
-
-                    <section class="o_buz_dash_panel">
-                        <h4>Busiest work centers</h4>
-                        <p class="text-muted small">Top 10 by planned work as a share of capacity. Red = over 100 %.</p>
-                        <BuzPlanChart t-if="state.charts.workcenters" config="state.charts.workcenters" height="320"/>
-                        <div t-else="" class="o_buz_dash_nodata">
-                            <t t-if="state.charts.scheduled">No working time or planned work in this period.</t>
-                            <t t-else="">Schedule the plan to see load.</t>
+                        <div class="o_buz_dash_periods btn-group" role="group">
+                            <t t-foreach="['week', 'month', 'quarter']" t-as="p" t-key="p">
+                                <button type="button" t-attf-class="btn btn-sm {{state.period === p ? 'btn-primary' : 'btn-light'}}"
+                                        t-on-click="() => this.setPeriod(p)" t-esc="p[0].toUpperCase() + p.slice(1)"/>
+                            </t>
                         </div>
-                    </section>
+                    </div>
+                    <BuzPlanChart t-if="state.loadChart" config="state.loadChart" height="300"/>
+                    <div t-else="" class="o_buz_dash_nodata">
+                        <t t-if="state.charts.scheduled">No working time or planned work in this period.</t>
+                        <t t-else="">Schedule the plan to see load.</t>
+                    </div>
+                </section>
 
+                <div class="o_buz_dash_bottom">
                     <section class="o_buz_dash_panel">
-                        <h4>On-time schedule</h4>
-                        <p class="text-muted small">Manufacturing orders that finish before their deadline. Click to see the late work orders.</p>
-                        <BuzPlanChart t-if="state.charts.onTime" config="state.charts.onTime" height="320"/>
-                        <div t-else="" class="o_buz_dash_nodata">Schedule the plan to see on-time results.</div>
-                    </section>
-
-                    <section class="o_buz_dash_panel">
-                        <h4>Suggestions by release week</h4>
-                        <p class="text-muted small">Open suggestions by the week they must be ordered or started.</p>
-                        <BuzPlanChart t-if="state.charts.release" config="state.charts.release"/>
+                        <div class="d-flex align-items-center mb-2">
+                            <h4 class="me-auto"><i class="fa fa-trophy me-2 text-warning"/>Top 5 Suggestions</h4>
+                            <a href="#" class="small" t-on-click.prevent="viewAllSuggestions">View all <i class="fa fa-arrow-right"/></a>
+                        </div>
+                        <ol t-if="state.topSuggestions.length" class="o_buz_dash_list">
+                            <li t-foreach="state.topSuggestions" t-as="row" t-key="row.id"
+                                t-on-click="() => this.openSuggestion(row)">
+                                <span class="o_buz_dash_num" t-esc="row_index + 1"/>
+                                <span class="o_buz_dash_name">
+                                    <t t-esc="row.action"/> · <t t-esc="row.name"/>
+                                </span>
+                                <span t-attf-class="o_buz_pill o_buz_pill_{{row.priority}}" t-esc="row.priority_label"/>
+                            </li>
+                        </ol>
                         <div t-else="" class="o_buz_dash_nodata">No open suggestions in this plan.</div>
                     </section>
 
                     <section class="o_buz_dash_panel">
-                        <h4>Document progress</h4>
-                        <p class="text-muted small">How far the suggestions are: no document yet, draft, in progress or done.</p>
-                        <BuzPlanChart t-if="state.charts.documents" config="state.charts.documents" height="180"/>
-                        <div t-else="" class="o_buz_dash_nodata">No suggestions in this plan. Click Compute Plan first.</div>
+                        <h4 class="mb-2"><i class="fa fa-pie-chart me-2 text-primary"/>Plan Status</h4>
+                        <div t-if="state.charts.status" class="d-flex align-items-center gap-3">
+                            <div class="o_buz_dash_donut"><BuzPlanChart config="state.charts.status" height="190"/></div>
+                            <ul class="o_buz_dash_legend list-unstyled m-0 flex-grow-1">
+                                <li t-foreach="state.status.rows" t-as="row" t-key="row.key" class="d-flex align-items-center">
+                                    <span t-attf-class="o_buz_dot o_buz_dot_{{row.key}}"/>
+                                    <span class="me-auto" t-esc="row.label"/>
+                                    <b><t t-esc="row.pct"/>%</b>
+                                </li>
+                            </ul>
+                        </div>
+                        <div t-else="" class="o_buz_dash_nodata">No open suggestions in this plan. Click Compute Plan first.</div>
+                    </section>
+
+                    <section class="o_buz_dash_panel">
+                        <div class="d-flex align-items-center mb-2">
+                            <h4 class="me-auto"><i class="fa fa-history me-2 text-primary"/>Recent Activity</h4>
+                            <a href="#" class="small" t-on-click.prevent="openPlan">View all <i class="fa fa-arrow-right"/></a>
+                        </div>
+                        <ul t-if="state.activity.length" class="o_buz_dash_timeline list-unstyled m-0">
+                            <li t-foreach="state.activity" t-as="row" t-key="row.id" t-on-click="() => this.openActivity(row)">
+                                <span class="o_buz_dash_time" t-esc="activityTime(row)"/>
+                                <span class="o_buz_dash_text" t-esc="row.text"/>
+                            </li>
+                        </ul>
+                        <div t-else="" class="o_buz_dash_nodata">No activity yet.</div>
                     </section>
                 </div>
             </div>

@@ -29,18 +29,6 @@
     <menuitem id="menu_bsf_collection_followup" name="ติดตามเก็บเงิน" parent="menu_bsf_inputs"
               action="action_bsf_collection_followup" sequence="18"/>
 
-    <record id="view_sale_order_form_bsf_sales_to_cash" model="ir.ui.view">
-        <field name="name">sale.order.form.bsf.sales.to.cash</field><field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_form"/><field name="arch" type="xml">
-            <xpath expr="//notebook" position="inside"><page string="Sales to Cash">
-                <group><field name="bsf_cash_source"/></group>
-                <field name="bsf_delivery_plan_ids"><tree editable="bottom">
-                    <field name="sale_order_id" column_invisible="1"/><field name="sale_line_id"/><field name="delivery_date"/><field name="quantity"/>
-                    <field name="amount" widget="monetary"/><field name="currency_id" column_invisible="1"/>
-                </tree></field>
-            </page></xpath>
-        </field>
-    </record>
     <record id="view_partner_form_bsf_sales_to_cash" model="ir.ui.view">
         <field name="name">res.partner.form.bsf.sales.to.cash</field><field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/><field name="arch" type="xml">

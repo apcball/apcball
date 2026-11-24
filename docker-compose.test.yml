@@ -8,11 +8,17 @@ services:
       POSTGRES_PASSWORD: odoo
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d MOG_TEST"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
   odoo-test:
     image: my-odoo:17
     depends_on:
-      - postgres-test
+      postgres-test:
+        condition: service_healthy
     environment:
       HOST: postgres-test
       PORT: 5432
@@ -20,13 +26,18 @@ services:
       PASSWORD: odoo
     volumes:
       - ./:/mnt/extra-addons
-    command: >
-      odoo -d MOG_TEST
-      --db_host=postgres-test
-      --db_user=odoo
-      --db_password=odoo
-      --addons-path=/mnt/extra-addons
-      -u buz_commercial_invoice
-      --test-enable
-      --stop-after-init
-      --no-http
+    # Install dependencies before enabling the module-scoped test runner.
+    # Some dependency test packages are incomplete in this repository.
+    command:
+      - bash
+      - -ec
+      - |
+        odoo -d MOG_TEST --db_host=postgres-test --db_user=odoo --db_password=odoo \
+          --addons-path=/mnt/extra-addons -i pos_lite --without-demo=all \
+          --workers=0 --max-cron-threads=0 --stop-after-init --no-http
+        odoo shell -d MOG_TEST --db_host=postgres-test --db_user=odoo --db_password=odoo \
+          --addons-path=/mnt/extra-addons --workers=0 --max-cron-threads=0 --no-http \
+          < /mnt/extra-addons/scripts/prepare_pos_lite_test.py
+        exec odoo -d MOG_TEST --db_host=postgres-test --db_user=odoo --db_password=odoo \
+          --addons-path=/mnt/extra-addons -u pos_lite --test-enable --test-tags /pos_lite \
+          --workers=0 --max-cron-threads=0 --stop-after-init --no-http

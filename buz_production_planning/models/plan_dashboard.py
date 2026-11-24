@@ -7,14 +7,16 @@ import pytz
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError
+from odoo.tools import html2plaintext
 
 from ..engine import gantt, scheduler
 
 MAX_RUNS = 30
 MAX_LOAD_WEEKS = 26
-TOP_WORKCENTERS = 10
+SOON_DAYS = 7
+TOP_SUGGESTIONS = 5
+ACTIVITY_LIMIT = 5
 OPEN_STATES = ['proposed', 'approved']
-DOCUMENT_STATES = ['none', 'draft', 'open', 'done', 'cancel']
 
 
 class PlanDashboard(models.AbstractModel):
@@ -43,7 +45,8 @@ class PlanDashboard(models.AbstractModel):
                 'date_from': fields.Date.to_string(r.date_from),
                 'date_to': fields.Date.to_string(r.date_to),
             } for r in runs],
-            'run': False, 'cards': [], 'charts': {}, 'bottlenecks': [],
+            'run': False, 'cards': [], 'charts': {}, 'top_suggestions': [],
+            'status': {}, 'activity': [],
             'can_create': Run.check_access_rights('create', raise_exception=False),
             'updated_at': fields.Datetime.to_string(fields.Datetime.now()),
         }
@@ -64,13 +67,10 @@ class PlanDashboard(models.AbstractModel):
             'next_step': step, 'next_step_hint': hint or '',
         }
         res['cards'] = self._cards(run)
-        load_weeks, res['bottlenecks'] = self._load(run, tz)
-        res['charts'] = {
-            'load_weeks': load_weeks,
-            'on_time': self._on_time(run),
-            'release_weeks': self._release_weeks(run),
-            'documents': self._documents(run),
-        }
+        res['charts'] = {'load_weeks': self._load(run, tz)}
+        res['top_suggestions'] = self._top_suggestions(run)
+        res['status'] = self._status(run)
+        res['activity'] = self._activity(run)
         return res
 
     # ------------------------------------------------------------------
@@ -146,13 +146,13 @@ class PlanDashboard(models.AbstractModel):
 
     @api.model
     def _load(self, run, tz):
-        """Weekly load/capacity totals and the busiest workcenters of the plan."""
+        """Weekly load/capacity totals of the plan."""
         Line = self.env['buz.plan.schedule.line']
         in_run = [('run_id', '=', run.id)]
         weekly = {'scheduled': False, 'truncated': False, 'weeks': []}
         window = self._load_window(run, tz)
         if not window:
-            return weekly, []
+            return weekly
         start, end, truncated = window
         weekly.update(scheduled=True, truncated=truncated)
         lines = Line.search(in_run + [('date_end', '>', start), ('date_start', '<', end)])
@@ -165,15 +165,11 @@ class PlanDashboard(models.AbstractModel):
 
         zone = pytz.timezone(tz)
         weeks = defaultdict(lambda: [0.0, 0.0])        # monday -> [load min, capacity min]
-        per_wc = {}
         for wc in wcs:
-            totals = [0.0, 0.0]
             for index, per_day in enumerate((load[wc.id], capacity[wc.id])):
                 for day, minutes in per_day.items():
                     day = fields.Date.to_date(day)
                     weeks[day - timedelta(days=day.weekday())][index] += minutes
-                    totals[index] += minutes
-            per_wc[wc] = totals
 
         for monday in sorted(weeks):
             w0 = zone.localize(datetime.combine(monday, time.min)).astimezone(pytz.utc)
@@ -188,65 +184,88 @@ class PlanDashboard(models.AbstractModel):
                     ('date_end', '>', fields.Datetime.to_string(w0.replace(tzinfo=None)))],
             })
 
-        def ratio(item):
-            used, cap = item[1]
-            return used / cap if cap else (float('inf') if used else 0.0)
-
-        ranked = sorted(per_wc.items(), key=lambda item: (-ratio(item), item[0].name))
-        bottlenecks = []
-        for wc, (used, cap) in ranked[:TOP_WORKCENTERS]:
-            if not used and not cap:
-                continue
-            bottlenecks.append({
-                'id': wc.id, 'name': wc.display_name,
-                'load_hours': round(used / 60.0, 1), 'capacity_hours': round(cap / 60.0, 1),
-                'pct': round(100.0 * used / cap, 1) if cap else False,
-                'overloaded': used > cap,
-                'domain': in_run + [('workcenter_id', '=', wc.id)],
-            })
-        return weekly, bottlenecks
+        return weekly
 
     @api.model
-    def _on_time(self, run):
-        """Scheduled manufacturing orders: late when any of their schedule lines is late."""
-        Line = self.env['buz.plan.schedule.line']
-        in_run = [('run_id', '=', run.id)]
-        late_domain = in_run + [('is_late', '=', True)]
-        [[total]] = Line._read_group(in_run, aggregates=['production_id:count_distinct'])
-        [[late]] = Line._read_group(late_domain, aggregates=['production_id:count_distinct'])
-        total, late = total or 0, late or 0
+    def _bucket(self, sugg, today):
+        """overdue (high) / at_risk (medium) / on_track (low) of one open suggestion."""
+        if sugg.is_late or sugg.shortage_qty > 0:
+            return 'overdue'
+        if sugg.date_release and sugg.date_release <= today + timedelta(days=SOON_DAYS):
+            return 'at_risk'
+        return 'on_track'
+
+    @api.model
+    def _open_suggestions(self, run):
+        return self.env['buz.plan.suggestion'].search(
+            [('run_id', '=', run.id), ('state', 'in', OPEN_STATES)])
+
+    @api.model
+    def _top_suggestions(self, run):
+        """The five most urgent open suggestions: overdue first, then at risk, then on track."""
+        today = fields.Date.context_today(self)
+        rank = {'overdue': 0, 'at_risk': 1, 'on_track': 2}
+        labels = {'overdue': _("High"), 'at_risk': _("Medium"), 'on_track': _("Low")}
+        suggs = self._open_suggestions(run)
+        ordered = sorted(suggs, key=lambda s: (
+            rank[self._bucket(s, today)], -s.shortage_qty, s.date_release or today, s.id))
+        rows = []
+        for sugg in ordered[:TOP_SUGGESTIONS]:
+            bucket = self._bucket(sugg, today)
+            action = dict(sugg._fields['action']._description_selection(self.env))
+            rows.append({
+                'id': sugg.id, 'name': sugg.product_id.display_name,
+                'action': action.get(sugg.action, sugg.action),
+                'priority': bucket, 'priority_label': labels[bucket],
+            })
+        return rows
+
+    @api.model
+    def _status(self, run):
+        """Share of open suggestions that are on track, at risk or overdue."""
+        today = fields.Date.context_today(self)
+        suggs = self._open_suggestions(run)
+        counts = dict.fromkeys(('on_track', 'at_risk', 'overdue'), 0)
+        for sugg in suggs:
+            counts[self._bucket(sugg, today)] += 1
+        total = len(suggs)
+        pct = {key: int(100 * n / total) for key, n in counts.items()} if total else counts
+        if total:
+            # Give the rounding remainder to the largest bucket so the three add up to 100.
+            pct[max(counts, key=counts.get)] += 100 - sum(pct.values())
+        labels = {'on_track': _("On Track"), 'at_risk': _("At Risk"), 'overdue': _("Overdue")}
         return {
-            'total': total, 'late': late, 'on_time': total - late,
-            'pct': round(100.0 * (total - late) / total, 1) if total else 0.0,
-            'late_domain': late_domain,
+            'total': total,
+            'rows': [{'key': key, 'label': labels[key], 'count': counts[key], 'pct': pct[key]}
+                     for key in ('on_track', 'at_risk', 'overdue')],
         }
 
     @api.model
-    def _release_weeks(self, run):
-        """Open suggestions per release week (Monday start), split Make / Buy."""
-        domain = [('run_id', '=', run.id), ('state', 'in', OPEN_STATES)]
-        counts = defaultdict(lambda: {'make': 0, 'buy': 0})
-        # Grouped per day and bucketed here: ``:week`` follows the language's first weekday.
-        for day, action, count in self.env['buz.plan.suggestion']._read_group(
-                domain, ['date_release:day', 'action'], ['__count']):
-            day = fields.Date.to_date(day)
-            counts[day - timedelta(days=day.weekday())][action] += count
-        return [{
-            'week': fields.Date.to_string(monday),
-            'make': counts[monday]['make'], 'buy': counts[monday]['buy'],
-            'domain': domain + [
-                ('date_release', '>=', fields.Date.to_string(monday)),
-                ('date_release', '<', fields.Date.to_string(monday + timedelta(days=7)))],
-        } for monday in sorted(counts)]
-
-    @api.model
-    def _documents(self, run):
-        """Non-rejected suggestions by the status of their document."""
-        Sugg = self.env['buz.plan.suggestion']
-        domain = [('run_id', '=', run.id), ('state', '!=', 'rejected')]
-        labels = dict(Sugg._fields['document_state']._description_selection(self.env))
-        counts = dict(Sugg._read_group(domain, ['document_state'], ['__count']))
-        return [{
-            'key': key, 'label': labels.get(key, key), 'count': counts.get(key, 0),
-            'domain': domain + [('document_state', '=', key)],
-        } for key in DOCUMENT_STATES if key != 'cancel' or counts.get(key)]
+    def _activity(self, run):
+        """Latest notes and status changes on the plan and its suggestions."""
+        suggs = self.env['buz.plan.suggestion'].search([('run_id', '=', run.id)])
+        domain = ['|', '&', ('model', '=', run._name), ('res_id', '=', run.id),
+                  '&', ('model', '=', suggs._name), ('res_id', 'in', suggs.ids),
+                  ('message_type', 'in', ('comment', 'notification'))]
+        try:
+            messages = self.env['mail.message'].search(domain, limit=ACTIVITY_LIMIT * 4,
+                                                       order='id desc')
+        except AccessError:
+            return []
+        rows = []
+        for msg in messages:
+            text = html2plaintext(msg.body or '').strip()
+            if not text and msg.tracking_value_ids:
+                text = ", ".join(
+                    "%s: %s" % (t.field_id.field_description, t.new_value_char or '')
+                    for t in msg.tracking_value_ids)
+            if not text:
+                continue
+            rows.append({
+                'id': msg.id, 'text': text[:140],
+                'date': fields.Datetime.to_string(msg.date),
+                'model': msg.model, 'res_id': msg.res_id,
+            })
+            if len(rows) == ACTIVITY_LIMIT:
+                break
+        return rows
