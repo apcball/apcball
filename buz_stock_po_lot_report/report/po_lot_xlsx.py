@@ -102,7 +102,14 @@ class PoLotXlsx(models.AbstractModel):
                         sheet.write_datetime(r, 0, datetime.combine(l['date'], time.min), dat)
                     else:
                         sheet.write(r, 0, '', txt)
-                    sheet.write(r, 1, l['doc_ref'] or '', doc)
+                    # like the sample: lot rows (balance / ending) show the lot date only,
+                    # movement rows show the bare document number (no warehouse tag)
+                    if lt in ('lotbal', 'lot') and l['date']:
+                        sheet.write(r, 1, '', doc)
+                    elif lt == 'move':
+                        sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
+                    else:
+                        sheet.write(r, 1, l['doc_ref'] or '', doc)
                     if lt == 'lotbal':
                         for c in range(2, 8):
                             sheet.write(r, c, '', txt)
