@@ -27,6 +27,12 @@ const COLOR = {
 const DOCUMENT_COLOR = {
     none: "#adb5bd", draft: "#e0a030", open: "#3b82c4", done: "#1f8a8a", cancel: "#6c757d",
 };
+const CARD_ICON = {
+    to_review: "fa-check-square-o", no_document: "fa-file-text-o", late_suggestions: "fa-exclamation",
+    buy_no_vendor: "fa-shopping-cart", shortage_products: "fa-cube", late_workorders: "fa-clock-o",
+    not_applied: "fa-calendar",
+};
+const STATUS_COLOR = { on_track: "#1fa971", at_risk: "#3b82f6", overdue: "#f59e0b" };
 const STATE_BADGE = {
     draft: "text-bg-secondary", computed: "text-bg-info", confirmed: "text-bg-primary",
     done: "text-bg-success",
@@ -34,6 +40,12 @@ const STATE_BADGE = {
 
 function num(value, digits = 1) {
     return Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: digits });
+}
+
+/** One domain matching any of the given domains (prefix notation). */
+function anyOf(domains) {
+    const parts = domains.map((d) => (d.length > 1 ? [...Array(d.length - 1).fill("&"), ...d] : d));
+    return [...Array(Math.max(0, parts.length - 1)).fill("|"), ...parts.flat()];
 }
 
 function weekLabel(isoDate) {
@@ -86,8 +98,8 @@ export class BuzPlanDashboard extends Component {
         this.action = useService("action");
         this.state = useState({
             loading: true, error: false, runId: this.initialRunId(),
-            runs: [], run: false, cards: [], bottlenecks: [], canCreate: false,
-            updatedAt: "", charts: null,
+            runs: [], run: false, cards: [], canCreate: false, updatedAt: "", charts: null,
+            period: "week", weeks: [], loadChart: null, topSuggestions: [], status: null, activity: [],
         });
         onWillStart(async () => {
             await loadJS("/web/static/lib/Chart/Chart.js");
@@ -131,13 +143,16 @@ export class BuzPlanDashboard extends Component {
             throw error;
         }
         Object.assign(this.state, {
-            runs: data.runs, run: data.run, cards: data.cards, bottlenecks: data.bottlenecks,
+            runs: data.runs, run: data.run, cards: data.cards,
+            weeks: data.charts.load_weeks ? data.charts.load_weeks.weeks : [],
+            topSuggestions: data.top_suggestions, status: data.status, activity: data.activity,
             canCreate: data.can_create, runId: data.run ? data.run.id : false,
             updatedAt: deserializeDateTime(data.updated_at).toFormat("HH:mm"),
             charts: data.run ? markRaw(this.buildCharts(data)) : null,
             loading: false,
         });
         if (data.run) {
+            this.buildLoadChart();
             this.remember(data.run.id);
         }
     }
@@ -224,24 +239,84 @@ export class BuzPlanDashboard extends Component {
         return {
             scheduled: c.load_weeks.scheduled,
             truncated: c.load_weeks.truncated,
-            load: c.load_weeks.weeks.length ? this.loadChart(c.load_weeks.weeks) : null,
-            workcenters: data.bottlenecks.length ? this.workcenterChart(data.bottlenecks) : null,
-            onTime: c.on_time.total ? this.onTimeChart(c.on_time) : null,
-            release: c.release_weeks.length ? this.releaseChart(c.release_weeks) : null,
-            documents: c.documents.some((d) => d.count) ? this.documentChart(c.documents) : null,
+            status: data.status.total ? this.statusChart(data.status) : null,
         };
+    }
+
+    /** New config object only when data or period change, so the chart is not redrawn each render. */
+    buildLoadChart() {
+        const buckets = this.buckets();
+        this.state.loadChart = buckets.length ? markRaw(this.loadChart(buckets)) : null;
+    }
+
+    buckets() {
+        const period = this.state.period;
+        const groups = new Map();
+        for (const w of this.state.weeks) {
+            const d = DateTime.fromISO(w.week);
+            const start = period === "month" ? d.startOf("month")
+                : period === "quarter" ? d.startOf("quarter") : d;
+            const key = start.toISODate();
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    week: key, load_hours: 0, capacity_hours: 0, domains: [],
+                    label: period === "week" ? weekLabel(key)
+                        : period === "month" ? start.toFormat("LLL yy") : start.toFormat("'Q'q yy"),
+                });
+            }
+            const g = groups.get(key);
+            g.load_hours += w.load_hours;
+            g.capacity_hours += w.capacity_hours;
+            g.domains.push(w.domain);
+        }
+        return [...groups.values()].map((g) => ({
+            ...g, load_hours: Math.round(g.load_hours * 10) / 10,
+            capacity_hours: Math.round(g.capacity_hours * 10) / 10,
+        }));
+    }
+
+    setPeriod(period) {
+        this.state.period = period;
+        this.buildLoadChart();
+    }
+
+    iconFor(card) {
+        return CARD_ICON[card.key] || "fa-circle";
+    }
+
+    openSuggestion(row) {
+        this.action.doAction({
+            type: "ir.actions.act_window", res_model: SUGGESTION, res_id: row.id,
+            views: [[false, "form"]], target: "current",
+        });
+    }
+
+    viewAllSuggestions() {
+        this.openList(_t("Suggestions"), SUGGESTION,
+            [["run_id", "=", this.state.run.id], ["state", "in", ["proposed", "approved"]]]);
+    }
+
+    openActivity(row) {
+        this.action.doAction({
+            type: "ir.actions.act_window", res_model: row.model, res_id: row.res_id,
+            views: [[false, "form"]], target: "current",
+        });
+    }
+
+    activityTime(row) {
+        return deserializeDateTime(row.date).toFormat("HH:mm");
     }
 
     loadChart(weeks) {
         const base = this.baseOptions((el) => {
             const week = weeks[el.index];
-            this.openList(_t("Schedule, week of %s", weekLabel(week.week)), SCHEDULE_LINE, week.domain);
+            this.openList(_t("Schedule, %s", week.label), SCHEDULE_LINE, anyOf(week.domains));
         });
         const hours = _t("hours");
         return {
             type: "bar",
             data: {
-                labels: weeks.map((w) => weekLabel(w.week)),
+                labels: weeks.map((w) => w.label),
                 datasets: [{
                     type: "line", label: _t("Capacity"), stack: "capacity", order: 0,
                     data: weeks.map((w) => w.capacity_hours),
@@ -250,7 +325,7 @@ export class BuzPlanDashboard extends Component {
                 }, {
                     label: _t("Load within capacity"), stack: "load", order: 1,
                     data: weeks.map((w) => Math.min(w.load_hours, w.capacity_hours)),
-                    backgroundColor: COLOR.load,
+                    backgroundColor: COLOR.load, borderRadius: 4,
                 }, {
                     label: _t("Load over capacity"), stack: "load", order: 2,
                     data: weeks.map((w) => Math.max(0, w.load_hours - w.capacity_hours)),
@@ -268,7 +343,7 @@ export class BuzPlanDashboard extends Component {
                     legend: base.legend,
                     tooltip: {
                         callbacks: {
-                            title: (items) => _t("Week of %s", items[0].label),
+                            title: (items) => items[0].label,
                             label: (ctx) => `${ctx.dataset.label}: ${num(ctx.parsed.y)} ${hours}`,
                             footer: (items) => {
                                 const week = weeks[items[0].dataIndex];
@@ -281,83 +356,9 @@ export class BuzPlanDashboard extends Component {
         };
     }
 
-    workcenterChart(rows) {
-        const base = this.baseOptions((el) => {
-            const row = rows[el.index];
-            this.openList(_t("Schedule of %s", row.name), SCHEDULE_LINE, row.domain);
-        });
-        const known = rows.filter((r) => r.pct !== false).map((r) => r.pct);
-        const top = Math.max(120, ...known) * 1.15;
-        const text = (row) => (row.pct === false ? _t("No working time") : `${num(row.pct, 0)} %`);
-        const marks = {
-            id: "buzWorkcenterMarks",
-            afterDatasetsDraw(chart) {
-                const { ctx, chartArea, scales } = chart;
-                const x100 = scales.x.getPixelForValue(100);
-                ctx.save();
-                ctx.strokeStyle = COLOR.capacity;
-                ctx.setLineDash([5, 4]);
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(x100, chartArea.top);
-                ctx.lineTo(x100, chartArea.bottom);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.fillStyle = base.ink;
-                ctx.font = "11px sans-serif";
-                ctx.textBaseline = "middle";
-                chart.getDatasetMeta(0).data.forEach((bar, index) => {
-                    const label = text(rows[index]);
-                    const width = ctx.measureText(label).width;
-                    const inside = bar.x + width + 8 > chartArea.right;
-                    ctx.textAlign = inside ? "right" : "left";
-                    ctx.fillStyle = inside ? "#fff" : base.ink;
-                    ctx.fillText(label, inside ? bar.x - 6 : bar.x + 6, bar.y);
-                });
-                ctx.restore();
-            },
-        };
-        return {
-            type: "bar",
-            plugins: [marks],
-            data: {
-                labels: rows.map((r) => r.name),
-                datasets: [{
-                    label: _t("Load % of capacity"),
-                    data: rows.map((r) => (r.pct === false ? top : r.pct)),
-                    backgroundColor: rows.map((r) => (r.overloaded ? COLOR.late : COLOR.load)),
-                }],
-            },
-            options: {
-                ...base.options,
-                indexAxis: "y",
-                scales: {
-                    x: base.axis(_t("Load as % of capacity (dashed line = 100 %)"), {
-                        beginAtZero: true, max: Math.ceil(top / 10) * 10,
-                        ticks: { color: base.ink, callback: (v) => `${v} %` },
-                    }),
-                    y: base.axis(""),
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => {
-                                const row = rows[ctx.dataIndex];
-                                return _t("Load %s hours of %s hours capacity (%s)",
-                                    num(row.load_hours), num(row.capacity_hours), text(row));
-                            },
-                        },
-                    },
-                },
-            },
-        };
-    }
-
-    onTimeChart(data) {
-        const base = this.baseOptions(() => {
-            this.openList(_t("Work orders finishing late"), SCHEDULE_LINE, data.late_domain);
-        });
+    statusChart(status) {
+        const base = this.baseOptions(() => this.viewAllSuggestions());
+        const onTrack = status.rows.find((r) => r.key === "on_track");
         const centre = {
             id: "buzCentreText",
             afterDraw(chart) {
@@ -368,110 +369,29 @@ export class BuzPlanDashboard extends Component {
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = base.ink;
-                ctx.font = "bold 24px sans-serif";
-                ctx.fillText(`${num(data.pct, 0)} %`, x, y - 8);
+                ctx.font = "bold 26px sans-serif";
+                ctx.fillText(`${onTrack.pct} %`, x, y - 8);
                 ctx.font = "12px sans-serif";
-                ctx.fillText(_t("on time"), x, y + 14);
+                ctx.fillText(_t("On Track"), x, y + 14);
                 ctx.restore();
             },
         };
-        const unit = _t("manufacturing orders");
+        const unit = _t("suggestions");
         return {
             type: "doughnut",
             plugins: [centre],
             data: {
-                labels: [_t("On time"), _t("Late")],
+                labels: status.rows.map((r) => r.label),
                 datasets: [{
-                    data: [data.on_time, data.late],
-                    backgroundColor: [COLOR.onTime, COLOR.late], borderWidth: 1,
+                    data: status.rows.map((r) => r.count),
+                    backgroundColor: status.rows.map((r) => STATUS_COLOR[r.key]), borderWidth: 2,
                 }],
             },
             options: {
-                ...base.options,
-                cutout: "68%",
+                ...base.options, cutout: "70%",
                 plugins: {
-                    legend: base.legend,
-                    tooltip: {
-                        callbacks: { label: (ctx) => `${ctx.label}: ${num(ctx.parsed, 0)} ${unit}` },
-                    },
-                },
-            },
-        };
-    }
-
-    releaseChart(weeks) {
-        const kinds = [
-            { key: "make", label: _t("Make"), color: COLOR.make },
-            { key: "buy", label: _t("Buy"), color: COLOR.buy },
-        ];
-        const base = this.baseOptions((el) => {
-            const week = weeks[el.index];
-            this.openList(_t("Suggestions, week of %s", weekLabel(week.week)), SUGGESTION, week.domain);
-        });
-        const unit = _t("suggestions");
-        return {
-            type: "bar",
-            data: {
-                labels: weeks.map((w) => weekLabel(w.week)),
-                datasets: kinds.map((kind) => ({
-                    label: kind.label, backgroundColor: kind.color,
-                    data: weeks.map((w) => w[kind.key]),
-                })),
-            },
-            options: {
-                ...base.options,
-                interaction: { mode: "index", intersect: false },
-                scales: {
-                    x: base.axis(_t("Week to order / start"), { stacked: true }),
-                    y: base.axis(_t("Suggestions"), {
-                        stacked: true, beginAtZero: true, ticks: { color: base.ink, precision: 0 },
-                    }),
-                },
-                plugins: {
-                    legend: base.legend,
-                    tooltip: {
-                        callbacks: {
-                            title: (items) => _t("Week of %s", items[0].label),
-                            label: (ctx) => `${ctx.dataset.label}: ${num(ctx.parsed.y, 0)} ${unit}`,
-                        },
-                    },
-                },
-            },
-        };
-    }
-
-    documentChart(rows) {
-        const base = this.baseOptions((el) => {
-            const row = rows[el.datasetIndex];
-            this.openList(_t("Suggestions: %s", row.label), SUGGESTION, row.domain);
-        });
-        const unit = _t("suggestions");
-        return {
-            type: "bar",
-            data: {
-                labels: [_t("Suggestions")],
-                datasets: rows.map((row) => ({
-                    label: row.label, data: [row.count],
-                    backgroundColor: DOCUMENT_COLOR[row.key] || DOCUMENT_COLOR.none,
-                })),
-            },
-            options: {
-                ...base.options,
-                indexAxis: "y",
-                scales: {
-                    x: base.axis(_t("Suggestions"), {
-                        stacked: true, beginAtZero: true, ticks: { color: base.ink, precision: 0 },
-                    }),
-                    y: base.axis("", { stacked: true, display: false }),
-                },
-                plugins: {
-                    legend: base.legend,
-                    tooltip: {
-                        callbacks: {
-                            title: () => "",
-                            label: (ctx) => `${ctx.dataset.label}: ${num(ctx.parsed.x, 0)} ${unit}`,
-                        },
-                    },
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${num(ctx.parsed, 0)} ${unit}` } },
                 },
             },
         };
