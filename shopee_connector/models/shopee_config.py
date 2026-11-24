@@ -12,6 +12,12 @@ from .shopee_api import ShopeeAPI, ShopeeAPIError
 _logger = logging.getLogger(__name__)
 
 _MAX_PAGES = 40
+# Periodic status sync: orders in a final status are re-checked at most once
+# per _STATUS_RECHECK_HOURS (catches returns / late escrow); everything else is
+# refreshed every run, oldest-synced first, at most _STATUS_BATCH_LIMIT per run.
+_FINAL_STATUSES = ("COMPLETED", "CANCELLED")
+_STATUS_RECHECK_HOURS = 24
+_STATUS_BATCH_LIMIT = 500
 # Shopee get_order_list accepts at most 15 days per request.
 _ORDER_WINDOW = timedelta(days=15)
 
@@ -684,7 +690,21 @@ class ShopeeConfig(models.Model):
         domain = [("is_shopee_order", "=", True), ("shopee_config_id", "=", self.id)]
         if order_sns is not None:
             domain.append(("shopee_order_sn", "in", order_sns))
-        orders = SaleOrder.search(domain, order="id desc", limit=200 if order_sns is None else None)
+        if order_sns is None:
+            recheck_before = fields.Datetime.now() - timedelta(hours=_STATUS_RECHECK_HOURS)
+            domain += [
+                "|", "|", "|",
+                ("shopee_order_status", "=", False),
+                ("shopee_order_status", "not in", _FINAL_STATUSES),
+                ("shopee_last_status_sync", "=", False),
+                ("shopee_last_status_sync", "<", recheck_before),
+            ]
+            orders = SaleOrder.search(
+                domain, order="shopee_last_status_sync asc nulls first, id desc",
+                limit=_STATUS_BATCH_LIMIT,
+            )
+        else:
+            orders = SaleOrder.search(domain)
         if order_sns is not None and set(order_sns) - set(orders.mapped("shopee_order_sn")):
             raise UserError("Import the missing Shopee order before syncing its status.")
         updated = 0
