@@ -35,11 +35,17 @@ class PoLotXlsx(models.AbstractModel):
             r = 0
             sheet.write(r, 0, 'รายงานสินค้าและวัตถุดิบ', bold)
             r += 1
-            sheet.write(r, 0, 'ช่วงวันที่: %s - %s' % (wiz.date_from, wiz.date_to))
+            sheet.write(r, 0, 'ปีภาษี:', bold)
+            sheet.write(r, 1, 'ปี %s  (ช่วงวันที่ %s - %s)' % (
+                wiz.date_to.year + 543, wiz.date_from, wiz.date_to))
             r += 1
-            sheet.write(r, 0, 'เลขประจำตัวผู้เสียภาษีอากร: %s' % (comp.vat or ''))
+            sheet.write(r, 0, 'เลขประจำตัวผู้เสียภาษีอากร', bold)
+            sheet.write(r, 1, comp.vat or '')
             r += 1
-            sheet.write(r, 0, 'ชื่อผู้ประกอบการ: %s' % comp.name)
+            sheet.write(r, 0, 'ชื่อผู้ประกอบการ:', bold)
+            sheet.write(r, 1, '%s;%s' % (comp.name, comp.vat or ''))
+            r += 1
+            sheet.write(r, 0, '□  สำนักงานใหญ่    □ สาขาที่')
             r += 2
             last_model = None
             # one pass: group lines by product (keeps line order), no per-product filtered()
@@ -87,6 +93,7 @@ class PoLotXlsx(models.AbstractModel):
                 for l in lines:
                     lt = l['line_type']
                     if lt == 'lot' and not lot_header_done:
+                        r += 1
                         sheet.write(r, 0, 'สินค้าปลายงวด', bold)
                         r += 1
                         lot_header_done = True
@@ -96,13 +103,25 @@ class PoLotXlsx(models.AbstractModel):
                     else:
                         sheet.write(r, 0, '', txt)
                     sheet.write(r, 1, l['doc_ref'] or '', doc)
-                    if lt in ('move', 'total', 'lot'):
-                        sheet.write(r, 2, l['in_qty'], n)
-                        sheet.write(r, 3, l['in_cost'], cost)
-                        sheet.write(r, 4, l['in_value'], n)
-                        sheet.write(r, 5, l['out_qty'], n)
-                        sheet.write(r, 6, l['out_cost'], cost)
-                        sheet.write(r, 7, l['out_value'], n)
+                    if lt == 'lotbal':
+                        for c in range(2, 8):
+                            sheet.write(r, c, '', txt)
+                        sheet.write(r, 8, l['bal_qty'], num)
+                        sheet.write(r, 9, '', txt)
+                        sheet.write(r, 10, l['bal_value'], num)
+                        r += 1
+                        continue
+                    if lt in ('move', 'total'):
+                        # like the sample: the unused side (in or out) stays blank
+                        has_in = lt == 'total' or l['in_qty'] or l['in_value']
+                        has_out = lt == 'total' or l['out_qty'] or l['out_value']
+                        for c, val, f, ok in ((2, l['in_qty'], n, has_in), (3, l['in_cost'], cost, has_in),
+                                              (4, l['in_value'], n, has_in), (5, l['out_qty'], n, has_out),
+                                              (6, l['out_cost'], cost, has_out), (7, l['out_value'], n, has_out)):
+                            if ok:
+                                sheet.write(r, c, val, f)
+                            else:
+                                sheet.write(r, c, '', txt)
                     else:
                         for c in range(2, 8):
                             sheet.write(r, c, '', txt)

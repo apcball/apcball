@@ -5,10 +5,11 @@ import pytz
 
 from odoo import fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_compare, float_is_zero
+from odoo.tools import float_is_zero
 
 QTY_DIGITS = 4
 CHUNK = 5000
+MAX_LOT_ROWS = 1500000  # guard: 'lotbal' rows ~ movements x open lots
 
 # Lightweight valuation-layer row (plain tuple, no ORM): everything the engine needs,
 # fetched in one SQL query instead of lazy per-record ORM reads.
@@ -30,6 +31,8 @@ class BuzPoLotWizard(models.TransientModel):
                                    'list every product that has a balance in the period.')
     model_strip = fields.Integer(string='Strip trailing chars', default=3,
                                  help='Model = code minus last N chars (0 = full code).')
+    show_lots_each_row = fields.Boolean(string='Show FIFO lots under every movement', default=True,
+                                        help='Off = lots only at period end (smaller file).')
     hide_zero = fields.Boolean(string='Hide products with zero stock at end date', default=True)
     line_ids = fields.One2many('buz.po.lot.line', 'wizard_id')
 
@@ -50,18 +53,6 @@ class BuzPoLotWizard(models.TransientModel):
         code = code or ''
         n = self.model_strip or 0
         return code[:-n] if n and len(code) > n else code
-
-    def _is_transfer(self, svl):
-        """Internal/inter-warehouse transfer: not a real stock in/out.
-
-        With a warehouse filter, a leg whose counterpart is outside the
-        selected warehouses is a real in/out and is kept."""
-        if not svl.is_tr:
-            return False
-        if self.warehouse_ids:
-            whs = set(self.warehouse_ids.ids)
-            return bool(svl.src_wh and svl.dst_wh and svl.src_wh in whs and svl.dst_wh in whs)
-        return True
 
     def _cutoff_utc(self):
         cutoff = self.env['ir.config_parameter'].sudo().get_param(
@@ -132,81 +123,12 @@ class BuzPoLotWizard(models.TransientModel):
                 ids.add(g['product_id'][0])
         return list(ids)
 
-    def _origin_labels(self, items, seq, end_utc):
-        """{svl_id: (label, date)} for transfer-in layers: trace the FIFO lots the
-        transfer consumed in the source warehouse back to the real receipt
-        document (PO receipt, opening balance, ...). Label keeps the transfer
-        reference in brackets. `items` = this report's layers, `seq` = all
-        warehouses' layers of the product ([(date, id, Layer)] sorted)."""
-        if not any(t[2].quantity > 0 and t[2].is_tr for t in items) or end_utc is None:
-            return {}
-        outs_by_move = defaultdict(list)
-        for d, _i, sv in seq:
-            if sv.quantity < 0 and sv.is_tr:
-                outs_by_move[sv.move_id].append((d, sv))
-        queues = defaultdict(list)    # warehouse id -> [[doc, date, remaining]]
-        pieces = defaultdict(list)    # move id -> [[doc, date, qty]] consumed at source
-        done = set()
-
-        def consume(d, sv):
-            done.add(sv.id)
-            rem = -sv.quantity
-            got = []
-            for lot in queues[sv.wh_id]:
-                if rem <= 1e-9:
-                    break
-                if lot[2] <= 1e-9:
-                    continue
-                take = min(lot[2], rem)
-                lot[2] -= take
-                rem -= take
-                got.append([lot[0], lot[1], take])
-            if rem > 1e-9:
-                got.append([sv.doc, d, rem])
-            return got
-
-        labels = {}
-        for d, _i, sv in seq:
-            q = sv.quantity
-            own = sv.doc
-            wh = sv.wh_id
-            if q < 0:
-                if sv.id in done:
-                    continue
-                got = consume(d, sv)
-                if sv.is_tr:
-                    pieces[sv.move_id] += got
-            elif q > 0 and sv.is_tr:
-                mid = sv.move_id
-                for od, osv in outs_by_move.get(mid, []):
-                    if osv.id not in done:
-                        pieces[mid] += consume(od, osv)
-                need, mine = q, []
-                while need > 1e-9 and pieces[mid]:
-                    pc = pieces[mid][0]
-                    take = min(pc[2], need)
-                    mine.append([pc[0], pc[1], take])
-                    pc[2] -= take
-                    need -= take
-                    if pc[2] <= 1e-9:
-                        pieces[mid].pop(0)
-                if need > 1e-9:
-                    mine.append([own, d, need])
-                queues[wh] += [list(m) for m in mine]
-                docs = []
-                for m in mine:
-                    if m[0] not in docs:
-                        docs.append(m[0])
-                label = ', '.join(docs)
-                if own not in docs:
-                    label += ' (โอน %s)' % own
-                labels[sv.id] = (label, mine[0][1])
-            elif q > 0:
-                queues[wh].append([own, d, q])
-        return labels
-
     # ------------------------------------------------------------- engine
     def _compute_rows(self):
+        return [r for rows in self._iter_rows() for r in rows]
+
+    def _iter_rows(self):
+        """Yield the row list of one product at a time (keeps memory flat)."""
         self.ensure_one()
         start_utc, end_utc = self._utc_bounds()
         Product = self.env['product.product']
@@ -225,30 +147,118 @@ class BuzPoLotWizard(models.TransientModel):
         whs = set(self.warehouse_ids.ids)
         by_prod = {pid: ([t for t in lst if t[2].wh_id in whs] if whs else lst)
                    for pid, lst in all_layers.items()}
-        rows = []
         for prod in products.sorted(lambda p: (self._model_code(p.default_code), p.default_code or '')):
-            items = by_prod.get(prod.id, [])  # already sorted (date, id) by SQL
-            rows += self._product_rows(prod, items, start_utc, cutoff_utc, end_utc,
-                                       all_layers.get(prod.id, []))
-        return rows
+            items = by_prod.pop(prod.id, [])  # already sorted (date, id) by SQL
+            seq_all = all_layers.pop(prod.id, [])
+            rows = self._product_rows(prod, items, start_utc, cutoff_utc, end_utc, seq_all)
+            if rows:
+                yield rows
 
     def _product_rows(self, prod, items, start_utc, cutoff_utc=None, end_utc=None, seq_all=None):
+        """Ledger rows for one product: FIFO audit.
+
+        FIFO is per warehouse (stock_fifo_by_location), so every warehouse has its
+        own queue of lots. A lot is identified by its ORIGIN document (PO receipt,
+        MO production, opening ...): a transfer out eats the source warehouse's
+        oldest lots, and the transfer in opens lots in the destination warehouse
+        that keep those origin documents. `seq_all` = all warehouses' layers of the
+        product (needed to trace origins when a warehouse filter is set); `items`
+        = the layers that belong in the report (selected warehouses).
+        After every movement the remaining lots of the selected warehouses are
+        emitted as 'lotbal' rows (when show_lots_each_row)."""
         tz = pytz.timezone(self.env.user.tz or 'Asia/Bangkok')
 
         def loc_date(d):
             return pytz.UTC.localize(d).astimezone(tz).date()
 
-        origins = self._origin_labels(items, items if seq_all is None else seq_all, end_utc)
+        seq_all = items if seq_all is None else seq_all
+        in_report = {t[1] for t in items}
+        sel = set(self.warehouse_ids.ids)
+        wh_names = {w.id: w.name for w in self.env['stock.warehouse'].with_context(
+            active_test=False).search([])}
         base = {'wizard_id': self.id, 'product_id': prod.id,
                 'model_code': self._model_code(prod.default_code)}
         seq = 0
         out = []
-        o_qty = sum(s.quantity for d, _i, s in items if d < start_utc)
-        o_val = sum(s.value for d, _i, s in items if d < start_utc)
-        window = [t for t in items if t[0] >= start_utc]
-        if not window and float_is_zero(o_qty, precision_digits=QTY_DIGITS) \
-                and float_is_zero(o_val, precision_digits=2) and self.hide_zero:
-            return []
+
+        queues = defaultdict(list)    # wh id -> [[doc, date, unit, remaining, received]]
+        pieces = defaultdict(list)    # move id -> [[doc, date, qty]] eaten at the source
+        done = set()
+        outs_by_move = defaultdict(list)
+        for d, _i, sv in seq_all:
+            if sv.quantity < 0 and sv.is_tr:
+                outs_by_move[sv.move_id].append((d, sv))
+
+        def consume(d, sv):
+            done.add(sv.id)
+            q = queues[sv.wh_id]
+            rem = -sv.quantity
+            got = []
+            for lot in q:
+                if rem <= 1e-9:
+                    break
+                take = min(lot[3], rem)
+                if take <= 1e-9:
+                    continue
+                lot[3] -= take
+                rem -= take
+                got.append([lot[0], lot[1], take])
+            while q and q[0][3] <= 1e-9:
+                q.pop(0)  # exhausted lots are always a prefix
+            if rem > 1e-9:
+                got.append([sv.doc, loc_date(d), rem])  # shortfall (negative stock)
+            return got
+
+        def apply(d, sv):
+            q = sv.quantity
+            if q < 0:
+                if sv.id in done:
+                    return
+                got = consume(d, sv)
+                if sv.is_tr:
+                    pieces[sv.move_id] += got
+            elif q > 0:
+                unit = sv.value / q
+                if not sv.is_tr:
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q])
+                    return
+                mid = sv.move_id
+                for od, osv in outs_by_move.get(mid, []):
+                    if osv.id not in done:
+                        pieces[mid] += consume(od, osv)
+                need = q
+                while need > 1e-9 and pieces[mid]:
+                    pc = pieces[mid][0]
+                    take = min(pc[2], need)
+                    queues[sv.wh_id].append([pc[0], pc[1], unit, take, take])
+                    pc[2] -= take
+                    need -= take
+                    if pc[2] <= 1e-9:
+                        pieces[mid].pop(0)
+                if need > 1e-9:
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need])
+
+        def live_lots():
+            """Remaining lots of the selected warehouses, one row per
+            (origin doc, warehouse, date, unit cost); [(date, wh, [doc, date, unit, rem, rec])]."""
+            merged = {}
+            for wh, q in queues.items():
+                if sel and wh not in sel:
+                    continue
+                for lot in q:
+                    if float_is_zero(lot[3], precision_digits=QTY_DIGITS):
+                        continue
+                    key = (lot[1], wh or 0, lot[0], round(lot[2], 4))
+                    m = merged.get(key)
+                    if m:
+                        m[3] += lot[3]
+                        m[4] += lot[4]
+                    else:
+                        merged[key] = [lot[0], lot[1], lot[2], lot[3], lot[4]]
+            return [(k[0], k[1], v) for k, v in sorted(merged.items(), key=lambda kv: kv[0][:2] + (kv[0][2],))]
+
+        def wtag(wh):
+            return ' · %s' % wh_names[wh] if wh in wh_names else ''
 
         def row(**kw):
             nonlocal seq
@@ -257,26 +267,38 @@ class BuzPoLotWizard(models.TransientModel):
             r.update(kw)
             out.append(r)
 
-        bq, bv = o_qty, o_val
-        row(line_type='opening', doc_ref='ยกมา', date=self.date_from,
-            bal_qty=bq, bal_value=bv, bal_cost=(bv / bq) if bq else 0.0)
+        def snapshot():
+            for ldate, wh, lot in live_lots():
+                row(line_type='lotbal', date=ldate, doc_ref=lot[0] + wtag(wh),
+                    warehouse_id=wh or False, bal_qty=lot[3], bal_cost=lot[2],
+                    bal_value=lot[3] * lot[2])
+
+        bq = bv = 0.0
+        opened = False
         tin_q = tin_v = tout_q = tout_v = 0.0
-        net_q = net_v = 0.0
-        for d, _i, s in window:
-            q, v = s.quantity, s.value
-            if self._is_transfer(s):
-                net_q += q
-                net_v += v
+        window_any = any(t[0] >= start_utc for t in items)
+        for d, _i, s in seq_all:
+            if d >= start_utc and not opened:
+                opened = True
+                if not window_any and float_is_zero(bq, precision_digits=QTY_DIGITS) \
+                        and float_is_zero(bv, precision_digits=2) and self.hide_zero:
+                    return []
+                row(line_type='opening', doc_ref='ยกมา', date=self.date_from,
+                    bal_qty=bq, bal_value=bv, bal_cost=(bv / bq) if bq else 0.0)
+                if self.show_lots_each_row:
+                    snapshot()
+            apply(d, s)
+            if s.id not in in_report:
                 continue
+            q, v = s.quantity, s.value
             bq += q
             bv += v
+            if d < start_utc:
+                continue
             vals = {'line_type': 'move', 'date': loc_date(d),
-                    'warehouse_id': s.wh_id or False,
+                    'warehouse_id': s.wh_id or False, 'doc_ref': s.doc + wtag(s.wh_id),
                     'bal_qty': bq, 'bal_value': bv,
                     'bal_cost': (bv / bq) if bq else 0.0}
-            vals['doc_ref'] = s.doc
-            if q > 0 and s.id in origins:
-                vals['doc_ref'] = origins[s.id][0]
             if q > 0 or (q == 0 and v >= 0):
                 vals.update(in_qty=q, in_value=v, in_cost=(v / q) if q else 0.0)
                 tin_q += q
@@ -286,95 +308,32 @@ class BuzPoLotWizard(models.TransientModel):
                 tout_q += -q
                 tout_v += -v
             row(**vals)
-        if not float_is_zero(net_q, precision_digits=QTY_DIGITS) or abs(net_v) >= 0.01:
-            # transfers net to ~0; show only a residual so the ledger still ties
-            bq += net_q
-            bv += net_v
-            vals = {'line_type': 'move', 'date': self.date_to,
-                    'doc_ref': 'โอนระหว่างคลัง (สุทธิ)',
-                    'bal_qty': bq, 'bal_value': bv,
-                    'bal_cost': (bv / bq) if bq else 0.0}
-            if net_q > 0 or (net_q == 0 and net_v >= 0):
-                vals.update(in_qty=net_q, in_value=net_v,
-                            in_cost=(net_v / net_q) if net_q else 0.0)
-                tin_q += net_q
-                tin_v += net_v
-            else:
-                vals.update(out_qty=-net_q, out_value=-net_v,
-                            out_cost=(net_v / net_q) if net_q else 0.0)
-                tout_q += -net_q
-                tout_v += -net_v
-            row(**vals)
-        row(line_type='total', doc_ref='รวม', in_qty=tin_q, in_value=tin_v,
-            out_qty=tout_q, out_value=tout_v, bal_qty=bq, bal_value=bv,
-            bal_cost=(bv / bq) if bq else 0.0)
-        # ---- ending lots: FIFO queue is per warehouse (stock_fifo_by_location),
-        # so replay each warehouse separately, transfer legs included.
-        by_wh = defaultdict(list)
-        for t in items:
-            by_wh[t[2].wh_id].append(t)
-        if self.hide_zero and all(
-                float_is_zero(sum(t[2].quantity for t in w), precision_digits=QTY_DIGITS)
-                for w in by_wh.values()):
-            return []  # nothing in stock at date_to in any warehouse
-        lot_val = 0.0
-        wh_names = {w.id: w.name for w in self.env['stock.warehouse'].with_context(
-            active_test=False).browse([w for w in by_wh if w])}
-        for wh, wh_items in sorted(by_wh.items(), key=lambda kv: kv[0] or 0):
-            wh_q = sum(t[2].quantity for t in wh_items)
-            lots = []
-            for d, _i, sv in wh_items:
-                q = sv.quantity
-                if q > 0:
-                    lots.append([d, sv, sv.value / q, q, q])  # [date, svl, unit, remaining, received]
-                elif q < 0:
-                    rem = -q
-                    for lot in lots:
-                        if rem <= 0:
-                            break
-                        take = min(lot[3], rem)
-                        lot[3] -= take
-                        rem -= take
-            alloc = sum(l[3] for l in lots)
-            if float_compare(alloc, wh_q, precision_digits=QTY_DIGITS) > 0:
-                excess = alloc - wh_q
-                for lot in lots:
-                    if excess <= 0:
-                        break
-                    take = min(lot[3], excess)
-                    lot[3] -= take
-                    excess -= take
-            alloc = sum(l[3] for l in lots)  # after trimming
-            merged = {}
-            for d, sv, unit, remq, recq in lots:
-                if float_is_zero(remq, precision_digits=QTY_DIGITS):
-                    continue
-                doc = sv.doc
-                ldate = loc_date(d)
-                if sv.id in origins:
-                    doc, od = origins[sv.id]
-                    ldate = loc_date(od)
-                key = (ldate, doc, round(unit, 4))
-                if key in merged:
-                    merged[key][0] += remq
-                    merged[key][2] += recq
-                else:
-                    merged[key] = [remq, unit, recq]
-            wh_tag = ' · %s' % wh_names[wh] if wh else ''
-            for (ldate, doc, _u), (remq, unit, recq) in sorted(merged.items(), key=lambda kv: kv[0][0]):
-                val = remq * unit
-                lot_val += val
-                row(line_type='lot', date=ldate, doc_ref=doc + wh_tag,
-                    warehouse_id=wh or False,
-                    in_qty=recq, in_cost=unit, in_value=recq * unit,
-                    bal_qty=remq, bal_cost=unit, bal_value=val)
-            if not float_is_zero(wh_q - alloc, precision_digits=QTY_DIGITS):
-                row(line_type='lot', doc_ref='ไม่สามารถอ้างอิงล็อตได้' + wh_tag,
-                    warehouse_id=wh or False,
-                    bal_qty=wh_q - alloc, bal_cost=0.0, bal_value=0.0)
+            if self.show_lots_each_row:
+                snapshot()
+        if not opened:
+            if self.hide_zero and float_is_zero(bq, precision_digits=QTY_DIGITS):
+                return []
+            row(line_type='opening', doc_ref='ยกมา', date=self.date_from,
+                bal_qty=bq, bal_value=bv, bal_cost=(bv / bq) if bq else 0.0)
+        if self.hide_zero and float_is_zero(bq, precision_digits=QTY_DIGITS):
+            return []  # nothing in stock at date_to
+        lot_val = lot_q = 0.0
+        for ldate, wh, lot in live_lots():
+            lot_q += lot[3]
+            lot_val += lot[3] * lot[2]
+            row(line_type='lot', date=ldate, doc_ref=lot[0] + wtag(wh),
+                warehouse_id=wh or False, in_qty=lot[4], in_cost=lot[2],
+                in_value=lot[4] * lot[2], bal_qty=lot[3], bal_cost=lot[2],
+                bal_value=lot[3] * lot[2])
+        if not float_is_zero(bq - lot_q, precision_digits=QTY_DIGITS):
+            row(line_type='lot', doc_ref='ไม่สามารถอ้างอิงล็อตได้',
+                bal_qty=bq - lot_q, bal_cost=0.0, bal_value=0.0)
         diff = bv - lot_val
         if abs(diff) >= 0.01:
             row(line_type='adjust', doc_ref='ปรับมูลค่า (ต่างจากล็อต)', bal_value=diff)
+        row(line_type='total', doc_ref='รวม', in_qty=tin_q, in_value=tin_v,
+            out_qty=tout_q, out_value=tout_v, bal_qty=bq, bal_value=bv,
+            bal_cost=(bv / bq) if bq else 0.0)
         return out
 
     # ----------------------------------------------------------- actions
@@ -383,10 +342,22 @@ class BuzPoLotWizard(models.TransientModel):
         self.env.cr.execute('DELETE FROM buz_po_lot_line WHERE wizard_id = %s', (self.id,))
         Line.invalidate_model()
         self.invalidate_recordset(['line_ids'])
-        rows = self._compute_rows()
-        if not rows:
+        buf, total, lotbal = [], 0, 0
+        for rows in self._iter_rows():
+            buf += rows
+            total += len(rows)
+            lotbal += sum(1 for r in rows if r['line_type'] == 'lotbal')
+            if lotbal > MAX_LOT_ROWS:
+                raise UserError(
+                    'Too many lot rows (> %d). Narrow the products/warehouses/dates or '
+                    'untick "Show FIFO lots under every movement".' % MAX_LOT_ROWS)
+            if len(buf) >= CHUNK:
+                self._insert_lines(buf)
+                buf = []
+        if buf:
+            self._insert_lines(buf)
+        if not total:
             raise UserError('No data for the selected filters.')
-        self._insert_lines(rows)
 
     LINE_COLS = ('product_id', 'model_code', 'seq', 'line_type', 'date', 'doc_ref',
                  'warehouse_id', 'in_qty', 'in_cost', 'in_value', 'out_qty', 'out_cost',

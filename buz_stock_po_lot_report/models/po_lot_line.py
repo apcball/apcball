@@ -13,6 +13,7 @@ class BuzPoLotLine(models.TransientModel):
     line_type = fields.Selection([
         ('opening', 'Opening'),
         ('move', 'Movement'),
+        ('lotbal', 'Lot balance'),
         ('lot', 'Ending lot'),
         ('adjust', 'Value adjustment'),
         ('total', 'Total'),
