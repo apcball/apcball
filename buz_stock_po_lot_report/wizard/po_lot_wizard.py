@@ -182,7 +182,8 @@ class BuzPoLotWizard(models.TransientModel):
             if rows:
                 yield rows
 
-    def _product_rows(self, prod, items, start_utc, cutoff_utc=None, end_utc=None, seq_all=None):
+    def _product_rows(self, prod, items, start_utc, cutoff_utc=None, end_utc=None, seq_all=None,
+                      trace=None):
         """Ledger rows for one product: FIFO audit.
 
         FIFO is per warehouse (stock_fifo_by_location), so every warehouse has its
@@ -245,11 +246,14 @@ class BuzPoLotWizard(models.TransientModel):
                     continue
                 lot[3] -= take
                 rem -= take
-                got.append([lot[0], lot[1], take, lot[5]])
+                got.append([lot[0], lot[1], take, lot[5], lot[2]])
             while q and q[0][3] <= 1e-9:
                 q.pop(0)  # exhausted lots are always a prefix
             if rem > 1e-9:
-                got.append([sv.doc, loc_date(d), rem, {sv.id}])  # shortfall (negative stock)
+                # shortfall (negative stock)
+                got.append([sv.doc, loc_date(d), rem, {sv.id}, abs(sv.value / sv.quantity)])
+            if trace is not None:
+                trace['out'][sv.id] = [(g[0], g[1], g[4], g[2]) for g in got]
             return got
 
         seen = set()      # layer ids already applied
@@ -297,6 +301,8 @@ class BuzPoLotWizard(models.TransientModel):
                 unit = sv.value / q
                 if not sv.is_tr:
                     queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q, {sv.id}])
+                    if trace is not None:
+                        trace['in'][sv.id] = [(sv.doc, loc_date(d), unit, q)]
                     flush_pending(sv)
                     return
                 mid = sv.move_id
@@ -304,16 +310,21 @@ class BuzPoLotWizard(models.TransientModel):
                     if osv.id not in done:
                         pieces[mid] += consume(od, osv)
                 need = q
+                tin = []
                 while need > 1e-9 and pieces[mid]:
                     pc = pieces[mid][0]
                     take = min(pc[2], need)
                     queues[sv.wh_id].append([pc[0], pc[1], unit, take, take, pc[3] | {sv.id}])
+                    tin.append((pc[0], pc[1], unit, take))
                     pc[2] -= take
                     need -= take
                     if pc[2] <= 1e-9:
                         pieces[mid].pop(0)
                 if need > 1e-9:
                     queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need, {sv.id}])
+                    tin.append((sv.doc, loc_date(d), unit, need))
+                if trace is not None:
+                    trace['in'][sv.id] = tin
                 flush_pending(sv)
 
         def live_lots():
@@ -363,6 +374,9 @@ class BuzPoLotWizard(models.TransientModel):
                     return []
                 row(line_type='opening', doc_ref='ยกมา', date=self.date_from,
                     bal_qty=bq, bal_value=bv, bal_cost=(bv / bq) if bq else 0.0)
+                if trace is not None:
+                    trace['opening'] = live_lots()
+                    trace['open_bal'] = {k: list(v) for k, v in trace['bal'].items()}
                 if self.show_lots_each_row:
                     snapshot()
             apply(d, s)
@@ -371,6 +385,10 @@ class BuzPoLotWizard(models.TransientModel):
             q, v = s.quantity, s.value
             bq += q
             bv += v
+            if trace is not None:
+                wb = trace['bal'].setdefault(s.wh_id, [0.0, 0.0])
+                wb[0] += q
+                wb[1] += v
             if d < start_utc:
                 continue
             vals = {'line_type': 'move', 'date': loc_date(d),
@@ -386,6 +404,8 @@ class BuzPoLotWizard(models.TransientModel):
                 tout_q += -q
                 tout_v += -v
             row(**vals)
+            if trace is not None:
+                trace['layers'].append((s.id, s.move_id, s.wh_id, q, v))
             if self.show_lots_each_row:
                 snapshot()
         if not opened:
@@ -393,8 +413,13 @@ class BuzPoLotWizard(models.TransientModel):
                 return []
             row(line_type='opening', doc_ref='ยกมา', date=self.date_from,
                 bal_qty=bq, bal_value=bv, bal_cost=(bv / bq) if bq else 0.0)
+            if trace is not None:
+                trace['opening'] = live_lots()
+                trace['open_bal'] = {k: list(v) for k, v in trace['bal'].items()}
         if self.hide_zero and float_is_zero(bq, precision_digits=QTY_DIGITS):
             return []  # nothing in stock at date_to
+        if trace is not None:
+            trace['ending'] = live_lots()
         lot_val = lot_q = 0.0
         for ldate, wh, lot in live_lots():
             lot_q += lot[3]

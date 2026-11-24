@@ -1,6 +1,7 @@
 from urllib.parse import urlencode
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 
 class StockCardExportWizard(models.TransientModel):
@@ -22,6 +23,11 @@ class StockCardExportWizard(models.TransientModel):
     )
     show_movements_only = fields.Boolean(string="Show Movements Only")
     include_cost_lot = fields.Boolean(string="ต้นทุน + Lot", default=True)
+    split_by_lot = fields.Boolean(
+        string="แยก Lot (FIFO)",
+        help="รายงานแยกตาม Lot (เอกสารรับต้นทาง เช่น PO) ต่อสินค้า/คลัง "
+             "ต้องเลือกสินค้า; Location ไม่มีผล (Lot เป็นระดับคลัง)",
+    )
 
     @api.onchange("company_id")
     def _onchange_company_id(self):
@@ -36,7 +42,11 @@ class StockCardExportWizard(models.TransientModel):
         # product only (no warehouse/location) is supported: the controller
         # reports the product across every location where it has stock/movement.
         can_see_value = self.env.user.has_group("buz_new_stock_card.group_stock_card_see_value")
+        split_by_lot = bool(self.split_by_lot and can_see_value)
+        if split_by_lot and not self.product_id:
+            raise UserError("รายงานแยก Lot ต้องเลือกสินค้า")
         params = {
+            "split_by_lot": "1" if split_by_lot else "0",
             "date_from": self.date_from,
             "date_to": self.date_to,
             "show_movements_only": "1" if self.show_movements_only else "0",

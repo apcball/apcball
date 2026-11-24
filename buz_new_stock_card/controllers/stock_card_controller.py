@@ -48,6 +48,20 @@ class StockCardController(http.Controller):
             warehouse_ids_param = kw.get("warehouse_ids")
             report_scope = kw.get("report_scope") == "1"
 
+            if can_see_value and kw.get("split_by_lot") in ("1", "true", "True"):
+                if not product_id_param:
+                    raise ValueError("รายงานแยก Lot ต้องเลือกสินค้า")
+                wh_ids = [int(x) for x in warehouse_ids_param.split(",") if x] if warehouse_ids_param else []
+                product = request.env["product.product"].browse(int(product_id_param))
+                rows = engine.get_lot_split_rows(
+                    [product.id], wh_ids, date_from, date_to,
+                    company_id=int(company_id) if company_id else None,
+                )
+                filename = "Stock_Card_Lot_%s_%s_%s.xlsx" % (
+                    product.default_code or product.id, date_from, date_to,
+                )
+                return self._lot_split_response(rows, filename)
+
             if not report_scope and not product_id_param and not location_ids_param and not warehouse_ids_param:
                 if include_cost_lot:
                     rows = engine.get_all_stock_card_valuation_lines(
@@ -231,6 +245,115 @@ class StockCardController(http.Controller):
         fmts["subtotal_num"] = workbook.add_format(
             {"bold": True, "bg_color": "#F2F2F2", "border": 1, "num_format": "#,##0.00"}
         )
+
+    def _lot_split_response(self, rows, filename):
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+        fmts = {
+            "header": workbook.add_format({"bold": True, "bg_color": "#D9D9D9", "border": 1}),
+            "num": workbook.add_format({"num_format": "#,##0.00", "border": 1}),
+            "text": workbook.add_format({"border": 1}),
+        }
+        self._add_group_formats(workbook, fmts)
+        self._write_lot_split_sheet(workbook, fmts, rows)
+        workbook.close()
+        output.seek(0)
+        return request.make_response(
+            output.getvalue(),
+            headers=[
+                ("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                ("Content-Disposition", content_disposition(filename)),
+            ],
+        )
+
+    @staticmethod
+    def _write_lot_split_sheet(workbook, fmts, rows):
+        """Per product x warehouse: lot summary (opening/in/out/closing per lot),
+        then the movement rows tagged with their lot, then a reconciliation
+        total (Σ lot closing == Σ movement balance)."""
+        sheet = workbook.add_worksheet("Stock Card by Lot")
+        widths = [14, 28, 18, 12, 14, 16, 18, 10, 12, 12, 14, 12, 12, 14, 14, 16]
+        for col, w in enumerate(widths):
+            sheet.set_column(col, col, w)
+        ncol = len(widths)
+        groups = {}
+        for r in rows:
+            groups.setdefault((r["product_default_code"], r["product_name"], r["warehouse_name"]), []).append(r)
+        row = 0
+        if not groups:
+            sheet.write(0, 0, "ไม่มีข้อมูล", fmts["text"])
+            return
+        for (code, name, wh), grp in sorted(groups.items()):
+            sheet.merge_range(row, 0, row, ncol - 1, "%s %s | คลัง: %s" % (code, name, wh or "-"), fmts["group"])
+            row += 1
+            # lot summary
+            lots = {}
+            for r in grp:
+                key = (r["lot_doc"], r["lot_date"])
+                s = lots.setdefault(key, {"unit": r["unit_cost"], "open": 0.0, "in": 0.0, "out": 0.0,
+                                          "close": 0.0, "value": 0.0})
+                if r["row_type"] == "opening":
+                    s["open"] += r["bal_qty"]
+                elif r["row_type"] == "move":
+                    s["in"] += r["qty_in"]
+                    s["out"] += r["qty_out"]
+                else:
+                    s["close"] += r["bal_qty"]
+                    s["value"] += r["bal_value"]
+                    s["unit"] = r["unit_cost"]
+            for col, label in enumerate(["Lot (เอกสารต้นทาง)", "วันที่ Lot", "ราคา/หน่วย (เฉลี่ย)",
+                                         "ยอดยกมา", "รับ", "จ่าย", "คงเหลือ", "มูลค่าคงเหลือ"]):
+                sheet.write(row, col, label, fmts["header"])
+            row += 1
+            tot_close = tot_value = 0.0
+
+            def lot_sort(item):
+                (doc, ldate), _s = item
+                try:
+                    return (0, datetime.strptime(ldate, "%d/%m/%y"), doc)
+                except ValueError:
+                    return (-1, datetime.min, doc)  # unreferenced residual first
+
+            for (doc, ldate), s in sorted(lots.items(), key=lot_sort):
+                sheet.write(row, 0, doc or "ไม่สามารถอ้างอิงล็อตได้", fmts["text"])
+                sheet.write(row, 1, ldate, fmts["text"])
+                avg = (s["value"] / s["close"]) if s["close"] else s["unit"]
+                sheet.write(row, 2, avg, fmts["num"])
+                sheet.write(row, 3, s["open"], fmts["num"])
+                sheet.write(row, 4, s["in"], fmts["num"])
+                sheet.write(row, 5, s["out"], fmts["num"])
+                sheet.write(row, 6, s["close"], fmts["num"])
+                sheet.write(row, 7, s["value"], fmts["num"])
+                tot_close += s["close"]
+                tot_value += s["value"]
+                row += 1
+            sheet.write(row, 0, "รวมทุก Lot", fmts["subtotal"])
+            for col in range(1, 8):
+                sheet.write(row, col, "", fmts["subtotal"])
+            sheet.write(row, 6, tot_close, fmts["subtotal_num"])
+            sheet.write(row, 7, tot_value, fmts["subtotal_num"])
+            row += 2
+            # movements
+            heads = ["Lot", "วันที่ Lot", "ประเภทเอกสาร", "เลขที่เอกสาร", "วันที่",
+                     "จำนวนรับ", "จำนวนจ่าย", "ราคา/หน่วย", "มูลค่ารับ", "มูลค่าจ่าย",
+                     "คงเหลือ Lot", "มูลค่าคงเหลือ Lot"]
+            for col, label in enumerate(heads):
+                sheet.write(row, col, label, fmts["header"])
+            row += 1
+            for r in grp:
+                if r["row_type"] == "ending":
+                    continue
+                if r["row_type"] == "opening":
+                    vals = [r["lot_doc"], r["lot_date"], "ยอดยกมา", "", "", 0.0, 0.0, r["unit_cost"], 0.0, 0.0,
+                            r["bal_qty"], r["bal_value"]]
+                else:
+                    vals = [r["lot_doc"] or "ไม่สามารถอ้างอิงล็อตได้", r["lot_date"], r["doc_type"],
+                            r["doc_number"], r["date"], r["qty_in"], r["qty_out"], r["unit_cost"],
+                            r["value_in"], r["value_out"], r["bal_qty"], r["bal_value"]]
+                for col, v in enumerate(vals):
+                    sheet.write(row, col, v, fmts["num"] if isinstance(v, float) else fmts["text"])
+                row += 1
+            row += 1
 
     def _flat_valuation_response(self, rows, filename, by_warehouse=False):
         """xlsx (cost+lot layout) from a flat valuation rows list; one sheet,
