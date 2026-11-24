@@ -87,3 +87,15 @@ class TestTaxStockReport(TransactionCase):
         self.assertEqual(wiz._report_wh_ids(), set())
         wiz.warehouse_ids = transit
         self.assertEqual(wiz._report_wh_ids(), set(transit.ids))
+
+    def test_landed_cost_follows_its_parent_layer(self):
+        from collections import namedtuple
+        from datetime import datetime
+        L = namedtuple('L', 'id quantity value parent_id')
+        parent = (datetime(2026, 10, 22, 9), 10, L(10, 2, 100.0, None))
+        lc = (datetime(2026, 10, 22, 0), 20, L(20, 0, 5.0, 10))   # dated before parent
+        lc_late = (datetime(2026, 10, 28), 30, L(30, 0, 7.0, 10))  # dated after parent
+        other = (datetime(2026, 10, 22, 12), 11, L(11, -1, -50.0, None))
+        out = self.env['buz.po.lot.wizard']._landed_after_parent([lc, other, parent, lc_late])
+        self.assertEqual([t[1] for t in out], [10, 20, 11, 30])
+        self.assertEqual(out[1][0], lc[0])  # own date kept

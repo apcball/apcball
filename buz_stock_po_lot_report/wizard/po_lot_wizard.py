@@ -123,7 +123,25 @@ class BuzPoLotWizard(models.TransientModel):
         for (lid, pid, wh, q, v, d, doc, mid, tr, swh, dwh, par) in cr.fetchall():
             by_prod[pid].append((d, lid, Layer(lid, pid, wh, q or 0.0, v or 0.0, doc,
                                                mid, bool(tr), swh, dwh, par)))
-        return by_prod
+        return {pid: self._landed_after_parent(lst) for pid, lst in by_prod.items()}
+
+    @staticmethod
+    def _landed_after_parent(items):
+        """Re-sequence [(date, id, Layer)]: a value-only layer (landed cost /
+        revaluation, qty 0) whose accounting date is earlier than the layer it
+        hangs off is moved to sit right after that parent. Its own date is kept.
+        Otherwise the cost shows up (qty 0) before the stock it belongs to
+        arrives and the running balance reads "0 qty, value > 0"."""
+        dates = {t[1]: t[0] for t in items}
+        keyed = []
+        for d, lid, sv in items:
+            pd = dates.get(sv.parent_id)
+            if sv.quantity == 0 and sv.value and pd is not None and pd > d:
+                keyed.append(((pd, sv.parent_id, 1, lid), (d, lid, sv)))
+            else:
+                keyed.append(((d, lid, 0, lid), (d, lid, sv)))
+        keyed.sort(key=lambda k: k[0])
+        return [t for _k, t in keyed]
 
     def _balance_product_ids(self, end_utc):
         """Products with non-zero qty (in any warehouse) at date_to (same layer scope as the
