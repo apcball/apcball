@@ -13,7 +13,7 @@ MAX_LOT_ROWS = 1500000  # guard: 'lotbal' rows ~ movements x open lots
 
 # Lightweight valuation-layer row (plain tuple, no ORM): everything the engine needs,
 # fetched in one SQL query instead of lazy per-record ORM reads.
-Layer = namedtuple('Layer', 'id product_id wh_id quantity value doc move_id is_tr src_wh dst_wh')
+Layer = namedtuple('Layer', 'id product_id wh_id quantity value doc move_id is_tr src_wh dst_wh parent_id')
 
 
 class BuzPoLotWizard(models.TransientModel):
@@ -31,6 +31,16 @@ class BuzPoLotWizard(models.TransientModel):
                                    'list every product that has a balance in the period.')
     model_strip = fields.Integer(string='Strip trailing chars', default=3,
                                  help='Model = code minus last N chars (0 = full code).')
+    cutoff_date = fields.Date(
+        string='Layers from (override cutoff)',
+        help='Empty = use the FIFO valuation cutoff (stock_fifo_valuation_report.cutoff_date). '
+             'Set an earlier date to read older layers too, e.g. opening-balance (OB) '
+             'documents, so lots trace back to their original receipt.')
+    include_transit = fields.Boolean(
+        string='Include transit warehouses', default=False,
+        help='Off (default): warehouses whose stock location is a transit location '
+             '(goods in transit) are left out, so balances match on-hand stock. '
+             'Ignored when specific warehouses are chosen.')
     show_lots_each_row = fields.Boolean(string='Show FIFO lots under every movement', default=True,
                                         help='Off = lots only at period end (smaller file).')
     hide_zero = fields.Boolean(string='Hide products with zero stock at end date', default=True)
@@ -49,12 +59,25 @@ class BuzPoLotWizard(models.TransientModel):
     def _bangkok_start_utc(day):
         return datetime.combine(day, time.min) - timedelta(hours=7)
 
+    def _report_wh_ids(self):
+        """Warehouse ids the report covers; empty set = every warehouse."""
+        if self.warehouse_ids:
+            return set(self.warehouse_ids.ids)
+        if self.include_transit:
+            return set()
+        Wh = self.env['stock.warehouse'].with_context(active_test=False)
+        whs = Wh.search([('company_id', '=', self.company_id.id)])
+        keep = whs.filtered(lambda w: w.lot_stock_id.usage != 'transit')
+        return set(keep.ids) if len(keep) < len(whs) else set()
+
     def _model_code(self, code):
         code = code or ''
         n = self.model_strip or 0
         return code[:-n] if n and len(code) > n else code
 
     def _cutoff_utc(self):
+        if self.cutoff_date:
+            return self._bangkok_start_utc(self.cutoff_date)
         cutoff = self.env['ir.config_parameter'].sudo().get_param(
             'stock_fifo_valuation_report.cutoff_date')
         return self._bangkok_start_utc(fields.Date.to_date(cutoff)) if cutoff else datetime.min
@@ -70,22 +93,26 @@ class BuzPoLotWizard(models.TransientModel):
             return {}
         cr = self.env.cr
         cr.execute("""
-            SELECT l.id, l.product_id, l.warehouse_id, l.quantity, l.value,
+            SELECT l.id, l.product_id, COALESCE(l.warehouse_id, pl.warehouse_id), l.quantity, l.value,
                    COALESCE(l.accounting_date, l.create_date) AS d,
                    COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''),
                             NULLIF(m.name, ''), NULLIF(l.description, ''), '') AS doc,
                    m.id,
                    (m.id IS NOT NULL AND ls.usage IN ('internal', 'transit')
                         AND ld.usage IN ('internal', 'transit')) AS is_tr,
-                   ls.warehouse_id, ld.warehouse_id
+                   ls.warehouse_id, ld.warehouse_id, l.stock_valuation_layer_id
               FROM stock_valuation_layer l
+              LEFT JOIN stock_valuation_layer pl ON pl.id = l.stock_valuation_layer_id
               LEFT JOIN stock_move m ON m.id = l.stock_move_id
               LEFT JOIN stock_picking p ON p.id = m.picking_id
               LEFT JOIN stock_location ls ON ls.id = m.location_id
               LEFT JOIN stock_location ld ON ld.id = m.location_dest_id
              WHERE l.company_id = %s
                AND l.product_id = ANY(%s)
-               AND l.warehouse_id IS NOT NULL
+               AND COALESCE(l.warehouse_id, pl.warehouse_id) IS NOT NULL
+               -- warehouse-less value-only layers (landed cost / revaluation) belong
+               -- to the warehouse of the layer they hang off
+               AND (l.warehouse_id IS NOT NULL OR l.quantity = 0)
                AND (m.id IS NULL OR m.state != 'cancel')
                AND COALESCE(l.description, '') NOT LIKE 'Reverse cancelled%%'
                AND COALESCE(l.accounting_date, l.create_date) >= %s
@@ -93,9 +120,9 @@ class BuzPoLotWizard(models.TransientModel):
              ORDER BY COALESCE(l.accounting_date, l.create_date), l.id
         """, (self.company_id.id, list(product_ids), cutoff_utc, end_utc))
         by_prod = defaultdict(list)
-        for (lid, pid, wh, q, v, d, doc, mid, tr, swh, dwh) in cr.fetchall():
+        for (lid, pid, wh, q, v, d, doc, mid, tr, swh, dwh, par) in cr.fetchall():
             by_prod[pid].append((d, lid, Layer(lid, pid, wh, q or 0.0, v or 0.0, doc,
-                                               mid, bool(tr), swh, dwh)))
+                                               mid, bool(tr), swh, dwh, par)))
         return by_prod
 
     def _balance_product_ids(self, end_utc):
@@ -110,8 +137,9 @@ class BuzPoLotWizard(models.TransientModel):
                     '&', ('accounting_date', '>=', cutoff_utc), ('accounting_date', '<', end_utc),
                '&', ('accounting_date', '=', False),
                     '&', ('create_date', '>=', cutoff_utc), ('create_date', '<', end_utc)]
-        if self.warehouse_ids:
-            dom.append(('warehouse_id', 'in', self.warehouse_ids.ids))
+        wh_ids = self._report_wh_ids()
+        if wh_ids:
+            dom.append(('warehouse_id', 'in', list(wh_ids)))
         groups = self.env['stock.valuation.layer'].sudo().read_group(
             dom, ['quantity:sum'], ['product_id', 'warehouse_id'], lazy=False)
         ids = set()
@@ -144,7 +172,7 @@ class BuzPoLotWizard(models.TransientModel):
         products = Product.with_context(active_test=False).search(pdom)
         cutoff_utc = self._cutoff_utc()
         all_layers = self._fetch_layers(products.ids, cutoff_utc, end_utc)
-        whs = set(self.warehouse_ids.ids)
+        whs = self._report_wh_ids()
         by_prod = {pid: ([t for t in lst if t[2].wh_id in whs] if whs else lst)
                    for pid, lst in all_layers.items()}
         for prod in products.sorted(lambda p: (self._model_code(p.default_code), p.default_code or '')):
@@ -173,7 +201,7 @@ class BuzPoLotWizard(models.TransientModel):
 
         seq_all = items if seq_all is None else seq_all
         in_report = {t[1] for t in items}
-        sel = set(self.warehouse_ids.ids)
+        sel = self._report_wh_ids()
         wh_names = {w.id: w.name for w in self.env['stock.warehouse'].with_context(
             active_test=False).search([])}
         base = {'wizard_id': self.id, 'product_id': prod.id,
@@ -217,10 +245,16 @@ class BuzPoLotWizard(models.TransientModel):
                 got = consume(d, sv)
                 if sv.is_tr:
                     pieces[sv.move_id] += got
+            elif q == 0 and sv.parent_id and sv.value:
+                # landed cost / revaluation: spread over the lot it hangs off
+                for lot in queues[sv.wh_id]:
+                    if len(lot) > 5 and lot[5] == sv.parent_id and lot[4]:
+                        lot[2] += sv.value / lot[4]
+                        break
             elif q > 0:
                 unit = sv.value / q
                 if not sv.is_tr:
-                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q])
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q, sv.id])
                     return
                 mid = sv.move_id
                 for od, osv in outs_by_move.get(mid, []):
@@ -304,7 +338,7 @@ class BuzPoLotWizard(models.TransientModel):
                 tin_q += q
                 tin_v += v
             else:
-                vals.update(out_qty=-q, out_value=-v, out_cost=(v / q) if q else 0.0)
+                vals.update(out_qty=(-q) or 0.0, out_value=(-v) or 0.0, out_cost=(v / q) if q else 0.0)
                 tout_q += -q
                 tout_v += -v
             row(**vals)

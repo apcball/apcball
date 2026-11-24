@@ -74,3 +74,16 @@ class TestTaxStockReport(TransactionCase):
         wiz._refresh()  # re-run must replace, not append
         self.assertEqual(len(wiz.line_ids), n)
         self.assertTrue(n)
+
+    def test_transit_excluded_by_default(self):
+        transit = self.env['stock.warehouse'].with_context(active_test=False).search(
+            [('lot_stock_id.usage', '=', 'transit')])
+        if not transit:
+            self.skipTest('no transit warehouse')
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2000-01-01', 'date_to': '2099-12-31'})
+        self.assertFalse(set(transit.ids) & wiz._report_wh_ids())
+        wiz.include_transit = True
+        self.assertEqual(wiz._report_wh_ids(), set())
+        wiz.warehouse_ids = transit
+        self.assertEqual(wiz._report_wh_ids(), set(transit.ids))
