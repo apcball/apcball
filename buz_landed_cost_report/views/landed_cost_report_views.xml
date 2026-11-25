@@ -313,6 +313,19 @@
         </field>
     </record>
 
+    <!-- Landed Cost list: show Total -->
+    <record id="view_stock_landed_cost_tree_inherit_buz" model="ir.ui.view">
+        <field name="name">stock.landed.cost.tree.inherit.buz</field>
+        <field name="model">stock.landed.cost</field>
+        <field name="inherit_id" ref="stock_landed_costs.view_stock_landed_cost_tree"/>
+        <field name="arch" type="xml">
+            <field name="date" position="after">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount_total" sum="Total" widget="monetary"/>
+            </field>
+        </field>
+    </record>
+
     <!-- Report Action -->
     <record id="action_report_landed_cost_xlsx" model="ir.actions.report">
         <field name="name">Landed Cost Excel Report</field>

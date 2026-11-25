@@ -118,6 +118,22 @@ class TestStockReservationGuard(TransactionCase):
         self.assertEqual(picking.state, "confirmed")
         self.assertFalse(picking.move_line_ids)
 
+    def test_allow_assign_when_own_reservation_takes_last_unit(self):
+        """at_confirm reservation consuming the whole stock must not block."""
+        location = self.env["stock.location"].create(
+            {
+                "name": "Guard Last Unit",
+                "location_id": self.parent_location.id,
+                "usage": "internal",
+            }
+        )
+        self.env["stock.quant"]._update_available_quantity(self.product, location, 1.0)
+        picking, move = self._create_picking(location)
+        picking.action_assign()
+        self.assertEqual(move.state, "assigned")
+        picking.action_assign()  # re-run: own reservation counts as stock
+        self.assertEqual(picking.state, "assigned")
+
     def _create_move_line_at_empty_location(self, picking, move, qty=1.0):
         """Temp bypass guard to create move line from empty location."""
         picking.write({"bypass_reservation_guard": True})

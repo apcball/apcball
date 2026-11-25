@@ -227,10 +227,6 @@ CF_WATERFALL = [
      ("sum", ("total_cfo", "total_cfi", "total_cff"))),
 ]
 
-# กลุ่มขั้นตอน funnel (ดู biz_smart_project/models/pm_constants.py)
-PRODUCTION_KINDS = ("produce", "pr", "po", "sub_pr", "sub_po")
-INSTALL_KINDS = ("install", "inspect")
-
 WEEK_COUNT = 13
 AP_CAL_WEEKS = 6
 
@@ -1593,80 +1589,21 @@ class BsfDashboard(models.AbstractModel):
         # ยอดคงเหลือของงวด clamp ที่ 0: ใบตั้งเบิกที่ QS อนุมัติเกินยอดงวดตามแผน
         # ต้องไม่ทำให้งวดนั้นกลายเป็นเงินเข้าติดลบ
         plan_rows = []
-        for line in self.env["ai.pm.payment.plan.line"].search_read(
-            [("plan_id.project_id.company_id", "in", cids)],
-            ["amount", "billed_amount", "bill_date", "project_id"],
-        ):
-            if not line["bill_date"]:
-                continue
-            amount = (line["amount"] or 0.0) - (line["billed_amount"] or 0.0)
-            if amount <= 0.0:
-                continue
-            project = line["project_id"]
-            project_id = project[0] if project else 0
-            plan_rows.append({
-                "project_id": project_id,
-                "date": line["bill_date"],
-                "amount": conv(amount, project_id),
-            })
 
-        # แผนจ่ายผู้รับเหมา (เฉพาะงวดที่ยังไม่มี vendor bill — ใบที่ตั้งแล้ว
-        # กลายเป็น AP คงค้างไปแล้ว)  ใช้วันเดียวกับที่ระบบแจ้งผู้รับเหมาไว้
-        # (ช้าสุดระหว่างรอบเงินลูกค้ากับเครดิตเทอมของเรา + วันเผื่อ) ไม่ใช่
-        # due_date ดิบ — ไม่งั้นจอนี้กับแอปผู้รับเหมาจะบอกวันเงินออกคนละวัน
+        # แผนจ่ายผู้รับเหมา — ไม่มีแหล่งข้อมูลนี้แล้ว (เคยมาจาก biz_smart_project)
         vendor_rows = []
-        for line in self.env["ai.pm.vendor.payment.line"].search_read(
-            [("project_id.company_id", "in", cids)],
-            ["residual_amount", "due_date", "expected_pay_date", "bill_ids",
-             "project_id"],
-        ):
-            if line["bill_ids"] or (line["residual_amount"] or 0.0) <= 0:
-                continue
-            project = line["project_id"]
-            project_id = project[0] if project else 0
-            vendor_rows.append({
-                "project_id": project_id,
-                "date": line["expected_pay_date"] or line["due_date"],
-                "amount": conv(line["residual_amount"], project_id),
-            })
 
-        # แผนคืนเงินประกัน — schedule ไม่มียอด ต้อง derive จากยอดที่ถือคงเหลือ
+        # แผนคืนเงินประกัน — ไม่มีแหล่งข้อมูลนี้แล้ว (เคยมาจาก biz_smart_project)
         retention_residual = {}
-        rows = self.env["ai.pm.retention.line"]._read_group(
-            [("project_id.company_id", "in", cids)],
-            groupby=["project_id", "side"],
-            aggregates=["residual_amount:sum"],
-        )
-        for project, side, residual in rows:
-            retention_residual[(project.id, side)] = residual or 0.0
         retention_rows = []
-        for line in self.env["ai.pm.retention.schedule.line"].search_read(
-            [
-                ("project_id.company_id", "in", cids),
-                ("state", "=", "planned"),
-                ("date_due", "!=", False),
-            ],
-            ["project_id", "side", "percent_of_held", "date_due"],
-        ):
-            project_id = line["project_id"][0]
-            held = retention_residual.get((project_id, line["side"]), 0.0)
-            retention_rows.append({
-                "project_id": project_id,
-                "side": line["side"],
-                "date": line["date_due"],
-                "amount": conv(
-                    held * (line["percent_of_held"] or 0.0) / 100.0, project_id),
-            })
 
-        # PO วัสดุที่ยืนยันแล้วแต่ยังไม่ตั้งบิล (ส่วนที่ตั้งบิลแล้วเป็น AP ไปแล้ว
-        # และ PO งานจ้างผู้รับเหมามีแผนจ่ายของตัวเองข้างบน)
+        # PO วัสดุที่ยืนยันแล้วแต่ยังไม่ตั้งบิล (ส่วนที่ตั้งบิลแล้วเป็น AP ไปแล้ว)
         po_open = []
         for line in self.env["purchase.order.line"].search_read(
             [
                 ("state", "in", ("purchase", "done")),
                 ("company_id", "in", cids),
                 ("display_type", "=", False),
-                ("order_id.ai_pm_is_contractor_po", "=", False),
             ],
             ["product_qty", "qty_invoiced", "price_subtotal",
              "date_planned", "partner_id", "order_id", "company_id"],
@@ -2158,10 +2095,7 @@ class BsfDashboard(models.AbstractModel):
         # แผนวางบิล: กริดรายเดือนใช้ "วันคาดเก็บเงิน" ไม่ใช่วันวางบิล เพราะ
         # ระยะเครดิตลูกค้ากินเวลาข้ามเดือนจนเปลี่ยนรูปกราฟ (กริดรายสัปดาห์
         # มองใกล้พอที่จะใช้วันวางบิลดิบได้)
-        collect_days = {
-            c.id: c.ai_pm_customer_collect_days or 0
-            for c in self.env["res.company"].browse(cids)
-        }
+        collect_days = {}
         for row in sources["plan_lines"]:
             lag = collect_days.get(project_company.get(row["project_id"]), 0)
             add("collections", row["date"] + timedelta(days=lag), row["amount"])
@@ -2183,32 +2117,8 @@ class BsfDashboard(models.AbstractModel):
                 ("company_id", "in", cids), ("active", "=", True),
             ])
             shared["projects"] = projects
-        vendor_plan_by_project = defaultdict(float)
-        for row in sources["vendor_lines"]:
-            vendor_plan_by_project[row["project_id"]] += row["amount"]
-        boq_rows = self.env["ai.pm.boq.line"].search_read(
-            [
-                ("project_id", "in", projects.ids),
-                ("budget_amount", ">", 0),
-                ("purchase_order_id", "=", False),
-            ],
-            ["project_id", "budget_amount", "budget_date"],
-        )
-        boq_raw = defaultdict(float)
-        for row in boq_rows:
-            project_id = row["project_id"][0] if row["project_id"] else 0
-            boq_raw[project_id] += conv(row["budget_amount"], project_id)
-        # แผนจ่ายผู้รับเหมาบางงวดมาจากงาน BOQ ที่ยังไม่มี PO ผูกกลับมา จึงหัก
-        # ยอดที่มีแผนจ่ายแล้วออกทั้งโครงการก่อน (ตัดที่ 0 ไม่ให้ติดลบ)
-        boq_factor = {
-            pid: max(raw - vendor_plan_by_project.get(pid, 0.0), 0.0) / raw
-            for pid, raw in boq_raw.items() if raw
-        }
-        for row in boq_rows:
-            project_id = row["project_id"][0] if row["project_id"] else 0
-            amount = conv(row["budget_amount"], project_id) * boq_factor.get(
-                project_id, 0.0)
-            add("boq_budget", row["budget_date"] or today, amount)
+        # งบ BOQ ที่ยังไม่ผูกพันเป็นเอกสาร — ไม่มีแหล่งข้อมูลนี้แล้ว
+        # (เคยมาจาก biz_smart_project) legs["boq_budget"] จึงเป็นศูนย์เสมอ
 
         # ---- ชั้น 2: งานขายที่ยังไม่เซ็น ----
         cfg_map = shared["cfg_map"]
@@ -2353,29 +2263,8 @@ class BsfDashboard(models.AbstractModel):
         revenue_backlog = zeros()
         cost_project = zeros()
         project_end = {}
-        task_rows = self.env["project.task"].search_read(
-            [
-                ("project_id", "in", projects.ids),
-                ("carries_boq_value", "=", True),
-                ("contract_value", ">", 0),
-            ],
-            ["project_id", "contract_value", "value_percent",
-             "planned_date_start", "date_deadline"],
-        )
-        for row in task_rows:
-            project_id = row["project_id"][0] if row["project_id"] else 0
-            remaining = (row["contract_value"] or 0.0) * max(
-                100.0 - (row["value_percent"] or 0.0), 0.0) / 100.0
-            start = (fields.Datetime.to_datetime(row["planned_date_start"]).date()
-                     if row["planned_date_start"] else None)
-            end = (fields.Datetime.to_datetime(row["date_deadline"]).date()
-                   if row["date_deadline"] else None)
-            if end and (project_id not in project_end or end > project_end[project_id]):
-                project_end[project_id] = end
-            if start and start < today:
-                start = today
-            self._spread_months(
-                months, revenue_backlog, conv(remaining, project_id), start, end)
+        # มูลค่างานตามสัญญาต่อ task — ไม่มีแหล่งข้อมูลนี้แล้ว
+        # (เคยมาจาก biz_smart_project) revenue_backlog/project_end จึงว่างเปล่า
 
         ctc_rows = []
         ctc_total = 0.0
@@ -4432,69 +4321,9 @@ class BsfDashboard(models.AbstractModel):
             inv_by_company[inv["company_id"][0]] += untaxed
             col_by_company[inv["company_id"][0]] += collected
 
-        # Production / Install = earned value ของงาน BOQ (net_amount × %คืบ)
-        # % ต้องคิดด้วยกติกาเดียวกับใบตั้งเบิก/ใบรับรอง คือ
-        # ``ai.pm.earned.mixin._ev_raw_percent()`` — clamp 0..100 เสมอ และถ้า
-        # โครงการตั้ง progress_basis='verified' ต้องใช้ min(plan, completion)
-        # (เบิกได้ไม่เกินหลักฐานที่ตรวจรับแล้ว) ถ้าคิด plan_progress ดิบที่นี่
-        # จอนี้จะไม่ตรงกับเอกสารเงินของโครงการที่ตั้ง verified ไว้
-        tasks = self.env["project.task"].search_read(
-            [
-                ("boq_task_kind", "in", PRODUCTION_KINDS + INSTALL_KINDS),
-                ("boq_line_id", "!=", False),
-                ("project_id.company_id", "in", cids),
-            ],
-            ["boq_task_kind", "plan_progress", "boq_line_id", "project_id"],
-        )
-        boq_ids = {t["boq_line_id"][0] for t in tasks}
-        boq_amounts = {}
-        if boq_ids:
-            for row in self.env["ai.pm.boq.line"].search_read(
-                [("id", "in", list(boq_ids))], ["net_amount"],
-            ):
-                boq_amounts[row["id"]] = row["net_amount"] or 0.0
-        # ฐาน % ต่อโครงการ — อ่านครั้งเดียวแทนการแตะ record รายงาน
-        Earned = self.env["ai.pm.earned.mixin"]
-        task_project_ids = {
-            t["project_id"][0] for t in tasks if t["project_id"]
-        }
-        verified_project_ids = set()
-        if task_project_ids:
-            verified_project_ids = set(self.env["project.project"].search([
-                ("id", "in", list(task_project_ids)),
-                ("progress_basis", "=", Earned.EV_BASIS_VERIFIED),
-            ]).ids)
-        # ``completion_progress`` เป็น compute ไม่ stored และ recursive ลงลูก —
-        # อ่านเฉพาะงานของโครงการที่ตั้ง verified จริง ๆ เท่านั้น ไม่ใช่ทั้งบริษัท
-        completion_by_task = {}
-        if verified_project_ids:
-            verified_tasks = self.env["project.task"].browse([
-                t["id"] for t in tasks
-                if t["project_id"] and t["project_id"][0] in verified_project_ids
-            ])
-            for task_record in verified_tasks:
-                completion_by_task[task_record.id] = (
-                    task_record.completion_progress or 0.0
-                )
+        # Production / Install = earned value ของงาน BOQ — ไม่มีแหล่งข้อมูลนี้
+        # แล้ว (เคยมาจาก biz_smart_project) ทั้งสองขั้นจึงเป็นศูนย์เสมอ
         production_value = install_value = 0.0
-        project_company = shared["project_company"]
-        for task in tasks:
-            project = task["project_id"]
-            project_id = project[0] if project else 0
-            percent = task["plan_progress"] or 0.0
-            if project_id in verified_project_ids:
-                # เบิกได้ไม่เกินหลักฐานที่ตรวจรับแล้ว — min() ไม่ใช่ค่าเฉลี่ย
-                percent = min(percent, completion_by_task.get(task["id"], 0.0))
-            percent = min(max(percent, 0.0), 100.0)
-            earned = self._conv(
-                shared,
-                boq_amounts.get(task["boq_line_id"][0], 0.0) * percent / 100.0,
-                project_company.get(project_id),
-            )
-            if task["boq_task_kind"] in PRODUCTION_KINDS:
-                production_value += earned
-            else:
-                install_value += earned
 
         values = {
             "booking": booking_total,
@@ -4592,37 +4421,13 @@ class BsfDashboard(models.AbstractModel):
         projects = self.env["project.project"].search([
             ("company_id", "in", f["cids"]), ("active", "=", True),
         ])
-        # eac เป็น compute stored → read_group ได้; margin ของโปรเจกต์
-        # (gate1/gate5) ไม่ stored → อ่านเป็น batch แล้วกรองใน Python
-        wp_rows = self.env["ai.pm.work.package"]._read_group(
-            [("project_id", "in", projects.ids)],
-            groupby=["project_id"],
-            aggregates=["eac:sum", "cost_to_date:sum"],
-        )
-        eac_by_project = {p.id: (eac or 0.0, ctd or 0.0) for p, eac, ctd in wp_rows}
-        # แท็บ Forecast ต้องใช้ต้นทุนคงเหลือชุด**เดียวกัน**กับแท็บนี้ ไม่งั้นสองจอ
-        # จะบอกตัวเลขคนละตัว — จึงส่งต่อผ่าน shared แทนการคำนวณซ้ำ
+        # eac/cost_to_date และ contract_revenue เป็นฟิลด์ของ biz_smart_project
+        # ที่ไม่มีแล้ว — Project Margin ไม่มีแหล่งข้อมูลอีกต่อไป จึงข้ามทุก
+        # โปรเจกต์ (bubbles/risk_table ว่างเปล่า, leakage เป็นศูนย์)
+        eac_by_project = {}
         shared["projects"] = projects
         shared["eac_by_project"] = eac_by_project
-
-        # โปรเจกต์ที่ไม่มีมูลค่าสัญญาถูก `continue` ทิ้งอยู่แล้วด้านล่าง แต่การ
-        # จะรู้ต้องแตะ `contract_revenue` ซึ่งเป็น compute **ที่ไม่ stored** และ
-        # ลากทั้ง BOQ/PO/MO/Vendor bill ของโปรเจกต์นั้นขึ้นมา — คัดด้วย
-        # aggregate จาก *แหล่งเดียวกัน* (Σ net_amount ของบรรทัด BOQ ซึ่ง
-        # `_compute_close_costs` ใช้เป็นนิยามของ contract_revenue) ก่อน แล้ว
-        # ค่อยแตะ compute เฉพาะโปรเจกต์ที่รอด  ห้ามใช้ยอดนี้เป็นตัวเลขบนจอ —
-        # ใช้เป็น "ตัวคัด" เท่านั้น ตัวเลขยังอ่านจากฟิลด์เหมือนเดิมทุกตัว
-        revenue_rows = self.env["ai.pm.boq.line"]._read_group(
-            [("project_id", "in", projects.ids), ("plan_type", "=", "boq")],
-            groupby=["project_id"], aggregates=["net_amount:sum"],
-        )
-        with_revenue = {
-            project.id for project, total in revenue_rows if (total or 0.0) > 0
-        }
-        # `shared["projects"]` ต้องเป็นชุดเต็มต่อไป — `_build_forecast` ใช้หา
-        # งบ BOQ ที่ยังไม่ผูกพัน ซึ่งมีได้แม้โปรเจกต์ยังไม่มีมูลค่าสัญญา
-        margin_projects = projects.browse(
-            [pid for pid in projects.ids if pid in with_revenue])
+        margin_projects = projects.browse([])
 
         margin_hit = shared["scenario_fx"]["margin_hit_pct"]
         bubbles, risk_rows = [], []
@@ -4733,11 +4538,8 @@ class BsfDashboard(models.AbstractModel):
             if index is not None and index < AP_CAL_WEEKS:
                 calendar_rows[index]["approved"] += item["amount_residual"]
 
-        vendor_lines = self.env["ai.pm.vendor.payment.line"].search_read(
-            [("project_id.company_id", "in", f["cids"])],
-            ["residual_amount", "due_date", "expected_pay_date", "bill_ids",
-             "partner_id", "project_id"],
-        )
+        # แผนจ่ายผู้รับเหมา — ไม่มีแหล่งข้อมูลนี้แล้ว (เคยมาจาก biz_smart_project)
+        vendor_lines = []
         project_company = shared["project_company"]
         for line in vendor_lines:
             if line["bill_ids"] or (line["residual_amount"] or 0.0) <= 0:

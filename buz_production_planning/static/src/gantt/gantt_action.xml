@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_production_planning.GanttAction">
+        <div class="o_buz_gantt d-flex flex-column h-100">
+            <div class="o_buz_page flex-grow-1">
+                <!-- ============ page header ============ -->
+                <div class="o_buz_page_head">
+                    <div class="o_buz_title">
+                        <span class="o_buz_title_icon"><i class="fa fa-calendar"/></span>
+                        <div>
+                            <h2>Planning Gantt Chart</h2>
+                            <div class="o_buz_subtitle">Visualize your production plan timeline</div>
+                        </div>
+                    </div>
+                    <div class="o_buz_controls">
+                        <div class="o_buz_controls_row">
+                            <select class="o_buz_select o_buz_run_select" t-on-change="onRunChange" t-att-value="state.runId">
+                                <t t-foreach="state.runs" t-as="r" t-key="r.id">
+                                    <option t-att-value="r.id" t-att-selected="r.id === state.runId" t-esc="r.name"/>
+                                </t>
+                            </select>
+                            <div class="o_buz_pill_group">
+                                <button class="o_buz_pill_btn" t-on-click="() => this.shift(-zoom.step)" title="Previous"><i class="fa fa-chevron-left"/></button>
+                                <button class="o_buz_pill_btn" t-on-click="() => this.shift(zoom.step)" title="Next"><i class="fa fa-chevron-right"/></button>
+                            </div>
+                            <button class="o_buz_pill_btn o_buz_today_btn" t-on-click="today">Today</button>
+                            <div class="o_buz_segment">
+                                <button t-attf-class="o_buz_seg_btn {{state.zoom === 'day' ? 'active' : ''}}" t-on-click="() => this.setZoom('day')">Day</button>
+                                <button t-attf-class="o_buz_seg_btn {{state.zoom === 'week' ? 'active' : ''}}" t-on-click="() => this.setZoom('week')">Week</button>
+                            </div>
+                            <select class="o_buz_select o_buz_filter_line" t-on-change="(ev) => this.onFilterChange('pickingType', ev)">
+                                <option value="0">All production lines</option>
+                                <t t-foreach="state.pickingTypes" t-as="p" t-key="p.id">
+                                    <option t-att-value="p.id" t-esc="p.name"/>
+                                </t>
+                            </select>
+                            <select class="o_buz_select o_buz_filter_wc" t-on-change="(ev) => this.onFilterChange('workcenter', ev)">
+                                <option value="0">All workcenters</option>
+                                <t t-foreach="state.workcenters" t-as="w" t-key="w.id">
+                                    <option t-att-value="w.id" t-esc="w.name"/>
+                                </t>
+                            </select>
+                            <label class="o_buz_late_only">
+                                <input type="checkbox" class="o_buz_filter_late" t-on-change="(ev) => this.onFilterChange('lateOnly', ev)"/> Late only
+                            </label>
+                        </div>
+                    </div>
+                    <div class="o_buz_actions">
+                        <button class="o_buz_btn o_buz_icon_btn o_buz_reschedule" title="Re-schedule" t-on-click="reschedule" t-att-disabled="!state.runId"><i class="fa fa-calendar-check-o"/></button>
+                        <button class="o_buz_btn o_buz_icon_btn o_buz_refresh" title="Refresh" t-on-click="load"><i class="fa fa-refresh"/></button>
+                        <button class="o_buz_btn o_buz_icon_btn o_buz_export" title="Export CSV" t-on-click="exportCsv" t-att-disabled="!state.lines.length"><i class="fa fa-download"/></button>
+                        <button class="o_buz_btn o_buz_btn_primary o_buz_apply" t-if="state.canApply" t-on-click="apply" t-att-disabled="!state.runId">Apply</button>
+                    </div>
+                </div>
+
+                <!-- ============ summary cards ============ -->
+                <div class="o_buz_cards" t-if="state.cards.length">
+                    <t t-foreach="state.cards" t-as="card" t-key="card.key">
+                        <button type="button" t-attf-class="o_buz_card o_buz_card_{{card.key}}" t-on-click="() => this.openCard(card)">
+                            <span class="o_buz_card_icon"><i t-attf-class="fa {{cardIcon(card)}}"/></span>
+                            <span class="o_buz_card_body">
+                                <span class="o_buz_card_value" t-esc="card.value"/>
+                                <span class="o_buz_card_label" t-esc="card.label"/>
+                            </span>
+                        </button>
+                    </t>
+                </div>
+
+                <div t-if="!state.runId and !state.loading" class="o_buz_empty">
+                    No plan has a schedule yet. Open a plan, click Schedule, then come back here.
+                </div>
+
+                <!-- ============ gantt panel ============ -->
+                <div class="o_buz_panel" t-if="state.runId">
+                    <div class="o_buz_panel_head">
+                        <span class="o_buz_panel_icon"><i class="fa fa-bar-chart"/></span>
+                        <span class="o_buz_panel_title">Production Plan Gantt</span>
+                        <div class="o_buz_legend">
+                            <span class="o_buz_legend_item"><span class="o_buz_dot o_buz_s_track"/>On Track</span>
+                            <span class="o_buz_legend_item"><span class="o_buz_dot o_buz_s_delay"/>Delay</span>
+                            <span class="o_buz_legend_item"><span class="o_buz_dot o_buz_s_waiting"/>Waiting</span>
+                            <span class="o_buz_legend_item"><span class="o_buz_dot o_buz_s_done"/>Completed</span>
+                        </div>
+                    </div>
+                    <div class="o_buz_gantt_scroll">
+                        <div class="o_buz_gantt_grid" t-attf-style="width: {{labelWidth + trackWidth}}px">
+                            <div class="o_buz_gantt_head d-flex">
+                                <div class="o_buz_gantt_label o_buz_head_label" t-attf-style="width: {{labelWidth}}px">
+                                    <div class="o_buz_col_a">Plan / Document</div>
+                                    <div class="o_buz_col_b">Product / Description</div>
+                                </div>
+                                <div class="o_buz_gantt_track o_buz_head_track" t-attf-style="width: {{trackWidth}}px; height: 56px">
+                                    <t t-foreach="headGroups" t-as="g" t-key="g.key">
+                                        <div class="o_buz_tier1" t-attf-style="left: {{g.x}}px; width: {{g.w}}px" t-esc="g.label"/>
+                                    </t>
+                                    <t t-foreach="ticks" t-as="d" t-key="d.key">
+                                        <div t-attf-class="o_buz_tier2 {{d.weekend ? 'o_buz_weekend' : ''}} {{d.today ? 'o_buz_today' : ''}}"
+                                             t-attf-style="left: {{d.x}}px; width: {{d.w}}px" t-esc="d.label"/>
+                                    </t>
+                                    <div t-if="nowX !== null" class="o_buz_now_marker" t-attf-style="left: {{nowX}}px"/>
+                                </div>
+                            </div>
+                            <t t-foreach="rows" t-as="row" t-key="row.key">
+                                <div t-if="row.type === 'group'" class="o_buz_gantt_group" t-attf-style="--grp: {{row.color}}"
+                                     t-on-click="() => this.toggleGroup(row.label)">
+                                    <div class="o_buz_group_in">
+                                        <i t-attf-class="fa {{row.collapsed ? 'fa-chevron-right' : 'fa-chevron-down'}}"/>
+                                        <t t-esc="row.label"/>
+                                        <span class="o_buz_group_count" t-esc="row.count"/>
+                                    </div>
+                                </div>
+                                <div t-else="" class="o_buz_gantt_row d-flex" t-attf-style="height: {{row.height}}px; --grp: {{row.color}}">
+                                    <div class="o_buz_gantt_label o_buz_row_label" t-attf-style="width: {{labelWidth}}px">
+                                        <div class="o_buz_col_a">
+                                            <i class="fa fa-cube o_buz_wc_icon"/>
+                                            <span class="o_buz_wc_name" t-esc="row.wc.name"/>
+                                            <small class="o_buz_wc_code" t-esc="row.wc.code"/>
+                                        </div>
+                                        <div class="o_buz_col_b">
+                                            <div class="o_buz_cap_text"><t t-esc="row.jobs"/> jobs · <t t-esc="row.cap.text"/></div>
+                                            <div class="o_buz_cap"><div t-attf-class="o_buz_cap_fill {{row.cap.cls}}" t-attf-style="width: {{row.cap.pct}}%"/></div>
+                                        </div>
+                                    </div>
+                                    <div class="o_buz_gantt_track" t-attf-style="width: {{trackWidth}}px">
+                                        <t t-foreach="days" t-as="d" t-key="d.key">
+                                            <div t-attf-class="o_buz_day_bg {{d.weekend ? 'o_buz_weekend' : ''}} {{d.today ? 'o_buz_today' : ''}}"
+                                                 t-attf-style="left: {{d.x}}px; width: {{d.w}}px"/>
+                                        </t>
+                                        <t t-foreach="row.cells" t-as="c" t-key="c.key">
+                                            <div t-attf-class="o_buz_load {{c.cls}}" t-attf-style="left: {{c.x}}px; width: {{c.w}}px" t-esc="c.text"/>
+                                        </t>
+                                        <div t-if="nowX !== null" class="o_buz_now" t-attf-style="left: {{nowX}}px"/>
+                                        <t t-foreach="row.bars" t-as="b" t-key="b.line.id">
+                                            <div t-att-class="b.cls" t-att-data-line-id="b.line.id"
+                                                 t-attf-style="left: {{b.left}}px; width: {{b.width}}px; top: {{b.top}}px"
+                                                 t-on-pointerdown="(ev) => this.onBarPointerDown(ev, b.line, 'move')"
+                                                 t-on-pointerenter="(ev) => this.showPopover(ev, b)"
+                                                 t-on-pointerleave="hidePopover">
+                                                <div t-if="b.line.progress" class="o_buz_progress" t-attf-style="width: {{b.line.progress}}%"/>
+                                                <i t-if="b.conflict" class="fa fa-exclamation-triangle o_buz_bar_icon" title="Overlap"/>
+                                                <i t-if="b.line.is_locked" class="fa fa-lock o_buz_bar_icon"/>
+                                                <span class="o_buz_bar_text" t-esc="b.line.mo"/>
+                                                <small t-if="b.width > 170" class="o_buz_bar_sub" t-esc="b.line.product"/>
+                                                <div t-if="b.deadlineX !== null" class="o_buz_deadline"/>
+                                                <div t-if="!b.line.is_locked" class="o_buz_handle"
+                                                     t-on-pointerdown="(ev) => this.onBarPointerDown(ev, b.line, 'resize')"/>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div t-if="state.pop" class="o_buz_popover" t-attf-style="left: {{state.pop.x}}px; top: {{state.pop.y}}px">
+                <div class="o_buz_pop_title" t-esc="state.pop.line.mo"/>
+                <div class="o_buz_pop_sub" t-esc="state.pop.line.product"/>
+                <div class="o_buz_pop_row"><span>Operation</span><span t-esc="state.pop.line.operation"/></div>
+                <div class="o_buz_pop_row"><span>Qty</span><span t-esc="state.pop.line.qty"/></div>
+                <div class="o_buz_pop_row"><span>Start</span><span t-esc="fmt(state.pop.line.sMs)"/></div>
+                <div class="o_buz_pop_row"><span>End</span><span t-esc="fmt(state.pop.line.eMs)"/></div>
+                <div class="o_buz_pop_row"><span>Duration</span><span><t t-esc="Math.round(state.pop.line.minutes)"/> min (<t t-esc="state.pop.line.source"/>)</span></div>
+                <div class="o_buz_pop_row" t-if="state.pop.line.deadlineMs"><span>Deadline</span><span t-esc="fmt(state.pop.line.deadlineMs)"/></div>
+                <div class="o_buz_pop_row"><span>Progress</span><span><t t-esc="state.pop.line.progress"/>%</span></div>
+                <div class="o_buz_badges">
+                    <span t-if="state.pop.line.is_late" class="badge text-bg-danger">Late</span>
+                    <span t-if="state.pop.line.is_locked" class="badge text-bg-secondary">Locked</span>
+                    <span t-if="state.pop.line.is_manual" class="badge text-bg-dark">Manual</span>
+                    <span t-if="state.pop.line.state === 'applied'" class="badge text-bg-success">Applied</span>
+                    <span t-if="state.pop.conflict" class="badge text-bg-warning">Overlap</span>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_po_lot_wizard_form" model="ir.ui.view">
+        <field name="name">buz.po.lot.wizard.form</field>
+        <field name="model">buz.po.lot.wizard</field>
+        <field name="arch" type="xml">
+            <form string="รายงานสินค้าและวัตถุดิบ">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="cutoff_date"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="warehouse_ids" widget="many2many_tags"/>
+                        <field name="include_transit"/>
+                    </group>
+                    <group>
+                        <field name="product_ids" widget="many2many_tags"/>
+                        <field name="code_prefix"/>
+                        <field name="model_strip"/>
+                        <field name="hide_zero"/>
+                        <field name="show_lots_each_row"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_compute" type="object" string="View" class="btn-primary"/>
+                    <button name="action_export_xlsx" type="object" string="Export Excel"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_po_lot_line_tree" model="ir.ui.view">
+        <field name="name">buz.po.lot.line.tree</field>
+        <field name="model">buz.po.lot.line</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0" default_order="product_id, seq"
+                  decoration-muted="line_type == 'lotbal'" decoration-bf="line_type == 'total'">
+                <field name="product_id"/>
+                <field name="line_type"/>
+                <field name="date"/>
+                <field name="doc_ref"/>
+                <field name="warehouse_id" optional="hide"/>
+                <field name="in_qty"/>
+                <field name="in_cost"/>
+                <field name="in_value"/>
+                <field name="out_qty"/>
+                <field name="out_cost"/>
+                <field name="out_value"/>
+                <field name="bal_qty"/>
+                <field name="bal_cost"/>
+                <field name="bal_value"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_po_lot_line_search" model="ir.ui.view">
+        <field name="name">buz.po.lot.line.search</field>
+        <field name="model">buz.po.lot.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="model_code"/>
+                <filter name="lots" string="Ending lots" domain="[('line_type', '=', 'lot')]"/>
+                <filter name="totals" string="Totals" domain="[('line_type', '=', 'total')]"/>
+                <filter name="group_model" string="Model" context="{'group_by': 'model_code'}"/>
+                <filter name="group_prod" string="Product" context="{'group_by': 'product_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_po_lot_wizard" model="ir.actions.act_window">
+        <field name="name">รายงานสินค้าและวัตถุดิบ (PO Lot)</field>
+        <field name="res_model">buz.po.lot.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_po_lot_report" name="รายงานสินค้าและวัตถุดิบ (PO Lot)"
+              parent="stock.menu_warehouse_report"
+              action="action_po_lot_wizard" sequence="95"
+              groups="buz_stock_po_lot_report.group_po_lot_report_user"/>
+</odoo>

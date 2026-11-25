@@ -1,8 +1,16 @@
-from odoo import models
+from odoo import fields, models
 
 
 class CrmTeam(models.Model):
     _inherit = "crm.team"
+
+    spe_count_in_sales = fields.Boolean(
+        string="Count in Sales Dashboard",
+        default=True,
+        help="When no team is picked on the Sales Performance dashboard, "
+             "only teams with this box ticked are counted. Keep it in line "
+             "with the team list of the Invoices Analysis report.",
+    )
 
     def action_view_performance(self):
         self.ensure_one()

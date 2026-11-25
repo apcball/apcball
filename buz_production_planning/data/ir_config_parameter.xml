@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="param_supply_warehouse_codes" model="ir.config_parameter">
+        <field name="key">buz_production_planning.supply_warehouse_codes</field>
+        <field name="value">FG10,FG20,RM01,RM02,SM01,PD01,PJ01</field>
+    </record>
+    <record id="param_lead_make_days" model="ir.config_parameter">
+        <field name="key">buz_production_planning.lead_make_days</field>
+        <field name="value">3</field>
+    </record>
+    <record id="param_lead_buy_days" model="ir.config_parameter">
+        <field name="key">buz_production_planning.lead_buy_days</field>
+        <field name="value">7</field>
+    </record>
+    <record id="param_horizon_weeks" model="ir.config_parameter">
+        <field name="key">buz_production_planning.horizon_weeks</field>
+        <field name="value">8</field>
+    </record>
+    <record id="param_lookback_weeks" model="ir.config_parameter">
+        <field name="key">buz_production_planning.lookback_weeks</field>
+        <field name="value">12</field>
+    </record>
+    <record id="param_history_cutoff" model="ir.config_parameter">
+        <field name="key">buz_production_planning.history_cutoff</field>
+        <field name="value">2026-04-01</field>
+    </record>
+    <record id="param_min_history_wo" model="ir.config_parameter">
+        <field name="key">buz_production_planning.min_history_wo</field>
+        <field name="value">5</field>
+    </record>
+    <record id="param_expected_factor" model="ir.config_parameter">
+        <field name="key">buz_production_planning.expected_factor</field>
+        <field name="value">1.0</field>
+    </record>
+</odoo>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_asset_category_tree" model="ir.ui.view">
+        <field name="name">buz.asset.category.tree</field>
+        <field name="model">buz.asset.category</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="tracking_mode"/>
+                <field name="useful_life_months"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_category_form" model="ir.ui.view">
+        <field name="name">buz.asset.category.form</field>
+        <field name="model">buz.asset.category</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="เก็บถาวร" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <group>
+                        <group string="ทั่วไป">
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="company_id"/>
+                            <field name="tracking_mode"/>
+                            <field name="require_department"/>
+                            <field name="require_qr"/>
+                        </group>
+                        <group string="ค่าเริ่มต้นค่าเสื่อมราคา">
+                            <field name="depreciation_method"/>
+                            <field name="depreciation_frequency"/>
+                            <field name="useful_life_months"/>
+                        </group>
+                    </group>
+                    <group string="บัญชี">
+                        <group>
+                            <field name="asset_account_id"/>
+                            <field name="depreciation_account_id"/>
+                            <field name="expense_account_id"/>
+                        </group>
+                        <group>
+                            <field name="gain_loss_account_id"/>
+                            <field name="disposal_clearing_account_id"/>
+                            <field name="journal_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_asset_category" model="ir.actions.act_window">
+        <field name="name">หมวดหมู่ทรัพย์สิน</field>
+        <field name="res_model">buz.asset.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

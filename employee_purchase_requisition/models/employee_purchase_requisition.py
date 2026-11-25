@@ -238,14 +238,15 @@ class PurchaseRequisition(models.Model):
                 line.price_subtotal for line in requisition.requisition_order_ids)
 
     # ── Workflow actions ─────────────────────────────────────────
-    def action_confirm_requisition(self):
-        """Submit to head approval"""
+    def _check_analytic_distribution(self):
         for line in self.requisition_order_ids:
             if not line.analytic_distribution:
                 raise ValidationError(
                     'Please enter Analytic Distribution for all items '
                     'before submitting for approval.')
 
+    def _prepare_confirm_locations(self):
+        """Set source/destination locations and picking types for submit."""
         self.source_location_id = (
             self.employee_id.department_id.department_location_id.id
             if self.employee_id.department_id.department_location_id
@@ -269,12 +270,49 @@ class PurchaseRequisition(models.Model):
         self.internal_picking_id = (
             self.source_location_id.warehouse_id.int_type_id.id)
 
+    def action_confirm_requisition(self):
+        """Submit to head approval"""
+        self._check_analytic_distribution()
+        self._prepare_confirm_locations()
         self.write({
             'state': 'waiting_head_approval',
             'confirm_id': self.env.uid,
             'confirmed_date': fields.Date.today(),
         })
         self._create_head_approval_activity()
+
+    def _skip_to_purchase_approval(self, head_user, reason=''):
+        """Jump draft / waiting_head_approval PR straight to
+        waiting_purchase_approval (head already asked for budget approval)."""
+        for rec in self.filtered(
+                lambda r: r.state in ('draft', 'waiting_head_approval')):
+            rec._check_analytic_distribution()
+            was_draft = rec.state == 'draft'
+            if was_draft:
+                rec._prepare_confirm_locations()
+            vals = {
+                'state': 'waiting_purchase_approval',
+                'requisition_head_id': head_user.id,
+                'approval_date': fields.Date.today(),
+            }
+            if was_draft:
+                vals.update({
+                    'confirm_id': head_user.id,
+                    'confirmed_date': fields.Date.today(),
+                })
+            else:
+                rec.activity_ids.filtered(
+                    lambda a: a.activity_type_id == self.env.ref(
+                        'employee_purchase_requisition.'
+                        'mail_activity_type_head_approval',
+                        raise_if_not_found=False)
+                ).action_feedback(
+                    feedback='Skipped: monthly budget request approved')
+            rec.write(vals)
+            rec.message_post(body=(
+                'Head approval skipped: %s' % (reason or
+                                               'monthly budget approved')))
+            rec._create_purchase_approval_activity()
 
     def action_head_approval(self):
         """Approval from department head"""

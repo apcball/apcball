@@ -75,10 +75,7 @@ class AccountMove(models.Model):
                 continue
             target_date = move._get_bill_target_date()
             if target_date:
-                analytic_totals = {}
-                for line in move.invoice_line_ids:
-                    for account_id, amount in extract_analytic_amounts(line, self.env['monthly.budget.line']):
-                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+                analytic_totals = move._get_monthly_bill_analytic_totals()
                 grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                     self.env, target_date, move.company_id.id, analytic_totals,
                 )
@@ -203,7 +200,6 @@ class AccountMove(models.Model):
 
     def _sync_monthly_bill_budget(self):
         """Synchronize bill commitments based on source and current state."""
-        BudgetLine = self.env['monthly.budget.line']
         for move in self:
             if move.move_type not in ('in_invoice', 'in_refund'):
                 continue
@@ -221,24 +217,31 @@ class AccountMove(models.Model):
                 # No longer skipping! PO-linked bills now consume their own portion
                 # of the budget, while the PO reserves the unbilled amount.
 
-            target_date = move._get_bill_target_date()
-            if not target_date:
+            if move.state == 'cancel':
+                # Cancelled bills must always drop their commitments. Do not rely on
+                # the due-date plan lookup: the commitment may sit in another month's
+                # plan (or the plan may be closed), which left stale reservations.
+                move._release_monthly_bill_commitments_for_document()
                 continue
 
-            analytic_totals = {}
-            for line in move.invoice_line_ids:
-                for account_id, amount in extract_analytic_amounts(line, BudgetLine):
-                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            target_date = move._get_bill_target_date()
+            if not target_date:
+                if move.state == 'posted':
+                    move._release_monthly_bill_commitments_for_document(states=('reserved',))
+                continue
+
+            analytic_totals = move._get_monthly_bill_analytic_totals()
 
             grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                 self.env, target_date, move.company_id.id, analytic_totals,
             )
             if not grouped_totals:
-                continue
-
-            if move.state == 'cancel':
-                for plan, plan_totals in grouped_totals:
-                    move._release_monthly_bill_budget(plan, plan_totals, target_date)
+                if move.state == 'posted':
+                    # Nothing to consume: no confirmed plan for the due date, or the
+                    # analytic amounts net to zero (deposit offset). The reservation
+                    # made while the bill was a draft would otherwise stay forever
+                    # (2.06M stale on prod, 2026-11).
+                    move._release_monthly_bill_commitments_for_document(states=('reserved',))
                 continue
 
             # Draft bills → reserved commitment; Posted bills → used commitment
@@ -248,6 +251,22 @@ class AccountMove(models.Model):
             elif move.state == 'posted':
                 for plan, plan_totals in grouped_totals:
                     move._sync_monthly_bill_usage(plan, plan_totals, target_date)
+
+    def _get_monthly_bill_analytic_totals(self):
+        """Budget amount of the bill per analytic account (company currency).
+
+        ``price_subtotal`` is positive on vendor refund lines, but a refund gives
+        budget back, so its amounts are negated; otherwise a credit note would
+        be booked as extra consumption.
+        """
+        self.ensure_one()
+        BudgetLine = self.env['monthly.budget.line']
+        sign = -1.0 if self.move_type == 'in_refund' else 1.0
+        analytic_totals = {}
+        for line in self.invoice_line_ids:
+            for account_id, amount in extract_analytic_amounts(line, BudgetLine):
+                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + sign * amount
+        return analytic_totals
 
     def _get_related_purchase_order(self):
         """Return the PO(s) linked to this bill, if any."""
@@ -466,17 +485,37 @@ class AccountMove(models.Model):
 
         plan._refresh_budget_snapshot(refresh_report=True)
 
+    def _release_monthly_bill_commitments_for_document(self, states=('reserved', 'used')):
+        """Release the active monthly commitments of this bill (in ``states``), whatever its date/plan."""
+        self.ensure_one()
+        Commitment = self.env['budget.commitment'].sudo()
+        active = Commitment.search([
+            ('budget_source', '=', 'monthly'),
+            ('document_model', '=', self._name),
+            ('document_id', '=', self.id),
+            ('state', 'in', list(states)),
+        ])
+        if not active:
+            return
+        plans = self.env['monthly.budget.plan'].sudo()
+        for commitment in active:
+            plans |= self.env['monthly.budget.line'].sudo().search([
+                ('analytic_account_id', '=', commitment.analytic_account_id.id),
+                ('company_id', '=', commitment.company_id.id),
+                ('plan_id.date_from', '<=', commitment.date),
+                ('plan_id.date_to', '>=', commitment.date),
+            ]).mapped('plan_id')
+        active.action_release()
+        for plan in plans:
+            plan._refresh_budget_snapshot(refresh_report=True)
+
     def _release_monthly_bill_budget_by_state(self):
         """Release all monthly bill commitments regardless of current amount/state."""
         for move in self:
             target_date = move._get_bill_target_date()
             if not target_date:
                 target_date = fields.Date.context_today(move)
-            analytic_totals = {}
-            BudgetLine = self.env['monthly.budget.line']
-            for line in move.invoice_line_ids:
-                for account_id, amount in extract_analytic_amounts(line, BudgetLine):
-                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            analytic_totals = move._get_monthly_bill_analytic_totals()
             grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
                 self.env, target_date, move.company_id.id, analytic_totals,
             )

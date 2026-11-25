@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # Deploy Odoo module to DEV or PROD
-# Usage: ./scripts/deploy.sh <dev|prod> <module_name>
+# Usage: ./scripts/deploy.sh <dev|prod> <module_name> [--upgrade]
 set -euo pipefail
 
 TARGET="${1:?Usage: deploy.sh <dev|prod> <module_name>}"
 MODULE="${2:?Usage: deploy.sh <dev|prod> <module_name>}"
 SRC="./${MODULE}/"
+UPGRADE="${3:-}"
+
+if [[ ! "$MODULE" =~ ^[a-z][a-z0-9_]*$ ]] || [[ -n "$UPGRADE" && "$UPGRADE" != "--upgrade" ]]; then
+    echo "ERROR: expected a module name and optional --upgrade"
+    exit 1
+fi
 
 if [ ! -d "$SRC" ]; then
     echo "ERROR: Module dir $SRC not found"
@@ -43,7 +49,22 @@ case "$TARGET" in
         echo ">>> Deploying $MODULE to PROD..."
         rsync -az --delete "$SRC" mog-prod:/opt/instance1/odoo17/custom-addons/"$MODULE"/
         ssh mog-prod "chmod -R +r /opt/instance1/odoo17/custom-addons/$MODULE"
-        printf "$UPDATE_LIST_PY" "MOG_LIVE" "MOG_LIVE" | ssh mog-prod "source /opt/instance1/odoo17-venv/bin/activate && python3 -c \"\$(cat)\""
+        if [[ "$UPGRADE" == "--upgrade" ]]; then
+            # Schema changes must run with HTTP workers stopped. Run as the
+            # service user so generated files keep the correct ownership.
+            ssh mog-prod bash -s -- "$MODULE" <<'UPGRADE_SCRIPT'
+set -euo pipefail
+module="$1"
+service_user="$(systemctl show instance1 --property=User --value)"
+test -n "$service_user"
+sudo systemctl stop instance1
+trap 'sudo systemctl start instance1' EXIT
+sudo -u "$service_user" /opt/instance1/odoo17-venv/bin/python3 \
+    /opt/instance1/odoo17/odoo-bin -c /etc/instance1.conf -d MOG_LIVE \
+    -u "$module" --stop-after-init --no-http --workers=0 --max-cron-threads=0
+UPGRADE_SCRIPT
+        fi
+        printf "$UPDATE_LIST_PY" "MOG_LIVE" "MOG_LIVE" | ssh mog-prod "cd /opt/instance1/odoo17 && source /opt/instance1/odoo17-venv/bin/activate && ODOO_RC=/etc/instance1.conf python3 -c \"\$(cat)\""
         ssh mog-prod "sudo systemctl restart instance1"
         echo "<<< PROD deploy $MODULE done"
         ;;

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_po_lot_wizard,buz.po.lot.wizard,model_buz_po_lot_wizard,group_po_lot_report_user,1,1,1,1
+access_buz_po_lot_line,buz.po.lot.line,model_buz_po_lot_line,group_po_lot_report_user,1,1,1,1

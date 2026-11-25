@@ -50,11 +50,51 @@
                                 font-family: 'Sarabun', sans-serif !important;
                                 font-size: 20px;
                             }
+                            .mc-report-header {
+                                font-family: 'Sarabun', sans-serif !important;
+                            }
+                            .mc-report-header > .col-8 {
+                                padding-left: 0 !important;
+                            }
+                            .mc-report-header > .col-4 {
+                                padding-right: 0 !important;
+                            }
+                            .mc-report-header img {
+                                width: 150px;
+                                height: auto;
+                                object-fit: contain;
+                            }
                             .mc-title {
                                 font-size: 28px;
                                 font-weight: bold;
                                 text-align: center;
                                 margin-bottom: 10px;
+                            }
+                            /* Company header follows the delivery report layout. */
+                            .mc-company-header {
+                                width: 100%;
+                                border: 0;
+                                border-collapse: collapse;
+                                background: transparent;
+                                margin-bottom: 8px;
+                            }
+                            .mc-company-header td {
+                                padding: 0;
+                                border: 0;
+                                background: transparent;
+                                vertical-align: top;
+                            }
+                            .mc-company-header .mc-company-name {
+                                font-size: 20px;
+                                font-weight: bold;
+                                line-height: 1.1;
+                            }
+                            .mc-company-header .mc-company-info {
+                                font-size: 18px;
+                                line-height: 1.1;
+                            }
+                            .mc-company-header .mc-logo-space {
+                                width: 32%;
                             }
                             .mc-info-table {
                                 width: 100%;
@@ -126,7 +166,22 @@
                         </style>
 
                         <div class="page">
-                            <!-- Title -->
+                            <!-- Company header follows delivery_report.xml layout. -->
+                            <div class="row mb-1 mc-report-header" style="width: 100%; margin: 0; border: 0; background: transparent;">
+                                <div class="col-8">
+                                    <div style="font-size: 20px; font-weight: bold; line-height: 1;">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                    <div style="font-size: 18px; line-height: 1;">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                    <div style="font-size: 18px; line-height: 1;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <img src="/buz_mrp_stock_request/static/img/logo_mogen.png"
+                                             style="width: 150px; height: auto; object-fit: contain;"
+                                             alt="MOGEN Logo"/>
+                                    <div style="text-align: right; font-size: 18px; line-height: 1; margin-top: 10px;">
+                                        หน้า 1/1
+                                    </div>
+                                </div>
+                            </div>                            <!-- Title -->
                             <div class="mc-title">ใบปิด Job (MO)</div>
 
                             <t t-set="doc" t-value="mo"/>
@@ -241,7 +296,7 @@
                             <table class="mc-sign-table">
                                 <tr>
                                     <td>
-                                        <div style="font-weight:bold;">ผู้ผลิต</div>
+                                        <div style="font-weight:bold;">ผู้บันทึก</div>
                                         <div class="mc-sign-line"></div>
                                         <div>(
                                             <span style="display:inline-block; width:120px;">&#160;</span>
@@ -251,7 +306,7 @@
                                         <div>วันที่: ......./......./...........</div>
                                     </td>
                                     <td>
-                                        <div style="font-weight:bold;">ผู้ตรวจสอบ</div>
+                                        <div style="font-weight:bold;">ผู้รับของ</div>
                                         <div class="mc-sign-line"></div>
                                         <div>(
                                             <span style="display:inline-block; width:120px;">&#160;</span>

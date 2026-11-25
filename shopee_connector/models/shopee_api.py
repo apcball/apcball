@@ -5,6 +5,7 @@ import time
 import urllib.parse
 
 import requests
+from psycopg2 import OperationalError as PgOperationalError
 
 _logger = logging.getLogger(__name__)
 
@@ -218,6 +219,11 @@ class ShopeeAPI:
                 duration_ms=int((time.monotonic() - started) * 1000),
                 error_message=str(error) if error else False,
             )
+        except PgOperationalError:
+            # Serialization failure / deadlock: the transaction is already
+            # aborted. Swallowing it hides the real error behind
+            # InFailedSqlTransaction and defeats Odoo's request retry.
+            raise
         except Exception:
             _logger.exception("Unable to write Shopee API log")
 

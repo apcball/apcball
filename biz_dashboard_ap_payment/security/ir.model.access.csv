@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ap_dashboard_loan_manual_dashboard_user,ap.dashboard.loan.manual dashboard user,model_biz_ap_dashboard_loan_manual,biz_dashboard_ap_payment.group_ap_payment_dashboard_user,1,1,1,1

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_buz_plan_root" name="Planning" sequence="45"
+              web_icon="mrp,static/description/icon.png"
+              groups="buz_production_planning.group_plan_user,mrp.group_mrp_user"/>
+    <menuitem id="menu_buz_plan_dashboard" name="Dashboard" parent="menu_buz_plan_root"
+              action="action_buz_plan_dashboard" sequence="5"
+              groups="buz_production_planning.group_plan_user,mrp.group_mrp_user"/>
+    <menuitem id="menu_buz_plan_run" name="Plans" parent="menu_buz_plan_root"
+              action="action_buz_plan_run" sequence="10"/>
+    <menuitem id="menu_buz_plan_suggestion" name="Suggestions" parent="menu_buz_plan_root"
+              action="action_buz_plan_suggestion" sequence="20"/>
+    <menuitem id="menu_buz_plan_demand" name="Demand" parent="menu_buz_plan_root"
+              action="action_buz_plan_demand_line" sequence="30"/>
+    <menuitem id="menu_buz_plan_schedule" name="Schedule" parent="menu_buz_plan_root"
+              action="action_buz_plan_schedule_line" sequence="40"/>
+    <menuitem id="menu_buz_plan_gantt" name="Gantt" parent="menu_buz_plan_root"
+              action="action_buz_plan_gantt" sequence="45"/>
+    <menuitem id="menu_buz_plan_load" name="Load vs Capacity" parent="menu_buz_plan_root"
+              action="action_buz_plan_load_capacity" sequence="50"/>
+    <menuitem id="menu_buz_plan_config" name="Configuration" parent="menu_buz_plan_root"
+              sequence="90" groups="buz_production_planning.group_plan_user"/>
+    <menuitem id="menu_buz_plan_param" name="Product Parameters" parent="menu_buz_plan_config"
+              action="action_buz_plan_product_param" sequence="10"/>
+    <menuitem id="menu_buz_plan_optime" name="Operation Time History" parent="menu_buz_plan_config"
+              action="action_buz_plan_operation_time" sequence="20"/>
+    <menuitem id="menu_buz_plan_settings" name="Settings" parent="menu_buz_plan_config"
+              action="action_buz_plan_settings" sequence="30"
+              groups="buz_production_planning.group_plan_manager"/>
+</odoo>

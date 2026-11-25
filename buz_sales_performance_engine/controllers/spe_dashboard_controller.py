@@ -13,7 +13,9 @@ from odoo.http import request
 #                pos.lite.order      state done                            amount_untaxed (signed)         date_order
 #   Delivery     stock.move (done)   linked sale.order.line                quantity x price_unit           picking date_done
 #                pos.lite.order      state done + picking done             amount_untaxed (signed)         picking date_done
-#   Invoice      account.move        out_invoice/out_refund posted         amount_untaxed_signed           invoice_date
+#   Invoice      account.invoice.report  out_invoice/out_refund posted     price_subtotal (line level)     invoice_date
+#                (same SQL as Accounting > Invoices Analysis, minus products
+#                flagged "Exclude from Sales Dashboard")
 #   Payment      account.move        out_invoice/out_refund posted         total_signed - residual_signed  invoice_date (collection basis)
 #   Backlog      sale.order.line     order state=sale, delivered < ordered remaining x price_unit          date_order
 #   Overdue      account.move        posted, residual > 0, due < today     amount_residual_signed          invoice_date_due
@@ -21,6 +23,10 @@ from odoo.http import request
 # Salesperson / team / customer filters map to user_id / team_id /
 # partner_id on sale.order and invoice_user_id / team_id / partner_id
 # on account.move.  POS orders resolve salesperson via employee user.
+#
+# Team scope: with no team picked, every measure is limited to sales teams
+# flagged "Count in Sales Dashboard" (records without a team drop out).
+# Picking a team in the filter shows that team, flagged or not.
 # ----------------------------------------------------------------------
 
 
@@ -51,6 +57,21 @@ class SpeDashboardController(http.Controller):
         if filters.get("company_id"):
             return [int(filters["company_id"])]
         return request.env.companies.ids
+
+    def _team_scope(self, filters):
+        """Team ids every measure is limited to (never empty)."""
+        if filters.get("team_id"):
+            return [int(filters["team_id"])]
+        teams = request.env["crm.team"].sudo().with_context(
+            active_test=False).search([("spe_count_in_sales", "=", True)])
+        return teams.ids or [0]
+
+    def _excluded_product_ids(self):
+        """Product variants left out of the Invoice measure (deposits...)."""
+        products = request.env["product.product"].sudo().with_context(
+            active_test=False).search(
+                [("product_tmpl_id.spe_exclude_from_sales", "=", True)])
+        return products.ids
 
     def _dates(self, filters):
         return (
@@ -93,8 +114,7 @@ class SpeDashboardController(http.Controller):
             domain.append(("date_order", "<=", d_to))
         if filters.get("salesperson_id"):
             domain.append(("user_id", "=", int(filters["salesperson_id"])))
-        if filters.get("team_id"):
-            domain.append(("team_id", "=", int(filters["team_id"])))
+        domain.append(("team_id", "in", self._team_scope(filters)))
         if filters.get("partner_id"):
             domain.append(("partner_id", "=", int(filters["partner_id"])))
         return domain
@@ -112,8 +132,8 @@ class SpeDashboardController(http.Controller):
                 domain.append(("date_order", "<=", d_to))
         if filters.get("salesperson_id"):
             domain.append(("employee_id.user_id", "=", int(filters["salesperson_id"])))
-        if filters.get("team_id"):
-            domain.append(("employee_id.user_id.sale_team_id", "=", int(filters["team_id"])))
+        domain.append(("employee_id.user_id.sale_team_id", "in",
+                       self._team_scope(filters)))
         if filters.get("partner_id"):
             domain.append(("partner_id", "=", int(filters["partner_id"])))
         return domain
@@ -131,8 +151,7 @@ class SpeDashboardController(http.Controller):
             domain.append((date_field, "<=", d_to.date()))
         if filters.get("salesperson_id"):
             domain.append(("invoice_user_id", "=", int(filters["salesperson_id"])))
-        if filters.get("team_id"):
-            domain.append(("team_id", "=", int(filters["team_id"])))
+        domain.append(("team_id", "in", self._team_scope(filters)))
         if filters.get("partner_id"):
             domain.append(("partner_id", "=", int(filters["partner_id"])))
         source = filters.get("source")
@@ -161,9 +180,8 @@ class SpeDashboardController(http.Controller):
         if filters.get("salesperson_id"):
             clauses.append(f"{alias}.user_id = %s")
             params.append(int(filters["salesperson_id"]))
-        if filters.get("team_id"):
-            clauses.append(f"{alias}.team_id = %s")
-            params.append(int(filters["team_id"]))
+        clauses.append(f"{alias}.team_id IN %s")
+        params.append(tuple(self._team_scope(filters)))
         if filters.get("partner_id"):
             clauses.append(f"{alias}.partner_id = %s")
             params.append(int(filters["partner_id"]))
@@ -185,9 +203,8 @@ class SpeDashboardController(http.Controller):
         if filters.get("salesperson_id"):
             clauses.append("emp.user_id = %s")
             params.append(int(filters["salesperson_id"]))
-        if filters.get("team_id"):
-            clauses.append("ru.sale_team_id = %s")
-            params.append(int(filters["team_id"]))
+        clauses.append("ru.sale_team_id IN %s")
+        params.append(tuple(self._team_scope(filters)))
         if filters.get("partner_id"):
             clauses.append("po.partner_id = %s")
             params.append(int(filters["partner_id"]))
@@ -360,27 +377,48 @@ class SpeDashboardController(http.Controller):
 
     def _returns_credit_note_rows(self, filters, group=None, bucket="day"):
         """SO-side credit notes (out_refund), excluding POS-originated moves
-        (already counted in _returns_pos_rows) to avoid double counting."""
+        (already counted in _returns_pos_rows) to avoid double counting.
+        Same line-level rule as the Invoice measure, so it is a true subset."""
         if filters.get("source") == "pos":
             return self._rows_out({})
+        pos_ids = tuple(self._pos_invoice_move_ids(filters)) or (0,)
+        return self._invoice_report_rows(
+            filters, group=group, bucket=bucket, sign=-1,
+            extra=[("air.move_type = 'out_refund'", None),
+                   ("air.move_id NOT IN %s", pos_ids)])
+
+    def _invoice_report_rows(self, filters, group=None, bucket="day", sign=1,
+                             extra=()):
+        """Net untaxed sales, computed on the SQL behind Accounting >
+        Invoices Analysis (account.invoice.report) so both always agree:
+        invoice-line price_subtotal, posted customer invoices and credit
+        notes, minus products flagged "Exclude from Sales Dashboard"."""
         group_sql = {
             None: "1",
-            "bucket": f"date_trunc('{bucket}', am.invoice_date)::date",
-            "user": "am.invoice_user_id",
-            "company": "am.company_id",
-            "partner": "am.partner_id",
+            "bucket": f"date_trunc('{bucket}', air.invoice_date)::date",
+            "user": "air.invoice_user_id",
+            "company": "air.company_id",
+            "partner": "air.partner_id",
         }[group]
-        clauses, params = self._move_sql_filters(filters, "am.invoice_date")
-        clauses.append("am.move_type = 'out_refund'")
-        pos_ids = tuple(self._pos_invoice_move_ids(filters)) or (0,)
-        clauses.append("am.id NOT IN %s")
-        params.append(pos_ids)
+        clauses, params = self._move_sql_filters(
+            filters, "air.invoice_date", alias="air", id_col="move_id")
+        excluded = tuple(self._excluded_product_ids())
+        if excluded:
+            clauses.append("(air.product_id IS NULL OR air.product_id NOT IN %s)")
+            params.append(excluded)
+        for clause, param in extra:
+            clauses.append(clause)
+            if param is not None:
+                params.append(param)
+        # The report query carries no placeholders; escape any literal %.
+        report_sql = request.env["account.invoice.report"].sudo()._table_query
+        report_sql = report_sql.replace("%", "%%")
         request.env.cr.execute(
             f"""
             SELECT {group_sql} AS key,
-                   COALESCE(-SUM(am.amount_untaxed_signed), 0) AS amount,
-                   COUNT(*) AS cnt
-            FROM account_move am
+                   COALESCE(SUM(air.price_subtotal), 0) * {int(sign)} AS amount,
+                   COUNT(DISTINCT air.move_id) AS cnt
+            FROM ({report_sql}) air
             WHERE {' AND '.join(clauses)}
             GROUP BY 1
             """,
@@ -392,7 +430,10 @@ class SpeDashboardController(http.Controller):
         })
 
     def _invoice_rows(self, filters, group=None, bucket="day", measure="invoice"):
-        """measure='invoice' -> net untaxed; 'payment' -> collected amount."""
+        """measure='invoice' -> net untaxed (Invoices Analysis rule);
+        'payment' -> collected amount (invoice header level)."""
+        if measure == "invoice":
+            return self._invoice_report_rows(filters, group=group, bucket=bucket)
         group_sql = {
             None: "1",
             "bucket": f"date_trunc('{bucket}', am.invoice_date)::date",
@@ -400,15 +441,12 @@ class SpeDashboardController(http.Controller):
             "company": "am.company_id",
             "partner": "am.partner_id",
         }[group]
-        amount_sql = (
-            "SUM(am.amount_untaxed_signed)" if measure == "invoice"
-            else "SUM(am.amount_total_signed - am.amount_residual_signed)"
-        )
         clauses, params = self._move_sql_filters(filters, "am.invoice_date")
         request.env.cr.execute(
             f"""
             SELECT {group_sql} AS key,
-                   COALESCE({amount_sql}, 0) AS amount,
+                   COALESCE(SUM(am.amount_total_signed
+                                - am.amount_residual_signed), 0) AS amount,
                    COUNT(*) AS cnt
             FROM account_move am
             WHERE {' AND '.join(clauses)}
@@ -421,11 +459,16 @@ class SpeDashboardController(http.Controller):
             for r in request.env.cr.dictfetchall()
         })
 
-    def _move_sql_filters(self, filters, date_col):
+    def _move_sql_filters(self, filters, date_col, alias="am", id_col="id"):
+        """WHERE fragments for posted customer invoices/credit notes.
+
+        Works on account_move (alias "am") and on the Invoices Analysis
+        subquery (alias "air", id_col "move_id") - same column names.
+        """
         clauses = [
-            "am.state = 'posted'",
-            "am.move_type IN ('out_invoice', 'out_refund')",
-            "am.company_id IN %s",
+            f"{alias}.state = 'posted'",
+            f"{alias}.move_type IN ('out_invoice', 'out_refund')",
+            f"{alias}.company_id IN %s",
         ]
         params = [tuple(self._company_ids(filters))]
         d_from, d_to = self._dates(filters)
@@ -436,18 +479,18 @@ class SpeDashboardController(http.Controller):
             clauses.append(f"{date_col} <= %s")
             params.append(d_to.date())
         if filters.get("salesperson_id"):
-            clauses.append("am.invoice_user_id = %s")
+            clauses.append(f"{alias}.invoice_user_id = %s")
             params.append(int(filters["salesperson_id"]))
-        if filters.get("team_id"):
-            clauses.append("am.team_id = %s")
-            params.append(int(filters["team_id"]))
+        clauses.append(f"{alias}.team_id IN %s")
+        params.append(tuple(self._team_scope(filters)))
         if filters.get("partner_id"):
-            clauses.append("am.partner_id = %s")
+            clauses.append(f"{alias}.partner_id = %s")
             params.append(int(filters["partner_id"]))
         source = filters.get("source")
         if source in ("sale", "pos"):
             pos_ids = tuple(self._pos_invoice_move_ids(filters)) or (0,)
-            clauses.append("am.id IN %s" if source == "pos" else "am.id NOT IN %s")
+            clauses.append(f"{alias}.{id_col} IN %s" if source == "pos"
+                           else f"{alias}.{id_col} NOT IN %s")
             params.append(pos_ids)
         return clauses, params
 
@@ -879,6 +922,7 @@ class SpeDashboardController(http.Controller):
                 ("state", "=", "posted"),
                 ("amount_residual", ">", 0),
                 ("invoice_date_due", "<", date.today().isoformat()),
+                ("team_id", "in", self._team_scope(filters)),
             ], limit=limit, order="invoice_date_due")
             today = date.today()
             rows = [{

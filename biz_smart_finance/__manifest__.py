@@ -47,7 +47,7 @@ ERP does not hold yet.
         "sale_management",
         "purchase",
         "crm",
-        "biz_smart_project",
+        "project",
     ],
     "external_dependencies": {"python": ["xlsxwriter", "openpyxl"]},
     "data": [

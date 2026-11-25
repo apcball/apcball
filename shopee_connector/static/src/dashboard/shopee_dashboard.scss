@@ -163,3 +163,9 @@ $shopee-blue: #2f6fed;
         &.off { background: #eef0f3; color: #6b7280; }
     }
 }
+
+.o_shopee_dashboard .o_shopee_stock_notice {
+    background: #fff4d6; color: #854d0e; border: 1px solid #fcd34d;
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+    span { display: block; font-size: 11px; }
+}

@@ -243,18 +243,20 @@
                             </div>
                          </div>
 
-                         
+                         <div style="font-size: 18px; margin-top: 0; margin-bottom: 0; line-height: 1.2;">
+                             <t t-set="pos_lite_order" t-value="'pos.lite.order' in o.env and o.env['pos.lite.order'].sudo().search([('picking_id', 'in', (o | o.return_id).ids)], limit=1)"/>
+                             <span>SO อ้างอิง: </span>
+                             <span style="font-weight: bold;" t-esc="o.sale_id.name or o.return_id.sale_id.name or (pos_lite_order and pos_lite_order.name) or ''"/>
+                         </div>
 
 
 
-
-
-                         <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black; margin-top: 15px;">
+                         <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black; margin-top: 2px;">
                             <!-- กล่องที่ 1: 35% -->
                             <div style="width: 35%; border-right: 1px solid black; padding: 8px;">
                                 <div><strong>รายละเอียดลูกค้า</strong></div>
                                 <hr style="margin: 4px 0; border: 1px solid black;"/>
-                                <div>ชื่อลูกค้า: <t t-esc="o.partner_id.name"/></div>
+                                <div>ชื่อลูกค้า: <t t-esc="o.partner_id.commercial_partner_id.name"/></div>
                                 <div style="margin: 0;">
                                     <strong>ที่อยู่:</strong>
                                     <span t-esc="o.partner_id.street or ''"/>

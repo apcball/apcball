@@ -1,0 +1,2725 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* buz_production_planning
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0-20260119\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-17 01:56+0000\n"
+"PO-Revision-Date: 2026-11-17 01:56+0000\n"
+"Last-Translator: \n"
+"Language-Team: Mogen Co.\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"%(mo)s manufacturing orders, %(bo)s blanket orders, %(po)s purchase orders "
+"(all draft, nothing confirmed)."
+msgstr ""
+"ใบสั่งผลิต %(mo)s ใบ, Blanket Order %(bo)s ใบ, ใบสั่งซื้อ %(po)s ใบ "
+"(เป็นฉบับร่างทั้งหมด ยังไม่มีการยืนยัน)"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid ""
+"%(msg)s %(left)s manufacturing orders remain: click Apply Schedule again."
+msgstr ""
+"%(msg)s ยังเหลือใบสั่งผลิต %(left)s ใบ: กด 'ปรับใช้ตารางเวลา' อีกครั้ง"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_product_param.py:0
+#, python-format
+msgid "%(n)s line(s) updated from history since %(d)s."
+msgstr "อัปเดต %(n)s รายการจากประวัติตั้งแต่ %(d)s"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/mrp_netting.py:0
+#, python-format
+msgid ""
+"%(product)s: needs %(qty)s but its production line %(line)s is not selected "
+"in this plan, so nothing is suggested for it or its components."
+msgstr ""
+"%(product)s: ต้องการ %(qty)s แต่สายผลิต %(line)s ไม่ได้เลือกไว้ในแผนนี้ "
+"จึงไม่มีข้อเสนอสำหรับสินค้านี้และวัตถุดิบของมัน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "%s RFQs"
+msgstr "ใบขอราคา (RFQ) %s ใบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "%s blanket orders"
+msgstr "Blanket Order %s ใบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "%s manufacturing orders"
+msgstr "ใบสั่งผลิต %s ใบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/mrp_netting.py:0
+#, python-format
+msgid "%s: marked Make but has no BoM."
+msgstr "%s: ตั้งเป็น 'ผลิต' แต่ไม่มี BoM"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/mrp_netting.py:0
+#, python-format
+msgid "%s: no vendor configured."
+msgstr "%s: ยังไม่ได้กำหนดผู้ขาย"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/mrp_netting.py:0
+#, python-format
+msgid "(none)"
+msgstr "(ไม่มี)"
+
+#. module: buz_production_planning
+#: model_terms:ir.actions.act_window,help:buz_production_planning.action_buz_plan_run
+msgid ""
+"1. Create a plan: choose the start date, the horizon and the warehouses.<br>\n"
+"                2. Compute Plan: the system suggests what to make and what to buy.<br>\n"
+"                3. Review the suggestions, then Create Documents: draft manufacturing orders and\n"
+"                blanket orders (or RFQs). Nothing is confirmed.<br>\n"
+"                4. Schedule the workorders, check the Gantt, then Apply Schedule."
+msgstr ""
+"1. สร้างแผน: เลือกวันที่เริ่ม ช่วงเวลาที่วางแผน และคลังสินค้า<br>\n"
+"                2. กด คำนวณแผน: ระบบจะเสนอว่าควรผลิตอะไรและควรซื้ออะไร<br>\n"
+"                3. ตรวจสอบข้อเสนอ แล้วกด สร้างเอกสาร: ระบบสร้างใบสั่งผลิตและ Blanket Order (หรือ RFQ) เป็นฉบับร่าง ยังไม่มีการยืนยัน<br>\n"
+"                4. จัดตารางใบสั่งงาน ตรวจดูใน Gantt แล้วกด ปรับใช้ตารางเวลา"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_mrp_production_form_buz_plan
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_purchase_order_form_buz_plan
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_purchase_requisition_form_buz_plan
+msgid "<span class=\"o_stat_text\">Production Plan</span>"
+msgstr "<span class=\"o_stat_text\">แผนการผลิต</span>"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "A plan that is done cannot be cancelled."
+msgstr "แผนที่เสร็จสิ้นแล้วไม่สามารถยกเลิกได้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__action
+msgid "Action"
+msgstr "การดำเนินการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_needaction
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_needaction
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_needaction
+msgid "Action Needed"
+msgstr "ต้องดำเนินการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_ids
+msgid "Activities"
+msgstr "กิจกรรม"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr "การตกแต่งกิจกรรมที่มีข้อยกเว้น"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_state
+msgid "Activity State"
+msgstr "สถานะกิจกรรม"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_type_icon
+msgid "Activity Type Icon"
+msgstr "ไอคอนประเภทกิจกรรม"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__ratio
+msgid "Actual / Expected"
+msgstr "จริง / คาดการณ์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__actual_minutes_per_unit
+msgid "Actual min/unit"
+msgstr "จริง นาที/หน่วย"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "All production lines"
+msgstr "สายผลิตทั้งหมด"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "All steps are done. The schedule is applied."
+msgstr "ครบทุกขั้นตอนแล้ว ตารางเวลาถูกปรับใช้เรียบร้อย"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "All suggestions must belong to plan %s."
+msgstr "ข้อเสนอทั้งหมดต้องอยู่ในแผน %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "All workcenters"
+msgstr "ศูนย์งานทั้งหมด"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Already has a document, skipped: %s. Nothing to do."
+msgstr "มีเอกสารอยู่แล้ว ข้ามไป: %s รายการ ไม่ต้องทำอะไร"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_schedule_line__state__applied
+msgid "Applied"
+msgstr "ปรับใช้แล้ว"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid ""
+"Applied %(done)s workorder dates. Skipped %(skip)s (in progress, no longer "
+"open, or their manufacturing order already has done stock moves). %(left)s "
+"manufacturing orders still to apply."
+msgstr ""
+"ปรับใช้วันที่ใบสั่งงานแล้ว %(done)s รายการ ข้าม %(skip)s รายการ (กำลังทำงาน "
+"ไม่เปิดแล้ว หรือใบสั่งผลิตมีการเคลื่อนไหวสต็อกที่เสร็จแล้ว) "
+"ยังเหลือใบสั่งผลิตที่ต้องปรับใช้ %(left)s ใบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Applied %s workorder dates."
+msgstr "ปรับใช้วันที่ใบสั่งงานแล้ว %s รายการ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__next_step__apply
+#, python-format
+msgid "Apply"
+msgstr "ปรับใช้"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Apply Schedule"
+msgstr "ปรับใช้ตารางเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.js:0
+#, python-format
+msgid "Apply schedule"
+msgstr "ปรับใช้ตารางเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.js:0
+#, python-format
+msgid "Applying… %s workorders done, %s manufacturing orders left."
+msgstr "กำลังปรับใช้… ใบสั่งงานเสร็จแล้ว %s รายการ เหลือใบสั่งผลิต %s ใบ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_form
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_tree
+msgid "Approve"
+msgstr "อนุมัติ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__state__approved
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Approved"
+msgstr "อนุมัติแล้ว"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_attachment_count
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_attachment_count
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_attachment_count
+msgid "Attachment Count"
+msgstr "จำนวนไฟล์แนบ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__supply_method__auto
+msgid "Automatic (BoM → make, else buy)"
+msgstr "อัตโนมัติ (มี BoM → ผลิต, ไม่มี → ซื้อ)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__forecast_method__avg
+msgid "Average of past deliveries"
+msgstr "ค่าเฉลี่ยการส่งของที่ผ่านมา"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__batch_multiple
+msgid "Batch Multiple"
+msgstr "ทวีคูณของล็อต"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_product_param_batch_multiple_positive
+msgid "Batch multiple cannot be negative."
+msgstr "ทวีคูณของล็อตต้องไม่ติดลบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/mrp_netting.py:0
+#, python-format
+msgid ""
+"Bill of materials loop detected: %s. Remove the circular component from one "
+"of these BoMs and compute again."
+msgstr ""
+"พบ BoM วนลูป: %s ให้นำส่วนประกอบที่วนกลับออกจาก BoM ใดBoM หนึ่ง "
+"แล้วคำนวณใหม่"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__requisition_id
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_create_documents_wizard__buy_document__bo
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Blanket Order"
+msgstr "Blanket Order"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid "Blanket Order (draft)"
+msgstr "Blanket Order (ฉบับร่าง)"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Blanket Order (draft) - %s"
+msgstr "Blanket Order (ฉบับร่าง) - %s"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__requisition_line_id
+msgid "Blanket Order Line"
+msgstr "รายการ Blanket Order"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_create_documents_wizard__buy_document
+msgid ""
+"Blanket Order: an agreement with the vendor, purchasing issues the purchase "
+"orders from it later. RFQ: one draft purchase order per vendor, now."
+msgstr ""
+"Blanket Order: ข้อตกลงกับผู้ขาย "
+"ฝ่ายจัดซื้อจะออกใบสั่งซื้อจากข้อตกลงนี้ภายหลัง RFQ: "
+"ใบสั่งซื้อฉบับร่างหนึ่งใบต่อผู้ขาย สร้างทันที"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_create_documents_wizard_form
+msgid ""
+"Blanket Order: an agreement with the vendor. One draft per vendor. Purchasing\n"
+"                        reviews prices, confirms it and issues purchase orders from it later."
+msgstr ""
+"Blanket Order: ข้อตกลงกับผู้ขาย สร้างฉบับร่างหนึ่งใบต่อผู้ขาย "
+"ฝ่ายจัดซื้อตรวจราคา ยืนยัน แล้วออกใบสั่งซื้อจากข้อตกลงนี้ภายหลัง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__requisition_count
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Blanket Orders"
+msgstr "Blanket Order"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Blanket orders (draft): %(bo)s for %(lines)s lines"
+msgstr "Blanket Order (ฉบับร่าง): %(bo)s ใบ รวม %(lines)s รายการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__requisition_count
+msgid "Blanket orders created from this plan."
+msgstr "Blanket Order ที่สร้างจากแผนนี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__level
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "BoM Level"
+msgstr "ระดับ BoM"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__bom_id
+msgid "Bom"
+msgstr "BoM"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__bucket_start
+msgid "Bucket Start"
+msgstr "เริ่มช่วงสัปดาห์"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__supply_method__buy
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__action__buy
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Buy"
+msgstr "ซื้อ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__buy_document
+msgid "Buy Suggestions Become"
+msgstr "ข้อเสนอแบบซื้อจะกลายเป็น"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_create_documents_wizard_form
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Cancel"
+msgstr "ยกเลิก"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__state__cancel
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__document_state__cancel
+msgid "Cancelled"
+msgstr "ยกเลิกแล้ว"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__company_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__company_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__company_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__company_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__company_id
+msgid "Company"
+msgstr "บริษัท"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__next_step__compute
+msgid "Compute"
+msgstr "คำนวณ"
+
+#. module: buz_production_planning
+#: model:ir.actions.server,name:buz_production_planning.action_buz_plan_product_param_compute
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_form
+msgid "Compute Defaults from History"
+msgstr "คำนวณค่าเริ่มต้นจากประวัติ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Compute Plan"
+msgstr "คำนวณแผน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__state__computed
+msgid "Computed"
+msgstr "คำนวณแล้ว"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid ""
+"Computed: %(s)s suggestions, %(d)s demand lines, %(p)s products planned."
+msgstr ""
+"คำนวณแล้ว: ข้อเสนอ %(s)s รายการ, ความต้องการ %(d)s บรรทัด, วางแผน %(p)s "
+"สินค้า"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_res_config_settings
+msgid "Config Settings"
+msgstr "ตั้งค่าการกำหนดค่า"
+
+#. module: buz_production_planning
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_config
+msgid "Configuration"
+msgstr "การตั้งค่า"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__state__confirmed
+msgid "Confirmed"
+msgstr "ยืนยันแล้ว"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_create_documents
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_create_documents_from_suggestions
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_create_documents_wizard_form
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Create Documents"
+msgstr "สร้างเอกสาร"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_buz_plan_create_documents_wizard
+msgid "Create MO / PO Drafts from Plan Suggestions"
+msgstr "สร้างฉบับร่างใบสั่งผลิต / ใบสั่งซื้อจากข้อเสนอของแผน"
+
+#. module: buz_production_planning
+#: model_terms:ir.actions.act_window,help:buz_production_planning.action_buz_plan_run
+msgid "Create your first production plan"
+msgstr "สร้างแผนการผลิตแผนแรกของคุณ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"Created %(mo)s draft manufacturing orders, %(bo)s draft blanket orders and "
+"%(po)s draft purchase orders."
+msgstr ""
+"สร้างใบสั่งผลิตฉบับร่าง %(mo)s ใบ, Blanket Order ฉบับร่าง %(bo)s ใบ "
+"และใบสั่งซื้อฉบับร่าง %(po)s ใบ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__create_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__create_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__create_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__create_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__create_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__create_uid
+msgid "Created by"
+msgstr "สร้างโดย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__create_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__create_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__create_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__create_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__create_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__create_date
+msgid "Created on"
+msgstr "สร้างเมื่อ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Data before this date is never used for averages or forecasts."
+msgstr "ข้อมูลก่อนวันที่นี้จะไม่ถูกใช้คำนวณค่าเฉลี่ยหรือพยากรณ์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_res_config_settings__plan_history_cutoff
+msgid "Data before this date is never used for forecasts or averages."
+msgstr "ข้อมูลก่อนวันที่นี้จะไม่ถูกใช้คำนวณพยากรณ์หรือค่าเฉลี่ย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__date_end
+msgid "Date End"
+msgstr "วันที่สิ้นสุด"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__date_from
+msgid "Date From"
+msgstr "วันที่เริ่ม"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__date_start
+msgid "Date Start"
+msgstr "วันที่เริ่ม"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__date_to
+msgid "Date To"
+msgstr "วันที่สิ้นสุด"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "Day"
+msgstr "วัน"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Default Lead Times"
+msgstr "ระยะเวลานำเริ่มต้น"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_lead_make_days
+msgid "Default Manufacturing Lead Time (days)"
+msgstr "ระยะเวลานำการผลิตเริ่มต้น (วัน)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_lead_buy_days
+msgid "Default Purchase Lead Time (days)"
+msgstr "ระยะเวลานำการจัดซื้อเริ่มต้น (วัน)"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_product_param.py:0
+#, python-format
+msgid "Defaults computed"
+msgstr "คำนวณค่าเริ่มต้นแล้ว"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Defaults for new plans (weeks)."
+msgstr "ค่าเริ่มต้นของแผนใหม่ (สัปดาห์)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_demand_line__source__delivery
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_demand_line_search
+msgid "Delivery"
+msgstr "การส่งมอบ"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_demand_line
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_demand
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Demand"
+msgstr "ความต้องการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__demand_line_ids
+msgid "Demand Line"
+msgstr "บรรทัดความต้องการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__demand_qty
+msgid "Demand Qty"
+msgstr "จำนวนความต้องการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_demand_line__source__dependent
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_demand_line_search
+msgid "Dependent"
+msgstr "ความต้องการต่อเนื่อง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__display_name
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__display_name
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__display_name
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__display_name
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__display_name
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__display_name
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__display_name
+msgid "Display Name"
+msgstr "ชื่อที่แสดง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__supply_method__none
+msgid "Do not plan"
+msgstr "ไม่วางแผน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__document_ref
+msgid "Document"
+msgstr "เอกสาร"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__document_state
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Document Status"
+msgstr "สถานะเอกสาร"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__document_count
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_form
+msgid "Documents"
+msgstr "เอกสาร"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__document_count
+msgid ""
+"Documents (manufacturing orders, blanket orders, RFQs) created from this "
+"plan."
+msgstr "เอกสาร (ใบสั่งผลิต, Blanket Order, RFQ) ที่สร้างจากแผนนี้"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Documents created"
+msgstr "สร้างเอกสารแล้ว"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__next_step__done
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__state__done
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__document_state__done
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__state__done
+msgid "Done"
+msgstr "เสร็จสิ้น"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__wo_count
+msgid "Done Workorders"
+msgstr "ใบสั่งงานที่เสร็จแล้ว"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__state__draft
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__document_state__draft
+msgid "Draft"
+msgstr "ฉบับร่าง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__duration_minutes
+msgid "Duration Minutes"
+msgstr "ระยะเวลา (นาที)"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Duration Rules"
+msgstr "กฎการคำนวณระยะเวลา"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__duration_source
+msgid "Duration Source"
+msgstr "แหล่งที่มาของระยะเวลา"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_schedule_line__duration_source__expected
+msgid "Expected"
+msgstr "ตามที่คาดการณ์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_expected_factor
+msgid "Expected Duration Factor"
+msgstr "ตัวคูณระยะเวลาที่คาดการณ์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__expected_minutes_per_unit
+msgid "Expected min/unit"
+msgstr "คาดการณ์ นาที/หน่วย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__explanation
+msgid "Explanation"
+msgstr "คำอธิบาย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_follower_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_follower_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_follower_ids
+msgid "Followers"
+msgstr "ผู้ติดตาม"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_partner_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_partner_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_partner_ids
+msgid "Followers (Partners)"
+msgstr "ผู้ติดตาม (พาร์ทเนอร์)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr "ไอคอน Font awesome เช่น fa-tasks"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_demand_line__source__forecast
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_demand_line_search
+msgid "Forecast"
+msgstr "พยากรณ์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_lookback_weeks
+msgid "Forecast Look-back (weeks)"
+msgstr "ย้อนหลังสำหรับพยากรณ์ (สัปดาห์)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__forecast_lookback_weeks
+msgid "Forecast Lookback Weeks"
+msgstr "ย้อนหลังสำหรับพยากรณ์ (สัปดาห์)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__forecast_method
+msgid "Forecast Method"
+msgstr "วิธีพยากรณ์"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Forecast and History"
+msgstr "พยากรณ์และประวัติ"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_run_lookback_positive
+msgid "Forecast look-back cannot be negative."
+msgstr "จำนวนสัปดาห์ย้อนหลังสำหรับพยากรณ์ต้องไม่ติดลบ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_gantt
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Gantt"
+msgstr "Gantt"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_demand_line_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_schedule_line_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Group By"
+msgstr "จัดกลุ่มตาม"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Has Document"
+msgstr "มีเอกสารแล้ว"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__has_message
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__has_message
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__has_message
+msgid "Has Message"
+msgstr "มีข้อความ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_schedule_line__duration_source__history
+msgid "History"
+msgstr "ประวัติ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "History Cut-off"
+msgstr "วันตัดข้อมูลประวัติ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_history_cutoff
+msgid "History Cut-off Date"
+msgstr "วันตัดข้อมูลประวัติ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid ""
+"History is used when an operation has at least this many done workorders; "
+"otherwise expected duration × factor."
+msgstr ""
+"ใช้ประวัติเมื่อการดำเนินการมีใบสั่งงานที่เสร็จแล้วอย่างน้อยตามจำนวนนี้ "
+"มิฉะนั้นใช้เวลาที่คาดการณ์ × ตัวคูณ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__horizon_weeks
+msgid "Horizon Weeks"
+msgstr "ขอบเขตเวลา (สัปดาห์)"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Horizon and Look-back"
+msgstr "ขอบเขตเวลาและการย้อนหลัง"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_run_horizon_positive
+msgid "Horizon must be at least 1 week."
+msgstr "ขอบเขตเวลาต้องไม่น้อยกว่า 1 สัปดาห์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__horizon_weeks
+msgid ""
+"How many weeks ahead the plan looks. Demand and supply are netted week by "
+"week."
+msgstr ""
+"จำนวนสัปดาห์ล่วงหน้าที่แผนมองไป ระบบหักลบความต้องการกับของที่มีทีละสัปดาห์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__id
+msgid "ID"
+msgstr "ID"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_exception_icon
+msgid "Icon"
+msgstr "ไอคอน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr "ไอคอนที่แสดงกิจกรรมที่มีข้อยกเว้น"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_product_param__message_needaction
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__message_needaction
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr "หากเลือก ข้อความใหม่ต้องการความสนใจจากคุณ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_product_param__message_has_error
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_product_param__message_has_sms_error
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__message_has_error
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__message_has_sms_error
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__message_has_error
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr "หากเลือก ข้อความบางรายการส่งไม่สำเร็จ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__document_state__open
+msgid "In Progress"
+msgstr "กำลังดำเนินการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__incoming_qty
+msgid "Incoming Qty"
+msgstr "จำนวนที่กำลังเข้า"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_is_follower
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_is_follower
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_is_follower
+msgid "Is Follower"
+msgstr "เป็นผู้ติดตาม"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__is_late
+msgid "Is Late"
+msgstr "ล่าช้า"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__is_locked
+msgid "Is Locked"
+msgstr "ถูกล็อก"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__is_manual
+msgid "Is Manual"
+msgstr "กำหนดด้วยมือ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__write_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__write_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__write_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__write_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__write_uid
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__write_uid
+msgid "Last Updated by"
+msgstr "ปรับปรุงล่าสุดโดย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__write_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__write_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__write_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__write_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__write_date
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__write_date
+msgid "Last Updated on"
+msgstr "ปรับปรุงล่าสุดเมื่อ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__late_suggestion_count
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__is_late
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_schedule_line_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Late"
+msgstr "ล่าช้า"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "Late only"
+msgstr "เฉพาะที่ล่าช้า"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_form
+msgid "Lead Times"
+msgstr "ระยะเวลานำ"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_load_capacity
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_load
+msgid "Load vs Capacity"
+msgstr "โหลดเทียบกับกำลังการผลิต"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_schedule_line_search
+msgid "Locked"
+msgstr "ล็อก"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__supply_method__make
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__action__make
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Make"
+msgstr "ผลิต"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__forecast_method__manual
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_schedule_line_search
+msgid "Manual"
+msgstr "กำหนดเอง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__qty_manual
+msgid "Manual Qty"
+msgstr "จำนวนที่กำหนดเอง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__lead_time_make_days
+msgid "Manufacturing Lead Time (days)"
+msgstr "ระยะเวลานำการผลิต (วัน)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__production_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__production_id
+msgid "Manufacturing Order"
+msgstr "ใบสั่งผลิต"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__production_count
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Manufacturing Orders"
+msgstr "ใบสั่งผลิต"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Manufacturing orders (draft): %s"
+msgstr "ใบสั่งผลิต (ฉบับร่าง): %s"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__production_count
+msgid "Manufacturing orders created from this plan."
+msgstr "ใบสั่งผลิตที่สร้างจากแผนนี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_has_error
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_has_error
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_has_error
+msgid "Message Delivery error"
+msgstr "ข้อผิดพลาดในการส่งข้อความ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_ids
+msgid "Messages"
+msgstr "ข้อความ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__min_batch_qty
+msgid "Minimum Batch Qty"
+msgstr "จำนวนล็อตขั้นต่ำ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_min_history_wo
+msgid "Minimum Workorders for Reliable History"
+msgstr "จำนวนใบสั่งงานขั้นต่ำที่ถือว่าประวัติเชื่อถือได้"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_product_param_min_batch_positive
+msgid "Minimum batch qty cannot be negative."
+msgstr "จำนวนล็อตขั้นต่ำต้องไม่ติดลบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid ""
+"More than the shortage because of the minimum batch, batch multiple or unit "
+"rounding."
+msgstr ""
+"มากกว่าจำนวนที่ขาดเพราะมีขั้นต่ำต่อรอบ การปัดเป็นทวีคูณ "
+"หรือการปัดเศษตามหน่วย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_res_config_settings__plan_expected_factor
+msgid ""
+"Multiplier applied to the expected duration when an operation has no "
+"reliable history."
+msgstr ""
+"ตัวคูณที่ใช้กับเวลาที่คาดการณ์เมื่อการดำเนินการไม่มีประวัติที่เชื่อถือได้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr "กำหนดเวลากิจกรรมของฉัน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__name
+msgid "Name"
+msgstr "ชื่อ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__date_need
+msgid "Needed By"
+msgstr "วันที่ต้องการของ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Needs attention"
+msgstr "ต้องตรวจสอบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "New"
+msgstr "ใหม่"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "Next"
+msgstr "ถัดไป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_calendar_event_id
+msgid "Next Activity Calendar Event"
+msgstr "กิจกรรมปฏิทินถัดไป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr "กำหนดเวลากิจกรรมถัดไป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_summary
+msgid "Next Activity Summary"
+msgstr "สรุปกิจกรรมถัดไป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_type_id
+msgid "Next Activity Type"
+msgstr "ประเภทกิจกรรมถัดไป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__next_step_hint
+msgid "Next Step"
+msgstr "ขั้นตอนถัดไป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__document_state__none
+msgid "No Document"
+msgstr "ยังไม่มีเอกสาร"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "No Document Yet"
+msgstr "ยังไม่มีเอกสาร"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "No Vendor"
+msgstr "ไม่มีผู้ขาย"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "No analytic distribution found: %s"
+msgstr "ไม่พบการกระจายบัญชีวิเคราะห์: %s"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"No analytic distribution found: %s. Fill it in on the blanket order line, "
+"otherwise the purchase orders issued from it will be refused."
+msgstr ""
+"ไม่พบการกระจายบัญชีวิเคราะห์: %s กรุณากรอกในรายการ Blanket Order "
+"มิฉะนั้นใบสั่งซื้อที่ออกจากรายการนี้จะถูกปฏิเสธ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"No blanket order type is configured. In Purchase > Configuration > Agreement"
+" Types, create a type with Quantities = 'Set quantities manually'."
+msgstr ""
+"ยังไม่ได้ตั้งค่าประเภท Blanket Order ที่ จัดซื้อ > การกำหนดค่า > "
+"ประเภทข้อตกลง ให้สร้างประเภทที่กำหนด จำนวน = 'Set quantities manually'"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid "No document has been created from this suggestion yet."
+msgstr "ยังไม่มีเอกสารที่สร้างจากข้อเสนอนี้"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid ""
+"No plan has a schedule yet. Open a plan, click Schedule, then come back "
+"here."
+msgstr ""
+"ยังไม่มีแผนใดที่จัดตารางเวลา เปิดแผน กด 'จัดตารางเวลา' แล้วกลับมาที่นี่"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "No price found (price 0): %s"
+msgstr "ไม่พบราคา (ราคา 0): %s"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"No price found, the line is created with price 0: %s. Enter the price before"
+" purchasing confirms the blanket order."
+msgstr ""
+"ไม่พบราคา สร้างรายการด้วยราคา 0: %s กรุณากรอกราคาก่อนที่ฝ่ายจัดซื้อจะยืนยัน "
+"Blanket Order"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"No production line, cannot create: %s. Set 'Production Line' in Product "
+"Parameters."
+msgstr ""
+"ไม่มีสายการผลิต สร้างไม่ได้: %s กรุณาตั้ง 'สายการผลิต' ในพารามิเตอร์สินค้า"
+
+#. module: buz_production_planning
+#: model_terms:ir.actions.act_window,help:buz_production_planning.action_buz_plan_suggestion
+msgid "No suggestions to review"
+msgstr "ไม่มีข้อเสนอให้ตรวจสอบ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"No vendor, not created: %s. Set a vendor on the suggestion or on the "
+"product, then create again."
+msgstr ""
+"ไม่มีผู้ขาย จึงไม่ได้สร้าง: %s กรุณาระบุผู้ขายในข้อเสนอหรือในสินค้า "
+"แล้วสร้างอีกครั้ง"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/scheduler.py:0
+#, python-format
+msgid ""
+"No working time found within 700 days after %s. Check the working schedule "
+"of the workcenter."
+msgstr "ไม่พบเวลาทำงานภายใน 700 วันหลัง %s ตรวจสอบตารางเวลาทำงานของศูนย์งาน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_product_param__forecast_method__none
+msgid "None"
+msgstr "ไม่มี"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Not created, %(product)s: %(reason)s"
+msgstr "ไม่ได้สร้าง %(product)s: %(reason)s"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Not created: %(skip)s. See the plan's chatter for the reasons."
+msgstr "ไม่ได้สร้าง: %(skip)s รายการ ดูเหตุผลได้ที่ประวัติการสนทนาของแผน"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
+msgid "Not planned"
+msgstr "ไม่ได้วางแผน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Nothing to apply: schedule plan %s first."
+msgstr "ไม่มีอะไรให้ปรับใช้: จัดตารางเวลาแผน %s ก่อน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_needaction_counter
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_needaction_counter
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_needaction_counter
+msgid "Number of Actions"
+msgstr "จำนวนการดำเนินการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_has_error_counter
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_has_error_counter
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_has_error_counter
+msgid "Number of errors"
+msgstr "จำนวนข้อผิดพลาด"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_product_param__message_needaction_counter
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__message_needaction_counter
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr "จำนวนข้อความที่ต้องดำเนินการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_product_param__message_has_error_counter
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__message_has_error_counter
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "จำนวนข้อความที่ส่งไม่สำเร็จ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_form
+msgid "Numbers"
+msgstr "ตัวเลข"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid ""
+"On hand %(onhand)s + incoming %(incoming)s + earlier suggestions %(earlier)s"
+" - demand %(demand)s = %(projected)s (short by %(short)s). Suggested: "
+"%(verb)s %(qty)s %(uom)s."
+msgstr "คงเหลือ %(onhand)s + กำลังเข้า %(incoming)s + ข้อเสนอก่อนหน้า %(earlier)s - ความต้องการ %(demand)s = %(projected)s (ขาด %(short)s) ข้อเสนอ: %(verb)s %(qty)s %(uom)s"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid ""
+"On hand %(onhand)s + incoming %(incoming)s - demand %(demand)s = "
+"%(projected)s (short by %(short)s). Suggested: %(verb)s %(qty)s %(uom)s."
+msgstr ""
+"คงเหลือ %(onhand)s + กำลังเข้า %(incoming)s - ความต้องการ %(demand)s = "
+"%(projected)s (ขาด %(short)s) ข้อเสนอ: %(verb)s %(qty)s %(uom)s"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__onhand_qty
+msgid "Onhand Qty"
+msgstr "จำนวนคงคลัง"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Only Planning / Manager can apply a schedule to workorders."
+msgstr "เฉพาะ Planning / Manager เท่านั้นที่ปรับใช้ตารางเวลากับใบสั่งงานได้"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_create_documents_wizard_form
+msgid ""
+"Only drafts are created: draft manufacturing orders (Make) and draft blanket orders\n"
+"                    or RFQs (Buy). Nothing is confirmed or reserved. Proposed suggestions in the list\n"
+"                    are approved first."
+msgstr ""
+"สร้างเฉพาะฉบับร่าง: ใบสั่งผลิตฉบับร่าง (ผลิต) และ Blanket Order หรือ RFQ "
+"ฉบับร่าง (ซื้อ) ไม่มีการยืนยันหรือจองสินค้า ข้อเสนอที่ยังเป็น \"เสนอ\" "
+"ในรายการจะถูกอนุมัติก่อน"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_form
+msgid "Open Document"
+msgstr "เปิดเอกสาร"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Open Gantt"
+msgstr "เปิด Gantt"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__late_suggestion_count
+msgid "Open suggestions that should already have been released."
+msgstr "ข้อเสนอที่ยังไม่ได้ดำเนินการและควรปล่อยงานไปแล้ว"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_tree
+msgid "Open the document"
+msgstr "เปิดเอกสาร"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__operation_id
+msgid "Operation"
+msgstr "การดำเนินการ"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_operation_time
+#: model:ir.model,name:buz_production_planning.model_buz_plan_operation_time
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_optime
+msgid "Operation Time History"
+msgstr "ประวัติเวลาของการดำเนินการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__date_release
+msgid "Order / Start By"
+msgstr "วันที่ปล่อยงาน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__origin_ref
+msgid "Origin"
+msgstr "ต้นทาง"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/gantt.py:0
+#, python-format
+msgid "Other"
+msgstr "อื่นๆ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__parent_suggestion_id
+msgid "Pegged To"
+msgstr "ผูกกับ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Plan %s can only be computed while it is Draft, Computed or Confirmed."
+msgstr "แผน %s คำนวณได้เฉพาะตอนเป็นฉบับร่าง คำนวณแล้ว หรือยืนยันแล้วเท่านั้น"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Plan %s is cancelled."
+msgstr "แผน %s ถูกยกเลิกแล้ว"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Plan %s must be computed before documents can be created."
+msgstr "ต้องคำนวณแผน %s ก่อนจึงจะสร้างเอกสารได้"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_buz_plan_demand_line
+msgid "Plan Demand Line"
+msgstr "บรรทัดความต้องการของแผน"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_buz_plan_schedule_line
+msgid "Plan Schedule Line"
+msgstr "บรรทัดตารางเวลาของแผน"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_buz_plan_suggestion
+msgid "Plan Suggestion (Make / Buy)"
+msgstr "ข้อเสนอของแผน (ผลิต / ซื้อ)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_manufacturing_report__buz_plan_suggestion_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_mrp_production__buz_plan_suggestion_ids
+msgid "Plan Suggestions"
+msgstr "ข้อเสนอของแผน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__picking_type_ids
+msgid ""
+"Plan only products made on these production lines. Leave empty to plan every"
+" line."
+msgstr "จำกัดแผนให้เฉพาะสายผลิตเหล่านี้ ว่าง = ทั้งหมด"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__user_id
+msgid "Planner"
+msgstr "ผู้วางแผน"
+
+#. module: buz_production_planning
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_root
+msgid "Planning"
+msgstr "วางแผนการผลิต"
+
+#. module: buz_production_planning
+#: model:res.groups,name:buz_production_planning.group_plan_manager
+msgid "Planning / Manager"
+msgstr "Planning / Manager"
+
+#. module: buz_production_planning
+#: model:res.groups,name:buz_production_planning.group_plan_user
+msgid "Planning / User"
+msgstr "Planning / User"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_horizon_weeks
+msgid "Planning Horizon (weeks)"
+msgstr "ขอบเขตการวางแผน (สัปดาห์)"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_product_param_product_company_uniq
+msgid "Planning parameters already exist for this product in this company."
+msgstr "มีพารามิเตอร์การวางแผนของสินค้านี้ในบริษัทนี้อยู่แล้ว"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/res_config_settings.py:0
+#, python-format
+msgid ""
+"Planning setting 'History cut-off date' is not a valid date (%s). Fix it in "
+"Production Planning > Configuration > Settings."
+msgstr ""
+"การตั้งค่าแผน 'วันตัดข้อมูลประวัติ' ไม่ใช่วันที่ที่ถูกต้อง (%s) แก้ไขที่ "
+"วางแผนการผลิต > การตั้งค่า > การตั้งค่า"
+
+#. module: buz_production_planning
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_run
+msgid "Plans"
+msgstr "แผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "Previous"
+msgstr "ก่อนหน้า"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__product_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__product_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__product_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__product_id
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_demand_line_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_form
+msgid "Product"
+msgstr "สินค้า"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_product_param
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_param
+msgid "Product Parameters"
+msgstr "พารามิเตอร์สินค้า"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_buz_plan_product_param
+msgid "Product Planning Parameters"
+msgstr "พารามิเตอร์การวางแผนของสินค้า"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__picking_type_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__picking_type_id
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Production Line"
+msgstr "สายผลิต"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__picking_type_ids
+msgid "Production Lines"
+msgstr "สายผลิต"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_mrp_production
+msgid "Production Order"
+msgstr "คำสั่งผลิต"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/mrp_production.py:0
+#: code:addons/buz_production_planning/models/purchase_order.py:0
+#: code:addons/buz_production_planning/models/purchase_requisition.py:0
+#: model:ir.model,name:buz_production_planning.model_buz_plan_run
+#: model:ir.model.fields,field_description:buz_production_planning.field_manufacturing_report__buz_plan_run_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_mrp_production__buz_plan_run_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_purchase_order__buz_plan_run_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_purchase_requisition__buz_plan_run_id
+#, python-format
+msgid "Production Plan"
+msgstr "แผนการผลิต"
+
+#. module: buz_production_planning
+#: model:ir.module.category,name:buz_production_planning.module_category_buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Production Planning"
+msgstr "วางแผนการผลิต"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_run
+msgid "Production Plans"
+msgstr "แผนการผลิต"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__projected_qty
+msgid "Projected Qty"
+msgstr "จำนวนคงเหลือที่คาดการณ์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_schedule_line__state__proposed
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__state__proposed
+msgid "Proposed"
+msgstr "เสนอ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__lead_time_buy_days
+msgid "Purchase Lead Time (days)"
+msgstr "ระยะเวลานำการจัดซื้อ (วัน)"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_purchase_order
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__purchase_order_id
+msgid "Purchase Order"
+msgstr "ใบสั่งซื้อ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_create_documents_wizard__buy_document__rfq
+msgid "Purchase Order (RFQ)"
+msgstr "ใบสั่งซื้อ (RFQ)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__purchase_count
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Purchase Orders"
+msgstr "ใบสั่งซื้อ"
+
+#. module: buz_production_planning
+#: model:ir.model,name:buz_production_planning.model_purchase_requisition
+msgid "Purchase Requisition"
+msgstr "ใบขอซื้อ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Purchase orders (RFQ, draft): %(po)s for %(lines)s lines"
+msgstr "ใบสั่งซื้อ (RFQ ฉบับร่าง): %(po)s ใบ รวม %(lines)s รายการ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__qty
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__qty
+msgid "Qty"
+msgstr "จำนวน"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_form
+msgid "Quantities"
+msgstr "ปริมาณ"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_demand_line_qty_nonneg
+msgid "Quantities cannot be negative."
+msgstr "ปริมาณต้องไม่ติดลบ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__purchase_line_id
+msgid "RFQ Line"
+msgstr "บรรทัดใบสั่งซื้อ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_create_documents_wizard_form
+msgid "RFQ: one draft purchase order per vendor, to send to the vendor now."
+msgstr "RFQ: ใบสั่งซื้อฉบับร่างหนึ่งใบต่อผู้ขาย เพื่อส่งให้ผู้ขายทันที"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__purchase_count
+msgid ""
+"RFQs created directly by this plan plus the purchase orders issued from its "
+"blanket orders."
+msgstr "RFQ ที่แผนนี้สร้างโดยตรง รวมกับใบสั่งซื้อที่ออกจาก Blanket Order ของแผน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__rating_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__rating_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__rating_ids
+msgid "Ratings"
+msgstr "การให้คะแนน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "Re-schedule"
+msgstr "จัดตารางเวลาใหม่"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_form
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_tree
+msgid "Reject"
+msgstr "ปฏิเสธ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_suggestion__state__rejected
+msgid "Rejected"
+msgstr "ปฏิเสธแล้ว"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_form
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_tree
+msgid "Reset to Proposed"
+msgstr "กลับเป็น 'เสนอ'"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__activity_user_id
+msgid "Responsible User"
+msgstr "ผู้รับผิดชอบ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__next_step__review
+msgid "Review"
+msgstr "ตรวจสอบ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__run_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__run_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__run_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__run_id
+msgid "Run"
+msgstr "รัน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__message_has_sms_error
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__message_has_sms_error
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr "ข้อผิดพลาดในการส่ง SMS"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__safety_stock
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_demand_line__source__safety
+msgid "Safety Stock"
+msgstr "สต็อกสำรองปลอดภัย"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_product_param_safety_stock_positive
+msgid "Safety stock cannot be negative."
+msgstr "สต็อกสำรองปลอดภัยต้องไม่ติดลบ"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_schedule_line
+#: model:ir.model.fields.selection,name:buz_production_planning.selection__buz_plan_run__next_step__schedule
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_schedule
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Schedule"
+msgstr "ตารางเวลา"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__schedule_count
+msgid "Schedule Count"
+msgstr "จำนวนตารางเวลา"
+
+#. module: buz_production_planning
+#. odoo-python
+#. odoo-javascript
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#: model:ir.actions.client,name:buz_production_planning.action_buz_plan_gantt
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Schedule Gantt"
+msgstr "ตาราง Gantt"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__schedule_line_ids
+msgid "Schedule Line"
+msgstr "บรรทัดตารางเวลา"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Schedule applied"
+msgstr "ปรับใช้ตารางเวลาแล้ว"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.js:0
+#, python-format
+msgid "Schedule applied: %s workorders."
+msgstr "ปรับใช้ตารางเวลาแล้ว: ใบสั่งงาน %s รายการ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.js:0
+#, python-format
+msgid "Schedule recomputed."
+msgstr "คำนวณตารางเวลาใหม่แล้ว"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid ""
+"Scheduled %(wo)s workorders of %(mo)s manufacturing orders: %(late)s late, "
+"%(locked)s fixed (in progress, locked or manually placed)."
+msgstr ""
+"จัดตารางเวลาใบสั่งงาน %(wo)s รายการของใบสั่งผลิต %(mo)s ใบ: ล่าช้า %(late)s,"
+" ตรึงไว้ %(locked)s (กำลังทำงาน, ล็อก หรือวางด้วยมือ)"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Scheduling"
+msgstr "การจัดตารางเวลา"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_product_param.py:0
+#, python-format
+msgid "Select at least one product parameter line."
+msgstr "เลือกบรรทัดพารามิเตอร์สินค้าอย่างน้อยหนึ่งรายการ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Select at least one suggestion."
+msgstr "เลือกข้อเสนออย่างน้อยหนึ่งรายการ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Select at least one supply warehouse on plan %s before computing."
+msgstr "เลือกคลังที่นับเป็นสต็อกอย่างน้อยหนึ่งคลังในแผน %s ก่อนคำนวณ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Select suggestions from one plan at a time."
+msgstr "เลือกข้อเสนอจากแผนเดียวกันเท่านั้น"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__sequence
+msgid "Sequence"
+msgstr "ลำดับ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+msgid "Set to Draft"
+msgstr "ตั้งเป็นฉบับร่าง"
+
+#. module: buz_production_planning
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_settings
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_settings
+msgid "Settings"
+msgstr "การตั้งค่า"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__shortage_qty
+msgid "Shortage Qty"
+msgstr "จำนวนที่ขาด"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Skipped, document already created: %s"
+msgstr "ข้าม: สร้างเอกสารแล้ว %s รายการ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Skipped, no vendor: %s"
+msgstr "ข้าม: ไม่มีผู้ขาย %s"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_demand_line__source
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_demand_line_search
+msgid "Source"
+msgstr "แหล่งที่มา"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__date_from
+msgid "Start of the first weekly bucket (Monday of this date's week)."
+msgstr "วันแรกของสัปดาห์แรก (วันจันทร์ของสัปดาห์ที่มีวันที่นี้)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__state
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__state
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__state
+msgid "State"
+msgstr "สถานะ"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_schedule_line_search
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Status"
+msgstr "สถานะ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+"สถานะตามกิจกรรม\n"
+"เกินกำหนด: เลยวันครบกำหนดแล้ว\n"
+"วันนี้: กิจกรรมถึงกำหนดวันนี้\n"
+"วางแผนไว้: กิจกรรมในอนาคต"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__next_step
+msgid "Step"
+msgstr "ขั้นตอน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Step 1 of 4: check the dates and warehouses, then click Compute Plan."
+msgstr "ขั้นตอนที่ 1 จาก 4: ตรวจสอบวันที่และคลังสินค้า แล้วกด คำนวณแผน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid ""
+"Step 2 of 4: review %(n)s suggestions (%(late)s late), then click Create "
+"Documents."
+msgstr ""
+"ขั้นตอนที่ 2 จาก 4: ตรวจสอบข้อเสนอ %(n)s รายการ (ล่าช้า %(late)s รายการ) "
+"แล้วกด สร้างเอกสาร"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Step 3 of 4: %s were created. Click Schedule to plan the workorders."
+msgstr "ขั้นตอนที่ 3 จาก 4: สร้าง %s แล้ว กด ตารางเวลา เพื่อวางแผนใบสั่งงาน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "Step 3 of 4: click Schedule to plan the workorders."
+msgstr "ขั้นตอนที่ 3 จาก 4: กด ตารางเวลา เพื่อวางแผนใบสั่งงาน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid ""
+"Step 4 of 4: check the Gantt, then click Apply Schedule to write the dates "
+"on the workorders."
+msgstr ""
+"ขั้นตอนที่ 4 จาก 4: ตรวจดูใน Gantt แล้วกด ปรับใช้ตารางเวลา "
+"เพื่อเขียนวันที่ลงในใบสั่งงาน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__warehouse_ids
+msgid ""
+"Stock in these warehouses, and receipts into them, count as available "
+"supply."
+msgstr ""
+"สต็อกในคลังเหล่านี้และสินค้าที่จะรับเข้าคลังเหล่านี้ นับเป็นของที่มีพร้อมใช้"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_suggestion_qty_positive
+msgid "Suggested quantity must be greater than zero."
+msgstr "จำนวนที่เสนอต้องมากกว่าศูนย์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__suggestion_ids
+msgid "Suggestion"
+msgstr "ข้อเสนอ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__suggestion_count
+msgid "Suggestion Count"
+msgstr "จำนวนข้อเสนอ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: model:ir.actions.act_window,name:buz_production_planning.action_buz_plan_suggestion
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__suggestion_ids
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_suggestion
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Suggestions"
+msgstr "ข้อเสนอ"
+
+#. module: buz_production_planning
+#: model_terms:ir.actions.act_window,help:buz_production_planning.action_buz_plan_suggestion
+msgid ""
+"Suggestions appear after you click Compute Plan on a production plan.\n"
+"               Review them here, then click Create Documents."
+msgstr ""
+"ข้อเสนอจะแสดงหลังจากกด คำนวณแผน ในแผนการผลิต ตรวจสอบที่นี่ แล้วกด "
+"สร้างเอกสาร"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__open_suggestion_count
+msgid ""
+"Suggestions waiting for a decision: proposed or approved, no document yet."
+msgstr "ข้อเสนอที่รอการตัดสินใจ: เสนอหรืออนุมัติแล้ว แต่ยังไม่มีเอกสาร"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_create_documents_wizard__summary
+msgid "Summary"
+msgstr "สรุป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__supply_method
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_product_param_search
+msgid "Supply Method"
+msgstr "วิธีจัดหา"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__warehouse_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_res_config_settings__plan_supply_warehouse_ids
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Supply Warehouses"
+msgstr "คลังที่นับเป็นสต็อก"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Supply and Lead Times"
+msgstr "สต็อกและระยะเวลานำ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_schedule_line.py:0
+#, python-format
+msgid "That span contains no working time of workcenter %s."
+msgstr "ช่วงเวลานั้นไม่มีเวลาทำงานของศูนย์งาน %s"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__purchase_order_id
+msgid "The RFQ created directly from this Buy suggestion."
+msgstr "RFQ ที่สร้างโดยตรงจากข้อเสนอแบบซื้อนี้"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/mrp_netting.py:0
+#, python-format
+msgid ""
+"The bill of materials of %(product)s is nested more than %(depth)s levels "
+"deep. Flatten the BoM structure or check it for a loop."
+msgstr ""
+"BoM ของ %(product)s ซ้อนกันลึกเกิน %(depth)s ชั้น ให้ปรับโครงสร้าง BoM "
+"ให้แบนลงหรือตรวจสอบว่ามีการวนลูปหรือไม่"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__requisition_id
+msgid ""
+"The blanket order created from this Buy suggestion. Purchasing issues the "
+"purchase orders from it."
+msgstr "Blanket Order ที่สร้างจากข้อเสนอแบบซื้อนี้ ฝ่ายจัดซื้อจะออกใบสั่งซื้อจากข้อตกลงนี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__date_need
+msgid "The date the stock must be available."
+msgstr "วันที่ต้องมีของพร้อมใช้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__date_release
+msgid ""
+"The date to start the manufacturing order or place the purchase so it "
+"arrives in time."
+msgstr "วันที่ต้องเริ่มใบสั่งผลิตหรือสั่งซื้อ เพื่อให้ของมาทันเวลา"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__production_id
+msgid "The draft manufacturing order created from this Make suggestion."
+msgstr "ใบสั่งผลิตฉบับร่างที่สร้างจากข้อเสนอแบบผลิตนี้"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_schedule_line.py:0
+#, python-format
+msgid "The end of a job must be after its start."
+msgstr "เวลาสิ้นสุดของงานต้องอยู่หลังเวลาเริ่ม"
+
+#. module: buz_production_planning
+#: model:ir.model.constraint,message:buz_production_planning.constraint_buz_plan_schedule_line_dates_ordered
+msgid "The end of a schedule line cannot be before its start."
+msgstr "เวลาสิ้นสุดของบรรทัดตารางเวลาต้องไม่อยู่ก่อนเวลาเริ่ม"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.js:0
+#, python-format
+msgid "The job could not be moved."
+msgstr "ไม่สามารถย้ายงานได้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__purchase_line_id
+msgid ""
+"The line of the RFQ created from this Buy suggestion (RFQ choice in Create "
+"Documents)."
+msgstr "รายการของ RFQ ที่สร้างจากข้อเสนอแบบซื้อนี้ (เมื่อเลือก RFQ ในหน้าสร้างเอกสาร)"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__requisition_line_id
+msgid "The line of the draft blanket order created from this Buy suggestion."
+msgstr "รายการของ Blanket Order ฉบับร่างที่สร้างจากข้อเสนอแบบซื้อนี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__document_ref
+msgid ""
+"The manufacturing order, blanket order or purchase order created from this "
+"suggestion."
+msgstr "ใบสั่งผลิต, Blanket Order หรือใบสั่งซื้อที่สร้างจากข้อเสนอนี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_purchase_order__buz_plan_run_id
+msgid ""
+"The production plan that asked for this purchase: through its blanket order,"
+" or directly when the plan created this RFQ."
+msgstr ""
+"แผนการผลิตที่ต้องการการซื้อนี้ ผ่าน Blanket Order ของแผน "
+"หรือโดยตรงเมื่อแผนสร้าง RFQ นี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_purchase_requisition__buz_plan_run_id
+msgid "The production plan whose Buy suggestions created this blanket order."
+msgstr "แผนการผลิตที่ข้อเสนอแบบซื้อของแผนนั้นสร้าง Blanket Order นี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__is_late
+msgid "The release date was already in the past when the plan was computed."
+msgstr "วันที่ปล่อยงานเป็นวันที่ผ่านมาแล้วตอนที่คำนวณแผน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__next_step
+msgid "The step the planner should do next."
+msgstr "ขั้นตอนที่ผู้วางแผนควรทำต่อไป"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/scheduler.py:0
+#, python-format
+msgid "The workcenter queue could not be resolved (too many fixed jobs)."
+msgstr "จัดคิวของศูนย์งานไม่ลงตัว (มีงานที่ตรึงไว้มากเกินไป)"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid ""
+"These products have no production line. Set 'Production Line' in Production Planning > Configuration > Product Parameters, then compute the plan again:\n"
+"%s"
+msgstr ""
+"สินค้าเหล่านี้ไม่มีสายผลิต กำหนด 'สายผลิต' ที่ วางแผนการผลิต > การตั้งค่า > พารามิเตอร์สินค้า แล้วคำนวณแผนใหม่:\n"
+"%s"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid "These suggestions are not in a state that allows this action: %s"
+msgstr "ข้อเสนอเหล่านี้อยู่ในสถานะที่ทำรายการนี้ไม่ได้: %s"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_schedule_line.py:0
+#, python-format
+msgid ""
+"This job is locked (in progress or locked by a planner) and cannot be moved."
+msgstr "งานนี้ถูกล็อก (กำลังทำงานหรือถูกล็อกโดยผู้วางแผน) จึงย้ายไม่ได้"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_run.py:0
+#, python-format
+msgid "This plan is cancelled. Click Set to Draft to use it again."
+msgstr "แผนนี้ถูกยกเลิก กด ตั้งเป็นฉบับร่าง เพื่อใช้งานอีกครั้ง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.js:0
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_run_form
+#, python-format
+msgid ""
+"This writes the planned start and end dates on the real workorders and moves"
+" the manufacturing order dates. Continue?"
+msgstr ""
+"การดำเนินการนี้จะเขียนวันเริ่มและวันสิ้นสุดที่วางแผนไว้ลงในใบสั่งงานจริง "
+"และย้ายวันที่ของใบสั่งผลิต ดำเนินการต่อหรือไม่?"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__open_suggestion_count
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "To Review"
+msgstr "รอตรวจสอบ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "Today"
+msgstr "วันนี้"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr "ประเภทของกิจกรรมที่มีข้อยกเว้นในระเบียน"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__uom_id
+msgid "Unit"
+msgstr "หน่วย"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_schedule_line.py:0
+#, python-format
+msgid "Unknown Gantt action %s."
+msgstr "ไม่รู้จักการดำเนินการ Gantt %s"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Used for products without history."
+msgstr "ใช้กับสินค้าที่ไม่มีประวัติ"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__vendor_id
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_suggestion_search
+msgid "Vendor"
+msgstr "ผู้ขาย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__vendor_id
+msgid "Vendor Override"
+msgstr "ผู้ขายที่กำหนดเอง"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Vendors: %s"
+msgstr "ผู้ขาย: %s"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_res_config_settings__plan_supply_warehouse_ids
+msgid "Warehouses counted as available supply by default in a new plan."
+msgstr "คลังที่นับเป็นสต็อกที่ใช้ได้โดยค่าเริ่มต้นในแผนใหม่"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.res_config_settings_view_form_buz_plan
+msgid "Warehouses counted as available supply in a new plan."
+msgstr "คลังที่นับเป็นสต็อกที่ใช้ได้ในแผนใหม่"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_product_param__website_message_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_run__website_message_ids
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_suggestion__website_message_ids
+msgid "Website Messages"
+msgstr "ข้อความจากเว็บไซต์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_product_param__website_message_ids
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__website_message_ids
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__website_message_ids
+msgid "Website communication history"
+msgstr "ประวัติการสื่อสารของเว็บไซต์"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/gantt/gantt_action.xml:0
+#, python-format
+msgid "Week"
+msgstr "สัปดาห์"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__forecast_lookback_weeks
+msgid ""
+"Weeks of past deliveries averaged to forecast demand beyond the open orders."
+" 0 = open orders only."
+msgstr ""
+"จำนวนสัปดาห์ของการส่งมอบในอดีตที่นำมาเฉลี่ยเพื่อพยากรณ์ความต้องการนอกเหนือจากใบสั่งที่ค้างอยู่"
+" 0 = ใช้เฉพาะใบสั่งที่ค้างอยู่"
+
+#. module: buz_production_planning
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_create_documents_wizard_form
+msgid "What should Buy suggestions become?"
+msgstr "ข้อเสนอแบบซื้อจะให้เป็นอะไร?"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_run__next_step_hint
+msgid "What to do next, in plain words."
+msgstr "สิ่งที่ต้องทำต่อไป อธิบายแบบเข้าใจง่าย"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_demand_line__qty_manual
+msgid "When set, replaces the computed quantity on the next compute."
+msgstr "เมื่อกำหนด จะใช้แทนจำนวนที่คำนวณได้ในการคำนวณครั้งถัดไป"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__document_state
+msgid ""
+"Where the created document stands: still a draft, in progress, done or "
+"cancelled."
+msgstr "สถานะของเอกสารที่สร้าง: ฉบับร่าง กำลังดำเนินการ เสร็จสิ้น หรือยกเลิก"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,help:buz_production_planning.field_buz_plan_suggestion__explanation
+msgid "Why this suggestion exists, in plain words."
+msgstr "เหตุผลที่มีข้อเสนอนี้ อธิบายแบบเข้าใจง่าย"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/wizard/plan_create_documents.py:0
+#, python-format
+msgid "Will be created"
+msgstr "จะถูกสร้าง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_operation_time__workcenter_id
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__workcenter_id
+#: model_terms:ir.ui.view,arch_db:buz_production_planning.view_buz_plan_schedule_line_search
+msgid "Workcenter"
+msgstr "ศูนย์งาน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/scheduler.py:0
+#, python-format
+msgid ""
+"Workcenter %s has no working schedule. Set one on the workcenter and "
+"schedule again."
+msgstr ""
+"ศูนย์งาน %s ไม่มีตารางเวลาทำงาน กำหนดในศูนย์งานแล้วจัดตารางเวลาอีกครั้ง"
+
+#. module: buz_production_planning
+#: model:ir.model.fields,field_description:buz_production_planning.field_buz_plan_schedule_line__workorder_id
+msgid "Workorder"
+msgstr "ใบสั่งงาน"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/engine/scheduler.py:0
+#, python-format
+msgid ""
+"Workorder dependencies of a manufacturing order form a loop. Remove the "
+"circular dependency and schedule again."
+msgstr ""
+"การพึ่งพากันของใบสั่งงานในใบสั่งผลิตวนเป็นลูป ให้ลบการพึ่งพาที่วนกลับออก "
+"แล้วจัดตารางเวลาอีกครั้ง"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid "buy"
+msgstr "ซื้อ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_suggestion.py:0
+#, python-format
+msgid "make"
+msgstr "ผลิต"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Suggestions to review"
+msgstr "ข้อเสนอที่รอตรวจ"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Approved, no document yet"
+msgstr "อนุมัติแล้ว ยังไม่มีเอกสาร"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Late suggestions"
+msgstr "ข้อเสนอที่ล่าช้า"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Buy without vendor"
+msgstr "รายการซื้อที่ยังไม่มีผู้ขาย"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Products short"
+msgstr "สินค้าที่ขาด"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Work orders finishing late"
+msgstr "งานที่จะเสร็จช้ากว่ากำหนด"
+
+#. module: buz_production_planning
+#. odoo-python
+#: code:addons/buz_production_planning/models/plan_dashboard.py:0
+#, python-format
+msgid "Schedule lines not applied"
+msgstr "คิวงานที่ยังไม่ได้ปรับใช้"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: model:ir.model,name:buz_production_planning.model_buz_plan_dashboard
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Planning Dashboard"
+msgstr "แดชบอร์ดวางแผน"
+
+#. module: buz_production_planning
+#: model:ir.ui.menu,name:buz_production_planning.menu_buz_plan_dashboard
+#: model:ir.actions.client,name:buz_production_planning.action_buz_plan_dashboard
+msgid "Dashboard"
+msgstr "แดชบอร์ด"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Schedule, week of %s"
+msgstr "คิวงาน สัปดาห์ของวันที่ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "hours"
+msgstr "ชั่วโมง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Capacity"
+msgstr "กำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Load within capacity"
+msgstr "ภาระงานที่อยู่ในกำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Load over capacity"
+msgstr "ภาระงานที่เกินกำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Week starting"
+msgstr "สัปดาห์ที่เริ่มวันที่"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Hours"
+msgstr "ชั่วโมง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Week of %s"
+msgstr "สัปดาห์ของวันที่ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Total load: %s hours"
+msgstr "ภาระงานรวม: %s ชั่วโมง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Schedule of %s"
+msgstr "คิวงานของ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "No working time"
+msgstr "ไม่มีเวลาทำงาน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+msgid "Load % of capacity"
+msgstr "ภาระงานเป็น % ของกำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+msgid "Load as % of capacity (dashed line = 100 %)"
+msgstr "ภาระงานเป็น % ของกำลังการผลิต (เส้นประ = 100 %)"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Load %s hours of %s hours capacity (%s)"
+msgstr "ภาระงาน %s ชั่วโมง จากกำลังการผลิต %s ชั่วโมง (%s)"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "on time"
+msgstr "ตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "manufacturing orders"
+msgstr "ใบสั่งผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "On time"
+msgstr "ตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Suggestions, week of %s"
+msgstr "ข้อเสนอ สัปดาห์ของวันที่ %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "suggestions"
+msgstr "ข้อเสนอ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Week to order / start"
+msgstr "สัปดาห์ที่ต้องสั่งซื้อ / เริ่มผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.js:0
+#, python-format
+msgid "Suggestions: %s"
+msgstr "ข้อเสนอ: %s"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Plan"
+msgstr "แผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Plan shown on this page"
+msgstr "แผนที่แสดงในหน้านี้"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Updated"
+msgstr "อัปเดตเมื่อ"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Open plan"
+msgstr "เปิดแผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Refresh"
+msgstr "รีเฟรช"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Loading the dashboard…"
+msgstr "กำลังโหลดแดชบอร์ด…"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No plan yet"
+msgstr "ยังไม่มีแผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Create a production plan and click Compute Plan. Its numbers will show here."
+msgstr "สร้างแผนการผลิตแล้วกด 'คำนวณแผน' ตัวเลขของแผนจะแสดงที่นี่"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Create a plan"
+msgstr "สร้างแผน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Next step:"
+msgstr "ขั้นตอนถัดไป:"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "All numbers on this page belong to the selected plan only. Click a number to open the list behind it."
+msgstr "ตัวเลขทั้งหมดในหน้านี้เป็นของแผนที่เลือกเท่านั้น กดที่ตัวเลขเพื่อเปิดรายการที่อยู่เบื้องหลัง"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Load vs capacity by week"
+msgstr "ภาระงานเทียบกำลังการผลิต รายสัปดาห์"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Hours of planned work against the hours the work centers can work. Red = more work than capacity."
+msgstr "ชั่วโมงงานที่วางแผนไว้ เทียบกับชั่วโมงที่ศูนย์งานทำงานได้ สีแดง = งานมากกว่ากำลังการผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Only the first 26 weeks are shown; the schedule runs further."
+msgstr "แสดงเฉพาะ 26 สัปดาห์แรก ตารางเวลายังยาวต่อไปอีก"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No working time or planned work in this period."
+msgstr "ไม่มีเวลาทำงานหรืองานที่วางแผนไว้ในช่วงนี้"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Schedule the plan to see load."
+msgstr "กด 'จัดคิว' ในแผนก่อน จึงจะเห็นภาระงาน"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Busiest work centers"
+msgstr "ศูนย์งานที่งานแน่นที่สุด"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+msgid "Top 10 by planned work as a share of capacity. Red = over 100 %."
+msgstr "10 อันดับแรกตามสัดส่วนงานที่วางแผนไว้ต่อกำลังการผลิต สีแดง = เกิน 100 %"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "On-time schedule"
+msgstr "งานที่เสร็จตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Manufacturing orders that finish before their deadline. Click to see the late work orders."
+msgstr "ใบสั่งผลิตที่เสร็จก่อนกำหนดส่ง กดเพื่อดูงานที่ล่าช้า"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Schedule the plan to see on-time results."
+msgstr "กด 'จัดคิว' ในแผนก่อน จึงจะเห็นผลงานตรงเวลา"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Suggestions by release week"
+msgstr "ข้อเสนอตามสัปดาห์ที่ต้องเริ่ม"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Open suggestions by the week they must be ordered or started."
+msgstr "ข้อเสนอที่ยังเปิดอยู่ แยกตามสัปดาห์ที่ต้องสั่งซื้อหรือเริ่มผลิต"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No open suggestions in this plan."
+msgstr "แผนนี้ไม่มีข้อเสนอที่ยังเปิดอยู่"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "Document progress"
+msgstr "ความคืบหน้าของเอกสาร"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "How far the suggestions are: no document yet, draft, in progress or done."
+msgstr "ข้อเสนอไปถึงขั้นไหนแล้ว: ยังไม่มีเอกสาร ฉบับร่าง กำลังดำเนินการ หรือเสร็จแล้ว"
+
+#. module: buz_production_planning
+#. odoo-javascript
+#: code:addons/buz_production_planning/static/src/dashboard/plan_dashboard.xml:0
+#, python-format
+msgid "No suggestions in this plan. Click Compute Plan first."
+msgstr "แผนนี้ยังไม่มีข้อเสนอ กด 'คำนวณแผน' ก่อน"

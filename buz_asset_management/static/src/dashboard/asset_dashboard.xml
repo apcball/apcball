@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="buz_asset_management.ChartCard">
+        <div class="bam-chart-body">
+            <div t-if="props.empty" class="bam-empty">ไม่มีข้อมูลตามตัวกรองที่เลือก</div>
+            <canvas t-else="" t-ref="canvas"/>
+        </div>
+    </t>
+
+    <t t-name="buz_asset_management.AssetDashboard">
+        <div class="bam-dashboard">
+
+            <!-- Header: title + date/company + refresh + more -->
+            <div class="bam-header">
+                <div class="bam-titles">
+                    <h1>Asset Management Dashboard</h1>
+                    <p>ภาพรวมทรัพย์สิน ค่าเสื่อมราคา และสถานะการใช้งานในองค์กร</p>
+                </div>
+                <div class="bam-header-tools">
+                    <label class="bam-pill">
+                        <i class="fa fa-calendar-o"/>
+                        <span class="bam-pill-text">
+                            <small>ณ วันที่</small>
+                            <input type="date" t-att-value="state.filters.as_of"
+                                   t-on-change="(ev) => this.onFilterChange('as_of', ev)"/>
+                        </span>
+                    </label>
+                    <label class="bam-pill" t-if="state.data">
+                        <span class="bam-pill-text">
+                            <small>บริษัท</small>
+                            <select t-on-change="onCompanyChange">
+                                <option value="0">ทั้งหมด</option>
+                                <t t-foreach="state.data.filters.companies" t-as="c" t-key="c.id">
+                                    <option t-att-value="c.id" t-esc="c.name"
+                                            t-att-selected="state.filters.company_ids.includes(c.id)"/>
+                                </t>
+                            </select>
+                        </span>
+                    </label>
+                    <button class="bam-icon-btn" t-on-click="load" t-att-disabled="state.loading" title="Refresh">
+                        <i class="fa fa-refresh" t-att-class="{'fa-spin': state.loading}"/>
+                    </button>
+                    <div class="bam-more">
+                        <button class="bam-icon-btn" t-on-click="toggleMore" title="ตัวกรอง / ส่งออก">
+                            <i class="fa fa-ellipsis-h"/>
+                        </button>
+                        <div t-if="state.moreOpen and state.data" class="bam-more-panel">
+                            <label><span>แผนก</span>
+                                <select t-on-change="(ev) => this.onFilterChange('department_id', ev)">
+                                    <option value="">ทั้งหมด</option>
+                                    <t t-foreach="state.data.filters.departments" t-as="o" t-key="o.id">
+                                        <option t-att-value="o.id" t-esc="o.name"
+                                                t-att-selected="state.filters.department_id === o.id"/>
+                                    </t>
+                                </select></label>
+                            <label><span>หมวดทรัพย์สิน</span>
+                                <select t-on-change="(ev) => this.onFilterChange('category_id', ev)">
+                                    <option value="">ทั้งหมด</option>
+                                    <t t-foreach="state.data.filters.categories" t-as="o" t-key="o.id">
+                                        <option t-att-value="o.id" t-esc="o.name"
+                                                t-att-selected="state.filters.category_id === o.id"/>
+                                    </t>
+                                </select></label>
+                            <label><span>สถานที่</span>
+                                <select t-on-change="(ev) => this.onFilterChange('location_id', ev)">
+                                    <option value="">ทั้งหมด</option>
+                                    <t t-foreach="state.data.filters.locations" t-as="o" t-key="o.id">
+                                        <option t-att-value="o.id" t-esc="o.name"
+                                                t-att-selected="state.filters.location_id === o.id"/>
+                                    </t>
+                                </select></label>
+                            <label><span>สถานะ</span>
+                                <select t-on-change="(ev) => this.onFilterChange('operational_state', ev)">
+                                    <option value="">ทั้งหมด</option>
+                                    <t t-foreach="state.data.filters.states" t-as="o" t-key="o.id">
+                                        <option t-att-value="o.id" t-esc="o.name"
+                                                t-att-selected="state.filters.operational_state === o.id"/>
+                                    </t>
+                                </select></label>
+                            <div class="bam-more-actions">
+                                <button class="btn btn-light" t-on-click="resetFilters">ล้างตัวกรอง</button>
+                                <button class="btn btn-light" t-on-click="exportXlsx"><i class="fa fa-file-excel-o"/> Excel</button>
+                                <button class="btn btn-light" t-on-click="printPdf"><i class="fa fa-file-pdf-o"/> PDF</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- States -->
+            <div t-if="state.error" class="bam-card bam-error alert alert-danger">
+                <strong>โหลดแดชบอร์ดไม่สำเร็จ</strong>
+                <div t-esc="state.error"/>
+                <button class="btn btn-sm btn-secondary mt-2" t-on-click="load">ลองใหม่</button>
+            </div>
+            <div t-elif="state.loading and !state.data" class="bam-card bam-loading">
+                <i class="fa fa-circle-o-notch fa-spin fa-2x"/> กำลังโหลด...
+            </div>
+
+            <t t-elif="state.data">
+                <div t-if="state.loading" class="bam-refreshing">กำลังอัปเดต...</div>
+                <div t-if="state.data.meta.mixed_currency" class="alert alert-warning">
+                    บริษัทที่เลือกใช้สกุลเงินต่างกัน ยอดรวมไม่ได้แปลงค่า กรุณาเลือกทีละบริษัท
+                </div>
+                <div t-if="state.data.meta.is_empty" class="bam-card bam-empty-page">
+                    ไม่พบทรัพย์สินตามตัวกรองที่เลือก
+                </div>
+
+                <!-- KPI cards -->
+                <div class="bam-kpis">
+                    <div class="bam-kpi bam-tint-blue">
+                        <span class="bam-kpi-icon"><i class="fa fa-cube"/></span>
+                        <div class="bam-kpi-label">จำนวนทรัพย์สินทั้งหมด</div>
+                        <div class="bam-kpi-value" t-esc="state.data.kpis.asset_count"/>
+                    </div>
+                    <div class="bam-kpi bam-tint-orange">
+                        <span class="bam-kpi-icon"><i class="fa fa-file-text-o"/></span>
+                        <div class="bam-kpi-label">มูลค่าทุนรวม (Cost)</div>
+                        <div class="bam-kpi-value" t-esc="money(state.data.kpis.gross_cost)"/>
+                    </div>
+                    <div class="bam-kpi bam-tint-purple">
+                        <span class="bam-kpi-icon"><i class="fa fa-database"/></span>
+                        <div class="bam-kpi-label">ค่าเสื่อมราคาสะสม (ลงบัญชีแล้ว)</div>
+                        <div class="bam-kpi-value" t-esc="money(state.data.kpis.accumulated_depreciation)"/>
+                    </div>
+                    <div class="bam-kpi bam-tint-green">
+                        <span class="bam-kpi-icon"><i class="fa fa-money"/></span>
+                        <div class="bam-kpi-label">มูลค่าตามบัญชี (NBV)</div>
+                        <div class="bam-kpi-value" t-esc="money(state.data.kpis.nbv)"/>
+                    </div>
+                    <div class="bam-kpi bam-tint-teal">
+                        <span class="bam-kpi-icon"><i class="fa fa-hourglass-half"/></span>
+                        <div class="bam-kpi-label">ค่าเสื่อมรอลงบัญชี</div>
+                        <div class="bam-kpi-value" t-esc="money(state.data.kpis.pending_depreciation)"/>
+                        <div class="bam-kpi-sub">
+                            Planned <t t-esc="compact(state.data.kpis.pending_breakdown.planned)"/>
+                            · Draft <t t-esc="compact(state.data.kpis.pending_breakdown.draft_move)"/>
+                            · Exception <t t-esc="compact(state.data.kpis.pending_breakdown.exception)"/>
+                        </div>
+                    </div>
+                    <div class="bam-kpi bam-tint-red">
+                        <span class="bam-kpi-icon"><i class="fa fa-shield"/></span>
+                        <div class="bam-kpi-label">ประกันหมดอายุใน 30 วัน</div>
+                        <div class="bam-kpi-value" t-esc="state.data.kpis.warranty_expiring"/>
+                    </div>
+                </div>
+
+                <!-- Row 1: trend + category -->
+                <div class="bam-row bam-row-trend" t-att-class="{'bam-dim': state.loading}">
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-area-chart"/> มูลค่าทรัพย์สินตามบัญชี</div>
+                        <ChartCard config="trendChart" empty="state.data.meta.is_empty"/>
+                    </div>
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-tags"/> ทรัพย์สินตามประเภท (NBV)</div>
+                        <div class="bam-donut-wrap">
+                            <div class="bam-donut">
+                                <ChartCard config="categoryChart" empty="!state.data.charts.by_category.length"
+                                           centerValue="'' + state.data.kpis.asset_count" centerLabel="'รายการ'"/>
+                            </div>
+                            <table class="bam-legend">
+                                <tr t-foreach="categoryLegend" t-as="l" t-key="l_index">
+                                    <td><span class="bam-dot" t-attf-style="background:#{l.color}"/> <t t-esc="l.name"/></td>
+                                    <td class="num"><t t-esc="l.pct"/>%</td>
+                                    <td class="num" t-esc="l.count"/>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: monthly + status + recent -->
+                <div class="bam-row bam-row-three" t-att-class="{'bam-dim': state.loading}">
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-bar-chart"/> ค่าเสื่อมราคารายเดือน</div>
+                        <ChartCard config="monthlyChart"/>
+                    </div>
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-pie-chart"/> สถานะทรัพย์สิน</div>
+                        <div class="bam-donut-wrap">
+                            <div class="bam-donut">
+                                <ChartCard config="statusChart" empty="!state.data.charts.by_status.length"
+                                           centerValue="'' + state.data.kpis.asset_count" centerLabel="'รายการ'"/>
+                            </div>
+                            <table class="bam-legend">
+                                <tr t-foreach="statusLegend" t-as="l" t-key="l_index">
+                                    <td><span class="bam-dot" t-attf-style="background:#{l.color}"/> <t t-esc="l.name"/></td>
+                                    <td class="num" t-esc="l.count"/>
+                                    <td class="num"><t t-esc="l.pct"/>%</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-bell-o"/> กิจกรรมล่าสุด</div>
+                        <ul class="bam-feed">
+                            <li t-foreach="state.data.tables.recent_activities" t-as="r" t-key="r.model + r.res_id"
+                                class="clickable" t-on-click="() => this.openRecord(r.model, r.res_id)">
+                                <span class="bam-feed-icon"><i class="fa" t-att-class="r.model === 'buz.asset.transfer' ? 'fa-exchange' : 'fa-trash-o'"/></span>
+                                <div class="bam-feed-body">
+                                    <b t-esc="r.type + ' ' + r.ref"/>
+                                    <div><t t-esc="r.asset"/> · <t t-esc="r.status"/></div>
+                                </div>
+                                <span class="bam-feed-date" t-esc="r.when.slice(0, 10)"/>
+                            </li>
+                            <li t-if="!state.data.tables.recent_activities.length" class="bam-empty">ยังไม่มีกิจกรรม</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Row 3: end of life + department + quick actions -->
+                <div class="bam-row bam-row-three bam-row-bottom" t-att-class="{'bam-dim': state.loading}">
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-clock-o"/> ทรัพย์สินที่ใกล้หมดอายุการใช้งาน</div>
+                        <table class="bam-table">
+                            <thead><tr><th>รหัส</th><th>ชื่อ</th><th>หมวด</th><th>สิ้นอายุ</th><th class="num">NBV</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="state.data.tables.end_of_life" t-as="r" t-key="r.id"
+                                    class="clickable" t-on-click="() => this.openRecord('buz.asset', r.id)">
+                                    <td t-esc="r.code"/><td t-esc="r.name"/><td t-esc="r.category"/>
+                                    <td t-esc="r.end_date"/><td class="num" t-esc="money(r.nbv)"/>
+                                </tr>
+                                <tr t-if="!state.data.tables.end_of_life.length"><td colspan="5" class="bam-empty">ไม่มี</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-sitemap"/> มูลค่าทรัพย์สินตามแผนก (NBV)</div>
+                        <ChartCard config="departmentChart" empty="!state.data.charts.by_department.length"/>
+                    </div>
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-bolt"/> Quick Actions</div>
+                        <div class="bam-actions">
+                            <button t-if="state.data.meta.can.create_asset" t-on-click="createAsset"><i class="fa fa-plus"/> สร้างทะเบียนทรัพย์สิน</button>
+                            <button t-if="state.data.meta.can.import_bill" t-on-click="importFromBill"><i class="fa fa-download"/> นำเข้าจาก Vendor Bill</button>
+                            <button t-if="state.data.meta.can.depreciation" t-on-click="generateDepreciation"><i class="fa fa-line-chart"/> ค่าเสื่อมราคา</button>
+                            <button t-if="state.data.meta.can.transfer" t-on-click="transferAsset"><i class="fa fa-exchange"/> โอนย้ายทรัพย์สิน</button>
+                            <button t-if="state.data.meta.can.qr" t-on-click="printQr"><i class="fa fa-qrcode"/> สั่งพิมพ์ฉลาก QR Code</button>
+                            <button t-if="state.data.meta.can.audit" t-on-click="startAudit"><i class="fa fa-check-square-o"/> เริ่มตรวจนับทรัพย์สิน</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 4: warranty + pending accounting -->
+                <div class="bam-row bam-row-two">
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-shield"/> การรับประกันที่ใกล้หมดอายุ</div>
+                        <table class="bam-table">
+                            <thead><tr><th>ทรัพย์สิน</th><th>เลขที่</th><th>สิ้นสุด</th><th class="num">เหลือ (วัน)</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="state.data.tables.warranty" t-as="r" t-key="r.id"
+                                    class="clickable" t-on-click="() => this.openRecord('buz.asset', r.asset_id)">
+                                    <td t-esc="r.asset"/><td t-esc="r.reference"/><td t-esc="r.date_end"/>
+                                    <td class="num" t-esc="r.days_left"/>
+                                </tr>
+                                <tr t-if="!state.data.tables.warranty.length"><td colspan="4" class="bam-empty">ไม่มี</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bam-card">
+                        <div class="bam-card-title"><i class="fa fa-calculator"/> รอดำเนินการทางบัญชี</div>
+                        <table class="bam-table">
+                            <thead><tr><th>รายการ</th><th class="num">จำนวน</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="state.data.tables.pending_actions" t-as="r" t-key="r_index"
+                                    class="clickable" t-on-click="() => this.openPending(r)">
+                                    <td t-esc="r.label"/><td class="num" t-esc="r.count"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

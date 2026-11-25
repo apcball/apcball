@@ -33,6 +33,20 @@
         <field name="target">new</field>
     </record>
 
+    <record id="action_buz_mrp_job_report_open_wizard" model="ir.actions.act_window">
+        <field name="name">MRP Open Job Report</field>
+        <field name="res_model">buz.mrp.job.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_state_filter': 'open'}</field>
+    </record>
+
+    <menuitem id="menu_buz_mrp_job_report_open"
+              name="Open Job Report (Excel)"
+              parent="mrp.menu_mrp_reporting"
+              action="action_buz_mrp_job_report_open_wizard"
+              sequence="61"/>
+
     <menuitem id="menu_buz_mrp_job_report"
               name="Job Close Report (Excel)"
               parent="mrp.menu_mrp_reporting"

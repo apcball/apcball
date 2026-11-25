@@ -606,7 +606,7 @@
         <field name="view_mode">kanban,tree,form</field>
         <field name="domain">[('owner_id', '=', uid)]</field>
     </record>
-    <menuitem id="menu_bsf_my_actions_root" name="งาน CFO ของฉัน" action="action_bsf_my_actions" sequence="16" groups="biz_smart_finance.group_bsf_action_owner" />
+    <menuitem id="menu_bsf_my_actions_root" name="งาน CFO ของฉัน" parent="menu_bsf_config_root" action="action_bsf_my_actions" sequence="16" groups="biz_smart_finance.group_bsf_action_owner" />
     <record id="view_bsf_cost_config" model="ir.ui.view">
         <field name="name">CFO cost thresholds</field>
         <field name="model">biz.smart.finance.config</field>

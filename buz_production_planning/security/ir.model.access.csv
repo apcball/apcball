@@ -1,0 +1,20 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_plan_param_mrp,plan.product.param mrp read,model_buz_plan_product_param,mrp.group_mrp_user,1,0,0,0
+access_plan_param_user,plan.product.param user,model_buz_plan_product_param,group_plan_user,1,1,1,0
+access_plan_param_manager,plan.product.param manager,model_buz_plan_product_param,group_plan_manager,1,1,1,1
+access_plan_run_mrp,plan.run mrp read,model_buz_plan_run,mrp.group_mrp_user,1,0,0,0
+access_plan_run_user,plan.run user,model_buz_plan_run,group_plan_user,1,1,1,0
+access_plan_run_manager,plan.run manager,model_buz_plan_run,group_plan_manager,1,1,1,1
+access_plan_demand_mrp,plan.demand.line mrp read,model_buz_plan_demand_line,mrp.group_mrp_user,1,0,0,0
+access_plan_demand_user,plan.demand.line user,model_buz_plan_demand_line,group_plan_user,1,1,1,1
+access_plan_demand_manager,plan.demand.line manager,model_buz_plan_demand_line,group_plan_manager,1,1,1,1
+access_plan_suggestion_mrp,plan.suggestion mrp read,model_buz_plan_suggestion,mrp.group_mrp_user,1,0,0,0
+access_plan_suggestion_user,plan.suggestion user,model_buz_plan_suggestion,group_plan_user,1,1,1,1
+access_plan_suggestion_manager,plan.suggestion manager,model_buz_plan_suggestion,group_plan_manager,1,1,1,1
+access_plan_schedule_mrp,plan.schedule.line mrp read,model_buz_plan_schedule_line,mrp.group_mrp_user,1,0,0,0
+access_plan_schedule_user,plan.schedule.line user,model_buz_plan_schedule_line,group_plan_user,1,1,1,1
+access_plan_schedule_manager,plan.schedule.line manager,model_buz_plan_schedule_line,group_plan_manager,1,1,1,1
+access_plan_optime_mrp,plan.operation.time mrp read,model_buz_plan_operation_time,mrp.group_mrp_user,1,0,0,0
+access_plan_optime_user,plan.operation.time user,model_buz_plan_operation_time,group_plan_user,1,0,0,0
+access_plan_create_docs_user,plan.create.documents.wizard user,model_buz_plan_create_documents_wizard,group_plan_user,1,1,1,1
+access_plan_create_docs_manager,plan.create.documents.wizard manager,model_buz_plan_create_documents_wizard,group_plan_manager,1,1,1,1

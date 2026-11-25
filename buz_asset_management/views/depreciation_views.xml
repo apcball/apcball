@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_asset_depreciation_line_tree" model="ir.ui.view">
+        <field name="name">buz.asset.depreciation.line.tree</field>
+        <field name="model">buz.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0" decoration-danger="state == 'exception'" decoration-muted="state in ('reversed', 'cancelled')">
+                <field name="asset_id"/>
+                <field name="sequence"/>
+                <field name="depreciation_date"/>
+                <field name="planned_amount" sum="รวมตามแผน"/>
+                <field name="remaining_after"/>
+                <field name="state" widget="badge"/>
+                <field name="move_id" optional="show"/>
+                <field name="exception_message" optional="hide"/>
+                <button name="action_post_depreciation" type="object" string="ลงบัญชี" icon="fa-check"
+                        invisible="state not in ('planned', 'exception')"
+                        groups="buz_asset_management.group_asset_accounting_manager"/>
+                <button name="action_reverse" type="object" string="กลับรายการ" icon="fa-undo"
+                        invisible="state != 'posted'"
+                        groups="buz_asset_management.group_asset_accounting_manager"
+                        confirm="ยืนยันการกลับรายการค่าเสื่อมราคางวดนี้?"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_asset_depreciation_line_search" model="ir.ui.view">
+        <field name="name">buz.asset.depreciation.line.search</field>
+        <field name="model">buz.asset.depreciation.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="asset_id"/>
+                <filter name="planned" string="วางแผนไว้" domain="[('state', '=', 'planned')]"/>
+                <filter name="posted" string="ลงบัญชีแล้ว" domain="[('state', '=', 'posted')]"/>
+                <group expand="0" string="จัดกลุ่มตาม">
+                    <filter name="group_asset" string="ทรัพย์สิน" context="{'group_by': 'asset_id'}"/>
+                    <filter name="group_month" string="เดือน" context="{'group_by': 'depreciation_date:month'}"/>
+                    <filter name="group_state" string="สถานะ" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_buz_asset_depreciation_line" model="ir.actions.act_window">
+        <field name="name">ตารางค่าเสื่อมราคา</field>
+        <field name="res_model">buz.asset.depreciation.line</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_buz_asset_depreciation_line_search"/>
+    </record>
+</odoo>

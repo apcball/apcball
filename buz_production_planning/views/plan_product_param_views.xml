@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_plan_product_param_tree" model="ir.ui.view">
+        <field name="name">buz.plan.product.param.tree</field>
+        <field name="model">buz.plan.product.param</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" multi_edit="1">
+                <field name="product_id"/>
+                <field name="supply_method"/>
+                <field name="picking_type_id"/>
+                <field name="vendor_id" optional="show"/>
+                <field name="safety_stock"/>
+                <field name="min_batch_qty"/>
+                <field name="batch_multiple"/>
+                <field name="lead_time_make_days"/>
+                <field name="lead_time_buy_days"/>
+                <field name="forecast_method"/>
+                <field name="company_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_product_param_form" model="ir.ui.view">
+        <field name="name">buz.plan.product.param.form</field>
+        <field name="model">buz.plan.product.param</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute_defaults" type="object" string="Compute Defaults from History"
+                            class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Product">
+                            <field name="product_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="supply_method"/>
+                            <field name="picking_type_id"/>
+                            <field name="vendor_id"/>
+                        </group>
+                        <group string="Quantities">
+                            <field name="safety_stock"/>
+                            <field name="min_batch_qty"/>
+                            <field name="batch_multiple"/>
+                            <field name="forecast_method"/>
+                        </group>
+                        <group string="Lead Times">
+                            <field name="lead_time_make_days"/>
+                            <field name="lead_time_buy_days"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_product_param_search" model="ir.ui.view">
+        <field name="name">buz.plan.product.param.search</field>
+        <field name="model">buz.plan.product.param</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="picking_type_id"/>
+                <filter name="make" string="Make" domain="[('supply_method', '=', 'make')]"/>
+                <filter name="buy" string="Buy" domain="[('supply_method', '=', 'buy')]"/>
+                <filter name="none" string="Not planned" domain="[('supply_method', '=', 'none')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_method" string="Supply Method" context="{'group_by': 'supply_method'}"/>
+                    <filter name="group_line" string="Production Line" context="{'group_by': 'picking_type_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_buz_plan_product_param" model="ir.actions.act_window">
+        <field name="name">Product Parameters</field>
+        <field name="res_model">buz.plan.product.param</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_buz_plan_product_param_compute" model="ir.actions.server">
+        <field name="name">Compute Defaults from History</field>
+        <field name="model_id" ref="model_buz_plan_product_param"/>
+        <field name="binding_model_id" ref="model_buz_plan_product_param"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_compute_defaults()</field>
+    </record>
+</odoo>

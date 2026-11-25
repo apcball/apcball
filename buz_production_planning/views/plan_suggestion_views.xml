@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_plan_suggestion_tree" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.tree</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" create="0"
+                  decoration-danger="is_late and state in ('proposed', 'approved')"
+                  decoration-success="state == 'done'" decoration-muted="state == 'rejected'">
+                <header>
+                    <button name="action_approve" type="object" string="Approve"/>
+                    <button name="action_reject" type="object" string="Reject"/>
+                    <button name="action_reset" type="object" string="Reset to Proposed"/>
+                </header>
+                <field name="company_id" column_invisible="1"/>
+                <field name="run_id" optional="hide"/>
+                <field name="product_id" readonly="1"/>
+                <field name="action" readonly="1"/>
+                <field name="qty" readonly="state in ('done', 'rejected')"/>
+                <field name="uom_id" readonly="1" optional="show"/>
+                <field name="date_need" readonly="state in ('done', 'rejected')"/>
+                <field name="date_release" readonly="state in ('done', 'rejected')"/>
+                <field name="is_late"/>
+                <field name="picking_type_id" optional="show"/>
+                <field name="vendor_id" optional="show"/>
+                <field name="level" optional="hide"/>
+                <field name="onhand_qty" optional="hide"/>
+                <field name="incoming_qty" optional="hide"/>
+                <field name="demand_qty" optional="hide"/>
+                <field name="projected_qty" optional="hide"/>
+                <field name="shortage_qty" optional="show"/>
+                <field name="document_ref"/>
+                <field name="document_state" widget="badge"
+                       decoration-info="document_state == 'open'"
+                       decoration-warning="document_state == 'draft'"
+                       decoration-success="document_state == 'done'"
+                       decoration-danger="document_state == 'cancel'"
+                       invisible="document_state == 'none'"/>
+                <button name="action_open_document" type="object" icon="fa-external-link"
+                        title="Open the document" invisible="document_state == 'none'"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_suggestion_form" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.form</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state not in ('proposed', 'rejected')"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            invisible="state not in ('proposed', 'approved')"/>
+                    <button name="action_reset" type="object" string="Reset to Proposed"
+                            invisible="state not in ('approved', 'rejected')"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <field name="explanation" nolabel="1"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="run_id"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="product_id"/>
+                            <field name="action"/>
+                            <field name="qty"/>
+                            <field name="uom_id"/>
+                            <field name="level"/>
+                        </group>
+                        <group>
+                            <field name="date_need"/>
+                            <field name="date_release"/>
+                            <field name="is_late"/>
+                            <field name="bom_id"/>
+                            <field name="picking_type_id"/>
+                            <field name="vendor_id"/>
+                            <field name="parent_suggestion_id"/>
+                        </group>
+                        <group string="Numbers">
+                            <field name="onhand_qty"/>
+                            <field name="incoming_qty"/>
+                            <field name="demand_qty"/>
+                            <field name="projected_qty"/>
+                            <field name="shortage_qty"/>
+                        </group>
+                        <group string="Documents">
+                            <field name="document_state" widget="badge"
+                                   decoration-info="document_state == 'open'"
+                                   decoration-warning="document_state == 'draft'"
+                                   decoration-success="document_state == 'done'"
+                                   decoration-danger="document_state == 'cancel'"/>
+                            <field name="production_id" invisible="not production_id"/>
+                            <field name="requisition_id" invisible="not requisition_id"/>
+                            <field name="purchase_order_id" invisible="not purchase_order_id"/>
+                            <div invisible="document_state == 'none'" colspan="2">
+                                <button name="action_open_document" type="object" string="Open Document"
+                                        class="btn-secondary" icon="fa-external-link"/>
+                            </div>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_suggestion_search" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.search</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="run_id"/>
+                <filter name="make" string="Make" domain="[('action', '=', 'make')]"/>
+                <filter name="buy" string="Buy" domain="[('action', '=', 'buy')]"/>
+                <separator/>
+                <filter name="late" string="Late" domain="[('is_late', '=', True)]"/>
+                <filter name="to_review" string="To Review" domain="[('state', '=', 'proposed')]"/>
+                <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <separator/>
+                <filter name="no_document" string="No Document Yet"
+                        domain="[('document_state', '=', 'none'), ('state', '!=', 'rejected')]"/>
+                <filter name="no_vendor" string="No Vendor"
+                        domain="[('action', '=', 'buy'), ('vendor_id', '=', False), ('state', '!=', 'rejected')]"/>
+                <filter name="has_document" string="Has Document" domain="[('document_state', '!=', 'none')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_line" string="Production Line" context="{'group_by': 'picking_type_id'}"/>
+                    <filter name="group_vendor" string="Vendor" context="{'group_by': 'vendor_id'}"/>
+                    <filter name="group_level" string="BoM Level" context="{'group_by': 'level'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_document_state" string="Document Status"
+                            context="{'group_by': 'document_state'}"/>
+                    <filter name="group_requisition" string="Blanket Order"
+                            context="{'group_by': 'requisition_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_buz_plan_suggestion_pivot" model="ir.ui.view">
+        <field name="name">buz.plan.suggestion.pivot</field>
+        <field name="model">buz.plan.suggestion</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="product_id" type="row"/>
+                <field name="date_release" interval="week" type="col"/>
+                <field name="qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_buz_plan_suggestion" model="ir.actions.act_window">
+        <field name="name">Suggestions</field>
+        <field name="res_model">buz.plan.suggestion</field>
+        <field name="view_mode">tree,pivot,form</field>
+        <field name="context">{'search_default_to_review': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No suggestions to review</p>
+            <p>Suggestions appear after you click Compute Plan on a production plan.
+               Review them here, then click Create Documents.</p>
+        </field>
+    </record>
+</odoo>
