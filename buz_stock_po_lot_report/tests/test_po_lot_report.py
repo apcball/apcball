@@ -195,6 +195,14 @@ class TestTaxStockReport(TransactionCase):
         snaps = [r for r in rows if r['line_type'] == 'lotbal']
         self.assertEqual(len(snaps), 2)  # one lot row after each of the 2 movements
 
+    def test_xlsx_movement_shows_document_and_lot_separately(self):
+        from odoo.addons.buz_stock_po_lot_report.report.po_lot_xlsx import move_cells
+        self.assertEqual(move_cells('FG10/INT/26/10/00162 (ล็อต RM01/2610047) · คลังสินค้าสำเร็จรูป 1'),
+                         ('FG10/INT/26/10/00162', 'RM01/2610047'))
+        self.assertEqual(move_cells('BR26100194 ค่าเฟรท (ลงล็อต RM01/2610047) · คลัง'),
+                         ('BR26100194 ค่าเฟรท', 'RM01/2610047'))
+        self.assertEqual(move_cells('RM01/2610047 · คลังสินค้าสำเร็จรูป 1'), ('RM01/2610047', ''))
+
     def test_xlsx_splits_lot_from_document(self):
         from odoo.addons.buz_stock_po_lot_report.report.po_lot_xlsx import split_lot
         self.assertEqual(split_lot('RM01260900083 (ล็อต RM-NI/IN2609003)'),

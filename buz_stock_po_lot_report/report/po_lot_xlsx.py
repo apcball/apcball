@@ -18,6 +18,14 @@ def split_lot(ref):
     return m.group(1).strip(), ref[:m.start()].strip()
 
 
+def move_cells(doc_ref):
+    """Movement row -> (document number, lot). The document column shows the
+    transaction (transfer / bill / sale / receipt); the lot it belongs to goes
+    to its own column. No lot suffix: the document is the lot, nothing to add."""
+    lot, ref = split_lot((doc_ref or '').split(' · ')[0])
+    return (ref, lot) if ref else (lot, '')
+
+
 class PoLotXlsx(models.AbstractModel):
     _name = 'report.buz_stock_po_lot_report.po_lot_xlsx'
     _inherit = 'report.report_xlsx.abstract'
@@ -106,7 +114,7 @@ class PoLotXlsx(models.AbstractModel):
                 sheet.write(r, 0, 'ประเภทสินค้า', bold)
                 sheet.write(r, 1, categ.parent_id.name or '')
                 r += 1
-                for c, h in enumerate(HEAD + (['คลังสินค้า', 'เอกสาร', 'วันที่เข้าคลัง', 'ต้นทุนรวม LC (All-in @)'] if show_wh else [])):
+                for c, h in enumerate(HEAD + (['คลังสินค้า', 'ล็อต (PO ต้นทาง)', 'วันที่เข้าคลัง', 'ต้นทุนรวม LC (All-in @)'] if show_wh else [])):
                     sheet.write(r, c, h, head)
                 r += 1
                 lot_header_done = False
@@ -135,12 +143,12 @@ class PoLotXlsx(models.AbstractModel):
                     if lt == 'lotbal' and l['date']:
                         sheet.write(r, 1, '', doc)
                     elif lt == 'move':
-                        # the lot is the identifier in the document column; the
-                        # transfer / bill / sale number moves to the last column
-                        lot, ref = split_lot((l['doc_ref'] or '').split(' · ')[0])
-                        sheet.write(r, 1, lot, doc)
-                        if ref and show_wh:
-                            sheet.write(r, 12, ref, doc)
+                        # document number (transfer / bill / sale) in the first
+                        # column, the lot it belongs to in its own column
+                        number, lot = move_cells(l['doc_ref'])
+                        sheet.write(r, 1, number, doc)
+                        if lot and show_wh:
+                            sheet.write(r, 12, lot, doc)
                     elif lt == 'lot' and l['date']:
                         sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
                     else:
