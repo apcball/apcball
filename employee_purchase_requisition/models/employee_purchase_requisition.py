@@ -375,10 +375,9 @@ class PurchaseRequisition(models.Model):
                     'Please select vendor for all purchase items')
 
             vendor_id = rec.partner_id.id
+            # Receiving warehouse comes only from header "Delivery To"
             picking_type_id = (
-                rec.picking_type_id.id if rec.picking_type_id
-                else (self.delivery_type_id.id
-                      if self.delivery_type_id else False))
+                self.delivery_type_id.id if self.delivery_type_id else False)
             group_key = (vendor_id, picking_type_id)
             if group_key not in purchase_orders:
                 purchase_orders[group_key] = []
