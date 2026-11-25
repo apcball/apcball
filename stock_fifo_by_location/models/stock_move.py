@@ -500,7 +500,12 @@ class StockMove(models.Model):
                 ], limit=1)
                 if original_neg_layers:
                     unit_cost = abs(original_neg_layers[0].unit_cost)
-                    origin_layer = original_neg_layers[0].origin_valuation_layer_id or original_neg_layers[0]
+                    # An out layer keeps its cost origin in consumed_origin_splits, not in
+                    # origin_valuation_layer_id. Never fall back to the out layer itself as
+                    # the origin: it has no remaining qty/value, so whatever later consumes
+                    # the returned stock would be costed at 0 (one-sided transfer legs).
+                    # With no origin here the return's own out-leg splits are used below.
+                    origin_layer = original_neg_layers[0].origin_valuation_layer_id
                 
                 if unit_cost <= 0:
                     original_pos_layers = valuation_layer_model.search([
@@ -567,7 +572,8 @@ class StockMove(models.Model):
             
             # Real cost origins consumed by this transfer (recorded by _run_fifo).
             origin_splits = []
-            if not is_return_move and not origin_layer:
+            if not origin_layer:
+                # transfers and returns alike: the cost origins the out leg really consumed
                 origin_splits = negative_layers._get_consumed_origin_splits()
 
             # ── Resolve origin cost layer from the consumed candidates ──
