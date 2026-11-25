@@ -18,6 +18,14 @@ def split_lot(ref):
     return m.group(1).strip(), ref[:m.start()].strip()
 
 
+def move_cells(doc_ref):
+    """Movement row -> (document number, lot). The document column shows the
+    transaction (transfer / bill / sale / receipt); the lot it belongs to goes
+    to its own column. No lot suffix: the document is the lot, nothing to add."""
+    lot, ref = split_lot((doc_ref or '').split(' · ')[0])
+    return (ref, lot) if ref else (lot, '')
+
+
 class PoLotXlsx(models.AbstractModel):
     _name = 'report.buz_stock_po_lot_report.po_lot_xlsx'
     _inherit = 'report.report_xlsx.abstract'
@@ -64,20 +72,22 @@ class PoLotXlsx(models.AbstractModel):
             fields_ = ['product_id', 'seq', 'model_code', 'line_type', 'date', 'doc_ref',
                        'in_qty', 'in_cost', 'in_value', 'out_qty', 'out_cost', 'out_value',
                        'bal_qty', 'bal_cost', 'bal_value']
-            cols = ['product_id'] + fields_[1:] + ['warehouse_id']
+            cols = ['product_id'] + fields_[1:] + ['warehouse_id', 'wh_date', 'in_allin']
             # warehouse column (lot / movement rows are per warehouse)
             show_wh = True
             wh_names = {w.id: w.name for w in self.env['stock.warehouse'].with_context(
                 active_test=False).search([])}
             sheet.set_column('L:L', 24)
             sheet.set_column('M:M', 34)
+            sheet.set_column('N:N', 14)
+            sheet.set_column('O:O', 16)
             self.env.cr.execute(
                 'SELECT %s FROM buz_po_lot_line WHERE wizard_id = %%s ORDER BY product_id, seq'
                 % ', '.join(cols), (wiz.id,))
             grouped = {}
             for tup in self.env.cr.fetchall():
                 rec = dict(zip(cols, tup))
-                for k in cols[6:]:
+                for k in cols[6:-2]:
                     rec[k] = rec[k] or 0.0
                 grouped.setdefault(rec['product_id'], []).append(rec)
             # same product order as the on-screen list (product model _order)
@@ -104,7 +114,7 @@ class PoLotXlsx(models.AbstractModel):
                 sheet.write(r, 0, 'ประเภทสินค้า', bold)
                 sheet.write(r, 1, categ.parent_id.name or '')
                 r += 1
-                for c, h in enumerate(HEAD + (['คลังสินค้า', 'เอกสาร'] if show_wh else [])):
+                for c, h in enumerate(HEAD + (['คลังสินค้า', 'ล็อต (PO ต้นทาง)', 'วันที่เข้าคลัง', 'ต้นทุนรวม LC (All-in @)'] if show_wh else [])):
                     sheet.write(r, c, h, head)
                 r += 1
                 lot_header_done = False
@@ -119,6 +129,10 @@ class PoLotXlsx(models.AbstractModel):
                     if show_wh:
                         sheet.write(r, 11, wh_names.get(l['warehouse_id'], '') if lt in (
                             'move', 'lot', 'lotbal') else '', txt)
+                    if lt == 'move' and l['in_allin']:
+                        sheet.write(r, 14, l['in_allin'], cost)
+                    if lt in ('lot', 'lotbal') and l['wh_date']:
+                        sheet.write_datetime(r, 13, datetime.combine(l['wh_date'], time.min), dat)
                     if l['date']:
                         sheet.write_datetime(r, 0, datetime.combine(l['date'], time.min), dat)
                     else:
@@ -129,12 +143,12 @@ class PoLotXlsx(models.AbstractModel):
                     if lt == 'lotbal' and l['date']:
                         sheet.write(r, 1, '', doc)
                     elif lt == 'move':
-                        # the lot is the identifier in the document column; the
-                        # transfer / bill / sale number moves to the last column
-                        lot, ref = split_lot((l['doc_ref'] or '').split(' · ')[0])
-                        sheet.write(r, 1, lot, doc)
-                        if ref and show_wh:
-                            sheet.write(r, 12, ref, doc)
+                        # document number (transfer / bill / sale) in the first
+                        # column, the lot it belongs to in its own column
+                        number, lot = move_cells(l['doc_ref'])
+                        sheet.write(r, 1, number, doc)
+                        if lot and show_wh:
+                            sheet.write(r, 12, lot, doc)
                     elif lt == 'lot' and l['date']:
                         sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
                     else:

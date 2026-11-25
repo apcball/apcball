@@ -104,7 +104,7 @@ class TestTaxStockReport(TransactionCase):
         from collections import namedtuple
         from datetime import datetime
         import pytz
-        L = namedtuple('L', 'id quantity value parent_id wh_id doc')
+        L = namedtuple('L', 'id quantity value parent_id wh_id doc lcs', defaults=((),))
         d = datetime(2026, 10, 21, 18)   # 22/10 01:00 Bangkok
         a = (d, 20, L(20, 0, 5.0, 10, 1, 'bill a'))
         b = (d, 21, L(21, 0, 7.5, 10, 1, 'bill b'))
@@ -138,6 +138,53 @@ class TestTaxStockReport(TransactionCase):
         receipt = [r for r in rows if r['line_type'] == 'move' and r.get('in_qty')][0]
         self.assertNotIn('ล็อต', receipt['doc_ref'])
 
+    def test_back_dated_receipt_pays_back_earlier_shortfall(self):
+        """Issued before the receipt is dated: warehouse ends at 0, so no lot is shown."""
+        rows = self._synthetic_rows([(1, -3, -300.0, 'SO1'), (2, 3, 300.0, 'LOT-A')])
+        total = [r for r in rows if r['line_type'] == 'total'][0]
+        self.assertAlmostEqual(total['bal_qty'], 0.0)
+        self.assertFalse([r for r in rows if r['line_type'] == 'lot' and r['bal_qty']])
+        # partial: 5 in, 3 already issued -> 2 left in that lot
+        rows = self._synthetic_rows([(1, -3, -300.0, 'SO1'), (2, 5, 500.0, 'LOT-B')])
+        lots = [r for r in rows if r['line_type'] == 'lot']
+        self.assertEqual([round(r['bal_qty'], 4) for r in lots if r['bal_qty']], [2.0])
+
+    def test_transferred_lot_shows_day_it_entered_the_warehouse(self):
+        from datetime import date, datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import Layer
+        prod = self.env['product.product'].search([], limit=1)
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2026-01-01', 'date_to': '2026-12-31', 'hide_zero': False})
+        h = 3  # 10:00 Bangkok, same local day
+        items = [
+            (datetime(2026, 10, 1, h), 1, Layer(1, prod.id, 1, 5, 500.0, 'LOT-A', None, False, None, None, None)),
+            (datetime(2026, 10, 10, h), 2, Layer(2, prod.id, 1, -2, -200.0, 'TR1', 9, True, 1, 2, None)),
+            (datetime(2026, 10, 10, h), 3, Layer(3, prod.id, 2, 2, 200.0, 'TR1', 9, True, 1, 2, None)),
+        ]
+        start, end = wiz._utc_bounds()
+        rows = wiz._product_rows(prod, items, start, datetime.min, end)
+        lots = {r['warehouse_id']: r for r in rows if r['line_type'] == 'lot' and r['bal_qty']}
+        self.assertEqual(lots[1]['wh_date'], date(2026, 10, 1))
+        self.assertEqual(lots[2]['wh_date'], date(2026, 10, 10))   # arrived by transfer
+        self.assertEqual(lots[2]['date'], date(2026, 10, 1))       # origin receipt date kept
+
+    def test_receipt_row_shows_all_in_unit_cost(self):
+        from datetime import datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import Layer
+        prod = self.env['product.product'].search([], limit=1)
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2026-01-01', 'date_to': '2026-12-31', 'hide_zero': False})
+        items = [
+            (datetime(2026, 10, 1, 3), 1, Layer(1, prod.id, 1, 10, 1000.0, 'LOT-A', None, False, None, None, None)),
+            (datetime(2026, 10, 5, 3), 2, Layer(2, prod.id, 1, 0, 50.0, 'BR9 (ลงล็อต LOT-A)', None, False,
+                                                None, None, 1, (('BR9', 50.0),), True)),
+        ]
+        start, end = wiz._utc_bounds()
+        rows = wiz._product_rows(prod, items, start, datetime.min, end)
+        rec = [r for r in rows if r['line_type'] == 'move' and r.get('in_qty') == 10][0]
+        self.assertAlmostEqual(rec['in_cost'], 100.0)
+        self.assertAlmostEqual(rec['in_allin'], 105.0)
+
     def test_same_origin_lot_is_one_row_with_weighted_cost(self):
         rows = self._synthetic_rows([(1, 7, 7 * 10.0, 'LOT-B'), (2, 3, 3 * 20.0, 'LOT-B')])
         lots = [r for r in rows if r['line_type'] == 'lot']
@@ -148,6 +195,14 @@ class TestTaxStockReport(TransactionCase):
         snaps = [r for r in rows if r['line_type'] == 'lotbal']
         self.assertEqual(len(snaps), 2)  # one lot row after each of the 2 movements
 
+    def test_xlsx_movement_shows_document_and_lot_separately(self):
+        from odoo.addons.buz_stock_po_lot_report.report.po_lot_xlsx import move_cells
+        self.assertEqual(move_cells('FG10/INT/26/10/00162 (ล็อต RM01/2610047) · คลังสินค้าสำเร็จรูป 1'),
+                         ('FG10/INT/26/10/00162', 'RM01/2610047'))
+        self.assertEqual(move_cells('BR26100194 ค่าเฟรท (ลงล็อต RM01/2610047) · คลัง'),
+                         ('BR26100194 ค่าเฟรท', 'RM01/2610047'))
+        self.assertEqual(move_cells('RM01/2610047 · คลังสินค้าสำเร็จรูป 1'), ('RM01/2610047', ''))
+
     def test_xlsx_splits_lot_from_document(self):
         from odoo.addons.buz_stock_po_lot_report.report.po_lot_xlsx import split_lot
         self.assertEqual(split_lot('RM01260900083 (ล็อต RM-NI/IN2609003)'),
@@ -155,3 +210,27 @@ class TestTaxStockReport(TransactionCase):
         self.assertEqual(split_lot('BR1 ค่าเช่า (ลงล็อต RM01/2610047)'),
                          ('RM01/2610047', 'BR1 ค่าเช่า'))
         self.assertEqual(split_lot('RM-NI/IN2609003'), ('RM-NI/IN2609003', ''))
+
+    def test_group_landed_keeps_each_bill(self):
+        """Value-only layers merged into one movement row still remember
+        their own landed-cost bill and value."""
+        import pytz
+        from datetime import datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import BuzPoLotWizard, Layer
+        d = datetime(2026, 5, 1, 3, 0)
+
+        def lc(i, ref, val):
+            return (d, i, Layer(i, 1, 1, 0.0, val, 'x', None, False, None, None, 10, ((ref, val),)))
+
+        out = BuzPoLotWizard._group_landed(
+            [lc(1, 'BR1', 10.0), lc(2, 'BR2', 5.0), lc(3, 'BR1', 2.0)],
+            {1: 'R', 2: 'R', 3: 'R'}, pytz.timezone('Asia/Bangkok'))
+        # one row per landed-cost document (like the FIFO valuation report)
+        self.assertEqual(len(out), 2)
+        br1, br2 = out[0][2], out[1][2]
+        self.assertAlmostEqual(br1.value, 12.0)
+        self.assertEqual(dict(br1.lcs), {'BR1': 12.0})
+        self.assertIn('(x2)', br1.doc)
+        self.assertAlmostEqual(br2.value, 5.0)
+        self.assertNotIn('(x', br2.doc)
+
