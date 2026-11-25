@@ -372,6 +372,8 @@ class StockValuationLayer(models.Model):
 
         if not layer.accounting_date:
             layer.accounting_date = layer.create_date
+
+        layer._sync_origin_value_for_price_difference()
         
         # 🔴 VERIFY: Log the actual warehouse_id after creation
         if layer.warehouse_id:
@@ -385,6 +387,25 @@ class StockValuationLayer(models.Model):
         
         return layer
     
+    def _sync_origin_value_for_price_difference(self):
+        """Keep origin_remaining_value in step with a vendor-bill price difference.
+
+        purchase_stock books a bill whose price differs from the receipt as a value-only
+        layer (quantity 0, linked to the corrected layer, no landed cost) and adds its
+        value to that layer's remaining_value only. calculate_fifo_cost prices later
+        issues at origin_remaining_value / origin_remaining_qty, so the origin layer has
+        to carry the same amount (it is already limited to the quantity still in stock).
+        """
+        for layer in self:
+            if (layer.quantity or not layer.value or layer.stock_landed_cost_id
+                    or not layer.account_move_line_id or not layer.stock_valuation_layer_id):
+                continue
+            parent = layer.stock_valuation_layer_id
+            origin = parent.origin_valuation_layer_id or parent
+            if origin.origin_remaining_qty <= 0:
+                continue
+            origin.sudo().origin_remaining_value += layer.value
+
     def _validate_location_consistency(self):
         """
         Validate that consumption layers match the warehouse of the outgoing move.
