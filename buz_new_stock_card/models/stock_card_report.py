@@ -1749,3 +1749,184 @@ class StockCardReport(models.AbstractModel):
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
         )
+
+    # ------------------------------------------------------------------
+    # Lot split (FIFO lots = origin document of the valuation layers)
+    # ------------------------------------------------------------------
+
+    MAX_LOT_SPLIT_PRODUCTS = 300
+
+    @api.model
+    def get_lot_split_rows(self, product_ids, warehouse_ids, date_from, date_to, company_id=None):
+        """Flat per-lot ledger rows for the xlsx "แยก Lot".
+
+        prod has no stock.lot data: a lot is the origin document of a FIFO
+        valuation layer (PO receipt, MO, opening ...), replayed per warehouse by
+        buz_stock_po_lot_report. Rows (one product x warehouse x lot):
+          row_type 'opening' - lot queue at the start of the period
+          row_type 'move'    - one row per lot consumed/received by a layer
+          row_type 'ending'  - lot queue at the end of the period
+        Movement values equal the valuation layer value (rounding absorbed in
+        the last lot piece), so Σ lots ties to the valuation ledger."""
+        if not self._can_see_value():
+            raise AccessError("คุณไม่มีสิทธิ์ดูข้อมูลมูลค่าสินค้า")
+        product_ids = list(product_ids or [])
+        if not product_ids:
+            raise ValidationError("ต้องเลือกสินค้าอย่างน้อย 1 รายการสำหรับรายงานแยก Lot")
+        if len(product_ids) > self.MAX_LOT_SPLIT_PRODUCTS:
+            raise ValidationError(
+                "รายงานแยก Lot รองรับสูงสุด %d สินค้า กรุณาเลือกสินค้า/คลังให้แคบลง"
+                % self.MAX_LOT_SPLIT_PRODUCTS
+            )
+        company = self.env["res.company"].browse(company_id) if company_id else self.env.company
+        wiz = self.env["buz.po.lot.wizard"].sudo().new({
+            "date_from": date_from,
+            "date_to": date_to,
+            "company_id": company.id,
+            "warehouse_ids": [fields.Command.set(list(warehouse_ids or []))],
+            "hide_zero": False,
+            "show_lots_each_row": False,
+        })
+        start_utc, end_utc = wiz._utc_bounds()
+        cutoff_utc = wiz._cutoff_utc()
+        whs = wiz._report_wh_ids()
+        all_layers = wiz._fetch_layers(product_ids, cutoff_utc, end_utc)
+        wh_names = {
+            w.id: w.name for w in self.env["stock.warehouse"].with_context(active_test=False).search([])
+        }
+        tz = pytz.timezone(self.env.user.tz or "Asia/Bangkok")
+
+        def local_str(d):
+            return pytz.UTC.localize(d).astimezone(tz).strftime("%d/%m/%y %H:%M:%S")
+
+        out = []
+        products = self.env["product.product"].with_context(active_test=False).browse(product_ids)
+        for prod in products.sorted(lambda p: (p.default_code or "", p.id)):
+            seq_all = all_layers.get(prod.id, [])
+            items = [t for t in seq_all if t[2].wh_id in whs] if whs else seq_all
+            if not items:
+                continue
+            trace = {"out": {}, "in": {}, "layers": [], "opening": [], "ending": [], "bal": {}, "open_bal": {}}
+            wiz._product_rows(prod, items, start_utc, cutoff_utc, end_utc, seq_all, trace=trace)
+            layer_info = {i: (d, sv) for d, i, sv in seq_all}
+            move_ids = {m for (_lid, m, _wh, _q, _v) in trace["layers"] if m}
+            move_types = {}
+            for move in self.env["stock.move"].browse(list(move_ids)):
+                label = ""
+                if getattr(move, "unbuild_id", False):
+                    label = DOC_TYPE_LABELS["unbuild"]
+                elif getattr(move, "production_id", False):
+                    label = DOC_TYPE_LABELS["mrp_produce"]
+                elif getattr(move, "raw_material_production_id", False):
+                    label = DOC_TYPE_LABELS["mrp_consume"]
+                elif move.picking_type_id:
+                    label = DOC_TYPE_LABELS.get(move.picking_type_id.code) or move.picking_type_id.name or ""
+                elif move.is_inventory:
+                    label = DOC_TYPE_LABELS["inventory"]
+                move_types[move.id] = label
+
+            def base(wh_id, row_type, lot):
+                return {
+                    "product_default_code": prod.default_code or "",
+                    "product_name": prod.name,
+                    "warehouse_name": wh_names.get(wh_id, ""),
+                    "row_type": row_type,
+                    "lot_doc": lot[0], "lot_date": lot[1].strftime("%d/%m/%y") if lot[1] else "",
+                    "unit_cost": lot[2],
+                    "doc_type": "", "doc_number": "", "date": "",
+                    "qty_in": 0.0, "qty_out": 0.0, "value_in": 0.0, "value_out": 0.0,
+                    "bal_qty": 0.0, "bal_value": 0.0,
+                }
+
+            prod_rows = []
+            running = {}  # (wh, lot_doc, lot_date) -> [qty, value]
+            # one opening row per lot (the queue holds one entry per unit cost)
+            open_lots = {}
+            for _ldate, wh, lot in trace["opening"]:
+                m = open_lots.setdefault((wh, lot[0], lot[1]), [lot, 0.0, 0.0])
+                m[1] += lot[3]
+                m[2] += lot[3] * lot[2]
+            for (wh, _doc, _ldt), (lot, oq, ov) in open_lots.items():
+                r = base(wh, "opening", (lot[0], lot[1], (ov / oq) if oq else lot[2]))
+                r["bal_qty"], r["bal_value"] = oq, ov
+                running[(wh, lot[0], lot[1])] = [oq, ov]
+                prod_rows.append(r)
+            for lid, mid, wh, q, v in trace["layers"]:
+                d, sv = layer_info[lid]
+                if not q:
+                    # value-only layer (landed cost / revaluation): keep its value
+                    # in the ledger, booked on the unreferenced line.
+                    if abs(v) < 1e-9:
+                        continue
+                    r = base(wh, "move", ("", None, 0.0))
+                    r["doc_type"] = "ปรับมูลค่า"
+                    r["doc_number"] = sv.doc
+                    r["date"] = local_str(d)
+                    if v > 0:
+                        r["value_in"] = v
+                    else:
+                        r["value_out"] = -v
+                    bal = running.setdefault((wh, "", None), [0.0, 0.0])
+                    bal[1] += v
+                    r["bal_qty"], r["bal_value"] = bal
+                    prod_rows.append(r)
+                    continue
+                pieces = trace["in"].get(lid) if q > 0 else trace["out"].get(lid)
+                if not pieces:
+                    pieces = [("", None, (v / q) if q else 0.0, abs(q))]
+                sign = 1 if q > 0 else -1
+                vals = [sign * p[3] * p[2] for p in pieces]
+                if q and abs(sum(vals) - v) > 1e-9:
+                    vals[-1] += v - sum(vals)  # absorb rounding/landed-cost drift
+                for p, val in zip(pieces, vals):
+                    r = base(wh, "move", (p[0], p[1], abs(val) / p[3] if p[3] else p[2]))
+                    r["doc_type"] = move_types.get(mid, "")
+                    r["doc_number"] = sv.doc
+                    r["date"] = local_str(d)
+                    if q >= 0:
+                        r["qty_in"], r["value_in"] = p[3], val
+                    else:
+                        r["qty_out"], r["value_out"] = p[3], -val
+                    bal = running.setdefault((wh, p[0], p[1]), [0.0, 0.0])
+                    bal[0] += sign * p[3]
+                    bal[1] += val
+                    r["bal_qty"], r["bal_value"] = bal
+                    prod_rows.append(r)
+            for _ldate, wh, lot in trace["ending"]:
+                r = base(wh, "ending", lot)
+                r["qty_in"] = lot[4]
+                r["bal_qty"], r["bal_value"] = lot[3], lot[3] * lot[2]
+                prod_rows.append(r)
+            # Residual: valuation-layer balance per warehouse minus what the lot
+            # queue explains (queue drift / reset layers). Keeps Σ lots == ledger.
+            lot_end = {}
+            lot_open = {}
+            for _ldate, wh, lot in trace["ending"]:
+                e = lot_end.setdefault(wh, [0.0, 0.0])
+                e[0] += lot[3]
+                e[1] += lot[3] * lot[2]
+            for _ldate, wh, lot in trace["opening"]:
+                e = lot_open.setdefault(wh, [0.0, 0.0])
+                e[0] += lot[3]
+                e[1] += lot[3] * lot[2]
+            for wh, (bq, bv) in trace["bal"].items():
+                if whs and wh not in whs:
+                    continue
+                oq, ov = trace["open_bal"].get(wh, (0.0, 0.0))
+                for kind, (tq, tv), (lq, lv) in (
+                    ("opening", (oq, ov), lot_open.get(wh, (0.0, 0.0))),
+                    ("ending", (bq, bv), lot_end.get(wh, (0.0, 0.0))),
+                ):
+                    dq, dv = tq - lq, tv - lv
+                    if abs(dq) < 1e-6 and abs(dv) < 0.01:
+                        continue
+                    r = base(wh, kind, ("", None, 0.0))
+                    r["bal_qty"], r["bal_value"] = dq, dv
+                    r["residual"] = True
+                    prod_rows.append(r)
+                    if kind == "opening":
+                        res = running.setdefault((wh, "", None), [0.0, 0.0])
+                        res[0] += dq
+                        res[1] += dv
+            out.extend(prod_rows)
+        return out

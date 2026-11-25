@@ -52,7 +52,12 @@ class PoLotXlsx(models.AbstractModel):
             fields_ = ['product_id', 'seq', 'model_code', 'line_type', 'date', 'doc_ref',
                        'in_qty', 'in_cost', 'in_value', 'out_qty', 'out_cost', 'out_value',
                        'bal_qty', 'bal_cost', 'bal_value']
-            cols = ['product_id'] + fields_[1:]
+            cols = ['product_id'] + fields_[1:] + ['warehouse_id']
+            # warehouse column (lot / movement rows are per warehouse)
+            show_wh = True
+            wh_names = {w.id: w.name for w in self.env['stock.warehouse'].with_context(
+                active_test=False).search([])}
+            sheet.set_column('L:L', 24)
             self.env.cr.execute(
                 'SELECT %s FROM buz_po_lot_line WHERE wizard_id = %%s ORDER BY product_id, seq'
                 % ', '.join(cols), (wiz.id,))
@@ -86,7 +91,7 @@ class PoLotXlsx(models.AbstractModel):
                 sheet.write(r, 0, 'ประเภทสินค้า', bold)
                 sheet.write(r, 1, categ.parent_id.name or '')
                 r += 1
-                for c, h in enumerate(HEAD):
+                for c, h in enumerate(HEAD + (['คลังสินค้า'] if show_wh else [])):
                     sheet.write(r, c, h, head)
                 r += 1
                 lot_header_done = False
@@ -98,11 +103,22 @@ class PoLotXlsx(models.AbstractModel):
                         r += 1
                         lot_header_done = True
                     n = tot if lt == 'total' else num
+                    if show_wh:
+                        sheet.write(r, 11, wh_names.get(l['warehouse_id'], '') if lt in (
+                            'move', 'lot', 'lotbal') else '', txt)
                     if l['date']:
                         sheet.write_datetime(r, 0, datetime.combine(l['date'], time.min), dat)
                     else:
                         sheet.write(r, 0, '', txt)
-                    sheet.write(r, 1, l['doc_ref'] or '', doc)
+                    # movement and ending-lot rows show the bare document number (no
+                    # warehouse tag) so a lot with stock left can be identified; the lot
+                    # snapshots under every movement (lotbal) keep only the lot date
+                    if lt == 'lotbal' and l['date']:
+                        sheet.write(r, 1, '', doc)
+                    elif lt == 'move' or (lt == 'lot' and l['date']):
+                        sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
+                    else:
+                        sheet.write(r, 1, l['doc_ref'] or '', doc)
                     if lt == 'lotbal':
                         for c in range(2, 8):
                             sheet.write(r, c, '', txt)

@@ -87,3 +87,34 @@ class TestTaxStockReport(TransactionCase):
         self.assertEqual(wiz._report_wh_ids(), set())
         wiz.warehouse_ids = transit
         self.assertEqual(wiz._report_wh_ids(), set(transit.ids))
+
+    def test_landed_cost_follows_its_parent_layer(self):
+        from collections import namedtuple
+        from datetime import datetime
+        L = namedtuple('L', 'id quantity value parent_id')
+        parent = (datetime(2026, 10, 22, 9), 10, L(10, 2, 100.0, None))
+        lc = (datetime(2026, 10, 22, 0), 20, L(20, 0, 5.0, 10))   # dated before parent
+        lc_late = (datetime(2026, 10, 28), 30, L(30, 0, 7.0, 10))  # dated after parent
+        other = (datetime(2026, 10, 22, 12), 11, L(11, -1, -50.0, None))
+        out = self.env['buz.po.lot.wizard']._landed_after_parent([lc, other, parent, lc_late])
+        self.assertEqual([t[1] for t in out], [10, 20, 11, 30])
+        self.assertEqual(out[1][0], lc[0])  # own date kept
+
+    def test_landed_cost_grouped_per_parent_and_day(self):
+        from collections import namedtuple
+        from datetime import datetime
+        import pytz
+        L = namedtuple('L', 'id quantity value parent_id wh_id doc')
+        d = datetime(2026, 10, 21, 18)   # 22/10 01:00 Bangkok
+        a = (d, 20, L(20, 0, 5.0, 10, 1, 'bill a'))
+        b = (d, 21, L(21, 0, 7.5, 10, 1, 'bill b'))
+        c = (datetime(2026, 10, 28, 3), 22, L(22, 0, 3.0, 10, 1, 'bill c'))  # other day
+        rcv = (d, 10, L(10, 2, 100.0, None, 1, 'RCV'))
+        lcdoc = {20: 'RM01/1', 21: 'RM01/1', 22: 'RM01/1'}
+        out = self.env['buz.po.lot.wizard']._group_landed(
+            [rcv, a, b, c], lcdoc, pytz.timezone('Asia/Bangkok'))
+        self.assertEqual([t[1] for t in out], [10, 20, 22])
+        self.assertAlmostEqual(out[1][2].value, 12.5)
+        self.assertIn('2 รายการ', out[1][2].doc)
+        self.assertIn('RM01/1', out[1][2].doc)
+        self.assertEqual(out[2][2].doc, 'bill c')  # single layer keeps its own bill

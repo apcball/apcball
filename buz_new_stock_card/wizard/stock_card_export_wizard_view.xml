@@ -20,6 +20,8 @@
                         <field name="include_children" invisible="not report_scope"/>
                         <field name="show_movements_only"/>
                         <field name="include_cost_lot" groups="buz_new_stock_card.group_stock_card_see_value"/>
+                        <field name="split_by_lot" groups="buz_new_stock_card.group_stock_card_see_value"
+                               invisible="not product_id"/>
                     </group>
                 </group>
                 <footer>

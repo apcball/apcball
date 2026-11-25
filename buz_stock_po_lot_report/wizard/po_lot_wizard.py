@@ -95,8 +95,20 @@ class BuzPoLotWizard(models.TransientModel):
         cr.execute("""
             SELECT l.id, l.product_id, COALESCE(l.warehouse_id, pl.warehouse_id), l.quantity, l.value,
                    COALESCE(l.accounting_date, l.create_date) AS d,
-                   COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''),
-                            NULLIF(m.name, ''), NULLIF(l.description, ''), '') AS doc,
+                   CASE WHEN l.quantity = 0 AND l.value <> 0
+                             AND l.stock_valuation_layer_id IS NOT NULL
+                             AND NULLIF(l.description, '') IS NOT NULL
+                        -- landed cost / revaluation: show its own bill, not the parent receipt
+                        THEN l.description || COALESCE(' (ลงล็อต ' || COALESCE(
+                                 NULLIF(p.name, ''), NULLIF(m.reference, ''), NULLIF(m.name, '')) || ')', '')
+                        ELSE COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''),
+                                      NULLIF(m.name, ''), NULLIF(l.description, ''), '')
+                   END AS doc,
+                   CASE WHEN l.quantity = 0 AND l.value <> 0
+                             AND l.stock_valuation_layer_id IS NOT NULL
+                             AND NULLIF(l.description, '') IS NOT NULL
+                        THEN COALESCE(NULLIF(p.name, ''), NULLIF(m.reference, ''), NULLIF(m.name, ''))
+                   END AS lcdoc,
                    m.id,
                    (m.id IS NOT NULL AND ls.usage IN ('internal', 'transit')
                         AND ld.usage IN ('internal', 'transit')) AS is_tr,
@@ -120,10 +132,61 @@ class BuzPoLotWizard(models.TransientModel):
              ORDER BY COALESCE(l.accounting_date, l.create_date), l.id
         """, (self.company_id.id, list(product_ids), cutoff_utc, end_utc))
         by_prod = defaultdict(list)
-        for (lid, pid, wh, q, v, d, doc, mid, tr, swh, dwh, par) in cr.fetchall():
+        lcdoc = {}
+        for (lid, pid, wh, q, v, d, doc, lcd, mid, tr, swh, dwh, par) in cr.fetchall():
             by_prod[pid].append((d, lid, Layer(lid, pid, wh, q or 0.0, v or 0.0, doc,
                                                mid, bool(tr), swh, dwh, par)))
-        return by_prod
+            if lcd:
+                lcdoc[lid] = lcd
+        tz = pytz.timezone(self.env.user.tz or 'Asia/Bangkok')
+        return {pid: self._group_landed(self._landed_after_parent(lst), lcdoc, tz)
+                for pid, lst in by_prod.items()}
+
+    @staticmethod
+    def _group_landed(items, lcdoc, tz):
+        """Merge value-only layers (landed cost / revaluation) that hang off the
+        same layer, in the same warehouse, on the same local accounting date into
+        one row (value summed, kept at the position of the first one). {layer id:
+        receipt name} in `lcdoc` marks which layers are value-only."""
+        out, first = [], {}
+        for d, lid, sv in items:
+            if lid not in lcdoc:
+                out.append((d, lid, sv))
+                continue
+            day = pytz.UTC.localize(d).astimezone(tz).date()
+            key = (sv.parent_id, sv.wh_id, day)
+            if key in first:
+                grp = first[key]
+                grp['n'] += 1
+                grp['value'] += sv.value
+            else:
+                grp = first[key] = {'n': 1, 'value': sv.value, 'idx': len(out)}
+                out.append((d, lid, sv))
+        for key, grp in first.items():
+            if grp['n'] > 1:
+                d, lid, sv = out[grp['idx']]
+                out[grp['idx']] = (d, lid, sv._replace(
+                    value=round(grp['value'], 2),
+                    doc='ค่าใช้จ่ายนำเข้า %d รายการ (ลงล็อต %s)' % (grp['n'], lcdoc[lid])))
+        return out
+
+    @staticmethod
+    def _landed_after_parent(items):
+        """Re-sequence [(date, id, Layer)]: a value-only layer (landed cost /
+        revaluation, qty 0) whose accounting date is earlier than the layer it
+        hangs off is moved to sit right after that parent. Its own date is kept.
+        Otherwise the cost shows up (qty 0) before the stock it belongs to
+        arrives and the running balance reads "0 qty, value > 0"."""
+        dates = {t[1]: t[0] for t in items}
+        keyed = []
+        for d, lid, sv in items:
+            pd = dates.get(sv.parent_id)
+            if sv.quantity == 0 and sv.value and pd is not None and pd > d:
+                keyed.append(((pd, sv.parent_id, 1, lid), (d, lid, sv)))
+            else:
+                keyed.append(((d, lid, 0, lid), (d, lid, sv)))
+        keyed.sort(key=lambda k: k[0])
+        return [t for _k, t in keyed]
 
     def _balance_product_ids(self, end_utc):
         """Products with non-zero qty (in any warehouse) at date_to (same layer scope as the
@@ -182,7 +245,8 @@ class BuzPoLotWizard(models.TransientModel):
             if rows:
                 yield rows
 
-    def _product_rows(self, prod, items, start_utc, cutoff_utc=None, end_utc=None, seq_all=None):
+    def _product_rows(self, prod, items, start_utc, cutoff_utc=None, end_utc=None, seq_all=None,
+                      trace=None):
         """Ledger rows for one product: FIFO audit.
 
         FIFO is per warehouse (stock_fifo_by_location), so every warehouse has its
@@ -217,6 +281,21 @@ class BuzPoLotWizard(models.TransientModel):
             if sv.quantity < 0 and sv.is_tr:
                 outs_by_move[sv.move_id].append((d, sv))
 
+        # transfer: show the out leg before its in leg (same day), so the lot
+        # rows under the in leg match the balance printed on it
+        emitted, ordered = set(), []
+        for d, i, sv in seq_all:
+            if i in emitted:
+                continue
+            if sv.is_tr and sv.quantity > 0 and sv.move_id:
+                for od, osv in outs_by_move.get(sv.move_id, []):
+                    if osv.id not in emitted and loc_date(od) == loc_date(d):
+                        ordered.append((od, osv.id, osv))
+                        emitted.add(osv.id)
+            ordered.append((d, i, sv))
+            emitted.add(i)
+        seq_all = ordered
+
         def consume(d, sv):
             done.add(sv.id)
             q = queues[sv.wh_id]
@@ -230,14 +309,31 @@ class BuzPoLotWizard(models.TransientModel):
                     continue
                 lot[3] -= take
                 rem -= take
-                got.append([lot[0], lot[1], take])
+                got.append([lot[0], lot[1], take, lot[5], lot[2]])
             while q and q[0][3] <= 1e-9:
                 q.pop(0)  # exhausted lots are always a prefix
             if rem > 1e-9:
-                got.append([sv.doc, loc_date(d), rem])  # shortfall (negative stock)
+                # shortfall (negative stock)
+                got.append([sv.doc, loc_date(d), rem, {sv.id}, abs(sv.value / sv.quantity)])
+            if trace is not None:
+                trace['out'][sv.id] = [(g[0], g[1], g[4], g[2]) for g in got]
             return got
 
+        seen = set()      # layer ids already applied
+        pending = defaultdict(float)  # parent layer id -> value booked before the lot exists
+
+        def flush_pending(sv):
+            """Back-dated landed cost whose parent lot arrived later: add it now."""
+            val = pending.pop(sv.id, 0.0)
+            if val:
+                hit = [lot for lot in queues[sv.wh_id] if sv.id in lot[5]]
+                rec = sum(lot[4] for lot in hit)
+                for lot in hit:
+                    if rec:
+                        lot[2] += val / rec
+
         def apply(d, sv):
+            seen.add(sv.id)
             q = sv.quantity
             if q < 0:
                 if sv.id in done:
@@ -247,31 +343,52 @@ class BuzPoLotWizard(models.TransientModel):
                     pieces[sv.move_id] += got
             elif q == 0 and sv.parent_id and sv.value:
                 # landed cost / revaluation: spread over the lot it hangs off
-                hit = [lot for lot in queues[sv.wh_id] if lot[5] == sv.parent_id]
+                # (lot[5] = ids of every layer the lot passed through, so the
+                # parent is still found after the lot moved between warehouses)
+                hit = [lot for lot in queues[sv.wh_id] if sv.parent_id in lot[5]]
                 rec = sum(lot[4] for lot in hit)
-                for lot in hit:
-                    if rec:
+                if rec:
+                    for lot in hit:
                         lot[2] += sv.value / rec
+                elif sv.parent_id not in seen:
+                    # booked (back-dated) before its parent lot exists: wait for it
+                    pending[sv.parent_id] += sv.value
+                else:
+                    # parent lot already used up: spread over what is left in
+                    # the warehouse so lots keep adding up to the ledger balance
+                    left = [lot for lot in queues[sv.wh_id] if lot[3] > 1e-9]
+                    rem_q = sum(lot[3] for lot in left)
+                    for lot in left:
+                        lot[2] += sv.value / rem_q
             elif q > 0:
                 unit = sv.value / q
                 if not sv.is_tr:
-                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q, sv.id])
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, q, q, {sv.id}])
+                    if trace is not None:
+                        trace['in'][sv.id] = [(sv.doc, loc_date(d), unit, q)]
+                    flush_pending(sv)
                     return
                 mid = sv.move_id
                 for od, osv in outs_by_move.get(mid, []):
                     if osv.id not in done:
                         pieces[mid] += consume(od, osv)
                 need = q
+                tin = []
                 while need > 1e-9 and pieces[mid]:
                     pc = pieces[mid][0]
                     take = min(pc[2], need)
-                    queues[sv.wh_id].append([pc[0], pc[1], unit, take, take, sv.id])
+                    queues[sv.wh_id].append([pc[0], pc[1], unit, take, take, pc[3] | {sv.id}])
+                    tin.append((pc[0], pc[1], unit, take))
                     pc[2] -= take
                     need -= take
                     if pc[2] <= 1e-9:
                         pieces[mid].pop(0)
                 if need > 1e-9:
-                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need, sv.id])
+                    queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need, {sv.id}])
+                    tin.append((sv.doc, loc_date(d), unit, need))
+                if trace is not None:
+                    trace['in'][sv.id] = tin
+                flush_pending(sv)
 
         def live_lots():
             """Remaining lots of the selected warehouses, one row per
@@ -320,6 +437,9 @@ class BuzPoLotWizard(models.TransientModel):
                     return []
                 row(line_type='opening', doc_ref='ยกมา', date=self.date_from,
                     bal_qty=bq, bal_value=bv, bal_cost=(bv / bq) if bq else 0.0)
+                if trace is not None:
+                    trace['opening'] = live_lots()
+                    trace['open_bal'] = {k: list(v) for k, v in trace['bal'].items()}
                 if self.show_lots_each_row:
                     snapshot()
             apply(d, s)
@@ -328,6 +448,10 @@ class BuzPoLotWizard(models.TransientModel):
             q, v = s.quantity, s.value
             bq += q
             bv += v
+            if trace is not None:
+                wb = trace['bal'].setdefault(s.wh_id, [0.0, 0.0])
+                wb[0] += q
+                wb[1] += v
             if d < start_utc:
                 continue
             vals = {'line_type': 'move', 'date': loc_date(d),
@@ -343,6 +467,8 @@ class BuzPoLotWizard(models.TransientModel):
                 tout_q += -q
                 tout_v += -v
             row(**vals)
+            if trace is not None:
+                trace['layers'].append((s.id, s.move_id, s.wh_id, q, v))
             if self.show_lots_each_row:
                 snapshot()
         if not opened:
@@ -350,8 +476,13 @@ class BuzPoLotWizard(models.TransientModel):
                 return []
             row(line_type='opening', doc_ref='ยกมา', date=self.date_from,
                 bal_qty=bq, bal_value=bv, bal_cost=(bv / bq) if bq else 0.0)
+            if trace is not None:
+                trace['opening'] = live_lots()
+                trace['open_bal'] = {k: list(v) for k, v in trace['bal'].items()}
         if self.hide_zero and float_is_zero(bq, precision_digits=QTY_DIGITS):
             return []  # nothing in stock at date_to
+        if trace is not None:
+            trace['ending'] = live_lots()
         lot_val = lot_q = 0.0
         for ldate, wh, lot in live_lots():
             lot_q += lot[3]
