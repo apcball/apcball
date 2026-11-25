@@ -36,7 +36,7 @@
         <field name="model">buz.po.lot.line</field>
         <field name="arch" type="xml">
             <tree create="0" edit="0" delete="0" default_order="product_id, seq"
-                  decoration-muted="line_type in ('lotbal', 'lotlc')" decoration-bf="line_type == 'total'">
+                  decoration-muted="line_type == 'lotbal'" decoration-bf="line_type == 'total'">
                 <field name="product_id"/>
                 <field name="line_type"/>
                 <field name="date"/>
@@ -64,7 +64,7 @@
             <search>
                 <field name="product_id"/>
                 <field name="model_code"/>
-                <filter name="lots" string="Ending lots" domain="[('line_type', 'in', ('lot', 'lotlc'))]"/>
+                <filter name="lots" string="Ending lots" domain="[('line_type', '=', 'lot')]"/>
                 <filter name="totals" string="Totals" domain="[('line_type', '=', 'total')]"/>
                 <filter name="group_model" string="Model" context="{'group_by': 'model_code'}"/>
                 <filter name="group_prod" string="Product" context="{'group_by': 'product_id'}"/>

@@ -234,25 +234,3 @@ class TestTaxStockReport(TransactionCase):
         self.assertAlmostEqual(br2.value, 5.0)
         self.assertNotIn('(x', br2.doc)
 
-    def test_landed_cost_rows_follow_their_lot(self):
-        """Each lotlc row sits right under an ending lot of the same warehouse."""
-        lc_layer = self.env['stock.valuation.layer'].search(
-            [('stock_landed_cost_id', '!=', False), ('warehouse_id', '!=', False)], limit=1)
-        if not lc_layer:
-            self.skipTest('no landed cost layers')
-        wiz = self.env['buz.po.lot.wizard'].create({
-            'date_from': '2000-01-01', 'date_to': '2099-12-31',
-            'product_ids': [(6, 0, lc_layer.product_id.ids)], 'hide_zero': False,
-            'show_lots_each_row': False})
-        rows = wiz._compute_rows()
-        prev = None
-        for r in rows:
-            if r['line_type'] == 'lotlc':
-                self.assertIn(prev['line_type'], ('lot', 'lotlc'))
-                self.assertEqual(prev['warehouse_id'], r['warehouse_id'])
-                self.assertTrue(r['doc_ref'])
-            prev = r
-        # lotlc rows carry no balance: totals/adjust unchanged
-        total = [r for r in rows if r['line_type'] == 'total'][0]
-        self.assertAlmostEqual(
-            total['bal_value'], sum(r['bal_value'] for r in rows if r['line_type'] in ('lot', 'adjust')), places=1)

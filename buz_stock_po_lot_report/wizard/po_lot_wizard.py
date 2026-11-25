@@ -292,8 +292,8 @@ class BuzPoLotWizard(models.TransientModel):
         seq = 0
         out = []
 
-        queues = defaultdict(list)    # wh id -> [[doc, date, unit, remaining, received, layer ids, {lc bill: per-unit}, date it entered this wh]]
-        pieces = defaultdict(list)    # move id -> [[doc, date, qty, ids, unit, {lc}]] eaten at the source
+        queues = defaultdict(list)    # wh id -> [[doc, date, unit, remaining, received, layer ids, date it entered this wh]]
+        pieces = defaultdict(list)    # move id -> [[doc, date, qty, ids, unit]] eaten at the source
         done = set()
         outs_by_move = defaultdict(list)
         for d, _i, sv in seq_all:
@@ -328,13 +328,13 @@ class BuzPoLotWizard(models.TransientModel):
                     continue
                 lot[3] -= take
                 rem -= take
-                got.append([lot[0], lot[1], take, lot[5], lot[2], dict(lot[6])])
+                got.append([lot[0], lot[1], take, lot[5], lot[2]])
             while q and q[0][3] <= 1e-9:
                 q.pop(0)  # exhausted lots are always a prefix
             if rem > 1e-9:
                 # shortfall (negative stock)
                 debts[sv.wh_id] += rem
-                got.append([sv.doc, loc_date(d), rem, {sv.id}, abs(sv.value / sv.quantity), {}])
+                got.append([sv.doc, loc_date(d), rem, {sv.id}, abs(sv.value / sv.quantity)])
             origins[sv.id] = [(g[0], g[2]) for g in got]
             if trace is not None:
                 trace['out'][sv.id] = [(g[0], g[1], g[4], g[2]) for g in got]
@@ -357,14 +357,10 @@ class BuzPoLotWizard(models.TransientModel):
             return lot
 
         def add_lc(lots, parts, weight):
-            """Spread landed-cost `parts` [(bill, value)] over `lots`; unit cost goes
-            up and the bill is remembered per unit so it can be listed under the lot."""
-            for ref, val in parts:
+            """Spread landed-cost `parts` [(bill, value)] over `lots` (unit cost up)."""
+            for _ref, val in parts:
                 for lot in lots:
-                    du = val / weight
-                    lot[2] += du
-                    if ref:
-                        lot[6][ref] = lot[6].get(ref, 0.0) + du
+                    lot[2] += val / weight
 
         def flush_pending(sv):
             """Back-dated landed cost whose parent lot arrived later: add it now."""
@@ -406,7 +402,7 @@ class BuzPoLotWizard(models.TransientModel):
             elif q > 0:
                 unit = sv.value / q
                 if not sv.is_tr:
-                    queues[sv.wh_id].append(settle(sv.wh_id, [sv.doc, loc_date(d), unit, q, q, {sv.id}, {}, loc_date(d)]))
+                    queues[sv.wh_id].append(settle(sv.wh_id, [sv.doc, loc_date(d), unit, q, q, {sv.id}, loc_date(d)]))
                     if trace is not None:
                         trace['in'][sv.id] = [(sv.doc, loc_date(d), unit, q)]
                     flush_pending(sv)
@@ -420,26 +416,25 @@ class BuzPoLotWizard(models.TransientModel):
                 while need > 1e-9 and pieces[mid]:
                     pc = pieces[mid][0]
                     take = min(pc[2], need)
-                    queues[sv.wh_id].append(settle(sv.wh_id, [pc[0], pc[1], unit, take, take, pc[3] | {sv.id}, dict(pc[5]), loc_date(d)]))
+                    queues[sv.wh_id].append(settle(sv.wh_id, [pc[0], pc[1], unit, take, take, pc[3] | {sv.id}, loc_date(d)]))
                     tin.append((pc[0], pc[1], unit, take))
                     pc[2] -= take
                     need -= take
                     if pc[2] <= 1e-9:
                         pieces[mid].pop(0)
                 if need > 1e-9:
-                    queues[sv.wh_id].append(settle(sv.wh_id, [sv.doc, loc_date(d), unit, need, need, {sv.id}, {}, loc_date(d)]))
+                    queues[sv.wh_id].append(settle(sv.wh_id, [sv.doc, loc_date(d), unit, need, need, {sv.id}, loc_date(d)]))
                     tin.append((sv.doc, loc_date(d), unit, need))
                 origins[sv.id] = [(t[0], t[3]) for t in tin]
                 if trace is not None:
                     trace['in'][sv.id] = tin
                 flush_pending(sv)
 
-        def live_lots(with_lc=False):
+        def live_lots(with_entry=False):
             """Remaining lots of the selected warehouses, ONE row per
             (origin doc, warehouse); unit cost = weighted average of its pieces.
-            [(date, wh, [doc, date, unit, rem, rec])]; with_lc returns
-            (date, wh, lot, {landed-cost bill: value on the remaining qty},
-            date the lot entered this warehouse) instead."""
+            [(date, wh, [doc, date, unit, rem, rec])]; with_entry returns
+            (date, wh, lot, date the lot entered this warehouse) instead."""
             merged = {}
             for wh, q in queues.items():
                 if sel and wh not in sel:
@@ -450,21 +445,18 @@ class BuzPoLotWizard(models.TransientModel):
                     key = (wh or 0, lot[0])
                     m = merged.get(key)
                     if not m:
-                        m = merged[key] = [lot[0], lot[1], lot[2], 0.0, 0.0, 0.0, {}, lot[7]]
+                        m = merged[key] = [lot[0], lot[1], lot[2], 0.0, 0.0, 0.0, lot[6]]
                     m[5] += lot[3] * lot[2]
                     m[3] += lot[3]
                     m[4] += lot[4]
                     m[1] = min(m[1], lot[1])
-                    m[7] = min(m[7], lot[7])
-                    if with_lc:
-                        for ref, du in lot[6].items():
-                            m[6][ref] = m[6].get(ref, 0.0) + du * lot[3]
+                    m[6] = min(m[6], lot[6])
             res = []
             for (wh, _doc), m in merged.items():
                 m[2] = m[5] / m[3]
-                res.append((m[1], wh, m[:5], m[6], m[7]) if with_lc else (m[1], wh, m[:5]))
+                res.append((m[1], wh, m[:5], m[6]) if with_entry else (m[1], wh, m[:5]))
             # FIFO queue order per warehouse: by the day the lot entered it
-            return sorted(res, key=lambda t: ((t[4] if with_lc else t[0]), t[1], t[2][0]))
+            return sorted(res, key=lambda t: ((t[3] if with_entry else t[0]), t[1], t[2][0]))
 
         def wtag(wh):
             return ' · %s' % wh_names[wh] if wh in wh_names else ''
@@ -490,7 +482,7 @@ class BuzPoLotWizard(models.TransientModel):
             out.append(r)
 
         def snapshot():
-            for ldate, wh, lot, _lcs, entered in live_lots(with_lc=True):
+            for ldate, wh, lot, entered in live_lots(with_entry=True):
                 row(line_type='lotbal', date=ldate, wh_date=entered, doc_ref=lot[0] + wtag(wh),
                     warehouse_id=wh or False, bal_qty=lot[3], bal_cost=lot[2],
                     bal_value=lot[3] * lot[2])
@@ -562,18 +554,13 @@ class BuzPoLotWizard(models.TransientModel):
         if trace is not None:
             trace['ending'] = live_lots()
         lot_val = lot_q = 0.0
-        for ldate, wh, lot, lcs, entered in live_lots(with_lc=True):
+        for ldate, wh, lot, entered in live_lots(with_entry=True):
             lot_q += lot[3]
             lot_val += lot[3] * lot[2]
             row(line_type='lot', date=ldate, wh_date=entered, doc_ref=lot[0] + wtag(wh),
                 warehouse_id=wh or False, in_qty=lot[4], in_cost=lot[2],
                 in_value=lot[4] * lot[2], bal_qty=lot[3], bal_cost=lot[2],
                 bal_value=lot[3] * lot[2])
-            # landed cost booked on this lot, one row per bill
-            for ref in sorted(lcs):
-                if abs(lcs[ref]) >= 0.005:
-                    row(line_type='lotlc', date=ldate, doc_ref=ref, warehouse_id=wh or False,
-                        in_cost=lcs[ref] / lot[3], in_value=lcs[ref])
         if not float_is_zero(bq - lot_q, precision_digits=QTY_DIGITS):
             row(line_type='lot', doc_ref='ไม่สามารถอ้างอิงล็อตได้',
                 bal_qty=bq - lot_q, bal_cost=0.0, bal_value=0.0)
