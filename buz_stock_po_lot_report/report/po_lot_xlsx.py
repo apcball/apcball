@@ -110,9 +110,12 @@ class PoLotXlsx(models.AbstractModel):
                         sheet.write_datetime(r, 0, datetime.combine(l['date'], time.min), dat)
                     else:
                         sheet.write(r, 0, '', txt)
-                    # lot and movement rows show the bare document number (no warehouse
-                    # tag); lot rows carry the origin receipt so the lot can be identified
-                    if lt == 'move' or (lt in ('lotbal', 'lot') and l['date']):
+                    # movement and ending-lot rows show the bare document number (no
+                    # warehouse tag) so a lot with stock left can be identified; the lot
+                    # snapshots under every movement (lotbal) keep only the lot date
+                    if lt == 'lotbal' and l['date']:
+                        sheet.write(r, 1, '', doc)
+                    elif lt == 'move' or (lt == 'lot' and l['date']):
                         sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
                     else:
                         sheet.write(r, 1, l['doc_ref'] or '', doc)
