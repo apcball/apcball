@@ -10,7 +10,9 @@
 # Scope (safe subset only): position layers L with
 #   - quantity > 0, origin = a negative layer N, remaining_qty > 0 (still in stock), date >= 2026-03-30;
 #   - the real origin R is found from the ORIGINAL transfer move of N: its other positive (dest in-leg)
-#     layers all point to ONE root R (positive, no origin of its own), same product and company;
+#     layers all point to ONE root R (positive, no origin of its own), same product and company; when
+#     that origin is itself a negative layer (a return of a return) the walk continues through ITS move,
+#     up to 4 hops;
 #   - L.value matches L.quantity x R unit cost within max(0.5, 0.5%) (so the stock is valued right);
 #   - the root's orv/orq unit cost is within 1% of L's own unit cost (or the root has orq <= 0, where the
 #     engine already falls back to L's own cost), so relinking does not change the next-issue cost.
@@ -40,21 +42,32 @@ AUDIT="return_origin_relink_${STAMP}"
 REMOTE_ENV='PW=$(grep -E "^db_password" /etc/instance1.conf); export PGPASSWORD="${PW#*= }"'
 
 read -r -d '' CTE <<'SQLEOF' || true
-WITH p AS (
+WITH RECURSIVE p AS (
   SELECT l.id lid, l.product_id, l.company_id, l.warehouse_id wh, l.quantity q, l.value v, l.remaining_qty rq,
          round(l.remaining_value::numeric, 2) rv, l.origin_valuation_layer_id old_oid, l.stock_move_id mv,
          coalesce(l.accounting_date, l.create_date)::date d, o.stock_move_id neg_move
   FROM stock_valuation_layer l JOIN stock_valuation_layer o ON o.id = l.origin_valuation_layer_id
   WHERE o.quantity < 0 AND l.quantity > 0 AND coalesce(l.accounting_date, l.create_date) >= '2026-03-30'
 ),
+hop(lid, mv, depth, real_id, real_q) AS (
+  -- walk back through the original transfer moves: a real origin that is itself a NEGATIVE layer
+  -- (a return of a return) is resolved through ITS move, up to 4 hops
+  SELECT p.lid, p.neg_move, 0, NULL::int, NULL::numeric FROM p
+  UNION ALL
+  SELECT h.lid, rr.stock_move_id, h.depth + 1, rr.id, rr.quantity
+  FROM hop h
+  JOIN stock_valuation_layer t ON t.stock_move_id = h.mv AND t.quantity > 0 AND t.id <> h.lid
+  JOIN stock_valuation_layer rr ON rr.id = coalesce(t.origin_valuation_layer_id, t.id)
+  WHERE h.depth < 4 AND (h.real_id IS NULL OR h.real_q < 0)
+),
 cand AS (
-  SELECT p.lid, array_agg(DISTINCT coalesce(t.origin_valuation_layer_id, t.id))
-                  FILTER (WHERE t.quantity > 0) reals
-  FROM p LEFT JOIN stock_valuation_layer t ON t.stock_move_id = p.neg_move AND t.id <> p.lid
+  SELECT p.lid, array_agg(DISTINCT h.real_id) FILTER (WHERE h.real_q > 0) reals,
+         max(h.depth) FILTER (WHERE h.real_q > 0) hops
+  FROM p LEFT JOIN hop h ON h.lid = p.lid AND h.depth > 0
   GROUP BY p.lid
 ),
 j AS (
-  SELECT p.*, c.reals, r.id real_oid, r.quantity r_q, r.value r_v, r.origin_valuation_layer_id r_own_origin,
+  SELECT p.*, c.reals, c.hops, r.id real_oid, r.quantity r_q, r.value r_v, r.origin_valuation_layer_id r_own_origin,
          r.product_id r_product, r.company_id r_company, r.origin_remaining_qty r_orq,
          r.origin_remaining_value r_orv
   FROM p JOIN cand c USING (lid)
@@ -76,7 +89,7 @@ cls AS (
     END k
   FROM j
 ),
-fixset AS (SELECT lid, old_oid, real_oid new_oid, product_id, wh, q, v, rq, rv, d, r_orq FROM cls WHERE k = 'FIX')
+fixset AS (SELECT lid, old_oid, real_oid new_oid, product_id, wh, q, v, rq, rv, d, r_orq, hops FROM cls WHERE k = 'FIX')
 SQLEOF
 
 if [ "$MODE" = check ]; then
@@ -87,6 +100,9 @@ SELECT k, count(*) n, round(sum(rv)::numeric, 0) remaining_value FROM cls GROUP 
 \echo '== fix set by month (and how many roots still have origin_remaining_qty > 0)'
 $CTE
 SELECT to_char(d, 'YYYY-MM') mth, count(*) n, round(sum(rv)::numeric, 0) rv, count(*) FILTER (WHERE r_orq > 0) root_orq_pos FROM fixset GROUP BY 1 ORDER BY 1;
+\echo '== fix set by number of hops back to the real origin (1 = original transfer, 2+ = return of a return)'
+$CTE
+SELECT hops, count(*) n, round(sum(rv)::numeric, 0) rv FROM fixset GROUP BY 1 ORDER BY 1;
 \echo '== fix set totals (use for apply)'
 $CTE
 SELECT count(*) AS expect_n, round(sum(rv)::numeric, 2) AS expect_rv FROM fixset;
@@ -116,7 +132,7 @@ ssh mog-prod "$REMOTE_ENV; psql -h localhost -U odoo MOG_LIVE -v ON_ERROR_STOP=1
 BEGIN;
 CREATE TABLE $AUDIT AS
 $CTE
-SELECT lid, old_oid, new_oid, product_id, wh, q, v, rq, rv, d, now() AS fixed_at FROM fixset;
+SELECT lid, old_oid, new_oid, product_id, wh, q, v, rq, rv, d, hops, now() AS fixed_at FROM fixset;
 DO \$\$
 DECLARE n int; s numeric;
 BEGIN
