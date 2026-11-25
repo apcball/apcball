@@ -1,9 +1,21 @@
+import re
 from datetime import datetime, time
 
 from odoo import models
 
 HEAD = ['วันที่', 'เลขที่', 'จำนวนรับ', '@', 'มูลค่ารับ', 'จำนวนจ่าย', '@',
         'มูลค่าจ่าย', 'จำนวนคงเหลือ', '@', 'มูลค่าคงเหลือ']
+
+# ' (ล็อต A, B +N)' / ' (ลงล็อต A)' suffix the engine puts on a movement's document
+LOT_SUFFIX = re.compile(r'\s*\((?:ลง)?ล็อต ([^)]*)\)\s*$')
+
+
+def split_lot(ref):
+    """'DOC (ล็อต LOT)' -> ('LOT', 'DOC'); no lot suffix -> (ref, '')."""
+    m = LOT_SUFFIX.search(ref)
+    if not m:
+        return ref, ''
+    return m.group(1).strip(), ref[:m.start()].strip()
 
 
 class PoLotXlsx(models.AbstractModel):
@@ -58,6 +70,7 @@ class PoLotXlsx(models.AbstractModel):
             wh_names = {w.id: w.name for w in self.env['stock.warehouse'].with_context(
                 active_test=False).search([])}
             sheet.set_column('L:L', 24)
+            sheet.set_column('M:M', 34)
             self.env.cr.execute(
                 'SELECT %s FROM buz_po_lot_line WHERE wizard_id = %%s ORDER BY product_id, seq'
                 % ', '.join(cols), (wiz.id,))
@@ -91,7 +104,7 @@ class PoLotXlsx(models.AbstractModel):
                 sheet.write(r, 0, 'ประเภทสินค้า', bold)
                 sheet.write(r, 1, categ.parent_id.name or '')
                 r += 1
-                for c, h in enumerate(HEAD + (['คลังสินค้า'] if show_wh else [])):
+                for c, h in enumerate(HEAD + (['คลังสินค้า', 'เอกสาร'] if show_wh else [])):
                     sheet.write(r, c, h, head)
                 r += 1
                 lot_header_done = False
@@ -115,7 +128,14 @@ class PoLotXlsx(models.AbstractModel):
                     # snapshots under every movement (lotbal) keep only the lot date
                     if lt == 'lotbal' and l['date']:
                         sheet.write(r, 1, '', doc)
-                    elif lt == 'move' or (lt == 'lot' and l['date']):
+                    elif lt == 'move':
+                        # the lot is the identifier in the document column; the
+                        # transfer / bill / sale number moves to the last column
+                        lot, ref = split_lot((l['doc_ref'] or '').split(' · ')[0])
+                        sheet.write(r, 1, lot, doc)
+                        if ref and show_wh:
+                            sheet.write(r, 12, ref, doc)
+                    elif lt == 'lot' and l['date']:
                         sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
                     else:
                         sheet.write(r, 1, l['doc_ref'] or '', doc)

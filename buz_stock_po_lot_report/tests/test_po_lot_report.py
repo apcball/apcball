@@ -147,3 +147,11 @@ class TestTaxStockReport(TransactionCase):
         self.assertAlmostEqual(lots[0]['bal_value'], 130.0)
         snaps = [r for r in rows if r['line_type'] == 'lotbal']
         self.assertEqual(len(snaps), 2)  # one lot row after each of the 2 movements
+
+    def test_xlsx_splits_lot_from_document(self):
+        from odoo.addons.buz_stock_po_lot_report.report.po_lot_xlsx import split_lot
+        self.assertEqual(split_lot('RM01260900083 (ล็อต RM-NI/IN2609003)'),
+                         ('RM-NI/IN2609003', 'RM01260900083'))
+        self.assertEqual(split_lot('BR1 ค่าเช่า (ลงล็อต RM01/2610047)'),
+                         ('RM01/2610047', 'BR1 ค่าเช่า'))
+        self.assertEqual(split_lot('RM-NI/IN2609003'), ('RM-NI/IN2609003', ''))
