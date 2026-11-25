@@ -61,6 +61,7 @@ class StockLandedCost(models.Model):
             }
             valuation_layer_ids = []
             cost_to_add_byproduct = defaultdict(lambda: 0.0)
+            cost_to_add_by_line = {}   # adjustment line id -> share booked in SVL
 
             for line in cost.valuation_adjustment_lines.filtered(lambda line: line.move_id):
                 origin_layer, linked_layers, remaining_qty, move_qty = cost._get_landed_cost_targets(line.move_id)
@@ -69,6 +70,7 @@ class StockLandedCost(models.Model):
                 # cap the share at 1: a move never absorbs more than its own allocation.
                 ratio = min(max(remaining_qty / move_qty, 0.0), 1.0) if move_qty else 0.0
                 cost_to_add = ratio * line.additional_landed_cost
+                cost_to_add_by_line[line.id] = cost_to_add
                 product = line.move_id.product_id
 
                 if not cost.company_id.currency_id.is_zero(cost_to_add):
@@ -122,7 +124,7 @@ class StockLandedCost(models.Model):
                 move = move.create(move_vals)
                 cost_vals.update({'account_move_id': move.id})
             cost.write(cost_vals)
-            cost._allocate_landed_costs_by_location()
+            cost._allocate_landed_costs_by_location(cost_to_add_by_line)
             if cost.account_move_id:
                 move._post()
             cost.reconcile_landed_cost()
@@ -237,13 +239,19 @@ class StockLandedCost(models.Model):
             remaining_qty = sum(origin_layers.mapped('origin_remaining_qty'))
         return origin_layer, position_layers, remaining_qty, qty
     
-    def _allocate_landed_costs_by_location(self):
+    def _allocate_landed_costs_by_location(self, cost_to_add_by_line=None):
         """
         Create per-warehouse landed cost allocations.
         
         For each valuation adjustment line with a landed cost, create or update
         stock.valuation.layer.landed.cost records to track the cost at the
         specific warehouse where the goods are received.
+
+        `cost_to_add_by_line` ({adjustment line id: value}) is the share of each line
+        that button_validate actually booked in the SVL (landed cost x in-stock ratio).
+        Only that share may be added to origin_remaining_value / the per-warehouse
+        table: the part belonging to units already issued is not in stock, and the
+        issue was costed without it. Without it (None) the full line amount is used.
         """
         lc_location_model = self.env['stock.valuation.layer.landed.cost']
         precision = self.env['decimal.precision'].precision_get('Product Price')
@@ -262,6 +270,8 @@ class StockLandedCost(models.Model):
                 warehouse = location.warehouse_id if location else None
                 company = landed_cost.company_id
                 lc_value = val_adj_line.additional_landed_cost
+                if cost_to_add_by_line is not None:
+                    lc_value = cost_to_add_by_line.get(val_adj_line.id, lc_value)
                 qty = move.product_uom._compute_quantity(
                     move.quantity, move.product_id.uom_id
                 )
