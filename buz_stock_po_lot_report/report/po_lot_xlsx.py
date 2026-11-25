@@ -118,7 +118,7 @@ class PoLotXlsx(models.AbstractModel):
                     n = tot if lt == 'total' else num
                     if show_wh:
                         sheet.write(r, 11, wh_names.get(l['warehouse_id'], '') if lt in (
-                            'move', 'lot', 'lotbal') else '', txt)
+                            'move', 'lot', 'lotbal', 'lotlc') else '', txt)
                     if l['date']:
                         sheet.write_datetime(r, 0, datetime.combine(l['date'], time.min), dat)
                     else:
@@ -139,6 +139,15 @@ class PoLotXlsx(models.AbstractModel):
                         sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
                     else:
                         sheet.write(r, 1, l['doc_ref'] or '', doc)
+                    if lt == 'lotlc':
+                        # landed cost booked on the lot above: bill number + value
+                        sheet.write(r, 1, '   + ค่าใช้จ่ายนำเข้า ' + (l['doc_ref'] or ''), doc)
+                        for c in range(2, 11):
+                            sheet.write(r, c, '', txt)
+                        sheet.write(r, 3, l['in_cost'], cost)
+                        sheet.write(r, 4, l['in_value'], num)
+                        r += 1
+                        continue
                     if lt == 'lotbal':
                         for c in range(2, 8):
                             sheet.write(r, c, '', txt)

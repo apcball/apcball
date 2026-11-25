@@ -104,7 +104,7 @@ class TestTaxStockReport(TransactionCase):
         from collections import namedtuple
         from datetime import datetime
         import pytz
-        L = namedtuple('L', 'id quantity value parent_id wh_id doc')
+        L = namedtuple('L', 'id quantity value parent_id wh_id doc lcs', defaults=((),))
         d = datetime(2026, 10, 21, 18)   # 22/10 01:00 Bangkok
         a = (d, 20, L(20, 0, 5.0, 10, 1, 'bill a'))
         b = (d, 21, L(21, 0, 7.5, 10, 1, 'bill b'))
@@ -138,6 +138,17 @@ class TestTaxStockReport(TransactionCase):
         receipt = [r for r in rows if r['line_type'] == 'move' and r.get('in_qty')][0]
         self.assertNotIn('ล็อต', receipt['doc_ref'])
 
+    def test_back_dated_receipt_pays_back_earlier_shortfall(self):
+        """Issued before the receipt is dated: warehouse ends at 0, so no lot is shown."""
+        rows = self._synthetic_rows([(1, -3, -300.0, 'SO1'), (2, 3, 300.0, 'LOT-A')])
+        total = [r for r in rows if r['line_type'] == 'total'][0]
+        self.assertAlmostEqual(total['bal_qty'], 0.0)
+        self.assertFalse([r for r in rows if r['line_type'] == 'lot' and r['bal_qty']])
+        # partial: 5 in, 3 already issued -> 2 left in that lot
+        rows = self._synthetic_rows([(1, -3, -300.0, 'SO1'), (2, 5, 500.0, 'LOT-B')])
+        lots = [r for r in rows if r['line_type'] == 'lot']
+        self.assertEqual([round(r['bal_qty'], 4) for r in lots if r['bal_qty']], [2.0])
+
     def test_same_origin_lot_is_one_row_with_weighted_cost(self):
         rows = self._synthetic_rows([(1, 7, 7 * 10.0, 'LOT-B'), (2, 3, 3 * 20.0, 'LOT-B')])
         lots = [r for r in rows if r['line_type'] == 'lot']
@@ -155,3 +166,45 @@ class TestTaxStockReport(TransactionCase):
         self.assertEqual(split_lot('BR1 ค่าเช่า (ลงล็อต RM01/2610047)'),
                          ('RM01/2610047', 'BR1 ค่าเช่า'))
         self.assertEqual(split_lot('RM-NI/IN2609003'), ('RM-NI/IN2609003', ''))
+
+    def test_group_landed_keeps_each_bill(self):
+        """Value-only layers merged into one movement row still remember
+        their own landed-cost bill and value."""
+        import pytz
+        from datetime import datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import BuzPoLotWizard, Layer
+        d = datetime(2026, 5, 1, 3, 0)
+
+        def lc(i, ref, val):
+            return (d, i, Layer(i, 1, 1, 0.0, val, 'x', None, False, None, None, 10, ((ref, val),)))
+
+        out = BuzPoLotWizard._group_landed(
+            [lc(1, 'BR1', 10.0), lc(2, 'BR2', 5.0), lc(3, 'BR1', 2.0)],
+            {1: 'R', 2: 'R', 3: 'R'}, pytz.timezone('Asia/Bangkok'))
+        self.assertEqual(len(out), 1)
+        sv = out[0][2]
+        self.assertAlmostEqual(sv.value, 17.0)
+        self.assertEqual(dict(sv.lcs), {'BR1': 12.0, 'BR2': 5.0})
+
+    def test_landed_cost_rows_follow_their_lot(self):
+        """Each lotlc row sits right under an ending lot of the same warehouse."""
+        lc_layer = self.env['stock.valuation.layer'].search(
+            [('stock_landed_cost_id', '!=', False), ('warehouse_id', '!=', False)], limit=1)
+        if not lc_layer:
+            self.skipTest('no landed cost layers')
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2000-01-01', 'date_to': '2099-12-31',
+            'product_ids': [(6, 0, lc_layer.product_id.ids)], 'hide_zero': False,
+            'show_lots_each_row': False})
+        rows = wiz._compute_rows()
+        prev = None
+        for r in rows:
+            if r['line_type'] == 'lotlc':
+                self.assertIn(prev['line_type'], ('lot', 'lotlc'))
+                self.assertEqual(prev['warehouse_id'], r['warehouse_id'])
+                self.assertTrue(r['doc_ref'])
+            prev = r
+        # lotlc rows carry no balance: totals/adjust unchanged
+        total = [r for r in rows if r['line_type'] == 'total'][0]
+        self.assertAlmostEqual(
+            total['bal_value'], sum(r['bal_value'] for r in rows if r['line_type'] in ('lot', 'adjust')), places=1)

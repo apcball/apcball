@@ -15,6 +15,7 @@ class BuzPoLotLine(models.TransientModel):
         ('move', 'Movement'),
         ('lotbal', 'Lot balance'),
         ('lot', 'Ending lot'),
+        ('lotlc', 'Landed cost on lot'),
         ('adjust', 'Value adjustment'),
         ('total', 'Total'),
     ], string='Type')
