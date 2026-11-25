@@ -315,12 +315,14 @@ class BuzPoLotWizard(models.TransientModel):
             if rem > 1e-9:
                 # shortfall (negative stock)
                 got.append([sv.doc, loc_date(d), rem, {sv.id}, abs(sv.value / sv.quantity)])
+            origins[sv.id] = [(g[0], g[2]) for g in got]
             if trace is not None:
                 trace['out'][sv.id] = [(g[0], g[1], g[4], g[2]) for g in got]
             return got
 
         seen = set()      # layer ids already applied
         pending = defaultdict(float)  # parent layer id -> value booked before the lot exists
+        origins = {}                  # layer id -> [(origin doc, qty)] lots a transfer moved
 
         def flush_pending(sv):
             """Back-dated landed cost whose parent lot arrived later: add it now."""
@@ -386,13 +388,15 @@ class BuzPoLotWizard(models.TransientModel):
                 if need > 1e-9:
                     queues[sv.wh_id].append([sv.doc, loc_date(d), unit, need, need, {sv.id}])
                     tin.append((sv.doc, loc_date(d), unit, need))
+                origins[sv.id] = [(t[0], t[3]) for t in tin]
                 if trace is not None:
                     trace['in'][sv.id] = tin
                 flush_pending(sv)
 
         def live_lots():
-            """Remaining lots of the selected warehouses, one row per
-            (origin doc, warehouse, date, unit cost); [(date, wh, [doc, date, unit, rem, rec])]."""
+            """Remaining lots of the selected warehouses, ONE row per
+            (origin doc, warehouse); unit cost = weighted average of its pieces.
+            [(date, wh, [doc, date, unit, rem, rec])]."""
             merged = {}
             for wh, q in queues.items():
                 if sel and wh not in sel:
@@ -400,17 +404,36 @@ class BuzPoLotWizard(models.TransientModel):
                 for lot in q:
                     if float_is_zero(lot[3], precision_digits=QTY_DIGITS):
                         continue
-                    key = (lot[1], wh or 0, lot[0], round(lot[2], 4))
+                    key = (wh or 0, lot[0])
                     m = merged.get(key)
                     if m:
+                        m[5] += lot[3] * lot[2]
                         m[3] += lot[3]
                         m[4] += lot[4]
+                        m[1] = min(m[1], lot[1])
                     else:
-                        merged[key] = [lot[0], lot[1], lot[2], lot[3], lot[4]]
-            return [(k[0], k[1], v) for k, v in sorted(merged.items(), key=lambda kv: kv[0][:2] + (kv[0][2],))]
+                        merged[key] = [lot[0], lot[1], lot[2], lot[3], lot[4], lot[3] * lot[2]]
+            res = []
+            for (wh, _doc), m in merged.items():
+                m[2] = m[5] / m[3]
+                res.append((m[1], wh, m[:5]))
+            return sorted(res, key=lambda t: (t[0], t[1], t[2][0]))
 
         def wtag(wh):
             return ' · %s' % wh_names[wh] if wh in wh_names else ''
+
+        def lot_tag(sv):
+            """' (ล็อต A, B +N)': origin lot(s) a transfer leg carries, so the
+            transfer document is tied to the lot it moves; an outgoing layer (sale,
+            consumption, transfer out) shows the lot(s) it was cut from."""
+            docs = []
+            for doc, _q in origins.get(sv.id, ()):
+                if doc and doc != sv.doc and doc not in docs:
+                    docs.append(doc)
+            if not docs:
+                return ''
+            more = ' +%d' % (len(docs) - 2) if len(docs) > 2 else ''
+            return ' (ล็อต %s%s)' % (', '.join(docs[:2]), more)
 
         def row(**kw):
             nonlocal seq
@@ -455,7 +478,7 @@ class BuzPoLotWizard(models.TransientModel):
             if d < start_utc:
                 continue
             vals = {'line_type': 'move', 'date': loc_date(d),
-                    'warehouse_id': s.wh_id or False, 'doc_ref': s.doc + wtag(s.wh_id),
+                    'warehouse_id': s.wh_id or False, 'doc_ref': s.doc + lot_tag(s) + wtag(s.wh_id),
                     'bal_qty': bq, 'bal_value': bv,
                     'bal_cost': (bv / bq) if bq else 0.0}
             if q > 0 or (q == 0 and v >= 0):
