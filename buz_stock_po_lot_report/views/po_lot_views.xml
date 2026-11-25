@@ -42,9 +42,11 @@
                 <field name="date"/>
                 <field name="doc_ref"/>
                 <field name="warehouse_id" optional="hide"/>
+                <field name="wh_date" optional="show"/>
                 <field name="in_qty"/>
                 <field name="in_cost"/>
                 <field name="in_value"/>
+                <field name="in_allin" optional="show"/>
                 <field name="out_qty"/>
                 <field name="out_cost"/>
                 <field name="out_value"/>

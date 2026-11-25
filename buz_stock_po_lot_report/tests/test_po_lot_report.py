@@ -149,6 +149,42 @@ class TestTaxStockReport(TransactionCase):
         lots = [r for r in rows if r['line_type'] == 'lot']
         self.assertEqual([round(r['bal_qty'], 4) for r in lots if r['bal_qty']], [2.0])
 
+    def test_transferred_lot_shows_day_it_entered_the_warehouse(self):
+        from datetime import date, datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import Layer
+        prod = self.env['product.product'].search([], limit=1)
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2026-01-01', 'date_to': '2026-12-31', 'hide_zero': False})
+        h = 3  # 10:00 Bangkok, same local day
+        items = [
+            (datetime(2026, 10, 1, h), 1, Layer(1, prod.id, 1, 5, 500.0, 'LOT-A', None, False, None, None, None)),
+            (datetime(2026, 10, 10, h), 2, Layer(2, prod.id, 1, -2, -200.0, 'TR1', 9, True, 1, 2, None)),
+            (datetime(2026, 10, 10, h), 3, Layer(3, prod.id, 2, 2, 200.0, 'TR1', 9, True, 1, 2, None)),
+        ]
+        start, end = wiz._utc_bounds()
+        rows = wiz._product_rows(prod, items, start, datetime.min, end)
+        lots = {r['warehouse_id']: r for r in rows if r['line_type'] == 'lot' and r['bal_qty']}
+        self.assertEqual(lots[1]['wh_date'], date(2026, 10, 1))
+        self.assertEqual(lots[2]['wh_date'], date(2026, 10, 10))   # arrived by transfer
+        self.assertEqual(lots[2]['date'], date(2026, 10, 1))       # origin receipt date kept
+
+    def test_receipt_row_shows_all_in_unit_cost(self):
+        from datetime import datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import Layer
+        prod = self.env['product.product'].search([], limit=1)
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2026-01-01', 'date_to': '2026-12-31', 'hide_zero': False})
+        items = [
+            (datetime(2026, 10, 1, 3), 1, Layer(1, prod.id, 1, 10, 1000.0, 'LOT-A', None, False, None, None, None)),
+            (datetime(2026, 10, 5, 3), 2, Layer(2, prod.id, 1, 0, 50.0, 'BR9 (ลงล็อต LOT-A)', None, False,
+                                                None, None, 1, (('BR9', 50.0),), True)),
+        ]
+        start, end = wiz._utc_bounds()
+        rows = wiz._product_rows(prod, items, start, datetime.min, end)
+        rec = [r for r in rows if r['line_type'] == 'move' and r.get('in_qty') == 10][0]
+        self.assertAlmostEqual(rec['in_cost'], 100.0)
+        self.assertAlmostEqual(rec['in_allin'], 105.0)
+
     def test_same_origin_lot_is_one_row_with_weighted_cost(self):
         rows = self._synthetic_rows([(1, 7, 7 * 10.0, 'LOT-B'), (2, 3, 3 * 20.0, 'LOT-B')])
         lots = [r for r in rows if r['line_type'] == 'lot']
@@ -181,10 +217,14 @@ class TestTaxStockReport(TransactionCase):
         out = BuzPoLotWizard._group_landed(
             [lc(1, 'BR1', 10.0), lc(2, 'BR2', 5.0), lc(3, 'BR1', 2.0)],
             {1: 'R', 2: 'R', 3: 'R'}, pytz.timezone('Asia/Bangkok'))
-        self.assertEqual(len(out), 1)
-        sv = out[0][2]
-        self.assertAlmostEqual(sv.value, 17.0)
-        self.assertEqual(dict(sv.lcs), {'BR1': 12.0, 'BR2': 5.0})
+        # one row per landed-cost document (like the FIFO valuation report)
+        self.assertEqual(len(out), 2)
+        br1, br2 = out[0][2], out[1][2]
+        self.assertAlmostEqual(br1.value, 12.0)
+        self.assertEqual(dict(br1.lcs), {'BR1': 12.0})
+        self.assertIn('(x2)', br1.doc)
+        self.assertAlmostEqual(br2.value, 5.0)
+        self.assertNotIn('(x', br2.doc)
 
     def test_landed_cost_rows_follow_their_lot(self):
         """Each lotlc row sits right under an ending lot of the same warehouse."""
