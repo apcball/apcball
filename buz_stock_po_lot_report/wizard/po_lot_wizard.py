@@ -394,8 +394,9 @@ class BuzPoLotWizard(models.TransientModel):
                 flush_pending(sv)
 
         def live_lots():
-            """Remaining lots of the selected warehouses, one row per
-            (origin doc, warehouse, date, unit cost); [(date, wh, [doc, date, unit, rem, rec])]."""
+            """Remaining lots of the selected warehouses, ONE row per
+            (origin doc, warehouse); unit cost = weighted average of its pieces.
+            [(date, wh, [doc, date, unit, rem, rec])]."""
             merged = {}
             for wh, q in queues.items():
                 if sel and wh not in sel:
@@ -403,23 +404,28 @@ class BuzPoLotWizard(models.TransientModel):
                 for lot in q:
                     if float_is_zero(lot[3], precision_digits=QTY_DIGITS):
                         continue
-                    key = (lot[1], wh or 0, lot[0], round(lot[2], 4))
+                    key = (wh or 0, lot[0])
                     m = merged.get(key)
                     if m:
+                        m[5] += lot[3] * lot[2]
                         m[3] += lot[3]
                         m[4] += lot[4]
+                        m[1] = min(m[1], lot[1])
                     else:
-                        merged[key] = [lot[0], lot[1], lot[2], lot[3], lot[4]]
-            return [(k[0], k[1], v) for k, v in sorted(merged.items(), key=lambda kv: kv[0][:2] + (kv[0][2],))]
+                        merged[key] = [lot[0], lot[1], lot[2], lot[3], lot[4], lot[3] * lot[2]]
+            res = []
+            for (wh, _doc), m in merged.items():
+                m[2] = m[5] / m[3]
+                res.append((m[1], wh, m[:5]))
+            return sorted(res, key=lambda t: (t[0], t[1], t[2][0]))
 
         def wtag(wh):
             return ' · %s' % wh_names[wh] if wh in wh_names else ''
 
         def lot_tag(sv):
             """' (ล็อต A, B +N)': origin lot(s) a transfer leg carries, so the
-            transfer document is tied to the lot it moves."""
-            if not sv.is_tr:
-                return ''
+            transfer document is tied to the lot it moves; an outgoing layer (sale,
+            consumption, transfer out) shows the lot(s) it was cut from."""
             docs = []
             for doc, _q in origins.get(sv.id, ()):
                 if doc and doc != sv.doc and doc not in docs:

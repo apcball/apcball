@@ -118,3 +118,32 @@ class TestTaxStockReport(TransactionCase):
         self.assertIn('2 รายการ', out[1][2].doc)
         self.assertIn('RM01/1', out[1][2].doc)
         self.assertEqual(out[2][2].doc, 'bill c')  # single layer keeps its own bill
+
+    def _synthetic_rows(self, layers):
+        from datetime import datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import Layer
+        prod = self.env['product.product'].search([], limit=1)
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2026-01-01', 'date_to': '2026-12-31', 'hide_zero': False})
+        items = [(datetime(2026, 10, 1 + i), lid, Layer(lid, prod.id, 1, q, v, doc, None, False,
+                                                       None, None, None))
+                 for i, (lid, q, v, doc) in enumerate(layers)]
+        start, end = wiz._utc_bounds()
+        return wiz._product_rows(prod, items, start, datetime.min, end)
+
+    def test_outgoing_row_shows_lot_it_was_cut_from(self):
+        rows = self._synthetic_rows([(1, 2, 200.0, 'LOT-A'), (2, -1, -100.0, 'SO1')])
+        sale = [r for r in rows if r['line_type'] == 'move' and r.get('out_qty')][0]
+        self.assertIn('(ล็อต LOT-A)', sale['doc_ref'])
+        receipt = [r for r in rows if r['line_type'] == 'move' and r.get('in_qty')][0]
+        self.assertNotIn('ล็อต', receipt['doc_ref'])
+
+    def test_same_origin_lot_is_one_row_with_weighted_cost(self):
+        rows = self._synthetic_rows([(1, 7, 7 * 10.0, 'LOT-B'), (2, 3, 3 * 20.0, 'LOT-B')])
+        lots = [r for r in rows if r['line_type'] == 'lot']
+        self.assertEqual(len(lots), 1)
+        self.assertAlmostEqual(lots[0]['bal_qty'], 10)
+        self.assertAlmostEqual(lots[0]['bal_cost'], 13.0)
+        self.assertAlmostEqual(lots[0]['bal_value'], 130.0)
+        snaps = [r for r in rows if r['line_type'] == 'lotbal']
+        self.assertEqual(len(snaps), 2)  # one lot row after each of the 2 movements
