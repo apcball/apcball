@@ -11,3 +11,4 @@ from . import fifo_service
 from . import landed_cost_location
 from . import stock_landed_cost
 
+from . import stock_valuation_layer_revaluation
