@@ -1,0 +1,35 @@
+services:
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: MOG_SHOW_LOAN_TEST
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d MOG_SHOW_LOAN_TEST"]
+      interval: 2s
+      retries: 30
+
+  odoo-test:
+    image: odoo:17.0
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      HOST: postgres-test
+      PORT: 5432
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - ./:/mnt/extra-addons:ro
+    command: >
+      odoo -d MOG_SHOW_LOAN_TEST
+      --db_host=postgres-test
+      --db_user=odoo
+      --db_password=odoo
+      --addons-path=/mnt/extra-addons
+      -i buz_show_loan
+      --test-tags /buz_show_loan
+      --test-enable
+      --stop-after-init
+      --no-http

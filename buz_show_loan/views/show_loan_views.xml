@@ -1,0 +1,85 @@
+<odoo>
+    <record id="view_show_loan_tree" model="ir.ui.view">
+        <field name="name">buz.show.loan.tree</field>
+        <field name="model">buz.show.loan</field>
+        <field name="arch" type="xml">
+            <tree string="Loans">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="picking_type_id"/>
+                <field name="location_dest_id"/>
+                <field name="state" widget="badge"/>
+                <field name="company_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_show_loan_form" model="ir.ui.view">
+        <field name="name">buz.show.loan.form</field>
+        <field name="model">buz.show.loan</field>
+        <field name="arch" type="xml">
+            <form string="Show Loan">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_create_return" type="object" string="Create Return"
+                            class="oe_highlight" invisible="state != 'confirmed'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state == 'cancel'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <field name="company_id" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_pickings" type="object" class="oe_stat_button"
+                                icon="fa-exchange" string="Transfers" invisible="state == 'draft'"/>
+                    </div>
+                    <h1><field name="name"/></h1>
+                    <group>
+                        <group>
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="picking_type_id" readonly="state != 'draft'"/>
+                            <field name="requisition_order" readonly="state != 'draft'"/>
+                            <field name="location_id" readonly="1"/>
+                            <field name="location_dest_id" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="scheduled_date" readonly="state != 'draft'"/>
+                            <field name="origin" readonly="state != 'draft'"/>
+                            <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"
+                                   readonly="state != 'draft'"/>
+                            <field name="analytic_auto_sync" widget="boolean_toggle"
+                                   readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Products">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom">
+                                    <field name="company_id" column_invisible="1"/>
+                                    <field name="product_id"/>
+                                    <field name="qty_requested"/>
+                                    <field name="uom_id"/>
+                                    <field name="qty_issued" readonly="1"/>
+                                    <field name="qty_returned" readonly="1"/>
+                                    <field name="qty_available" readonly="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_show_loan" model="ir.actions.act_window">
+        <field name="name">Loan</field>
+        <field name="res_model">buz.show.loan</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

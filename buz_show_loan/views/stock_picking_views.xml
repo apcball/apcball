@@ -1,0 +1,13 @@
+<odoo>
+    <record id="view_picking_show_loan_form" model="ir.ui.view">
+        <field name="name">stock.picking.show.loan.form</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <field name="origin" position="after">
+                <field name="show_loan_id" readonly="1" invisible="not show_loan_id"/>
+                <field name="show_loan_role" invisible="1"/>
+            </field>
+        </field>
+    </record>
+</odoo>

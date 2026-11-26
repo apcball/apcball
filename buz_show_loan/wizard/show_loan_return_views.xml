@@ -1,0 +1,27 @@
+<odoo>
+    <record id="view_show_loan_return_wizard_form" model="ir.ui.view">
+        <field name="name">buz.show.loan.return.wizard.form</field>
+        <field name="model">buz.show.loan.return.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Show Return">
+                <group>
+                    <field name="loan_id"/>
+                    <field name="picking_type_id"/>
+                </group>
+                <field name="line_ids">
+                    <tree editable="bottom" create="0" delete="0">
+                        <field name="loan_line_id" column_invisible="1"/>
+                        <field name="product_id" readonly="1"/>
+                        <field name="qty_available" readonly="1"/>
+                        <field name="qty_return"/>
+                        <field name="uom_id" readonly="1"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_confirm" type="object" string="Create RBG" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

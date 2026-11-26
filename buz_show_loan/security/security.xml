@@ -1,0 +1,14 @@
+<odoo>
+    <record id="rule_show_loan_company" model="ir.rule">
+        <field name="name">Show Loan company</field>
+        <field name="model_id" ref="model_buz_show_loan"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('stock.group_stock_user'))]"/>
+    </record>
+    <record id="rule_show_loan_line_company" model="ir.rule">
+        <field name="name">Show Loan line company</field>
+        <field name="model_id" ref="model_buz_show_loan_line"/>
+        <field name="domain_force">[('loan_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('stock.group_stock_user'))]"/>
+    </record>
+</odoo>

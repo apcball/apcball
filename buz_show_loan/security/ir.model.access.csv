@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_show_loan_user,buz.show.loan.user,model_buz_show_loan,stock.group_stock_user,1,1,1,0
+access_show_loan_manager,buz.show.loan.manager,model_buz_show_loan,stock.group_stock_manager,1,1,1,1
+access_show_loan_line_user,buz.show.loan.line.user,model_buz_show_loan_line,stock.group_stock_user,1,1,1,0
+access_show_loan_line_manager,buz.show.loan.line.manager,model_buz_show_loan_line,stock.group_stock_manager,1,1,1,1
+access_show_loan_return_wizard,buz.show.loan.return.wizard,model_buz_show_loan_return_wizard,stock.group_stock_user,1,1,1,1
+access_show_loan_return_wizard_line,buz.show.loan.return.wizard.line,model_buz_show_loan_return_wizard_line,stock.group_stock_user,1,1,1,1

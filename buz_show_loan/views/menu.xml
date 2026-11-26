@@ -1,0 +1,10 @@
+<odoo>
+    <record id="stock.menu_stock_adjustments" model="ir.ui.menu">
+        <field name="sequence" eval="3"/>
+    </record>
+    <record id="stock.menu_stock_procurement" model="ir.ui.menu">
+        <field name="sequence" eval="4"/>
+    </record>
+    <menuitem id="menu_show_loan" name="Loan" parent="stock.menu_stock_warehouse_mgmt"
+              action="action_show_loan" sequence="2" groups="stock.group_stock_user"/>
+</odoo>
