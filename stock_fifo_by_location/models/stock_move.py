@@ -1192,81 +1192,17 @@ class StockMove(models.Model):
     
     def _copy_landed_cost_to_return(self, original_move, return_move, return_layer):
         """
-        Copy landed cost allocation from original move to return move.
-        
-        When a return move is created, we need to allocate the same landed costs
-        that were in the original delivery/consumption so that the final balance = 0.
-        
-        This reverses the landed cost portion of the cost by creating records
-        that effectively unwind the landed cost from the original transaction.
-        
-        Args:
-            original_move: Original stock.move that was returned
-            return_move: Return stock.move
-            return_layer: The positive return layer
+        Deliberately does nothing: returns add no landed cost allocation rows.
+
+        The former copy gave each return ``all allocation rows of the product at
+        the original warehouse`` x ``returned qty / queued qty``. Rows of
+        consumed lots stayed in that pool, the share had no upper bound and every
+        new row joined the pool, so the values compounded without limit
+        (hundreds of millions in production) and were added to the cost of a
+        later return of the returned lot. The landed cost of a returned lot is
+        already part of the value of its valuation layer.
         """
-        import logging
-        _logger = logging.getLogger(__name__)
-        
-        lc_model = self.env['stock.valuation.layer.landed.cost']
-        precision = self.env['decimal.precision'].precision_get('Product Price')
-        
-        # Get warehouse from original move
-        original_wh = original_move.warehouse_id
-        if not original_wh and original_move.location_id:
-            original_wh = original_move.location_id.warehouse_id
-        
-        if not original_wh:
-            _logger.warning(f"Return move {return_move.name}: Could not determine original warehouse")
-            return
-        
-        # Find all landed cost allocations at the original warehouse
-        # for the product we're returning
-        all_lc_records = lc_model.search([
-            ('valuation_layer_id.product_id', '=', return_move.product_id.id),
-            ('warehouse_id', '=', original_wh.id),
-            ('valuation_layer_id.company_id', '=', return_move.company_id.id),
-        ])
-        
-        if not all_lc_records:
-            _logger.info(f"Return move {return_move.name}: No landed costs to copy")
-            return
-        
-        # Calculate total landed cost available at source warehouse
-        total_lc_available = sum(all_lc_records.mapped('landed_cost_value'))
-        
-        # Calculate how much landed cost proportion to allocate to return
-        # Based on quantity ratio
-        try:
-            fifo_service = self.env['fifo.service']
-            total_qty_available = fifo_service.get_available_qty_at_warehouse(
-                return_move.product_id, original_wh, return_move.company_id.id
-            )
-            
-            if total_qty_available > 0:
-                proportion = return_move._get_valued_qty() / total_qty_available
-                lc_to_allocate = total_lc_available * proportion
-                lc_to_allocate = float_round(lc_to_allocate, precision_digits=precision)
-            else:
-                lc_to_allocate = 0.0
-        except Exception as e:
-            _logger.warning(f"Failed to calculate landed cost proportion: {e}")
-            lc_to_allocate = 0.0
-        
-        if float_compare(lc_to_allocate, 0, precision_digits=precision) > 0:
-            # Create landed cost record for return layer
-            lc_model.create({
-                'valuation_layer_id': return_layer.id,
-                'warehouse_id': original_wh.id,
-                'landed_cost_value': lc_to_allocate,
-                'quantity': return_layer.quantity,
-            })
-            
-            _logger.info(
-                f"Return move {return_move.name}: Allocated {lc_to_allocate} landed cost "
-                f"to {return_layer.quantity} units at {original_wh.name}"
-            )
-    
+
     def _transfer_landed_cost_between_warehouses(self, product, source_wh, dest_wh,
                                                 company, qty_transferred, lc_amount,
                                                 source_layer, dest_layer):
