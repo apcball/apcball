@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Zero the landed-cost allocation rows that returns copied, MOG_LIVE (table
+# Zero the landed-cost allocation rows that returns copied, DB MOG_LIVE (table
 # stock_valuation_layer_landed_cost only).
+#
+# TARGET=prod  the production database of instance1 on mog-prod
+# TARGET=uat   the UAT docker stack on mog-prod (containers "postgres" / "odoo")
+# `check` defaults to prod; `dry` and `apply` need TARGET spelled out.
 #
 # Bug: stock_fifo_by_location._copy_landed_cost_to_return gave every return
 #   (all rows of the product at the original warehouse) x returned qty / queued qty
@@ -21,9 +25,10 @@
 #   apply   same, COMMIT. Needs SCOPE, EXPECT_N and EXPECT_SUM (from `check`), and refuses unless
 #           the fixed code is on the server and instance1 was restarted after it, otherwise the
 #           old code would add new rows again:
-#             SCOPE=all EXPECT_N=<n> EXPECT_SUM=<sum> bash scripts/fix_lc_return_copy_rows.sh apply
-# Run apply yourself (prefix with `!`).
-# Backup: ~/db_backups/lc_side_<stamp>.dump on mog-prod, audit table lc_return_copy_fix_<stamp>.
+#             TARGET=prod SCOPE=all EXPECT_N=<n> EXPECT_SUM=<sum> bash scripts/fix_lc_return_copy_rows.sh apply
+# Run apply on prod yourself (prefix with `!`).
+# Backup: ~/db_backups/lc_side_<target>_<stamp>.dump on mog-prod, audit table
+# lc_return_copy_fix_<stamp> in the target database.
 # Rollback after apply:
 #   UPDATE stock_valuation_layer_landed_cost t SET landed_cost_value = a.old_value
 #     FROM lc_return_copy_fix_<stamp> a WHERE t.id = a.id;
@@ -32,16 +37,50 @@ MODE="${1:-check}"
 case "$MODE" in check|dry|apply) ;; *) echo "usage: $0 check|dry|apply" >&2; exit 2;; esac
 STAMP=$(date +%Y%m%d_%H%M%S)
 AUDIT="lc_return_copy_fix_${STAMP}"
-REMOTE_ENV='PW=$(grep -E "^db_password" /etc/instance1.conf); export PGPASSWORD="${PW##*= }"'
-PSQL='psql -h localhost -U odoo MOG_LIVE -X -P footer=off -v ON_ERROR_STOP=1'
-CODE=/opt/instance1/odoo17/custom-addons/stock_fifo_by_location/models/stock_move.py
+case "$MODE" in
+  check) TARGET="${TARGET:-prod}" ;;
+  *) : "${TARGET:?set TARGET=prod or TARGET=uat}" ;;
+esac
+case "$TARGET" in
+  prod)
+    CODE=/opt/instance1/odoo17/custom-addons/stock_fifo_by_location/models/stock_move.py
+    STARTED='systemctl show instance1 -p ActiveEnterTimestamp --value'
+    SERVICE=instance1 ;;
+  uat)
+    CODE=/srv/docker/odoo_mogen/custom-addons/stock_fifo_by_location/models/stock_move.py
+    STARTED="docker inspect -f '{{.State.StartedAt}}' odoo"
+    SERVICE="the odoo container" ;;
+  *) echo "TARGET must be prod or uat (got $TARGET)" >&2; exit 2 ;;
+esac
+PSQL_FLAGS='-X -P footer=off -v ON_ERROR_STOP=1'
+PROD_ENV='PW=$(grep -E "^db_password" /etc/instance1.conf); export PGPASSWORD="${PW##*= }"'
+READONLY="PGOPTIONS='-c default_transaction_read_only=on'"
+
+# run_psql [ro]   SQL on stdin
+run_psql() {
+  local ro="${1:-}"
+  if [ "$TARGET" = prod ]; then
+    ssh mog-prod "$PROD_ENV; ${ro:+$READONLY} psql -h localhost -U odoo MOG_LIVE $PSQL_FLAGS"
+  else
+    ssh mog-prod "docker exec -i ${ro:+-e $READONLY} postgres psql -U root -d MOG_LIVE $PSQL_FLAGS"
+  fi
+}
+
+# dump_table <path relative to the remote home>
+dump_table() {
+  if [ "$TARGET" = prod ]; then
+    ssh mog-prod "$PROD_ENV; mkdir -p ~/db_backups && pg_dump -h localhost -U odoo -Fc -t stock_valuation_layer_landed_cost MOG_LIVE > ~/$1 && test -s ~/$1 && pg_restore -l ~/$1 | grep -q 'TABLE DATA' && echo \"backup ok: ~/$1\""
+  else
+    ssh mog-prod "mkdir -p ~/db_backups && docker exec postgres pg_dump -U root -Fc -t stock_valuation_layer_landed_cost MOG_LIVE > ~/$1 && test -s ~/$1 && docker exec -i postgres pg_restore -l < ~/$1 | grep -q 'TABLE DATA' && echo \"backup ok: ~/$1\""
+  fi
+}
 
 # ctime, not mtime: rsync keeps the local edit time, the arrival time is what counts
 code_live() {
   ssh mog-prod "grep -q 'Deliberately does nothing' $CODE || { echo 'no: old code on the server'; exit 0; }
-    started=\$(date -d \"\$(systemctl show instance1 -p ActiveEnterTimestamp --value)\" +%s)
+    started=\$(date -d \"\$($STARTED)\" +%s)
     changed=\$(stat -c %Z $CODE)
-    if [ \"\$started\" -gt \"\$changed\" ]; then echo yes; else echo 'no: instance1 not restarted since the file changed'; fi"
+    if [ \"\$started\" -gt \"\$changed\" ]; then echo yes; else echo 'no: $SERVICE not restarted since the file changed'; fi"
 }
 
 SELECTION="
@@ -58,8 +97,11 @@ SELECTION="
      AND t.landed_cost_value <> 0"
 
 if [ "$MODE" = check ]; then
+  echo "target: $TARGET"
   echo "code fix live: $(code_live)"
-  ssh mog-prod "$REMOTE_ENV; PGOPTIONS='-c default_transaction_read_only=on' $PSQL" <<SQL
+  run_psql ro <<SQL
+\echo == database
+SELECT current_database() AS db, (SELECT system_identifier FROM pg_control_system()) AS cluster;
 \echo == by scope
 WITH s AS ($SELECTION)
 SELECT 'all' AS scope, count(*) AS n, round(sum(old_value)::numeric, 2) AS sum, count(DISTINCT default_code) AS products FROM s
@@ -96,10 +138,10 @@ if [ -n "${EXPECT_N:-}${EXPECT_SUM:-}" ]; then
     END IF; END \$\$;"
 fi
 
-DUMP="db_backups/lc_side_${STAMP}.dump"
-ssh mog-prod "$REMOTE_ENV; mkdir -p ~/db_backups && pg_dump -h localhost -U odoo -Fc -t stock_valuation_layer_landed_cost MOG_LIVE > ~/$DUMP && test -s ~/$DUMP && pg_restore -l ~/$DUMP | grep -c 'TABLE DATA' >/dev/null && echo \"backup ok: ~/$DUMP\""
+echo "target: $TARGET"
+dump_table "db_backups/lc_side_${TARGET}_${STAMP}.dump"
 
-ssh mog-prod "$REMOTE_ENV; $PSQL" <<SQL
+run_psql <<SQL
 BEGIN;
 SET LOCAL lock_timeout = '15s';
 LOCK TABLE stock_valuation_layer_landed_cost IN SHARE ROW EXCLUSIVE MODE;
@@ -134,4 +176,4 @@ SELECT round(sum(landed_cost_value)::numeric, 2) AS table_total_after,
   FROM stock_valuation_layer_landed_cost;
 $END;
 SQL
-echo "$MODE done ($END). audit table: $AUDIT"
+echo "$MODE done on $TARGET ($END). audit table: $AUDIT"
