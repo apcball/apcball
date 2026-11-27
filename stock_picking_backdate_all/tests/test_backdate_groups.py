@@ -12,16 +12,19 @@ class TestBackdateGroups(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Test users have no address; skip local partner required-field rules.
+        users = cls.env['res.users'].with_context(
+            skip_partner_required_fields=True, no_reset_password=True)
         group_full = cls.env.ref(
             'stock_picking_backdate_all.stock_picking_backdate_assign_group')
         group_future = cls.env.ref(
             'stock_picking_backdate_all.stock_picking_backdate_future_group')
         base_groups = [cls.env.ref('stock.group_stock_user').id]
-        cls.user_full = cls.env['res.users'].create({
+        cls.user_full = users.create({
             'name': 'Backdate Full', 'login': 'bd_full',
             'groups_id': [(6, 0, base_groups + [group_full.id])],
         })
-        cls.user_future = cls.env['res.users'].create({
+        cls.user_future = users.create({
             'name': 'Backdate Future', 'login': 'bd_future',
             'groups_id': [(6, 0, base_groups + [group_future.id])],
         })
