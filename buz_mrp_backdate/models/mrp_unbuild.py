@@ -46,6 +46,7 @@ class MrpUnbuild(models.Model):
             moves = unbuild.consume_line_ids | unbuild.produce_line_ids
             _logger.info('Found %s stock moves to update for Unbuild: %s', len(moves), unbuild.name)
             if moves:
+                self.env.flush_all()
                 self.env.cr.execute("""
                     UPDATE stock_move
                     SET date = %s, date_deadline = %s, write_date = NOW(), write_uid = %s
@@ -61,6 +62,8 @@ class MrpUnbuild(models.Model):
                         WHERE id IN %s
                     """, (unbuild.backdate, self.env.uid, tuple(move_lines.ids)))
                     _logger.info('Updated %s move lines with backdate', len(move_lines))
+                moves.invalidate_recordset(['date', 'date_deadline'])
+                moves.move_line_ids.invalidate_recordset(['date'])
 
                 if unbuild.backdate_remark:
                     pickings = moves.mapped('picking_id').filtered(lambda p: p)
@@ -80,7 +83,7 @@ class MrpUnbuild(models.Model):
                 continue
 
             moves = unbuild.consume_line_ids | unbuild.produce_line_ids
-            valuation_layers = self.env['stock.valuation.layer'].search([
+            valuation_layers = self.env['stock.valuation.layer'].sudo().search([
                 ('stock_move_id', 'in', moves.ids)
             ])
 
@@ -112,11 +115,12 @@ class MrpUnbuild(models.Model):
                 continue
 
             moves = unbuild.consume_line_ids | unbuild.produce_line_ids
-            valuation_layers = self.env['stock.valuation.layer'].search([
+            valuation_layers = self.env['stock.valuation.layer'].sudo().search([
                 ('stock_move_id', 'in', moves.ids)
             ])
 
-            account_moves = valuation_layers.mapped('account_move_id').filtered(lambda m: m)
+            account_moves = self.env['account.move'].browse(
+                valuation_layers.mapped('account_move_id').ids)
             if account_moves:
                 backdate_date = unbuild.backdate.date() if unbuild.backdate else fields.Date.today()
 

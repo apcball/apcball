@@ -119,6 +119,35 @@ class TestBackdateNegativeStock(TransactionCase):
         with self.assertRaisesRegex(UserError, receipt.name):
             self._wizard(receipt, 5).change_to_backdate()
 
+    def _backdate_logs(self, picking):
+        return picking.message_ids.filtered(lambda m: 'Backdate' in (m.body or ''))
+
+    def test_backdate_is_logged_in_chatter(self):
+        self._picking(True, 5, days_ago=10)
+        delivery = self._picking(False, 5, days_ago=2)
+        old_date = self.now - timedelta(days=2)
+        delivery.write({'date_done': old_date})
+        self._wizard(delivery, 5).change_to_backdate()
+        log = self._backdate_logs(delivery)
+        self.assertEqual(len(log), 1)
+        self.assertEqual(log.author_id, self.user.partner_id)
+        self.assertEqual(log.subtype_id, self.env.ref('mail.mt_note'))
+
+        def shown(value):
+            return fields.Datetime.context_timestamp(
+                delivery.with_user(self.user), value).strftime('%d/%m/%Y %H:%M:%S')
+
+        self.assertIn(
+            '%s → %s' % (shown(old_date), shown(self.now - timedelta(days=5))),
+            str(log.body))
+
+    def test_blocked_backdate_is_not_logged(self):
+        self._picking(True, 5, days_ago=10)
+        delivery = self._picking(False, 5, days_ago=2)
+        with self.assertRaises(UserError):
+            self._wizard(delivery, 20).change_to_backdate()
+        self.assertFalse(self._backdate_logs(delivery))
+
     def test_allowed_change_updates_dates(self):
         self._picking(True, 5, days_ago=10)
         delivery = self._picking(False, 5, days_ago=2)

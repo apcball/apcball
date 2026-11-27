@@ -65,6 +65,7 @@ class MrpProduction(models.Model):
             if moves:
                 # Use SQL to bypass ORM restrictions on done moves
                 # Update both date and date_deadline
+                self.env.flush_all()
                 self.env.cr.execute("""
                     UPDATE stock_move 
                     SET date = %s, date_deadline = %s, write_date = NOW(), write_uid = %s
@@ -81,6 +82,8 @@ class MrpProduction(models.Model):
                         WHERE id IN %s
                     """, (production.backdate, self.env.uid, tuple(move_lines.ids)))
                     _logger.info('Updated %s move lines with backdate', len(move_lines))
+                moves.invalidate_recordset(['date', 'date_deadline'])
+                moves.move_line_ids.invalidate_recordset(['date'])
                 
                 # Add remark to picking note if exists
                 if production.backdate_remark:
@@ -102,7 +105,7 @@ class MrpProduction(models.Model):
             
             # Get all stock valuation layers related to moves
             moves = production.move_raw_ids | production.move_finished_ids
-            valuation_layers = self.env['stock.valuation.layer'].search([
+            valuation_layers = self.env['stock.valuation.layer'].sudo().search([
                 ('stock_move_id', 'in', moves.ids)
             ])
             
@@ -144,11 +147,12 @@ class MrpProduction(models.Model):
             
             # Get all account moves related to stock moves
             moves = production.move_raw_ids | production.move_finished_ids
-            valuation_layers = self.env['stock.valuation.layer'].search([
+            valuation_layers = self.env['stock.valuation.layer'].sudo().search([
                 ('stock_move_id', 'in', moves.ids)
             ])
             
-            account_moves = valuation_layers.mapped('account_move_id').filtered(lambda m: m)
+            account_moves = self.env['account.move'].browse(
+                valuation_layers.mapped('account_move_id').ids)
             if account_moves:
                 backdate_date = production.backdate.date() if production.backdate else fields.Date.today()
                 
