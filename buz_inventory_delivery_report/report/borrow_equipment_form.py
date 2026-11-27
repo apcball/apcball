@@ -17,20 +17,6 @@ class BorrowEquipmentFormPDF(models.AbstractModel):
                 return desc
             return ''
 
-        def clean_product_name(product):
-            name = product.name or ''
-            default_code = getattr(product, 'default_code', False) or ''
-            if name.startswith('[ชุด]'):
-                name = name.replace('[ชุด]', '', 1).strip()
-            if default_code and name.startswith(default_code):
-                name = name[len(default_code):].strip()
-            name = re.sub(r'^(?=[A-Z0-9._/-]*\d)[A-Z0-9._/-]+(?:\s*\([A-Z0-9._/-]+\))?\s+', '', name).strip()
-            if name.startswith('-'):
-                name = name[1:].strip()
-            if default_code:
-                return f"{default_code} {name}"
-            return name
-
         def get_grouped_lines(picking):
             lines = []
             bom_grouped = {}
@@ -90,7 +76,7 @@ class BorrowEquipmentFormPDF(models.AbstractModel):
                 lines.append({
                     'type': 'bom',
                     'display_no': str(line_no),
-                    'name': clean_product_name(prod),
+                    'name': prod.name or '',
                     'product': prod,
                     'code': code,
                     'qty': qty_str,
@@ -150,7 +136,6 @@ class BorrowEquipmentFormPDF(models.AbstractModel):
             'docs': docs,
             'get_grouped_lines': get_grouped_lines,
             'get_grouped_pages': get_grouped_pages,
-            'clean_product_name': clean_product_name,
             'get_product_description': get_product_description,
             'data': data,
         }
