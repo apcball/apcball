@@ -906,6 +906,43 @@ class TestStockCardReport(TransactionCase):
         self.assertAlmostEqual(by_lot["LOT2"]["qty_in"], 20.0)
         self.assertAlmostEqual(by_lot["LOT2"]["cost_in"], 200.0)
 
+    def test_valuation_issue_shows_fifo_lots_cut(self):
+        ctx = dict(bypass_done_move_line_guard=True, skip_warehouse_consistency_check=True)
+        warehouse = self.loc_stock.warehouse_id
+        moves = []
+        for name, src, dest, qty, value, day in (
+            ("TEST-IN1", self.loc_supplier, self.loc_a, 5.0, 600.0, "01"),
+            ("TEST-IN2", self.loc_supplier, self.loc_a, 5.0, 625.0, "02"),
+            ("TEST-OUT", self.loc_a, self.loc_customer, -8.0, -975.0, "03"),
+        ):
+            date_val = self._dt("2026-06-%s 08:00:00" % day)
+            move = self._mk_move(src, dest, abs(qty), date_val)
+            move.with_context(**ctx).write({"name": name})
+            self.env["stock.valuation.layer"].with_context(**ctx).create({
+                "product_id": self.product.id,
+                "company_id": self.env.company.id,
+                "quantity": qty,
+                "unit_cost": value / qty,
+                "value": value,
+                "remaining_qty": 0.0,
+                "remaining_value": 0.0,
+                "stock_move_id": move.id,
+                "location_id": self.loc_a.id,
+                "warehouse_id": warehouse.id,
+                "accounting_date": date_val,
+            })
+            moves.append(move)
+
+        rows = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2026-06-01", "2026-06-30",
+        )
+        self.assertEqual(
+            [r["fifo_lot"] for r in rows],
+            ["", "", "TEST-IN1 (5 @120.00), TEST-IN2 (3 @125.00)"],
+        )
+        self.assertEqual(rows[-1]["qty_out"], 8.0)
+        self.assertEqual(rows[-1]["balance_qty"], 2.0)
+
     def test_valuation_scoped_lines_covers_multiple_products(self):
         product2 = self.env["product.product"].create({
             "name": "Test Stock Card Product Valuation 2", "type": "product",
@@ -1020,3 +1057,40 @@ class TestStockCardReport(TransactionCase):
         self.assertAlmostEqual(by_product[self.product.name]["cost_in"], 1000.0)
         self.assertAlmostEqual(by_product[product2.name]["qty_in"], 5.0)
         self.assertAlmostEqual(by_product[product2.name]["cost_in"], 200.0)
+
+    def test_same_timestamp_receipt_listed_before_issue(self):
+        # Backdated documents share one timestamp (00:00 local). The issue is
+        # created first (lower id) but must not run the balance negative.
+        when = self._dt("2024-06-10 17:00:00")
+        self._mk_move(self.loc_a, self.loc_customer, 1.0, when)
+        self._mk_move(self.loc_supplier, self.loc_a, 1.0, when)
+        args = (self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30")
+
+        rows = self.engine.get_stock_card_data(*args, page_size=20, page=0)["lines"]
+        self.assertEqual([(r["in"], r["out"]) for r in rows], [(1.0, 0.0), (0.0, 1.0)])
+        self.assertEqual([r["balance"] for r in rows], [1.0, 0.0])
+
+        # the tied pair split across two pages keeps the same running balance
+        paged = [
+            self.engine.get_stock_card_data(*args, page_size=1, page=page)["lines"][0]
+            for page in (0, 1)
+        ]
+        self.assertEqual([r["balance"] for r in paged], [1.0, 0.0])
+
+        exported = [
+            r for r in self.engine.get_all_stock_card_lines("2024-06-01", "2024-06-30")
+            if r["product_name"] == self.product.name
+        ]
+        self.assertEqual([r["balance"] for r in exported], [1.0, 0.0])
+
+        scoped = self.engine.get_scoped_stock_card_lines(
+            [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        scoped = [r for r in scoped if r["product_name"] == self.product.name]
+        self.assertEqual([r["balance"] for r in scoped], [1.0, 0.0])
+
+        valued = self.engine.get_stock_card_valuation_lines(
+            self.product.id, [self.loc_a.id], "2024-06-01", "2024-06-30",
+        )
+        self.assertEqual([r["balance_qty"] for r in valued], [1.0, 0.0])
+
