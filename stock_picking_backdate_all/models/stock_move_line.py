@@ -5,12 +5,20 @@ from odoo.tools import float_repr
 
 from ..wizard.stock_timeline import find_negative_balance
 
+# System parameter: 'block' refuses a backdate that makes stock negative. Any
+# other value, or none, allows it and records the shortage on the chatter.
+NEGATIVE_STOCK_MODE_PARAM = 'stock_picking_backdate_all.negative_stock_mode'
+
 
 class StockMoveLine(models.Model):
     _inherit = 'stock.move.line'
 
     def _check_backdate_negative_stock(self, new_date):
-        """Block ``new_date`` if re-dating these lines makes stock negative.
+        """Check whether re-dating these lines to ``new_date`` goes negative.
+
+        Raises when the NEGATIVE_STOCK_MODE_PARAM system parameter is 'block'.
+        Otherwise returns the shortage description for the chatter log, or
+        False when there is none.
 
         All lines in ``self`` are evaluated together, per product and internal
         or transit location, and also per lot/serial. Must run before anything
@@ -76,10 +84,18 @@ class StockMoveLine(models.Model):
                 if result:
                     problems.append((product, location, lot, result))
 
-        if problems:
-            raise UserError(self._format_negative_stock_message(problems, new_date))
+        if not problems:
+            return False
+        mode = self.env['ir.config_parameter'].sudo().get_param(
+            NEGATIVE_STOCK_MODE_PARAM, '')
+        blocked = (mode or '').strip().lower() == 'block'
+        message = self._format_negative_stock_message(problems, new_date, blocked)
+        if blocked:
+            raise UserError(message)
+        return message
 
-    def _format_negative_stock_message(self, problems, new_date, limit=10):
+    def _format_negative_stock_message(self, problems, new_date, blocked,
+                                       limit=10):
         digits = self.env['decimal.precision'].precision_get(
             'Product Unit of Measure')
 
@@ -87,9 +103,15 @@ class StockMoveLine(models.Model):
             return fields.Datetime.context_timestamp(self, value).strftime(
                 '%d/%m/%Y %H:%M')
 
-        lines = [_(
-            "ไม่สามารถเปลี่ยนวันที่เป็น %s ได้ เพราะยอดสต็อกจะติดลบ",
-            local(new_date))]
+        if blocked:
+            header = _(
+                "ไม่สามารถเปลี่ยนวันที่เป็น %s ได้ เพราะยอดสต็อกจะติดลบ",
+                local(new_date))
+        else:
+            header = _(
+                "คำเตือน: เปลี่ยนวันที่เป็น %s แล้วยอดสต็อกย้อนหลังติดลบ",
+                local(new_date))
+        lines = [header]
         for product, location, lot, (date, after, before) in problems[:limit]:
             name = product.display_name
             if lot:
@@ -101,6 +123,7 @@ class StockMoveLine(models.Model):
                 float_repr(before, digits)))
         if len(problems) > limit:
             lines.append(_("... และอีก %s รายการ", len(problems) - limit))
-        lines.append(_(
-            "กรุณาเลือกวันที่อื่น หรือปรับวันที่ของรายการรับเข้าที่เกี่ยวข้องก่อน"))
+        if blocked:
+            lines.append(_(
+                "กรุณาเลือกวันที่อื่น หรือปรับวันที่ของรายการรับเข้าที่เกี่ยวข้องก่อน"))
         return "\n".join(lines)

@@ -29,6 +29,8 @@ class TestBackdateNegativeStock(TransactionCase):
             'name': 'Backdate Product', 'type': 'product', 'standard_price': 10.0,
         })
         cls.now = fields.Datetime.now().replace(microsecond=0)
+        cls.params = cls.env['ir.config_parameter']
+        cls.params.set_param('stock_picking_backdate_all.negative_stock_mode', 'block')
 
     def _ready_picking(self, incoming, qty):
         picking_type = (self.warehouse.in_type_id if incoming
@@ -156,3 +158,21 @@ class TestBackdateNegativeStock(TransactionCase):
         self.assertEqual(delivery.date_done, new_date)
         self.assertEqual(delivery.move_ids.date, new_date)
         self.assertEqual(delivery.move_line_ids.date, new_date)
+
+    def test_negative_backdate_is_allowed_and_logged_by_default(self):
+        self.params.set_param('stock_picking_backdate_all.negative_stock_mode', False)
+        self._picking(True, 5, days_ago=10)
+        delivery = self._picking(False, 5, days_ago=2)
+        self._wizard(delivery, 20).change_to_backdate()
+        self.assertEqual(delivery.move_ids.date, self.now - timedelta(days=20))
+        log = self._backdate_logs(delivery)
+        self.assertEqual(len(log), 1)
+        self.assertIn('ยอดสต็อกย้อนหลังติดลบ', str(log.body))
+        self.assertIn(self.product.name, str(log.body))
+
+    def test_harmless_backdate_logs_no_warning(self):
+        self.params.set_param('stock_picking_backdate_all.negative_stock_mode', False)
+        self._picking(True, 5, days_ago=10)
+        delivery = self._picking(False, 5, days_ago=2)
+        self._wizard(delivery, 5).change_to_backdate()
+        self.assertNotIn('ติดลบ', str(self._backdate_logs(delivery).body))

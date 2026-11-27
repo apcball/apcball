@@ -9,7 +9,8 @@ class StockBackdateLog(models.AbstractModel):
     _description = "Backdate Chatter Log"
 
     @api.model
-    def _log_backdate(self, record, old_date, new_date, moves, reason=None):
+    def _log_backdate(self, record, old_date, new_date, moves, reason=None,
+                      warning=None):
         """Write who moved which date on the chatter of ``record``.
 
         A log note: no e-mail is sent and the author does not need an e-mail
@@ -34,4 +35,6 @@ class StockBackdateLog(models.AbstractModel):
             len(layers.account_move_id)))
         body = Markup('<p><b>Backdate</b> %s %s</p><ul>%s</ul>') % (
             _("โดย"), self.env.user.name, Markup('').join(items))
+        if warning:
+            body += Markup('<p>%s</p>') % Markup('<br/>').join(warning.split('\n'))
         record._message_log(body=body)

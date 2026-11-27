@@ -45,9 +45,12 @@ class MrpBackdateWizard(models.TransientModel):
                 "the past requires the 'MRP Backdate: Past & Future' group."))
 
     def _check_backdate(self, moves):
-        """Every check that must pass before anything is written."""
+        """Every check that must pass before anything is written.
+
+        Returns the negative-stock warning to log, or False.
+        """
         self._check_backdate_allowed()
-        moves.move_line_ids._check_backdate_negative_stock(self.backdate)
+        return moves.move_line_ids._check_backdate_negative_stock(self.backdate)
 
     def action_apply_backdate(self):
         """Apply backdate to stock moves, valuation, and journal entries"""
@@ -72,7 +75,7 @@ class MrpBackdateWizard(models.TransientModel):
             raise UserError(_('Manufacturing Order must be in Done state to apply backdate.'))
 
         moves = production.move_raw_ids | production.move_finished_ids
-        self._check_backdate(moves)
+        warning = self._check_backdate(moves)
         old_date = production.date_finished
 
         _logger.info('=== Starting Backdate Process for MO: %s ===', production.name)
@@ -119,7 +122,8 @@ class MrpBackdateWizard(models.TransientModel):
         _logger.info('Force updated MO dates: deadline=%s, finished=%s', self.backdate, self.backdate)
 
         self.env['stock.backdate.log']._log_backdate(
-            production, old_date, self.backdate, moves, self.backdate_remark)
+            production, old_date, self.backdate, moves, self.backdate_remark,
+            warning=warning)
 
         _logger.info('=== Backdate Process Completed ===')
 
@@ -134,7 +138,7 @@ class MrpBackdateWizard(models.TransientModel):
             raise UserError(_('Unbuild Order must be in Done state to apply backdate.'))
 
         moves = unbuild.consume_line_ids | unbuild.produce_line_ids
-        self._check_backdate(moves)
+        warning = self._check_backdate(moves)
         # an unbuild order has no date of its own: report its earliest move
         old_date = min(moves.mapped('date'), default=False)
 
@@ -159,7 +163,8 @@ class MrpBackdateWizard(models.TransientModel):
         self.env.flush_all()
 
         self.env['stock.backdate.log']._log_backdate(
-            unbuild, old_date, self.backdate, moves, self.backdate_remark)
+            unbuild, old_date, self.backdate, moves, self.backdate_remark,
+            warning=warning)
 
         _logger.info('=== Backdate Process Completed ===')
 
