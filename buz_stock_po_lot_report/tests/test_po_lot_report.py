@@ -166,7 +166,8 @@ class TestTaxStockReport(TransactionCase):
         lots = {r['warehouse_id']: r for r in rows if r['line_type'] == 'lot' and r['bal_qty']}
         self.assertEqual(lots[1]['wh_date'], date(2026, 10, 1))
         self.assertEqual(lots[2]['wh_date'], date(2026, 10, 10))   # arrived by transfer
-        self.assertEqual(lots[2]['date'], date(2026, 10, 1))       # origin receipt date kept
+        self.assertEqual(lots[2]['date'], date(2026, 10, 10))      # date of the queue document
+        self.assertIn('(ล็อต LOT-A)', lots[2]['doc_ref'])          # origin still traceable
 
     def test_receipt_row_shows_all_in_unit_cost(self):
         from datetime import datetime
@@ -234,3 +235,101 @@ class TestTaxStockReport(TransactionCase):
         self.assertAlmostEqual(br2.value, 5.0)
         self.assertNotIn('(x', br2.doc)
 
+
+    # ------------------------------------------- ending lots = warehouse queue
+    def _two_wh_rows(self, layers, trace=None):
+        """layers: (day, id, wh index, qty, value, doc, transfer move id or None).
+        Returns (wizard, rows, [wh1 id, wh2 id])."""
+        from datetime import datetime
+        from odoo.addons.buz_stock_po_lot_report.wizard.po_lot_wizard import Layer
+        whs = [self.env['stock.warehouse'].create({'name': 'QWH%d' % i, 'code': 'QW%d' % i}).id
+               for i in (1, 2)]
+        prod = self.env['product.product'].create({'name': 'queue', 'default_code': 'QUEUE000'})
+        wiz = self.env['buz.po.lot.wizard'].create({
+            'date_from': '2026-01-01', 'date_to': '2026-12-31', 'hide_zero': False})
+        items = []
+        for day, lid, wh, qty, value, doc, mid in layers:
+            items.append((datetime(2026, 10, day, 3), lid, Layer(
+                lid, prod.id, whs[wh - 1], qty, value, doc, mid, bool(mid),
+                whs[0] if mid else None, whs[1] if mid else None, None)))
+        start, end = wiz._utc_bounds()
+        rows = wiz._product_rows(prod, items, start, datetime.min, end, trace=trace)
+        return wiz, rows, whs
+
+    @staticmethod
+    def _ending(rows, wh):
+        return [r for r in rows if r['line_type'] == 'lot' and r.get('warehouse_id') == wh]
+
+    @staticmethod
+    def _doc(row):
+        return row['doc_ref'].split(' · ')[0]
+
+    def test_ending_lot_shows_warehouse_queue_document(self):
+        _w, rows, (a, b) = self._two_wh_rows([
+            (1, 1, 1, 5, 500.0, 'LOT-A', None),
+            (10, 2, 1, -2, -200.0, 'TR1', 9),
+            (10, 3, 2, 2, 200.0, 'TR1', 9)])
+        self.assertEqual([self._doc(r) for r in self._ending(rows, b)], ['TR1 (ล็อต LOT-A)'])
+        # received directly: the queue document is the origin, nothing to add
+        self.assertEqual([self._doc(r) for r in self._ending(rows, a)], ['LOT-A'])
+        snaps = [r for r in rows if r['line_type'] == 'lotbal' and r['warehouse_id'] == b]
+        self.assertEqual(self._doc(snaps[-1]), 'TR1 (ล็อต LOT-A)')
+
+    def test_each_transfer_is_its_own_queue_row(self):
+        _w, rows, (_a, b) = self._two_wh_rows([
+            (1, 1, 1, 5, 500.0, 'LOT-A', None),
+            (10, 2, 1, -2, -200.0, 'TR1', 9), (10, 3, 2, 2, 200.0, 'TR1', 9),
+            (12, 4, 1, -1, -100.0, 'TR2', 11), (12, 5, 2, 1, 100.0, 'TR2', 11)])
+        self.assertEqual([(self._doc(r), r['bal_qty']) for r in self._ending(rows, b)],
+                         [('TR1 (ล็อต LOT-A)', 2), ('TR2 (ล็อต LOT-A)', 1)])
+
+    def test_transfer_with_several_origins_is_one_queue_row(self):
+        _w, rows, (a, b) = self._two_wh_rows([
+            (1, 1, 1, 1, 100.0, 'LOT-A', None),
+            (2, 2, 1, 1, 100.0, 'LOT-B', None),
+            (3, 3, 1, 2, 100.0, 'LOT-C', None),
+            (10, 4, 1, -3, -300.0, 'TR1', 9), (10, 5, 2, 3, 330.0, 'TR1', 9)])
+        lot, = self._ending(rows, b)
+        self.assertEqual(self._doc(lot), 'TR1 (ล็อต LOT-A, LOT-B, LOT-C)')  # all origins
+        self.assertAlmostEqual(lot['bal_qty'], 3)
+        self.assertAlmostEqual(lot['bal_value'], 330.0)
+        # consumption order unchanged: oldest document first
+        self.assertEqual([(self._doc(r), r['bal_qty']) for r in self._ending(rows, a)],
+                         [('LOT-C', 1)])
+
+    def test_trace_still_keyed_by_origin_lot(self):
+        """buz_new_stock_card reads trace[...] and expects the origin document."""
+        trace = {'out': {}, 'in': {}, 'layers': [], 'opening': [], 'ending': [], 'bal': {},
+                 'open_bal': {}}
+        _w, _rows, (_a, b) = self._two_wh_rows([
+            (1, 1, 1, 5, 500.0, 'LOT-A', None),
+            (10, 2, 1, -2, -200.0, 'TR1', 9), (10, 3, 2, 2, 200.0, 'TR1', 9)], trace=trace)
+        ending = [lot for _d, wh, lot in trace['ending'] if wh == b]
+        self.assertEqual([(lot[0], len(lot)) for lot in ending], [('LOT-A', 5)])
+
+    def test_xlsx_ending_lot_has_origin_in_its_own_column(self):
+        import io
+        import re
+        import zipfile
+        import xlsxwriter
+        wiz, rows, _whs = self._two_wh_rows([
+            (1, 1, 1, 5, 500.0, 'LOT-A', None),
+            (10, 2, 1, -2, -200.0, 'TR1', 9), (10, 3, 2, 2, 200.0, 'TR1', 9)])
+        wiz._insert_lines(rows)
+        buf = io.BytesIO()
+        book = xlsxwriter.Workbook(buf, {'constant_memory': True})
+        self.env['report.buz_stock_po_lot_report.po_lot_xlsx'].generate_xlsx_report(book, {}, wiz)
+        book.close()
+        xml = zipfile.ZipFile(buf).read('xl/worksheets/sheet1.xml').decode()
+        cells = {m.group(1): m.group(2) for m in re.finditer(
+            r'<c r="([A-Z]+\d+)"[^>]*t="inlineStr"[^>]*><is><t[^>]*>([^<]*)</t>', xml)}
+        title = next(k for k, v in cells.items() if v == 'สินค้าปลายงวด')
+        after = {k: v for k, v in cells.items()
+                 if int(re.sub('[A-Z]', '', k)) > int(title[1:])}
+        row = next(k[1:] for k, v in after.items() if k[0] == 'B' and v == 'TR1')
+        self.assertEqual(after.get('M' + row), 'LOT-A')
+
+    def test_xlsx_origin_with_brackets_is_split(self):
+        from odoo.addons.buz_stock_po_lot_report.report.po_lot_xlsx import move_cells
+        self.assertEqual(move_cells('TR1 (ล็อต Opening (2025), LOT-B) · คลัง'),
+                         ('TR1', 'Opening (2025), LOT-B'))

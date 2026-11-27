@@ -53,6 +53,12 @@
                 <field name="bal_qty"/>
                 <field name="bal_cost"/>
                 <field name="bal_value"/>
+                <field name="rec_date" optional="show"/>
+                <field name="backdated" optional="show"/>
+                <field name="sys_qty" optional="show"/>
+                <field name="sys_value" optional="show"/>
+                <field name="diff_qty" optional="show"/>
+                <field name="diff_value" optional="show"/>
             </tree>
         </field>
     </record>
@@ -66,6 +72,9 @@
                 <field name="model_code"/>
                 <filter name="lots" string="Ending lots" domain="[('line_type', '=', 'lot')]"/>
                 <filter name="totals" string="Totals" domain="[('line_type', '=', 'total')]"/>
+                <filter name="backdated" string="Back-dated" domain="[('backdated', '=', True)]"/>
+                <filter name="differs" string="Differs from system"
+                        domain="['|', ('diff_qty', '!=', 0), ('diff_value', '!=', 0)]"/>
                 <filter name="group_model" string="Model" context="{'group_by': 'model_code'}"/>
                 <filter name="group_prod" string="Product" context="{'group_by': 'product_id'}"/>
             </search>

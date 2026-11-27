@@ -34,3 +34,36 @@ class BuzPoLotLine(models.TransientModel):
     bal_qty = fields.Float(string='Balance Qty', digits='Product Unit of Measure')
     bal_cost = fields.Float(string='Balance @', digits=(16, 4))
     bal_value = fields.Float(string='Balance Value', digits=(16, 2))
+    rec_date = fields.Date(string='Recorded on', help='Day the movement was really recorded.')
+    backdated = fields.Boolean(string='Back-dated', help='Recorded after its document date.')
+    has_sys = fields.Boolean(string='Compared with system')
+    sys_qty = fields.Float(string='System Qty', digits='Product Unit of Measure',
+                           help='Quantity the system FIFO queue holds today.')
+    sys_value = fields.Float(string='System Value', digits=(16, 2))
+    diff_qty = fields.Float(string='Qty Difference', digits='Product Unit of Measure',
+                            help='System minus report (lot rows) or minus ledger (total row).')
+    diff_value = fields.Float(string='Value Difference', digits=(16, 2))
+
+
+class BuzPoLotCheck(models.TransientModel):
+    _name = 'buz.po.lot.check'
+    _description = 'Tax stock report: differences for accounting to review'
+    _order = 'wizard_id, id'
+
+    wizard_id = fields.Many2one('buz.po.lot.wizard', ondelete='cascade', index=True)
+    product_id = fields.Many2one('product.product', string='Product')
+    warehouse_id = fields.Many2one('stock.warehouse', string='Warehouse')
+    ledger_qty = fields.Float(digits='Product Unit of Measure')
+    ledger_value = fields.Float(digits=(16, 2))
+    has_sys = fields.Boolean()
+    sys_qty = fields.Float(digits='Product Unit of Measure')
+    sys_value = fields.Float(digits=(16, 2))
+    lot_qty = fields.Float(digits='Product Unit of Measure')
+    lot_value = fields.Float(digits=(16, 2))
+    diff_sys_qty = fields.Float(digits='Product Unit of Measure')
+    diff_sys_value = fields.Float(digits=(16, 2))
+    diff_lot_value = fields.Float(digits=(16, 2))
+    backdated_count = fields.Integer()
+    short_qty = fields.Float(digits='Product Unit of Measure')
+    lc_moved_value = fields.Float(digits=(16, 2))
+    note = fields.Char()

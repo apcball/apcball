@@ -5,9 +5,19 @@ from odoo import models
 
 HEAD = ['วันที่', 'เลขที่', 'จำนวนรับ', '@', 'มูลค่ารับ', 'จำนวนจ่าย', '@',
         'มูลค่าจ่าย', 'จำนวนคงเหลือ', '@', 'มูลค่าคงเหลือ']
+EXTRA_HEAD = ['คลังสินค้า', 'ล็อต (PO ต้นทาง)', 'วันที่เข้าคลัง', 'ต้นทุนรวม LC (All-in @)',
+              'วันที่บันทึกในระบบ', 'ย้อนหลัง', 'จำนวนตามระบบ', 'มูลค่าตามระบบ', 'ผลต่างจำนวน',
+              'ผลต่างมูลค่า']
+CHECK_COLS = ('ledger_qty', 'sys_qty', 'lot_qty', 'diff_sys_qty', 'ledger_value', 'sys_value',
+              'lot_value', 'diff_sys_value', 'diff_lot_value', 'backdated_count', 'short_qty',
+              'lc_moved_value')
+CHECK_HEAD = ['รหัสสินค้า', 'ชื่อสินค้า', 'คลังสินค้า', 'จำนวนตามบัญชี', 'จำนวนคิวระบบ',
+              'จำนวนล็อตรายงาน', 'ผลต่างจำนวน (ระบบ−บัญชี)', 'มูลค่าตามบัญชี', 'มูลค่าคิวระบบ',
+              'มูลค่าล็อตรายงาน', 'ผลต่างมูลค่า (ระบบ−บัญชี)', 'ผลต่างมูลค่า (ล็อต−บัญชี)',
+              'รายการย้อนหลัง', 'จำนวนจ่ายก่อนรับ', 'landed cost ล็อตหมดแล้ว', 'สาเหตุที่พบ']
 
 # ' (ล็อต A, B +N)' / ' (ลงล็อต A)' suffix the engine puts on a movement's document
-LOT_SUFFIX = re.compile(r'\s*\((?:ลง)?ล็อต ([^)]*)\)\s*$')
+LOT_SUFFIX = re.compile(r'\s*\((?:ลง)?ล็อต (.*)\)\s*$')
 
 
 def split_lot(ref):
@@ -19,9 +29,9 @@ def split_lot(ref):
 
 
 def move_cells(doc_ref):
-    """Movement row -> (document number, lot). The document column shows the
-    transaction (transfer / bill / sale / receipt); the lot it belongs to goes
-    to its own column. No lot suffix: the document is the lot, nothing to add."""
+    """Movement / ending-lot row -> (document number, lot). The document column
+    shows the transaction (transfer / bill / sale / receipt); the lot it belongs
+    to goes to its own column. No lot suffix: the document is the lot, nothing to add."""
     lot, ref = split_lot((doc_ref or '').split(' · ')[0])
     return (ref, lot) if ref else (lot, '')
 
@@ -48,6 +58,7 @@ class PoLotXlsx(models.AbstractModel):
             txt = workbook.add_format({'border': 1})
             doc = workbook.add_format({'border': 1, 'text_wrap': True, 'valign': 'top'})
             dat = workbook.add_format({'num_format': 'dd/mm/yyyy', 'border': 1})
+            n_sys = workbook.add_format({'num_format': '#,##0.00', 'border': 1, 'bg_color': '#FFF2CC'})
             sheet.set_column('A:A', 12)
             sheet.set_column('B:B', 44)
             sheet.set_column('C:K', 14)
@@ -66,13 +77,20 @@ class PoLotXlsx(models.AbstractModel):
             sheet.write(r, 1, '%s;%s' % (comp.name, comp.vat or ''))
             r += 1
             sheet.write(r, 0, '□  สำนักงานใหญ่    □ สาขาที่')
+            if wiz._show_system():
+                r += 1
+                sheet.write(r, 0, 'คอลัมน์ผลต่าง: แถวล็อตปลายงวด = ระบบ − ล็อตในรายงาน, '
+                                  'แถวรวม = ระบบ − บัญชี (ยอดตามระบบคือ ณ วันนี้)')
             r += 2
             last_model = None
             # one pass: group lines by product (keeps line order), no per-product filtered()
             fields_ = ['product_id', 'seq', 'model_code', 'line_type', 'date', 'doc_ref',
                        'in_qty', 'in_cost', 'in_value', 'out_qty', 'out_cost', 'out_value',
                        'bal_qty', 'bal_cost', 'bal_value']
-            cols = ['product_id'] + fields_[1:] + ['warehouse_id', 'wh_date', 'in_allin']
+            cols = ['product_id'] + fields_[1:] + [
+                'warehouse_id', 'wh_date', 'in_allin', 'rec_date', 'backdated', 'has_sys',
+                'sys_qty', 'sys_value', 'diff_qty', 'diff_value']
+            numeric = fields_[6:]  # in_qty .. bal_value
             # warehouse column (lot / movement rows are per warehouse)
             show_wh = True
             wh_names = {w.id: w.name for w in self.env['stock.warehouse'].with_context(
@@ -81,13 +99,16 @@ class PoLotXlsx(models.AbstractModel):
             sheet.set_column('M:M', 34)
             sheet.set_column('N:N', 14)
             sheet.set_column('O:O', 16)
+            sheet.set_column('P:P', 18)
+            sheet.set_column('Q:Q', 10)
+            sheet.set_column('R:U', 16)
             self.env.cr.execute(
                 'SELECT %s FROM buz_po_lot_line WHERE wizard_id = %%s ORDER BY product_id, seq'
                 % ', '.join(cols), (wiz.id,))
             grouped = {}
             for tup in self.env.cr.fetchall():
                 rec = dict(zip(cols, tup))
-                for k in cols[6:-2]:
+                for k in numeric:
                     rec[k] = rec[k] or 0.0
                 grouped.setdefault(rec['product_id'], []).append(rec)
             # same product order as the on-screen list (product model _order)
@@ -114,7 +135,7 @@ class PoLotXlsx(models.AbstractModel):
                 sheet.write(r, 0, 'ประเภทสินค้า', bold)
                 sheet.write(r, 1, categ.parent_id.name or '')
                 r += 1
-                for c, h in enumerate(HEAD + (['คลังสินค้า', 'ล็อต (PO ต้นทาง)', 'วันที่เข้าคลัง', 'ต้นทุนรวม LC (All-in @)'] if show_wh else [])):
+                for c, h in enumerate(HEAD + EXTRA_HEAD):
                     sheet.write(r, c, h, head)
                 r += 1
                 lot_header_done = False
@@ -126,6 +147,12 @@ class PoLotXlsx(models.AbstractModel):
                         r += 1
                         lot_header_done = True
                     n = tot if lt == 'total' else num
+                    if lt == 'move' and l['rec_date']:
+                        sheet.write_datetime(r, 15, datetime.combine(l['rec_date'], time.min), dat)
+                        sheet.write(r, 16, 'ย้อนหลัง' if l['backdated'] else '', txt)
+                    if l['has_sys']:
+                        for c, k in enumerate(('sys_qty', 'sys_value', 'diff_qty', 'diff_value'), 17):
+                            sheet.write(r, c, l[k] or 0.0, n_sys)
                     if show_wh:
                         sheet.write(r, 11, wh_names.get(l['warehouse_id'], '') if lt in (
                             'move', 'lot', 'lotbal') else '', txt)
@@ -139,18 +166,16 @@ class PoLotXlsx(models.AbstractModel):
                         sheet.write(r, 0, '', txt)
                     # movement and ending-lot rows show the bare document number (no
                     # warehouse tag) so a lot with stock left can be identified; the lot
-                    # snapshots under every movement (lotbal) keep only the lot date
+                    # snapshots under every movement (lotbal) keep only the date
                     if lt == 'lotbal' and l['date']:
                         sheet.write(r, 1, '', doc)
-                    elif lt == 'move':
+                    elif lt == 'move' or (lt == 'lot' and l['date']):
                         # document number (transfer / bill / sale) in the first
-                        # column, the lot it belongs to in its own column
+                        # column, the origin lot it belongs to in its own column
                         number, lot = move_cells(l['doc_ref'])
                         sheet.write(r, 1, number, doc)
                         if lot and show_wh:
                             sheet.write(r, 12, lot, doc)
-                    elif lt == 'lot' and l['date']:
-                        sheet.write(r, 1, (l['doc_ref'] or '').split(' · ')[0], doc)
                     else:
                         sheet.write(r, 1, l['doc_ref'] or '', doc)
                     if lt == 'lotbal':
@@ -180,3 +205,32 @@ class PoLotXlsx(models.AbstractModel):
                     sheet.write(r, 10, l['bal_value'], n)
                     r += 1
                 r += 2
+            self._write_checks(workbook, wiz, head, num, txt)
+
+    def _write_checks(self, workbook, wiz, head, num, txt):
+        """Sheet for accounting: product x warehouse where ledger, system FIFO
+        queue and the document-date replay disagree, biggest value gap first."""
+        sheet = workbook.add_worksheet('ให้บัญชีตรวจ')
+        sheet.set_column('A:A', 20)
+        sheet.set_column('B:B', 44)
+        sheet.set_column('C:C', 24)
+        sheet.set_column('D:O', 17)
+        sheet.set_column('P:P', 80)
+        sheet.write(0, 0, 'รายการให้บัญชีตรวจสอบ ณ วันที่ %s' % wiz.date_to)
+        sheet.write(1, 0, 'คิวระบบ = ยอดคงเหลือตาม FIFO ที่ระบบเก็บ ณ วันนี้ (เว้นว่างเมื่อวันสิ้นงวดย้อนหลัง) '
+                          '/ ล็อตรายงาน = ตัด FIFO ใหม่ตามวันที่เอกสาร')
+        for c, h in enumerate(CHECK_HEAD):
+            sheet.write(3, c, h, head)
+        checks = wiz.env['buz.po.lot.check'].search([('wizard_id', '=', wiz.id)]).sorted(
+            lambda k: (-max(abs(k.diff_sys_value), abs(k.diff_lot_value)),
+                       k.product_id.default_code or '', k.warehouse_id.name or ''))
+        for r, k in enumerate(checks, 4):
+            sheet.write(r, 0, k.product_id.default_code or '', txt)
+            sheet.write(r, 1, k.product_id.name or '', txt)
+            sheet.write(r, 2, k.warehouse_id.name or '', txt)
+            for c, name in enumerate(CHECK_COLS, 3):
+                if not k.has_sys and 'sys' in name:
+                    sheet.write(r, c, '', txt)
+                else:
+                    sheet.write(r, c, k[name], num)
+            sheet.write(r, 15, k.note or '', txt)
