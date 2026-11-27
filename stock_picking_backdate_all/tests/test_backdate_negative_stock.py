@@ -30,7 +30,7 @@ class TestBackdateNegativeStock(TransactionCase):
         })
         cls.now = fields.Datetime.now().replace(microsecond=0)
 
-    def _picking(self, incoming, qty, days_ago):
+    def _ready_picking(self, incoming, qty):
         picking_type = (self.warehouse.in_type_id if incoming
                         else self.warehouse.out_type_id)
         stock = self.warehouse.lot_stock_id
@@ -52,6 +52,10 @@ class TestBackdateNegativeStock(TransactionCase):
             })],
         })
         picking.action_confirm()
+        return picking
+
+    def _picking(self, incoming, qty, days_ago):
+        picking = self._ready_picking(incoming, qty)
         picking.move_ids.write({'quantity': qty, 'picked': True})
         picking.move_ids._action_done()
         self.assertEqual(picking.state, 'done')
@@ -89,6 +93,31 @@ class TestBackdateNegativeStock(TransactionCase):
         receipt = self._picking(True, 5, days_ago=10)
         delivery = self._picking(False, 5, days_ago=5)
         self._wizard(receipt | delivery, 20)._check_backdate_negative_stock()
+
+    def test_unfinished_picking_is_blocked_and_nothing_changes(self):
+        receipt = self._ready_picking(True, 5)
+        self.assertNotEqual(receipt.state, 'done')
+        old_scheduled = receipt.scheduled_date
+        old_date = receipt.move_ids.date
+        with self.assertRaisesRegex(UserError, receipt.name):
+            self._wizard(receipt, 5).change_to_backdate()
+        self.assertEqual(receipt.scheduled_date, old_scheduled)
+        self.assertEqual(receipt.move_ids.date, old_date)
+        self.assertFalse(receipt.date_done)
+
+    def test_one_unfinished_picking_blocks_whole_selection(self):
+        done = self._picking(True, 5, days_ago=10)
+        ready = self._ready_picking(True, 5)
+        old_date = done.move_ids.date
+        with self.assertRaisesRegex(UserError, ready.name):
+            self._wizard(done | ready, 5).change_to_backdate()
+        self.assertEqual(done.move_ids.date, old_date)
+
+    def test_cancelled_picking_is_blocked(self):
+        receipt = self._ready_picking(True, 5)
+        receipt.action_cancel()
+        with self.assertRaisesRegex(UserError, receipt.name):
+            self._wizard(receipt, 5).change_to_backdate()
 
     def test_allowed_change_updates_dates(self):
         self._picking(True, 5, days_ago=10)

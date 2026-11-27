@@ -53,6 +53,20 @@ class PickingBackDate(models.TransientModel):
                 "You can only backdate to today or a future date. "
                 "Backdating to the past requires the 'Backdate: Past & Future' group."))
 
+    def _check_backdate_pickings_done(self):
+        """Only done transfers can be backdated.
+
+        Validating a transfer stamps its effective date and move dates with the
+        current time, so a backdate applied before validation is silently lost.
+        """
+        self.ensure_one()
+        unfinished = self.picking_ids.filtered(lambda p: p.state != 'done')
+        if unfinished:
+            raise UserError(_(
+                "เปลี่ยนวันที่ย้อนหลังได้เฉพาะเอกสารที่ Done แล้วเท่านั้น "
+                "กรุณา Validate เอกสารก่อน แล้วจึงเปลี่ยนวันที่\n%s",
+                "\n".join("• %s" % name for name in unfinished.mapped('name'))))
+
     def _check_backdate_negative_stock(self):
         """Block the new date if it makes stock negative at any point in time.
 
@@ -155,6 +169,7 @@ class PickingBackDate(models.TransientModel):
 
     def change_to_backdate(self):
         self._check_backdate_allowed()
+        self._check_backdate_pickings_done()
         self._check_backdate_negative_stock()
 
         for picking in self.picking_ids:
