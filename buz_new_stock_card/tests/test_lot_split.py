@@ -1,5 +1,7 @@
 import io
+import re
 from collections import defaultdict
+from unittest.mock import patch
 
 import xlsxwriter
 
@@ -119,6 +121,41 @@ class TestLotSplit(TransactionCase):
         StockCardController._write_lot_split_sheet(workbook, fmts, rows)
         workbook.close()
         self.assertTrue(output.getvalue())
+
+    def test_format_fifo_lots_slices_a_move_over_its_lines(self):
+        pieces = [["IN1", 5.0, 120.0], ["IN2", 3.0, 125.0], ["", 2.0, 99.0]]
+        fmt = self.engine._format_fifo_lots
+        self.assertEqual(fmt(pieces, 0.0, 8.0), "IN1 (5 @120.00), IN2 (3 @125.00)")
+        self.assertEqual(fmt(pieces, 0.0, 4.0), "IN1 (4 @120.00)")
+        self.assertEqual(fmt(pieces, 4.0, 10.0),
+                         "IN1 (1 @120.00), IN2 (3 @125.00), อ้างอิงล็อตไม่ได้ (2)")
+        # more moved than the layers explain
+        self.assertEqual(fmt(pieces[:1], 0.0, 6.5),
+                         "IN1 (5 @120.00), อ้างอิงล็อตไม่ได้ (1.5)")
+
+    def test_valuation_rows_show_the_lots_cut(self):
+        """Data-driven: lots only on outgoing rows, never more or less than
+        the quantity issued, and adding them changes no figure."""
+        found = 0
+        for product in self._products_with_layers(20):
+            rows = self.engine.get_product_all_locations_valuation_lines(
+                product.id, DATE_FROM, DATE_TO)
+            for row in rows:
+                self.assertNotIn("_fifo_line", row)
+                if not row["fifo_lot"]:
+                    continue
+                found += 1
+                self.assertGreater(row["qty_out"], 0)
+                cut = sum(float(q.replace(",", "")) for q in re.findall(
+                    r"\((-?[\d,]+(?:\.\d+)?)(?: @[^)]*)?\)(?=, |$)", row["fifo_lot"]))
+                self.assertAlmostEqual(cut, row["qty_out"], places=3, msg=row["fifo_lot"])
+            with patch.object(type(self.engine), "_attach_fifo_lots", lambda self, rows, *a: [
+                    r.pop("_fifo_line", None) for r in rows]):
+                plain = self.engine.get_product_all_locations_valuation_lines(
+                    product.id, DATE_FROM, DATE_TO)
+            self.assertEqual([dict(r, fifo_lot="") for r in rows], plain)
+        if not found:
+            self.skipTest("no outgoing valuation layers")
 
     def test_empty_rows_render(self):
         output = io.BytesIO()

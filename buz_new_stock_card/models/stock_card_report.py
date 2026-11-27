@@ -129,6 +129,17 @@ class StockCardReport(models.AbstractModel):
                 line["_qty_base_uom"] = line["quantity"]
         return lines
 
+    def _sort_receipts_first(self, lines, scope_location_ids):
+        """Ledger order: by date, issues after everything else sharing their
+        timestamp (backdated documents all land on 00:00), so a same-time
+        receipt/issue pair never shows a negative running balance. The sort is
+        stable, so lines read in (date, id) order keep id order otherwise."""
+        scope = set(scope_location_ids)
+        return sorted(
+            lines,
+            key=lambda line: (line["date"], self._direction_qty(line, scope)[1] > 0),
+        )
+
     # ------------------------------------------------------------------
     # Opening balance
     # ------------------------------------------------------------------
@@ -182,16 +193,6 @@ class StockCardReport(models.AbstractModel):
         quant = self._get_scope_quant_qty(product_ids, scope_location_ids, company_ids)
         net = self._get_post_start_net(product_ids, scope_location_ids, start_utc, company_ids)
         return {pid: quant.get(pid, 0.0) - net.get(pid, 0.0) for pid in product_ids}
-
-    def _get_prefix_delta(self, detail_domain, order, offset, scope_location_ids):
-        if offset <= 0:
-            return 0.0
-        lines = self._read_lines_with_base_qty(detail_domain, order=order, limit=offset)
-        delta = 0.0
-        for line in lines:
-            in_qty, out_qty = self._direction_qty(line, scope_location_ids)
-            delta += in_qty - out_qty
-        return delta
 
     # ------------------------------------------------------------------
     # Value ledger (มูลค่าสินค้า running balance)
@@ -362,14 +363,6 @@ class StockCardReport(models.AbstractModel):
             return -(value_context["value_out_by_move"].get(move_id, 0.0) * (out_qty / total_qty))
         return 0.0
 
-    def _get_prefix_value(
-        self, detail_domain, order, offset, scope_location_ids, value_context,
-    ):
-        if offset <= 0:
-            return 0.0
-        lines = self._read_lines_with_base_qty(detail_domain, order=order, limit=offset)
-        return sum(self._line_value_delta(line, scope_location_ids, value_context) for line in lines)
-
     # ------------------------------------------------------------------
     # Document resolution
     # ------------------------------------------------------------------
@@ -494,26 +487,27 @@ class StockCardReport(models.AbstractModel):
         if show_movements_only:
             detail_domain += [("quantity", "!=", 0)]
 
-        order = "date, id"
-        total_count = self.env["stock.move.line"].search_count(detail_domain)
+        # One full read, sorted in Python (direction depends on the scope), so
+        # pages, prefix balances and range totals all share the same order.
+        all_lines = self._sort_receipts_first(
+            self._read_lines_with_base_qty(detail_domain, order="date, id"),
+            scope_location_ids,
+        )
+        total_count = len(all_lines)
 
         offset = page * page_size if page_size else 0
-        prefix_delta = self._get_prefix_delta(detail_domain, order, offset, scope_location_ids)
-        running_balance = opening_balance + prefix_delta
+        prefix_lines = all_lines[:offset]
+        lines = all_lines[offset:offset + page_size] if page_size else all_lines
+        running_balance = opening_balance
+        for line in prefix_lines:
+            in_qty, out_qty = self._direction_qty(line, scope_location_ids)
+            running_balance += in_qty - out_qty
+        self._prefetch_documents(all_lines)
 
-        limit = page_size or None
-        lines = self._read_lines_with_base_qty(detail_domain, order=order, limit=limit, offset=offset)
-        self._prefetch_documents(lines)
-
-        # Value ledger: full-range move-line set is needed up front to build
-        # the pro-rata denominators (_get_move_qty_totals) correctly - a move
-        # split across a page boundary must not get inconsistent shares per
-        # page. Also reused below for the qty range totals, so only one
-        # unlimited fetch happens regardless of group membership.
+        # Value ledger: the pro-rata denominators (_get_move_qty_totals) come
+        # from the full range, so a move split across a page boundary gets
+        # consistent shares per page.
         can_see_value = self._can_see_value()
-        all_lines = self._read_lines_with_base_qty(detail_domain, order=order)
-        if all_lines is not lines:
-            self._prefetch_documents(all_lines)
 
         value_context = None
         opening_value = 0.0
@@ -531,8 +525,10 @@ class StockCardReport(models.AbstractModel):
                 "move_out_qty": move_out_qty,
             }
             opening_value = self._get_opening_value(product_id, scope_location_ids, start_utc, company_ids)
-            prefix_value = self._get_prefix_value(detail_domain, order, offset, scope_location_ids, value_context)
-            running_value = opening_value + prefix_value
+            running_value = opening_value + sum(
+                self._line_value_delta(line, scope_location_ids, value_context)
+                for line in prefix_lines
+            )
 
         rows = []
         total_in = 0.0
@@ -640,6 +636,7 @@ class StockCardReport(models.AbstractModel):
         if lines is None:
             lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
             self._prefetch_documents(lines)
+        lines = self._sort_receipts_first(lines, scope_location_ids)
 
         running_value = opening_value
         if include_value and value_context is None:
@@ -682,7 +679,7 @@ class StockCardReport(models.AbstractModel):
                 "source_location": from_location,
                 "dest_location": to_location,
                 "note": source_document,
-                "_sort_key": (location_label, default_code or "", product_name or "", str(line["date"]), line["id"]),
+                "_sort_key": (location_label, default_code or "", product_name or "", str(line["date"]), out_qty > 0, line["id"]),
             }
             if include_value:
                 delta = self._line_value_delta(line, scope_location_ids, value_context)
@@ -873,7 +870,7 @@ class StockCardReport(models.AbstractModel):
                     "to_location": "",
                     "note": "",
                     "warehouse_name": warehouse_name,
-                    "_sort_key": (location_label, default_code or "", product_name or "", "", 0),
+                    "_sort_key": (location_label, default_code or "", product_name or "", "", False, 0),
                 }
                 if can_see_value:
                     marker_row["value"] = opening_value
@@ -998,7 +995,7 @@ class StockCardReport(models.AbstractModel):
                     "from_location": "",
                     "to_location": "",
                     "note": "",
-                    "_sort_key": (label, default_code or "", product_name or "", "", 0),
+                    "_sort_key": (label, default_code or "", product_name or "", "", False, 0),
                 }
                 if can_see_value:
                     marker_row["value"] = opening_value
@@ -1114,7 +1111,7 @@ class StockCardReport(models.AbstractModel):
                 show_movements_only, scope_label or "", can_see_value,
             )
             # _scoped_rows_for_products emits products in the order given and
-            # each product's rows already in (date, id) order.
+            # each product's rows already in ledger order.
             for idx, row in enumerate(built, start=first_offset):
                 row["seq"] = idx + 1
                 row.pop("_sort_key", None)
@@ -1508,7 +1505,10 @@ class StockCardReport(models.AbstractModel):
         ] + self._scope_domain(scope_location_ids)
         if product_ids:
             detail_domain.append(("product_id", "in", list(product_ids)))
-        lines = self._read_lines_with_base_qty(detail_domain, order="date, id")
+        lines = self._sort_receipts_first(
+            self._read_lines_with_base_qty(detail_domain, order="date, id"),
+            scope_location_ids,
+        )
         self._prefetch_documents(lines)
 
         # Batch every name lookup.
@@ -1533,6 +1533,7 @@ class StockCardReport(models.AbstractModel):
                 "product_default_code": product.default_code or "",
                 "product_name": product.name,
                 "lot_name": lot_name,
+                "fifo_lot": "",
                 "warehouse_name": location.warehouse_id.name or "",
                 "location_label": location.display_name,
                 "doc_type": doc_type,
@@ -1612,8 +1613,105 @@ class StockCardReport(models.AbstractModel):
                 line["location_id"][1], line["location_dest_id"][1],
             )
             set_amount(row, qty, unit_cost)
+            if qty < 0 and move_id:
+                row["_fifo_line"] = (move_id, line["id"], line["product_id"][0])
             rows.append(row)
         return rows
+
+    def _attach_fifo_lots(self, rows, date_from, date_to, company_ids):
+        """Fill ``fifo_lot`` of every outgoing row with the FIFO lots it was
+        cut from: "DOC (qty @unit cost), ...". A lot is the origin document of
+        a valuation layer, replayed per warehouse by buz_stock_po_lot_report.
+
+        Only text is added; quantities and values of the rows stay as they are.
+        Moves without an outgoing layer (transfer inside one warehouse, before
+        the FIFO cutoff) stay blank. Call once per export, after every scope's
+        rows are collected: the replay is per product, not per location."""
+        targets = []
+        for row in rows:
+            key = row.pop("_fifo_line", None)
+            if key:
+                targets.append((row,) + key)
+        if not targets:
+            return rows
+        move_ids = {t[1] for t in targets}
+        product_ids = list({t[3] for t in targets})
+
+        self.env.flush_all()
+        pieces_by_move = {}  # move id -> [[lot doc, qty, unit cost]] in the order cut
+        # one spare day: the card cuts days in UTC for a user without a timezone,
+        # the engine in Bangkok time. Later layers never change earlier cuts.
+        replay_to = fields.Date.to_date(date_to) + timedelta(days=1)
+        for company_id in company_ids:
+            wiz = self._new_po_lot_wizard(date_from, replay_to, company_id)
+            start_utc, end_utc = wiz._utc_bounds()
+            cutoff_utc = wiz._cutoff_utc()
+            all_layers = wiz._fetch_layers(product_ids, cutoff_utc, end_utc)
+            products = self.env["product.product"].with_context(active_test=False).browse(list(all_layers))
+            for product in products:
+                layers = all_layers[product.id]
+                outgoing = [
+                    layer for _date, _id, layer in layers
+                    if layer.quantity < 0 and layer.move_id in move_ids
+                ]
+                if not outgoing:
+                    continue
+                trace = self._new_lot_trace()
+                wiz._product_rows(product, layers, start_utc, cutoff_utc, end_utc, layers, trace=trace)
+                receipts = {}  # doc -> moves that brought stock in under it
+                for _date, _id, layer in layers:
+                    if layer.quantity > 0:
+                        receipts.setdefault(layer.doc, set()).add(layer.move_id)
+                for layer in outgoing:
+                    for doc, _lot_date, unit_cost, qty in trace["out"].get(layer.id, ()):
+                        # the engine names a lot after the issue itself when it was
+                        # cut before any receipt (negative stock): no lot to show
+                        if doc == layer.doc and not receipts.get(doc, set()) - {layer.move_id}:
+                            doc = ""
+                        pieces_by_move.setdefault(layer.move_id, []).append([doc, qty, unit_cost])
+
+        # Slice each move's lots over its move lines in id order, over ALL lines
+        # of the move so a line gets the same lots whatever the export scope is.
+        spans = {}  # move line id -> (start, end) inside the move's quantity
+        done_qty = {}
+        for line in self._read_lines_with_base_qty(
+            [("move_id", "in", list(pieces_by_move)), ("state", "=", "done"), ("quantity", "!=", 0)],
+            order="id",
+        ):
+            move_id = line["move_id"][0]
+            start = done_qty.get(move_id, 0.0)
+            done_qty[move_id] = start + line["_qty_base_uom"]
+            spans[line["id"]] = (start, done_qty[move_id])
+
+        for row, move_id, line_id, _product_id in targets:
+            if move_id in pieces_by_move and line_id in spans:
+                row["fifo_lot"] = self._format_fifo_lots(pieces_by_move[move_id], *spans[line_id])
+        return rows
+
+    @staticmethod
+    def _format_fifo_lots(pieces, start, end):
+        """Text for the [start, end) slice of a move's lot pieces."""
+        merged = {}  # (doc, unit cost) -> qty, in the order cut
+        position = covered = 0.0
+        for doc, qty, unit_cost in pieces:
+            take = min(end, position + qty) - max(start, position)
+            position += qty
+            if take <= 1e-6:
+                continue
+            key = (doc, round(unit_cost, 2) if doc else None)
+            merged[key] = merged.get(key, 0.0) + take
+            covered += take
+        if end - start - covered > 1e-6:
+            merged[("", None)] = merged.get(("", None), 0.0) + end - start - covered
+
+        def number(qty):
+            return "{:,.4f}".format(qty).rstrip("0").rstrip(".")
+
+        return ", ".join(
+            "%s (%s @%s)" % (doc, number(qty), "{:,.2f}".format(unit_cost)) if doc
+            else "อ้างอิงล็อตไม่ได้ (%s)" % number(qty)
+            for (doc, unit_cost), qty in merged.items()
+        )
 
     @staticmethod
     def _finalize_valuation_rows(rows, sort_key):
@@ -1662,6 +1760,7 @@ class StockCardReport(models.AbstractModel):
         rows = self._valuation_rows_for_scope(
             scope_location_ids, [product_id], date_from, date_to, company_ids,
         )
+        self._attach_fifo_lots(rows, date_from, date_to, company_ids)
         return self._finalize_valuation_rows(rows, sort_key=lambda r: r["_sort_dt"])
 
     @api.model
@@ -1691,6 +1790,7 @@ class StockCardReport(models.AbstractModel):
             rows.extend(self._valuation_rows_for_scope(
                 [location_id], [product_id], date_from, date_to, company_ids,
             ))
+        self._attach_fifo_lots(rows, date_from, date_to, company_ids)
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["_sort_dt"]),
         )
@@ -1709,6 +1809,7 @@ class StockCardReport(models.AbstractModel):
         rows = self._valuation_rows_for_scope(
             scope_location_ids, None, date_from, date_to, company_ids,
         )
+        self._attach_fifo_lots(rows, date_from, date_to, company_ids)
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
         )
@@ -1746,6 +1847,7 @@ class StockCardReport(models.AbstractModel):
             rows.extend(self._valuation_rows_for_scope(
                 [location_id], None, date_from, date_to, company_ids,
             ))
+        self._attach_fifo_lots(rows, date_from, date_to, company_ids)
         return self._finalize_valuation_rows(
             rows, sort_key=lambda r: (r["location_label"], r["product_default_code"], r["_sort_dt"]),
         )
@@ -1755,6 +1857,21 @@ class StockCardReport(models.AbstractModel):
     # ------------------------------------------------------------------
 
     MAX_LOT_SPLIT_PRODUCTS = 300
+
+    def _new_po_lot_wizard(self, date_from, date_to, company_id, warehouse_ids=None):
+        """In-memory buz_stock_po_lot_report wizard, used as the FIFO engine."""
+        return self.env["buz.po.lot.wizard"].sudo().new({
+            "date_from": date_from,
+            "date_to": date_to,
+            "company_id": company_id,
+            "warehouse_ids": [fields.Command.set(list(warehouse_ids or []))],
+            "hide_zero": False,
+            "show_lots_each_row": False,
+        })
+
+    @staticmethod
+    def _new_lot_trace():
+        return {"out": {}, "in": {}, "layers": [], "opening": [], "ending": [], "bal": {}, "open_bal": {}}
 
     @api.model
     def get_lot_split_rows(self, product_ids, warehouse_ids, date_from, date_to, company_id=None):
@@ -1778,15 +1895,9 @@ class StockCardReport(models.AbstractModel):
                 "รายงานแยก Lot รองรับสูงสุด %d สินค้า กรุณาเลือกสินค้า/คลังให้แคบลง"
                 % self.MAX_LOT_SPLIT_PRODUCTS
             )
-        company = self.env["res.company"].browse(company_id) if company_id else self.env.company
-        wiz = self.env["buz.po.lot.wizard"].sudo().new({
-            "date_from": date_from,
-            "date_to": date_to,
-            "company_id": company.id,
-            "warehouse_ids": [fields.Command.set(list(warehouse_ids or []))],
-            "hide_zero": False,
-            "show_lots_each_row": False,
-        })
+        wiz = self._new_po_lot_wizard(
+            date_from, date_to, company_id or self.env.company.id, warehouse_ids,
+        )
         start_utc, end_utc = wiz._utc_bounds()
         cutoff_utc = wiz._cutoff_utc()
         whs = wiz._report_wh_ids()
@@ -1806,7 +1917,7 @@ class StockCardReport(models.AbstractModel):
             items = [t for t in seq_all if t[2].wh_id in whs] if whs else seq_all
             if not items:
                 continue
-            trace = {"out": {}, "in": {}, "layers": [], "opening": [], "ending": [], "bal": {}, "open_bal": {}}
+            trace = self._new_lot_trace()
             wiz._product_rows(prod, items, start_utc, cutoff_utc, end_utc, seq_all, trace=trace)
             layer_info = {i: (d, sv) for d, i, sv in seq_all}
             move_ids = {m for (_lid, m, _wh, _q, _v) in trace["layers"] if m}
