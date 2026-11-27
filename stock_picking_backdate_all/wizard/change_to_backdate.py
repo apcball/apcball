@@ -66,20 +66,20 @@ class PickingBackDate(models.TransientModel):
                 "\n".join("• %s" % name for name in unfinished.mapped('name'))))
 
     def _check_backdate_negative_stock(self):
-        """Block the new date if it makes stock negative at any point in time.
+        """Return the shortage warning, or raise when negative stock is blocked.
 
         All selected pickings are evaluated together. See
         stock.move.line._check_backdate_negative_stock.
         """
         self.ensure_one()
-        self.env['stock.move.line'].sudo().search(
+        return self.env['stock.move.line'].sudo().search(
             [('move_id.picking_id', 'in', self.picking_ids.ids)]
         )._check_backdate_negative_stock(self.date)
 
     def change_to_backdate(self):
         self._check_backdate_allowed()
         self._check_backdate_pickings_done()
-        self._check_backdate_negative_stock()
+        warning = self._check_backdate_negative_stock()
 
         for picking in self.picking_ids:
             old_date = picking.date_done
@@ -138,5 +138,5 @@ class PickingBackDate(models.TransientModel):
                 'date_done':self.date,
             })
             self.env['stock.backdate.log']._log_backdate(
-                picking, old_date, self.date, moveObj)
+                picking, old_date, self.date, moveObj, warning=warning)
                 

@@ -156,6 +156,11 @@ class TestMrpBackdate(TransactionCase):
                     '%d/%m/%Y %H:%M:%S')
         return '%s → %s' % (shown(old), shown(new))
 
+    def setUp(self):
+        super().setUp()
+        self.env['ir.config_parameter'].set_param(
+            'stock_picking_backdate_all.negative_stock_mode', 'block')
+
     def _backdate_logs(self, record):
         return record.message_ids.filtered(lambda m: 'Backdate' in (m.body or ''))
 
@@ -256,3 +261,15 @@ class TestMrpBackdate(TransactionCase):
         self.assertEqual(self._dates(moves), old)
         self.assertFalse(unbuild.backdate)
         self.assertFalse(self._backdate_logs(unbuild))
+
+    def test_negative_backdate_is_allowed_and_logged_by_default(self):
+        self.env['ir.config_parameter'].set_param(
+            'stock_picking_backdate_all.negative_stock_mode', False)
+        self._receive_component(5, days_ago=10)
+        mo = self._done_mo(2, days_ago=5)
+        self._wizard(mo, 15).action_apply_backdate()
+        self.assertEqual(
+            self._dates(mo.move_raw_ids), {self.now - timedelta(days=15)})
+        log = self._backdate_logs(mo)
+        self.assertEqual(len(log), 1)
+        self.assertIn('Backdate Component', str(log.body))
