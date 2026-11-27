@@ -2,9 +2,7 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from odoo.tools import float_repr
 from datetime import date, datetime
-from .stock_timeline import find_negative_balance
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -53,111 +51,38 @@ class PickingBackDate(models.TransientModel):
                 "You can only backdate to today or a future date. "
                 "Backdating to the past requires the 'Backdate: Past & Future' group."))
 
+    def _check_backdate_pickings_done(self):
+        """Only done transfers can be backdated.
+
+        Validating a transfer stamps its effective date and move dates with the
+        current time, so a backdate applied before validation is silently lost.
+        """
+        self.ensure_one()
+        unfinished = self.picking_ids.filtered(lambda p: p.state != 'done')
+        if unfinished:
+            raise UserError(_(
+                "เปลี่ยนวันที่ย้อนหลังได้เฉพาะเอกสารที่ Done แล้วเท่านั้น "
+                "กรุณา Validate เอกสารก่อน แล้วจึงเปลี่ยนวันที่\n%s",
+                "\n".join("• %s" % name for name in unfinished.mapped('name'))))
+
     def _check_backdate_negative_stock(self):
         """Block the new date if it makes stock negative at any point in time.
 
-        All selected pickings are evaluated together, per product and internal
-        or transit location, and also per lot/serial. Must run before anything
-        is written.
+        All selected pickings are evaluated together. See
+        stock.move.line._check_backdate_negative_stock.
         """
         self.ensure_one()
-        if not self.date:
-            raise UserError(_("Please select a date."))
-
-        # sudo: a balance filtered by record rules would be wrong.
-        MoveLine = self.env['stock.move.line'].sudo()
-        moved_lines = MoveLine.search([
-            ('move_id.picking_id', 'in', self.picking_ids.ids),
-            ('state', '=', 'done'),
-            ('product_id.type', '=', 'product'),
-        ])
-        moved_ids = set(moved_lines.ids)
-
-        # (product, location) -> the selected lines touching it, with sign
-        affected = {}
-        for line in moved_lines:
-            if line.location_id == line.location_dest_id:
-                continue
-            for location, sign in ((line.location_id, -1),
-                                   (line.location_dest_id, 1)):
-                if location.usage in ('internal', 'transit'):
-                    affected.setdefault((line.product_id, location), []).append(
-                        (line, sign * line.quantity_product_uom))
-
-        problems = []
-        for (product, location), moved in affected.items():
-            low = min([self.date] + [line.date for line, _qty in moved])
-            history = MoveLine.search_read([
-                ('product_id', '=', product.id),
-                ('state', '=', 'done'),
-                ('date', '>=', low),
-                '|', ('location_id', '=', location.id),
-                ('location_dest_id', '=', location.id),
-            ], ['date', 'quantity_product_uom', 'location_id',
-                'location_dest_id', 'lot_id'], load=False)
-            others = []
-            for row in history:
-                if row['id'] in moved_ids:
-                    continue
-                sign = ((row['location_dest_id'] == location.id)
-                        - (row['location_id'] == location.id))
-                others.append(
-                    (row['date'], sign * row['quantity_product_uom'], row['lot_id']))
-            quants = self.env['stock.quant'].sudo().search([
-                ('product_id', '=', product.id),
-                ('location_id', '=', location.id),
-            ])
-
-            # False = the product as a whole, then each lot being re-dated.
-            lots = [False] + list({line.lot_id for line, _qty in moved if line.lot_id})
-            for lot in lots:
-                result = find_negative_balance(
-                    sum(quants.filtered(
-                        lambda q: not lot or q.lot_id == lot).mapped('quantity')),
-                    [(date, qty) for date, qty, lot_id in others
-                     if not lot or lot_id == lot.id],
-                    [(line.date, qty) for line, qty in moved
-                     if not lot or line.lot_id == lot],
-                    self.date,
-                    product.uom_id.rounding,
-                )
-                if result:
-                    problems.append((product, location, lot, result))
-
-        if problems:
-            raise UserError(self._format_negative_stock_message(problems))
-
-    def _format_negative_stock_message(self, problems, limit=10):
-        digits = self.env['decimal.precision'].precision_get(
-            'Product Unit of Measure')
-
-        def local(value):
-            return fields.Datetime.context_timestamp(self, value).strftime(
-                '%d/%m/%Y %H:%M')
-
-        lines = [_(
-            "ไม่สามารถเปลี่ยนวันที่เป็น %s ได้ เพราะยอดสต็อกจะติดลบ",
-            local(self.date))]
-        for product, location, lot, (date, after, before) in problems[:limit]:
-            name = product.display_name
-            if lot:
-                name = _("%s (Lot/Serial: %s)", name, lot.name)
-            lines.append(_(
-                "• %s\n   ตำแหน่ง: %s\n   ยอด ณ %s จะเป็น %s %s (ก่อนเปลี่ยนวันที่: %s)",
-                name, location.complete_name, local(date),
-                float_repr(after, digits), product.uom_id.name,
-                float_repr(before, digits)))
-        if len(problems) > limit:
-            lines.append(_("... และอีก %s รายการ", len(problems) - limit))
-        lines.append(_(
-            "กรุณาเลือกวันที่อื่น หรือปรับวันที่ของรายการรับเข้าที่เกี่ยวข้องก่อน"))
-        return "\n".join(lines)
+        self.env['stock.move.line'].sudo().search(
+            [('move_id.picking_id', 'in', self.picking_ids.ids)]
+        )._check_backdate_negative_stock(self.date)
 
     def change_to_backdate(self):
         self._check_backdate_allowed()
+        self._check_backdate_pickings_done()
         self._check_backdate_negative_stock()
 
         for picking in self.picking_ids:
+            old_date = picking.date_done
             
             moveObj = self.env['stock.move'].search([('picking_id','=',picking.id)])
             accmoveObj = self.env['account.move'].search([('stock_move_id','in',moveObj.ids)])
@@ -212,4 +137,6 @@ class PickingBackDate(models.TransientModel):
             picking.write({
                 'date_done':self.date,
             })
+            self.env['stock.backdate.log']._log_backdate(
+                picking, old_date, self.date, moveObj)
                 

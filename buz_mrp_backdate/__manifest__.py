@@ -21,6 +21,8 @@ Does not affect normal MO/Unbuild confirmation logic.
         'stock_account',
         # accounting_date on stock.valuation.layer
         'stock_fifo_by_location',
+        # shared negative-stock check for backdating
+        'stock_picking_backdate_all',
     ],
     'data': [
         'security/security.xml',
