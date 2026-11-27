@@ -19,6 +19,9 @@
 #    If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
+from collections import defaultdict
+from math import floor
+
 from odoo import models, fields, api
 
 
@@ -135,20 +138,110 @@ class SaleOrderLine(models.Model):
             dates = [d for d in dates if d]
             line.picking_scheduled_date = max(dates).date() if dates else False
 
-    @api.depends('move_ids.state', 'move_ids.quantity', 'move_ids.product_uom',
-                 'move_ids.location_dest_id')
+    @api.depends('product_uom_qty', 'qty_delivered', 'move_ids.state',
+                 'move_ids.quantity', 'move_ids.product_uom_qty',
+                 'move_ids.product_uom', 'move_ids.bom_line_id',
+                 'move_ids.location_id', 'move_ids.location_dest_id')
     def _compute_reserve_qty(self):
         for line in self:
-            reserved = 0.0
-            for move in line.move_ids.filtered(
-                lambda m: m.state in ('assigned', 'partially_available')
-                and m.location_dest_id.usage == 'customer'
+            moves = line.move_ids.filtered(lambda m: m.state != 'cancel')
+            outgoing = moves.filtered(
+                lambda m: m.location_dest_id.usage == 'customer'
                 and (not m.origin_returned_move_id or m.to_refund)
-            ):
-                reserved += move.product_uom._compute_quantity(
-                    move.quantity, line.product_uom
+            )
+            reserved = outgoing.filtered(
+                lambda m: m.state in ('assigned', 'partially_available'))
+            is_kit = any(
+                m.bom_line_id.bom_id.type == 'phantom'
+                and m.product_id != line.product_id
+                for m in outgoing
+            )
+            if not reserved:
+                line.reserve_qty = 0.0
+            elif is_kit:
+                returned = moves.filtered(
+                    lambda m: m.state == 'done'
+                    and m.location_id.usage == 'customer' and m.to_refund
                 )
-            line.reserve_qty = reserved
+                line.reserve_qty = line._get_kit_reserve_qty(outgoing, returned)
+            else:
+                line.reserve_qty = sum(
+                    move.product_uom._compute_quantity(
+                        move.quantity, line.product_uom)
+                    for move in reserved
+                )
+
+    def _get_kit_reserve_qty(self, outgoing, returned):
+        """Return how many of the kits still to deliver are fully reserved.
+
+        A kit line has one stock move per component, so adding up their
+        quantities counts pieces, not kits. Each component covers as many
+        kits as its delivered and reserved quantity allows, and the scarcest
+        component decides.
+        """
+        self.ensure_one()
+        if self.product_uom_qty <= 0:
+            return 0.0
+
+        def total_done(moves):
+            return sum(
+                m.product_uom._compute_quantity(
+                    m.quantity, m.product_id.uom_id, rounding_method='HALF-UP')
+                for m in moves
+            )
+
+        bom_qty = self._get_kit_component_qty(outgoing)
+        shipped_kits = []
+        covered_kits = []
+        for product in outgoing.product_id:
+            moves = outgoing.filtered(lambda m: m.product_id == product)
+            open_moves = moves.filtered(lambda m: m.state != 'done')
+            delivered = total_done(moves - open_moves) - total_done(
+                returned.filtered(lambda m: m.product_id == product))
+            reserved = total_done(open_moves.filtered(
+                lambda m: m.state in ('assigned', 'partially_available')))
+            demand = delivered + sum(open_moves.mapped('product_qty'))
+            # The BoM may have changed since confirmation, and the moves may
+            # no longer cover the whole order. Taking the larger quantity per
+            # kit never reports more kits than the stock can make.
+            needed = max(bom_qty.get(product, 0.0), demand)
+            per_kit = needed / self.product_uom_qty
+            if per_kit <= 0:
+                continue
+            # Rounding first keeps float noise from losing a kit.
+            shipped_kits.append(round(delivered / per_kit, 6))
+            covered_kits.append(round((delivered + reserved) / per_kit, 6))
+        if not covered_kits:
+            return 0.0
+        shipped = max(self.qty_delivered, floor(min(shipped_kits)))
+        ready = floor(min(covered_kits)) - shipped
+        return max(min(ready, self.product_uom_qty - shipped), 0.0)
+
+    def _get_kit_component_qty(self, moves):
+        """Component quantities the current kit BoM needs for this line."""
+        self.ensure_one()
+        product = self.product_id
+        bom = moves.bom_line_id.bom_id.filtered(
+            lambda b: b.type == 'phantom' and (
+                b.product_id == product
+                or (b.product_tmpl_id == product.product_tmpl_id
+                    and not b.product_id))
+        )[:1]
+        if not bom:
+            bom = self.env['mrp.bom']._bom_find(
+                product, company_id=self.company_id.id,
+                bom_type='phantom')[product]
+        quantities = defaultdict(float)
+        if bom:
+            batches = self.product_uom._compute_quantity(
+                self.product_uom_qty, bom.product_uom_id,
+                round=False) / bom.product_qty
+            for bom_line, data in bom.explode(product, batches)[1]:
+                component = bom_line.product_id
+                quantities[component] += (
+                    bom_line.product_uom_id._compute_quantity(
+                        data['qty'], component.uom_id, round=False))
+        return quantities
 
     @api.depends('state', 'product_uom_qty', 'qty_delivered', 'move_ids.state')
     def _compute_is_pending_delivery(self):

@@ -21,7 +21,7 @@
 #############################################################################
 {
     'name': 'buz Sale Order Line Views',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Sales',
     'summary': 'This module enhances the sales management process by '
                'providing a comprehensive and detailed view of both sale '
@@ -36,7 +36,8 @@
     'company': 'Cybrosys Techno Solutions',
     'maintainer': 'Cybrosys Techno Solutions',
     'website': "https://www.cybrosys.com",
-    'depends': ['sale_management', 'buz_custom_quotation', 'buzcustom_product_sku', 'sale_stock'],
+    'depends': ['sale_management', 'buz_custom_quotation', 'buzcustom_product_sku', 'sale_stock',
+                'sale_mrp'],
     'data': [
         'views/quotation_line_views.xml',
         'views/sale_order_line_views.xml'
