@@ -172,6 +172,12 @@ class TestSalesDashboard(DashboardCommon, TransactionCase):
                 row[name], expected.get(name[7:], 0.0), places=2, msg=name)
 
     # ------------------------------------------------------------ sale orders
+    def test_report_is_read_without_jit(self):
+        self.env.cr.execute("SET LOCAL jit = on")
+        self.env["buz.sales.dashboard.report"].search([], limit=1)
+        self.env.cr.execute("SHOW jit")
+        self.assertEqual(self.env.cr.fetchone()[0], "off")
+
     def test_confirmed_order_is_split_by_line_kind(self):
         order = self._order(self.user_a, self.team_1, [
             (self.goods, 10, 100, 4),      # 400 delivered, 600 pending

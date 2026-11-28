@@ -94,7 +94,9 @@ credit_link AS (
        AND aml.price_subtotal > 0
        AND m.invoice_date <= %(today)s
        AND m.name NOT LIKE '%%ยกเลิก%%'
-       AND m.id NOT IN (SELECT id FROM pos_move)
+       -- NOT EXISTS, not NOT IN: the planner overrates a recursive CTE by far,
+       -- and NOT IN then rescans it for every invoice
+       AND NOT EXISTS (SELECT 1 FROM pos_move p WHERE p.id = m.id)
      GROUP BY aml.id
 ),
 credit_order_line AS (
@@ -330,7 +332,7 @@ document AS (
                    FROM sale_order_line_invoice_rel) link ON link.id = l.id
      WHERE m.state = 'posted'
        AND m.move_type IN ('out_invoice', 'out_refund')
-       AND m.id NOT IN (SELECT id FROM pos_document)
+       AND NOT EXISTS (SELECT 1 FROM pos_document p WHERE p.id = m.id)
      GROUP BY m.id
 )
 SELECT d.*,
