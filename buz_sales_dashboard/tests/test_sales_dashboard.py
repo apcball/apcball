@@ -13,6 +13,8 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools import mute_logger
 from odoo.tests.common import HttpCase, TransactionCase, new_test_user, tagged
 
+from odoo.addons.buz_sales_dashboard.hooks import revoke_automatic_access
+
 NS = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 
@@ -56,7 +58,8 @@ class DashboardCommon:
         cls.env = cls.env(context=dict(
             cls.env.context, skip_partner_required_fields=True,
             tracking_disable=True, no_reset_password=True))
-        salesman = "base.group_user,sales_team.group_sale_salesman"
+        salesman = ("base.group_user,sales_team.group_sale_salesman,"
+                    "buz_sales_dashboard.group_own")
         cls.user_a = new_test_user(cls.env, "bsd_a", groups=salesman,
                                    name="BSD Seller A", password="bsd_a_pass_123")
         cls.user_b = new_test_user(cls.env, "bsd_b", groups=salesman,
@@ -172,6 +175,12 @@ class TestSalesDashboard(DashboardCommon, TransactionCase):
                 row[name], expected.get(name[7:], 0.0), places=2, msg=name)
 
     # ------------------------------------------------------------ sale orders
+    def test_report_is_read_without_jit(self):
+        self.env.cr.execute("SET LOCAL jit = on")
+        self.env["buz.sales.dashboard.report"].search([], limit=1)
+        self.env.cr.execute("SHOW jit")
+        self.assertEqual(self.env.cr.fetchone()[0], "off")
+
     def test_confirmed_order_is_split_by_line_kind(self):
         order = self._order(self.user_a, self.team_1, [
             (self.goods, 10, 100, 4),      # 400 delivered, 600 pending
@@ -576,14 +585,84 @@ class TestSalesDashboard(DashboardCommon, TransactionCase):
         self.assertTrue(boss.has_group("buz_sales_dashboard.group_all"))
         self.assertEqual(self._data(boss)["total"]["amount_total"], 1550)
 
-    def test_sales_manager_role_alone_does_not_show_everything(self):
+    def test_sales_roles_alone_give_no_access(self):
         self._dataset()
-        plain = new_test_user(
-            self.env, "bsd_mgr",
-            groups="base.group_user,sales_team.group_sale_manager")
-        self.assertTrue(plain.has_group("buz_sales_dashboard.group_own"))
-        self.assertFalse(plain.has_group("buz_sales_dashboard.group_all"))
-        self.assertEqual(self._data(plain)["total"]["amount_total"], 0)
+        menu = self.env.ref("buz_sales_dashboard.menu_root")
+        for login, role in (("bsd_man", "group_sale_salesman"),
+                            ("bsd_mgr", "group_sale_manager")):
+            plain = new_test_user(
+                self.env, login, groups="base.group_user,sales_team.%s" % role)
+            self.assertFalse(plain.has_group("buz_sales_dashboard.group_own"))
+            self.assertNotIn(
+                menu.id,
+                self.env["ir.ui.menu"].with_user(plain)._visible_menu_ids())
+            Report = self.env["buz.sales.dashboard.report"].with_user(plain)
+            Target = self.env["buz.sales.target"].with_user(plain)
+            for call in (
+                    lambda: self._data(plain),
+                    lambda: Report.get_dashboard_options(),
+                    lambda: Report.search([]),
+                    lambda: Report._export_xlsx(self.FILTERS),
+                    lambda: Target.search([]),
+                    lambda: Target.get_board("2001-03-01")):
+                with self.assertRaises(AccessError):
+                    call()
+            with self.assertRaises(UserError):
+                self.env["buz.sales.target.import"].with_user(plain)._template_xlsx()
+
+    def test_a_granted_user_sees_the_menu(self):
+        menu = self.env.ref("buz_sales_dashboard.menu_root")
+        self.assertIn(
+            menu.id,
+            self.env["ir.ui.menu"].with_user(self.user_a)._visible_menu_ids())
+
+    def test_upgrade_takes_the_automatic_access_back(self):
+        own = self.env.ref("buz_sales_dashboard.group_own")
+        salesman = self.env.ref("sales_team.group_sale_salesman")
+        # the state left by 17.0.1.5.x
+        salesman.write({"implied_ids": [Command.link(own.id)]})
+        auto = new_test_user(
+            self.env, "bsd_auto",
+            groups="base.group_user,sales_team.group_sale_salesman")
+        gone = new_test_user(
+            self.env, "bsd_gone",
+            groups="base.group_user,sales_team.group_sale_salesman")
+        gone.active = False
+        self.assertIn(own, auto.groups_id)
+
+        revoke_automatic_access(self.env)
+
+        self.assertNotIn(own, salesman.implied_ids)
+        self.assertNotIn(own, auto.groups_id)
+        self.assertNotIn(own, gone.groups_id)
+        self.assertIn(salesman, auto.groups_id)
+        self.assertIn(own, self.manager.groups_id)
+        self.assertTrue(self.env.ref("base.user_admin").has_group(
+            "buz_sales_dashboard.group_target_manager"))
+
+    def test_members_are_added_and_removed_on_the_group_or_the_user(self):
+        self._dataset()
+        own = self.env.ref("buz_sales_dashboard.group_own")
+        every = self.env.ref("buz_sales_dashboard.group_all")
+        user = new_test_user(
+            self.env, "bsd_member",
+            groups="base.group_user,sales_team.group_sale_salesman")
+        # on the group form
+        own.write({"users": [Command.link(user.id)]})
+        self.assertEqual(self._data(user)["total"]["amount_total"], 0)
+        every.write({"users": [Command.link(user.id)]})
+        self.assertEqual(self._data(user)["total"]["amount_total"], 1550)
+        # leaving "see all" there keeps the narrow level
+        every.write({"users": [Command.unlink(user.id)]})
+        self.assertEqual(self._data(user)["total"]["amount_total"], 0)
+        own.write({"users": [Command.unlink(user.id)]})
+        with self.assertRaises(AccessError):
+            self._data(user)
+        # on the user form
+        user.write({"groups_id": [Command.link(own.id)]})
+        self.assertEqual(self._data(user)["total"]["amount_total"], 0)
+        user.write({"groups_id": [Command.unlink(own.id)]})
+        self.assertFalse(user.has_group("buz_sales_dashboard.group_own"))
 
     def test_user_without_sales_group_has_no_access(self):
         outsider = new_test_user(self.env, "bsd_out", groups="base.group_user")
@@ -1121,6 +1200,14 @@ class TestSalesTarget(DashboardCommon, TransactionCase):
         self.env.invalidate_all()
         self.assertEqual(sorted(Target.search(domain).mapped("amount")), [5, 30])
 
+    def test_a_team_leader_outside_the_groups_gets_no_template(self):
+        self.leader.write({"groups_id": [Command.unlink(
+            self.env.ref("buz_sales_dashboard.group_own").id)]})
+        self.assertEqual(self.team_1.user_id, self.leader)
+        with self.assertRaises(AccessError):
+            self.env["buz.sales.target.import"].with_user(
+                self.leader)._template_xlsx()
+
     def test_import_needs_the_right_and_template_is_empty(self):
         data = self._file([["2001-05", "คน", "bsd_a", None, 10]])
         for user in (self.manager, self.user_a):
@@ -1256,9 +1343,25 @@ class TestSalesDashboardHttp(DashboardCommon, HttpCase):
             self.assertEqual(
                 [r[rows[0].index("ยอดขายรวม (SO+POS)")] for r in rows[1:]], [expected])
 
+    @mute_logger("odoo.http")
+    def test_export_routes_refuse_a_user_without_access(self):
+        new_test_user(self.env, "bsd_noaccess", password="bsd_noaccess_pass_123",
+                      groups="base.group_user,sales_team.group_sale_manager",
+                      context=dict(skip_partner_required_fields=True,
+                                   no_reset_password=True))
+        self.authenticate("bsd_noaccess", "bsd_noaccess_pass_123")
+        response = self.url_open("/buz_sales_dashboard/export", data={
+            "filters": json.dumps(self.FILTERS),
+            "csrf_token": self._csrf_token()}, timeout=60)
+        self.assertEqual(response.status_code, 403, response.text[:300])
+        self.assertNotIn("Content-Disposition", response.headers)
+        template = self.url_open("/buz_sales_dashboard/target_template", timeout=60)
+        self.assertEqual(template.status_code, 403)
+
     def test_export_route_rejects_bad_json(self):
         new_test_user(self.env, "bsd_json", password="bsd_json_pass_123",
-                      groups="base.group_user,sales_team.group_sale_salesman",
+                      groups="base.group_user,sales_team.group_sale_salesman,"
+                             "buz_sales_dashboard.group_own",
                       context=dict(skip_partner_required_fields=True,
                                    no_reset_password=True))
         self.authenticate("bsd_json", "bsd_json_pass_123")

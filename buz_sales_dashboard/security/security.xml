@@ -12,7 +12,7 @@
     </record>
 
     <record id="group_own" model="res.groups">
-        <field name="name">เห็นของตัวเองและทีมที่เป็นหัวหน้า</field>
+        <field name="name">เห็นของตัวเอง</field>
         <field name="category_id" ref="module_category_sales_dashboard"/>
         <field name="implied_ids" eval="[Command.link(ref('base.group_user'))]"/>
     </record>
@@ -30,10 +30,11 @@
         <field name="users" eval="[Command.link(ref('base.user_admin'))]"/>
     </record>
 
-    <!-- Sales users get the narrow level. "See all" is granted per user: the
-         Sales Administrator role is held too widely to imply it. -->
+    <!-- No sales role opens the dashboard: both levels are granted per user.
+         Up to 17.0.1.5.x salespeople got the narrow one through this link;
+         unlinking keeps it from coming back. -->
     <record id="sales_team.group_sale_salesman" model="res.groups">
-        <field name="implied_ids" eval="[Command.link(ref('group_own'))]"/>
+        <field name="implied_ids" eval="[Command.unlink(ref('group_own'))]"/>
     </record>
 
     <record id="report_rule_company" model="ir.rule">

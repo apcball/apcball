@@ -1,6 +1,6 @@
 {
     "name": "Sales Dashboard (SO + POS)",
-    "version": "17.0.1.5.0",
+    "version": "17.0.1.6.0",
     "summary": "Sales dashboard for the sales team: quotations, sale orders, delivery "
                "and POS invoices, with personal saved filters and Excel export",
     "category": "Sales",

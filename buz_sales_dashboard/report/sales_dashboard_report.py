@@ -122,6 +122,14 @@ class SalesDashboardReport(models.Model):
             "CREATE VIEW %s AS (%s)" % (self._table, report_query()))
 
     @api.model
+    def _search(self, *args, **kwargs):
+        # The view's inflated cost estimate makes PostgreSQL compile the query
+        # (JIT) for several seconds to save a fraction of one. Local: only up to
+        # the end of this transaction.
+        self.env.cr.execute("SET LOCAL jit = off")
+        return super()._search(*args, **kwargs)
+
+    @api.model
     def _flush_sources(self):
         """The view reads these tables behind the ORM's back."""
         self.env.flush_all()
