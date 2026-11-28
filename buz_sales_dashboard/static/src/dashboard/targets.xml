@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="buz_sales_dashboard.TargetRow">
+        <tr t-attf-class="{{row.level === 'team' ? 'o_bsd_teamrow' : 'o_bsd_person'}}" t-att-data-key="row.key">
+            <td>
+                <button t-if="row.level === 'team'" type="button" class="o_bsd_toggle"
+                        t-on-click="() => this.state.closed[row.key] = !this.state.closed[row.key]">
+                    <i t-attf-class="fa {{state.closed[row.key] ? 'fa-caret-right' : 'fa-caret-down'}}"/>
+                    <t t-esc="row.name"/> <span class="o_bsd_tag">ทีม</span>
+                </button>
+                <t t-else="" t-esc="row.name"/>
+            </td>
+            <td class="o_bsd_hidem" t-esc="amount(row.previous_target)"/>
+            <td class="o_bsd_hidem" t-esc="amount(row.previous_actual)"/>
+            <td>
+                <input type="text" inputmode="decimal" autocomplete="off" class="o_bsd_inp"
+                       t-att-class="{'o_bsd_ro': !row.editable, 'o_bsd_edit': isChanged(row), 'o_bsd_bad': value(row) === null}"
+                       t-att-readonly="!row.editable" t-att-placeholder="row.editable ? 'ยังไม่ตั้ง' : '—'"
+                       t-att-aria-label="'เป้า ' + row.name" t-att-value="text(row)"
+                       t-on-input="(ev) => this.onInput(row, ev)" t-on-blur="() => this.onBlur(row)"/>
+            </td>
+            <td class="o_bsd_hidem o_bsd_l">
+                <t t-set="chip" t-value="status(row)"/>
+                <span t-if="chip" t-attf-class="o_bsd_status {{chip.css}}" t-esc="chip.label"/>
+            </td>
+        </tr>
+    </t>
+
+    <t t-name="buz_sales_dashboard.Targets">
+        <div class="o_bsd o_bsd_targets o_action h-100 overflow-auto">
+            <div class="o_bsd_wrap">
+                <div class="o_bsd_head">
+                    <div>
+                        <div class="o_bsd_eyebrow">Sales Dashboard</div>
+                        <h1>ตั้งเป้ายอดขายรายเดือน</h1>
+                        <p>เป้าเป็นบาทก่อน VAT เทียบกับยอดขายรวม SO + POS ·
+                            ผู้มีสิทธิ์ตั้งเป้าและหัวหน้าทีม (ทีมที่ดูแลและลูกทีม) แก้ได้ คนอื่นดูอย่างเดียว</p>
+                    </div>
+                    <div class="o_bsd_actions o_bsd_month">
+                        <button type="button" class="o_bsd_btn o_bsd_prev" aria-label="เดือนก่อน" t-on-click="() => this.move(-1)">‹</button>
+                        <strong t-esc="monthName(state.board.month)"/>
+                        <button type="button" class="o_bsd_btn o_bsd_next" aria-label="เดือนถัดไป" t-on-click="() => this.move(1)">›</button>
+                    </div>
+                </div>
+
+                <div class="o_bsd_tlayout" t-att-class="{'o_bsd_noimport': !state.board.can_edit}">
+                    <div>
+                        <div class="o_bsd_panel o_bsd_block">
+                            <div class="o_bsd_cardhead">
+                                <h2>เป้ารายทีมและรายคน</h2>
+                                <small>เว้นว่าง = ยังไม่ตั้งเป้า (ไม่ใช่ 0)</small>
+                            </div>
+                            <div class="o_bsd_ttable">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ทีม / พนักงานขาย</th>
+                                            <th class="o_bsd_hidem">เป้า <t t-esc="monthName(state.board.previous_month, false)"/></th>
+                                            <th class="o_bsd_hidem">ทำได้ <t t-esc="monthName(state.board.previous_month, false)"/></th>
+                                            <th>เป้า <t t-esc="monthName(state.board.month)"/></th>
+                                            <th class="o_bsd_hidem o_bsd_l">สถานะ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.board.teams" t-as="team" t-key="team.key">
+                                            <t t-call="buz_sales_dashboard.TargetRow"><t t-set="row" t-value="team"/></t>
+                                            <t t-if="!state.closed[team.key]">
+                                                <t t-foreach="team.members" t-as="member" t-key="member.key">
+                                                    <t t-call="buz_sales_dashboard.TargetRow"><t t-set="row" t-value="member"/></t>
+                                                </t>
+                                            </t>
+                                        </t>
+                                        <tr t-if="state.board.teams.length and state.board.others.length" class="o_bsd_teamrow">
+                                            <td colspan="5">พนักงานขายที่ไม่อยู่ในทีม</td>
+                                        </tr>
+                                        <t t-foreach="state.board.others" t-as="person" t-key="person.key">
+                                            <t t-call="buz_sales_dashboard.TargetRow"><t t-set="row" t-value="person"/></t>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div t-if="state.board.can_edit" class="o_bsd_panel o_bsd_savebar">
+                            <span>
+                                <b>แก้ไข <t t-esc="dirty.length"/> รายการ ยังไม่บันทึก</b>
+                                <small> · ยังไม่ตั้งเป้า <t t-esc="notSet"/> รายการ</small>
+                                <small t-if="invalid.length" class="text-danger"> · ตัวเลขไม่ถูกต้อง <t t-esc="invalid.length"/> รายการ</small>
+                            </span>
+                            <span class="o_bsd_actions">
+                                <button type="button" class="o_bsd_btn o_bsd_cancel" t-att-disabled="!dirty.length" t-on-click="cancel">ยกเลิก</button>
+                                <button type="button" class="o_bsd_btn o_bsd_primary o_bsd_savetargets"
+                                        t-att-disabled="!dirty.length or invalid.length > 0 or state.saving" t-on-click="save">บันทึกเป้า</button>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div t-if="state.board.can_edit" class="o_bsd_panel o_bsd_block o_bsd_import">
+                        <div class="o_bsd_cardhead"><h2>นำเข้าจาก Excel</h2></div>
+                        <ol class="o_bsd_steps">
+                            <li>
+                                <b>ดาวน์โหลดแบบฟอร์ม</b>
+                                <div class="text-muted">คอลัมน์: เดือน (2026-11) · ระดับ (ทีม/คน) · พนักงานขาย (อีเมลเข้าระบบ) หรือ ทีมขาย · เป้ายอดขาย (บาทก่อน VAT)</div>
+                                <a class="o_bsd_btn o_bsd_sm mt-1 o_bsd_template" href="/buz_sales_dashboard/target_template">
+                                    <i class="fa fa-download"/> แบบฟอร์ม .xlsx (มีรายชื่อปัจจุบัน)</a>
+                            </li>
+                            <li>
+                                <b>อัปโหลดไฟล์</b>
+                                <label class="o_bsd_drop" t-att-class="{'o_bsd_over': state.dragging}"
+                                       t-on-dragover.prevent="() => this.state.dragging = true"
+                                       t-on-dragleave="() => this.state.dragging = false"
+                                       t-on-drop.prevent="onDrop">
+                                    <b>ลากไฟล์ .xlsx มาวาง หรือกดเลือกไฟล์</b>
+                                    <span t-esc="state.file.name || 'ไม่เกิน 5 MB'"/>
+                                    <input type="file" accept=".xlsx" class="d-none" t-on-change="onFile"/>
+                                </label>
+                            </li>
+                            <li>
+                                <b>ตรวจก่อนบันทึก</b> <span class="text-muted">(ยังไม่เขียนลงระบบ)</span>
+                                <div t-if="state.file.busy" class="text-muted"><i class="fa fa-spinner fa-spin"/> กำลังตรวจ</div>
+                                <t t-set="preview" t-value="state.file.preview"/>
+                                <t t-if="preview">
+                                    <div class="o_bsd_note o_bsd_ok mt-2">
+                                        <b><t t-esc="preview.ready"/> แถว</b>
+                                        <span>พร้อมนำเข้า (ใหม่ <t t-esc="preview.new"/> · แก้ค่าเดิม <t t-esc="preview.update"/>)</span>
+                                    </div>
+                                    <t t-if="preview.bad_rows">
+                                        <div class="o_bsd_note o_bsd_err">
+                                            <b><t t-esc="preview.bad_rows"/> แถว</b><span>มีปัญหา จะไม่นำเข้า</span>
+                                        </div>
+                                        <div class="o_bsd_errors">
+                                            <table class="table table-sm mb-0">
+                                                <thead><tr><th>แถว</th><th>ปัญหา</th></tr></thead>
+                                                <tbody>
+                                                    <tr t-foreach="preview.errors" t-as="error" t-key="error_index">
+                                                        <td t-esc="error.row"/><td t-esc="error.problem"/>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <small t-if="preview.more_errors">... และอีก <t t-esc="preview.more_errors"/> ข้อ</small>
+                                    </t>
+                                </t>
+                            </li>
+                            <li>
+                                <b>ยืนยัน</b>
+                                <div class="o_bsd_actions mt-1">
+                                    <button type="button" class="o_bsd_btn o_bsd_primary o_bsd_apply"
+                                            t-att-disabled="!state.file.preview or !state.file.preview.ready or state.file.busy"
+                                            t-on-click="applyFile">นำเข้า <t t-if="state.file.preview" t-esc="state.file.preview.ready"/> แถว</button>
+                                    <button type="button" class="o_bsd_btn" t-att-disabled="!state.file.name" t-on-click="clearFile">ยกเลิก</button>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

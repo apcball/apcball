@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_excluded_view_tree" model="ir.ui.view">
+        <field name="name">product.product.sales.dashboard.excluded.tree</field>
+        <field name="model">product.product</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" create="false" delete="false">
+                <field name="default_code" readonly="1"/>
+                <field name="name" readonly="1"/>
+                <field name="detailed_type" readonly="1"/>
+                <field name="exclude_from_sales_dashboard" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="product_excluded_view_search" model="ir.ui.view">
+        <field name="name">product.product.sales.dashboard.excluded.search</field>
+        <field name="model">product.product</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('default_code', 'ilike', self)]"/>
+                <filter name="excluded" string="ไม่นับยอด"
+                        domain="[('exclude_from_sales_dashboard', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_excluded_products" model="ir.actions.act_window">
+        <field name="name">สินค้าที่ไม่นับยอด</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="product_excluded_view_tree"/>
+        <field name="search_view_id" ref="product_excluded_view_search"/>
+        <field name="context">{'search_default_excluded': 1}</field>
+        <field name="help" type="html">
+            <p>ปิดตัวกรอง "ไม่นับยอด" แล้วค้นหาสินค้า เพื่อเปิดสวิตช์เพิ่ม</p>
+        </field>
+    </record>
+</odoo>

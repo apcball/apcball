@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sales_dashboard_report,buz.sales.dashboard.report,model_buz_sales_dashboard_report,group_own,1,0,0,0
+access_sales_dashboard_filter,buz.sales.dashboard.filter,model_buz_sales_dashboard_filter,group_own,1,1,1,1
+access_sales_target,buz.sales.target,model_buz_sales_target,group_own,1,1,1,1
+access_sales_target_import,buz.sales.target.import,model_buz_sales_target_import,group_own,1,1,1,1

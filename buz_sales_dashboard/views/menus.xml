@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_root" name="Sales Dashboard" sequence="31"
+              web_icon="sale_management,static/description/icon.png"
+              groups="buz_sales_dashboard.group_own"/>
+    <menuitem id="menu_dashboard" name="Dashboard" parent="menu_root"
+              action="action_dashboard" sequence="10"/>
+    <menuitem id="menu_report" name="วิเคราะห์ยอดขาย" parent="menu_root"
+              action="action_report" sequence="20"/>
+    <menuitem id="menu_target" name="ตั้งเป้ายอดขาย" parent="menu_root"
+              action="action_target_board" sequence="30" groups="buz_sales_dashboard.group_own"/>
+    <menuitem id="menu_excluded_products" name="สินค้าที่ไม่นับยอด" parent="menu_root"
+              action="action_excluded_products" sequence="90" groups="base.group_system"/>
+</odoo>
