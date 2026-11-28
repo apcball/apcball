@@ -23,6 +23,8 @@ class SalesTargetImport(models.TransientModel):
 
     @api.model
     def _check_may_set_targets(self):
+        # leading a team is not enough: the dashboard groups open the door
+        self.env["buz.sales.target"].check_access_rights("create")
         allowed = self.env["buz.sales.target"]._editable_owners()
         if allowed is not None and not (allowed["team"] or allowed["user"]):
             raise UserError(_(
