@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from xml.etree import ElementTree
 
 import openpyxl
+from dateutil.relativedelta import relativedelta
 
 from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -647,6 +648,20 @@ class TestSalesDashboard(DashboardCommon, TransactionCase):
         action = open_as(self.leader)
         self.assertEqual(action["tag"], "display_notification")
         self.assertIn(order.name, action["params"]["message"])
+
+    def test_last_months_presets_end_with_the_current_month(self):
+        report = self.env["buz.sales.dashboard.report"]
+        today = fields.Date.context_today(report)
+        end = today.replace(day=1) + relativedelta(months=1, days=-1)
+        for preset, months in (("last_3_months", 3), ("last_6_months", 6)):
+            clean = report._sanitize_filters({"date_preset": preset})
+            self.assertEqual(clean["date_preset"], preset)
+            start, stop = report._resolve_dates(clean)
+            self.assertEqual(
+                (start, stop),
+                (today.replace(day=1) - relativedelta(months=months - 1), end))
+            data = report.get_dashboard_data(clean)
+            self.assertEqual(data["granularity"], "month")
 
     def test_saved_preset_keeps_rolling(self):
         report = self.env["buz.sales.dashboard.report"]

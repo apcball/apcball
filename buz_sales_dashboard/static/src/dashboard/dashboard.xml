@@ -27,28 +27,74 @@
         </div>
     </t>
 
+    <t t-name="buz_sales_dashboard.HeroActions">
+        <div class="o_bsd_actions o_bsd_heroactions">
+            <button t-if="state.options.can_set_targets" type="button"
+                    t-attf-class="o_bsd_btn o_bsd_set_target {{empty ? 'o_bsd_primary' : ''}}"
+                    t-on-click="openTargets"><i class="fa fa-bullseye"/> ตั้งเป้า</button>
+            <button type="button" class="o_bsd_btn o_bsd_analysis" t-on-click="openAnalysis">
+                <i class="fa fa-table"/> วิเคราะห์ยอดขาย (ตัวกรองนี้)
+            </button>
+            <button type="button" t-attf-class="o_bsd_btn o_bsd_export {{empty ? '' : 'o_bsd_primary'}}"
+                    t-on-click="exportExcel" t-att-disabled="state.exporting">
+                <i t-attf-class="fa {{state.exporting ? 'fa-spinner fa-spin' : 'fa-file-excel-o'}}"/>
+                <t t-if="state.exporting"> กำลังสร้างไฟล์...</t><t t-else=""> Export Excel</t>
+            </button>
+            <button type="button" class="o_bsd_btn o_bsd_refresh" t-on-click="load" title="รีเฟรช" aria-label="รีเฟรช">
+                <i class="fa fa-refresh"/>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="buz_sales_dashboard.HeroArt">
+        <svg class="o_bsd_art" viewBox="0 0 430 160" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">
+            <defs>
+                <linearGradient id="o_bsd_artbar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#4fa8ff"/><stop offset="1" stop-color="#8f7cf0" stop-opacity="0.35"/>
+                </linearGradient>
+                <linearGradient id="o_bsd_artline" x1="0" y1="1" x2="1" y2="0">
+                    <stop offset="0" stop-color="#8f7cf0" stop-opacity="0.1"/><stop offset="1" stop-color="#1976f8"/>
+                </linearGradient>
+            </defs>
+            <path d="M0 150 C 70 110, 130 160, 210 128 S 340 110, 430 140 L 430 160 L 0 160 Z" fill="#8f9ff0" opacity="0.14"/>
+            <rect x="105" y="134" width="40" height="26" rx="5" fill="url(#o_bsd_artbar)" opacity="0.35"/>
+            <rect x="164" y="113" width="40" height="47" rx="5" fill="url(#o_bsd_artbar)" opacity="0.55"/>
+            <rect x="228" y="93" width="40" height="67" rx="5" fill="url(#o_bsd_artbar)" opacity="0.75"/>
+            <rect x="294" y="64" width="40" height="96" rx="5" fill="url(#o_bsd_artbar)" opacity="0.9"/>
+            <rect x="360" y="32" width="40" height="128" rx="5" fill="url(#o_bsd_artbar)"/>
+            <path d="M70 120 C 190 100, 290 62, 372 14" fill="none" stroke="url(#o_bsd_artline)" stroke-width="5" stroke-linecap="round"/>
+            <path d="M396 2 L 384 29 L 366 6 Z" fill="#1976f8"/>
+        </svg>
+    </t>
+
     <t t-name="buz_sales_dashboard.Dashboard">
         <div class="o_bsd o_action h-100 overflow-auto">
             <div class="o_bsd_wrap">
-                <div class="o_bsd_head">
-                    <div>
-                        <div class="o_bsd_eyebrow">Sales Dashboard</div>
-                        <h1 t-esc="title"/>
-                        <p><t t-esc="day(state.data.date_from)"/>–<t t-esc="day(state.data.date_to)"/>
-                            · บาทก่อน VAT · SO นับตามวันที่ SO · POS นับตามวันที่ใบแจ้งหนี้</p>
+                <div class="o_bsd_head o_bsd_dashhead">
+                    <div class="o_bsd_brand">
+                        <span class="o_bsd_logo" aria-hidden="true"><i/><i/><i/></span>
+                        <div>
+                            <h1>Sales Dashboard</h1>
+                            <p>ภาพรวมยอดขายและประสิทธิภาพการขาย</p>
+                        </div>
                     </div>
-                    <div class="o_bsd_actions">
-                        <span t-if="state.loading" class="text-muted align-self-center"><i class="fa fa-spinner fa-spin"/> กำลังโหลด</span>
-                        <button type="button" class="o_bsd_btn" t-on-click="load"><i class="fa fa-refresh"/> รีเฟรช</button>
-                        <button t-if="state.options.can_set_targets" type="button" class="o_bsd_btn o_bsd_set_target"
-                                t-on-click="openTargets"><i class="fa fa-bullseye"/> ตั้งเป้า</button>
-                        <button type="button" class="o_bsd_btn o_bsd_analysis" t-on-click="openAnalysis">
-                            <i class="fa fa-table"/> วิเคราะห์ยอดขาย (ตัวกรองนี้)
-                        </button>
-                        <button type="button" class="o_bsd_btn o_bsd_primary" t-on-click="exportExcel" t-att-disabled="state.exporting">
-                            <i t-attf-class="fa {{state.exporting ? 'fa-spinner fa-spin' : 'fa-file-excel-o'}}"/>
-                            <t t-if="state.exporting"> กำลังสร้างไฟล์...</t><t t-else=""> Export Excel</t>
-                        </button>
+                    <div class="o_bsd_headtools">
+                        <span t-if="state.loading" class="text-muted"><i class="fa fa-spinner fa-spin"/> กำลังโหลด</span>
+                        <label class="o_bsd_range">
+                            <i class="fa fa-calendar"/>
+                            <span><t t-esc="day(state.data.date_from)"/> - <t t-esc="day(state.data.date_to)"/></span>
+                            <i class="fa fa-angle-down"/>
+                            <select class="o_bsd_rangeselect" aria-label="เลือกช่วงเวลา" t-on-change="onPreset">
+                                <option t-foreach="state.options.presets" t-as="preset" t-key="preset.id"
+                                        t-att-value="preset.id" t-att-selected="preset.id === state.filters.date_preset"
+                                        t-esc="preset.name"/>
+                            </select>
+                        </label>
+                        <div class="o_bsd_quick">
+                            <button t-foreach="quickPresets" t-as="quick" t-key="quick.id" type="button"
+                                    t-att-class="{'o_bsd_on': state.filters.date_preset === quick.id}" t-att-data-preset="quick.id"
+                                    t-on-click="() => this.setFilter({date_preset: quick.id})" t-esc="quick.name"/>
+                        </div>
                     </div>
                 </div>
 
@@ -134,18 +180,21 @@
 
                 <t t-set="target" t-value="state.data.target"/>
                 <div t-if="target.status === 'none'" class="o_bsd_panel o_bsd_hero o_bsd_target o_bsd_none o_bsd_empty">
-                    <div>
-                        <div class="o_bsd_herotop">
-                            <span class="o_bsd_eyebrow">เป้า <t t-esc="target.period"/> · <t t-esc="target.scope"/></span>
-                            <span class="o_bsd_status o_bsd_none">ยังไม่ตั้งเป้า</span>
+                    <div class="o_bsd_herobody">
+                        <span class="o_bsd_heroico" aria-hidden="true"><i class="fa fa-bar-chart"/></span>
+                        <div>
+                            <div class="o_bsd_herotop">
+                                <b>ยอดขายรวม</b>
+                                <small>(เป้า <t t-esc="target.period"/> · <t t-esc="target.scope"/> • ยังไม่ตั้งเป้า)</small>
+                            </div>
+                            <div class="o_bsd_big">
+                                <strong data-target="actual" t-esc="amount(target.actual)"/><span>บาท (SO+POS)</span>
+                            </div>
+                            <div t-foreach="target.notes" t-as="note" t-key="note_index" class="o_bsd_heronote" t-esc="note"/>
+                            <t t-call="buz_sales_dashboard.HeroActions"><t t-set="empty" t-value="true"/></t>
                         </div>
-                        <div class="o_bsd_big">
-                            <span>ทำได้แล้ว</span><strong data-target="actual" t-esc="amount(target.actual)"/><span>บาท (SO+POS)</span>
-                        </div>
-                        <div t-foreach="target.notes" t-as="note" t-key="note_index" class="o_bsd_heronote" t-esc="note"/>
-                        <button t-if="state.options.can_set_targets" type="button" class="o_bsd_btn o_bsd_primary mt-2"
-                                t-on-click="openTargets">ตั้งเป้า</button>
                     </div>
+                    <t t-call="buz_sales_dashboard.HeroArt"/>
                 </div>
                 <div t-else="" t-attf-class="o_bsd_panel o_bsd_hero o_bsd_target {{status(target.state).css}}">
                     <div>
@@ -176,6 +225,7 @@
                         </div>
                         <div class="o_bsd_heronote">เทียบเป้าด้วยยอดขายรวม SO + POS (ก่อน VAT) เสมอ</div>
                         <div t-foreach="target.notes" t-as="note" t-key="note_index" class="o_bsd_heronote" t-esc="note"/>
+                        <t t-call="buz_sales_dashboard.HeroActions"><t t-set="empty" t-value="false"/></t>
                     </div>
                     <div class="o_bsd_tiles">
                         <div class="o_bsd_tile" data-target="percent"><small>ทำได้</small><b t-esc="percent(target.percent)"/><em>ของเป้า</em></div>
@@ -234,7 +284,7 @@
                     <section t-foreach="cards" t-as="card" t-key="card.id" t-attf-class="o_bsd_panel o_bsd_grp o_bsd_g_{{card.id}}"
                              t-att-data-group="card.id">
                         <div class="o_bsd_grphead">
-                            <div class="o_bsd_ico" t-esc="card.icon"/>
+                            <div class="o_bsd_ico"><i t-attf-class="fa {{card.icon}}"/></div>
                             <h2 t-esc="card.title"/>
                             <small t-esc="card.note"/>
                             <span t-if="card.tag" class="o_bsd_tag" t-esc="card.tag"/>
@@ -277,12 +327,12 @@
                 </div>
 
                 <div class="o_bsd_panel o_bsd_block">
-                    <div class="o_bsd_cardhead"><h2>แนวโน้มยอดขาย</h2></div>
+                    <div class="o_bsd_cardhead"><h2><i class="fa fa-bar-chart o_bsd_hico"/>แนวโน้มยอดขาย</h2></div>
                     <div class="o_bsd_chart"><canvas t-ref="chart"/></div>
                 </div>
 
                 <div class="o_bsd_panel o_bsd_block">
-                    <div class="o_bsd_cardhead"><h2>รายละเอียด</h2><small>คลิกแถวเพื่อดูรายใบ · เลื่อนขวาเพื่อดูครบทุกคอลัมน์</small></div>
+                    <div class="o_bsd_cardhead"><h2><i class="fa fa-th-list o_bsd_hico"/>รายละเอียด</h2><small>คลิกแถวเพื่อดูรายใบ · เลื่อนขวาเพื่อดูครบทุกคอลัมน์</small></div>
                     <div class="o_bsd_tabs">
                         <button t-foreach="tabs" t-as="tab" t-key="tab.id" type="button"
                                 t-att-class="{'o_bsd_on': state.tab === tab.id}" t-att-data-tab="tab.id"

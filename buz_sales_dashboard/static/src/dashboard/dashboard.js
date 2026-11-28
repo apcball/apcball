@@ -27,10 +27,17 @@ const STATUS = {
     set: { label: "ตั้งเป้าแล้ว", css: "o_bsd_ahead" },
     none: { label: "ยังไม่ตั้งเป้า", css: "o_bsd_none" },
 };
+// the shortcuts beside the page title
+const QUICK_PRESETS = [
+    { id: "this_month", name: "เดือนนี้" },
+    { id: "last_3_months", name: "3 เดือน" },
+    { id: "last_6_months", name: "6 เดือน" },
+    { id: "this_year", name: "ปีนี้" },
+];
 // The four cards: [measure, row style, other label, remark, tag]
 const CARDS = [
     {
-        id: "sales", icon: "฿", title: "ขาย", note: "นับตามวันที่ SO · บาทก่อน VAT",
+        id: "sales", icon: "fa-file-text", title: "ขาย", note: "นับตามวันที่ SO · บาทก่อน VAT",
         lead: "amount_total", leadNote: "ใช้เทียบเป้า",
         rows: [
             ["amount_so", "o_bsd_strong"],
@@ -44,18 +51,18 @@ const CARDS = [
         ],
     },
     {
-        id: "wait", icon: "⧖", title: "รอส่ง", note: "ส่วนของ SO ยืนยันแล้วที่ยังไม่ส่ง",
+        id: "wait", icon: "fa-hourglass-half", title: "รอส่ง", note: "ส่วนของ SO ยืนยันแล้วที่ยังไม่ส่ง",
         lead: "amount_pending", side: { label: "ของ SO สุทธิ", of: "amount_so" },
         stack: ["amount_pending_open", "amount_pending_billed", "amount_pending_other"],
         rows: [],
     },
     {
-        id: "pos", icon: "▣", title: "POS", note: "นับตามวันที่ใบแจ้งหนี้",
+        id: "pos", icon: "fa-desktop", title: "POS", note: "นับตามวันที่ใบแจ้งหนี้",
         lead: "amount_pos", side: { label: "ของยอดขายรวม", of: "amount_total" },
         rows: [["amount_pos_invoice", ""], ["amount_pos_refund", ""]],
     },
     {
-        id: "invoice", icon: "▤", title: "ออกบิล", tag: "ไม่บวกในยอดขายรวม",
+        id: "invoice", icon: "fa-list-alt", title: "ออกบิล", tag: "ไม่บวกในยอดขายรวม",
         note: "สุทธิหลังลดหนี้ · นับตามวันที่ พนักงานขาย และทีมของใบแจ้งหนี้",
         lead: "amount_invoiced", leadNote: "ตรงกับ Invoice Analysis",
         rows: [
@@ -80,6 +87,7 @@ export class SalesDashboard extends Component {
         this.notification = useService("notification");
         this.chartRef = useRef("chart");
         this.tabs = TABS;
+        this.quickPresets = QUICK_PRESETS;
         this.state = useState({
             options: null,
             filters: null,
@@ -313,11 +321,6 @@ export class SalesDashboard extends Component {
         return this.tabs.find((t) => t.id === this.state.tab).name;
     }
 
-    get title() {
-        const preset = this.state.options.presets.find((p) => p.id === this.state.data.filters.date_preset);
-        return preset && preset.id !== "custom" ? `ยอดขาย${preset.name}` : "ยอดขายตามช่วงที่เลือก";
-    }
-
     // "2026-W47 (16/11-22/11)" -> "W47 · 16/11–22/11", "2026-11" -> "11/2026"
     shortPeriod(key) {
         const week = /^\d{4}-(W\d{2}) \((\d{2}\/\d{2})-(\d{2}\/\d{2})\)$/.exec(key);
@@ -478,7 +481,7 @@ export class SalesDashboard extends Component {
             data: {
                 labels: rows.map((r) => this.shortPeriod(r.label)),
                 datasets: [
-                    series("amount_so", "#1976f8", { stack: "sales" }),
+                    series("amount_so", "#1976f8", { stack: "sales", borderRadius: 3 }),
                     series("amount_pos", "#8270e9", { stack: "sales" }),
                     series("amount_quotation", "#94a3b8", { stack: "quotation", hidden: true }),
                     series("amount_invoiced", "#059e7b", { stack: "invoiced", hidden: true }),

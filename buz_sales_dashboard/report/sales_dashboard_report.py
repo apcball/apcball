@@ -65,6 +65,8 @@ DATE_PRESETS = [
     ("this_month", "เดือนนี้"),
     ("last_month", "เดือนก่อน"),
     ("this_quarter", "ไตรมาสนี้"),
+    ("last_3_months", "3 เดือนล่าสุด"),
+    ("last_6_months", "6 เดือนล่าสุด"),
     ("this_year", "ปีนี้"),
     ("last_year", "ปีก่อน"),
     ("custom", "กำหนดเอง"),
@@ -186,6 +188,11 @@ class SalesDashboardReport(models.Model):
             return month_start, month_start + relativedelta(months=1) - one_day
         if preset == "last_month":
             return month_start - relativedelta(months=1), month_start - one_day
+        if preset in ("last_3_months", "last_6_months"):
+            # the current month and the ones before it
+            months = 3 if preset == "last_3_months" else 6
+            return (month_start - relativedelta(months=months - 1),
+                    month_start + relativedelta(months=1) - one_day)
         if preset == "this_quarter":
             start = today.replace(month=(today.month - 1) // 3 * 3 + 1, day=1)
             return start, start + relativedelta(months=3) - one_day
