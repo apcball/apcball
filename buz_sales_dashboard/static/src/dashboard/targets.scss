@@ -1,0 +1,57 @@
+// The monthly target page; colours and panels come from dashboard.scss.
+.o_bsd.o_bsd_targets {
+    .o_bsd_month { align-items: center; strong { min-width: 120px; text-align: center; font-size: 1.1rem; } }
+    .o_bsd_tlayout {
+        display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 14px; align-items: start;
+        &.o_bsd_noimport { grid-template-columns: minmax(0, 1fr); }
+    }
+    .o_bsd_ttable {
+        overflow-x: auto; border: 1px solid var(--bsd-border); border-radius: 10px;
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th, td { padding: 8px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid #eef2f7; }
+        th { background: #f5f8fb; font-weight: 650; color: #43516a; }
+        th:first-child, td:first-child { text-align: left; border-right: 1px solid var(--bsd-border); }
+        .o_bsd_l { text-align: left; }
+        .o_bsd_teamrow td { background: #f5f8fb; font-weight: 700; }
+        .o_bsd_person td:first-child { padding-left: 34px; }
+    }
+    .o_bsd_toggle { border: 0; background: none; padding: 0; font-weight: 700; color: var(--bsd-text); i { width: 12px; } }
+    .o_bsd_inp {
+        width: 150px; padding: 6px 10px; border: 1px solid #cfd9e5; border-radius: 8px; background: #fff;
+        text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;
+        &::placeholder { color: #9aa8b8; font-weight: 400; }
+        &.o_bsd_edit { border-color: var(--bsd-primary); box-shadow: 0 0 0 3px rgba(25, 118, 248, 0.15); }
+        &.o_bsd_bad { border-color: #d92d43; background: #fff7f8; box-shadow: none; }
+        &.o_bsd_ro { background: #f0f4f8; border-color: transparent; }
+    }
+    .o_bsd_status.o_bsd_bad { --st-bg: #ffe8ec; --st-fg: #93182a; }
+    .o_bsd_savebar {
+        position: sticky; bottom: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 12px; padding: 12px 18px; border-color: #c5dcfb;
+    }
+    .o_bsd_steps {
+        list-style: none; padding: 0; margin: 0; counter-reset: step;
+        > li { counter-increment: step; position: relative; padding: 0 0 14px 34px; }
+        > li::before {
+            content: counter(step); position: absolute; left: 0; top: 0; width: 24px; height: 24px; border-radius: 50%;
+            background: #e7f1ff; color: var(--bsd-primary-dark); font-weight: 700; font-size: 0.8rem; display: grid; place-items: center;
+        }
+    }
+    .o_bsd_drop {
+        display: block; width: 100%; margin-top: 8px; padding: 22px 14px; text-align: center; cursor: pointer;
+        border: 2px dashed #cfd9e5; border-radius: 12px; background: var(--bsd-tint); color: var(--bsd-muted);
+        b { display: block; color: var(--bsd-text); }
+        &.o_bsd_over, &:hover { border-color: var(--bsd-primary); }
+    }
+    .o_bsd_note.o_bsd_ok { background: #e3f8f1; color: #04604c; margin-bottom: 8px; }
+    .o_bsd_note.o_bsd_err { background: #ffe8ec; color: #93182a; margin-bottom: 8px; }
+    .o_bsd_errors { max-height: 260px; overflow: auto; border: 1px solid var(--bsd-border); border-radius: 10px; }
+
+    @media (max-width: 1199px) { .o_bsd_tlayout { grid-template-columns: minmax(0, 1fr); } }
+    @media (max-width: 767px) {
+        .o_bsd_hidem { display: none; }
+        .o_bsd_inp { width: 120px; min-height: 40px; }
+        .o_bsd_savebar .o_bsd_actions { width: 100%; }
+        .o_bsd_ttable th, .o_bsd_ttable td { padding: 8px; white-space: normal; }
+    }
+}

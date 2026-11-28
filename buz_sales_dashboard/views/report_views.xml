@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="report_view_tree" model="ir.ui.view">
+        <field name="name">buz.sales.dashboard.report.tree</field>
+        <field name="model">buz.sales.dashboard.report</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false"
+                  action="action_open_document" type="object">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="source"/>
+                <field name="state"/>
+                <field name="user_id"/>
+                <field name="team_id"/>
+                <field name="month" optional="hide"/>
+                <field name="week" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount_quotation" sum="รวม"/>
+                <field name="amount_so" sum="รวม"/>
+                <field name="amount_delivered" sum="รวม"/>
+                <field name="amount_pending" sum="รวม"/>
+                <field name="amount_pending_open" sum="รวม" optional="show"/>
+                <field name="amount_pending_billed" sum="รวม" optional="hide"/>
+                <field name="amount_pending_other" sum="รวม" optional="hide"/>
+                <field name="amount_service" sum="รวม" optional="hide"/>
+                <field name="amount_adjust" sum="รวม" optional="hide"/>
+                <field name="amount_so_credit" sum="รวม" optional="show"/>
+                <field name="amount_pos_invoice" sum="รวม" optional="hide"/>
+                <field name="amount_pos_refund" sum="รวม" optional="hide"/>
+                <field name="amount_pos" sum="รวม"/>
+                <field name="amount_total" sum="รวม"/>
+                <field name="amount_total_vat" sum="รวม" optional="hide"/>
+                <field name="amount_inv_so_invoice" sum="รวม" optional="hide"/>
+                <field name="amount_inv_so_refund" sum="รวม" optional="hide"/>
+                <field name="amount_inv_so" sum="รวม" optional="show"/>
+                <field name="amount_inv_other" sum="รวม" optional="hide"/>
+                <field name="amount_invoiced" sum="รวม" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="report_view_pivot" model="ir.ui.view">
+        <field name="name">buz.sales.dashboard.report.pivot</field>
+        <field name="model">buz.sales.dashboard.report</field>
+        <field name="arch" type="xml">
+            <pivot sample="1">
+                <field name="team_id" type="row"/>
+                <field name="month" type="col"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="report_view_graph" model="ir.ui.view">
+        <field name="name">buz.sales.dashboard.report.graph</field>
+        <field name="model">buz.sales.dashboard.report</field>
+        <field name="arch" type="xml">
+            <graph type="bar" sample="1">
+                <field name="month"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="report_view_search" model="ir.ui.view">
+        <field name="name">buz.sales.dashboard.report.search</field>
+        <field name="model">buz.sales.dashboard.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <!-- exact match: a partial name would add similar teams together -->
+                <field name="user_id" operator="="/>
+                <field name="team_id" operator="="/>
+                <filter name="source_so" string="Sale Order" domain="[('source', '=', 'so')]"/>
+                <filter name="source_pos" string="POS" domain="[('source', '=', 'pos')]"/>
+                <separator/>
+                <filter name="date" string="วันที่" date="date" default_period="this_month"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_month" string="เดือน" context="{'group_by': 'month'}"/>
+                    <filter name="group_week" string="สัปดาห์" context="{'group_by': 'week'}"/>
+                    <filter name="group_user" string="พนักงานขาย" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_team" string="ทีมขาย" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_source" string="แหล่ง" context="{'group_by': 'source'}"/>
+                    <filter name="group_state" string="สถานะ" context="{'group_by': 'state'}"/>
+                </group>
+                <searchpanel view_types="pivot,graph,tree">
+                    <field name="team_id" string="ทีมขาย" select="multi" icon="fa-users"/>
+                    <field name="user_id" string="พนักงานขาย" select="multi" icon="fa-user"/>
+                </searchpanel>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_report" model="ir.actions.act_window">
+        <field name="name">วิเคราะห์ยอดขาย</field>
+        <field name="res_model">buz.sales.dashboard.report</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <!-- starts on the current month, like the dashboard -->
+        <field name="context">{'search_default_date': 1}</field>
+    </record>
+
+    <record id="action_dashboard" model="ir.actions.client">
+        <field name="name">Sales Dashboard</field>
+        <field name="tag">buz_sales_dashboard.dashboard</field>
+    </record>
+</odoo>

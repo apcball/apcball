@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_target_board" model="ir.actions.client">
+        <field name="name">ตั้งเป้ายอดขาย</field>
+        <field name="tag">buz_sales_dashboard.targets</field>
+    </record>
+</odoo>
